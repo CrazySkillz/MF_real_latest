@@ -25908,6 +25908,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Scheduled report send-event validation evidence (read-only).
+  app.get("/api/platforms/:platformType/reports/:reportId/send-events", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { platformType, reportId } = req.params;
+      const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
+      if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ success: false, error: "Report not found" });
+      }
+      const { reportSendEvents } = await import("../shared/schema");
+      const { desc, eq } = await import("drizzle-orm");
+      const rows = await db
+        .select({
+          id: (reportSendEvents as any).id,
+          reportId: (reportSendEvents as any).reportId,
+          snapshotId: (reportSendEvents as any).snapshotId,
+          scheduledKey: (reportSendEvents as any).scheduledKey,
+          timeZone: (reportSendEvents as any).timeZone,
+          recipients: (reportSendEvents as any).recipients,
+          status: (reportSendEvents as any).status,
+          error: (reportSendEvents as any).error,
+          sentAt: (reportSendEvents as any).sentAt,
+          createdAt: (reportSendEvents as any).createdAt,
+        })
+        .from(reportSendEvents as any)
+        .where(eq((reportSendEvents as any).reportId, String(reportId)))
+        .orderBy(desc((reportSendEvents as any).createdAt))
+        .limit(20);
+      const asIso = (value: any) => value instanceof Date ? value.toISOString() : (value ? String(value) : null);
+      const events = rows.map((row: any) => {
+        const recipients = Array.isArray(row.recipients) ? row.recipients : [];
+        return {
+          id: row.id,
+          reportId: row.reportId,
+          snapshotId: row.snapshotId || null,
+          scheduledKey: row.scheduledKey,
+          timeZone: row.timeZone || null,
+          recipientCount: recipients.length,
+          status: row.status,
+          error: row.error || null,
+          sentAt: asIso(row.sentAt),
+          createdAt: asIso(row.createdAt),
+        };
+      });
+      res.json({
+        success: true,
+        certificationStatus: "validation_output_only",
+        productionReadinessNote: "This read-only endpoint supports scheduler/send-event evidence capture. It is not clean certification by itself until the scheduled event and report-preflight evidence are reviewed and recorded.",
+        limitations: [
+          "Does not send, retry, recompute, snapshot, or mutate report rows.",
+          "A sent event proves scheduler send bookkeeping for this report and scheduled slot, not inbox delivery by itself.",
+          "For GA4 Benchmark reports, scheduled output certification also requires evidence that selected Benchmark rows were recomputed before output.",
+        ],
+        reportId: String(reportId),
+        platformType: String((existing as any)?.platformType || ""),
+        reportType: String((existing as any)?.reportType || ""),
+        campaignId: String((existing as any)?.campaignId || ""),
+        latestStatus: events[0]?.status || null,
+        scheduledSendObserved: events.length > 0,
+        sentEventObserved: events.some((event: any) => event.status === "sent" && !!event.sentAt),
+        events,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch report send events" });
+    }
+  });
+
   // Report snapshots (immutable history)
   app.get("/api/platforms/:platformType/reports/:reportId/snapshots", async (req, res) => {
     try {

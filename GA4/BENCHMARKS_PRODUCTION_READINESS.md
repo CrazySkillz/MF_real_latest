@@ -40,6 +40,7 @@ Certification result:
 - current Commit 4 Follow-Up local fix: scheduler/report-preflight guards now track updated Benchmark row IDs, fail closed for Benchmark-section reports whose selected rows were not recomputed, and prevent duplicate Benchmark history rows for the same Benchmark/date even when an older report date is reprocessed after newer history exists
 - current Commit 4 Follow-Up deployed report-preflight validation: Render validation on June 30, 2026 for Benchmark `989de4b3-e1e9-4891-8094-a010bcd59c43` and GA4 Benchmark report `eae94163-5608-4590-8dcd-7d927ba6b421` returned manual snapshot `200`, created snapshot `a5713490-f9b1-4548-9660-cbde32e372d5`, changed Benchmark `updatedAt` from `2026-06-30T12:16:31.780Z` to `2026-06-30T18:11:34.767Z`, kept `currentValue = 12376.38`, and kept Benchmark history count `5 -> 5`
 - current Commit 4 Follow-Up scheduler-log search: Render log search returned no matching `[GA4 Daily] Pipeline starting`, `[GA4 Daily] Refresh done`, or `[GA4 Daily] Pipeline done` lines, so deployed daily scheduler timer proof remains unproven
+- current Commit 4 Follow-Up observability fix: local scheduler/runtime evidence support now exposes GA4 daily scheduler status through `/health/scheduler`, updates report scheduler check metrics, and adds a guarded read-only report send-event endpoint; deployed health/send-event evidence remains pending until Render is rechecked
 - current Commit 5 deployed validation: read-only Benchmark alert email delivery validation support is implemented, pushed, deployed, and user-confirmed as passed, including inbox receipt; exact endpoint JSON, provider response ID, delivered timestamp, recipient, and subject were not pasted into this chat, so this file records user-confirmed external validation rather than locally inspected raw evidence
 - outstanding production-readiness queue: deployed daily scheduler timer/scheduled-send observation and Current Commits 6-7 below must be completed before full unqualified production readiness can be claimed
 - not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed daily scheduler timer and scheduled-send observation, browser/deployed UI validation after this update, and mock industry target-source suitability
@@ -351,6 +352,7 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | Benchmark alert email delivery validation endpoint | `server/benchmark-alert-email-delivery-validation-regression.test.ts` plus user-confirmed deployed validation | read-only Benchmark-scoped audit evidence endpoint is access-guarded, filters exact Benchmark alert email rows, exposes provider response/delivery status, and does not send or mutate email records; controlled deployed provider/inbox validation passed by user confirmation | Exact raw endpoint JSON and inbox metadata were not pasted into this chat |
 | Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Future provider event/inbox confirmation remains per-send evidence, not a blanket guarantee |
 | Report consumers | `server/ga4-kpi-report-consumer-regression.test.ts` plus report route trace | GA4 scheduled/test/manual snapshot/direct PDF paths run GA4 preflight before report output; Benchmark-section reports require selected Benchmark rows to be recomputed before PDF/snapshot/email continues | Deployed report execution remains external |
+| Scheduler/runtime observability | `server/ga4-scheduler-observability-regression.test.ts`, `server/ga4-daily-scheduler-regression.test.ts` | `/health/scheduler` exposes GA4 daily scheduler status; report scheduler metrics update on each check; report send-event evidence endpoint is guarded and read-only | Deployed health/send-event evidence pending |
 | Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts`, `server/ga4-kpi-financial-window-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered; scheduler updates Benchmark current values and does not insert duplicate same-date Benchmark history when older report dates are reprocessed | Deployed scheduler runtime external |
 | Source lifecycle recompute | `server/ga4-source-lifecycle-recompute-regression.test.ts` | revenue/spend source changes recompute GA4 Benchmark current values before covered alert checks | Live source-provider correctness external |
 | Existing damaged-data cleanup | dry-run/apply/post-apply cleanup evidence recorded in this file | known persisted ROAS percent-style rows corrected only inside proven boundary; 0 remaining candidates after apply | Skipped rows remain intentionally unmodified because exact boundary was unproven |
@@ -562,12 +564,24 @@ The validation-window fix proved the controlled endpoint compared stored Benchma
 - `runGA4DailyKPIAndBenchmarkJobs` returned only `benchmarksRecorded`, which counts newly inserted history rows, not Benchmark rows whose `currentValue` was actually refreshed. Report preflight could therefore prove only that the campaign was processed, not that Benchmark-section rows selected for report output were recomputed.
 - Benchmark history de-duplication checked only the latest history row. If an older report date was reprocessed after newer history existed, the job could insert another history row for the same Benchmark/date.
 
+The deployed follow-up RCA found an additional proof-surface gap, not a Benchmark calculation defect:
+
+- GA4 daily scheduler runtime state was observable only through stdout logs. Render log search returned no matching `[GA4 Daily] Pipeline starting`, `[GA4 Daily] Refresh done`, or `[GA4 Daily] Pipeline done` lines, which did not prove the scheduler failed but also did not prove the timer ran.
+- `/health/scheduler` exposed report scheduler metrics only; it did not expose GA4 daily scheduler timer state, next run, last trigger, or run counts.
+- Report scheduler health fields `totalChecks` and `lastCheckTime` existed but were not updated inside `checkScheduledReports`, so the health endpoint could not prove the scheduled-send checker was actually running.
+- `report_send_events` held scheduled-send runtime evidence, but there was no report-access-guarded read-only endpoint to inspect it for a specific scheduled GA4 Benchmark report without direct database access.
+
 Files expected:
 
 - `server/ga4-kpi-benchmark-jobs.ts`
 - `server/report-scheduler.ts`
+- `server/ga4-daily-scheduler.ts`
+- `server/index.ts`
+- `server/routes-oauth.ts`
 - `server/ga4-kpi-financial-window-regression.test.ts`
 - `server/ga4-kpi-report-consumer-regression.test.ts`
+- `server/ga4-daily-scheduler-regression.test.ts`
+- `server/ga4-scheduler-observability-regression.test.ts`
 - this file, to record exact scheduler/report-preflight evidence
 - optional scheduler/deployment validation artifact if the project keeps one
 
@@ -578,6 +592,9 @@ Required behavior:
 - Scheduler and report preflight must fail closed when the campaign, property, source context, or selected Benchmark recompute cannot be verified.
 - Scheduled/server report outputs must use successfully recomputed Benchmark rows or skip/fail without creating misleading sent/downloadable output.
 - Duplicate processing must not produce duplicate Benchmark history rows for the same Benchmark/date, including reprocessing an older date after newer history exists.
+- `/health/scheduler` must expose read-only GA4 daily scheduler status, including timer scheduled state, configured schedule, next run, last run trigger/status, and run counts.
+- Report scheduler health metrics must update on each scheduled check so deployed runtime observation does not depend only on log search.
+- Report send-event evidence must be readable through a report-access-guarded, read-only endpoint that does not send, retry, recompute, snapshot, or mutate report rows.
 
 Validation:
 
@@ -586,12 +603,12 @@ Validation:
 - The report-preflight regression proves GA4 Benchmark-section reports inspect selected Benchmark rows, require `benchmarkIdsUpdated`, and fail closed with `GA4 Benchmark recompute skipped selected Benchmark rows` before scheduled/test/manual/direct report output continues.
 - Deployed manual snapshot/report-preflight validation passed on June 30, 2026: `snapshotStatus = 200`, report type `benchmarks`, `passedPreflight = true`, `recomputedBenchmark = true`, `noDuplicateHistory = true`, Benchmark `updatedAt` changed from `2026-06-30T12:16:31.780Z` to `2026-06-30T18:11:34.767Z`, and history count stayed `5 -> 5`.
 - Deployed scheduler-log search returned no matching `[GA4 Daily] Pipeline starting`, `[GA4 Daily] Refresh done`, or `[GA4 Daily] Pipeline done` lines. This is not proof the scheduler failed, but it is also not proof the daily scheduler timer ran.
-- Deployed follow-up still required: capture Render daily scheduler logs or observable scheduled-run persisted Benchmark current/history rows for a controlled campaign/date. The manual snapshot proof does not by itself prove the daily scheduler timer or scheduled email-send path ran.
+- Local observability validation on June 30, 2026: `npm test -- server/ga4-scheduler-observability-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/alert-email-scheduler-regression.test.ts` passed: 5 files, 23 tests. `npm run check` also passed.
+- Deployed follow-up still required after this observability fix is pushed: capture `/health/scheduler` showing `ga4DailyScheduler.started = true`, `timerScheduled = true`, non-null `nextRunAt`, and either a startup/scheduled/manual run status or a pending next run; then capture `GET /api/platforms/google_analytics/reports/<reportId>/send-events` for a controlled scheduled GA4 Benchmark report showing the scheduler created a send event. A sent event proves scheduler send bookkeeping for that report/slot, not inbox delivery by itself.
 
 Implementation status:
 
-Implemented and locally validated for the scheduler/report-preflight code path, and deployed manual snapshot/report-preflight validation passed for the controlled GA4 Benchmark report. This closes the local code defect where report preflight accepted campaign-level processing without proving selected Benchmark rows were recomputed, closes the same-Benchmark/same-date duplicate history risk for reprocessed older dates, and proves the deployed manual snapshot preflight path for the recorded report/Benchmark pair. Deployed daily scheduler timer execution and scheduled-send runtime observation remain unproven external evidence, so full unqualified GA4 Benchmark production readiness remains blocked until that deployed evidence is captured and recorded.
-
+Implemented and locally validated for the scheduler/report-preflight code path and the observability support path. Deployed manual snapshot/report-preflight validation already passed for the controlled GA4 Benchmark report. The new observability support exposes GA4 daily scheduler state through `/health/scheduler`, makes report scheduler health metrics update on each check, and adds a guarded read-only report send-event endpoint. This closes the local observability gap, but deployed daily scheduler timer execution and scheduled-send runtime observation remain unproven until Render health/send-event evidence is captured and recorded.
 ### Current Commit 5 - Prove Benchmark Alert Email Provider Delivery And Inbox Receipt
 
 Root cause:

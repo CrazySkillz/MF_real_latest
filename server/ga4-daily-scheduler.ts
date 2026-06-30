@@ -13,6 +13,30 @@ type GA4DailySchedulerConfig = {
   runOnStartup: boolean;
 };
 
+type GA4DailyRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
+
+const ga4DailySchedulerStatus = {
+  startedAt: null as Date | null,
+  stoppedAt: null as Date | null,
+  config: null as GA4DailySchedulerConfig | null,
+  nextRunAt: null as Date | null,
+  nextDataThroughDate: null as string | null,
+  lastRunStartedAt: null as Date | null,
+  lastRunFinishedAt: null as Date | null,
+  lastRunTrigger: null as string | null,
+  lastRunStatus: "idle" as GA4DailyRunStatus,
+  lastSkippedAt: null as Date | null,
+  lastErrorTime: null as Date | null,
+  lastError: null as string | null,
+  totalRuns: 0,
+  totalStartupRuns: 0,
+  totalScheduledRuns: 0,
+  totalManualRuns: 0,
+  totalSkippedRuns: 0,
+};
+
+const toIsoOrNull = (value: Date | null) => value ? value.toISOString() : null;
+
 const parseBoundedInt = (value: any, fallback: number, min: number, max: number) => {
   const parsed = parseInt(String(value ?? ""), 10);
   const n = Number.isFinite(parsed) ? parsed : fallback;
@@ -174,12 +198,25 @@ export async function refreshAllGA4DailyMetrics(): Promise<void> {
 
 async function runGA4DailyRefreshPipelineForTrigger(trigger: string): Promise<void> {
   if ((global as any).__ga4DailyRefreshInProgress) {
+    ga4DailySchedulerStatus.totalSkippedRuns += 1;
+    ga4DailySchedulerStatus.lastRunTrigger = trigger;
+    ga4DailySchedulerStatus.lastRunStatus = "skipped";
+    ga4DailySchedulerStatus.lastSkippedAt = new Date();
     console.log(`[GA4 Daily] Skipping ${trigger} pipeline (already in progress)`);
     return;
   }
 
   (global as any).__ga4DailyRefreshInProgress = true;
+  const startedAtDate = new Date();
   const startedAt = Date.now();
+  ga4DailySchedulerStatus.totalRuns += 1;
+  if (trigger === "startup") ga4DailySchedulerStatus.totalStartupRuns += 1;
+  else if (trigger === "scheduled") ga4DailySchedulerStatus.totalScheduledRuns += 1;
+  else if (trigger === "manual") ga4DailySchedulerStatus.totalManualRuns += 1;
+  ga4DailySchedulerStatus.lastRunStartedAt = startedAtDate;
+  ga4DailySchedulerStatus.lastRunFinishedAt = null;
+  ga4DailySchedulerStatus.lastRunTrigger = trigger;
+  ga4DailySchedulerStatus.lastRunStatus = "running";
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger})`);
   try {
     await refreshAllGA4DailyMetrics();
@@ -201,14 +238,50 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string): Promise<vo
     } catch (e: any) {
       console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
     }
+  } catch (e: any) {
+    ga4DailySchedulerStatus.lastRunStatus = "failed";
+    ga4DailySchedulerStatus.lastErrorTime = new Date();
+    ga4DailySchedulerStatus.lastError = e?.message || String(e);
+    throw e;
   } finally {
     (global as any).__ga4DailyRefreshInProgress = false;
+    ga4DailySchedulerStatus.lastRunFinishedAt = new Date();
+    if (ga4DailySchedulerStatus.lastRunStatus === "running") {
+      ga4DailySchedulerStatus.lastRunStatus = "success";
+      ga4DailySchedulerStatus.lastError = null;
+    }
     console.log(`[GA4 Daily] Pipeline done (trigger=${trigger}, elapsedSeconds=${Math.round((Date.now() - startedAt) / 1000)})`);
   }
 }
 
 export async function runGA4DailyRefreshPipeline(): Promise<void> {
   await runGA4DailyRefreshPipelineForTrigger("manual");
+}
+
+export function getGA4DailySchedulerStatus() {
+  const config = ga4DailySchedulerStatus.config || getGA4DailySchedulerConfig();
+  return {
+    started: Boolean(ga4DailySchedulerStatus.startedAt),
+    timerScheduled: Boolean((global as any).ga4DailySchedulerTimer),
+    inProgress: Boolean((global as any).__ga4DailyRefreshInProgress),
+    config,
+    startedAt: toIsoOrNull(ga4DailySchedulerStatus.startedAt),
+    stoppedAt: toIsoOrNull(ga4DailySchedulerStatus.stoppedAt),
+    nextRunAt: toIsoOrNull(ga4DailySchedulerStatus.nextRunAt),
+    nextDataThroughDate: ga4DailySchedulerStatus.nextDataThroughDate,
+    lastRunStartedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRunStartedAt),
+    lastRunFinishedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRunFinishedAt),
+    lastRunTrigger: ga4DailySchedulerStatus.lastRunTrigger,
+    lastRunStatus: ga4DailySchedulerStatus.lastRunStatus,
+    lastSkippedAt: toIsoOrNull(ga4DailySchedulerStatus.lastSkippedAt),
+    lastErrorTime: toIsoOrNull(ga4DailySchedulerStatus.lastErrorTime),
+    lastError: ga4DailySchedulerStatus.lastError,
+    totalRuns: ga4DailySchedulerStatus.totalRuns,
+    totalStartupRuns: ga4DailySchedulerStatus.totalStartupRuns,
+    totalScheduledRuns: ga4DailySchedulerStatus.totalScheduledRuns,
+    totalManualRuns: ga4DailySchedulerStatus.totalManualRuns,
+    totalSkippedRuns: ga4DailySchedulerStatus.totalSkippedRuns,
+  };
 }
 
 /**
@@ -222,10 +295,16 @@ export function startGA4DailyScheduler(): void {
   }
 
   const config = getGA4DailySchedulerConfig();
+  ga4DailySchedulerStatus.startedAt = new Date();
+  ga4DailySchedulerStatus.stoppedAt = null;
+  ga4DailySchedulerStatus.config = config;
   const scheduleNextRun = () => {
     const nextRunAt = getNextGA4DailyRunAt(new Date(), config);
+    const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);
     const delayMs = Math.max(1000, nextRunAt.getTime() - Date.now());
-    console.log(`[GA4 Daily] Next scheduled run at ${nextRunAt.toISOString()} (${formatSchedulerLocalTime(nextRunAt, config.reportingTimeZone)}, timezone=${config.reportingTimeZone}, dataThroughDate=${getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt)})`);
+    ga4DailySchedulerStatus.nextRunAt = nextRunAt;
+    ga4DailySchedulerStatus.nextDataThroughDate = dataThroughDate;
+    console.log(`[GA4 Daily] Next scheduled run at ${nextRunAt.toISOString()} (${formatSchedulerLocalTime(nextRunAt, config.reportingTimeZone)}, timezone=${config.reportingTimeZone}, dataThroughDate=${dataThroughDate})`);
     (global as any).ga4DailySchedulerTimer = setTimeout(() => {
       runGA4DailyRefreshPipelineForTrigger("scheduled").catch((e) => {
         console.warn("[GA4 Daily] Scheduled pipeline failed:", (e as any)?.message || e);
@@ -254,6 +333,9 @@ export function stopGA4DailyScheduler(): void {
     (global as any).ga4DailySchedulerInterval = null;
   }
   (global as any).__ga4DailyRefreshInProgress = false;
+  ga4DailySchedulerStatus.stoppedAt = new Date();
+  ga4DailySchedulerStatus.nextRunAt = null;
+  ga4DailySchedulerStatus.nextDataThroughDate = null;
   console.log("[GA4 Daily] Scheduler stopped");
 }
 

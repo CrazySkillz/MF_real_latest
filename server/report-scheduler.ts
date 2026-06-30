@@ -25,10 +25,15 @@ const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google
 
 // Monitoring metrics for scheduler health
 const schedulerMetrics = {
+  schedulerStartedAt: null as Date | null,
+  cronSchedule: null as string | null,
   totalChecks: 0,
   totalSent: 0,
   totalFailed: 0,
   lastCheckTime: null as Date | null,
+  lastCheckFinishedAt: null as Date | null,
+  lastScheduledReportsFound: 0,
+  lastDueReportsFound: 0,
   lastSuccessTime: null as Date | null,
   lastErrorTime: null as Date | null,
   lastError: null as string | null,
@@ -2005,9 +2010,14 @@ async function sendReportEmail(
  * Main scheduler function - checks and sends scheduled reports
  */
 export async function checkScheduledReports(): Promise<void> {
+  const now = new Date();
+  schedulerMetrics.totalChecks++;
+  schedulerMetrics.lastCheckTime = now;
+  schedulerMetrics.lastCheckFinishedAt = null;
+  schedulerMetrics.lastScheduledReportsFound = 0;
+  schedulerMetrics.lastDueReportsFound = 0;
   try {
     console.log('[Report Scheduler] Checking for due scheduled reports...');
-    const now = new Date();
 
     // Fetch campaign-scoped and platform-level scheduled rows from shared report storage explicitly.
     const allReports = await storage.getScheduledPlatformReports([...SCHEDULED_REPORT_PLATFORM_TYPES]);
@@ -2022,6 +2032,7 @@ export async function checkScheduledReports(): Promise<void> {
       new Map(allReports.map(report => [String(report.id), report])).values()
     );
     const scheduledReports = uniqueReports.filter(r => r.scheduleEnabled && r.status === 'active');
+    schedulerMetrics.lastScheduledReportsFound = scheduledReports.length;
 
     if (scheduledReports.length === 0) {
       console.log('[Report Scheduler] No scheduled reports found');
@@ -2033,6 +2044,7 @@ export async function checkScheduledReports(): Promise<void> {
     for (const report of scheduledReports) {
       const due = isReportDueNow(report, now);
       if (!due.due || !due.scheduledKey) continue;
+      schedulerMetrics.lastDueReportsFound++;
       let retryingFailedSend = false;
 
       // Idempotency: ensure we only send once per scheduled slot.
@@ -2309,6 +2321,8 @@ export async function checkScheduledReports(): Promise<void> {
     console.error('[Report Scheduler] Error in checkScheduledReports:', error);
     schedulerMetrics.lastErrorTime = new Date();
     schedulerMetrics.lastError = error instanceof Error ? error.message : String(error);
+  } finally {
+    schedulerMetrics.lastCheckFinishedAt = new Date();
   }
 }
 
@@ -2512,14 +2526,16 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
 export function startReportScheduler(): void {
   console.log('[Report Scheduler] 🚀 Starting enterprise-grade report scheduler...');
 
+  // Enterprise-grade: Use node-cron for guaranteed execution times
+  // Run every minute for precision (idempotency prevents duplicates)
+  const cronSchedule = process.env.REPORT_SCHEDULER_CRON || '* * * * *'; // Default: every minute
+  schedulerMetrics.schedulerStartedAt = new Date();
+  schedulerMetrics.cronSchedule = cronSchedule;
+
   // Optionally run immediately on startup
   if (process.env.RUN_REPORT_SCHEDULER_ON_STARTUP === "true") {
     void checkScheduledReports();
   }
-
-  // Enterprise-grade: Use node-cron for guaranteed execution times
-  // Run every minute for precision (idempotency prevents duplicates)
-  const cronSchedule = process.env.REPORT_SCHEDULER_CRON || '* * * * *'; // Default: every minute
 
   cron.schedule(cronSchedule, () => {
     void checkScheduledReports();

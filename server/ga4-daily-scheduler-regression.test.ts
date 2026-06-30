@@ -49,7 +49,8 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("GA4_DAILY_REFRESH_MINUTE");
     expect(source).toContain("GA4_DAILY_REFRESH_RUN_ON_STARTUP");
     expect(source).toContain("Next scheduled run at");
-    expect(source).toContain("dataThroughDate=${getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt)}");
+    expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
+    expect(source).toContain("dataThroughDate=${dataThroughDate}");
     expect(source).toContain("__ga4DailyRefreshInProgress");
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
     expect(source).not.toContain("setInterval(() =>");

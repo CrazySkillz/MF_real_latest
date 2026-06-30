@@ -7609,6 +7609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isISODate(startDate) || !isISODate(endDate) || startDate > endDate) {
         return res.status(400).json({ success: false, error: "startDate/endDate must be YYYY-MM-DD and startDate must be <= endDate" });
       }
+      const currentValueStartDate = campaignStartDate;
+      const currentValueEndDate = endDate;
 
       const requestedPropertyId = String(req.query.propertyId || "").trim();
       const connectionCandidates = requestedPropertyId
@@ -7638,30 +7640,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const round2Local = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const summarizeDailyRows = (rows: any[]) => {
+        const list = Array.isArray(rows) ? rows : [];
+        const latestDailyRow = list
+          .slice()
+          .sort((a: any, b: any) => String(a?.date || "").localeCompare(String(b?.date || "")))
+          .at(-1);
+        const dailyTotals = list.reduce((acc: any, row: any) => {
+          const sessions = Number(row?.sessions || 0) || 0;
+          const rawRate = Number(row?.engagementRate || 0) || 0;
+          const rate = rawRate > 1 ? rawRate / 100 : rawRate;
+          return {
+            users: acc.users + (Number(row?.users || 0) || 0),
+            sessions: acc.sessions + sessions,
+            pageviews: acc.pageviews + (Number(row?.pageviews || 0) || 0),
+            conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
+            ga4Revenue: acc.ga4Revenue + (Number(row?.revenue || 0) || 0),
+            engagedSessions: acc.engagedSessions + (Number(row?.engagedSessions || 0) || Math.round(sessions * rate)),
+          };
+        }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0, engagedSessions: 0 });
+        dailyTotals.ga4Revenue = round2Local(dailyTotals.ga4Revenue);
+        dailyTotals.engagementRate = dailyTotals.sessions > 0 ? dailyTotals.engagedSessions / dailyTotals.sessions : 0;
+        return { latestDailyRow, dailyTotals };
+      };
       const dailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => [] as any[]);
-      const latestDailyRow = (Array.isArray(dailyRows) ? dailyRows : [])
-        .slice()
-        .sort((a: any, b: any) => String(a?.date || "").localeCompare(String(b?.date || "")))
-        .at(-1);
-      const dailyTotals = (Array.isArray(dailyRows) ? dailyRows : []).reduce((acc: any, row: any) => {
-        const sessions = Number(row?.sessions || 0) || 0;
-        const rawRate = Number(row?.engagementRate || 0) || 0;
-        const rate = rawRate > 1 ? rawRate / 100 : rawRate;
-        return {
-          users: acc.users + (Number(row?.users || 0) || 0),
-          sessions: acc.sessions + sessions,
-          pageviews: acc.pageviews + (Number(row?.pageviews || 0) || 0),
-          conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
-          ga4Revenue: acc.ga4Revenue + (Number(row?.revenue || 0) || 0),
-          engagedSessions: acc.engagedSessions + (Number(row?.engagedSessions || 0) || Math.round(sessions * rate)),
-        };
-      }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0, engagedSessions: 0 });
-      dailyTotals.ga4Revenue = round2Local(dailyTotals.ga4Revenue);
-      dailyTotals.engagementRate = dailyTotals.sessions > 0 ? dailyTotals.engagedSessions / dailyTotals.sessions : 0;
+      const { latestDailyRow, dailyTotals } = summarizeDailyRows(dailyRows);
+      const currentValueDailyRows = currentValueStartDate === startDate && currentValueEndDate === endDate
+        ? dailyRows
+        : await storage.getGA4DailyMetrics(campaignId, propertyId, currentValueStartDate, currentValueEndDate).catch(() => [] as any[]);
+      const { latestDailyRow: currentValueLatestDailyRow, dailyTotals: currentValueDailyTotals } = summarizeDailyRows(currentValueDailyRows);
 
       let providerStatus = "not_attempted";
       let providerError: string | null = null;
       let providerResult: any = null;
+      let providerAccessToken: string | null = null;
       const isGA4ProviderAuthError = (error: any) => {
         const msg = String(error?.message || error || "").toLowerCase();
         return (
@@ -7674,13 +7686,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           msg.includes("403")
         );
       };
-      const fetchProviderTotals = async (token: string) =>
-        ga4Service.getTotalsWithRevenue(propertyId, token, startDate, endDate, campaignFilter);
+      const fetchProviderTotals = async (token: string, fromDate = startDate, toDate = endDate) =>
+        ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter);
       if (isYesopMockProperty(propertyId)) {
         providerStatus = "simulated_property_not_live_provider";
       } else if (selectedConnection?.method === "access_token" && selectedConnection?.accessToken) {
         try {
-          providerResult = await fetchProviderTotals(String(selectedConnection.accessToken));
+          providerAccessToken = String(selectedConnection.accessToken);
+          providerResult = await fetchProviderTotals(providerAccessToken);
           providerStatus = "live_provider_success";
         } catch (e: any) {
           if (isGA4ProviderAuthError(e) && selectedConnection?.refreshToken && selectedConnection?.id) {
@@ -7695,7 +7708,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 refreshToken: String(selectedConnection.refreshToken),
                 expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
               });
-              providerResult = await fetchProviderTotals(String(refresh.access_token));
+              providerAccessToken = String(refresh.access_token);
+              providerResult = await fetchProviderTotals(providerAccessToken);
               providerStatus = "live_provider_success_after_refresh";
             } catch (refreshError: any) {
               providerStatus = "live_provider_refresh_failed";
@@ -7710,14 +7724,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerStatus = "no_readable_access_token";
       }
 
-      const providerTotals = providerResult?.totals ? {
-        users: Math.round(Number(providerResult.totals.users || 0) || 0),
-        sessions: Math.round(Number(providerResult.totals.sessions || 0) || 0),
-        pageviews: Math.round(Number(providerResult.totals.pageviews || 0) || 0),
-        conversions: Math.round(Number(providerResult.totals.conversions || 0) || 0),
-        ga4Revenue: round2Local(Number(providerResult.totals.revenue || 0) || 0),
-        engagementRate: Number(providerResult.totals.engagementRate || 0) || 0,
+      let currentValueProviderStatus = providerStatus;
+      let currentValueProviderError: string | null = providerError;
+      let currentValueProviderResult: any = providerResult;
+      if (providerAccessToken && (currentValueStartDate !== startDate || currentValueEndDate !== endDate)) {
+        try {
+          currentValueProviderResult = await fetchProviderTotals(providerAccessToken, currentValueStartDate, currentValueEndDate);
+          currentValueProviderStatus = providerStatus === "live_provider_success_after_refresh" ? "live_provider_success_after_refresh" : "live_provider_success";
+          currentValueProviderError = null;
+        } catch (currentValueError: any) {
+          currentValueProviderStatus = "live_provider_current_value_window_error";
+          currentValueProviderError = String(currentValueError?.message || currentValueError || "Unknown GA4 current-value provider error");
+          currentValueProviderResult = null;
+        }
+      }
+
+      const formatProviderTotalsForValidation = (result: any) => result?.totals ? {
+        users: Math.round(Number(result.totals.users || 0) || 0),
+        sessions: Math.round(Number(result.totals.sessions || 0) || 0),
+        pageviews: Math.round(Number(result.totals.pageviews || 0) || 0),
+        conversions: Math.round(Number(result.totals.conversions || 0) || 0),
+        ga4Revenue: round2Local(Number(result.totals.revenue || 0) || 0),
+        engagementRate: Number(result.totals.engagementRate || 0) || 0,
       } : null;
+      const providerTotals = formatProviderTotalsForValidation(providerResult);
+      const currentValueProviderTotals = formatProviderTotalsForValidation(currentValueProviderResult);
 
       const financialWindow = getGA4KPIFinancialSourceWindow();
       const [importedRevenueTotals, schedulerSpendTotals, spendSources, spendBreakdown] = await Promise.all([
@@ -7733,33 +7764,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? round2Local(spendBreakdownTotal || parseNum((campaign as any)?.spend) || 0)
         : 0;
 
-      const dailyInput = {
-        users: Math.round(Number(dailyTotals.users || 0) || 0),
-        sessions: Math.round(Number(dailyTotals.sessions || 0) || 0),
-        pageviews: Math.round(Number(dailyTotals.pageviews || 0) || 0),
-        conversions: Math.round(Number(dailyTotals.conversions || 0) || 0),
-        ga4Revenue: round2Local(Number(dailyTotals.ga4Revenue || 0) || 0),
+      const buildDailyInput = (totals: any, latest: any) => ({
+        users: Math.round(Number(totals.users || 0) || 0),
+        sessions: Math.round(Number(totals.sessions || 0) || 0),
+        pageviews: Math.round(Number(totals.pageviews || 0) || 0),
+        conversions: Math.round(Number(totals.conversions || 0) || 0),
+        ga4Revenue: round2Local(Number(totals.ga4Revenue || 0) || 0),
         importedRevenue,
         spend: schedulerSpend,
-        engagementRate: Number(latestDailyRow?.engagementRate || dailyTotals.engagementRate || 0) || 0,
-      };
-      const providerInput = providerTotals ? {
-        users: providerTotals.users,
-        sessions: providerTotals.sessions,
-        pageviews: providerTotals.pageviews,
-        conversions: providerTotals.conversions,
-        ga4Revenue: providerTotals.ga4Revenue,
+        engagementRate: Number(latest?.engagementRate || totals.engagementRate || 0) || 0,
+      });
+      const buildProviderInput = (totals: any, fallbackDailyInput: any) => totals ? {
+        users: totals.users,
+        sessions: totals.sessions,
+        pageviews: totals.pageviews,
+        conversions: totals.conversions,
+        ga4Revenue: totals.ga4Revenue,
         importedRevenue,
         spend: schedulerSpend,
-        engagementRate: providerTotals.engagementRate || dailyInput.engagementRate,
+        engagementRate: totals.engagementRate || fallbackDailyInput.engagementRate,
       } : null;
-      const schedulerInputs = providerInput || dailyInput;
-      const uiBaseInputs = (dailyInput.sessions > 0 || dailyInput.users > 0 || dailyInput.conversions > 0 || dailyInput.pageviews > 0 || dailyInput.ga4Revenue > 0)
-        ? dailyInput
-        : (providerInput || dailyInput);
-      const uiFinancialBase = [providerInput, dailyInput]
+      const dailyInput = buildDailyInput(dailyTotals, latestDailyRow);
+      const currentValueDailyInput = buildDailyInput(currentValueDailyTotals, currentValueLatestDailyRow);
+      const providerInput = buildProviderInput(providerTotals, dailyInput);
+      const currentValueProviderInput = buildProviderInput(currentValueProviderTotals, currentValueDailyInput);
+      const schedulerInputs = currentValueProviderInput || currentValueDailyInput;
+      const uiBaseInputs = (currentValueDailyInput.sessions > 0 || currentValueDailyInput.users > 0 || currentValueDailyInput.conversions > 0 || currentValueDailyInput.pageviews > 0 || currentValueDailyInput.ga4Revenue > 0)
+        ? currentValueDailyInput
+        : (currentValueProviderInput || currentValueDailyInput);
+      const uiFinancialBase = [currentValueProviderInput, currentValueDailyInput]
         .filter(Boolean)
-        .reduce((best: any, current: any) => Number(current?.ga4Revenue || 0) > Number(best?.ga4Revenue || 0) ? current : best, providerInput || dailyInput);
+        .reduce((best: any, current: any) => Number(current?.ga4Revenue || 0) > Number(best?.ga4Revenue || 0) ? current : best, currentValueProviderInput || currentValueDailyInput);
       const uiFinancialInputs = { ...uiFinancialBase, importedRevenue, spend: uiSpend };
 
       const computeUIValue = (metricKey: string) => {
@@ -7805,6 +7840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignFilter: campaignFilter || null,
         sourceWindows: {
           provider: { startDate, endDate },
+          currentValue: { startDate: currentValueStartDate, endDate: currentValueEndDate },
           financial: financialWindow,
         },
         provider: {
@@ -7813,11 +7849,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totals: providerTotals,
           error: providerError,
         },
+        currentValueProvider: {
+          status: currentValueProviderStatus,
+          revenueMetric: currentValueProviderResult?.revenueMetric || null,
+          totals: currentValueProviderTotals,
+          error: currentValueProviderError,
+        },
         persistedDaily: {
           rowCount: Array.isArray(dailyRows) ? dailyRows.length : 0,
           latestDate: latestDailyRow?.date || null,
           latestUpdatedAt: latestDailyRow?.updatedAt || null,
           totals: dailyInput,
+        },
+        currentValuePersistedDaily: {
+          rowCount: Array.isArray(currentValueDailyRows) ? currentValueDailyRows.length : 0,
+          latestDate: currentValueLatestDailyRow?.date || null,
+          latestUpdatedAt: currentValueLatestDailyRow?.updatedAt || null,
+          totals: currentValueDailyInput,
         },
         financialInputs: {
           importedRevenue,
@@ -7827,9 +7875,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           schedulerSpendSourceIds: Array.isArray((schedulerSpendTotals as any)?.sourceIds) ? (schedulerSpendTotals as any).sourceIds : [],
         },
         inputSets: {
-          schedulerInputSource: providerInput ? "live_provider" : "persisted_daily_fallback",
+          requestedProviderInputSource: providerInput ? "live_provider_requested_window" : "not_available",
+          requestedProviderInputs: providerInput,
+          schedulerInputSource: currentValueProviderInput ? "live_provider_current_value_window" : "persisted_daily_current_value_window_fallback",
           schedulerInputs,
-          uiBaseInputSource: uiBaseInputs === dailyInput ? "persisted_daily" : "live_provider",
+          uiBaseInputSource: uiBaseInputs === currentValueDailyInput ? "persisted_daily_current_value_window" : "live_provider_current_value_window",
           uiBaseInputs,
           uiFinancialInputs,
         },

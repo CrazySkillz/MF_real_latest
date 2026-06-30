@@ -23,8 +23,13 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).toContain("storage.getGA4Connection(campaignId, pid)");
     expect(route).toContain("storage.getGA4Connections(campaignId)");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate)");
-    expect(route).toContain("ga4Service.getTotalsWithRevenue(propertyId, token, startDate, endDate, campaignFilter)");
+    expect(route).toContain("ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter)");
     expect(route).toContain('storage.getPlatformBenchmarks("google_analytics", campaignId)');
+    expect(route).toContain("const currentValueStartDate = campaignStartDate;");
+    expect(route).toContain("currentValue: { startDate: currentValueStartDate, endDate: currentValueEndDate }");
+    expect(route).toContain("currentValueProvider");
+    expect(route).toContain("currentValuePersistedDaily");
+    expect(route).toContain("live_provider_current_value_window");
     expect(route).toContain("computeKpiValue(metricKey, schedulerInputs)");
     expect(route).toContain("uiCandidateCurrentValue");
     expect(route).toContain('certificationStatus: "validation_output_only"');
@@ -40,14 +45,15 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).not.toContain("sendImmediateBenchmarkAlertIfNeeded");
   });
 
-  it("documents Commit 2 as failed/unproven and Commit 3 validation token-refresh support", () => {
+  it("documents Commit 2 evidence, Commit 3 deployed auth proof, and Commit 4 validation-window RCA", () => {
     const doc = read("GA4", "BENCHMARKS_PRODUCTION_READINESS.md");
 
     expect(doc).toContain("### Current Commit 2 - Prove Live GA4 Provider Accuracy And Processing Freshness For Benchmark Inputs");
     expect(doc).toContain("Deployed Commit 2 validation failed with `provider.status = live_provider_error`");
     expect(doc).toContain("`401 UNAUTHENTICATED`");
-    expect(doc).toContain("stored Benchmark current value `12376.38` did not match the recalculated candidate `21922.96`");
-    expect(doc).toContain("Current Commit 3 token-refresh support is locally implemented for this validation endpoint");
+    expect(doc).toContain("Commit 3 deployed validation passed with `provider.status = live_provider_success`");
+    expect(doc).toContain("the apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data");
+    expect(doc).toContain("Current Commit 4 locally aligns validation candidates to the scheduler/current-value window");
     expect(doc).toContain("Full unqualified GA4 Benchmark production readiness remains blocked");
   });
 });

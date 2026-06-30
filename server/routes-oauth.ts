@@ -26237,6 +26237,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Read-only Benchmark alert email delivery validation evidence.
+  app.get("/api/benchmarks/:id/alert-email-delivery-validation", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { id } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!existing) return;
+      const { emailAlertEvents } = await import("../shared/schema");
+      const { and, desc, eq } = await import("drizzle-orm");
+      const rows = await db
+        .select({
+          id: (emailAlertEvents as any).id,
+          campaignId: (emailAlertEvents as any).campaignId,
+          campaignName: (emailAlertEvents as any).campaignName,
+          to: (emailAlertEvents as any).to,
+          subject: (emailAlertEvents as any).subject,
+          provider: (emailAlertEvents as any).provider,
+          success: (emailAlertEvents as any).success,
+          deliveryStatus: (emailAlertEvents as any).deliveryStatus,
+          providerResponseId: (emailAlertEvents as any).providerResponseId,
+          attemptCount: (emailAlertEvents as any).attemptCount,
+          lastAttemptAt: (emailAlertEvents as any).lastAttemptAt,
+          nextAttemptAt: (emailAlertEvents as any).nextAttemptAt,
+          deliveredAt: (emailAlertEvents as any).deliveredAt,
+          failedAt: (emailAlertEvents as any).failedAt,
+          error: (emailAlertEvents as any).error,
+          metadata: (emailAlertEvents as any).metadata,
+          createdAt: (emailAlertEvents as any).createdAt,
+        })
+        .from(emailAlertEvents as any)
+        .where(and(
+          eq((emailAlertEvents as any).kind, "alert"),
+          eq((emailAlertEvents as any).entityType, "benchmark"),
+          eq((emailAlertEvents as any).entityId, id),
+        ))
+        .orderBy(desc((emailAlertEvents as any).createdAt))
+        .limit(10);
+      const asIso = (value: any) => value instanceof Date ? value.toISOString() : (value ? String(value) : null);
+      const parseRecipients = (value: any) => String(value || "").split(",").map((v) => v.trim()).filter(Boolean);
+      const parseMetadata = (value: any) => {
+        if (!value) return null;
+        if (typeof value !== "string") return value;
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      };
+      const auditEvents = rows.map((row: any) => {
+        const recipients = parseRecipients(row.to);
+        return {
+          id: row.id,
+          campaignId: row.campaignId,
+          campaignName: row.campaignName,
+          recipients,
+          recipientCount: recipients.length,
+          subject: row.subject,
+          provider: row.provider,
+          success: row.success,
+          deliveryStatus: row.deliveryStatus,
+          providerResponseId: row.providerResponseId,
+          attemptCount: row.attemptCount,
+          lastAttemptAt: asIso(row.lastAttemptAt),
+          nextAttemptAt: asIso(row.nextAttemptAt),
+          deliveredAt: asIso(row.deliveredAt),
+          failedAt: asIso(row.failedAt),
+          error: row.error,
+          metadata: parseMetadata(row.metadata),
+          createdAt: asIso(row.createdAt),
+          providerDeliveryProven: row.deliveryStatus === "delivered" && !!row.deliveredAt,
+        };
+      });
+      const latest = auditEvents[0] || null;
+      res.json({
+        success: true,
+        certificationStatus: "validation_output_only",
+        productionReadinessNote: "This read-only endpoint supports Current Commit 5 evidence capture. It is not clean certification by itself until provider delivery and inbox evidence are reviewed and recorded.",
+        limitations: [
+          "Does not send, retry, or mutate Benchmark alert emails.",
+          "Provider acceptance is not delivery; delivery is proven only when deliveryStatus is delivered with deliveredAt.",
+          "Actual inbox receipt is external to the app and must be confirmed separately.",
+        ],
+        benchmarkId: id,
+        benchmarkName: (existing as any)?.name || null,
+        campaignId: String((existing as any)?.campaignId || ""),
+        latestDeliveryStatus: latest?.deliveryStatus || null,
+        providerDeliveryProven: !!latest?.providerDeliveryProven,
+        inboxReceiptProvenByApp: false,
+        auditEvents,
+      });
+    } catch (error) {
+      console.error('Benchmark alert email delivery validation error:', error);
+      res.status(500).json({ success: false, message: "Failed to fetch benchmark alert email delivery validation" });
+    }
+  });
+
   // Record benchmark history
   app.post("/api/benchmarks/:id/history", async (req, res) => {
     try {

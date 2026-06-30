@@ -36,9 +36,9 @@ Certification result:
 - current validation-support update: Current Commit 2 adds a GA4 Benchmark provider validation endpoint and regression coverage; deployed validation found a live provider auth blocker and an apparent stored-current mismatch that required stricter window tracing
 - current deployed Commit 2 evidence: Render validation on June 30, 2026 for campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, property 542352127, and requested provider window 2026-06-19 through 2026-06-29 returned provider.status = live_provider_error with 401 UNAUTHENTICATED; the same response showed stored Benchmark Revenue 12376.38 versus requested-window candidate 21922.96
 - current Commit 3 deployed validation: Commit 3 deployed validation passed with `provider.status = live_provider_success` and non-null provider totals for the same campaign/property/filter/requested window; revoked-token failure simulation remains unproven
-- current Commit 4 local RCA/fix: the apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data because the validation endpoint compared stored current value to the requested provider window instead of the scheduler/current-value window; Current Commit 4 locally aligns validation candidates to the scheduler/current-value window without mutating Benchmark rows
-- outstanding production-readiness queue: Current Commit 4 deployed revalidation plus Current Commits 5-7 below must be completed before full unqualified production readiness can be claimed
-- not proven: live GA4 provider accuracy, deployed OAuth/token refresh, GA4 processing latency, provider-confirmed Benchmark alert email delivery, actual inbox receipt, deployed scheduler behavior after this document update, browser/deployed UI validation after this document update, and mock industry target-source suitability
+- current Commit 4 deployed validation: validation-window alignment is implemented, pushed, deployed, and revalidated; `sourceWindows.currentValue` is `2026-06-24` through `2026-06-29`, `currentValueProvider.totals` is non-null, stored Benchmark Revenue `12376.38` equals `schedulerCandidateCurrentValue` `12376.38`, and `storedVsSchedulerDelta = 0`; the `storedVsUiDelta = 0.01` is a one-cent provider-versus-persisted rounding difference, not proven Benchmark damage
+- outstanding production-readiness queue: Current Commit 4 follow-up deployed scheduler/report-preflight proof plus Current Commits 5-7 below must be completed before full unqualified production readiness can be claimed
+- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, provider-confirmed Benchmark alert email delivery, actual inbox receipt, deployed scheduler/report-preflight behavior, browser/deployed UI validation after this document update, and mock industry target-source suitability
 
 The current safe answer is:
 
@@ -339,7 +339,7 @@ Current rerun result after Current Commit 3 local implementation: 18 test files 
 | Benchmark summary/tracker | `server/ga4-kpi-benchmark-summary-regression.test.ts` | tracker counts and averages exclude blocked/insufficient rows | Does not prove future UI redesigns |
 | Alert lifecycle | `server/benchmark-alert-lifecycle-regression.test.ts` | one active alert, stale resolution, deletion/disable behavior, dismissed still-breached recreation | Provider email delivery remains external |
 | Route isolation/access | `server/benchmark-route-isolation-regression.test.ts` | campaign/platform route isolation, guarded access, and platform create alias alert reconciliation ordering | Alias timing covered locally; provider/deployed evidence remains separate |
-| Commit 2 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` | campaign-scoped validation route reads live provider/persisted daily/financial/Benchmark inputs, compares stored Benchmark current values to scheduler and UI candidates, and does not mutate Benchmark rows, history, sources, alerts, notifications, or reports; token metadata may refresh only after provider auth failure | Deployed evidence currently failed with `401 UNAUTHENTICATED` and a stored-current mismatch; rerun after Current Commit 3 deployment |
+| Commit 2/3/4 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` plus deployed endpoint evidence | campaign-scoped validation route reads requested provider, scheduler/current-value provider, persisted daily, financial, and Benchmark inputs; compares stored Benchmark current values to scheduler/current-value-window candidates; does not mutate Benchmark rows, history, sources, alerts, notifications, or reports; token metadata may refresh only after provider auth failure | Controlled deployed validation now passes for provider auth and validation-window alignment; revoked-token failure simulation, broad provider availability, scheduler runtime, and UI remain external |
 | Notification visibility | `server/notification-visibility-regression.test.ts` | stale/orphan/cross-campaign/non-breaching notifications fail closed; GA4 deep links and no-store freshness | Browser notification UI not rerun after this doc-only update |
 | Immediate email route behavior | `server/alert-email-regression.test.ts`, `server/alert-email-immediate-route-regression.test.ts` | immediate Benchmark email attempts, audit semantics, no false delivery claims in local code | Provider-confirmed delivery and inbox receipt external |
 | Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Provider event/inbox confirmation external |
@@ -479,7 +479,7 @@ Partially revalidated with deployed evidence. Deployed Commit 2 validation faile
 
 Commit 3 deployed validation passed with `provider.status = live_provider_success`, non-null provider totals, and unchanged campaign/property/filter/requested window. This clears the live provider auth blocker for the controlled validation path, but it does not by itself prove revoked-token failure handling, deployed scheduler execution, report-preflight runtime behavior, browser UI behavior, or full production readiness.
 
-The apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data. Current Commit 4 RCA found that the validation endpoint compared a stored current value produced by the scheduler/current-value window against a manually requested provider window. The stored value `12376.38` matches the narrower campaign-current window implied by the persisted daily rows plus imported revenue, so the smallest safe fix is to correct the validation endpoint's comparison windows before making any Benchmark-row mutation. Full unqualified GA4 Benchmark production readiness remains blocked until the Current Commit 4 fix is deployed and revalidated.
+The apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data. Current Commit 4 RCA found that the validation endpoint compared a stored current value produced by the scheduler/current-value window against a manually requested provider window. The deployed Current Commit 4 revalidation now proves the stored value `12376.38` matches `schedulerCandidateCurrentValue` `12376.38` for `sourceWindows.currentValue = 2026-06-24` through `2026-06-29`. No Benchmark-row mutation or cleanup is justified by this finding. Full unqualified GA4 Benchmark production readiness remains blocked by the remaining Current Commit queue.
 
 ### Current Commit 3 - Prove Deployed OAuth Token Refresh And Tenant Failure Handling
 
@@ -544,7 +544,37 @@ Validation:
 
 Implementation status:
 
-Current Commit 4 locally aligns validation candidates to the scheduler/current-value window and keeps the requested provider window as separate evidence. It does not recompute or update Benchmark rows. Deployed validation is pending, so Current Commit 4 is not clean-certified yet.
+Implemented, pushed, deployed, and revalidated for validation-window alignment. Deployed evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, requested provider window `2026-06-19` through `2026-06-29`, and current-value window `2026-06-24` through `2026-06-29` returned `currentValueProvider.totals` as non-null. Stored Benchmark Revenue `12376.38` matched `schedulerCandidateCurrentValue` `12376.38` with `storedVsSchedulerDelta = 0`. `uiCandidateCurrentValue` was `12376.39`, a one-cent persisted-daily rounding difference from provider totals, not proven Benchmark damage. This endpoint still does not recompute or update Benchmark rows.
+
+### Current Commit 4 Follow-Up - Prove Deployed Scheduler And Report-Preflight Benchmark Recompute
+
+Root cause:
+
+The validation-window fix proves the controlled endpoint compares stored Benchmark current values against the correct scheduler/current-value window. It does not prove that the deployed GA4 daily scheduler actually runs on schedule, selects eligible campaigns, updates Benchmark current values/history in production, or that report preflight recomputes and fails closed before scheduled/server report artifacts are generated.
+
+Files expected:
+
+- no production runtime file is expected unless validation exposes a bug
+- optional scheduler/deployment validation artifact if the project keeps one
+- this file, to record exact deployed scheduler and report-preflight evidence
+
+Required behavior:
+
+- The deployed GA4 daily scheduler must run `runGA4DailyKPIAndBenchmarkJobs` for eligible campaigns and update only the intended campaign/property-scoped GA4 Benchmark rows.
+- Scheduler and report preflight must fail closed when the campaign, property, or source context cannot be verified.
+- Scheduled/server report outputs must use successfully recomputed Benchmark rows or skip/fail without creating misleading sent/downloadable output.
+- Duplicate processing must not produce duplicate Benchmark history rows for the same benchmark/date.
+
+Validation:
+
+- Capture deployed scheduler logs or observable persisted Benchmark current/history rows for a controlled campaign/date.
+- Verify report preflight behavior for a GA4 report with Benchmark sections selected.
+- Verify a missing campaign/property/source path fails closed and does not update unrelated Benchmark rows.
+- Re-run focused scheduler/report Benchmark tests after any runtime code change.
+
+Implementation status:
+
+Not implemented. Blocking for full unqualified GA4 Benchmark scheduler/report production readiness. Not required for the narrower local current-code certification or for the completed validation-window fix.
 
 ### Current Commit 5 - Prove Benchmark Alert Email Provider Delivery And Inbox Receipt
 
@@ -670,7 +700,7 @@ The items below are unproven until their Current Commit evidence exists. They ar
 | Live GA4 API accuracy and availability | Current Commit 2 | No | Yes |
 | GA4 processing latency / delayed attribution behavior | Current Commit 2 | No | Yes |
 | Deployed OAuth token refresh and tenant-specific provider failures | Current Commit 3 | No | Yes |
-| Deployed scheduler execution and report-preflight runtime behavior | Current Commit 4 | No | Yes |
+| Deployed scheduler execution and report-preflight runtime behavior | Current Commit 4 Follow-Up | No | Yes |
 | Provider-confirmed Benchmark alert email delivery | Current Commit 5 | No for local attempt/audit behavior | Yes for email-delivery readiness |
 | Actual Benchmark alert email inbox receipt | Current Commit 5 | No | Yes for inbox-delivery claims |
 | Browser/deployed GA4 Benchmarks tab validation | Current Commit 6 | No | Yes for user-facing production readiness |

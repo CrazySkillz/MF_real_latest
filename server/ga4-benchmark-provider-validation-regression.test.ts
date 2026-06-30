@@ -52,8 +52,10 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(doc).toContain("Deployed Commit 2 validation failed with `provider.status = live_provider_error`");
     expect(doc).toContain("`401 UNAUTHENTICATED`");
     expect(doc).toContain("Commit 3 deployed validation passed with `provider.status = live_provider_success`");
-    expect(doc).toContain("the apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data");
-    expect(doc).toContain("Current Commit 4 locally aligns validation candidates to the scheduler/current-value window");
+    expect(doc).toContain("The apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data");
+    expect(doc).toContain("Stored Benchmark Revenue `12376.38` matched `schedulerCandidateCurrentValue` `12376.38`");
+    expect(doc).toContain("`storedVsSchedulerDelta = 0`");
+    expect(doc).toContain("Current Commit 4 Follow-Up - Prove Deployed Scheduler And Report-Preflight Benchmark Recompute");
     expect(doc).toContain("Full unqualified GA4 Benchmark production readiness remains blocked");
   });
 });

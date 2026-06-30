@@ -7581,6 +7581,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Read-only GA4 Benchmark input validation. This exposes provider, persisted, and
+  // Benchmark-current-value inputs side by side without recomputing or mutating rows.
+  app.get("/api/campaigns/:id/ga4-benchmark-provider-validation", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
+      const isISODate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+      const campaignStartDate = (() => {
+        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+        if (!raw) return "2000-01-01";
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return "2000-01-01";
+        return formatISODateUTC(d);
+      })();
+      const previousCompleteUTCDate = (() => {
+        const now = new Date();
+        const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        todayUtc.setUTCDate(todayUtc.getUTCDate() - 1);
+        return formatISODateUTC(todayUtc);
+      })();
+      const startDate = String(req.query.startDate || campaignStartDate).trim();
+      const endDate = String(req.query.endDate || previousCompleteUTCDate).trim();
+      if (!isISODate(startDate) || !isISODate(endDate) || startDate > endDate) {
+        return res.status(400).json({ success: false, error: "startDate/endDate must be YYYY-MM-DD and startDate must be <= endDate" });
+      }
+
+      const requestedPropertyId = String(req.query.propertyId || "").trim();
+      const connectionCandidates = requestedPropertyId
+        ? Array.from(new Set([
+          requestedPropertyId,
+          normalizePropertyIdForMock(requestedPropertyId),
+          normalizePropertyIdForMock(requestedPropertyId) ? `properties/${normalizePropertyIdForMock(requestedPropertyId)}` : "",
+        ].filter(Boolean)))
+        : [];
+      let connections: any[] = [];
+      if (connectionCandidates.length > 0) {
+        for (const pid of connectionCandidates) {
+          const connection = await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
+          if (connection) {
+            connections = [connection];
+            break;
+          }
+        }
+      } else {
+        connections = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
+      }
+      const selectedConnection = (connections || []).find((c: any) => c?.isPrimary) || (connections || [])[0];
+      const propertyId = String(selectedConnection?.propertyId || requestedPropertyId || "").trim();
+      if (!selectedConnection || !propertyId) {
+        return res.status(404).json({ success: false, error: "NO_GA4_CONNECTION", message: "No GA4 connection found for this campaign/property." });
+      }
+
+      const round2Local = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const dailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => [] as any[]);
+      const latestDailyRow = (Array.isArray(dailyRows) ? dailyRows : [])
+        .slice()
+        .sort((a: any, b: any) => String(a?.date || "").localeCompare(String(b?.date || "")))
+        .at(-1);
+      const dailyTotals = (Array.isArray(dailyRows) ? dailyRows : []).reduce((acc: any, row: any) => {
+        const sessions = Number(row?.sessions || 0) || 0;
+        const rawRate = Number(row?.engagementRate || 0) || 0;
+        const rate = rawRate > 1 ? rawRate / 100 : rawRate;
+        return {
+          users: acc.users + (Number(row?.users || 0) || 0),
+          sessions: acc.sessions + sessions,
+          pageviews: acc.pageviews + (Number(row?.pageviews || 0) || 0),
+          conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
+          ga4Revenue: acc.ga4Revenue + (Number(row?.revenue || 0) || 0),
+          engagedSessions: acc.engagedSessions + (Number(row?.engagedSessions || 0) || Math.round(sessions * rate)),
+        };
+      }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0, engagedSessions: 0 });
+      dailyTotals.ga4Revenue = round2Local(dailyTotals.ga4Revenue);
+      dailyTotals.engagementRate = dailyTotals.sessions > 0 ? dailyTotals.engagedSessions / dailyTotals.sessions : 0;
+
+      let providerStatus = "not_attempted";
+      let providerError: string | null = null;
+      let providerResult: any = null;
+      if (isYesopMockProperty(propertyId)) {
+        providerStatus = "simulated_property_not_live_provider";
+      } else if (selectedConnection?.method === "access_token" && selectedConnection?.accessToken) {
+        try {
+          providerResult = await ga4Service.getTotalsWithRevenue(propertyId, String(selectedConnection.accessToken), startDate, endDate, campaignFilter);
+          providerStatus = "live_provider_success";
+        } catch (e: any) {
+          providerStatus = "live_provider_error";
+          providerError = String(e?.message || e || "Unknown GA4 provider error");
+        }
+      } else {
+        providerStatus = "no_readable_access_token";
+      }
+
+      const providerTotals = providerResult?.totals ? {
+        users: Math.round(Number(providerResult.totals.users || 0) || 0),
+        sessions: Math.round(Number(providerResult.totals.sessions || 0) || 0),
+        pageviews: Math.round(Number(providerResult.totals.pageviews || 0) || 0),
+        conversions: Math.round(Number(providerResult.totals.conversions || 0) || 0),
+        ga4Revenue: round2Local(Number(providerResult.totals.revenue || 0) || 0),
+        engagementRate: Number(providerResult.totals.engagementRate || 0) || 0,
+      } : null;
+
+      const financialWindow = getGA4KPIFinancialSourceWindow();
+      const [importedRevenueTotals, schedulerSpendTotals, spendSources, spendBreakdown] = await Promise.all([
+        storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] })),
+        storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate).catch(() => ({ totalSpend: 0, sourceIds: [] as string[] })),
+        storage.getSpendSources(campaignId).catch(() => [] as any[]),
+        storage.getSpendBreakdownBySource(campaignId, financialWindow.startDate, financialWindow.endDate).catch(() => [] as any[]),
+      ]);
+      const importedRevenue = round2Local(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0);
+      const schedulerSpend = round2Local(Number((schedulerSpendTotals as any)?.totalSpend || 0) || 0);
+      const spendBreakdownTotal = round2Local((Array.isArray(spendBreakdown) ? spendBreakdown : []).reduce((sum: number, source: any) => sum + (Number(source?.spend || 0) || 0), 0));
+      const uiSpend = (Array.isArray(spendSources) && spendSources.length > 0)
+        ? round2Local(spendBreakdownTotal || parseNum((campaign as any)?.spend) || 0)
+        : 0;
+
+      const dailyInput = {
+        users: Math.round(Number(dailyTotals.users || 0) || 0),
+        sessions: Math.round(Number(dailyTotals.sessions || 0) || 0),
+        pageviews: Math.round(Number(dailyTotals.pageviews || 0) || 0),
+        conversions: Math.round(Number(dailyTotals.conversions || 0) || 0),
+        ga4Revenue: round2Local(Number(dailyTotals.ga4Revenue || 0) || 0),
+        importedRevenue,
+        spend: schedulerSpend,
+        engagementRate: Number(latestDailyRow?.engagementRate || dailyTotals.engagementRate || 0) || 0,
+      };
+      const providerInput = providerTotals ? {
+        users: providerTotals.users,
+        sessions: providerTotals.sessions,
+        pageviews: providerTotals.pageviews,
+        conversions: providerTotals.conversions,
+        ga4Revenue: providerTotals.ga4Revenue,
+        importedRevenue,
+        spend: schedulerSpend,
+        engagementRate: providerTotals.engagementRate || dailyInput.engagementRate,
+      } : null;
+      const schedulerInputs = providerInput || dailyInput;
+      const uiBaseInputs = (dailyInput.sessions > 0 || dailyInput.users > 0 || dailyInput.conversions > 0 || dailyInput.pageviews > 0 || dailyInput.ga4Revenue > 0)
+        ? dailyInput
+        : (providerInput || dailyInput);
+      const uiFinancialBase = [providerInput, dailyInput]
+        .filter(Boolean)
+        .reduce((best: any, current: any) => Number(current?.ga4Revenue || 0) > Number(best?.ga4Revenue || 0) ? current : best, providerInput || dailyInput);
+      const uiFinancialInputs = { ...uiFinancialBase, importedRevenue, spend: uiSpend };
+
+      const computeUIValue = (metricKey: string) => {
+        const normalized = String(metricKey || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+        if (normalized === "revenue" || normalized === "totalrevenue" || normalized === "roas" || normalized === "roi" || normalized === "cpa") {
+          return computeKpiValue(metricKey, uiFinancialInputs);
+        }
+        return computeKpiValue(metricKey, uiBaseInputs);
+      };
+
+      const benchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]);
+      const benchmarkComparisons = (Array.isArray(benchmarks) ? benchmarks : []).map((benchmark: any) => {
+        const metricKey = String(benchmark?.metric || "").trim();
+        const computable = !!metricKey && metricKey !== "__custom__" && isComputableGA4KpiMetric(metricKey);
+        const storedCurrent = Number(String(benchmark?.currentValue ?? "").replace(/,/g, ""));
+        const schedulerCurrent = computable ? round2Local(computeKpiValue(metricKey, schedulerInputs)) : null;
+        const uiCurrent = computable ? round2Local(computeUIValue(metricKey)) : null;
+        return {
+          id: benchmark?.id,
+          name: benchmark?.name,
+          metric: metricKey || null,
+          benchmarkValue: benchmark?.benchmarkValue ?? null,
+          storedCurrentValue: benchmark?.currentValue ?? null,
+          schedulerCandidateCurrentValue: schedulerCurrent,
+          uiCandidateCurrentValue: uiCurrent,
+          storedVsSchedulerDelta: computable && Number.isFinite(storedCurrent) && schedulerCurrent !== null ? round2Local(schedulerCurrent - storedCurrent) : null,
+          storedVsUiDelta: computable && Number.isFinite(storedCurrent) && uiCurrent !== null ? round2Local(uiCurrent - storedCurrent) : null,
+          computable,
+        };
+      });
+
+      res.json({
+        success: true,
+        certificationStatus: "validation_output_only",
+        productionReadinessNote: "This read-only endpoint supports Current Commit 2 evidence capture. It is not clean certification by itself until live evidence is reviewed and recorded.",
+        limitations: [
+          "Does not refresh OAuth tokens; deployed token-refresh proof remains Current Commit 3.",
+          "Does not call GA4 acquisition breakdown because that helper can refresh and persist tokens; capture /ga4-breakdown evidence separately if the visible UI is using breakdown fallback.",
+          "A successful response is evidence to review, not production-readiness certification by itself.",
+        ],
+        campaignId,
+        propertyId,
+        campaignFilter: campaignFilter || null,
+        sourceWindows: {
+          provider: { startDate, endDate },
+          financial: financialWindow,
+        },
+        provider: {
+          status: providerStatus,
+          revenueMetric: providerResult?.revenueMetric || null,
+          totals: providerTotals,
+          error: providerError,
+        },
+        persistedDaily: {
+          rowCount: Array.isArray(dailyRows) ? dailyRows.length : 0,
+          latestDate: latestDailyRow?.date || null,
+          latestUpdatedAt: latestDailyRow?.updatedAt || null,
+          totals: dailyInput,
+        },
+        financialInputs: {
+          importedRevenue,
+          schedulerSpend,
+          uiSpend,
+          importedRevenueSourceIds: Array.isArray((importedRevenueTotals as any)?.sourceIds) ? (importedRevenueTotals as any).sourceIds : [],
+          schedulerSpendSourceIds: Array.isArray((schedulerSpendTotals as any)?.sourceIds) ? (schedulerSpendTotals as any).sourceIds : [],
+        },
+        inputSets: {
+          schedulerInputSource: providerInput ? "live_provider" : "persisted_daily_fallback",
+          schedulerInputs,
+          uiBaseInputSource: uiBaseInputs === dailyInput ? "persisted_daily" : "live_provider",
+          uiBaseInputs,
+          uiFinancialInputs,
+        },
+        benchmarks: benchmarkComparisons,
+      });
+    } catch (e: any) {
+      console.error("[GA4 Benchmark Provider Validation] Error:", e);
+      res.status(500).json({ success: false, error: e?.message || "Failed to validate GA4 Benchmark provider inputs" });
+    }
+  });
   // ============================================================================
   // Seed Yesop Demo Campaigns
   // Creates 5 pre-seeded campaigns with GA4 "yesop" connections, spend sources,
@@ -25188,9 +25413,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const responseBenchmark = (String(platformType || "").trim().toLowerCase() === "instagram" || String(platformType || "").trim().toLowerCase() === "tiktok")
         ? await storage.getBenchmark(benchmark.id).catch(() => benchmark)
         : benchmark;
-      import("./benchmark-notifications.js")
-        .then(({ checkBenchmarkPerformanceAlerts }) => checkBenchmarkPerformanceAlerts())
-        .catch((e) => console.warn("[Platform Benchmark Create] Alert check failed:", (e as any)?.message || e));
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[Platform Benchmark Create] Alert check failed:", (e as any)?.message || e);
+      }
       await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Platform Benchmark Create");
       res.status(201).json(responseBenchmark || benchmark);
     } catch (error) {

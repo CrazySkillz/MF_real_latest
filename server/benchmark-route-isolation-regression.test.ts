@@ -40,6 +40,25 @@ describe("Benchmark route isolation regression guard", () => {
     expect(platformRoutes).toContain("storage.getBenchmark(benchmarkId)");
   });
 
+  it("awaits platform Benchmark create alert reconciliation before responding", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    const platformCreateRoute = routesFile.slice(
+      routesFile.indexOf('app.post("/api/platforms/:platformType/benchmarks"'),
+      routesFile.indexOf('app.put("/api/platforms/:platformType/benchmarks/:benchmarkId"')
+    );
+
+    expect(platformCreateRoute).toContain('const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");');
+    expect(platformCreateRoute).toContain("await checkBenchmarkPerformanceAlerts();");
+    expect(platformCreateRoute.indexOf("await checkBenchmarkPerformanceAlerts();")).toBeLessThan(platformCreateRoute.indexOf('await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Platform Benchmark Create");'));
+    expect(platformCreateRoute.indexOf("await checkBenchmarkPerformanceAlerts();")).toBeLessThan(platformCreateRoute.indexOf("res.status(201).json(responseBenchmark || benchmark);"));
+
+    expect(platformCreateRoute).not.toContain(".then(({ checkBenchmarkPerformanceAlerts })");
+  });
+
   it("keeps Benchmark campaign/platform scope immutable on update routes", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

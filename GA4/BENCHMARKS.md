@@ -6,9 +6,11 @@ This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress ru
 
 ## Production Readiness Status
 
-As of June 27, 2026, the GA4 `Benchmarks` tab is production-ready for the current GA4 code scope.
+As of July 1, 2026, the GA4 `Benchmarks` tab has passed validation for production-ready clean certification for the current GA4 Benchmarks section under the documented scope in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 
-The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should continue to answer that GA4 Benchmarks are production-ready for the current GA4 code scope.
+The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should answer that GA4 Benchmarks are clean-certified for the current GA4 Benchmarks section under that documented scope.
+
+Future-reference boundary rule: daily timer-fired execution, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness are not current blockers. They are also not certified claims; each requires fresh evidence before it can be claimed.
 
 For future platforms, use this file only as the functional Benchmark tab contract. Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -252,6 +254,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `Benchmarks` tab is production-ready for the current GA4 code scope. The implementation remains intentionally split between live page rendering, persisted Benchmark rows/history, background GA4 jobs, and alert reconciliation, but that split is covered by the production-readiness evidence in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+The GA4 `Benchmarks` tab has passed validation for production-ready clean certification for the current GA4 Benchmarks section under the documented scope in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. The implementation remains intentionally split between live page rendering, persisted Benchmark rows/history, background GA4 jobs, and alert reconciliation, and that split is covered by the production-readiness evidence in the readiness file.
 
-External/provider caveats, future-platform reuse requirements, and the exact completed fix queue are documented in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+Future boundaries are not current blockers, but they are not certified claims: daily timer-fired execution, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.

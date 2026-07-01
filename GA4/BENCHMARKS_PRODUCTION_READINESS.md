@@ -26,6 +26,12 @@ Status split:
 - open Current Commit blockers: none for the current GA4 Benchmarks certification scope
 - future platform readiness: unproven; GA4 Benchmark evidence is only a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
 
+Future-reference boundary rule:
+
+- GA4 Benchmarks have passed validation for production-ready clean certification for the current GA4 Benchmarks section under the documented scope in this file.
+- The future-boundary items are not current blockers and must not be reopened as blockers unless the future scope is actually being claimed or changed.
+- Do not claim daily timer-fired execution, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, or future platform readiness without fresh evidence for that exact claim.
+
 Certification result:
 
 - completed historical local fixes: persisted GA4 Benchmark ROAS ratio semantics, GA4 primary-property campaign scoping, selected-property UI alignment after `Set as Primary`, ROAS copy correction, shared evaluated Benchmark route access hardening, and bounded persisted ROAS cleanup
@@ -76,6 +82,7 @@ Do not reopen closed current-scope GA4 Benchmark blockers solely because time ha
 Do not claim daily timer-fired evidence, future Benchmark alert email delivery, future browser/UI changes, broad future GA4 provider availability, real unsimulated Google token revocation behavior, or future-platform readiness without fresh evidence. Benchmark alert email provider/inbox validation is user-confirmed complete for the controlled Commit 5 send only, and Benchmark browser/deployed UI validation is user-confirmed complete for the controlled Current Commit 6 pass only; future sends and future UI changes require their own evidence before those claims are repeated.
 
 This certification method is reusable as the Benchmark refinement and validation template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source. It is never proof that those sources are production-ready.
+
 ## How To Use This File In A New Chat
 
 Read in this order:
@@ -746,16 +753,16 @@ Existing damaged-data conclusion:
 
 ## Not Locally Verifiable / External Caveats
 
-The items below are caveats and boundaries, not open Current Commit blockers for the current GA4 Benchmarks certification scope.
+The items below are caveats and boundaries, not open Current Commit blockers for the current GA4 Benchmarks certification scope. RCA conclusion: none of these items block the current GA4 Benchmarks clean certification. They are documented to prevent future overclaiming and become blocking only if a future answer tries to certify that broader future claim.
 
-| Caveat / future claim boundary | Classification | Blocks current GA4 Benchmarks certification? | When fresh evidence is required |
-| --- | --- | --- | --- |
-| Future GA4 API availability, delayed attribution, or processing latency outside the recorded windows | External provider caveat | No | Any future claim about a new date window, outage, delayed attribution case, or provider incident |
-| Real Google revoked-token event without simulation | External provider caveat | No for the accepted validation-only failure path | Any future claim that an actual revoked Google token event was observed end to end |
-| Daily timer firing by itself | Scheduler caveat | No for the accepted manual-trigger validation path | Any future claim that the daily timer itself fired successfully |
-| Future Benchmark alert email delivery | Provider/inbox caveat | No for the controlled Commit 5 send | Every future delivery claim needs provider delivery event or inbox evidence |
-| Future source mixes or new financial source types | New future Current Commit | Yes for changed/new path | Before certifying that changed/new source path |
-| Future platform Benchmark readiness | Target-platform readiness queue | Not applicable to GA4 | Always required before certifying the target platform |
+| Caveat / future claim boundary | Classification | Blocks current GA4 Benchmarks certification? | RCA / why it is not a current blocker | When fresh evidence is required |
+| --- | --- | --- | --- | --- |
+| Future GA4 API availability, delayed attribution, or processing latency outside the recorded windows | External provider caveat | No | The controlled provider/current-value window was validated; future provider behavior is outside the recorded evidence window | Any future claim about a new date window, outage, delayed attribution case, or provider incident |
+| Real Google revoked-token event without simulation | External provider caveat | No | The accepted validation-only failure path proved safe handling without mutating token metadata; an actual revoked-token event has not occurred in the recorded evidence | Any future claim that an actual revoked Google token event was observed end to end |
+| Daily timer firing by itself | Scheduler caveat | No | The deployed manual trigger proved the same campaign-scoped GA4 refresh/recompute pipeline; only the timer-fired event itself remains unclaimed | Any future claim that the daily timer itself fired successfully |
+| Future Benchmark alert email delivery | Provider/inbox caveat | No | The controlled Commit 5 Benchmark email/inbox validation passed; future sends are separate delivery events | Every future delivery claim needs provider delivery event or inbox evidence |
+| Future source mixes or new financial source types | Future scope-change caveat | No for unchanged current GA4 scope | Current certification covers the existing GA4 source mix; new source types or changed source behavior would create a new value path | Before certifying that changed/new source path |
+| Future platform Benchmark readiness | Target-platform readiness queue | No; outside GA4 scope | GA4 evidence is only a template and cannot certify Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another platform | Always required before certifying the target platform |
 
 Provider/email wording rule:
 

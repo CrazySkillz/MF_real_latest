@@ -69,5 +69,8 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(doc).toContain("Benchmark Revenue stored `14669.58` versus scheduler candidate `14669.58` with `storedVsSchedulerDelta = 0`");
     expect(doc).toContain("Current Commit 4 Follow-Up - Prove Deployed Scheduler And Report-Preflight Benchmark Recompute");
     expect(doc).toContain("No Current Commit blockers remain open for the current GA4 Benchmarks certification scope");
+    expect(doc).toContain("Future-reference boundary rule:");
+    expect(doc).toContain("The future-boundary items are not current blockers");
+    expect(doc).toContain("future platform readiness without fresh evidence");
   });
 });

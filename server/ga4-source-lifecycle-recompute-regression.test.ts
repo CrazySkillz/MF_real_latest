@@ -13,13 +13,24 @@ const sliceBetween = (source: string, start: string, end: string) => {
 };
 
 describe("GA4 source lifecycle recompute route guards", () => {
-  it("runs the GA4 KPI/Benchmark recompute job before route-level revenue alert checks", () => {
+  it("keeps GA4 revenue source responses off the heavyweight KPI/Benchmark job", () => {
+    expect(routes).toContain('import { refreshCampaignCurrentValuesForCampaign, resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
+
     const ga4Helper = sliceBetween(
       routes,
       "const recomputeGA4KPIAndBenchmarkValues",
-      "const recomputeCampaignDerivedValues",
+      "const scheduleGA4RevenuePostResponseRecompute",
     );
     expect(ga4Helper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });");
+
+    const scheduleHelper = sliceBetween(
+      routes,
+      "const scheduleGA4RevenuePostResponseRecompute",
+      "const recomputeCampaignDerivedValues",
+    );
+    expect(scheduleHelper).toContain("setImmediate(() => {");
+    expect(scheduleHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
+    expect(scheduleHelper).toContain("await checkPerformanceAlerts();");
 
     const revenueHelper = sliceBetween(
       routes,
@@ -27,14 +38,12 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "// When \"revenue to date\"",
     );
     expect(revenueHelper).toContain("if (isGA4RevenuePlatformContext(opts.platformContext))");
-    expect(revenueHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
-    expect(revenueHelper).toContain("GA4 KPI/Benchmark recompute failed");
-    expect(revenueHelper.indexOf("await recomputeGA4KPIAndBenchmarkValues")).toBeLessThan(
-      revenueHelper.indexOf("await checkPerformanceAlerts()"),
+    expect(revenueHelper).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId);");
+    expect(revenueHelper).toContain("scheduleGA4RevenuePostResponseRecompute(campaignId);");
+    expect(revenueHelper.indexOf("await refreshCampaignCurrentValuesForCampaign(campaignId);")).toBeLessThan(
+      revenueHelper.indexOf("scheduleGA4RevenuePostResponseRecompute(campaignId);"),
     );
-    expect(revenueHelper.indexOf("GA4 KPI/Benchmark recompute failed")).toBeLessThan(
-      revenueHelper.indexOf("await checkPerformanceAlerts()"),
-    );
+    expect(revenueHelper).not.toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
   });
 
   it("passes platform context through GA4 revenue source add, edit, and delete recompute paths", () => {

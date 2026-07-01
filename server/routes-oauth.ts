@@ -35,7 +35,7 @@ import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
-import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
+import { refreshCampaignCurrentValuesForCampaign, resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -2803,8 +2803,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return mappedId && activeGoogleAdsCampaignIds.has(mappedId) ? mappedId : null;
   };
 
-  // Enterprise-grade: whenever a source-of-truth input (revenue / conversion value) changes,
-  // recompute all dependent derived values (KPIs + alerts) immediately.
+  // Revenue source saves must return after source records are durable. GA4 source-backed current
+  // values refresh synchronously; heavier GA4 history/alert reconciliation runs after the response.
   const isGA4RevenuePlatformContext = (platformContext?: string | null) =>
     String(platformContext || "ga4").trim().toLowerCase() === "ga4";
 
@@ -2816,18 +2816,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  const scheduleGA4RevenuePostResponseRecompute = (campaignId: string) => {
+    setImmediate(() => {
+      void (async () => {
+        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+        try {
+          await checkPerformanceAlerts();
+        } catch (e) {
+          console.warn(`[Revenue Update] Alert check failed after revenue update for campaign ${campaignId}:`, (e as any)?.message || e);
+        }
+      })().catch((e) => {
+        console.warn(`[Revenue Update] Background recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+      });
+    });
+  };
+
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
+    if (isGA4RevenuePlatformContext(opts.platformContext)) {
+      try {
+        await refreshCampaignCurrentValuesForCampaign(campaignId);
+      } catch (e) {
+        console.warn(`[Revenue Update] Campaign current-value refresh failed for campaign ${campaignId}:`, (e as any)?.message || e);
+      }
+      scheduleGA4RevenuePostResponseRecompute(campaignId);
+      return;
+    }
     try {
       await refreshKPIsForCampaign(campaignId);
     } catch (e) {
       console.warn(`[Revenue Update] KPI recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
-    }
-    if (isGA4RevenuePlatformContext(opts.platformContext)) {
-      try {
-        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
-      } catch (e) {
-        console.warn(`[Revenue Update] GA4 KPI/Benchmark recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
-      }
     }
     try {
       await checkPerformanceAlerts();

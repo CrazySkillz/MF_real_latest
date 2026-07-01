@@ -313,6 +313,15 @@ Authenticated baseline capture attempt received on `2026-07-01T13:04:07.433Z`:
 - Spend source details, full source identity, and any after-action comparison were missing from the truncated packet; do not treat this as provider-family lifecycle proof.
 - Follow-up harness adjustment: mapping config output is now bounded to `mappingKeyCount`, `mappingKeySample`, and `mappingKeysTruncated` so future evidence packets can remain compact.
 
+Complete authenticated baseline captured on `2026-07-01T13:09:35.415Z`:
+
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
+- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Revenue baseline: `totalToDate` `$600`, `breakdownTotal` `$600`, one active CSV revenue source, source ID `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, source amount `$600`.
+- CSV revenue mapping baseline: `hasMappingConfig: true`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`; captured sample keys included `allocationMethod`, `campaignColumn`, `campaignDisplayName`, `campaignMappings`, `campaignValue`, `campaignValueRevenueTotals`, `campaignValues`, `conversionValueColumn`, `csvHeaders`, `csvRowCount`, `csvSampleRows`, and `csvStoredRevenueRows`.
+- Spend baseline: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
+- Certification boundary: this closes the Current Commit 2 baseline snapshot for this campaign only. It does not close CSV revenue add/import, edit/update, refresh/reprocess, delete/deactivate, source-modal visual parity, downstream card parity, scheduler/report propagation, or any non-CSV source family lifecycle action.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

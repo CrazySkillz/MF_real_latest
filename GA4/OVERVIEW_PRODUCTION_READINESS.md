@@ -206,7 +206,8 @@ These matrices define the current certification boundary. `Proven locally` means
 | Landing Pages and Conversion Events fallback | `server/ga4-filter.test.ts` and `server/ga4-ui-regression.test.ts` recorded passes. | Exact-key/exact-event fallback supplement behavior and no unmatched fallback-row allocation. | Live GA4 provider latency remains external. |
 | Report payload values | `server/report-email-regression.test.ts` and scheduled PDF trace. | Selected scoped financial source survives scheduled/server report value generation. | Provider delivery, inbox receipt, scheduler run, and snapshot delivery semantics remain Reports/external scope. |
 | Source safety/additivity | `server/latest-day-revenue-regression.test.ts`, `server/latest-day-spend-regression.test.ts`, `server/source-safety-regression.test.ts`, `server/spend-source-additivity.test.ts` recorded in validation suites. | Active-source and provenance boundaries that feed Overview totals. | Real provider-family lifecycle validation remains external. |
-| Current Commit 1 harness and documentation update | PowerShell syntax check for `scripts/ga4_overview_current_commit_1_validation.ps1`; `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md scripts/ga4_overview_current_commit_1_validation.ps1`. | The validation harness parses and the doc/script diff has no whitespace errors. | Does not prove deployed/provider values until the harness is run against an authenticated deployed campaign. |
+| Current Commit 1 harness and documentation update | PowerShell syntax check for `scripts/ga4_overview_current_commit_1_validation.ps1`; `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md scripts/ga4_overview_current_commit_1_validation.ps1`. | The validation harness parses and the doc/script diff has no whitespace errors. | Deployed endpoint evidence has since been recorded for one campaign/property; scheduled/server report payload evidence remains external. |
+| Current Commit 2 source lifecycle harness and documentation update | PowerShell syntax check for `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1`; trailing-whitespace scan for the script; `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md`. | The source lifecycle snapshot harness parses, is GET-only, and the doc diff has no whitespace errors. | Does not prove provider-family add/edit/refresh/delete behavior until before/after snapshots are captured around real provider actions. |
 
 ### Documentation Alignment Matrix
 
@@ -231,7 +232,7 @@ This queue is the clean-certification queue for GA4 Overview. The detailed histo
 | --- | --- | --- | --- | --- |
 | Current Commit 0: Strict clean certification documentation update | Completed in this documentation pass. | Update this file with explicit value inventory, trace, downstream, lifecycle, negative-case, validation, and documentation matrices. | Documentation-only update to `GA4/OVERVIEW_PRODUCTION_READINESS.md`; no runtime code changes. | No. |
 | Current Commit 1: Provider/deployed Overview validation pack | Deployed Overview endpoint evidence captured for the listed campaign/property; scheduled/server report payload evidence remains external, not a confirmed code bug. | Real GA4 provider/deployed validation for Summary, financial cards, Campaign Breakdown, Landing Pages, Conversion Events, source totals, and scheduled/server payload values. | Endpoint packet passed on `2026-07-01T12:21:31.789Z`; capture scheduled/server payload evidence separately through the report validation path before making a blanket report-output claim. | No for local code-scope certification; endpoint portion no for deployed Overview endpoint certification; report payload remains external for blanket scheduled/server certification. |
-| Current Commit 2: Real source-family lifecycle validation | Outstanding external validation gate, not a confirmed code bug. | Revenue and spend source families that can feed Overview totals and modals. | Add/import, edit/refresh, delete/deactivate, and reconcile source modal plus total-card values for each provider-backed family. | No for local code-scope certification; yes for provider-family lifecycle certification. |
+| Current Commit 2: Real source-family lifecycle validation | Local source-lifecycle snapshot/compare harness implemented; provider-family lifecycle evidence remains external, not a confirmed code bug. | Revenue and spend source families that can feed Overview totals and modals. | Use `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` before and after exactly one source-family add/import, edit, refresh, or delete action, then record the before/after source IDs, totals, and provenance reconciliation. | No for local code-scope certification; yes for provider-family lifecycle certification until each source family is validated. |
 | Current Commit 3: Production source-damage inventory | Outstanding external validation gate, not a confirmed code bug. | Production/staging inventory for orphan, duplicate, inactive, or platform-context-drifted revenue/spend records outside the already documented synthetic-GA4-revenue cleanup boundary. | Read-only inventory first; document exact affected IDs before proposing any cleanup migration. | No for local code-scope certification; yes for production database-health certification. |
 
 If any Current Commit discovers an actual Overview bug, lower the affected path to unproven, add the exact smallest runtime fix as the next Current Commit, and do not call that path production-ready until root cause, tests, docs, and any bounded cleanup are complete.
@@ -276,6 +277,80 @@ What remains unproven externally:
 - Scheduled/server report payload evidence still needs to be captured through the report validation path before making any blanket scheduled/server report-output claim.
 - Deployed scheduler timer execution remains separate from endpoint availability; the validation did not use `-IncludeSchedulerRun`.
 - If later deployed validation shows a value mismatch, lower only the affected Overview path to unproven and add the exact runtime fix as the next Current Commit.
+
+### Current Commit 2 Root Cause And Smallest Safe Fix
+
+User-reported task:
+
+- proceed with Current Commit 2 by doing root cause analysis and implementing the smallest safe fix with no Overview side effects.
+
+Confirmed root cause:
+
+- Current Commit 2 was not a confirmed GA4 Overview source lifecycle code bug.
+- The blocker was an evidence-capture gap: local traces show guarded source endpoints, active-source joins, source ownership checks, and source-modal refetch paths, but there was no repeatable before/after snapshot for real provider-backed source-family lifecycle validation.
+- Current Commit 1's deployed endpoint packet proved the current source endpoints are reachable for one campaign/property, but it did not prove add/import, edit, refresh, or delete lifecycle behavior for each revenue/spend source family.
+- Automating provider add/edit/delete/refresh from the repo would be higher risk because those actions are intentionally mutative and provider-specific.
+
+Smallest safe fix implemented:
+
+- Added `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` as an opt-in source lifecycle evidence harness.
+- The script is GET-only and captures sanitized source IDs, source types, source counts, revenue/spend totals, breakdown totals, source-modal provenance inputs, and optional before/after comparison deltas.
+- It does not create, edit, refresh, delete, recompute, or mutate campaign, source, report, KPI, Benchmark, alert, notification, scheduler, or provider state.
+- Lifecycle actions must still be performed manually through the intended deployed app/provider flow; the script only captures the evidence before and after one action.
+
+Validation performed for the fix:
+
+- PowerShell syntax check: `$null = [scriptblock]::Create((Get-Content -Path scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1 -Raw))`
+- Trailing whitespace scan: `Select-String -Path scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1 -Pattern '[ \t]+$'`
+- Whitespace check: `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md`
+- Unauthenticated deployed smoke run: `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` wrote `C:\tmp\ga4-overview-cc2-source-lifecycle-unauthenticated.json` and captured `401 Unauthorized` for each checked endpoint, proving the harness executes and the deployed route boundary fails closed without a logged-in session.
+
+Required provider-family validation pattern:
+
+1. Run a baseline snapshot before the source-family action.
+2. Perform exactly one add/import, edit, refresh, or delete/deactivate action through the deployed app/provider flow.
+3. Run an after snapshot with `-CompareToPath` pointing at the baseline output.
+4. Confirm only the intended source IDs and totals changed.
+5. Confirm source modal provenance reconciles to the relevant revenue or spend total.
+6. For refresh, confirm the intended source ID persisted instead of creating a duplicate active source.
+7. For delete, confirm the intended source ID was removed/deactivated and unrelated source IDs persisted.
+
+Full Current Commit 2 source-family lifecycle plan:
+
+- A source family is closed only for the exact lifecycle action that has before/after evidence; one source family or one action cannot certify another family or action.
+- Each evidence packet must record the deployed URL, campaign ID, actor/session boundary, timestamp, source family, lifecycle action, before/after source IDs, before/after totals, source-modal provenance, and whether downstream Overview financial cards changed only as expected.
+- A lifecycle action can be marked `not applicable` only after the UI/API route trace proves the product has no such action for that source family. Until then it remains `unproven`, not passed.
+- HubSpot and Salesforce validation must distinguish confirmed revenue-source behavior from Pipeline Proxy early-signal behavior; Pipeline Proxy evidence is not proof that confirmed `Total Revenue` is correct.
+
+| Source family | Overview paths affected | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Current status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Google Sheets revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required | Required if refresh/sync is exposed | Required | Unproven until deployed before/after evidence is recorded. |
+| CSV revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required if CSV replacement/edit is exposed | Required if re-import/reprocess is exposed | Required | Unproven until deployed before/after evidence is recorded. |
+| Manual/legacy revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required if manual add is exposed | Required | Prove not applicable or validate if a refresh/reprocess route exists | Required | Unproven until deployed before/after evidence is recorded. |
+| Shopify revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required if mapping/config edit is exposed | Required | Required | Unproven until deployed before/after evidence is recorded. |
+| HubSpot revenue or Pipeline Proxy | Confirmed revenue paths only if HubSpot writes revenue sources; Pipeline Proxy remains early-signal only | Required for the exposed source/proxy action | Required for mapping/config changes | Required | Required/disconnect if exposed | Unproven until deployed before/after evidence is recorded and revenue/proxy paths are separated. |
+| Salesforce revenue or Pipeline Proxy | Confirmed revenue paths only if Salesforce writes revenue sources; Pipeline Proxy remains early-signal only | Required for the exposed source/proxy action | Required for mapping/config changes | Required | Required/disconnect if exposed | Unproven until deployed before/after evidence is recorded and revenue/proxy paths are separated. |
+| Google Sheets spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required | Required if refresh/sync is exposed | Required | Unproven until deployed before/after evidence is recorded. |
+| CSV spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required if CSV replacement/edit is exposed | Required if re-import/reprocess is exposed | Required | Unproven until deployed before/after evidence is recorded. |
+| Manual/legacy spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required if manual add is exposed | Required | Prove not applicable or validate if a refresh/reprocess route exists | Required | Unproven until deployed before/after evidence is recorded. |
+| Google Ads spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required/connect | Required for mapping/config changes | Required | Required/disconnect if exposed | Unproven until deployed before/after evidence is recorded. |
+| Meta Ads spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required/connect | Required for mapping/config changes | Required | Required/disconnect if exposed | Unproven until deployed before/after evidence is recorded. |
+| LinkedIn Ads spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required/connect | Required for mapping/config changes | Required | Required/disconnect if exposed | Unproven until deployed before/after evidence is recorded. |
+
+Execution order for the next validation step:
+
+1. Capture an authenticated Current Commit 2 baseline snapshot for the deployed campaign before touching source data.
+2. Use the baseline to identify the actual source family currently present in the campaign; do not infer it from totals alone.
+3. Pick the lowest-risk disposable test source for the first lifecycle action, preferably a source family with controlled test data and a rollback path.
+4. Validate one lifecycle action at a time: baseline snapshot, one UI/provider action, after snapshot with `-CompareToPath`, source-modal visual check, and downstream Overview financial-card check.
+5. Record the evidence in this file before moving to the next lifecycle action or source family.
+6. If any action changes an unrelated source ID, duplicates an active source, loses provenance, or changes totals unexpectedly, stop Current Commit 2 and add the exact runtime fix as the next Current Commit.
+
+What remains unproven externally:
+
+- No real provider-family lifecycle action has been validated in this local pass.
+- Shopify, HubSpot, Salesforce, Google Sheets, CSV, legacy Manual revenue, LinkedIn Ads, Meta Ads, Google Ads, Google Sheets spend, CSV spend, and legacy Manual spend remain provider/user validation work until each relevant family has before/after evidence.
+- If a before/after snapshot shows a duplicate source, missing source, wrong total, wrong source modal provenance, or unintended unrelated source change, lower only that source-family path to unproven and add the exact runtime fix as the next Current Commit.
 
 ## Root Cause Of Prior Confusion
 

@@ -362,6 +362,15 @@ CSV revenue edit/update complete endpoint after-snapshot captured on `2026-07-01
 - Endpoint-level edit/update result: pass for CSV revenue edit/update source identity, no duplicate source creation, intended source amount replacement, total/breakdown reconciliation, and unrelated source preservation on this campaign.
 - Remaining gate for this CSV revenue edit/update action: source-modal/list UI parity after the edit is not captured in this endpoint packet.
 
+CSV revenue edit/update UI screenshot evidence received after edit:
+
+- User-provided screenshots showed the GA4 Overview Revenue card displaying `Total Revenue` `$25,416.16` with `Sources (3)`.
+- User-provided Revenue Sources modal screenshot showed native `GA4 Revenue` `$23,616.16`, edited CSV source `Test_rev_spend.csv` `$1,200.00`, and original CSV source `Test_rev_spend.csv` `$600.00`.
+- UI reconciliation: `$23,616.16` native GA4 revenue + `$1,200.00` edited CSV revenue + `$600.00` original CSV revenue = `$25,416.16` displayed Total Revenue.
+- User stated the UI looked correct.
+- UI parity result: pass for CSV revenue edit/update visible Total Revenue, Revenue Sources modal/list, native GA4 plus imported CSV additivity, edited source amount, and original source preservation on this campaign.
+- Certification boundary: this closes CSV revenue edit/update for the traced endpoint and visible Overview UI paths on this campaign. It does not close CSV revenue refresh/reprocess, delete/deactivate, spend-dependent derived cards, scheduler/report propagation, or any non-CSV source-family lifecycle action.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

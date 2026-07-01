@@ -350,6 +350,18 @@ CSV revenue edit/update partial source-list evidence captured:
 - Original source remained active and unchanged in the source list: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
 - Certification boundary: this is partial source-list evidence only. It does not include endpoint status, revenue total, revenue breakdown total, spend unchanged status, source-modal UI parity, or the expected edited CSV amount. If `$1,200` was not the intended edited amount, CSV edit/update amount correctness is unproven and must be investigated before closing this lifecycle action.
 
+CSV revenue edit/update complete endpoint after-snapshot captured on `2026-07-01T14:09:12.691Z`:
+
+- User confirmed the edited disposable CSV source was intended to become `$1,200`.
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
+- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Revenue after-edit snapshot: `totalToDate` `$1,800`, `breakdownTotal` `$1,800`, `sourceCount: 2`, both active CSV revenue sources.
+- Edited source ID persisted and updated in place: `8ba9a131-526c-4e59-a751-c91b92d78b8b`, display name `Test_rev_spend.csv`, amount `$1,200`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`.
+- Original baseline source remained active and unchanged: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, amount `$600`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`.
+- Spend remained unchanged: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
+- Endpoint-level edit/update result: pass for CSV revenue edit/update source identity, no duplicate source creation, intended source amount replacement, total/breakdown reconciliation, and unrelated source preservation on this campaign.
+- Remaining gate for this CSV revenue edit/update action: source-modal/list UI parity after the edit is not captured in this endpoint packet.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

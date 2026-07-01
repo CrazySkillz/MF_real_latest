@@ -48,6 +48,12 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("GA4_DAILY_REFRESH_HOUR");
     expect(source).toContain("GA4_DAILY_REFRESH_MINUTE");
     expect(source).toContain("GA4_DAILY_REFRESH_RUN_ON_STARTUP");
+    expect(source).toContain("type GA4DailyRefreshPipelineOptions");
+    expect(source).toContain("export async function runGA4DailyRefreshPipeline(opts: GA4DailyRefreshPipelineOptions = {})");
+    expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
+    expect(source).toContain("const campaigns = campaignId");
+    expect(source).toContain("await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);");
+    expect(source).toContain("if (!campaignId && !opts.suppressAlerts) {");
     expect(source).toContain("Next scheduled run at");
     expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
     expect(source).toContain("dataThroughDate=${dataThroughDate}");

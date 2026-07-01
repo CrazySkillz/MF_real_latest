@@ -28,7 +28,7 @@ import { eq, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
-import { getGA4DailySchedulerConfig } from "./ga4-daily-scheduler";
+import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefreshPipeline } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
@@ -7190,6 +7190,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
+    }
+  });
+
+  // Campaign-scoped manual validation trigger for the deployed GA4 daily pipeline.
+  app.post("/api/campaigns/:id/ga4-daily-scheduler/run-now", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "").trim();
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const before = getGA4DailySchedulerStatus();
+      await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
+      const after = getGA4DailySchedulerStatus();
+
+      res.json({
+        success: true,
+        certificationStatus: "validation_output_only",
+        productionReadinessNote: "This campaign-scoped trigger runs the deployed GA4 daily refresh plus KPI/Benchmark recompute path for validation. It is not clean certification by itself until the response evidence is reviewed and recorded.",
+        limitations: [
+          "Requires campaign access and runs only for the authorized campaign.",
+          "Suppresses the global alert sweep to avoid cross-campaign side effects; Benchmark alert delivery remains covered by separate alert-email validation evidence.",
+          "A manual success proves the deployed pipeline can run on demand for this campaign; it does not prove the daily timer fired by itself.",
+        ],
+        campaignId,
+        trigger: "manual",
+        before,
+        after,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        certificationStatus: "validation_output_only",
+        error: error?.message || "Failed to run GA4 daily scheduler validation",
+        schedulerStatus: getGA4DailySchedulerStatus(),
+      });
     }
   });
 

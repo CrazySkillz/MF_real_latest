@@ -14,6 +14,10 @@ type GA4DailySchedulerConfig = {
 };
 
 type GA4DailyRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
+type GA4DailyRefreshPipelineOptions = {
+  campaignId?: string;
+  suppressAlerts?: boolean;
+};
 
 const ga4DailySchedulerStatus = {
   startedAt: null as Date | null,
@@ -132,7 +136,8 @@ const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
     timeZoneName: "short",
   }).format(date);
 
-export async function refreshAllGA4DailyMetrics(): Promise<void> {
+export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
+  const campaignId = String(opts.campaignId || "").trim();
   const lookbackDays = Math.min(
     Math.max(parseInt(process.env.GA4_DAILY_LOOKBACK_DAYS || "90", 10) || 90, 7),
     365
@@ -143,9 +148,11 @@ export async function refreshAllGA4DailyMetrics(): Promise<void> {
   start.setUTCDate(start.getUTCDate() - (lookbackDays - 1));
   const startISO = formatISODateUTC(start);
 
-  console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}, start=${startISO})`);
+  console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}, start=${startISO}${campaignId ? `, campaignId=${campaignId}` : ""})`);
 
-  const campaigns = await storage.getCampaigns().catch(() => []);
+  const campaigns = campaignId
+    ? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]
+    : await storage.getCampaigns().catch(() => []);
   let processed = 0;
   let upserted = 0;
 
@@ -196,7 +203,8 @@ export async function refreshAllGA4DailyMetrics(): Promise<void> {
   console.log(`[GA4 Daily] Refresh done (campaignsProcessed=${processed}, rowsUpserted=${upserted})`);
 }
 
-async function runGA4DailyRefreshPipelineForTrigger(trigger: string): Promise<void> {
+async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
+  const campaignId = String(opts.campaignId || "").trim();
   if ((global as any).__ga4DailyRefreshInProgress) {
     ga4DailySchedulerStatus.totalSkippedRuns += 1;
     ga4DailySchedulerStatus.lastRunTrigger = trigger;
@@ -217,26 +225,28 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string): Promise<vo
   ga4DailySchedulerStatus.lastRunFinishedAt = null;
   ga4DailySchedulerStatus.lastRunTrigger = trigger;
   ga4DailySchedulerStatus.lastRunStatus = "running";
-  console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger})`);
+  console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
-    await refreshAllGA4DailyMetrics();
+    await refreshAllGA4DailyMetrics({ campaignId });
 
     try {
-      await runGA4DailyKPIAndBenchmarkJobs();
+      await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
     } catch (e: any) {
       console.warn("[GA4 Daily] KPI/Benchmark recompute failed:", e?.message || e);
     }
 
-    try {
-      await checkPerformanceAlerts();
-    } catch (e: any) {
-      console.warn("[GA4 Daily] KPI alert check failed:", e?.message || e);
-    }
+    if (!campaignId && !opts.suppressAlerts) {
+      try {
+        await checkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[GA4 Daily] KPI alert check failed:", e?.message || e);
+      }
 
-    try {
-      await checkBenchmarkPerformanceAlerts();
-    } catch (e: any) {
-      console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
+      try {
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
+      }
     }
   } catch (e: any) {
     ga4DailySchedulerStatus.lastRunStatus = "failed";
@@ -254,8 +264,8 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string): Promise<vo
   }
 }
 
-export async function runGA4DailyRefreshPipeline(): Promise<void> {
-  await runGA4DailyRefreshPipelineForTrigger("manual");
+export async function runGA4DailyRefreshPipeline(opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
+  await runGA4DailyRefreshPipelineForTrigger("manual", opts);
 }
 
 export function getGA4DailySchedulerStatus() {

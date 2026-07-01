@@ -378,6 +378,33 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
   }
 }
 
+export async function runGoogleSheetsSpendSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<{ success: boolean; reason?: string; campaignId: string; sourceId: string; platformContext?: string }> {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  const normalizedSourceId = String(sourceId || "").trim();
+  if (!normalizedCampaignId || !normalizedSourceId) {
+    return { success: false, reason: "invalid_request", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+  }
+
+  const sources = await storage.getSpendSources(normalizedCampaignId).catch(() => [] as any[]);
+  const source = (Array.isArray(sources) ? sources : []).find((s: any) => {
+    if (!s || (s as any).isActive === false) return false;
+    if (String((s as any).sourceType || "").toLowerCase() !== "google_sheets") return false;
+    return String((s as any).id || "") === normalizedSourceId;
+  });
+  if (!source) {
+    return { success: false, reason: "source_not_found", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+  }
+
+  const cfgRaw = safeJsonParse(source?.mappingConfig);
+  const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: (cfgRaw as any).platformContext || (source as any).platformContext || undefined } : null;
+  if (!mappingConfig?.connectionId || !mappingConfig?.spendColumn) {
+    return { success: false, reason: "missing_google_sheets_spend_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: (source as any).platformContext || undefined };
+  }
+
+  const success = await reprocessGoogleSheetsSpend(normalizedCampaignId, source, mappingConfig);
+  return { success, reason: success ? undefined : "reprocess_failed", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: mappingConfig.platformContext || (source as any).platformContext || undefined };
+}
+
 export async function runGoogleSheetsRevenueSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<{ success: boolean; reason?: string; campaignId: string; sourceId: string; platformContext?: string }> {
   const normalizedCampaignId = String(campaignId || "").trim();
   const normalizedSourceId = String(sourceId || "").trim();

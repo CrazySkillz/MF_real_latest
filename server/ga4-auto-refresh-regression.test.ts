@@ -67,17 +67,24 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).not.toContain('String((s as any).sourceType || "") === "csv"');
     expect(content).not.toContain("reprocessCsv");
   });
-  it("exposes only a campaign/source-scoped Google Sheets revenue scheduler validation trigger", () => {
+  it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();
     const routes = routesFile();
 
     expect(scheduler).toContain("export async function runGoogleSheetsRevenueSourceRefreshForValidation");
+    expect(scheduler).toContain("export async function runGoogleSheetsSpendSourceRefreshForValidation");
     expect(scheduler).toContain("return String((s as any).id || \"\") === normalizedSourceId;");
+    expect(scheduler).toContain("const sources = await storage.getSpendSources(normalizedCampaignId).catch(() => [] as any[]);");
     expect(scheduler).toContain("reason: \"source_not_found\"");
+    expect(scheduler).toContain("reason: \"missing_google_sheets_spend_mapping\"");
     expect(scheduler).toContain("reprocessGoogleSheetsRevenue(normalizedCampaignId, source, mappingConfig)");
+    expect(scheduler).toContain("reprocessGoogleSheetsSpend(normalizedCampaignId, source, mappingConfig)");
     expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"');
+    expect(routes).toContain('app.post("/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now"');
     expect(routes).toContain("googleSheetsRateLimiter, requireCampaignAccessParamId");
     expect(routes).toContain("runGoogleSheetsRevenueSourceRefreshForValidation(campaignId, sourceId)");
+    expect(routes).toContain("runGoogleSheetsSpendSourceRefreshForValidation(campaignId, sourceId)");
+    expect(routes).toContain("Requires campaign access and an active google_sheets spend source matching the requested source ID.");
     expect(routes).toContain("Does not run the full daily auto-refresh cycle, other providers, alerts, emails, reports, or unrelated campaigns.");
     expect(routes).not.toContain('app.post("/api/campaigns/:id/auto-refresh/run-now"');
   });

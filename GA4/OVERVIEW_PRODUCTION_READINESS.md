@@ -333,7 +333,8 @@ CSV revenue add/import after-snapshot captured on `2026-07-01T13:36:15.567Z`:
 - Endpoint-level source identity/additivity result: pass for CSV revenue add/import on this campaign if the imported test CSV was intentionally expected to contribute `$600`; otherwise amount-mapping correctness remains unproven and the CSV import should be investigated before closing the action.
 - User-reported UI validation passed after the add/import: GA4 Overview showed `Total Revenue` `$1,200`, the Revenue Sources modal/list showed two CSV sources, both sources showed `$600`, and `Total Spend` remained `$0` or empty/no spend.
 - UI validation boundary: this closes visible Total Revenue, revenue source-modal/list, and Total Spend parity for CSV revenue add/import on this campaign by user report. Screenshot evidence was not captured in this file.
-- Remaining gates for this CSV revenue add/import action: derived Overview financial cards after the add/import, including Profit, ROAS, ROI, and CPA, were not captured in the pasted evidence or UI report.
+- User-reported derived-card observation after the add/import: Profit, ROAS, ROI, and CPA had no displayed value because no spend source was imported for this campaign.
+- Derived-card validation boundary: this is not evidence of a CSV revenue add/import failure, but the spend-dependent derived card behavior is not certified from this revenue-only action. Validate those cards during a separate spend-source add/import action or a controlled campaign state with known revenue and spend.
 
 Required provider-family validation pattern:
 

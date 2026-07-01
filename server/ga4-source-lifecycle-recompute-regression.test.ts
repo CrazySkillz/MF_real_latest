@@ -28,7 +28,11 @@ describe("GA4 source lifecycle recompute route guards", () => {
     );
     expect(revenueHelper).toContain("if (isGA4RevenuePlatformContext(opts.platformContext))");
     expect(revenueHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
+    expect(revenueHelper).toContain("GA4 KPI/Benchmark recompute failed");
     expect(revenueHelper.indexOf("await recomputeGA4KPIAndBenchmarkValues")).toBeLessThan(
+      revenueHelper.indexOf("await checkPerformanceAlerts()"),
+    );
+    expect(revenueHelper.indexOf("GA4 KPI/Benchmark recompute failed")).toBeLessThan(
       revenueHelper.indexOf("await checkPerformanceAlerts()"),
     );
   });

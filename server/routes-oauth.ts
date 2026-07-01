@@ -2823,7 +2823,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.warn(`[Revenue Update] KPI recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
     }
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+      try {
+        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+      } catch (e) {
+        console.warn(`[Revenue Update] GA4 KPI/Benchmark recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+      }
     }
     try {
       await checkPerformanceAlerts();

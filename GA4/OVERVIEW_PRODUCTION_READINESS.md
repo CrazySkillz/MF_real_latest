@@ -336,6 +336,13 @@ CSV revenue add/import after-snapshot captured on `2026-07-01T13:36:15.567Z`:
 - User-reported derived-card observation after the add/import: Profit, ROAS, ROI, and CPA had no displayed value because no spend source was imported for this campaign.
 - Derived-card validation boundary: this is not evidence of a CSV revenue add/import failure, but the spend-dependent derived card behavior is not certified from this revenue-only action. Validate those cards during a separate spend-source add/import action or a controlled campaign state with known revenue and spend.
 
+CSV revenue source identity check captured after add/import:
+
+- Source count remained `2`.
+- Row 1 was source ID `8ba9a131-526c-4e59-a751-c91b92d78b8b`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
+- Row 2 was source ID `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
+- Safety caveat: both CSV revenue sources have the same visible display name and amount, so UI-only row selection is ambiguous unless the source modal order is verified immediately before clicking edit. Do not edit/delete until the intended source row is clearly identified.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

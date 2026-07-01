@@ -322,6 +322,17 @@ Complete authenticated baseline captured on `2026-07-01T13:09:35.415Z`:
 - Spend baseline: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
 - Certification boundary: this closes the Current Commit 2 baseline snapshot for this campaign only. It does not close CSV revenue add/import, edit/update, refresh/reprocess, delete/deactivate, source-modal visual parity, downstream card parity, scheduler/report propagation, or any non-CSV source family lifecycle action.
 
+CSV revenue add/import after-snapshot captured on `2026-07-01T13:36:15.567Z`:
+
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
+- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Revenue after-add snapshot: `totalToDate` `$1,200`, `breakdownTotal` `$1,200`, `sourceCount: 2`, both active CSV revenue sources.
+- Persisted baseline source remained active: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, amount `$600`.
+- New source appeared: `8ba9a131-526c-4e59-a751-c91b92d78b8b`, amount `$600`.
+- Spend remained unchanged: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
+- Endpoint-level source identity/additivity result: pass for CSV revenue add/import on this campaign if the imported test CSV was intentionally expected to contribute `$600`; otherwise amount-mapping correctness remains unproven and the CSV import should be investigated before closing the action.
+- Remaining gates for this CSV revenue add/import action: source-modal visual parity and downstream Overview financial-card parity after the add/import were not captured in the pasted evidence.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

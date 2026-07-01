@@ -230,7 +230,7 @@ This queue is the clean-certification queue for GA4 Overview. The detailed histo
 | Current Commit | Status | Scope | Smallest safe action | Blocks current local Overview certification? |
 | --- | --- | --- | --- | --- |
 | Current Commit 0: Strict clean certification documentation update | Completed in this documentation pass. | Update this file with explicit value inventory, trace, downstream, lifecycle, negative-case, validation, and documentation matrices. | Documentation-only update to `GA4/OVERVIEW_PRODUCTION_READINESS.md`; no runtime code changes. | No. |
-| Current Commit 1: Provider/deployed Overview validation pack | Local evidence-capture harness implemented; deployed/provider evidence remains an outstanding external validation gate, not a confirmed code bug. | Real GA4 provider/deployed validation for Summary, financial cards, Campaign Breakdown, Landing Pages, Conversion Events, and scheduled/server payload values. | Use `scripts/ga4_overview_current_commit_1_validation.ps1` to collect the deployed Overview endpoint packet, capture scheduled/server payload evidence separately through the report validation path, then record exact values, dates, property IDs, and screenshots/logs in this file. | No for local code-scope certification; yes for blanket deployed/provider certification. |
+| Current Commit 1: Provider/deployed Overview validation pack | Deployed Overview endpoint evidence captured for the listed campaign/property; scheduled/server report payload evidence remains external, not a confirmed code bug. | Real GA4 provider/deployed validation for Summary, financial cards, Campaign Breakdown, Landing Pages, Conversion Events, source totals, and scheduled/server payload values. | Endpoint packet passed on `2026-07-01T12:21:31.789Z`; capture scheduled/server payload evidence separately through the report validation path before making a blanket report-output claim. | No for local code-scope certification; endpoint portion no for deployed Overview endpoint certification; report payload remains external for blanket scheduled/server certification. |
 | Current Commit 2: Real source-family lifecycle validation | Outstanding external validation gate, not a confirmed code bug. | Revenue and spend source families that can feed Overview totals and modals. | Add/import, edit/refresh, delete/deactivate, and reconcile source modal plus total-card values for each provider-backed family. | No for local code-scope certification; yes for provider-family lifecycle certification. |
 | Current Commit 3: Production source-damage inventory | Outstanding external validation gate, not a confirmed code bug. | Production/staging inventory for orphan, duplicate, inactive, or platform-context-drifted revenue/spend records outside the already documented synthetic-GA4-revenue cleanup boundary. | Read-only inventory first; document exact affected IDs before proposing any cleanup migration. | No for local code-scope certification; yes for production database-health certification. |
 
@@ -261,11 +261,21 @@ Validation performed for the fix:
 - PowerShell syntax check: `$null = [scriptblock]::Create((Get-Content -Path scripts/ga4_overview_current_commit_1_validation.ps1 -Raw))`
 - Whitespace check: `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md scripts/ga4_overview_current_commit_1_validation.ps1`
 
+Deployed endpoint evidence captured:
+
+- Commit deployed for validation: `dd81b14a Add GA4 Overview deployed validation harness`.
+- First unauthenticated validation attempt against `https://marketforensics.onrender.com` returned `401 Unauthorized` for every endpoint, proving the route boundary failed closed without a logged-in session.
+- Authenticated browser-console validation passed on `2026-07-01T12:21:31.789Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`.
+- `__overall.pass` was `true`; all checked endpoints returned HTTP `200` with no endpoint error: campaign, `ga4-daily`, `ga4-to-date`, `ga4-breakdown`, `ga4-landing-pages`, `ga4-conversion-events`, `ga4-diagnostics`, `revenue-to-date`, `revenue-breakdown`, `revenue-sources`, `spend-to-date`, `spend-breakdown`, and `spend-sources`.
+- Returned deployed endpoint facts included: daily row count `10`; to-date totals `666` sessions, `664` users, `84` conversions, `$14,069.58` GA4 revenue; breakdown totals `138` sessions, `138` users, `138` conversions, `$23,616.16` GA4 revenue; landing pages row count `6`; conversion events row count `1`; imported revenue `$600`; spend breakdown total `$0`.
+- Diagnostics returned `warningsCount: 1`. This does not prove a code failure, but it remains a provider/configuration data-quality caveat because the deployed breakdown had conversions equal to users.
+
 What remains unproven externally:
 
-- The script has not been run against a deployed authenticated campaign in this local pass.
-- Real provider values, deployed scheduler execution, screenshots/logs, and report/server payload evidence still need to be captured and reviewed before making any blanket deployed/provider certification claim.
-- If the deployed validation packet shows a value mismatch, lower only the affected Overview path to unproven and add the exact runtime fix as the next Current Commit.
+- Visible UI screenshot parity was not separately recorded in this file; the authenticated evidence came from the browser console using the deployed app session.
+- Scheduled/server report payload evidence still needs to be captured through the report validation path before making any blanket scheduled/server report-output claim.
+- Deployed scheduler timer execution remains separate from endpoint availability; the validation did not use `-IncludeSchedulerRun`.
+- If later deployed validation shows a value mismatch, lower only the affected Overview path to unproven and add the exact runtime fix as the next Current Commit.
 
 ## Root Cause Of Prior Confusion
 

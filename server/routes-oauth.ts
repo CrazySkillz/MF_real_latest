@@ -7661,6 +7661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const currentValueStartDate = campaignStartDate;
       const currentValueEndDate = endDate;
+      const simulateRefreshFailure = ["1", "true", "yes"].includes(String((req.query as any)?.simulateRefreshFailure || "").trim().toLowerCase());
 
       const requestedPropertyId = String(req.query.propertyId || "").trim();
       const connectionCandidates = requestedPropertyId
@@ -7738,7 +7739,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const fetchProviderTotals = async (token: string, fromDate = startDate, toDate = endDate) =>
         ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter);
-      if (isYesopMockProperty(propertyId)) {
+      if (simulateRefreshFailure) {
+        providerStatus = "live_provider_refresh_failed";
+        providerError = "Simulated GA4 token refresh failure for validation; no token refresh was attempted and no token metadata was changed.";
+      } else if (isYesopMockProperty(propertyId)) {
         providerStatus = "simulated_property_not_live_provider";
       } else if (selectedConnection?.method === "access_token" && selectedConnection?.accessToken) {
         try {
@@ -7884,7 +7888,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Refreshes and persists GA4 OAuth token metadata only after a provider auth failure; it does not mutate Benchmark, source, alert, notification, report, or history rows.",
           "Does not call GA4 acquisition breakdown because that helper can refresh and persist tokens; capture /ga4-breakdown evidence separately if the visible UI is using breakdown fallback.",
           "A successful response is evidence to review, not production-readiness certification by itself.",
+          ...(simulateRefreshFailure ? ["simulateRefreshFailure=1 is validation-only; no token refresh was attempted and no token metadata was changed."] : []),
         ],
+        simulation: { refreshFailure: simulateRefreshFailure },
         campaignId,
         propertyId,
         campaignFilter: campaignFilter || null,

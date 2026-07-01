@@ -36,7 +36,17 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).toContain("ga4Service.refreshAccessToken(");
     expect(route).toContain("await storage.updateGA4ConnectionTokens(selectedConnection.id");
     expect(route).toContain("live_provider_success_after_refresh");
+    expect(route).toContain("const simulateRefreshFailure = [\"1\", \"true\", \"yes\"].includes");
+    expect(route).toContain("if (simulateRefreshFailure) {");
+    expect(route).toContain('providerStatus = "live_provider_refresh_failed";');
+    expect(route).toContain("no token refresh was attempted and no token metadata was changed");
+    expect(route).toContain("simulation: { refreshFailure: simulateRefreshFailure }");
     expect(route).toContain("Refreshes and persists GA4 OAuth token metadata only after a provider auth failure");
+
+    const simulationBranch = route.slice(route.indexOf("if (simulateRefreshFailure) {"), route.indexOf("} else if (isYesopMockProperty(propertyId))"));
+    expect(simulationBranch).toContain('providerStatus = "live_provider_refresh_failed";');
+    expect(simulationBranch).not.toContain("ga4Service.refreshAccessToken");
+    expect(simulationBranch).not.toContain("updateGA4ConnectionTokens");
 
     expect(route).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
     expect(route).not.toContain("updateBenchmark");
@@ -52,6 +62,7 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(doc).toContain("Deployed Commit 2 validation failed with `provider.status = live_provider_error`");
     expect(doc).toContain("`401 UNAUTHENTICATED`");
     expect(doc).toContain("Commit 3 deployed validation passed with `provider.status = live_provider_success`");
+    expect(doc).toContain("simulateRefreshFailure=1");
     expect(doc).toContain("The apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data");
     expect(doc).toContain("Stored Benchmark Revenue `12376.38` matched `schedulerCandidateCurrentValue` `12376.38`");
     expect(doc).toContain("`storedVsSchedulerDelta = 0`");

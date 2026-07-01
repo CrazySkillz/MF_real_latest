@@ -42,8 +42,9 @@ Certification result:
 - current Commit 4 Follow-Up scheduler-log search: Render log search returned no matching `[GA4 Daily] Pipeline starting`, `[GA4 Daily] Refresh done`, or `[GA4 Daily] Pipeline done` lines, so deployed daily scheduler timer proof remains unproven
 - current Commit 4 Follow-Up deployed observability evidence: `/health/scheduler` on July 1, 2026 at `2026-07-01T08:46:39.004Z` showed the report scheduler running with cron `* * * * *`, `totalChecks = 748`, `lastCheckTime = 2026-07-01T08:46:00.007Z`, `lastScheduledReportsFound = 14`, `lastDueReportsFound = 12`, and no scheduler error; the same response showed GA4 daily scheduler `started = true`, `timerScheduled = true`, `runOnStartup = false`, `nextRunAt = 2026-07-01T12:15:00.000Z`, `nextDataThroughDate = 2026-06-30`, and `totalRuns = 0`, proving the daily timer was scheduled but not yet proving the daily pipeline executed
 - current Commit 5 deployed validation: read-only Benchmark alert email delivery validation support is implemented, pushed, deployed, and user-confirmed as passed, including inbox receipt; exact endpoint JSON, provider response ID, delivered timestamp, recipient, and subject were not pasted into this chat, so this file records user-confirmed external validation rather than locally inspected raw evidence
-- outstanding production-readiness queue: deployed GA4 daily scheduler execution after the scheduled `2026-07-01T12:15:00.000Z` run plus Current Commits 6-7 below must be completed before full unqualified production readiness can be claimed
-- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed GA4 daily scheduler pipeline execution after the scheduled run, browser/deployed UI validation after this update, and mock industry target-source suitability
+- current Commit 6 local browser-path hardening: GA4 Benchmark edit/delete icon buttons now have stable accessible labels/titles; `server/ga4-benchmark-regression.test.ts` locally pins the route, tab, scoped API calls, lifecycle notification invalidation, blocked/insufficient states, unit rendering, and browser-PDF Benchmark path; `npm test -- server/ga4-benchmark-regression.test.ts` passed 10 tests on July 1, 2026
+- outstanding production-readiness queue: deployed GA4 daily scheduler execution after the scheduled `2026-07-01T12:15:00.000Z` run, deployed browser UI evidence for Current Commit 6, and Current Commit 7 below must be completed before full unqualified production readiness can be claimed
+- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed GA4 daily scheduler pipeline execution after the scheduled run, deployed browser UI validation after Current Commit 6 local hardening, and mock industry target-source suitability
 
 The current safe answer is:
 
@@ -341,7 +342,7 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | Coverage area | Test / validation source | What it proves for Benchmarks | Remaining gap |
 | --- | --- | --- | --- |
 | Metric-aware Benchmark math | `server/benchmark-math.test.ts` | progress/status direction, lower-is-better cost metrics, zero/invalid target handling, blocked/insufficient exclusions | Does not prove GA4 provider data accuracy |
-| GA4 Benchmark visible/current-value behavior | `server/ga4-benchmark-regression.test.ts` and GA4 tab route/UI trace | GA4 platform Benchmark current values, list/create/edit/delete behavior, blocked/insufficient states | Browser visual check not rerun for this doc-only update |
+| GA4 Benchmark visible/current-value behavior | `server/ga4-benchmark-regression.test.ts` and GA4 tab route/UI trace | GA4 platform Benchmark current values, list/create/edit/delete behavior, blocked/insufficient states, accessible edit/delete controls, and browser-PDF source path are locally pinned | Deployed browser visual check remains external |
 | ROAS ratio semantics | `server/ga4-kpi-benchmark-roas-regression.test.ts` | ROAS uses ratio `x` semantics for GA4 KPI/Benchmark shared financial path | Does not prove future source ROAS paths |
 | Benchmark summary/tracker | `server/ga4-kpi-benchmark-summary-regression.test.ts` | tracker counts and averages exclude blocked/insufficient rows | Does not prove future UI redesigns |
 | Alert lifecycle | `server/benchmark-alert-lifecycle-regression.test.ts` | one active alert, stale resolution, deletion/disable behavior, dismissed still-breached recreation | Provider email delivery remains external |
@@ -356,7 +357,7 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts`, `server/ga4-kpi-financial-window-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered; scheduler updates Benchmark current values and does not insert duplicate same-date Benchmark history when older report dates are reprocessed | Deployed scheduler runtime external |
 | Source lifecycle recompute | `server/ga4-source-lifecycle-recompute-regression.test.ts` | revenue/spend source changes recompute GA4 Benchmark current values before covered alert checks | Live source-provider correctness external |
 | Existing damaged-data cleanup | dry-run/apply/post-apply cleanup evidence recorded in this file | known persisted ROAS percent-style rows corrected only inside proven boundary; 0 remaining candidates after apply | Skipped rows remain intentionally unmodified because exact boundary was unproven |
-| Deployed/UI validation | Commits 1-6 recorded as committed, pushed, deployed, and UI-validated | current visible GA4 Benchmark ROAS/property-scope fixes were observed in deployed UI | Not rerun after this doc-only rewrite; no runtime behavior changed |
+| Deployed/UI validation | Current Commit 6 local guard plus prior deployed observations recorded in this file | local browser-facing source path is pinned; prior visible ROAS/property-scope fixes were observed in deployed UI | Current deployed GA4 Benchmarks tab browser pass after this change is not yet recorded |
 
 Coverage rule:
 
@@ -653,32 +654,34 @@ Complete for the controlled Current Commit 5 validation. The local code exposes 
 
 Root cause:
 
-The current local audit traces frontend code and tests helper behavior, but it does not prove the deployed browser surface renders and behaves correctly for a real user after this document update and current deployed state. Clean production readiness for a user-facing section needs browser/deployed UI evidence for the visible workflows.
+The blocker was an evidence and browser-operability gap, not a proven Benchmark calculation defect. Local code trace covered the helper/value logic, but there was no current authenticated deployed browser pass for the GA4 Benchmarks tab. RCA also found the GA4 Benchmark edit/delete icon buttons lacked stable accessible labels/titles, unlike the GA4 KPI icon buttons, so browser validation and assistive technology had to identify them by position/icon instead of a control name. The traced path did not show a need to change calculations, source scoping, alert logic, notification logic, scheduler behavior, email behavior, or API response contracts.
 
 Files expected:
 
-- no production runtime file is expected unless validation exposes a UI bug
-- optional manual test artifact if the project keeps one, such as `GA4-MANUAL-TEST-PLAN.md`
-- this file, to record exact browser/deployed evidence
+- `client/src/pages/ga4-metrics.tsx`
+- `server/ga4-benchmark-regression.test.ts`
+- this file, to record exact local and deployed/browser evidence
+- no manual-test artifact unless deployed/manual browser evidence is recorded there
 
 Required behavior:
 
 - The GA4 Benchmarks tab must render without blocking errors for a campaign with connected GA4.
 - List, create, edit, delete, blocked state, insufficient state, current-value display, tracker counts, alert settings, notification deep link, and browser PDF Benchmark output must behave as documented.
 - ROAS must display as an `x` ratio, ROI as percent, CPA as currency, and financial/revenue/spend dependency gates must match the documented source state.
+- The Benchmark edit/delete icon buttons must have stable accessible names so browser validation can target the intended controls without relying on visual position.
 - The UI must not show misleading connected/production-ready states when sources are missing, delayed, or unavailable.
 
 Validation:
 
-- Run a deployed browser validation or Playwright/manual browser pass against the current GA4 Benchmarks tab.
-- Validate at least one source-backed Benchmark for ROAS/ROI/CPA and one non-financial Benchmark.
-- Validate a blocked or insufficient-data case.
-- Validate delete hides linked notifications without affecting unrelated rows.
-- Record exact campaign/property/date/test account used or state why production-data-safe validation used mock/demo data.
+- Local validation run on July 1, 2026: `npm test -- server/ga4-benchmark-regression.test.ts` passed 1 test file and 10 tests.
+- The new local guard pins the current GA4 route, `benchmarks` tab, campaign-scoped Benchmark read route, create/update/delete mutations, notification invalidation after lifecycle changes, blocked/insufficient UI states, ROAS/ROI/CPA unit rendering, accessible edit/delete controls, and browser-PDF Benchmark source path.
+- Deployed browser validation is still required before full user-facing production readiness: open the authenticated deployed GA4 Benchmarks tab for the test campaign, confirm the tab loads, verify one source-backed Benchmark value/unit, open edit and delete controls, verify blocked/insufficient messaging where available, and generate a Benchmark PDF or Benchmark-section custom PDF.
+- If deletion is not production-data-safe, use a test Benchmark or demo campaign and record that boundary instead of deleting a real production Benchmark.
+- Record exact campaign/property/date/test account used, or state why production-data-safe validation used mock/demo data.
 
 Implementation status:
 
-Not implemented. Blocking for full unqualified user-facing production readiness. Not required for the narrower local current-code certification.
+Partially complete. Local browser-path hardening is implemented: the existing GA4 Benchmark edit/delete icon buttons now expose `title` and `aria-label` attributes, and focused regression coverage pins the current browser-facing Benchmark path without changing calculations, API contracts, scheduler behavior, alerts, notifications, emails, or source scoping. This closes the local code-hardening part of Current Commit 6. It does not close deployed browser evidence. Full unqualified user-facing production readiness remains blocked until an authenticated deployed browser pass is recorded.
 
 ### Current Commit 7 - Decide And Certify The GA4 Industry Benchmark Target Source
 

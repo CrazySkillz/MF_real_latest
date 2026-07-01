@@ -214,4 +214,68 @@ describe("GA4 Benchmark regression guard", () => {
     expect(sharedRoute).toContain("hasRevenueTracking,");
     expect(sharedRoute).toContain("benchmarks: evaluated,");
   });
+
+  it("keeps the current GA4 Benchmarks browser tab path locally pinned", () => {
+    const appFile = readFileSync(
+      join(process.cwd(), "client", "src", "App.tsx"),
+      "utf-8"
+    );
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    const tabStart = ga4MetricsFile.indexOf('<TabsContent value="benchmarks" id="ga4-benchmarks-section"');
+    const tabEnd = ga4MetricsFile.indexOf('<TabsContent value="reports"', tabStart);
+    const tabSection = ga4MetricsFile.slice(tabStart, tabEnd);
+    const mutationsStart = ga4MetricsFile.indexOf("// Benchmark mutations");
+    const mutationsEnd = ga4MetricsFile.indexOf("// Benchmark handlers", mutationsStart);
+    const mutationsSection = ga4MetricsFile.slice(mutationsStart, mutationsEnd);
+    const cardStart = ga4MetricsFile.indexOf("{benchmarks.map((benchmark) => {");
+    const cardEnd = ga4MetricsFile.indexOf("No Benchmarks Yet", cardStart);
+    const cardSection = ga4MetricsFile.slice(cardStart, cardEnd);
+    const reportStart = ga4MetricsFile.indexOf('sectionTitle("Performance Benchmarks"');
+    const reportEnd = ga4MetricsFile.indexOf("renderAdsSection();", reportStart);
+    const reportSection = ga4MetricsFile.slice(reportStart, reportEnd);
+
+    expect(appFile).toContain('<Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />');
+    expect(ga4MetricsFile).toContain('const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights", "reports"] as const;');
+    expect(tabStart).toBeGreaterThan(-1);
+    expect(tabEnd).toBeGreaterThan(tabStart);
+    expect(mutationsStart).toBeGreaterThan(-1);
+    expect(mutationsEnd).toBeGreaterThan(mutationsStart);
+    expect(cardStart).toBeGreaterThan(-1);
+    expect(cardEnd).toBeGreaterThan(cardStart);
+    expect(reportStart).toBeGreaterThan(-1);
+    expect(reportEnd).toBeGreaterThan(reportStart);
+
+    expect(ga4MetricsFile).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId || ""))}`);');
+    expect(mutationsSection).toContain('fetch("/api/benchmarks"');
+    expect(mutationsSection).toContain('fetch(`/api/benchmarks/${benchmarkId}`');
+    expect(mutationsSection).toContain('fetch(`/api/platforms/google_analytics/benchmarks/${benchmarkId}`');
+    expect(mutationsSection).toContain('platformType: "google_analytics"');
+    expect((mutationsSection.match(/await refreshNotificationQueries\(\);/g) || []).length).toBe(3);
+
+    expect(tabSection).toContain("Some Benchmarks are Blocked");
+    expect(tabSection).toContain("Some Benchmarks Need More Data");
+    expect(cardSection).toContain('title="Edit Benchmark"');
+    expect(cardSection).toContain('aria-label="Edit Benchmark"');
+    expect(cardSection).toContain('title="Delete Benchmark"');
+    expect(cardSection).toContain('aria-label="Delete Benchmark"');
+    expect(cardSection).toContain("isUnavailable ?");
+    expect(cardSection).toContain("formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)");
+
+    expect(ga4MetricsFile).toContain('case "ratio":');
+    expect(ga4MetricsFile).toContain('return `${numValue.toFixed(2)}x`;');
+    expect(ga4MetricsFile).toContain("return formatPct(numValue);");
+    expect(ga4MetricsFile).toContain("return formatMoney(numValue);");
+
+    expect(ga4MetricsFile).toContain('const selectedCustomBenchmarkIds = reportType === "custom"');
+    expect(reportSection).toContain("const items = (Array.isArray(benchmarks) ? benchmarks : []).filter");
+    expect(reportSection).toContain("selectedCustomBenchmarkIds.has(String(b.id))");
+    expect(reportSection).toContain("formatBenchmarkValue(currentLive");
+    expect(reportSection).toContain("formatBenchmarkValue((b as any)?.benchmarkValue");
+    expect(reportSection).toContain("Blocked");
+    expect(reportSection).toContain("Insufficient data -");
+  });
 });

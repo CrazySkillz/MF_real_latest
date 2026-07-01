@@ -343,6 +343,13 @@ CSV revenue source identity check captured after add/import:
 - Row 2 was source ID `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
 - Safety caveat: both CSV revenue sources have the same visible display name and amount, so UI-only row selection is ambiguous unless the source modal order is verified immediately before clicking edit. Do not edit/delete until the intended source row is clearly identified.
 
+CSV revenue edit/update partial source-list evidence captured:
+
+- Source count remained `2` after editing the intended disposable CSV source.
+- Edited source ID persisted: `8ba9a131-526c-4e59-a751-c91b92d78b8b`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$1,200`.
+- Original source remained active and unchanged in the source list: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
+- Certification boundary: this is partial source-list evidence only. It does not include endpoint status, revenue total, revenue breakdown total, spend unchanged status, source-modal UI parity, or the expected edited CSV amount. If `$1,200` was not the intended edited amount, CSV edit/update amount correctness is unproven and must be investigated before closing this lifecycle action.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

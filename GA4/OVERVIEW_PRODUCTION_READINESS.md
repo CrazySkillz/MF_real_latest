@@ -440,6 +440,18 @@ CSV spend delete/deactivate endpoint after-snapshot captured on `2026-07-01T15:2
 - UI validation passed on `2026-07-01`: user confirmed the Overview UI was correct after delete, including removed CSV spend source visibility, spend dropping to `$0`/unavailable, revenue staying correct, and spend-dependent derived cards returning to blank/unavailable because spend is gone.
 - Certification boundary: CSV spend delete/deactivate is closed only for this deployed campaign/source path after endpoint evidence plus user UI validation. This does not certify other source families, other campaigns/properties, provider-backed refresh/delete behavior, scheduler timer execution, or report/email propagation.
 
+Google Sheets revenue add/import endpoint after-snapshot captured on `2026-07-01T15:52:25.333Z`:
+
+- RCA: this was a validation-expectation error, not a confirmed Google Sheets revenue import bug. The browser check was configured with `expectedAddedRevenue: 700`, but the user confirmed `$30,300` was the correct imported amount for the selected Google Sheets tab/column. The server path sums every positive value in the selected revenue column for the fetched tab range, optionally filtered by campaign mapping; that behavior matches the traced add/import route.
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, stage `after-google-sheets-revenue-add`.
+- Baseline before add: imported revenue `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`, existing CSV revenue source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, no Google Sheets revenue source IDs, spend `$0`, GA4 to-date revenue `$14,069.58`, GA4 breakdown revenue `$23,616.16`.
+- After add: imported revenue `revenueToDate` `$30,900`, `revenueBreakdownTotal` `$30,900`, `revenueSourceCount: 2`, one added source ID `dd5dc470-814d-42b9-af19-4b53ac7d08f8`, added source type `google_sheets`, added amount `$30,300`.
+- Non-target values stayed stable: spend stayed `$0` with `spendSourceCount: 0`; GA4 to-date revenue stayed `$14,069.58`; GA4 breakdown revenue stayed `$23,616.16`.
+- Endpoint-level checks that passed independent of the original wrong expected amount: baseline found, endpoints pass, exactly one revenue source added, added source is Google Sheets, spend unchanged, and GA4 revenue unchanged.
+- Amount correction: with the user-confirmed expected amount of `$30,300`, the added source amount and imported revenue delta reconcile: `$600` baseline imported revenue + `$30,300` Google Sheets revenue = `$30,900` after-add imported revenue.
+- Endpoint-level add/import result: pass for Google Sheets revenue source creation, additive imported revenue, total/breakdown reconciliation, spend non-interference, GA4 native revenue non-interference, and endpoint availability on this campaign/source path.
+- Remaining gate for this Google Sheets revenue add/import action: visible Overview UI confirmation after add/import was not included in the pasted endpoint packet, so final UI parity remains pending until the user confirms Total Revenue and Revenue Sources modal/list display the `$30,300` Google Sheets source and preserve the existing CSV revenue source.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.
@@ -459,7 +471,7 @@ Full Current Commit 2 source-family lifecycle plan:
 
 | Source family | Overview paths affected | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Current status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Google Sheets revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required | Required if refresh/sync is exposed | Required | Unproven until deployed before/after evidence is recorded. |
+| Google Sheets revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Endpoint-proven for deployed campaign/source add/import of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after corrected expected amount `$30,300`; visible UI parity pending | Required | Required if refresh/sync is exposed | Required | Partially proven only for Google Sheets revenue add/import endpoint/source creation on this campaign/source. UI parity, edit/update, refresh/reprocess, and delete/deactivate remain open. |
 | CSV revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for validated deployed campaign/source add/import after endpoint plus UI evidence (`$600`) | Closed for validated deployed campaign/source edit/update after endpoint plus UI evidence (`$1,200` edited source, `$1,800` imported total) | Not applicable as a separate CSV revenue action after UI/API trace; manual edit/re-upload is the reprocess path already covered by edit/update evidence | Closed for validated deployed campaign/source delete/deactivate after endpoint plus UI evidence (`$1,200` removed, `$600` source preserved) | Closed only for the validated CSV revenue campaign/source lifecycle: add/import, edit/update, no separate refresh/reprocess, and delete/deactivate. Does not certify other campaigns/properties or other source families. |
 | Manual/legacy revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required if manual add is exposed | Required | Prove not applicable or validate if a refresh/reprocess route exists | Required | Unproven until deployed before/after evidence is recorded. |
 | Shopify revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required if mapping/config edit is exposed | Required | Required | Unproven until deployed before/after evidence is recorded. |
@@ -474,7 +486,7 @@ Full Current Commit 2 source-family lifecycle plan:
 
 Execution order for the next validation step:
 
-1. Next source family/action: Google Sheets revenue add/import on the deployed campaign, using a disposable controlled sheet/tab and one known expected revenue amount. This is the next safest provider-backed path because CSV revenue/spend are now closed only for the validated campaign/source paths, while Google Sheets remains unproven and is a real refreshable provider family.
+1. Next source family/action: finish Google Sheets revenue add/import by capturing visible Overview UI parity for the added source `dd5dc470-814d-42b9-af19-4b53ac7d08f8` and confirmed amount `$30,300`. Do not proceed to Google Sheets edit/update, refresh/reprocess, or delete/deactivate until the UI parity gate is recorded.
 2. Capture an authenticated Current Commit 2 baseline snapshot for the deployed campaign before touching source data.
 3. Add exactly one Google Sheets revenue source through the GA4 Overview Revenue flow. Do not edit, refresh, or delete in the same evidence packet.
 4. Run the after snapshot and confirm only the intended Google Sheets revenue source appears, imported revenue increases by the expected amount, CSV revenue remains unchanged, spend remains unchanged, GA4 native totals remain available, and source-modal provenance reconciles to Total Revenue.

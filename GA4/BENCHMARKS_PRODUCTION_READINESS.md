@@ -16,14 +16,14 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-As of July 1, 2026, after a strict current-code re-trace and focused Benchmark validation run, GA4 Benchmarks are **locally code-certified for the current GA4 Benchmarks tab path only**.
+As of July 1, 2026, after a strict current-code re-trace, focused Benchmark validation, and controlled deployed provider/UI/email/scheduler/token-failure evidence, GA4 Benchmarks are **clean-certified for the current GA4 Benchmarks section under the documented scope in this file**.
 
-Full, unqualified GA4 Benchmark production readiness is **not clean-certified yet**. The remaining production-readiness blockers are now tracked as Current Commits in this file. Do not answer simply `GA4 Benchmarks are production-ready` without the local-code-scope qualifier until the Current Commit queue is completed and the evidence is recorded.
+No Current Commit blockers remain open for the current GA4 Benchmarks certification scope. Do not extend this claim to future code changes, future GA4 properties/windows, future alert emails, a real unsimulated Google token revocation event, daily timer-fired evidence, or future platforms without fresh evidence.
 
 Status split:
 
-- local current-code GA4 Benchmark tab certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by this document and the focused Benchmark tests
-- full unqualified production readiness: not certified yet because the final current live-provider/current-value-window validation after the manual scheduler run remains to be recorded under Current Commit 2
+- current GA4 Benchmark section certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by this document, the focused Benchmark tests, and the controlled deployed validations recorded here
+- open Current Commit blockers: none for the current GA4 Benchmarks certification scope
 - future platform readiness: unproven; GA4 Benchmark evidence is only a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
 
 Certification result:
@@ -34,7 +34,7 @@ Certification result:
 - current strict revalidation evidence: the June 30, 2026 focused Benchmark validation run passed 18 test files and 139 tests, including the Commit 3 provider-validation token-refresh guard, after re-tracing the current UI/API/storage/scheduler/alert/notification/report paths
 - current documentation update: Current Commit 0 rewrites this file into the strict KPI-style certification structure without changing runtime behavior
 - current validation-support update: Current Commit 2 adds a GA4 Benchmark provider validation endpoint and regression coverage; deployed validation found a live provider auth blocker and an apparent stored-current mismatch that required stricter window tracing
-- current deployed Commit 2 evidence: Render validation on June 30, 2026 for campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, property 542352127, and requested provider window 2026-06-19 through 2026-06-29 returned provider.status = live_provider_error with 401 UNAUTHENTICATED; the same response showed stored Benchmark Revenue 12376.38 versus requested-window candidate 21922.96
+- current deployed Commit 2 evidence: Render validation on June 30, 2026 for campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, property 542352127, and requested provider window 2026-06-19 through 2026-06-29 first returned provider.status = live_provider_error with 401 UNAUTHENTICATED; after Commit 3 and Commit 4 fixes, final Current Commit 2 validation on July 1, 2026 for requested provider window 2026-06-19 through 2026-06-30 and current-value window 2026-06-24 through 2026-06-30 returned `provider.status = live_provider_success`, `currentValueProvider.status = live_provider_success`, non-null provider totals, and exact stored-vs-scheduler deltas of `0` for both controlled Benchmark rows
 - current Commit 3 deployed validation: Commit 3 deployed validation passed with `provider.status = live_provider_success` and non-null provider totals for the same campaign/property/filter/requested window; the validation-only `simulateRefreshFailure=1` branch also passed on July 1, 2026 with `success = true`, `simulation.refreshFailure = true`, `provider.status = live_provider_refresh_failed`, `provider.totals = null`, and an explicit no-token-metadata-changed error
 - current Commit 4 deployed validation: validation-window alignment is implemented, pushed, deployed, and revalidated; `sourceWindows.currentValue` is `2026-06-24` through `2026-06-29`, `currentValueProvider.totals` is non-null, stored Benchmark Revenue `12376.38` equals `schedulerCandidateCurrentValue` `12376.38`, and `storedVsSchedulerDelta = 0`; the `storedVsUiDelta = 0.01` is a one-cent provider-versus-persisted rounding difference, not proven Benchmark damage
 - current Commit 4 Follow-Up local fix: scheduler/report-preflight guards now track updated Benchmark row IDs, fail closed for Benchmark-section reports whose selected rows were not recomputed, and prevent duplicate Benchmark history rows for the same Benchmark/date even when an older report date is reprocessed after newer history exists
@@ -45,12 +45,12 @@ Certification result:
 - current Commit 5 deployed validation: read-only Benchmark alert email delivery validation support is implemented, pushed, deployed, and user-confirmed as passed, including inbox receipt; exact endpoint JSON, provider response ID, delivered timestamp, recipient, and subject were not pasted into this chat, so this file records user-confirmed external validation rather than locally inspected raw evidence
 - current Commit 6 validation: GA4 Benchmark edit/delete icon buttons now have stable accessible labels/titles; `server/ga4-benchmark-regression.test.ts` locally pins the route, tab, scoped API calls, lifecycle notification invalidation, blocked/insufficient states, unit rendering, and browser-PDF Benchmark path; `npm test -- server/ga4-benchmark-regression.test.ts` passed 10 tests on July 1, 2026; deployed Render UI validation was user-confirmed passed on July 1, 2026 for the GA4 Benchmarks tab at campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`
 - current Commit 7 decision: GA4 industry Benchmark values are classified as non-production helper/reference data, not certified target evidence; the industry routes now return `targetSourceCertified: false`, the GA4 modal refuses to auto-fill Benchmark targets unless a future response explicitly returns `targetSourceCertified: true`, and GA4 Benchmark copy now refers to custom targets instead of industry-standard targets; `npm test -- server/ga4-benchmark-regression.test.ts` passed 11 tests on July 1, 2026
-- outstanding production-readiness queue: the final current live-provider/current-value-window validation after the manual scheduler run remains scoped to Current Commit 2
-- not fully proven: the daily timer firing by itself remains unproven and must not be claimed; the deployed manual scheduler-validation trigger did pass for the controlled campaign and proves the same campaign-scoped pipeline can run on demand
+- outstanding production-readiness queue: none for the current GA4 Benchmarks certification scope
+- not proven and not claimed: daily timer firing by itself, future GA4 provider availability outside the recorded windows, future GA4 processing delays, future alert email delivery, a real unsimulated Google token revocation event, future source mixes, and future platform Benchmark readiness
 
 The current safe answer is:
 
-`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path, with controlled deployed UI/email/provider/manual-scheduler/token-failure validation recorded where stated. Full unqualified production readiness is not clean-certified yet until the final current live-provider/current-value-window validation after the manual scheduler run is recorded under Current Commit 2.`
+`GA4 Benchmarks are clean-certified for the current GA4 Benchmarks section under the documented scope, with controlled deployed UI/email/provider/manual-scheduler/token-failure validation recorded. Do not extend this to future code, future GA4 properties/windows, future sends, real unsimulated token revocation, daily timer-fired evidence, or future platforms without fresh evidence.`
 
 This status should change only after:
 
@@ -61,19 +61,19 @@ This status should change only after:
 
 Certification rule:
 
-- completed fixes make GA4 Benchmarks eligible for local code-scope certification; they are not full production certification by themselves
-- the local-code answer can remain `locally code-certified for the current GA4 Benchmarks tab path` only while the complete value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, cleanup boundary, and test coverage remain covered by current evidence
-- the full production-readiness answer must remain `not clean-certified yet` until all blocking Current Commits are completed or explicitly proven non-applicable with evidence
+- completed fixes and controlled deployed evidence make GA4 Benchmarks clean-certified for the documented current GA4 Benchmarks scope
+- the clean-certified answer can remain valid only while the complete value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, cleanup boundary, and test/deployed evidence remain covered by current evidence
+- if any later bug, code change, provider change, source change, or new value path appears, lower the affected path to unproven and add a new Current Commit before repeating the clean-certified answer for that changed path
 
 ## Durable Future-Chat Answer
 
 In a new chat session or on a later date, absent later GA4 Benchmark code changes, provider/config changes, failed validation, contradictory deployed evidence, newly reported bugs, or changed requirements, answer with this split:
 
-`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path. Full unqualified production readiness is not clean-certified yet until the Current Commit queue in GA4/BENCHMARKS_PRODUCTION_READINESS.md is completed and recorded.`
+`GA4 Benchmarks are clean-certified for the current GA4 Benchmarks section under the documented scope in GA4/BENCHMARKS_PRODUCTION_READINESS.md. The Current Commit queue is complete. Future code changes, future GA4 properties/windows, future sends, real unsimulated token revocation, daily timer-fired claims, and future platforms require fresh evidence.`
 
-Do not reopen closed local-code GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified local Benchmark scope.
+Do not reopen closed current-scope GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified Benchmark scope.
 
-Do not claim full production readiness, deployed scheduler safety, deployed token-refresh failure safety, broad live provider accuracy, future browser/UI changes, or future-platform readiness until the relevant Current Commit evidence exists. Benchmark alert email provider/inbox validation is user-confirmed complete for the controlled Commit 5 send only, and Benchmark browser/deployed UI validation is user-confirmed complete for the controlled Current Commit 6 pass only; future sends and future UI changes require their own evidence before those claims are repeated.
+Do not claim daily timer-fired evidence, future Benchmark alert email delivery, future browser/UI changes, broad future GA4 provider availability, real unsimulated Google token revocation behavior, or future-platform readiness without fresh evidence. Benchmark alert email provider/inbox validation is user-confirmed complete for the controlled Commit 5 send only, and Benchmark browser/deployed UI validation is user-confirmed complete for the controlled Current Commit 6 pass only; future sends and future UI changes require their own evidence before those claims are repeated.
 
 This certification method is reusable as the Benchmark refinement and validation template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source. It is never proof that those sources are production-ready.
 ## How To Use This File In A New Chat
@@ -92,7 +92,7 @@ Read in this order:
 10. `Not Locally Verifiable / External Caveats`
 11. `Future Platform Template`
 
-Answer that GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path, while full unqualified production readiness remains blocked by the Current Commit queue. Do not cite GA4 KPI readiness, Overview readiness, Ad Comparison readiness, Insights readiness, or Reports readiness as Benchmark proof. Reopen those sections only when a Benchmark path directly depends on them, and then trace only that narrow dependency.
+Answer that GA4 Benchmarks are clean-certified for the current GA4 Benchmarks section under the documented scope, with the Current Commit queue complete. Do not cite GA4 KPI readiness, Overview readiness, Ad Comparison readiness, Insights readiness, or Reports readiness as Benchmark proof. Reopen those sections only when a Benchmark path directly depends on them, and then trace only that narrow dependency.
 
 ## Future Source Reading Order
 
@@ -122,7 +122,7 @@ For a future source, prove source identity, account/property/customer scoping, s
 
 ## Current Scope
 
-This local current-code certification applies to the current GA4 `Benchmarks` tab for:
+This clean certification applies to the current GA4 `Benchmarks` tab for:
 
 - platform-scoped GA4 Benchmark list display
 - visible GA4 Benchmark create, edit, and delete paths
@@ -137,7 +137,7 @@ This local current-code certification applies to the current GA4 `Benchmarks` ta
 - narrow GA4 Insights consumers that directly read GA4 Benchmark status/history
 - bounded existing persisted ROAS cleanup previously applied and verified
 
-This local current-code certification does not certify:
+This clean certification does not certify:
 
 - Meta Benchmarks
 - Google Ads Benchmarks
@@ -201,7 +201,7 @@ Do not change Benchmark calculations, alert semantics, source ownership, schedul
 | Benchmark grid row count and tracker `Total Benchmarks` | GA4 Benchmark list query -> platform Benchmark rows | Count of GA4 Benchmark rows in current campaign/platform scope | Campaign + `google_analytics`; current saved rows | Benchmark tab UI, executive snapshot tracker | Route access, storage scope, and frontend query key traced; June 29 Benchmark tests passed |
 | `On Track`, `Needs Attention`, `Behind`, `Avg. Progress` | Benchmark rows -> shared Benchmark math/status policy | Metric-aware progress, tolerance, lower-is-better direction, blocked/insufficient exclusions | Campaign + visible Benchmark rows | Tracker, Benchmark cards, browser PDF, Insights summaries | Shared math and GA4 Benchmark regression tests passed |
 | Users, Sessions, Pageviews, Conversions | GA4 selected daily/to-date/breakdown values -> visible UI and persisted recompute job | Count totals, rounded as counts | Selected campaign, selected/primary GA4 property, GA4 campaign filter, completed GA4 reporting date where persisted | Benchmark cards, tracker, history, alerts, notifications, reports | Proven for current code scope by GA4 Benchmark regressions; live provider outages/token-refresh are external caveats |
-| Revenue | selected scoped GA4 native financial revenue + active GA4-context imported revenue | `ga4Revenue + importedRevenue`; Pipeline Proxy excluded | GA4 native source stays selected GA4 financial source; imported source-backed window is active source records through current UTC day | Benchmark cards, ROAS, ROI, tracker, alerts, notifications, reports | Proven locally through Benchmark/financial/regression evidence; provider data accuracy external |
+| Revenue | selected scoped GA4 native financial revenue + active GA4-context imported revenue | `ga4Revenue + importedRevenue`; Pipeline Proxy excluded | GA4 native source stays selected GA4 financial source; imported source-backed window is active source records through current UTC day | Benchmark cards, ROAS, ROI, tracker, alerts, notifications, reports | Proven locally through Benchmark/financial/regression evidence; controlled deployed provider validation passed for the recorded window; future provider windows require fresh evidence |
 | Spend | active explicit GA4-context spend sources | Source-backed spend only; GA4 API does not supply spend by default | Campaign + active spend source records through current UTC day | ROAS, ROI, CPA, tracker, alerts, notifications, reports | Proven locally through source lifecycle recompute tests and financial source contract |
 | ROAS | Revenue / active spend | Ratio displayed as `x`; persisted as ratio | Same campaign/source windows as Revenue and Spend | Benchmark card, history, alerts, notifications, reports | Historical blocker fixed; cleanup applied; ratio semantics regression passed |
 | ROI | `(Revenue - Spend) / Spend * 100` | Percent | Same campaign/source windows as Revenue and Spend | Benchmark card, history, alerts, notifications, reports | Proven locally by shared financial and Benchmark coverage |
@@ -217,7 +217,7 @@ Do not change Benchmark calculations, alert semantics, source ownership, schedul
 | In-app notification values | title/details, action URL, current value, threshold value, condition, created date, `benchmarkId` metadata | `benchmark-notifications.ts` and `/api/notifications` enrichment | Active breached Benchmark row; campaign-scoped | Bell, Notifications page, action routing | Proven locally for active breached rows |
 | Benchmark history analytics | `benchmark_history.currentValue`, `benchmarkValue`, `variance`, `performanceRating`, `recordedAt`, `notes`, analytics trend fields | `runGA4DailyKPIAndBenchmarkJobs`, `storage.recordBenchmarkHistory`, `storage.getBenchmarkAnalytics` | Auto GA4 daily history rows, where scheduler/reprocess wrote history | Insights, history views, reports where consumed | Proven locally; data exists only after scheduler/reprocess writes history |
 | Browser GA4 PDF values | selected Benchmark rows, current/target/status/progress | Client-side PDF uses the same visible Benchmark helpers | Current browser state and selected custom report config | Browser downloads | Proven locally by source trace/regression coverage |
-| Scheduled/server GA4 PDF values | persisted platform Benchmark rows after GA4 preflight recompute | Server report reads `getPlatformBenchmarks("google_analytics", campaignId)` | Campaign + saved report config; preflight date where supplied | Scheduled/test/manual report output and direct snapshot PDF dependency | Proven locally; deployed/provider delivery external |
+| Scheduled/server GA4 PDF values | persisted platform Benchmark rows after GA4 preflight recompute | Server report reads `getPlatformBenchmarks("google_analytics", campaignId)` | Campaign + saved report config; preflight date where supplied | Scheduled/test/manual report output and direct snapshot PDF dependency | Proven locally; controlled deployed preflight passed; future provider/email delivery remains per-event evidence |
 | Industry benchmark helper values | `/api/industry-benchmarks/:industry/:metric` mock/static helper responses | Returns additive `certificationStatus` and `targetSourceCertified: false`; not a production source of truth | GA4 modal refuses auto-fill unless a future response explicitly marks `targetSourceCertified: true` | None certified for current GA4 tab | Helper-only classification proven locally by Commit 7 regression |
 
 Computable GA4 Benchmark metrics:
@@ -249,7 +249,7 @@ Computable GA4 Benchmark metrics:
 | Financial current values | Revenue = selected GA4 native financial revenue plus active imported GA4 revenue; spend = active explicit spend sources; ROAS ratio, ROI percent, CPA currency | Proven locally; live provider accuracy external |
 | Blocked/dependency behavior | ROAS/ROI/CPA require spend; ROAS/ROI/revenue require revenue; blocked rows show unavailable current value and are excluded from scoring | Proven |
 | Insufficient data behavior | Conversion/engagement rates need sessions; CPA needs conversions; financial ratios need spend; insufficient rows are excluded from scoring and shown as insufficient | Proven |
-| Scheduler refresh | GA4 daily scheduler runs daily facts, then `runGA4DailyKPIAndBenchmarkJobs`, then Benchmark alert checks; source refresh paths run recompute before alert checks where immediate correctness is promised | Proven locally; deployed runtime external |
+| Scheduler refresh | GA4 daily scheduler runs daily facts, then `runGA4DailyKPIAndBenchmarkJobs`, then Benchmark alert checks; source refresh paths run recompute before alert checks where immediate correctness is promised | Proven locally; controlled deployed manual trigger passed; daily timer-fired execution not proven |
 | Persisted Benchmark values | `runGA4DailyKPIAndBenchmarkJobs` reads selected GA4 connection/property, selected GA4 totals, imported GA4 revenue, spend, updates `currentValue`, and records once-per-date history | Proven locally |
 | Alerts and notifications | Benchmark alert service evaluates active Benchmarks, keeps one active alert for breached GA4/campaign rows, resolves stale/non-breaches, and uses GA4 Benchmark deep links | Proven locally |
 | Notification visibility freshness | `/api/notifications` enriches active performance alerts from linked Benchmark rows, recomputes GA4 current value for computable rows, hides orphan/cross-campaign/non-breaching rows, and uses no-store freshness | Proven locally |
@@ -291,7 +291,7 @@ Computable GA4 Benchmark metrics:
 | Benchmark edit/update | Current GA4 UI path uses `/api/benchmarks/:id`, `ensureBenchmarkAccess`, immutable campaign/platform scope, alert reconciliation, immediate email attempt, query invalidation, and notification refresh | Proven |
 | Benchmark delete | Current GA4 UI path uses GA4 platform delete route, verifies platform/campaign access, deletes history, soft-hides related notifications, and refreshes notifications | Proven |
 | Non-current platform create alias | Guarded by campaign access and now awaits in-app alert reconciliation before responding | Proven locally by Current Commit 1 regression; still not the current GA4 UI create path |
-| GA4 native metric refresh | GA4 daily/on-demand refresh writes selected campaign/property facts and then recomputes Benchmarks | Proven locally; live provider/runtime external |
+| GA4 native metric refresh | GA4 daily/on-demand refresh writes selected campaign/property facts and then recomputes Benchmarks | Proven locally; controlled deployed provider/manual scheduler validation passed for the recorded campaign/window; future provider windows and timer-fired execution require fresh evidence |
 | Revenue source add/edit/delete | Active revenue source changes recompute GA4 KPI/Benchmark values before alert checks where immediate correctness is promised | Proven locally by source lifecycle recompute coverage; individual source UI modals are upstream and not Benchmark-certified here |
 | Spend source add/edit/delete | Active spend source changes recompute GA4 KPI/Benchmark values before alert checks where immediate correctness is promised | Proven locally by source lifecycle recompute coverage; individual source UI modals are upstream and not Benchmark-certified here |
 | Source modal/list display | No Benchmark-specific source modal; revenue/spend provenance comes from GA4 financial source docs and Overview financial paths | Upstream dependency; not a Benchmark output |
@@ -300,7 +300,7 @@ Computable GA4 Benchmark metrics:
 | Notification visibility lifecycle | `/api/notifications` fail-closes missing/orphan/cross-campaign/non-breaching rows and uses active source-backed current values | Proven locally |
 | Email lifecycle | Immediate/reminder email attempts use audit/dedupe/retry semantics and do not equate provider acceptance with delivery | Locally code-ready; provider/inbox delivery external |
 | Report lifecycle | Browser and server reports consume current or preflight-recomputed Benchmark rows; covered paths fail closed on preflight failure | Proven locally |
-| Scheduler lifecycle | GA4 daily and source-refresh paths update persisted Benchmark values before alert checks | Proven locally; deployed timing after this doc update external |
+| Scheduler lifecycle | GA4 daily and source-refresh paths update persisted Benchmark values before alert checks | Proven locally; controlled deployed manual trigger passed; daily timer-fired execution not proven |
 | Existing damaged data | Prior ROAS percent-style persisted rows were bounded, dry-run inventoried, applied only for proven rows, and post-apply dry-run found 0 remaining candidates | Cleanup complete for known boundary; skipped rows intentionally left unchanged when exact source boundary was unproven |
 
 ## Negative-Case Matrix
@@ -347,16 +347,16 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | GA4 Benchmark visible/current-value behavior | `server/ga4-benchmark-regression.test.ts` and GA4 tab route/UI trace | GA4 platform Benchmark current values, list/create/edit/delete behavior, blocked/insufficient states, accessible edit/delete controls, browser-PDF source path, and industry helper target classification are locally pinned | Future UI changes require fresh validation |
 | ROAS ratio semantics | `server/ga4-kpi-benchmark-roas-regression.test.ts` | ROAS uses ratio `x` semantics for GA4 KPI/Benchmark shared financial path | Does not prove future source ROAS paths |
 | Benchmark summary/tracker | `server/ga4-kpi-benchmark-summary-regression.test.ts` | tracker counts and averages exclude blocked/insufficient rows | Does not prove future UI redesigns |
-| Alert lifecycle | `server/benchmark-alert-lifecycle-regression.test.ts` | one active alert, stale resolution, deletion/disable behavior, dismissed still-breached recreation | Provider email delivery remains external |
+| Alert lifecycle | `server/benchmark-alert-lifecycle-regression.test.ts` | one active alert, stale resolution, deletion/disable behavior, dismissed still-breached recreation | Future provider email delivery remains per-send evidence |
 | Route isolation/access | `server/benchmark-route-isolation-regression.test.ts` | campaign/platform route isolation, guarded access, and platform create alias alert reconciliation ordering | Alias timing covered locally; provider/deployed evidence remains separate |
-| Commit 2/3/4 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` plus deployed endpoint evidence | campaign-scoped validation route reads requested provider, scheduler/current-value provider, persisted daily, financial, and Benchmark inputs; compares stored Benchmark current values to scheduler/current-value-window candidates; does not mutate Benchmark rows, history, sources, alerts, notifications, or reports; token metadata may refresh only after provider auth failure | Controlled deployed validation now passes for provider auth and validation-window alignment; revoked-token failure simulation, broad provider availability, scheduler runtime, and UI remain external |
+| Commit 2/3/4 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` plus deployed endpoint evidence | campaign-scoped validation route reads requested provider, scheduler/current-value provider, persisted daily, financial, and Benchmark inputs; compares stored Benchmark current values to scheduler/current-value-window candidates; does not mutate Benchmark rows, history, sources, alerts, notifications, or reports; token metadata may refresh only after provider auth failure; controlled deployed provider auth, validation-only token-failure simulation, validation-window alignment, and final current-value-window evidence passed | Future GA4 provider windows, outages, delayed attribution cases, or real unsimulated token-revocation events require fresh evidence |
 | Notification visibility | `server/notification-visibility-regression.test.ts` | stale/orphan/cross-campaign/non-breaching notifications fail closed; GA4 deep links and no-store freshness | Browser notification UI not rerun after this doc-only update |
 | Immediate email route behavior | `server/alert-email-regression.test.ts`, `server/alert-email-immediate-route-regression.test.ts` | immediate Benchmark email attempts, audit semantics, no false delivery claims in local code | Future sends still need per-send provider/inbox evidence before delivery is claimed |
 | Benchmark alert email delivery validation endpoint | `server/benchmark-alert-email-delivery-validation-regression.test.ts` plus user-confirmed deployed validation | read-only Benchmark-scoped audit evidence endpoint is access-guarded, filters exact Benchmark alert email rows, exposes provider response/delivery status, and does not send or mutate email records; controlled deployed provider/inbox validation passed by user confirmation | Exact raw endpoint JSON and inbox metadata were not pasted into this chat |
 | Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Future provider event/inbox confirmation remains per-send evidence, not a blanket guarantee |
-| Report consumers | `server/ga4-kpi-report-consumer-regression.test.ts` plus report route trace | GA4 scheduled/test/manual snapshot/direct PDF paths run GA4 preflight before report output; Benchmark-section reports require selected Benchmark rows to be recomputed before PDF/snapshot/email continues | Deployed report execution remains external |
+| Report consumers | `server/ga4-kpi-report-consumer-regression.test.ts` plus report route trace and user-confirmed deployed preflight validation | GA4 scheduled/test/manual snapshot/direct PDF paths run GA4 preflight before report output; Benchmark-section reports require selected Benchmark rows to be recomputed before PDF/snapshot/email continues; controlled deployed preflight validation passed with recompute and no duplicate history | Future report-output changes require fresh evidence |
 | Scheduler/runtime observability | `server/ga4-scheduler-observability-regression.test.ts`, `server/ga4-daily-scheduler-regression.test.ts` plus user-confirmed deployed manual trigger response | `/health/scheduler` exposes GA4 daily scheduler status; report scheduler metrics update on each check; report send-event evidence endpoint is guarded and read-only; campaign-scoped manual GA4 daily scheduler validation trigger is access-guarded, suppresses global alert sweeps, and passed deployed validation for the controlled campaign | Daily timer firing by itself was not separately observed; do not claim timer-fired evidence |
-| Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts`, `server/ga4-kpi-financial-window-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered; scheduler updates Benchmark current values and does not insert duplicate same-date Benchmark history when older report dates are reprocessed | Deployed scheduler runtime external |
+| Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts`, `server/ga4-kpi-financial-window-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered; scheduler updates Benchmark current values and does not insert duplicate same-date Benchmark history when older report dates are reprocessed | Manual deployed scheduler validation passed; daily timer firing by itself was not separately observed |
 | Source lifecycle recompute | `server/ga4-source-lifecycle-recompute-regression.test.ts` | revenue/spend source changes recompute GA4 Benchmark current values before covered alert checks | Live source-provider correctness external |
 | Existing damaged-data cleanup | dry-run/apply/post-apply cleanup evidence recorded in this file | known persisted ROAS percent-style rows corrected only inside proven boundary; 0 remaining candidates after apply | Skipped rows remain intentionally unmodified because exact boundary was unproven |
 | Deployed/UI validation | Current Commit 6 local guard plus user-confirmed deployed Render browser pass on July 1, 2026 | local browser-facing source path is pinned; deployed GA4 Benchmarks tab loaded and visible edit/delete controls were user-confirmed after commit `69ea9505` | Raw screenshots/network traces are not locally visible; future UI changes require a fresh pass |
@@ -364,7 +364,7 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 
 Coverage rule:
 
-- If a future answer needs provider delivery, deployed scheduler, or live GA4 API proof, the local test run is not enough.
+- If a future answer needs provider delivery, timer-fired scheduler proof, or a new live GA4 API date window, the local test run is not enough.
 - If a future code change affects any matrix row above, rerun or extend tests for the changed row before repeating the production-ready answer.
 
 ## Documentation Alignment Check
@@ -385,7 +385,7 @@ Coverage rule:
 
 Known doc caveat:
 
-- This file locally code-certifies the current GA4 Benchmarks tab path only and keeps full unqualified production readiness blocked until the Current Commit queue is completed. Future platform docs may copy the structure, but must replace every GA4-specific source, scope, lifecycle, downstream, and test row with target-platform evidence.
+- This file clean-certifies the current GA4 Benchmarks section under the documented scope and keeps future-platform readiness unproven until each target platform replaces every GA4-specific source, scope, lifecycle, downstream, and test row with target-platform evidence.
 
 ## Current Commit Queue
 
@@ -393,8 +393,11 @@ Current Commit status as of this document update:
 
 - Current Commit 0 is implemented by this file rewrite and is required for clean future certification answers.
 - Current Commit 1 is implemented: the non-current create alias now awaits in-app Benchmark alert reconciliation before responding.
-- Remaining Current Commit evidence for Commits 2, 3, and 4 Follow-Up is blocking for full unqualified GA4 Benchmark production readiness because it provides the still-missing broad provider, token-failure, and deployed scheduler evidence.
-- Until the remaining Current Commit evidence is complete, do not claim full unqualified GA4 Benchmark production readiness. Claim only local current-code certification plus the specifically recorded controlled deployed validations.
+- Current Commit 2 is complete for the controlled live provider/current-value-window validation recorded below.
+- Current Commit 3 is complete for the controlled provider auth and validation-only refresh-failure paths.
+- Current Commit 4 and Current Commit 4 Follow-Up are complete for validation-window alignment, report preflight, no duplicate history, and the accepted manual scheduler-validation path.
+- Current Commits 5, 6, and 7 are complete for the controlled email, UI, and industry-target-source decisions recorded below.
+- No Current Commit blockers remain open for the current GA4 Benchmarks certification scope.
 
 ### Current Commit 0 - Rewrite GA4 Benchmarks Readiness Into Strict Certification Document
 
@@ -488,11 +491,9 @@ Validation:
 
 Implementation status:
 
-Partially revalidated with deployed evidence. Deployed Commit 2 validation failed with `provider.status = live_provider_error` and `401 UNAUTHENTICATED` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, campaign filter `yesop_email_nurture` + `yesop_retargeting` + `yesop_paid_social`, and requested provider window `2026-06-19` through `2026-06-29`.
+Complete for the controlled live provider/current-value-window validation path. Deployed Commit 2 validation first failed with `provider.status = live_provider_error` and `401 UNAUTHENTICATED` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, campaign filter `yesop_email_nurture` + `yesop_retargeting` + `yesop_paid_social`, and requested provider window `2026-06-19` through `2026-06-29`. Commit 3 cleared the live provider auth blocker. Current Commit 4 proved the earlier `12376.38` versus `21922.96` comparison was a validation-window defect, not stale Benchmark data.
 
-Commit 3 deployed validation passed with `provider.status = live_provider_success`, non-null provider totals, and unchanged campaign/property/filter/requested window. This clears the live provider auth blocker for the controlled validation path, but it does not by itself prove revoked-token failure handling, deployed scheduler execution, report-preflight runtime behavior, browser UI behavior, or full production readiness.
-
-The apparent `12376.38` versus `21922.96` mismatch was not safe to classify as stale stored Benchmark data. Current Commit 4 RCA found that the validation endpoint compared a stored current value produced by the scheduler/current-value window against a manually requested provider window. The deployed Current Commit 4 revalidation now proves the stored value `12376.38` matches `schedulerCandidateCurrentValue` `12376.38` for `sourceWindows.currentValue = 2026-06-24` through `2026-06-29`. No Benchmark-row mutation or cleanup is justified by this finding. Full unqualified GA4 Benchmark production readiness remains blocked by the remaining Current Commit queue.
+Final deployed Current Commit 2 validation on July 1, 2026 used requested provider window `2026-06-19` through `2026-06-30`, current-value window `2026-06-24` through `2026-06-30`, and financial window `1900-01-01` through `2026-07-01`. The response returned `provider.status = live_provider_success`, `currentValueProvider.status = live_provider_success`, non-null provider totals, persisted daily `rowCount = 10`, current-value persisted daily `rowCount = 6`, latest daily date `2026-06-30`, and latest persisted update `2026-07-01T10:27:27.578Z`. The controlled Benchmark rows matched exactly: Total Conversions stored `84.00` versus scheduler candidate `84` with `storedVsSchedulerDelta = 0`, and Benchmark Revenue stored `14669.58` versus scheduler candidate `14669.58` with `storedVsSchedulerDelta = 0`. This closes Current Commit 2 for the current GA4 Benchmarks certification scope.
 
 ### Current Commit 3 - Prove Deployed OAuth Token Refresh And Tenant Failure Handling
 
@@ -745,16 +746,16 @@ Existing damaged-data conclusion:
 
 ## Not Locally Verifiable / External Caveats
 
-The items below are unproven until their Current Commit evidence exists. They are not optional caveats for full unqualified production readiness; they are blockers for that broader claim. They remain non-blocking only for the narrower local current-code certification.
+The items below are caveats and boundaries, not open Current Commit blockers for the current GA4 Benchmarks certification scope.
 
-| Unproven item | Current Commit | Blocks local current-code certification? | Blocks full unqualified production readiness? |
+| Caveat / future claim boundary | Classification | Blocks current GA4 Benchmarks certification? | When fresh evidence is required |
 | --- | --- | --- | --- |
-| Live GA4 API accuracy and availability | Current Commit 2 | No | Yes |
-| GA4 processing latency / delayed attribution behavior | Current Commit 2 | No | Yes |
-| Real Google revoked-token event without simulation | Current Commit 3 external caveat | No | No for the accepted validation-only failure path; yes only for a future claim about an actual revoked Google token event |
-| Daily timer firing by itself | Current Commit 4 Follow-Up caveat | No | No for the accepted manual-trigger validation path; yes for any future timer-fired claim |
-| Future source mixes or new financial source types | New future Current Commit when introduced | Yes for changed/new path | Yes for changed/new path |
-| Future platform Benchmark readiness | Target-platform readiness queue | Not applicable to GA4 | Always unproven for the target platform until separately certified |
+| Future GA4 API availability, delayed attribution, or processing latency outside the recorded windows | External provider caveat | No | Any future claim about a new date window, outage, delayed attribution case, or provider incident |
+| Real Google revoked-token event without simulation | External provider caveat | No for the accepted validation-only failure path | Any future claim that an actual revoked Google token event was observed end to end |
+| Daily timer firing by itself | Scheduler caveat | No for the accepted manual-trigger validation path | Any future claim that the daily timer itself fired successfully |
+| Future Benchmark alert email delivery | Provider/inbox caveat | No for the controlled Commit 5 send | Every future delivery claim needs provider delivery event or inbox evidence |
+| Future source mixes or new financial source types | New future Current Commit | Yes for changed/new path | Before certifying that changed/new source path |
+| Future platform Benchmark readiness | Target-platform readiness queue | Not applicable to GA4 | Always required before certifying the target platform |
 
 Provider/email wording rule:
 
@@ -764,8 +765,8 @@ Provider/email wording rule:
 
 Production-readiness wording rule:
 
-- It is acceptable to say GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path.
-- It is not acceptable to say GA4 Benchmarks are fully production-ready without qualification until the remaining Current Commit blockers are completed or proven non-applicable with evidence.
+- It is acceptable to say GA4 Benchmarks are clean-certified for the current GA4 Benchmarks section under the documented scope.
+- It is not acceptable to extend that claim to future code changes, future GA4 properties/windows, future sends, real unsimulated token revocation, daily timer-fired evidence, or future platforms without fresh evidence.
 
 ## Future Platform Template
 

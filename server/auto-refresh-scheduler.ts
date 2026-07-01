@@ -378,6 +378,35 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
   }
 }
 
+export async function runGoogleSheetsRevenueSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<{ success: boolean; reason?: string; campaignId: string; sourceId: string; platformContext?: string }> {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  const normalizedSourceId = String(sourceId || "").trim();
+  if (!normalizedCampaignId || !normalizedSourceId) {
+    return { success: false, reason: "invalid_request", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+  }
+
+  for (const ctx of refreshableRevenueContexts) {
+    const sources = await storage.getRevenueSources(normalizedCampaignId, ctx).catch(() => [] as any[]);
+    const source = (Array.isArray(sources) ? sources : []).find((s: any) => {
+      if (!s || (s as any).isActive === false) return false;
+      if (String((s as any).sourceType || "") !== "google_sheets") return false;
+      return String((s as any).id || "") === normalizedSourceId;
+    });
+    if (!source) continue;
+
+    const cfgRaw = safeJsonParse(source?.mappingConfig);
+    const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: (cfgRaw as any).platformContext || (source as any).platformContext || ctx } : null;
+    if (!mappingConfig?.connectionId || !mappingConfig?.revenueColumn) {
+      return { success: false, reason: "missing_google_sheets_revenue_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: ctx };
+    }
+
+    const success = await reprocessGoogleSheetsRevenue(normalizedCampaignId, source, mappingConfig);
+    return { success, reason: success ? undefined : "reprocess_failed", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: ctx };
+  }
+
+  return { success: false, reason: "source_not_found", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+}
+
 async function reprocessLinkedInSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
   if (isSourceOutsideCampaign(source, campaignId)) {
     console.error(`[Auto Refresh] Refusing LinkedIn spend reprocess for source outside campaign ${campaignId}: source=${String(source?.id || "")}`);

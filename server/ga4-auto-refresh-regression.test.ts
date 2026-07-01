@@ -6,6 +6,9 @@ import { getAutoRefreshSchedulerConfig, getNextAutoRefreshRunAt } from "./auto-r
 const schedulerFile = () =>
   readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf-8");
 
+const routesFile = () =>
+  readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+
 describe("GA4 external value auto-refresh regression guard", () => {
   it("schedules external refresh by configured reporting timezone instead of server local time", () => {
     const content = schedulerFile();
@@ -63,6 +66,20 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
     expect(content).not.toContain('String((s as any).sourceType || "") === "csv"');
     expect(content).not.toContain("reprocessCsv");
+  });
+  it("exposes only a campaign/source-scoped Google Sheets revenue scheduler validation trigger", () => {
+    const scheduler = schedulerFile();
+    const routes = routesFile();
+
+    expect(scheduler).toContain("export async function runGoogleSheetsRevenueSourceRefreshForValidation");
+    expect(scheduler).toContain("return String((s as any).id || \"\") === normalizedSourceId;");
+    expect(scheduler).toContain("reason: \"source_not_found\"");
+    expect(scheduler).toContain("reprocessGoogleSheetsRevenue(normalizedCampaignId, source, mappingConfig)");
+    expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"');
+    expect(routes).toContain("googleSheetsRateLimiter, requireCampaignAccessParamId");
+    expect(routes).toContain("runGoogleSheetsRevenueSourceRefreshForValidation(campaignId, sourceId)");
+    expect(routes).toContain("Does not run the full daily auto-refresh cycle, other providers, alerts, emails, reports, or unrelated campaigns.");
+    expect(routes).not.toContain('app.post("/api/campaigns/:id/auto-refresh/run-now"');
   });
 
   it("keeps ad-platform spend scoped to saved campaign IDs and logs provider-specific failures", () => {

@@ -6764,7 +6764,7 @@ export default function GA4Metrics() {
                       <div>
                         <h3 className="text-lg font-semibold text-foreground">Performance Benchmarks</h3>
                         <p className="text-sm text-muted-foreground/70 mt-1">
-                          Track and measure performance against industry standards and custom targets
+                          Track and measure performance against custom targets
                         </p>
                       </div>
                       <Dialog
@@ -6826,8 +6826,8 @@ export default function GA4Metrics() {
                             <DialogTitle className="pr-8 text-lg">{editingBenchmark ? "Edit Benchmark" : "Create New Benchmark"}</DialogTitle>
                             <DialogDescription className="text-sm">
                               {editingBenchmark
-                                ? "Update this benchmark to reflect your latest targets or industry standard."
-                                : "Set up a new performance benchmark to track against industry standards or custom targets"}
+                                ? "Update this benchmark to reflect your latest target."
+                                : "Set up a new performance benchmark to track against custom targets"}
                             </DialogDescription>
                           </DialogHeader>
                           <form onSubmit={handleCreateBenchmark} className="space-y-6">
@@ -6912,14 +6912,14 @@ export default function GA4Metrics() {
                                         }));
 
                                         // If an industry is already selected, switching metrics should refetch the
-                                        // industry benchmark for the new metric and populate Benchmark Value.
+                                        // industry benchmark for the new metric only when the response is certified for production targets.
                                         if (isIndustryType && industry) {
                                           fetch(
                                             `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(template.metric)}`
                                           )
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
-                                              if (data && typeof data.value !== "undefined") {
+                                              if (data?.targetSourceCertified === true && typeof data.value !== "undefined") {
                                                 const formatted = formatNumberByUnit(String(data.value), String(data.unit || resolvedUnit || "%"));
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
@@ -6932,7 +6932,7 @@ export default function GA4Metrics() {
                                               }
                                             })
                                             .catch(() => {
-                                              // ignore - industry benchmarks are best-effort
+                                              // ignore - industry target helpers are not production-certified
                                             });
                                         }
                                       }}
@@ -7479,7 +7479,7 @@ export default function GA4Metrics() {
                                 <TrendingUp className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
                                 <h3 className="text-lg font-medium text-foreground mb-2">No Benchmarks Yet</h3>
                                 <p className="text-muted-foreground/70 mb-4">
-                                  Create your first benchmark to start tracking performance against industry standards
+                                  Create your first benchmark to start tracking performance against your targets
                                 </p>
                               </CardContent>
                             </Card>
@@ -9091,7 +9091,7 @@ export default function GA4Metrics() {
                         title: "Benchmarks",
                         desc: "Performance benchmarks and comparisons",
                         Icon: Trophy,
-                        chips: ["Industry", "Historical", "Goals"],
+                        chips: ["Targets", "Historical", "Goals"],
                       },
                       {
                         key: "ads",

@@ -278,4 +278,38 @@ describe("GA4 Benchmark regression guard", () => {
     expect(reportSection).toContain("Blocked");
     expect(reportSection).toContain("Insufficient data -");
   });
+
+  it("classifies GA4 industry Benchmark targets as helper-only unless explicitly certified", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const routeStart = routesFile.indexOf('app.get("/api/industry-benchmarks/:industry/:metric"');
+    const routeEnd = routesFile.indexOf("  // Campaign routes", routeStart);
+    const routeSection = routesFile.slice(routeStart, routeEnd);
+    const modalStart = ga4MetricsFile.indexOf('<TabsContent value="benchmarks" id="ga4-benchmarks-section"');
+    const modalEnd = ga4MetricsFile.indexOf('<TabsContent value="reports"', modalStart);
+    const modalSection = ga4MetricsFile.slice(modalStart, modalEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(routeEnd).toBeGreaterThan(routeStart);
+    expect(routeSection).toContain('certificationStatus: "non_production_helper"');
+    expect(routeSection).toContain('certificationStatus: "uncertified_static_reference"');
+    expect(routeSection).toContain('targetSourceCertified: false');
+    expect(routeSection).toContain('disclaimer: "Demo-only mock dataset. Not licensed/audited."');
+    expect(routeSection).toContain('source: "mock"');
+
+    expect(modalStart).toBeGreaterThan(-1);
+    expect(modalEnd).toBeGreaterThan(modalStart);
+    expect(modalSection).toContain('data?.targetSourceCertified === true && typeof data.value !== "undefined"');
+    expect(modalSection).toContain('industry benchmark for the new metric only when the response is certified for production targets.');
+    expect(modalSection).not.toContain('industry standards');
+    expect(ga4MetricsFile).toContain('Track and measure performance against custom targets');
+    expect(ga4MetricsFile).toContain('Create your first benchmark to start tracking performance against your targets');
+    expect(ga4MetricsFile).toContain('chips: ["Targets", "Historical", "Goals"],');
+  });
 });

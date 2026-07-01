@@ -6753,7 +6753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/industry-benchmarks", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      const { getIndustries, getIndustryDisplayName, getBenchmarkValue } = await import('./data/industry-benchmarks.js');
+      const { getIndustries, getIndustryDisplayName } = await import('./data/industry-benchmarks.js');
       const industries = getIndustries();
 
       // Return list of industries with display names
@@ -6762,7 +6762,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         label: getIndustryDisplayName(key)
       })).sort((a, b) => String(a.label).localeCompare(String(b.label)));
 
-      res.json({ industries: industryList });
+      res.json({
+        industries: industryList,
+        certificationStatus: "non_production_helper",
+        targetSourceCertified: false,
+        source: "internal_static_industry_options",
+        disclaimer: "Industry benchmark options are helper metadata only; target values are not certified production benchmarks.",
+      });
     } catch (error) {
       console.error('Industry benchmarks fetch error:', error);
       res.status(500).json({ message: "Failed to fetch industry benchmarks" });
@@ -6786,6 +6792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           ...mock,
           source: "mock",
+          certificationStatus: "non_production_helper",
+          targetSourceCertified: false,
           disclaimer: "Demo-only mock dataset. Not licensed/audited.",
           asOf: "2026-01-01",
         });
@@ -6799,7 +6807,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json(benchmarkData);
+      res.json({
+        ...benchmarkData,
+        source: "internal_static_reference",
+        certificationStatus: "uncertified_static_reference",
+        targetSourceCertified: false,
+        disclaimer: "Internal static reference value. Not certified as a production industry benchmark source.",
+      });
     } catch (error) {
       console.error('Industry benchmark fetch error:', error);
       res.status(500).json({ message: "Failed to fetch industry benchmark" });

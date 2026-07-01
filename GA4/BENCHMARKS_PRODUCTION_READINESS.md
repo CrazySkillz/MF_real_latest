@@ -23,7 +23,7 @@ Full, unqualified GA4 Benchmark production readiness is **not clean-certified ye
 Status split:
 
 - local current-code GA4 Benchmark tab certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by this document and the focused Benchmark tests
-- full unqualified production readiness: not certified yet because broader provider accuracy, deployed scheduler execution, deployed token-refresh failure simulation, and mock industry target-source status remain unproven
+- full unqualified production readiness: not certified yet because broader provider accuracy, deployed scheduler execution, and deployed token-refresh failure simulation remain unproven
 - future platform readiness: unproven; GA4 Benchmark evidence is only a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
 
 Certification result:
@@ -43,12 +43,13 @@ Certification result:
 - current Commit 4 Follow-Up deployed observability evidence: `/health/scheduler` on July 1, 2026 at `2026-07-01T08:46:39.004Z` showed the report scheduler running with cron `* * * * *`, `totalChecks = 748`, `lastCheckTime = 2026-07-01T08:46:00.007Z`, `lastScheduledReportsFound = 14`, `lastDueReportsFound = 12`, and no scheduler error; the same response showed GA4 daily scheduler `started = true`, `timerScheduled = true`, `runOnStartup = false`, `nextRunAt = 2026-07-01T12:15:00.000Z`, `nextDataThroughDate = 2026-06-30`, and `totalRuns = 0`, proving the daily timer was scheduled but not yet proving the daily pipeline executed
 - current Commit 5 deployed validation: read-only Benchmark alert email delivery validation support is implemented, pushed, deployed, and user-confirmed as passed, including inbox receipt; exact endpoint JSON, provider response ID, delivered timestamp, recipient, and subject were not pasted into this chat, so this file records user-confirmed external validation rather than locally inspected raw evidence
 - current Commit 6 validation: GA4 Benchmark edit/delete icon buttons now have stable accessible labels/titles; `server/ga4-benchmark-regression.test.ts` locally pins the route, tab, scoped API calls, lifecycle notification invalidation, blocked/insufficient states, unit rendering, and browser-PDF Benchmark path; `npm test -- server/ga4-benchmark-regression.test.ts` passed 10 tests on July 1, 2026; deployed Render UI validation was user-confirmed passed on July 1, 2026 for the GA4 Benchmarks tab at campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`
-- outstanding production-readiness queue: deployed GA4 daily scheduler execution after the scheduled `2026-07-01T12:15:00.000Z` run plus Current Commit 7 below must be completed before full unqualified production readiness can be claimed; broader live-provider and token-failure caveats remain scoped to Commits 2 and 3 as documented
-- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed GA4 daily scheduler pipeline execution after the scheduled run, and mock industry target-source suitability
+- current Commit 7 decision: GA4 industry Benchmark values are classified as non-production helper/reference data, not certified target evidence; the industry routes now return `targetSourceCertified: false`, the GA4 modal refuses to auto-fill Benchmark targets unless a future response explicitly returns `targetSourceCertified: true`, and GA4 Benchmark copy now refers to custom targets instead of industry-standard targets; `npm test -- server/ga4-benchmark-regression.test.ts` passed 11 tests on July 1, 2026
+- outstanding production-readiness queue: deployed GA4 daily scheduler execution after the scheduled `2026-07-01T12:15:00.000Z` run must be completed before full unqualified production readiness can be claimed; broader live-provider and token-failure caveats remain scoped to Commits 2 and 3 as documented
+- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, and deployed GA4 daily scheduler pipeline execution after the scheduled run
 
 The current safe answer is:
 
-`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path. Full unqualified production readiness is not clean-certified yet because the Current Commit queue still contains provider/deployed/browser/industry-source proof work.`
+`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path, with controlled deployed UI/email/provider validation recorded where stated. Full unqualified production readiness is not clean-certified yet because remaining provider/deployed scheduler/token-failure proof work is still incomplete.`
 
 This status should change only after:
 
@@ -207,7 +208,7 @@ Do not change Benchmark calculations, alert semantics, source ownership, schedul
 | Conversion Rate | Conversions / sessions * 100 | Percent with zero-session guard | GA4 selected campaign/property scope | Benchmark card, tracker, alerts, reports, Insights | Proven locally by Benchmark sufficiency and regression coverage |
 | Engagement Rate | normalized GA4 engagement rate | Percent; requires sessions | GA4 selected campaign/property scope | Benchmark card, tracker, alerts, reports | Proven locally by visible/current-value and sufficiency coverage |
 | Custom Benchmark rows | User-entered `currentValue`, `benchmarkValue`, `unit`, name/description | No guessed GA4 recompute; manual/custom current value is preserved unless user edits it | Campaign + `google_analytics`; saved row scope | Benchmark card, alerts if enabled, reports | Proven for visible create/edit path; no automatic source provenance |
-| Benchmark target | user-entered `benchmarkValue` and selected unit | Required Benchmark target; industry lookup is not a certified target source | Campaign + platform row | Benchmark cards, tracker, alerts, reports | Proven for user-entered targets; mock industry lookup not certified |
+| Benchmark target | user-entered `benchmarkValue` and selected unit | Required Benchmark target; industry lookup is helper-only and not auto-filled unless a future response explicitly marks `targetSourceCertified: true` | Campaign + platform row | Benchmark cards, tracker, alerts, reports | Proven for user-entered targets; industry helper lookup explicitly uncertified |
 | Descriptive metadata | `description`, `benchmarkType`, `source`, `industry`, `geoLocation`, `period`, `confidenceLevel`, `applyTo`, `specificCampaignId` | Persisted/display metadata only | Benchmark row scope | Cards, modal, reports where displayed | Proven as metadata; no current industry-autofill certification |
 | Stored variance | `variance` | Historical/stored variance from route/history jobs; not live status authority | Benchmark row/history scope | History analytics, legacy fields | Proven as historical/stored field only |
 | Data availability state | blocked, insufficient, invalid target | Missing dependency and sufficiency helpers; invalid benchmark guard | Current visible values and persisted recompute path | Cards, tracker, Insights, browser PDF | Proven locally |
@@ -216,7 +217,7 @@ Do not change Benchmark calculations, alert semantics, source ownership, schedul
 | Benchmark history analytics | `benchmark_history.currentValue`, `benchmarkValue`, `variance`, `performanceRating`, `recordedAt`, `notes`, analytics trend fields | `runGA4DailyKPIAndBenchmarkJobs`, `storage.recordBenchmarkHistory`, `storage.getBenchmarkAnalytics` | Auto GA4 daily history rows, where scheduler/reprocess wrote history | Insights, history views, reports where consumed | Proven locally; data exists only after scheduler/reprocess writes history |
 | Browser GA4 PDF values | selected Benchmark rows, current/target/status/progress | Client-side PDF uses the same visible Benchmark helpers | Current browser state and selected custom report config | Browser downloads | Proven locally by source trace/regression coverage |
 | Scheduled/server GA4 PDF values | persisted platform Benchmark rows after GA4 preflight recompute | Server report reads `getPlatformBenchmarks("google_analytics", campaignId)` | Campaign + saved report config; preflight date where supplied | Scheduled/test/manual report output and direct snapshot PDF dependency | Proven locally; deployed/provider delivery external |
-| Mock industry benchmark values | `/api/industry-benchmarks/:industry/:metric` mock fallback | Demo-only lookup; not a production source of truth | Not exposed as current GA4 target autofill certification | None certified for current GA4 tab | Not certified; non-blocking because current GA4 Benchmark path uses user-entered targets |
+| Industry benchmark helper values | `/api/industry-benchmarks/:industry/:metric` mock/static helper responses | Returns additive `certificationStatus` and `targetSourceCertified: false`; not a production source of truth | GA4 modal refuses auto-fill unless a future response explicitly marks `targetSourceCertified: true` | None certified for current GA4 tab | Helper-only classification proven locally by Commit 7 regression |
 
 Computable GA4 Benchmark metrics:
 
@@ -257,7 +258,7 @@ Computable GA4 Benchmark metrics:
 | Direct GA4 snapshot PDF dependency | Direct snapshot PDF routes run suppress-alert GA4 KPI/Benchmark preflight before shared PDF generation | Proven locally as a Benchmark dependency; deployed direct-PDF evidence in KPI doc is not reused here as Benchmark proof |
 | Insights downstream | GA4 Insights reads Benchmark rows, blocked/invalid/insufficient state, live progress, and Benchmark analytics history only when Insights is active | Proven only as a narrow direct Benchmark consumer |
 | Non-current platform create alias | `POST /api/platforms/:platformType/benchmarks` is guarded and now awaits both in-app Benchmark alert reconciliation and immediate Benchmark email checks; current GA4 tab does not call it | Hardened locally by Current Commit 1 |
-| Industry benchmark lookup | `/api/industry-benchmarks/:industry/:metric` can return mock fallback values | Not current certified target source; non-blocking while GA4 create/edit does not use industry autofill as production target evidence |
+| Industry benchmark lookup | `/api/industry-benchmarks/:industry/:metric` can return mock/static helper values marked `targetSourceCertified: false` | Not a certified target source; GA4 create/edit does not auto-fill helper values as production targets |
 
 ## Downstream Propagation Matrix
 
@@ -342,7 +343,7 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | Coverage area | Test / validation source | What it proves for Benchmarks | Remaining gap |
 | --- | --- | --- | --- |
 | Metric-aware Benchmark math | `server/benchmark-math.test.ts` | progress/status direction, lower-is-better cost metrics, zero/invalid target handling, blocked/insufficient exclusions | Does not prove GA4 provider data accuracy |
-| GA4 Benchmark visible/current-value behavior | `server/ga4-benchmark-regression.test.ts` and GA4 tab route/UI trace | GA4 platform Benchmark current values, list/create/edit/delete behavior, blocked/insufficient states, accessible edit/delete controls, and browser-PDF source path are locally pinned | Deployed browser visual check remains external |
+| GA4 Benchmark visible/current-value behavior | `server/ga4-benchmark-regression.test.ts` and GA4 tab route/UI trace | GA4 platform Benchmark current values, list/create/edit/delete behavior, blocked/insufficient states, accessible edit/delete controls, browser-PDF source path, and industry helper target classification are locally pinned | Future UI changes require fresh validation |
 | ROAS ratio semantics | `server/ga4-kpi-benchmark-roas-regression.test.ts` | ROAS uses ratio `x` semantics for GA4 KPI/Benchmark shared financial path | Does not prove future source ROAS paths |
 | Benchmark summary/tracker | `server/ga4-kpi-benchmark-summary-regression.test.ts` | tracker counts and averages exclude blocked/insufficient rows | Does not prove future UI redesigns |
 | Alert lifecycle | `server/benchmark-alert-lifecycle-regression.test.ts` | one active alert, stale resolution, deletion/disable behavior, dismissed still-breached recreation | Provider email delivery remains external |
@@ -358,6 +359,7 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | Source lifecycle recompute | `server/ga4-source-lifecycle-recompute-regression.test.ts` | revenue/spend source changes recompute GA4 Benchmark current values before covered alert checks | Live source-provider correctness external |
 | Existing damaged-data cleanup | dry-run/apply/post-apply cleanup evidence recorded in this file | known persisted ROAS percent-style rows corrected only inside proven boundary; 0 remaining candidates after apply | Skipped rows remain intentionally unmodified because exact boundary was unproven |
 | Deployed/UI validation | Current Commit 6 local guard plus user-confirmed deployed Render browser pass on July 1, 2026 | local browser-facing source path is pinned; deployed GA4 Benchmarks tab loaded and visible edit/delete controls were user-confirmed after commit `69ea9505` | Raw screenshots/network traces are not locally visible; future UI changes require a fresh pass |
+| Industry target source classification | `server/ga4-benchmark-regression.test.ts` | industry route responses are labeled helper/uncertified; GA4 modal refuses auto-fill unless `targetSourceCertified: true`; visible copy no longer claims industry-standard targets | No certified production industry dataset exists |
 
 Coverage rule:
 
@@ -390,7 +392,7 @@ Current Commit status as of this document update:
 
 - Current Commit 0 is implemented by this file rewrite and is required for clean future certification answers.
 - Current Commit 1 is implemented: the non-current create alias now awaits in-app Benchmark alert reconciliation before responding.
-- Remaining Current Commit evidence for Commits 2, 3, 4 Follow-Up, and 7 is blocking for full unqualified GA4 Benchmark production readiness because it provides the still-missing broad provider, token-failure, deployed scheduler, and target-source evidence.
+- Remaining Current Commit evidence for Commits 2, 3, and 4 Follow-Up is blocking for full unqualified GA4 Benchmark production readiness because it provides the still-missing broad provider, token-failure, and deployed scheduler evidence.
 - Until the remaining Current Commit evidence is complete, do not claim full unqualified GA4 Benchmark production readiness. Claim only local current-code certification plus the specifically recorded controlled deployed validations.
 
 ### Current Commit 0 - Rewrite GA4 Benchmarks Readiness Into Strict Certification Document
@@ -687,34 +689,35 @@ Complete for the controlled Current Commit 6 validation. Local browser-path hard
 
 Root cause:
 
-The GA4 Benchmark create flow can fetch industry Benchmark values, and server industry lookup can fall back to mock values. Mock or demo industry values are not production-grade industry-standard evidence. If industry Benchmark targets are part of the certified GA4 Benchmarks product surface, the target source must be certified or clearly labeled as non-production/helper behavior.
+The GA4 Benchmark modal did not expose a current industry selector, but legacy/hidden industry paths still existed. The server industry endpoint defaulted to mock values, and an existing or legacy `benchmarkType = industry` row could trigger template-switch auto-fill from `/api/industry-benchmarks/:industry/:metric`. That meant mock or internal static reference values could silently become a saved Benchmark target if an industry row was edited, even though those values were not licensed, audited, or certified as production industry benchmarks.
+
+The smallest safe decision is the non-production-helper path. No production industry dataset was certified in this commit. No Benchmark calculations, source/current-value logic, alerts, notifications, scheduler behavior, email behavior, report behavior, campaign/property scoping, or ownership checks were changed.
 
 Files expected:
 
-- `server/data/industry-benchmarks.ts`
-- `server/data/industry-benchmarks.mock.ts`, if retained
 - `server/routes-oauth.ts`
 - `client/src/pages/ga4-metrics.tsx`
-- focused route/UI regression test if behavior changes
+- `server/ga4-benchmark-regression.test.ts`
 - this file, to record the source decision and validation evidence
 
 Required behavior:
 
-Choose one proven path:
-
-- Production-source path: replace or validate the industry target source as certified production reference data, document provenance/version/date, and ensure GA4 create/edit UI does not silently use mock values as production targets.
-- Non-production-helper path: explicitly label industry values as templates/helpers, prevent them from being used as certified production benchmark evidence, and ensure readiness wording does not treat them as proof.
+- Industry Benchmark route responses must clearly identify helper/mock/static values as not production-certified target evidence.
+- The GA4 Benchmark modal must not auto-fill `benchmarkValue` from industry helper/mock/static responses unless a future response explicitly returns `targetSourceCertified: true`.
+- GA4 Benchmark visible copy must not imply that saved GA4 Benchmark targets are certified industry standards.
+- User-entered Benchmark targets remain supported and unchanged.
+- Legacy saved `industry` metadata may remain visible as metadata; it is not certification proof.
 
 Validation:
 
-- Trace industry Benchmark value fetch from UI to route to data source and saved Benchmark row.
-- Verify whether mock fallback can be reached in production configuration.
-- Add or update a regression proving the chosen behavior.
-- Manually validate the create modal wording if UI copy changes.
+- Local validation run on July 1, 2026: `npm test -- server/ga4-benchmark-regression.test.ts` passed 1 test file and 11 tests.
+- Regression coverage proves `/api/industry-benchmarks/:industry/:metric` marks mock helper values with `certificationStatus = non_production_helper`, `targetSourceCertified = false`, and a demo-only disclaimer.
+- Regression coverage proves internal static reference values are also returned with `certificationStatus = uncertified_static_reference` and `targetSourceCertified = false`.
+- Regression coverage proves the GA4 Benchmark modal only auto-fills industry values when `data.targetSourceCertified === true` and no longer uses visible `industry standards` wording in the current Benchmark tab/modal path.
 
 Implementation status:
 
-Not implemented. Blocking for full unqualified GA4 Benchmarks production readiness if industry Benchmark targets are included in the certified product surface. Not required for local current-code certification of user-entered targets and source-backed current values.
+Complete for the current GA4 Benchmarks product surface. Current Commit 7 classifies industry Benchmark values as non-production helper/reference data and prevents silent mock/static industry target auto-fill in the GA4 Benchmark modal. This closes the target-source blocker by choosing the non-production-helper path, not by certifying a production industry dataset. Future work may add a certified vendor/versioned industry dataset, but that would be a new Current Commit and must include source provenance, version/date, route/UI tests, and deployed validation before industry targets can be described as production-certified.
 
 ## Historical Completed Fix Evidence
 
@@ -746,7 +749,6 @@ The items below are unproven until their Current Commit evidence exists. They ar
 | GA4 processing latency / delayed attribution behavior | Current Commit 2 | No | Yes |
 | Deployed OAuth token refresh and tenant-specific provider failures | Current Commit 3 | No | Yes |
 | Deployed GA4 daily scheduler pipeline execution after scheduled run | Current Commit 4 Follow-Up | No | Yes |
-| Mock/industry Benchmark target source suitability | Current Commit 7 | No for user-entered targets | Yes if industry targets are part of the certified product surface |
 | Future source mixes or new financial source types | New future Current Commit when introduced | Yes for changed/new path | Yes for changed/new path |
 | Future platform Benchmark readiness | Target-platform readiness queue | Not applicable to GA4 | Always unproven for the target platform until separately certified |
 

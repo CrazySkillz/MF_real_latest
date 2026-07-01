@@ -23,7 +23,7 @@ Full, unqualified GA4 Benchmark production readiness is **not clean-certified ye
 Status split:
 
 - local current-code GA4 Benchmark tab certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by this document and the focused Benchmark tests
-- full unqualified production readiness: not certified yet because broader provider accuracy, GA4 processing-latency behavior, and deployed revoked-token failure simulation remain unproven
+- full unqualified production readiness: not certified yet because the final current live-provider/current-value-window validation after the manual scheduler run remains to be recorded under Current Commit 2
 - future platform readiness: unproven; GA4 Benchmark evidence is only a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
 
 Certification result:
@@ -35,7 +35,7 @@ Certification result:
 - current documentation update: Current Commit 0 rewrites this file into the strict KPI-style certification structure without changing runtime behavior
 - current validation-support update: Current Commit 2 adds a GA4 Benchmark provider validation endpoint and regression coverage; deployed validation found a live provider auth blocker and an apparent stored-current mismatch that required stricter window tracing
 - current deployed Commit 2 evidence: Render validation on June 30, 2026 for campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, property 542352127, and requested provider window 2026-06-19 through 2026-06-29 returned provider.status = live_provider_error with 401 UNAUTHENTICATED; the same response showed stored Benchmark Revenue 12376.38 versus requested-window candidate 21922.96
-- current Commit 3 deployed validation: Commit 3 deployed validation passed with `provider.status = live_provider_success` and non-null provider totals for the same campaign/property/filter/requested window; a validation-only `simulateRefreshFailure=1` branch is now implemented locally to prove fail-closed refresh failure behavior without damaging the real GA4 connection, and deployed validation is pending
+- current Commit 3 deployed validation: Commit 3 deployed validation passed with `provider.status = live_provider_success` and non-null provider totals for the same campaign/property/filter/requested window; the validation-only `simulateRefreshFailure=1` branch also passed on July 1, 2026 with `success = true`, `simulation.refreshFailure = true`, `provider.status = live_provider_refresh_failed`, `provider.totals = null`, and an explicit no-token-metadata-changed error
 - current Commit 4 deployed validation: validation-window alignment is implemented, pushed, deployed, and revalidated; `sourceWindows.currentValue` is `2026-06-24` through `2026-06-29`, `currentValueProvider.totals` is non-null, stored Benchmark Revenue `12376.38` equals `schedulerCandidateCurrentValue` `12376.38`, and `storedVsSchedulerDelta = 0`; the `storedVsUiDelta = 0.01` is a one-cent provider-versus-persisted rounding difference, not proven Benchmark damage
 - current Commit 4 Follow-Up local fix: scheduler/report-preflight guards now track updated Benchmark row IDs, fail closed for Benchmark-section reports whose selected rows were not recomputed, and prevent duplicate Benchmark history rows for the same Benchmark/date even when an older report date is reprocessed after newer history exists
 - current Commit 4 Follow-Up deployed report-preflight validation: Render validation on June 30, 2026 for Benchmark `989de4b3-e1e9-4891-8094-a010bcd59c43` and GA4 Benchmark report `eae94163-5608-4590-8dcd-7d927ba6b421` returned manual snapshot `200`, created snapshot `a5713490-f9b1-4548-9660-cbde32e372d5`, changed Benchmark `updatedAt` from `2026-06-30T12:16:31.780Z` to `2026-06-30T18:11:34.767Z`, kept `currentValue = 12376.38`, and kept Benchmark history count `5 -> 5`
@@ -45,12 +45,12 @@ Certification result:
 - current Commit 5 deployed validation: read-only Benchmark alert email delivery validation support is implemented, pushed, deployed, and user-confirmed as passed, including inbox receipt; exact endpoint JSON, provider response ID, delivered timestamp, recipient, and subject were not pasted into this chat, so this file records user-confirmed external validation rather than locally inspected raw evidence
 - current Commit 6 validation: GA4 Benchmark edit/delete icon buttons now have stable accessible labels/titles; `server/ga4-benchmark-regression.test.ts` locally pins the route, tab, scoped API calls, lifecycle notification invalidation, blocked/insufficient states, unit rendering, and browser-PDF Benchmark path; `npm test -- server/ga4-benchmark-regression.test.ts` passed 10 tests on July 1, 2026; deployed Render UI validation was user-confirmed passed on July 1, 2026 for the GA4 Benchmarks tab at campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`
 - current Commit 7 decision: GA4 industry Benchmark values are classified as non-production helper/reference data, not certified target evidence; the industry routes now return `targetSourceCertified: false`, the GA4 modal refuses to auto-fill Benchmark targets unless a future response explicitly returns `targetSourceCertified: true`, and GA4 Benchmark copy now refers to custom targets instead of industry-standard targets; `npm test -- server/ga4-benchmark-regression.test.ts` passed 11 tests on July 1, 2026
-- outstanding production-readiness queue: broader live-provider accuracy, GA4 processing-latency behavior, and revoked-token failure caveats remain scoped to Commits 2 and 3 as documented
-- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, and the daily timer firing by itself; the deployed manual scheduler-validation trigger did pass for the controlled campaign and proves the same campaign-scoped pipeline can run on demand
+- outstanding production-readiness queue: the final current live-provider/current-value-window validation after the manual scheduler run remains scoped to Current Commit 2
+- not fully proven: the daily timer firing by itself remains unproven and must not be claimed; the deployed manual scheduler-validation trigger did pass for the controlled campaign and proves the same campaign-scoped pipeline can run on demand
 
 The current safe answer is:
 
-`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path, with controlled deployed UI/email/provider/manual-scheduler validation recorded where stated. Full unqualified production readiness is not clean-certified yet because remaining broad provider, processing-latency, and revoked-token failure proof work is still incomplete.`
+`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path, with controlled deployed UI/email/provider/manual-scheduler/token-failure validation recorded where stated. Full unqualified production readiness is not clean-certified yet until the final current live-provider/current-value-window validation after the manual scheduler run is recorded under Current Commit 2.`
 
 This status should change only after:
 
@@ -524,7 +524,7 @@ Validation:
 
 Implementation status:
 
-Implemented and deployed for the controlled provider-access blocker. Deployed revalidation returned `provider.status = live_provider_success` and non-null provider totals for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, requested provider window `2026-06-19` through `2026-06-29`, and the expected campaign filter. The endpoint still returns `live_provider_success_after_refresh` on a successful refresh retry and `live_provider_refresh_failed` if refresh/retry fails. Current local follow-up adds validation-only `simulateRefreshFailure=1` support so revoked-token/failure behavior can be proven without damaging the real GA4 connection. Deployed simulation evidence is still pending, so this is not full unqualified token-failure production readiness yet.
+Implemented, deployed, and validated for the controlled provider-access blocker and validation-only refresh-failure path. Deployed revalidation returned `provider.status = live_provider_success` and non-null provider totals for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, requested provider window `2026-06-19` through `2026-06-29`, and the expected campaign filter. The validation-only `simulateRefreshFailure=1` response returned `success = true`, `simulation.refreshFailure = true`, `provider.status = live_provider_refresh_failed`, `provider.totals = null`, and the explicit error `Simulated GA4 token refresh failure for validation; no token refresh was attempted and no token metadata was changed.` This closes Current Commit 3 for the controlled validation path without damaging the real GA4 connection.
 
 ### Current Commit 4 - Align Validation Candidates To The Scheduler Current-Value Window
 
@@ -751,7 +751,7 @@ The items below are unproven until their Current Commit evidence exists. They ar
 | --- | --- | --- | --- |
 | Live GA4 API accuracy and availability | Current Commit 2 | No | Yes |
 | GA4 processing latency / delayed attribution behavior | Current Commit 2 | No | Yes |
-| Deployed OAuth token refresh and tenant-specific provider failures | Current Commit 3 | No | Yes |
+| Real Google revoked-token event without simulation | Current Commit 3 external caveat | No | No for the accepted validation-only failure path; yes only for a future claim about an actual revoked Google token event |
 | Daily timer firing by itself | Current Commit 4 Follow-Up caveat | No | No for the accepted manual-trigger validation path; yes for any future timer-fired claim |
 | Future source mixes or new financial source types | New future Current Commit when introduced | Yes for changed/new path | Yes for changed/new path |
 | Future platform Benchmark readiness | Target-platform readiness queue | Not applicable to GA4 | Always unproven for the target platform until separately certified |

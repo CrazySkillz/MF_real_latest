@@ -407,6 +407,16 @@ CSV spend add/import endpoint after-snapshot captured on `2026-07-01T14:45:46.61
 - UI validation boundary: this closes visible Total Spend, Spend Sources modal/list, and revenue non-interference for CSV spend add/import on this campaign by user report. Exact Profit, ROAS, ROI, and CPA displayed values were not pasted in this file.
 - Certification boundary: CSV spend add/import remains closed for endpoint source creation, spend breakdown materialization, visible spend/source UI, and revenue non-interference on this campaign if `$2,020` was the intended imported spend total. If `$2,020` was not the intended spend amount, amount-mapping correctness must be lowered to unproven and investigated.
 
+CSV spend edit/update endpoint after-snapshot captured on `2026-07-01T15:04:12.170Z`:
+
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
+- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Revenue remained unchanged: imported revenue `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`, remaining active CSV revenue source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` amount `$600`.
+- Spend after-edit snapshot: `spendBreakdownTotal` `$3,120`, `sourceCount: 1`, active CSV spend source ID persisted `c3611c0f-4bbf-47b9-8615-93e4b140385e`, display name `Test_rev_spend.csv`, `mappingKeyCount: 17`, `mappingKeysTruncated: true`.
+- Spend response-shape caveat persisted: `spend.totalToDate: null` and source `amount: null`; GA4 Overview financial spend uses `spendBreakdownResp.totalSpend` for this path.
+- Endpoint-level edit/update result: pass for CSV spend source identity preservation, no duplicate source creation, spend breakdown recalculation, revenue non-interference, and endpoint availability on this campaign if the edited CSV was intentionally expected to contribute `$3,120`; otherwise amount-mapping correctness remains unproven and the CSV spend edit should be investigated before closing this lifecycle action.
+- Remaining gates for this CSV spend edit/update action: expected edited spend amount confirmation, visible Overview Total Spend, Spend Sources modal/list, and derived-card UI parity after edit were not captured in this endpoint packet.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

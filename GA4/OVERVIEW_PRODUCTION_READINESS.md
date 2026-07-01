@@ -385,6 +385,16 @@ CSV revenue delete/deactivate endpoint after-snapshot captured on `2026-07-01T14
 - UI parity result: pass for CSV revenue delete/deactivate visible Total Revenue, Revenue Sources modal/list, source removal, original source preservation, and spend non-interference on this campaign by user report.
 - Certification boundary: this closes CSV revenue delete/deactivate for the traced endpoint and visible Overview UI paths on this campaign. It does not close CSV revenue refresh/reprocess, spend-dependent derived cards, scheduler/report propagation, or any non-CSV source-family lifecycle action.
 
+CSV revenue refresh/reprocess narrow trace conclusion:
+
+- UI trace in `client/src/components/AddRevenueWizardModal.tsx` shows CSV revenue is intentionally not auto-refreshed: the wizard states `CSV data won't auto-update` and `Requires manual re-upload to update`.
+- Edit-mode UI trace shows the CSV update path is manual re-upload/reprocess through the existing edit wizard: `To edit a CSV import, please re-upload the same (or updated) file. We'll re-process revenue using your updated mappings after preview.`
+- Route trace in `server/routes-oauth.ts` found CSV revenue preview/process routes only: `/api/campaigns/:id/revenue/csv/preview` and `/api/campaigns/:id/revenue/csv/process`.
+- Targeted search found no distinct CSV revenue `refresh` or `reprocess` endpoint or Overview UI refresh button for CSV revenue sources.
+- Server edit/reprocess behavior for CSV revenue is handled by `/api/campaigns/:id/revenue/csv/process` when `mapping.sourceId` is provided: it validates campaign/source/platform ownership, updates the existing source, deletes old records for that source, and recreates records from the uploaded or stored CSV rows.
+- Certification conclusion for this campaign/source family: CSV revenue refresh/reprocess is not a separate product lifecycle action. The applicable refresh/reprocess behavior is manual edit/re-upload, which was covered by the CSV revenue edit/update evidence above.
+- Certification boundary: this conclusion applies only to CSV revenue in GA4 Overview. It does not mark Google Sheets, Shopify, HubSpot, Salesforce, ad-platform spend, CSV spend, or scheduler/provider refresh paths as not applicable.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

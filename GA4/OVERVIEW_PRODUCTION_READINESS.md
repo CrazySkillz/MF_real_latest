@@ -371,6 +371,17 @@ CSV revenue edit/update UI screenshot evidence received after edit:
 - UI parity result: pass for CSV revenue edit/update visible Total Revenue, Revenue Sources modal/list, native GA4 plus imported CSV additivity, edited source amount, and original source preservation on this campaign.
 - Certification boundary: this closes CSV revenue edit/update for the traced endpoint and visible Overview UI paths on this campaign. It does not close CSV revenue refresh/reprocess, delete/deactivate, spend-dependent derived cards, scheduler/report propagation, or any non-CSV source-family lifecycle action.
 
+CSV revenue delete/deactivate endpoint after-snapshot captured on `2026-07-01T14:18:22.136Z`:
+
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
+- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Revenue after-delete snapshot: `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`.
+- Deleted disposable source no longer appeared in the source list: `8ba9a131-526c-4e59-a751-c91b92d78b8b`.
+- Original baseline source remained active and unchanged: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, amount `$600`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`.
+- Spend remained unchanged: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
+- Endpoint-level delete/deactivate result: pass for CSV revenue delete/deactivate source removal, total/breakdown recalculation, original source preservation, and spend non-interference on this campaign.
+- Remaining gate for this CSV revenue delete/deactivate action: visible Overview Revenue card and Revenue Sources modal/list parity after delete were not captured in this endpoint packet.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

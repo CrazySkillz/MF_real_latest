@@ -305,6 +305,14 @@ Validation performed for the fix:
 - Whitespace check: `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md`
 - Unauthenticated deployed smoke run: `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` wrote `C:\tmp\ga4-overview-cc2-source-lifecycle-unauthenticated.json` and captured `401 Unauthorized` for each checked endpoint, proving the harness executes and the deployed route boundary fails closed without a logged-in session.
 
+Authenticated baseline capture attempt received on `2026-07-01T13:04:07.433Z`:
+
+- The pasted attachment was exactly `5000` bytes and ended mid-`mappingKeys` array, so it is not a complete parseable evidence packet and cannot close the Current Commit 2 baseline gate.
+- Visible facts from the partial packet: campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, date range `30days`, `overallPass: true`, and HTTP `200` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Visible revenue facts from the partial packet: `totalToDate` `$600`, `breakdownTotal` `$600`, one active `csv` revenue source with displayed ID prefix `d4421cb9-829`.
+- Spend source details, full source identity, and any after-action comparison were missing from the truncated packet; do not treat this as provider-family lifecycle proof.
+- Follow-up harness adjustment: mapping config output is now bounded to `mappingKeyCount`, `mappingKeySample`, and `mappingKeysTruncated` so future evidence packets can remain compact.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

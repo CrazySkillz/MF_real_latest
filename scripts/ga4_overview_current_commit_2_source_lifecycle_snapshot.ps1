@@ -102,18 +102,28 @@ function Get-PropertyValue($Object, [string]$PropertyName) {
   return $prop.Value
 }
 
-function Get-MappingKeys($Source) {
+function Get-MappingKeySummary($Source) {
   $raw = Get-PropertyValue $Source "mappingConfig"
-  if ([string]::IsNullOrWhiteSpace([string]$raw)) { return @() }
+  if ([string]::IsNullOrWhiteSpace([string]$raw)) {
+    return [ordered]@{ hasMappingConfig = $false; count = 0; sample = @(); truncated = $false }
+  }
+
   try {
     $cfg = ConvertFrom-Json -InputObject ([string]$raw)
-    return @($cfg.PSObject.Properties.Name | Sort-Object)
+    $keys = @($cfg.PSObject.Properties.Name | Sort-Object)
+    return [ordered]@{
+      hasMappingConfig = $true
+      count = $keys.Count
+      sample = @($keys | Select-Object -First 20)
+      truncated = $keys.Count -gt 20
+    }
   } catch {
-    return @("unparseable")
+    return [ordered]@{ hasMappingConfig = $true; count = $null; sample = @("unparseable"); truncated = $true }
   }
 }
 
 function Summarize-Source($Source) {
+  $mappingSummary = Get-MappingKeySummary $Source
   [ordered]@{
     id = [string](Get-PropertyValue $Source "id")
     sourceType = [string](Get-PropertyValue $Source "sourceType")
@@ -125,8 +135,10 @@ function Summarize-Source($Source) {
     createdAt = Get-PropertyValue $Source "createdAt"
     updatedAt = Get-PropertyValue $Source "updatedAt"
     lastTotalRevenue = Round2 (Get-PropertyValue $Source "lastTotalRevenue")
-    hasMappingConfig = -not [string]::IsNullOrWhiteSpace([string](Get-PropertyValue $Source "mappingConfig"))
-    mappingKeys = Get-MappingKeys $Source
+    hasMappingConfig = $mappingSummary.hasMappingConfig
+    mappingKeyCount = $mappingSummary.count
+    mappingKeySample = $mappingSummary.sample
+    mappingKeysTruncated = $mappingSummary.truncated
   }
 }
 

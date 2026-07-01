@@ -460,7 +460,7 @@ Full Current Commit 2 source-family lifecycle plan:
 | Source family | Overview paths affected | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Current status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Google Sheets revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required | Required if refresh/sync is exposed | Required | Unproven until deployed before/after evidence is recorded. |
-| CSV revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required if CSV replacement/edit is exposed | Required if re-import/reprocess is exposed | Required | Unproven until deployed before/after evidence is recorded. |
+| CSV revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for validated deployed campaign/source add/import after endpoint plus UI evidence (`$600`) | Closed for validated deployed campaign/source edit/update after endpoint plus UI evidence (`$1,200` edited source, `$1,800` imported total) | Not applicable as a separate CSV revenue action after UI/API trace; manual edit/re-upload is the reprocess path already covered by edit/update evidence | Closed for validated deployed campaign/source delete/deactivate after endpoint plus UI evidence (`$1,200` removed, `$600` source preserved) | Closed only for the validated CSV revenue campaign/source lifecycle: add/import, edit/update, no separate refresh/reprocess, and delete/deactivate. Does not certify other campaigns/properties or other source families. |
 | Manual/legacy revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required if manual add is exposed | Required | Prove not applicable or validate if a refresh/reprocess route exists | Required | Unproven until deployed before/after evidence is recorded. |
 | Shopify revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required | Required if mapping/config edit is exposed | Required | Required | Unproven until deployed before/after evidence is recorded. |
 | HubSpot revenue or Pipeline Proxy | Confirmed revenue paths only if HubSpot writes revenue sources; Pipeline Proxy remains early-signal only | Required for the exposed source/proxy action | Required for mapping/config changes | Required | Required/disconnect if exposed | Unproven until deployed before/after evidence is recorded and revenue/proxy paths are separated. |
@@ -474,17 +474,19 @@ Full Current Commit 2 source-family lifecycle plan:
 
 Execution order for the next validation step:
 
-1. Capture an authenticated Current Commit 2 baseline snapshot for the deployed campaign before touching source data.
-2. Use the baseline to identify the actual source family currently present in the campaign; do not infer it from totals alone.
-3. Pick the lowest-risk disposable test source for the first lifecycle action, preferably a source family with controlled test data and a rollback path.
-4. Validate one lifecycle action at a time: baseline snapshot, one UI/provider action, after snapshot with `-CompareToPath`, source-modal visual check, and downstream Overview financial-card check.
-5. Record the evidence in this file before moving to the next lifecycle action or source family.
-6. If any action changes an unrelated source ID, duplicates an active source, loses provenance, or changes totals unexpectedly, stop Current Commit 2 and add the exact runtime fix as the next Current Commit.
+1. Next source family/action: Google Sheets revenue add/import on the deployed campaign, using a disposable controlled sheet/tab and one known expected revenue amount. This is the next safest provider-backed path because CSV revenue/spend are now closed only for the validated campaign/source paths, while Google Sheets remains unproven and is a real refreshable provider family.
+2. Capture an authenticated Current Commit 2 baseline snapshot for the deployed campaign before touching source data.
+3. Add exactly one Google Sheets revenue source through the GA4 Overview Revenue flow. Do not edit, refresh, or delete in the same evidence packet.
+4. Run the after snapshot and confirm only the intended Google Sheets revenue source appears, imported revenue increases by the expected amount, CSV revenue remains unchanged, spend remains unchanged, GA4 native totals remain available, and source-modal provenance reconciles to Total Revenue.
+5. Confirm visible Overview UI parity: Total Revenue, Revenue Sources modal/list, and any spend-dependent derived-card behavior must match the traced endpoint totals.
+6. Record the evidence in this file before moving to Google Sheets revenue edit/update, Google Sheets revenue refresh/reprocess, or Google Sheets revenue delete/deactivate.
+7. If any action changes an unrelated source ID, duplicates an active source, loses provenance, changes totals unexpectedly, or broadens source scope, stop Current Commit 2 and add the exact runtime fix as the next Current Commit.
 
 What remains unproven externally:
 
-- No real provider-family lifecycle action has been validated in this local pass.
-- Shopify, HubSpot, Salesforce, Google Sheets, CSV, legacy Manual revenue, LinkedIn Ads, Meta Ads, Google Ads, Google Sheets spend, CSV spend, and legacy Manual spend remain provider/user validation work until each relevant family has before/after evidence.
+- Google Sheets revenue and spend lifecycle actions remain unproven until each relevant add/import, edit/update, refresh/reprocess, and delete/deactivate action has deployed before/after endpoint evidence plus UI parity.
+- Shopify, HubSpot, Salesforce, legacy Manual revenue, LinkedIn Ads, Meta Ads, Google Ads, and legacy Manual spend remain provider/user validation work until each relevant family has before/after evidence.
+- CSV revenue and CSV spend are closed only for the validated deployed campaign/source paths recorded above; they do not prove other campaigns/properties, other uploaded files/mappings, scheduler/report propagation, or future-platform behavior.
 - If a before/after snapshot shows a duplicate source, missing source, wrong total, wrong source modal provenance, or unintended unrelated source change, lower only that source-family path to unproven and add the exact runtime fix as the next Current Commit.
 
 ## Root Cause Of Prior Confusion

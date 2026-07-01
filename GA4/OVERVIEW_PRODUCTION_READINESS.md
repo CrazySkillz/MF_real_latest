@@ -395,6 +395,16 @@ CSV revenue refresh/reprocess narrow trace conclusion:
 - Certification conclusion for this campaign/source family: CSV revenue refresh/reprocess is not a separate product lifecycle action. The applicable refresh/reprocess behavior is manual edit/re-upload, which was covered by the CSV revenue edit/update evidence above.
 - Certification boundary: this conclusion applies only to CSV revenue in GA4 Overview. It does not mark Google Sheets, Shopify, HubSpot, Salesforce, ad-platform spend, CSV spend, or scheduler/provider refresh paths as not applicable.
 
+CSV spend add/import endpoint after-snapshot captured on `2026-07-01T14:45:46.610Z`:
+
+- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
+- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
+- Revenue stayed unchanged from the post-delete baseline: imported revenue `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`, remaining active CSV revenue source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` amount `$600`.
+- Spend after-add snapshot: `spendBreakdownTotal` `$2,020`, `sourceCount: 1`, active CSV spend source `c3611c0f-4bbf-47b9-8615-93e4b140385e`, display name `Test_rev_spend.csv`, `mappingKeyCount: 17`, `mappingKeysTruncated: true`.
+- Spend response-shape caveat: the validation packet showed `spend.totalToDate: null` and source `amount: null`; local UI trace shows GA4 Overview financial spend intentionally prefers `spendBreakdownResp.totalSpend` over `spendToDateResp.spendToDate` because `spend-to-date` can read stale/zero campaign metadata. This is not by itself proof of a spend add/import failure.
+- Endpoint-level add/import result: pass for CSV spend source creation, spend breakdown materialization, revenue non-interference, and endpoint availability on this campaign if the imported test CSV was intentionally expected to contribute `$2,020`; otherwise amount-mapping correctness remains unproven and the CSV spend import should be investigated before closing this lifecycle action.
+- Remaining gates for this CSV spend add/import action: visible Overview Total Spend, Spend Sources modal/list, derived cards, and expected imported spend amount confirmation were not captured in this endpoint packet.
+
 Required provider-family validation pattern:
 
 1. Run a baseline snapshot before the source-family action.

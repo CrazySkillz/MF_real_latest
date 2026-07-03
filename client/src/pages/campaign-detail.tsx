@@ -67,6 +67,7 @@ interface PlatformMetrics {
   connected: boolean;
   needsSetup?: boolean;
   requiresImport?: boolean;
+  requiresReauthorization?: boolean;
   impressions: number;
   clicks: number;
   conversions: number;
@@ -4646,13 +4647,20 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
-  const { data: ga4Metrics, isLoading: ga4Loading } = useQuery({
+  const { data: ga4Metrics, isLoading: ga4Loading, error: ga4MetricsError } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId && !!ga4Connection?.connected,
+    retry: (failureCount, error: any) => !error?.requiresReauthorization && failureCount < 3,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401 && errorData?.requiresReauthorization) {
+          const error = new Error(errorData.message || 'Google Analytics needs to be reconnected.') as any;
+          error.requiresReauthorization = true;
+          error.code = errorData.error;
+          throw error;
+        }
         throw new Error(errorData.error || 'Failed to fetch GA4 metrics');
       }
       const data = await response.json();
@@ -4775,6 +4783,7 @@ export default function CampaignDetail() {
 
   // Use platformStatusMap as single source of truth for connection status
   const isGA4Connected = gaPlatformStatus?.connected === true;
+  const ga4RequiresReauthorization = Boolean((ga4MetricsError as any)?.requiresReauthorization);
   
   devLog(`[Campaign Detail] GA4 Status Check:`, {
     campaignId,
@@ -4859,6 +4868,7 @@ export default function CampaignDetail() {
       platform: "Google Analytics",
       connected: isGA4Connected,
       needsSetup: gaPlatformStatus?.needsSetup === true,
+      requiresReauthorization: ga4RequiresReauthorization,
       impressions: ga4Metrics?.impressions || 0,
       clicks: ga4Metrics?.clicks || 0,
       conversions: ga4Metrics?.conversions || 0,
@@ -5672,7 +5682,7 @@ export default function CampaignDetail() {
                 (() => {
                   const customIntegrationEmailReady = platform.platform === "Custom Integration" && !!customIntegrationForwardingEmailDisplay;
                   const customIntegrationCanConfigure = platform.platform === "Custom Integration" && platform.connected;
-                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady || customIntegrationCanConfigure;
+                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || platform.requiresReauthorization || customIntegrationEmailReady || customIntegrationCanConfigure;
                   return (
                 <Card 
                   key={platform.platform} 
@@ -5682,7 +5692,7 @@ export default function CampaignDetail() {
                   <div
                     className={`flex items-center justify-between p-3 ${canExpandPlatform ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
                     onClick={() => {
-                      console.log(`[Platform Click] ${platform.platform}: connected=${platform.connected}, needsSetup=${platform.needsSetup}, requiresImport=${platform.requiresImport}, expandedPlatform=${expandedPlatform}`);
+                      console.log(`[Platform Click] ${platform.platform}: connected=${platform.connected}, needsSetup=${platform.needsSetup}, requiresImport=${platform.requiresImport}, requiresReauthorization=${platform.requiresReauthorization}, expandedPlatform=${expandedPlatform}`);
                       if (canExpandPlatform) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }
@@ -5693,7 +5703,7 @@ export default function CampaignDetail() {
                       <div>
                         <h3 className="font-semibold text-foreground">{platform.platform}</h3>
                         <p className="text-sm text-muted-foreground/70">
-                          {platform.platform === "Custom Integration" && customIntegrationHasImportedData ? "Connected - data imported" : customIntegrationEmailReady ? "Connected - automatic imports ready" : platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected - import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
+                          {platform.platform === "Custom Integration" && customIntegrationHasImportedData ? "Connected - data imported" : customIntegrationEmailReady ? "Connected - automatic imports ready" : platform.needsSetup ? "Not connected" : platform.requiresReauthorization ? "Reconnect required" : platform.requiresImport ? "Connected - import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
                     </div>
@@ -5705,10 +5715,10 @@ export default function CampaignDetail() {
                         </Badge>
                       ) : (
                         <Badge
-                          variant={(platform.connected || platform.requiresImport) ? "default" : "secondary"}
-                          className={platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
+                          variant={(platform.connected || platform.requiresImport || platform.requiresReauthorization) ? "default" : "secondary"}
+                          className={platform.requiresReauthorization ? "bg-amber-600 text-white hover:bg-amber-700" : platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
                         >
-                          {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
+                          {platform.requiresReauthorization ? "Reconnect Required" : platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                         </Badge>
                       )}
                       {canExpandPlatform && (
@@ -5752,6 +5762,29 @@ export default function CampaignDetail() {
                                   data-testid="button-import-linkedin-from-campaign-detail"
                                 >
                                   Import LinkedIn data
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {platform.platform === "Google Analytics" && platform.requiresReauthorization && (
+                          <div className="pt-2 border-t">
+                            <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="font-medium text-amber-800 dark:text-amber-200">Reconnect required</p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  Google Analytics authorization needs to be refreshed before metrics can sync.
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                  onClick={() => {
+                                    setExpandedPlatform("Google Analytics");
+                                  }}
+                                >
+                                  Reconnect Google Analytics
                                 </Button>
                               </div>
                             </div>
@@ -5870,7 +5903,7 @@ export default function CampaignDetail() {
                   {expandedPlatform === platform.platform && (
                     platform.platform === "Google Analytics"
                       ? true
-                      : (!platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady || customIntegrationCanConfigure || (platform.platform === "Google Sheets" && canAddMoreSheets))
+                      : (!platform.connected || platform.needsSetup || platform.requiresImport || platform.requiresReauthorization || customIntegrationEmailReady || customIntegrationCanConfigure || (platform.platform === "Google Sheets" && canAddMoreSheets))
                   ) && (
                     <div className="border-t bg-muted/50 p-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                       {platform.platform === "Google Analytics" ? (

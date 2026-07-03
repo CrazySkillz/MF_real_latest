@@ -67,6 +67,17 @@ describe("GA4 UI regression guard", () => {
     expect(googleSheetsAuth).not.toContain("Checking connection...");
   });
 
+  it("shows GA4 reconnect required on the campaign card when provider auth fails", () => {
+    const campaignDetail = readClient("pages/campaign-detail.tsx");
+
+    expect(campaignDetail).toContain("error.requiresReauthorization = true;");
+    expect(campaignDetail).toContain("const ga4RequiresReauthorization = Boolean((ga4MetricsError as any)?.requiresReauthorization);");
+    expect(campaignDetail).toContain("requiresReauthorization: ga4RequiresReauthorization,");
+    expect(campaignDetail).toContain('platform.requiresReauthorization ? "Reconnect required"');
+    expect(campaignDetail).toContain('platform.requiresReauthorization ? "Reconnect Required"');
+    expect(campaignDetail).toContain("Reconnect Google Analytics");
+    expect(campaignDetail).toContain("|| platform.requiresReauthorization || customIntegrationEmailReady");
+  });
   it("keeps Add Spend source picker copy explicit about sync behavior", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
 

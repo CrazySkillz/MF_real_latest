@@ -7269,14 +7269,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schedulerConfig = getGA4DailySchedulerConfig();
       const expectedRefreshAt = getExpectedDailyRefreshAt(dataThroughDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute);
       const expectedRefreshAtISO = expectedRefreshAt ? expectedRefreshAt.toISOString() : null;
-      const buildFreshness = (lastCompletedRefreshAt: string | null, now = new Date()) => {
+      const addDateOnlyDays = (value: string, daysToAdd: number): string | null => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+        const d = new Date(`${value}T00:00:00.000Z`);
+        if (Number.isNaN(d.getTime())) return null;
+        d.setUTCDate(d.getUTCDate() + daysToAdd);
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      };
+      const getLatestStoredDailyDate = (rows: any[]): string | null => {
+        const dates = (Array.isArray(rows) ? rows : [])
+          .map((r: any) => String(r?.date || "").slice(0, 10))
+          .filter((date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+          .sort();
+        return dates.length > 0 ? dates[dates.length - 1] : null;
+      };
+      const getOldestDueMissingDailyDate = (latestStoredDailyDate: string | null, now = new Date()): string | null => {
+        const oldestMissingDate = latestStoredDailyDate
+          ? (latestStoredDailyDate < dataThroughDate ? addDateOnlyDays(latestStoredDailyDate, 1) : null)
+          : startDate;
+        if (!oldestMissingDate || oldestMissingDate > dataThroughDate) return null;
+        const missingExpectedRefreshAt = getExpectedDailyRefreshAt(oldestMissingDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute);
+        return missingExpectedRefreshAt && missingExpectedRefreshAt.getTime() <= now.getTime() ? oldestMissingDate : null;
+      };
+      const buildFreshness = (lastCompletedRefreshAt: string | null, latestStoredDailyDate: string | null, providerRefreshWarning: string | null = null, now = new Date()) => {
         const refreshedAt = lastCompletedRefreshAt ? new Date(lastCompletedRefreshAt).getTime() : NaN;
         const expectedAt = expectedRefreshAt ? expectedRefreshAt.getTime() : NaN;
+        const oldestDueMissingDailyDate = getOldestDueMissingDailyDate(latestStoredDailyDate, now);
         return {
           expectedRefreshAt: expectedRefreshAtISO,
           refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
           lastCompletedRefreshAt,
-          refreshIsStale: Number.isFinite(expectedAt) && expectedAt <= now.getTime() && (!Number.isFinite(refreshedAt) || refreshedAt < expectedAt),
+          latestStoredDailyDate,
+          oldestDueMissingDailyDate,
+          providerRefreshWarning,
+          refreshIsStale: Boolean(oldestDueMissingDailyDate) || (Number.isFinite(expectedAt) && expectedAt <= now.getTime() && (!Number.isFinite(refreshedAt) || refreshedAt < expectedAt)),
         };
       };
       const addDerivedEngagedSessions = (row: any) => {
@@ -7336,7 +7362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days,
           reportingTimeZone,
           data: merged,
-          ...buildFreshness(lastCompletedRefreshAt),
+          ...buildFreshness(lastCompletedRefreshAt, getLatestStoredDailyDate(merged)),
           lastUpdated: lastCompletedRefreshAt,
         });
       }
@@ -7408,9 +7434,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Read from persisted store first
+      let providerRefreshWarning: string | null = null;
       let stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
-      if (!stored || stored.length === 0) {
-        // Best-effort backfill on demand
+      const refreshFromProvider = async () => {
         const series = await ga4Service.getTimeSeriesData(
           campaignId,
           storage,
@@ -7424,6 +7450,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.upsertGA4DailyMetrics(upserts as any);
         }
         stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+      };
+
+      if (!stored || stored.length === 0) {
+        // Best-effort backfill on demand for empty daily history. Preserve existing behavior: surface provider errors.
+        await refreshFromProvider();
+      } else if (getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))) {
+        // Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.
+        try {
+          await refreshFromProvider();
+        } catch (e: any) {
+          providerRefreshWarning = e?.message || "Failed to refresh missing GA4 daily rows";
+        }
       } else if (needsConversionRevenueRepair(stored)) {
         const series = await ga4Service.getTimeSeriesData(
           campaignId,
@@ -7442,6 +7480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
         }
       }
+      const latestStoredDailyDate = getLatestStoredDailyDate(stored);
 
       const lastUpdated =
         stored.length > 0
@@ -7463,7 +7502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         days,
         reportingTimeZone,
         data: stored.map(addDerivedEngagedSessions),
-        ...buildFreshness(lastUpdated),
+        ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });
     } catch (error: any) {

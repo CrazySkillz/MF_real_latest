@@ -4994,6 +4994,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectionId,
         spreadsheetId: conn.spreadsheetId,
         sheetName: conn.sheetName || null,
+        sheetHeaders: headers,
+        sheetSampleRows: rows.slice(0, 25),
+        sheetRowCount: rows.length,
         lastSyncedAt: new Date().toISOString(),
       };
       delete (mappingForStorage as any).sourceId;

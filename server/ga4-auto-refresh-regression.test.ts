@@ -67,6 +67,20 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).not.toContain('String((s as any).sourceType || "") === "csv"');
     expect(content).not.toContain("reprocessCsv");
   });
+  it("persists fresh Google Sheets spend preview metadata after reprocess", () => {
+    const routes = routesFile();
+    const processStart = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"');
+    const processEnd = routes.indexOf('  // ---------------------------------------------------------------------------', processStart);
+    const processRoute = routes.slice(processStart, processEnd);
+
+    expect(processStart).toBeGreaterThan(-1);
+    expect(processEnd).toBeGreaterThan(processStart);
+    expect(processRoute).toContain("sheetHeaders: headers,");
+    expect(processRoute).toContain("sheetSampleRows: rows.slice(0, 25),");
+    expect(processRoute).toContain("sheetRowCount: rows.length,");
+    expect(processRoute.indexOf("sheetSampleRows: rows.slice(0, 25),")).toBeGreaterThan(processRoute.indexOf("for (let i = 1; i < values.length; i++)"));
+    expect(processRoute.indexOf("sheetSampleRows: rows.slice(0, 25),")).toBeLessThan(processRoute.indexOf("const nextSpendMappingConfig = JSON.stringify(mappingForStorage);"));
+  });
   it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();
     const routes = routesFile();

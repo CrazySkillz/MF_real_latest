@@ -58,6 +58,19 @@ describe("GA4 reporting-day cutoff", () => {
     expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
   });
 
+  it("keeps GA4 to-date from calling the provider with an inverted completed-day window", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"');
+    const routeEnd = routes.indexOf('  // Benchmark-read-only GA4 input validation', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(routeEnd).toBeGreaterThan(routeStart);
+    expect(route).toContain("if (startDateUsed > endDateUsed)");
+    expect(route).toContain("noCompletedWindow: true");
+    expect(route).toContain("No completed GA4 reporting day is available for this campaign yet.");
+    expect(route.indexOf("if (startDateUsed > endDateUsed)")).toBeLessThan(route.indexOf("ga4Service.getTotalsWithRevenue"));
+  });
   it("maps GA4 timeseries token refresh failures to a reconnect response", () => {
     const routes = read("server", "routes-oauth.ts");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-timeseries"');

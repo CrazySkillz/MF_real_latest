@@ -7637,6 +7637,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
       }
 
+      if (startDateUsed > endDateUsed) {
+        return res.json({
+          success: true,
+          propertyId: String(connection.propertyId),
+          startDate: startDateUsed,
+          endDate: endDateUsed,
+          revenueMetric: "",
+          noCompletedWindow: true,
+          message: "No completed GA4 reporting day is available for this campaign yet.",
+          totals: {
+            sessions: 0,
+            users: 0,
+            conversions: 0,
+            pageviews: 0,
+            revenue: 0,
+            engagedSessions: 0,
+            engagementRate: 0,
+          },
+        });
+      }
+
       const attempt = async (token: string) => {
         return await ga4Service.getTotalsWithRevenue(String(connection.propertyId), token, startDateUsed, endDateUsed, campaignFilter);
       };

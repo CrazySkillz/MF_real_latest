@@ -108,6 +108,8 @@ await GA4OverviewValidation.googleSheetsVariantPack({
 
 Do not treat this as proof for all possible Google Sheets shapes. It proves only the configured fixture rows and mapping expectations in the output.
 
+Recorded deployed Current Commit 2g evidence: on `2026-07-03T21:09:01.553Z`, runner `2026-07-03.4` returned `overallPass: true` for the configured Google Sheets spend fixture on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`; spend breakdown was `$678.95`, duplicate active Google Sheets signature checks passed, and the user confirmed the Total Spend card/source modal showed `$678.95`. This evidence closes only that configured fixture.
+
 
 ## Playwright Use
 

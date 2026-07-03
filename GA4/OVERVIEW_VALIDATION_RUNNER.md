@@ -92,6 +92,8 @@ await GA4OverviewValidation.googleSheetsVariantPack({
 
 This validates deployed source endpoints, compact totals, source identity, amount, active state, duplicate Google Sheets signatures, and persisted mapping metadata for the configured fixture variants. It does not create sources, refresh sheets, delete sources, inspect UI pixels, or prove unlisted mapping shapes.
 
+Recorded deployed Current Commit 2g evidence: runner `2026-07-03.4` returned `overallPass: true` on `2026-07-03T21:09:01.553Z` for the configured Google Sheets spend fixture on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`; UI Total Spend/source-modal parity was user-confirmed at `$678.95`. This closes that fixture only.
+
 See `GA4/OVERVIEW_AUTOMATED_VALIDATION.md` for the accelerated validation workflow and Playwright wrapper.
 
 ## Standard Pattern

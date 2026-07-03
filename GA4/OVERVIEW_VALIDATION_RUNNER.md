@@ -13,11 +13,14 @@ Read-only functions:
 - `GA4OverviewValidation.snapshot(config)`
 - `GA4OverviewValidation.before(label, config)`
 - `GA4OverviewValidation.after(label, config)`
+- `GA4OverviewValidation.overviewPack(config)`
 
 Explicit mutation helpers:
 
 - `GA4OverviewValidation.refreshSpend({ campaignId, sourceId })`
 - `GA4OverviewValidation.refreshRevenue({ campaignId, sourceId })`
+- `GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })` creates a report snapshot only when `createSnapshot: true` is passed
+- `GA4OverviewValidation.reportPack({ campaignId, reportId, sendTest: true })` sends a real test email only when `sendTest: true` is passed
 
 The helper does not delete sources. Delete/deactivate validation still requires deleting through the deployed UI, then running `after(...)`.
 
@@ -28,10 +31,34 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js');
+await import('/ga4-overview-validation-runner.js?v=2026-07-03.2');
 GA4OverviewValidation.help();
 ```
 
+## One-Command Overview Pack
+
+For repeatable Overview endpoint validation, use:
+
+```js
+await GA4OverviewValidation.overviewPack({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID'
+});
+```
+
+This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. It does not inspect UI pixels, PDF text, or inbox delivery.
+
+For saved report snapshot/PDF smoke validation, use:
+
+```js
+await GA4OverviewValidation.reportPack({
+  campaignId: 'CAMPAIGN_ID',
+  reportId: 'REPORT_ID',
+  createSnapshot: true
+});
+```
+
+See `GA4/OVERVIEW_AUTOMATED_VALIDATION.md` for the accelerated validation workflow and Playwright wrapper.
 ## Standard Pattern
 
 1. Run `before(...)`.

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-03.3";
+  var VERSION = "2026-07-03.4";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -63,6 +63,101 @@
       if (parsed !== null) return money(parsed);
     }
     return null;
+  }
+
+  function objectValue(value) {
+    if (!value) return {};
+    if (typeof value === "string") {
+      try {
+        var parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+    return typeof value === "object" ? value : {};
+  }
+
+  function mappingConfig(row) {
+    return objectValue(row && (row.mappingConfig || row.mapping_config || row.config || row.sourceConfig || row.source_config || row.mapping));
+  }
+
+  function firstPresent(row, keys) {
+    var mapping = mappingConfig(row);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (mapping[key] !== undefined && mapping[key] !== null && mapping[key] !== "") return mapping[key];
+      if (row && row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+    }
+    return null;
+  }
+
+  function arrayValues(value) {
+    if (Array.isArray(value)) return value.map(function (item) { return String(item); });
+    if (value === undefined || value === null || value === "") return [];
+    return [String(value)];
+  }
+
+  function sortedValues(value) {
+    return arrayValues(value).slice().sort();
+  }
+
+  function sourceDisplayName(row) {
+    return row && (row.displayName || row.name || row.label || row.sourceName || row.fileName || null);
+  }
+
+  function sourceActive(row) {
+    if (!row) return false;
+    if (row.active === false || row.isActive === false) return false;
+    if (String(row.status || "").toLowerCase() === "inactive") return false;
+    return true;
+  }
+
+  function googleSheetsMappingSummary(row, includeDetails) {
+    var mapping = mappingConfig(row);
+    var keys = Object.keys(mapping);
+    var tabName = firstPresent(row, ["tabName", "sheetName", "worksheetName", "selectedTabName", "sheetTitle"]);
+    var dateColumn = firstPresent(row, ["dateColumn", "selectedDateColumn"]);
+    var campaignColumn = firstPresent(row, ["campaignColumn", "campaignIdentifierColumn", "campaignField"]);
+    var campaignValues = firstPresent(row, ["campaignValues", "selectedCampaignValues", "campaignValue"]);
+    var spreadsheetId = firstPresent(row, ["spreadsheetId", "googleSpreadsheetId", "sheetId"]);
+    var rowCount = firstNumber(mapping, ["sheetRowCount", "csvRowCount", "rowCount", "storedRowCount"]);
+    var storedRows = firstPresent(row, ["sheetStoredRows", "csvStoredSpendRows", "csvStoredRevenueRows", "storedRows"]);
+
+    var summary = {
+      hasMappingConfig: keys.length > 0,
+      mappingKeyCount: keys.length,
+      spreadsheetIdPresent: !!spreadsheetId,
+      tabNamePresent: !!tabName,
+      dateColumnPresent: !!dateColumn,
+      campaignColumnPresent: !!campaignColumn,
+      campaignValueCount: arrayValues(campaignValues).length,
+      rowCount: rowCount,
+      storedRowsPresent: Array.isArray(storedRows) ? storedRows.length > 0 : !!storedRows
+    };
+
+    if (includeDetails === true) {
+      summary.tabName = tabName;
+      summary.dateColumn = dateColumn;
+      summary.campaignColumn = campaignColumn;
+      summary.campaignValues = sortedValues(campaignValues);
+    }
+
+    return summary;
+  }
+
+  function compareOptional(actual, expected) {
+    if (expected === undefined || expected === null) return undefined;
+    if (expected === true) return actual !== null && actual !== undefined && actual !== "";
+    if (expected === false) return actual === null || actual === undefined || actual === "";
+    return String(actual || "") === String(expected);
+  }
+
+  function compareOptionalValues(actual, expected) {
+    if (expected === undefined || expected === null) return undefined;
+    var actualValues = sortedValues(actual);
+    var expectedValues = sortedValues(expected);
+    return expectedValues.every(function (value) { return actualValues.indexOf(value) !== -1; });
   }
 
   function sumRows(rows, keys) {
@@ -683,12 +778,261 @@
     console.log(summary);
     return summary;
   }
+  function googleSheetsAmount(sourceRow, breakdownRows, family) {
+    var id = sourceId(sourceRow);
+    var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
+    var breakdownAmount = sourceAmount(breakdownRow, family);
+    if (breakdownAmount !== null) return breakdownAmount;
+    return sourceAmount(sourceRow, family);
+  }
+
+  function googleSheetsSignature(row, family) {
+    var spreadsheetId = firstPresent(row, ["spreadsheetId", "googleSpreadsheetId", "sheetId"]);
+    var tabName = firstPresent(row, ["tabName", "sheetName", "worksheetName", "selectedTabName", "sheetTitle"]);
+    var dateColumn = firstPresent(row, ["dateColumn", "selectedDateColumn"]);
+    var campaignColumn = firstPresent(row, ["campaignColumn", "campaignIdentifierColumn", "campaignField"]);
+    var campaignValues = sortedValues(firstPresent(row, ["campaignValues", "selectedCampaignValues", "campaignValue"]));
+    var amountColumn = family === "spend"
+      ? firstPresent(row, ["spendColumn", "costColumn", "amountColumn", "valueColumn"])
+      : firstPresent(row, ["revenueColumn", "conversionValueColumn", "amountColumn", "valueColumn"]);
+
+    if (!spreadsheetId && !tabName && !dateColumn && !campaignColumn && !amountColumn && campaignValues.length === 0) {
+      return null;
+    }
+
+    return [family, spreadsheetId || "", tabName || "", amountColumn || "", dateColumn || "", campaignColumn || "", campaignValues.join(",")]
+      .join("|")
+      .toLowerCase();
+  }
+
+  function duplicateGoogleSheetsGroups(rows, family) {
+    var groups = rows.filter(function (row) {
+      return sourceActive(row) && sourceType(row).indexOf("google") !== -1;
+    }).reduce(function (map, row) {
+      var signature = googleSheetsSignature(row, family);
+      if (!signature) return map;
+      if (!map[signature]) map[signature] = [];
+      map[signature].push(row);
+      return map;
+    }, {});
+
+    return Object.keys(groups).filter(function (signature) {
+      return groups[signature].length > 1;
+    }).map(function (signature) {
+      return {
+        family: family,
+        count: groups[signature].length,
+        sourceIds: groups[signature].map(sourceId).filter(Boolean)
+      };
+    });
+  }
+
+  function normalizeGoogleSheetsVariants(config) {
+    var variants = [];
+    function add(family, rows) {
+      if (!Array.isArray(rows)) return;
+      rows.forEach(function (row) {
+        variants.push(Object.assign({ family: family }, row || {}));
+      });
+    }
+
+    if (Array.isArray(config.variants)) {
+      config.variants.forEach(function (row) {
+        variants.push(Object.assign({}, row || {}));
+      });
+    }
+    add("revenue", config.revenueVariants);
+    add("spend", config.spendVariants);
+    if (config.expected) {
+      add("revenue", config.expected.revenue);
+      add("spend", config.expected.spend);
+    }
+    return variants.map(function (variant, index) {
+      return Object.assign({ label: variant.label || "variant-" + String(index + 1) }, variant);
+    });
+  }
+
+  function findVariantSource(variant, sourceRows) {
+    var googleRows = sourceRows.filter(function (row) { return sourceType(row).indexOf("google") !== -1; });
+    if (variant.sourceId) {
+      return {
+        matches: googleRows.filter(function (row) { return sourceId(row) === String(variant.sourceId); }),
+        matchMode: "sourceId"
+      };
+    }
+    if (variant.expectedDisplayName) {
+      return {
+        matches: googleRows.filter(function (row) { return String(sourceDisplayName(row) || "") === String(variant.expectedDisplayName); }),
+        matchMode: "displayName"
+      };
+    }
+    return { matches: googleRows, matchMode: "googleSheetsFamily" };
+  }
+
+  function validateGoogleSheetsVariant(variant, sourceRows, breakdownRows, includeDetails) {
+    var family = variant.family === "revenue" ? "revenue" : "spend";
+    var found = findVariantSource(variant, sourceRows);
+    var matches = found.matches;
+    var source = matches.length === 1 ? matches[0] : null;
+    var mapping = mappingConfig(source);
+    var tabName = source ? firstPresent(source, ["tabName", "sheetName", "worksheetName", "selectedTabName", "sheetTitle"]) : null;
+    var dateColumn = source ? firstPresent(source, ["dateColumn", "selectedDateColumn"]) : null;
+    var campaignColumn = source ? firstPresent(source, ["campaignColumn", "campaignIdentifierColumn", "campaignField"]) : null;
+    var campaignValues = source ? firstPresent(source, ["campaignValues", "selectedCampaignValues", "campaignValue"]) : null;
+    var spreadsheetId = source ? firstPresent(source, ["spreadsheetId", "googleSpreadsheetId", "sheetId"]) : null;
+    var rowCount = source ? firstNumber(mapping, ["sheetRowCount", "csvRowCount", "rowCount", "storedRowCount"]) : null;
+    var amount = source ? googleSheetsAmount(source, breakdownRows, family) : null;
+    var expectedActive = variant.expectedActive === undefined ? true : variant.expectedActive;
+
+    var checks = {
+      sourceFound: matches.length > 0,
+      sourceUnambiguous: matches.length === 1,
+      sourceIsGoogleSheets: source ? sourceType(source).indexOf("google") !== -1 : false,
+      activeStateMatchesExpected: source ? sourceActive(source) === expectedActive : false,
+      amountMatchesExpected: variant.expectedAmount === undefined || variant.expectedAmount === null ? undefined : closeMoney(amount, variant.expectedAmount),
+      displayNameMatchesExpected: source ? compareOptional(sourceDisplayName(source), variant.expectedDisplayName) : undefined,
+      spreadsheetIdMatchesExpected: source ? compareOptional(spreadsheetId, variant.expectedSpreadsheetId) : undefined,
+      tabNameMatchesExpected: source ? compareOptional(tabName, variant.expectedTabName) : undefined,
+      dateColumnMatchesExpected: source ? compareOptional(dateColumn, variant.expectedDateColumn) : undefined,
+      campaignColumnMatchesExpected: source ? compareOptional(campaignColumn, variant.expectedCampaignColumn) : undefined,
+      campaignValuesIncludeExpected: source ? compareOptionalValues(campaignValues, variant.expectedCampaignValues) : undefined,
+      campaignValueCountMatchesExpected: source && variant.expectedCampaignValueCount !== undefined ? arrayValues(campaignValues).length === Number(variant.expectedCampaignValueCount) : undefined,
+      rowCountMatchesExpected: source && variant.expectedRowCount !== undefined ? Number(rowCount) === Number(variant.expectedRowCount) : undefined,
+      rowCountAtLeastExpected: source && variant.expectedMinimumRowCount !== undefined ? Number(rowCount || 0) >= Number(variant.expectedMinimumRowCount) : undefined
+    };
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+
+    return {
+      label: variant.label,
+      family: family,
+      matchMode: found.matchMode,
+      expected: {
+        sourceId: variant.sourceId || null,
+        amount: variant.expectedAmount === undefined ? null : variant.expectedAmount,
+        displayName: variant.expectedDisplayName || null,
+        tabName: variant.expectedTabName || null,
+        dateColumn: variant.expectedDateColumn === undefined ? null : variant.expectedDateColumn,
+        campaignColumn: variant.expectedCampaignColumn === undefined ? null : variant.expectedCampaignColumn,
+        campaignValues: variant.expectedCampaignValues || null,
+        campaignValueCount: variant.expectedCampaignValueCount === undefined ? null : variant.expectedCampaignValueCount,
+        rowCount: variant.expectedRowCount === undefined ? null : variant.expectedRowCount,
+        minimumRowCount: variant.expectedMinimumRowCount === undefined ? null : variant.expectedMinimumRowCount
+      },
+      matchedSourceCount: matches.length,
+      matchedSourceIds: matches.map(sourceId).filter(Boolean),
+      actual: source ? {
+        sourceId: sourceId(source),
+        displayName: sourceDisplayName(source),
+        type: sourceType(source),
+        active: sourceActive(source),
+        amount: amount,
+        mapping: googleSheetsMappingSummary(source, includeDetails)
+      } : null,
+      checks: effectiveChecks,
+      overallPass: Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; })
+    };
+  }
+
+  async function googleSheetsVariantPack(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = config.propertyId ? String(config.propertyId) : null;
+    var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
+    var variants = normalizeGoogleSheetsVariants(config);
+    var includeDetails = config.includeMappingDetails === true;
+
+    var base = await snapshot({
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      includeGa4: config.includeGa4 !== false && !!propertyId
+    });
+
+    var results = await Promise.all([
+      fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
+      fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
+      fetchJson("spendSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-sources"),
+      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown")
+    ]);
+    var byName = endpointMap(results);
+    var revenueSources = rowsOf(byName.revenueSources && byName.revenueSources.data);
+    var spendSources = rowsOf(byName.spendSources && byName.spendSources.data);
+    var revenueBreakdownRows = rowsOf(byName.revenueBreakdown && byName.revenueBreakdown.data);
+    var spendBreakdownRows = rowsOf(byName.spendBreakdown && byName.spendBreakdown.data);
+    var duplicateRevenueGroups = duplicateGoogleSheetsGroups(revenueSources, "revenue");
+    var duplicateSpendGroups = duplicateGoogleSheetsGroups(spendSources, "spend");
+
+    var variantResults = variants.map(function (variant) {
+      var family = variant.family === "revenue" ? "revenue" : "spend";
+      return validateGoogleSheetsVariant(
+        variant,
+        family === "revenue" ? revenueSources : spendSources,
+        family === "revenue" ? revenueBreakdownRows : spendBreakdownRows,
+        includeDetails
+      );
+    });
+
+    var endpointPass = base.endpointPass && results.every(function (result) { return result.pass; });
+    var checks = {
+      endpointsPass: endpointPass,
+      variantsConfigured: variants.length > 0,
+      allVariantsPass: variants.length > 0 && variantResults.every(function (variant) { return variant.overallPass === true; }),
+      noDuplicateActiveGoogleSheetsRevenueSignatures: config.allowDuplicateGoogleSheetsSources === true ? undefined : duplicateRevenueGroups.length === 0,
+      noDuplicateActiveGoogleSheetsSpendSignatures: config.allowDuplicateGoogleSheetsSources === true ? undefined : duplicateSpendGroups.length === 0,
+      revenueTotalMatchesExpected: config.expectedRevenueTotal === undefined ? undefined : closeMoney(base.revenue.breakdownTotal, config.expectedRevenueTotal),
+      spendTotalMatchesExpected: config.expectedSpendTotal === undefined ? undefined : closeMoney(base.spend.breakdownTotal, config.expectedSpendTotal)
+    };
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+
+    var googleSheetsRevenueSources = revenueSources.filter(function (row) { return sourceType(row).indexOf("google") !== -1; });
+    var googleSheetsSpendSources = spendSources.filter(function (row) { return sourceType(row).indexOf("google") !== -1; });
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: config.stage || "ga4-overview-google-sheets-variant-pack",
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      endpointStatus: base.endpointStatus.concat(results.map(compactEndpointStatus)),
+      totals: {
+        revenueBreakdownTotal: base.revenue.breakdownTotal,
+        revenueSourceCount: base.revenue.sourceCount,
+        googleSheetsRevenueSourceCount: googleSheetsRevenueSources.length,
+        spendBreakdownTotal: base.spend.breakdownTotal,
+        spendSourceCount: base.spend.sourceCount,
+        googleSheetsSpendSourceCount: googleSheetsSpendSources.length
+      },
+      variantCount: variants.length,
+      variants: variantResults,
+      duplicateActiveGoogleSheetsGroups: duplicateRevenueGroups.concat(duplicateSpendGroups),
+      caveats: [
+        "This pack validates already-created Google Sheets sources; it does not import, edit, refresh, delete, or inspect rendered UI pixels.",
+        "Mapping checks use persisted source metadata returned by the deployed source endpoints, not a live Google Sheets cell-by-cell audit.",
+        "A passing variant pack closes only the configured fixture variants and is not proof for unsupported or unlisted Google Sheets mapping shapes."
+      ],
+      checks: effectiveChecks
+    };
+
+    summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
+
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-03.3')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-03.4')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
+      "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
       "await GA4OverviewValidation.before('2g-tab-add', { campaignId, propertyId })",
       "await GA4OverviewValidation.after('2g-tab-add', { campaignId, propertyId, expectedSpendDelta: 123.45, expectedSpendSourceCountDelta: 1 })",
       "await GA4OverviewValidation.refreshSpend({ campaignId, sourceId })",
@@ -708,6 +1052,7 @@
     overviewPack: overviewPack,
     reportPack: reportPack,
     sourceDamageInventory: sourceDamageInventory,
+    googleSheetsVariantPack: googleSheetsVariantPack,
     help: help
   };
 

@@ -26,6 +26,14 @@ The optional `GA4OverviewValidation.reportPack(...)` checks, in one command when
 - optional test-send endpoint and send-events access
 - read-only source-damage inventory for one campaign through `GA4OverviewValidation.sourceDamageInventory(...)`
 
+The optional `GA4OverviewValidation.googleSheetsVariantPack(...)` checks already-created Google Sheets fixture sources in one command:
+
+- revenue and spend Google Sheets source presence
+- source identity, active state, and compact source totals
+- persisted mapping metadata such as tab presence, date column, campaign column, campaign value count, and row-count expectations
+- duplicate active Google Sheets mapping signatures for the current campaign
+- optional expected revenue/spend totals for the current fixture state
+
 ## What Is Not Fully Automated
 
 These remain external evidence gates:
@@ -33,7 +41,7 @@ These remain external evidence gates:
 - visual UI inspection of rendered cards/modals unless a Playwright selector-specific test is later added for that exact UI surface
 - reading PDF text/value parity from the downloaded PDF; the current browser pack proves PDF generation, not value-by-value PDF content
 - inbox delivery; `sendTest: true` can call the test-send endpoint, but delivery is not certified without provider delivery events or actual inbox receipt. The 2026-07-03 GA4 Overview Report email packet is recorded as user-confirmed delivery evidence for that specific packet only
-- source setup actions that require third-party provider UI/OAuth/mapping decisions
+- source setup actions that require third-party provider UI/OAuth/mapping decisions; `googleSheetsVariantPack(...)` validates controlled sources after they already exist
 - future provider data changes after GA4 delayed processing
 
 ## Fast Browser Use
@@ -41,7 +49,7 @@ These remain external evidence gates:
 Open the deployed app while logged in, then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-03.3');
+await import('/ga4-overview-validation-runner.js?v=2026-07-03.4');
 await GA4OverviewValidation.overviewPack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
   propertyId: '542352127'
@@ -78,6 +86,28 @@ await GA4OverviewValidation.sourceDamageInventory({
 
 This inventory command is GET-only. If it returns `overallPass: false`, document the returned source IDs and record IDs before proposing cleanup.
 
+For Current Commit 2g Google Sheets mapping variant evidence after fixture sources already exist, run:
+
+```js
+await GA4OverviewValidation.googleSheetsVariantPack({
+  campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
+  propertyId: '542352127',
+  variants: [
+    {
+      label: 'controlled-spend-date-column',
+      family: 'spend',
+      sourceId: 'SOURCE_ID',
+      expectedAmount: 123.45,
+      expectedDateColumn: true,
+      expectedCampaignColumn: true,
+      expectedMinimumRowCount: 1
+    }
+  ]
+});
+```
+
+Do not treat this as proof for all possible Google Sheets shapes. It proves only the configured fixture rows and mapping expectations in the output.
+
 
 ## Playwright Use
 
@@ -103,4 +133,4 @@ If `e2e/auth.json` does not exist, the Playwright spec skips with an explicit me
 
 ## Certification Rule
 
-A passing automated pack is strong operational evidence for the endpoints it checks, but it is not blanket production-readiness proof for untested lifecycle actions, future source families, PDF text parity, future inbox delivery outside recorded packets, production cleanup, or future provider behavior. Record the exact pack output and keep unresolved external gates explicit in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+A passing automated pack is strong operational evidence for the endpoints or configured fixture variants it checks, but it is not blanket production-readiness proof for untested lifecycle actions, future source families, unlisted Google Sheets mapping shapes, PDF text parity, future inbox delivery outside recorded packets, production cleanup, or future provider behavior. Record the exact pack output and keep unresolved external gates explicit in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.

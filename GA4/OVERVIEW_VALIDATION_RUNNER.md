@@ -15,6 +15,7 @@ Read-only functions:
 - `GA4OverviewValidation.after(label, config)`
 - `GA4OverviewValidation.overviewPack(config)`
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
+- `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
 
@@ -32,7 +33,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-03.3');
+await import('/ga4-overview-validation-runner.js?v=2026-07-03.4');
 GA4OverviewValidation.help();
 ```
 
@@ -68,6 +69,28 @@ await GA4OverviewValidation.sourceDamageInventory({
 ```
 
 This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
+
+For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
+
+```js
+await GA4OverviewValidation.googleSheetsVariantPack({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  variants: [
+    {
+      label: 'spend-date-column',
+      family: 'spend',
+      sourceId: 'SPEND_SOURCE_ID',
+      expectedAmount: 807.70,
+      expectedDateColumn: true,
+      expectedCampaignColumn: true,
+      expectedMinimumRowCount: 1
+    }
+  ]
+});
+```
+
+This validates deployed source endpoints, compact totals, source identity, amount, active state, duplicate Google Sheets signatures, and persisted mapping metadata for the configured fixture variants. It does not create sources, refresh sheets, delete sources, inspect UI pixels, or prove unlisted mapping shapes.
 
 See `GA4/OVERVIEW_AUTOMATED_VALIDATION.md` for the accelerated validation workflow and Playwright wrapper.
 

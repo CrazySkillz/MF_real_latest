@@ -57,4 +57,23 @@ describe("GA4 reporting-day cutoff", () => {
     expect(page).toContain("const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || \"\").trim();");
     expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
   });
+
+  it("maps GA4 timeseries token refresh failures to a reconnect response", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-timeseries"');
+    const routeEnd = routes.indexOf('  // List GA4 campaign values', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(routeEnd).toBeGreaterThan(routeStart);
+    const autoRefreshIndex = route.indexOf("error.message === 'AUTO_REFRESH_NEEDED'");
+    const tokenExpiredIndex = route.indexOf("error.message === 'TOKEN_EXPIRED'");
+    const genericFallbackIndex = route.indexOf("error: error.message || 'Failed to fetch time series data'");
+
+    expect(autoRefreshIndex).toBeGreaterThan(-1);
+    expect(tokenExpiredIndex).toBeGreaterThan(-1);
+    expect(genericFallbackIndex).toBeGreaterThan(tokenExpiredIndex);
+    expect(route).toContain("requiresReauthorization: true");
+    expect(route).toContain("Google Analytics needs to be reconnected.");
+  });
 });

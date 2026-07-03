@@ -10661,6 +10661,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error fetching GA4 time series data:', error);
+      if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({
+          success: false,
+          error: 'AUTO_REFRESH_NEEDED',
+          requiresReauthorization: true,
+          message: 'Google Analytics needs to be reconnected.',
+        });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({
+          success: false,
+          error: 'TOKEN_EXPIRED',
+          requiresReauthorization: true,
+          message: 'Google Analytics needs to be reconnected.',
+        });
+      }
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch time series data'

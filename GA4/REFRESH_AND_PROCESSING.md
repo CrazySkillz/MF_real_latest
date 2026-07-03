@@ -426,6 +426,7 @@ What is true today:
 - scheduled report processing now fails closed for missing campaign ownership and deduplicates report rows before due checks
 - scheduled/test-send report emails now use a simple `MimoSaaS report attached` transactional payload with the generated PDF attachment, and test-send checks Mailgun delivery events when available
 - GA4 report final validation passed for the report scheduler/output scope: targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, direct snapshot PDF output, and scheduled-report log-cycle behavior
+- July 3, 2026: deployed GA4 Overview Report email delivery was user-confirmed for the recorded Overview report packet; future scheduled/test deliveries and report variants still require their own runtime evidence if separately questioned
 
 What is not yet fully consolidated:
 

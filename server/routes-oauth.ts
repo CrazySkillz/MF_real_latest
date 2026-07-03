@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1252,6 +1252,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return { sources, duplicateGroups, buildSignature };
   };
 
+  const normalizeOverviewInventoryPlatformContext = (value: any) => {
+    const context = String(value ?? "").trim().toLowerCase();
+    return context || "ga4";
+  };
+
+  const overviewInventoryAllowedPlatformContexts = new Set(["ga4", "google_analytics", "google_sheets", "custom_integration"]);
+  const overviewInventoryOmittedMappingKeys = new Set([
+    "csvHeaders",
+    "csvSampleRows",
+    "csvStoredRevenueRows",
+    "csvStoredSpendRows",
+    "sheetHeaders",
+    "sheetSampleRows",
+  ]);
+
+  const hashOverviewInventoryValue = (value: any) =>
+    createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
+
+  const normalizeOverviewInventoryConfigValue = (value: any): any => {
+    if (Array.isArray(value)) return value.map(normalizeOverviewInventoryConfigValue);
+    if (value && typeof value === "object") {
+      return Object.keys(value).sort().reduce((acc: Record<string, any>, key) => {
+        if (overviewInventoryOmittedMappingKeys.has(key)) return acc;
+        acc[key] = normalizeOverviewInventoryConfigValue(value[key]);
+        return acc;
+      }, {});
+    }
+    return value ?? null;
+  };
+
+  const normalizeOverviewInventoryMappingConfig = (mappingConfig: any) => {
+    if (!mappingConfig) return {};
+    if (typeof mappingConfig === "string") {
+      try {
+        return normalizeOverviewInventoryConfigValue(JSON.parse(mappingConfig));
+      } catch {
+        return { unparseable: true, rawHash: hashOverviewInventoryValue(mappingConfig) };
+      }
+    }
+    return normalizeOverviewInventoryConfigValue(mappingConfig);
+  };
+
+  const centsOverviewInventoryTotal = (records: any[], amountKey: "revenue" | "spend") => {
+    const total = records.reduce((sum, record) => {
+      const value = Number(record?.[amountKey]);
+      return Number.isFinite(value) ? sum + value : sum;
+    }, 0);
+    return Math.round(total * 100) / 100;
+  };
+
+  const countOverviewInventoryRecordsBySource = (records: any[], sourceKey: "revenueSourceId" | "spendSourceId") => {
+    const counts = new Map<string, number>();
+    for (const record of records) {
+      const sourceId = String(record?.[sourceKey] || "");
+      if (!sourceId) continue;
+      counts.set(sourceId, (counts.get(sourceId) || 0) + 1);
+    }
+    return counts;
+  };
+
+  const summarizeOverviewInventorySource = (source: any, recordCount: number) => ({
+    id: String(source?.id || ""),
+    sourceType: source?.sourceType || null,
+    platformContext: normalizeOverviewInventoryPlatformContext(source?.platformContext),
+    displayName: source?.displayName || null,
+    isActive: source?.isActive !== false,
+    recordCount,
+    connectedAt: source?.connectedAt || null,
+    createdAt: source?.createdAt || null,
+  });
+
+  const summarizeOverviewInventoryRecordGroup = (
+    records: any[],
+    sourceId: string,
+    source: any,
+    amountKey: "revenue" | "spend",
+  ) => ({
+    sourceId,
+    sourceType: source?.sourceType || records[0]?.sourceType || null,
+    platformContext: source ? normalizeOverviewInventoryPlatformContext(source?.platformContext) : null,
+    recordCount: records.length,
+    amountTotal: centsOverviewInventoryTotal(records, amountKey),
+    recordIds: records.map((record) => String(record?.id || "")).filter(Boolean),
+  });
+
+  const groupOverviewInventoryRecords = (
+    records: any[],
+    sourceKey: "revenueSourceId" | "spendSourceId",
+    sourceById: Map<string, any>,
+    predicate: (source: any | undefined) => boolean,
+    amountKey: "revenue" | "spend",
+  ) => {
+    const groups = new Map<string, any[]>();
+    for (const record of records) {
+      const sourceId = String(record?.[sourceKey] || "");
+      if (!sourceId) continue;
+      const source = sourceById.get(sourceId);
+      if (!predicate(source)) continue;
+      if (!groups.has(sourceId)) groups.set(sourceId, []);
+      groups.get(sourceId)!.push(record);
+    }
+    return Array.from(groups.entries()).map(([sourceId, groupRecords]) =>
+      summarizeOverviewInventoryRecordGroup(groupRecords, sourceId, sourceById.get(sourceId), amountKey)
+    );
+  };
+
+  const buildOverviewInventoryDuplicateGroups = (
+    family: "revenue" | "spend",
+    sources: any[],
+    recordCounts: Map<string, number>,
+  ) => {
+    const groups = new Map<string, any>();
+    for (const source of sources.filter((s) => s?.isActive !== false)) {
+      const mapping = normalizeOverviewInventoryMappingConfig(source?.mappingConfig);
+      const signature = {
+        family,
+        sourceType: String(source?.sourceType || ""),
+        platformContext: normalizeOverviewInventoryPlatformContext(source?.platformContext),
+        currency: source?.currency || null,
+        mappingHash: hashOverviewInventoryValue(mapping),
+      };
+      const key = JSON.stringify(signature);
+      if (!groups.has(key)) groups.set(key, { signatureHash: hashOverviewInventoryValue(signature), signature, sources: [] });
+      groups.get(key).sources.push(summarizeOverviewInventorySource(source, recordCounts.get(String(source.id)) || 0));
+    }
+    return Array.from(groups.values())
+      .filter((group: any) => group.sources.length > 1)
+      .map((group: any) => ({
+        signatureHash: group.signatureHash,
+        signature: group.signature,
+        sourceCount: group.sources.length,
+        sourceIds: group.sources.map((source: any) => source.id),
+        sources: group.sources,
+      }));
+  };
+
+  const buildOverviewInventoryPlatformContextFindings = (
+    sources: any[],
+    recordCounts: Map<string, number>,
+  ) => sources
+    .filter((source) => source?.isActive !== false)
+    .filter((source) => !overviewInventoryAllowedPlatformContexts.has(normalizeOverviewInventoryPlatformContext(source?.platformContext)))
+    .map((source) => summarizeOverviewInventorySource(source, recordCounts.get(String(source.id)) || 0));
+
+  app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const [allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
+        db.select().from(revenueSourcesTable).where(eq(revenueSourcesTable.campaignId, campaignId)),
+        db.select().from(revenueRecordsTable).where(eq(revenueRecordsTable.campaignId, campaignId)),
+        db.select().from(spendSourcesTable).where(eq(spendSourcesTable.campaignId, campaignId)),
+        db.select().from(spendRecordsTable).where(eq(spendRecordsTable.campaignId, campaignId)),
+      ]);
+
+      const revenueSourceById = new Map((allRevenueSources as any[]).map((source) => [String(source.id), source]));
+      const spendSourceById = new Map((allSpendSources as any[]).map((source) => [String(source.id), source]));
+      const revenueRecordCounts = countOverviewInventoryRecordsBySource(allRevenueRecords as any[], "revenueSourceId");
+      const spendRecordCounts = countOverviewInventoryRecordsBySource(allSpendRecords as any[], "spendSourceId");
+
+      const findings = {
+        orphanRevenueRecordGroups: groupOverviewInventoryRecords(
+          allRevenueRecords as any[],
+          "revenueSourceId",
+          revenueSourceById,
+          (source) => !source,
+          "revenue",
+        ),
+        orphanSpendRecordGroups: groupOverviewInventoryRecords(
+          allSpendRecords as any[],
+          "spendSourceId",
+          spendSourceById,
+          (source) => !source,
+          "spend",
+        ),
+        inactiveRevenueSourceRecordGroups: groupOverviewInventoryRecords(
+          allRevenueRecords as any[],
+          "revenueSourceId",
+          revenueSourceById,
+          (source) => Boolean(source) && source?.isActive === false,
+          "revenue",
+        ),
+        inactiveSpendSourceRecordGroups: groupOverviewInventoryRecords(
+          allSpendRecords as any[],
+          "spendSourceId",
+          spendSourceById,
+          (source) => Boolean(source) && source?.isActive === false,
+          "spend",
+        ),
+        duplicateActiveRevenueSourceGroups: buildOverviewInventoryDuplicateGroups("revenue", allRevenueSources as any[], revenueRecordCounts),
+        duplicateActiveSpendSourceGroups: buildOverviewInventoryDuplicateGroups("spend", allSpendSources as any[], spendRecordCounts),
+        unexpectedRevenuePlatformContextSources: buildOverviewInventoryPlatformContextFindings(allRevenueSources as any[], revenueRecordCounts),
+        unexpectedSpendPlatformContextSources: buildOverviewInventoryPlatformContextFindings(allSpendSources as any[], spendRecordCounts),
+      };
+
+      const findingCount = Object.values(findings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
+      const overallPass = findingCount === 0;
+
+      res.json({
+        success: true,
+        readonly: true,
+        campaignId,
+        checkedAt: new Date().toISOString(),
+        overallPass,
+        summary: {
+          revenueSourceCount: (allRevenueSources as any[]).length,
+          activeRevenueSourceCount: (allRevenueSources as any[]).filter((source) => source?.isActive !== false).length,
+          inactiveRevenueSourceCount: (allRevenueSources as any[]).filter((source) => source?.isActive === false).length,
+          revenueRecordCount: (allRevenueRecords as any[]).length,
+          spendSourceCount: (allSpendSources as any[]).length,
+          activeSpendSourceCount: (allSpendSources as any[]).filter((source) => source?.isActive !== false).length,
+          inactiveSpendSourceCount: (allSpendSources as any[]).filter((source) => source?.isActive === false).length,
+          spendRecordCount: (allSpendRecords as any[]).length,
+          findingCount,
+        },
+        findings,
+        certificationImpact: overallPass
+          ? "No orphan, inactive-source-record, duplicate-active-source, or unexpected-platform-context candidates were found for this campaign inventory."
+          : "Production database health is not clean for this campaign inventory; document the returned source/record IDs before proposing cleanup.",
+        caveats: [
+          "This route is read-only and campaign-access guarded; it does not prove other campaigns unless run for them.",
+          "Duplicate detection uses source type, platform context, currency, and a sanitized mapping-config hash; suspicious groups still require human review before cleanup.",
+          "Null revenue platform context is normalized as ga4 for legacy GA4 revenue-source compatibility.",
+        ],
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to run GA4 Overview source-damage inventory" });
+    }
+  });
   app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;

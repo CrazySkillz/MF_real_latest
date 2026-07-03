@@ -17,7 +17,7 @@ This file defines whether that implementation is production-ready, what has been
 
 ## Durable Future Answer
 
-GA4 Reports is production-ready for the current code implementation as of the 2026-06-27 Reports readiness fix series, with only two deferred validations: `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`:
+GA4 Reports is production-ready for the current code implementation as of the 2026-06-27 Reports readiness fix series, with one remaining named deferred validation: `Campaign DeepDive Scheduled Report Visibility`. Deployed GA4 Overview Report email delivery has user-confirmed evidence from the 2026-07-03 Overview report packet:
 
 - `7d98a867` Correct GA4 Scheduled Overview Revenue Label
 - `b4839e40` Fix Scheduled Report Delivery Semantics
@@ -26,7 +26,7 @@ GA4 Reports is production-ready for the current code implementation as of the 20
 - `33426ae0` Resolve GA4 Unscheduled Report Library Product Contract
 - `d83b0245` Disable Unchanged GA4 Report Updates
 
-No known GA4 Reports blocker remains from the 2026-06-27 audit queue. For future reference, the Reports section should be treated as production-ready unless relevant code, product requirements, source requirements, production data, or validation evidence changes. The only named exceptions are `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`.
+No known GA4 Reports blocker remains from the 2026-06-27 audit queue. For future reference, the Reports section should be treated as production-ready unless relevant code, product requirements, source requirements, production data, or validation evidence changes. The only named deferred validation is `Campaign DeepDive Scheduled Report Visibility`; future scheduled/test email deliveries outside recorded packets still require runtime evidence if specifically questioned.
 
 What this means:
 
@@ -47,17 +47,17 @@ This answer should stay the same in future chats unless one of these changes:
 - source requirements change
 - a new platform/source is being assessed instead of the current GA4 implementation
 
-External caveats. Only the first two are deferred Reports validation items; the rest are normal runtime/environment caveats that do not change the Reports production-ready status:
+External caveats. Only the first item is a deferred Reports validation item; the rest are normal runtime/environment caveats that do not change the Reports production-ready status:
 
 - deferred validation: `Campaign DeepDive Scheduled Report Visibility`, which will be validated when the Campaign DeepDive section is refined
-- deferred validation: `Deployed Scheduled Email`, which will be validated after the Mailgun service is properly configured
+- recorded validation: deployed GA4 Overview Report email delivery was user-confirmed on 2026-07-03 for the recorded Overview report packet; future scheduled/test deliveries and report variants require their own runtime evidence if separately questioned
 - live GA4 API processing latency
 - real deployed scheduler execution timing
-- real provider delivery events and inbox receipt for scheduled report emails
+- real provider delivery events and inbox receipt for future scheduled report emails outside recorded packets
 - production database index state and existing production report-row damage
 - visual PDF fidelity across every deployed browser/PDF reader
 
-If the question is about deployed Campaign DeepDive scheduled-report UI validation, deployed scheduled-email receipt, production database condition, or live GA4 provider behavior, those require the specific deferred runtime evidence above. If the question is about the current local code contract and the audited GA4 Reports implementation, GA4 Reports should be answered as production-ready.
+If the question is about deployed Campaign DeepDive scheduled-report UI validation, future deployed scheduled-email receipt outside recorded packets, production database condition, or live GA4 provider behavior, those require the specific runtime evidence above. If the question is about the current local code contract and the audited GA4 Reports implementation, GA4 Reports should be answered as production-ready.
 
 ## How To Use This File In A New Chat
 
@@ -363,9 +363,9 @@ Partially reviewed:
 Not locally verifiable:
 
 - deployed scheduler execution timing
-- deployed scheduled-email validation after the Mailgun service is properly configured
+- future deployed scheduled/test email deliveries outside recorded packets
 - Mailgun event availability in the deployed account
-- real recipient inbox receipt
+- real recipient inbox receipt for future sends outside recorded packets
 - production DB index state
 
 Future-platform template rule:
@@ -422,7 +422,7 @@ Proven locally:
 
 Not locally verifiable:
 
-- deployed scheduled email receipt
+- future deployed scheduled email receipt outside recorded packets
 - deployed Campaign DeepDive scheduled-report UI validation; this will be validated when the Campaign DeepDive section is refined
 - whether existing production scheduled Campaign DeepDive records were previously orphaned from localStorage cards and need cleanup
 
@@ -616,7 +616,7 @@ Reported validated after the Render deployment of the 2026-06-27 Reports fix ser
 Deferred deployed validation:
 
 5. Campaign DeepDive Scheduled Report Visibility will be validated when the Campaign DeepDive section is refined.
-6. Deployed Scheduled Email will be validated after the Mailgun service is properly configured.
+6. Deployed GA4 Overview Report email delivery was user-confirmed on 2026-07-03 for the recorded Overview report packet; future scheduled/test deliveries and report variants still require their own runtime evidence if separately questioned.
 
 ## Partially Reviewed / Keep Watching
 
@@ -633,11 +633,11 @@ These areas are not current local blockers, but future work should not assume th
 
 The following cannot be proven from local code alone:
 
-- real deployed scheduled email receipt
-- deployed scheduled-email validation after the Mailgun service is properly configured
+- future real deployed scheduled email receipt outside recorded packets
+- future deployed scheduled/test email deliveries outside recorded packets
 - deployed Campaign DeepDive scheduled-report UI validation after the Campaign DeepDive section is refined
 - Mailgun provider event availability in the deployed account
-- real inbox delivery
+- real inbox delivery for future sends outside recorded packets
 - deployed scheduler timing
 - production database index state
 - production report row damage or orphaned scheduled records
@@ -674,17 +674,17 @@ These checks prove:
 
 These checks do not prove:
 
-- real deployed scheduled email receipt
-- deployed scheduled-email validation after the Mailgun service is properly configured
+- future real deployed scheduled email receipt outside recorded packets
+- future deployed scheduled/test email deliveries outside recorded packets
 - deployed Campaign DeepDive scheduled-report UI validation after the Campaign DeepDive section is refined
 - Mailgun provider event availability in the deployed account
-- real recipient inbox receipt
+- real recipient inbox receipt for future sends outside recorded packets
 - deployed scheduler timing
 - production database index state
 - production report-row cleanup needs
 - live GA4 API processing latency
 
-Deployed UI validation now proves GA4 Unscheduled Report, GA4 Scheduled Overview Revenue Label, and GA4 Scheduled Report Creation/Edit/Delete for the deployed code state. Campaign DeepDive Scheduled Report Visibility remains deferred to Campaign DeepDive refinement, and Deployed Scheduled Email remains deferred until Mailgun is properly configured.
+Deployed UI validation now proves GA4 Unscheduled Report, GA4 Scheduled Overview Revenue Label, and GA4 Scheduled Report Creation/Edit/Delete for the deployed code state. Campaign DeepDive Scheduled Report Visibility remains deferred to Campaign DeepDive refinement. Deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet; future scheduled/test deliveries and report variants remain runtime-evidence-bound.
 
 ## Future Platform Template
 
@@ -860,6 +860,6 @@ Before calling another platform's Reports section production-ready, confirm:
 
 If no relevant code, docs, data-source requirements, or validation evidence changed, answer:
 
-`GA4 Reports is production-ready for the current code implementation. The canonical reference is GA4/REPORTS_PRODUCTION_READINESS.md. The 2026-06-27 blocker queue was fixed by commits 7d98a867, b4839e40, 2782dc80, 64eb35c3, 33426ae0, and d83b0245. The only deferred Reports validations are Campaign DeepDive Scheduled Report Visibility, which will be validated when the Campaign DeepDive section is refined, and Deployed Scheduled Email, which will be validated after the Mailgun service is properly configured.`
+`GA4 Reports is production-ready for the current code implementation. The canonical reference is GA4/REPORTS_PRODUCTION_READINESS.md. The 2026-06-27 blocker queue was fixed by commits 7d98a867, b4839e40, 2782dc80, 64eb35c3, 33426ae0, and d83b0245. The only named deferred Reports validation is Campaign DeepDive Scheduled Report Visibility, which will be validated when the Campaign DeepDive section is refined. Deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet; future scheduled/test deliveries and report variants require their own runtime evidence if separately questioned.`
 
-If the user asks whether Reports is production-ready, answer yes with exactly those two deferred validations. If the user asks specifically about deployed scheduled-email receipt, production database state, live GA4 provider behavior, or deployed PDF-reader fidelity, answer that those require deployed/runtime evidence and are not locally provable from this repository alone.
+If the user asks whether Reports is production-ready, answer yes with exactly the remaining deferred Campaign DeepDive scheduled-report visibility caveat and the runtime boundary for future email/report variants. If the user asks specifically about future deployed scheduled-email receipt outside recorded packets, production database state, live GA4 provider behavior, or deployed PDF-reader fidelity, answer that those require deployed/runtime evidence and are not locally provable from this repository alone.

@@ -1,4 +1,4 @@
-﻿# GA4 Overview Validation Runner
+# GA4 Overview Validation Runner
 
 ## Purpose
 
@@ -14,6 +14,7 @@ Read-only functions:
 - `GA4OverviewValidation.before(label, config)`
 - `GA4OverviewValidation.after(label, config)`
 - `GA4OverviewValidation.overviewPack(config)`
+- `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
 
 Explicit mutation helpers:
 
@@ -31,7 +32,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-03.2');
+await import('/ga4-overview-validation-runner.js?v=2026-07-03.3');
 GA4OverviewValidation.help();
 ```
 
@@ -46,7 +47,7 @@ await GA4OverviewValidation.overviewPack({
 });
 ```
 
-This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. It does not inspect UI pixels, PDF text, or inbox delivery.
+This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. It does not inspect UI pixels, PDF text, or future inbox delivery outside recorded packets.
 
 For saved report snapshot/PDF smoke validation, use:
 
@@ -58,7 +59,18 @@ await GA4OverviewValidation.reportPack({
 });
 ```
 
+For Current Commit 3 read-only source-damage inventory, use:
+
+```js
+await GA4OverviewValidation.sourceDamageInventory({
+  campaignId: 'CAMPAIGN_ID'
+});
+```
+
+This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
+
 See `GA4/OVERVIEW_AUTOMATED_VALIDATION.md` for the accelerated validation workflow and Playwright wrapper.
+
 ## Standard Pattern
 
 1. Run `before(...)`.

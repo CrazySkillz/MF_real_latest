@@ -41,6 +41,23 @@ describe("Spend source additivity", () => {
     expect(route).not.toContain('updateSpendSource');
   });
 
+  it("GA4 Overview source-damage inventory is read-only", () => {
+    const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routesFile.indexOf('app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory"');
+    const nextRouteStart = routesFile.indexOf('app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"', routeStart);
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(nextRouteStart).toBeGreaterThan(routeStart);
+    const route = routesFile.slice(routeStart, nextRouteStart);
+
+    expect(route).toContain("orphanRevenueRecordGroups");
+    expect(route).toContain("duplicateActiveSpendSourceGroups");
+    expect(route).toContain("readonly: true");
+    expect(route).not.toContain("deleteSpendSource");
+    expect(route).not.toContain("deleteSpendRecordsBySource");
+    expect(route).not.toContain("deleteRevenue");
+    expect(route).not.toContain("recomputeGA4KPIAndBenchmarkValues");
+    expect(route).not.toContain("recalcCampaignSpend");
+  });
   it("Google Sheets spend duplicate cleanup requires confirmation and only deactivates confirmed duplicate groups", () => {
     const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routesFile.indexOf('app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/cleanup"');

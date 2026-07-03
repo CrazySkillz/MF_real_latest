@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Production-readiness status: GA4 Reports is production-ready for the current code implementation. The only deferred validations are `Campaign DeepDive Scheduled Report Visibility`, which will be validated when the Campaign DeepDive section is refined, and `Deployed Scheduled Email`, which will be validated after the Mailgun service is properly configured. The durable readiness decision lives in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Production-readiness status: GA4 Reports is production-ready for the current code implementation. The only named deferred validation is `Campaign DeepDive Scheduled Report Visibility`, which will be validated when the Campaign DeepDive section is refined. Deployed GA4 Overview Report email delivery has user-confirmed evidence from the 2026-07-03 Overview report packet; future scheduled/test deliveries and report variants require their own runtime evidence if separately questioned. The durable readiness decision lives in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section is production-ready for the current GA4 code scope. Its only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured, tracked in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
 
 ## Reports Tab Structure
@@ -298,7 +298,7 @@ Important meaning:
 
 ## Current-State Note
 
-The current GA4 Reports implementation is production-ready for the current code implementation. The only deferred validations are `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`.
+The current GA4 Reports implementation is production-ready for the current code implementation. The only named deferred validation is `Campaign DeepDive Scheduled Report Visibility`; deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet, while future scheduled/test deliveries and report variants require their own runtime evidence if separately questioned.
 
 Aligned and production-ready:
 
@@ -333,7 +333,7 @@ Important caveats:
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
 - Campaign DeepDive Scheduled Report Visibility is the only report-visibility validation still deferred, and it will be validated when the Campaign DeepDive section is refined
-- Deployed Scheduled Email remains deferred until the Mailgun service is properly configured; this includes final deployed evidence that scheduled/server GA4 Ad Comparison PDF attachments contain the expected revenue-provenance rows from Commit 2. Local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
+- Deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet. Future scheduled/test deliveries and report variants, including GA4 Ad Comparison PDF attachment provenance if separately questioned, still require their own runtime evidence. Local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 
 ## Report Library Meaning

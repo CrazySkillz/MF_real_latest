@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-03.2";
+  var VERSION = "2026-07-03.3";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -644,11 +644,51 @@
     console.log(summary);
     return summary;
   }
+  async function sourceDamageInventory(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var result = await fetchJson(
+      "sourceDamageInventory",
+      "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"
+    );
+    var data = result.data || {};
+    var findings = data.findings || {};
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: data.checkedAt || new Date().toISOString(),
+      stage: config.stage || "ga4-overview-source-damage-inventory",
+      campaignId: campaignId,
+      endpoint: {
+        pass: result.pass,
+        status: result.status,
+        error: result.error || null
+      },
+      readonly: data.readonly === true,
+      inventoryPass: data.overallPass === true,
+      summary: data.summary || null,
+      findings: {
+        orphanRevenueRecordGroups: findings.orphanRevenueRecordGroups || [],
+        orphanSpendRecordGroups: findings.orphanSpendRecordGroups || [],
+        inactiveRevenueSourceRecordGroups: findings.inactiveRevenueSourceRecordGroups || [],
+        inactiveSpendSourceRecordGroups: findings.inactiveSpendSourceRecordGroups || [],
+        duplicateActiveRevenueSourceGroups: findings.duplicateActiveRevenueSourceGroups || [],
+        duplicateActiveSpendSourceGroups: findings.duplicateActiveSpendSourceGroups || [],
+        unexpectedRevenuePlatformContextSources: findings.unexpectedRevenuePlatformContextSources || [],
+        unexpectedSpendPlatformContextSources: findings.unexpectedSpendPlatformContextSources || []
+      },
+      certificationImpact: data.certificationImpact || null,
+      caveats: data.caveats || []
+    };
+    summary.overallPass = result.pass && data.success === true && data.overallPass === true && data.readonly === true;
+    console.log(summary);
+    return summary;
+  }
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-03.2')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-03.3')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
+      "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
       "await GA4OverviewValidation.before('2g-tab-add', { campaignId, propertyId })",
       "await GA4OverviewValidation.after('2g-tab-add', { campaignId, propertyId, expectedSpendDelta: 123.45, expectedSpendSourceCountDelta: 1 })",
       "await GA4OverviewValidation.refreshSpend({ campaignId, sourceId })",
@@ -667,6 +707,7 @@
     refreshRevenue: refreshRevenue,
     overviewPack: overviewPack,
     reportPack: reportPack,
+    sourceDamageInventory: sourceDamageInventory,
     help: help
   };
 

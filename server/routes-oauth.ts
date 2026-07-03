@@ -3059,6 +3059,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  const scheduleGA4SpendPostResponseRecompute = (campaignId: string) => {
+    setImmediate(() => {
+      void recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update").catch((e) => {
+        console.warn(`[Spend Update] Background recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+      });
+    });
+  };
+
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
       try {
@@ -4385,7 +4393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recalculate campaign.spend from all active sources
       try {
         await recalcCampaignSpend(campaignId);
-        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
+        scheduleGA4SpendPostResponseRecompute(campaignId);
       } catch (e: any) {
         console.warn("[Manual Spend] Failed to recalculate campaign.spend:", e?.message);
       }
@@ -4632,7 +4640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }] as any);
 
       await recalcCampaignSpend(campaignId);
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
+      scheduleGA4SpendPostResponseRecompute(campaignId);
 
       res.json({
         success: true,
@@ -4925,7 +4933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await recalcCampaignSpend(campaignId);
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
+      scheduleGA4SpendPostResponseRecompute(campaignId);
 
       res.json({
         success: true,
@@ -5297,7 +5305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await recalcCampaignSpend(campaignId);
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
+      scheduleGA4SpendPostResponseRecompute(campaignId);
 
       res.json({
         success: true,

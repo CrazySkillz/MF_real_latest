@@ -227,6 +227,18 @@ await GA4OverviewValidation.hubspotCampaignBreakdownAfter({
 
 This helper is read-only. It does not call HubSpot, trigger scheduler, create/edit/delete sources, recompute metrics, send reports, or mutate records. It mirrors the GA4 Overview Campaign Breakdown merge by fetching `campaign`, `ga4-breakdown`, `revenue-sources`, `revenue-breakdown`, and the read-only HubSpot inventory, then comparing the visible row formula: GA4 native row revenue plus exact mapped imported revenue from `campaignValueRevenueTotals` and saved `campaignMappings`. A passing packet proves only the configured campaign/property/date-range row transition and named unchanged rows. It does not certify Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, or future provider mutations. If the provider transition already happened before the `Before` packet was captured, automated 4.11 proof is still pending; start a new controlled transition or fixture so the runner has a real baseline.
 
+Recorded deployed Current Commit 4.11 evidence: runner `2026-07-04.8` returned `overallPass: true` on `2026-07-04T17:10:58.316Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`, date range `30days`. The after packet used target row `yesop_retargeting`, named unchanged row `yesop_email_nurture`, and selected GA4 campaign values `yesop_email_nurture`, `yesop_retargeting`, and `yesop_paid_social`. Checks passed for baseline presence, endpoints, read-only boundary, inventory, target row presence before/after, clear HubSpot findings, target native revenue unchanged, unchanged row stability, target displayed revenue delta `+$100`, and target HubSpot revenue delta `+$100`. HubSpot findings were empty, including no zero-record, orphan-record, duplicate-active-source, GA4 context mismatch, or Pipeline Proxy scope-mismatch candidates. This closes only that configured Campaign Breakdown mapped-row packet; Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, other Campaign Breakdown rows, and future provider mutations remain separate evidence.
+
+Remaining active HubSpot clean-certification queue after 4.11:
+
+1. Current Commit 4.12: HubSpot Reports value propagation.
+2. Current Commit 4.13: HubSpot KPI/Benchmark value propagation.
+3. Current Commit 4.14: HubSpot email evidence.
+4. Current Commit 4.15: HubSpot other-campaign portability pack.
+5. Current Commit 4.16: HubSpot alternate mapping matrix.
+
+Next step: implement Current Commit 4.12 as a read-only/local-first report payload and snapshot/PDF checker for the already proven HubSpot Overview values. It must not mutate sources, recompute provider data, trigger scheduler sends, or use non-HubSpot source-family evidence to prove HubSpot readiness.
+
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 
 ```js

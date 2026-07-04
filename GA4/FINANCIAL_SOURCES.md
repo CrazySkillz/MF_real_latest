@@ -320,7 +320,7 @@ Important meaning:
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, the confirmed/won HubSpot revenue portion still remains eligible for previous-day revenue records when it has true daily rows; only the open Pipeline Proxy amount is excluded
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
-- HubSpot edit-mode `Review Settings` should show the saved Pipeline Proxy amount immediately while saved settings are unchanged; it should not flash an empty placeholder before live preview returns
+- HubSpot edit-mode `Review Settings` should show the saved Pipeline Proxy amount immediately while saved settings are unchanged; it should not flash an empty placeholder before live preview returns; if the effective proxy amount is known and zero in unchanged edit mode after selected deals become confirmed revenue, hide the Pipeline Proxy summary so the review reads like confirmed Total Revenue rather than showing a `$0.00` early signal
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
 - when editing an existing HubSpot revenue source, the review action should be labeled `Update revenue` and remain disabled until the user makes a meaningful setting change
 - the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
@@ -328,6 +328,8 @@ Important meaning:
 - the `Review Settings` details card should keep `Selected deal(s)` directly under `Total Revenue (to date)` so the confirmed revenue and selected deals read as one continuous summary
 - `Selected deal(s)` should list each selected HubSpot value on its own line with the amount that will be imported for that selected deal/value when preview data provides it
 - when a selected HubSpot value is mapped to a GA4/paid-platform campaign in Crosswalk, `Review Settings` must show that mapping before save using the same `selectedCampaignMappings` state that preview/save uses; hiding this mapping is a display bug, not evidence that the mapping was lost
+- in the GA4 Overview `Revenue Sources` modal, HubSpot rows should show the mapped platform campaign name under `HubSpot (Deals)` when saved `campaignMappings` provide one; if no mapping is saved, fall back to the source type label `HubSpot`
+- HubSpot imported revenue should enter Campaign Breakdown only through exact saved `campaignMappings`; the recorded deployed 4.11 evidence proves one `yesop_retargeting` mapped-row delta and does not prove other rows, other campaigns, or alternate mappings
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step

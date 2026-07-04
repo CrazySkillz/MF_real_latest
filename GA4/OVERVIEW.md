@@ -153,6 +153,8 @@ High-level rule:
 
 - `Total Revenue` is additive:
   `Total Revenue = selected scoped GA4-native financial revenue + imported campaign revenue`
+- the `Total Revenue` Revenue Sources modal should show HubSpot mapped platform campaign names from saved `campaignMappings` when available, not only the generic `HubSpot` source type label
+- Campaign Breakdown row revenue must add imported HubSpot revenue only to rows matched by saved CRM-to-platform `campaignMappings`; the currently recorded HubSpot deployed evidence is limited to the Current Commit 4.11 `yesop_retargeting` mapped-row packet
 - GA4-native financial revenue is selected from the scoped GA4 to-date, daily, and breakdown totals by the most complete native revenue total; revenue and CPA conversions must come from that same selected GA4 source object
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign
@@ -167,6 +169,7 @@ Pipeline Proxy rule:
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show a compact `Sources` action; provider-specific provenance belongs in a read-only Pipeline Proxy sources modal rather than inline card microcopy
 - the `Sources` count should include only providers with positive Pipeline Proxy contribution; zero-value configured CRM providers should not show as contributing sources
+- CRM source edit/review displays should suppress a zero-value Pipeline Proxy summary when the unchanged source now has confirmed revenue and the effective proxy amount is known to be zero; this is display-only and must not remove the saved source configuration
 - the card is display-only; users manage the underlying CRM revenue source from `Total Revenue`, not from the `Pipeline Proxy` card
 - each provider entry in the read-only sources modal should render:
   - provider name

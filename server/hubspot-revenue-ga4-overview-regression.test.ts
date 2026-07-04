@@ -276,4 +276,49 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(provenanceRunner).toContain("summary.overallPass = summary.provenancePass");
     expect(runner).toContain("hubspotProvenance: hubspotProvenance");
   });
+
+  it("keeps HubSpot GA4 revenue refresh/reprocess scheduler-only, not a user-facing source action", () => {
+    const client = ga4MetricsFile();
+    const routes = routesFile();
+    const scheduler = schedulerFile();
+    const revenueWizardMount = sliceBetween(
+      client,
+      "<AddRevenueWizardModal",
+      "<Dialog open={showRevenueSourcesDialog}"
+    );
+    const revenueSourcesDialog = sliceBetween(
+      client,
+      "<Dialog open={showRevenueSourcesDialog}",
+      "<Dialog open={showSpendSourcesDialog}"
+    );
+    const sourceScopedRunNowRoutes = routes.match(/app\.post\("\/api\/campaigns\/:id\/(?:revenue|spend)-sources\/:sourceId\/[^\"]*run-now"/g) || [];
+
+    expect(revenueWizardMount).toContain("initialSource={editingRevenueSource || undefined}");
+    expect(revenueWizardMount).toContain('platformContext="ga4"');
+    expect(revenueWizardMount).not.toContain("refreshRevenue");
+    expect(revenueWizardMount).not.toContain("run-now");
+
+    expect(revenueSourcesDialog).toContain('title="Edit revenue source"');
+    expect(revenueSourcesDialog).toContain('title="Remove revenue source"');
+    expect(revenueSourcesDialog).toContain("setEditingRevenueSource");
+    expect(revenueSourcesDialog).toContain("setDeletingRevenueSourceId");
+    expect(revenueSourcesDialog).not.toContain("refreshRevenue");
+    expect(revenueSourcesDialog).not.toContain("run-now");
+    expect(revenueSourcesDialog).not.toContain("RefreshCw");
+    expect(revenueSourcesDialog).not.toContain("Reprocess");
+    expect(revenueSourcesDialog).not.toContain("Sync");
+
+    expect(sourceScopedRunNowRoutes).toEqual([
+      'app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"',
+      'app.post("/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now"',
+    ]);
+    expect(routes).toContain('app.post("/api/campaigns/:id/hubspot/save-mappings"');
+    expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now');
+    expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot-reprocess/run-now');
+    expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot/run-now');
+
+    expect(scheduler).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
+    expect(scheduler).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body)');
+    expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
+  });
 });

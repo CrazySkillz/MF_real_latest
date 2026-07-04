@@ -262,7 +262,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.4";');
+    expect(runner).toContain('var VERSION = "2026-07-04.5";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -378,7 +378,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.4";');
+    expect(runner).toContain('var VERSION = "2026-07-04.5";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -406,8 +406,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.4";');
+    expect(runner).toContain('var VERSION = "2026-07-04.5";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
+    expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
+    expect(pipelineRunner).toContain("selectedSourceProvenancePresent");
     expect(pipelineRunner).toContain("expectedConfirmedRevenueTotal");
     expect(pipelineRunner).toContain("expectedPipelineTotalToDate");
     expect(pipelineRunner).toContain("pipelineNotAddedToConfirmedRevenue");

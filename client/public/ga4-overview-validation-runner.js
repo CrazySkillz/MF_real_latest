@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.4";
+  var VERSION = "2026-07-04.5";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -922,6 +922,16 @@
     return activeSources[0] || null;
   }
 
+  function isHubspotPipelineSource(source) {
+    return !!(source && source.mapping && source.mapping.pipelineEnabled === true);
+  }
+
+  function selectHubspotPipelineSource(activeSources, sourceId) {
+    if (!Array.isArray(activeSources) || activeSources.length === 0) return null;
+    if (sourceId) return selectHubspotSource(activeSources, sourceId);
+    return activeSources.find(isHubspotPipelineSource) || activeSources[0] || null;
+  }
+
   async function hubspotPropagationPoint(config, stage) {
     var campaignId = requireValue(config.campaignId, "campaignId");
     var propertyId = config.propertyId ? String(config.propertyId) : null;
@@ -1159,7 +1169,8 @@
     var campaignId = requireValue(config.campaignId, "campaignId");
     var propertyId = config.propertyId ? String(config.propertyId) : null;
     var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
-    var expectedActiveSourceCount = config.expectedActiveSourceCount == null ? 1 : Number(config.expectedActiveSourceCount);
+    var expectedActiveSourceCount = config.expectedActiveSourceCount == null ? null : Number(config.expectedActiveSourceCount);
+    var expectedPipelineSourceCount = config.expectedPipelineSourceCount == null ? 1 : Number(config.expectedPipelineSourceCount);
     var expectedConfirmedRevenueProvided = config.expectedConfirmedRevenueTotal !== undefined;
     var expectedPipelineTotalProvided = config.expectedPipelineTotalToDate !== undefined;
     var expectedConfirmedRevenueTotal = expectedConfirmedRevenueProvided ? optionalMoney(config.expectedConfirmedRevenueTotal) : null;
@@ -1179,7 +1190,8 @@
     var data = damageResult.data || {};
     var provenance = data.hubspotProvenance || {};
     var activeSources = Array.isArray(provenance.activeSources) ? provenance.activeSources : [];
-    var activeSource = compactHubspotSource(selectHubspotSource(activeSources, config.sourceId));
+    var activePipelineSources = activeSources.filter(isHubspotPipelineSource);
+    var activeSource = compactHubspotSource(selectHubspotPipelineSource(activeSources, config.sourceId));
     var mapping = activeSource && activeSource.mapping || {};
     var selectedValues = Array.isArray(mapping.selectedValues) ? mapping.selectedValues : [];
     var pipelineValueRevenueTotals = compactPipelineValueRevenueTotals(mapping.pipelineValueRevenueTotals);
@@ -1195,11 +1207,13 @@
       endpointsPass: snapshotResult.endpointPass && damageResult.pass,
       readonly: data.readonly === true,
       inventoryPass: data.hubspotInventoryPass === true,
-      provenancePass: data.hubspotProvenancePass === true,
+      serverProvenancePass: data.hubspotProvenancePass === true,
+      selectedSourceProvenancePresent: !!(activeSource && activeSource.mapping && activeSource.platformContext === "ga4" && mapping.platformContext === "ga4"),
       confirmedRevenueExpectationProvided: expectedConfirmedRevenueProvided,
       pipelineTotalExpectationProvided: expectedPipelineTotalProvided,
       activeSourcePresent: !!activeSource,
-      activeHubspotSourceCountMatchesExpected: activeSources.length === expectedActiveSourceCount,
+      activeHubspotSourceCountMatchesExpected: expectedActiveSourceCount === null ? undefined : activeSources.length === expectedActiveSourceCount,
+      activePipelineSourceCountMatchesExpected: activePipelineSources.length === expectedPipelineSourceCount,
       hubspotFindingsClear: Number(data.hubspotSummary && data.hubspotSummary.hubspotFindingCount || 0) === 0,
       pipelineEnabled: mapping.pipelineEnabled === true,
       ga4PlatformContext: !!(activeSource && activeSource.platformContext === "ga4" && mapping.platformContext === "ga4"),
@@ -1240,6 +1254,7 @@
       readonly: data.readonly === true,
       expected: {
         activeSourceCount: expectedActiveSourceCount,
+        pipelineSourceCount: expectedPipelineSourceCount,
         confirmedRevenueTotal: config.expectedConfirmedRevenueTotal,
         pipelineTotalToDate: config.expectedPipelineTotalToDate,
         pipelineStageId: config.expectedPipelineStageId,
@@ -1273,13 +1288,16 @@
         spendSourceIds: snapshotResult.spend.sourceIds || []
       },
       inventoryPass: data.hubspotInventoryPass === true,
-      provenancePass: data.hubspotProvenancePass === true,
+      serverProvenancePass: data.hubspotProvenancePass === true,
+      selectedSourceProvenancePresent: !!(activeSource && activeSource.mapping),
+      activePipelineSourceCount: activePipelineSources.length,
       hubspotSummary: data.hubspotSummary || null,
       hubspotFindings: data.hubspotFindings || {},
       endpointStatus: snapshotResult.endpointStatus.concat([compactEndpointStatus(damageResult)]),
       checks: effectiveChecks,
       caveats: [
         "This HubSpot Pipeline Proxy helper is read-only and does not call HubSpot, trigger scheduler, recompute, create/edit/delete sources, or mutate records.",
+        "It selects the active pipeline-enabled HubSpot source by default; pass sourceId if multiple pipeline-enabled HubSpot sources exist.",
         "It validates persisted Pipeline Proxy provenance plus Overview confirmed-revenue separation; local static tests guard the live proxy endpoint scoping.",
         "A pass certifies only the configured campaign/source/proxy packet and does not prove other campaigns, alternate mappings, Reports, KPI/Benchmark, emails, or future provider mutations."
       ]
@@ -1538,7 +1556,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.4')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.5')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

@@ -38,7 +38,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.4');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.5');
 GA4OverviewValidation.help();
 ```
 
@@ -144,7 +144,7 @@ await GA4OverviewValidation.hubspotPipelineProxy({
 });
 ```
 
-This helper is read-only. It does not call HubSpot, call the live `/pipeline-proxy` route, trigger scheduler, recompute, create/edit/delete sources, or mutate records. It validates persisted Pipeline Proxy provenance plus Overview confirmed-revenue separation: active GA4 HubSpot source, saved selected values, selected stage, positive proxy total, value-total sum, proxy values within selected values, expected source-backed confirmed revenue breakdown total excluding native GA4 revenue, and proof that the proxy total was not added into that confirmed revenue total. Local static tests guard the live proxy endpoint's saved-selected-values/stage scoping and the GA4 page's separation of Pipeline Proxy from confirmed financial revenue. A deployed pass closes only that configured campaign/source/proxy packet.
+This helper is read-only. It does not call HubSpot, call the live `/pipeline-proxy` route, trigger scheduler, recompute, create/edit/delete sources, or mutate records. It selects the active pipeline-enabled HubSpot source by default; pass `sourceId` if more than one active pipeline-enabled HubSpot source exists. It validates persisted Pipeline Proxy provenance plus Overview confirmed-revenue separation: active GA4 HubSpot source, saved selected values, selected stage, positive proxy total, value-total sum, proxy values within selected values, expected source-backed confirmed revenue breakdown total excluding native GA4 revenue, and proof that the proxy total was not added into that confirmed revenue total. Local static tests guard the live proxy endpoint's saved-selected-values/stage scoping and the GA4 page's separation of Pipeline Proxy from confirmed financial revenue. A deployed pass closes only that configured campaign/source/proxy packet.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

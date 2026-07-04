@@ -223,7 +223,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.2";');
+    expect(runner).toContain('var VERSION = "2026-07-04.3";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -320,5 +320,33 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(scheduler).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
     expect(scheduler).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body)');
     expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
+  });
+
+  it("exposes a read-only HubSpot provider propagation comparison runner", () => {
+    const runner = validationRunnerFile();
+    const propagationRunner = sliceBetween(
+      runner,
+      "async function hubspotPropagationPoint(config, stage)",
+      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+    );
+
+    expect(runner).toContain('var VERSION = "2026-07-04.3";');
+    expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
+    expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
+    expect(propagationRunner).toContain("hubspotPropagationPoint(config");
+    expect(propagationRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(propagationRunner).toContain("expectedHubspotRevenueDelta");
+    expect(propagationRunner).toContain("providerExpectationProvided");
+    expect(propagationRunner).toContain("sameActiveHubspotSourceIds");
+    expect(propagationRunner).toContain("sameRevenueSourceIds");
+    expect(propagationRunner).toContain("activeSourceStayedSame");
+    expect(propagationRunner).toContain("revenueDeltaMatchesHubspotDelta");
+    expect(propagationRunner).toContain("spendUnchanged");
+    expect(propagationRunner).toContain("This HubSpot propagation helper is read-only");
+    expect(propagationRunner).not.toContain("save-mappings");
+    expect(propagationRunner).not.toContain("run-now");
+    expect(propagationRunner).not.toContain('method: "POST"');
+    expect(runner).toContain("hubspotPropagationBefore: hubspotPropagationBefore");
+    expect(runner).toContain("hubspotPropagationAfter: hubspotPropagationAfter");
   });
 });

@@ -17,6 +17,8 @@ Read-only functions:
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })`
+- `GA4OverviewValidation.hubspotPropagationBefore(config)`
+- `GA4OverviewValidation.hubspotPropagationAfter(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
@@ -35,7 +37,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.2');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.3');
 GA4OverviewValidation.help();
 ```
 
@@ -99,6 +101,31 @@ await GA4OverviewValidation.hubspotProvenance({
 ```
 
 This records non-secret endpoint provenance for the active HubSpot account, active GA4 HubSpot revenue source, saved mapping fields, selected campaign values, revenue/date fields, Pipeline Proxy setting, source record count, source revenue, and source-modal expected label/value data. It does not expose OAuth tokens/secrets, refresh HubSpot, create/edit/delete sources, clean records, recompute metrics, inspect rendered pixels, or prove other campaigns.
+
+For Current Commit 4.8a read-only HubSpot scheduler/provider propagation comparison automation, capture a baseline before a controlled HubSpot provider change:
+
+```js
+await GA4OverviewValidation.hubspotPropagationBefore({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  label: '4.8-hubspot-provider-propagation',
+  expectedPipelineEnabled: false
+});
+```
+
+Then make exactly one controlled HubSpot provider change outside this runner, let the existing scheduler/provider path complete, and compare the after-state:
+
+```js
+await GA4OverviewValidation.hubspotPropagationAfter({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  label: '4.8-hubspot-provider-propagation',
+  expectedPipelineEnabled: false,
+  expectedHubspotRevenueDelta: 1000
+});
+```
+
+This helper is read-only. It does not trigger the scheduler, call HubSpot, create/edit/delete sources, recompute metrics, send reports, or mutate provider/source data. It compares the same active HubSpot source ID, active revenue/spend source IDs, HubSpot source revenue delta, overall revenue delta, spend unchanged state, inventory findings, and provenance state. A passing packet proves only the configured provider-change packet and does not certify Pipeline Proxy, other campaigns, alternate mappings, Reports, KPI/Benchmark, emails, or future provider mutations.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

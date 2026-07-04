@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.2";
+  var VERSION = "2026-07-04.3";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -874,6 +874,256 @@
     console.log(summary);
     return summary;
   }
+
+  function sameStringList(a, b) {
+    var left = sortedValues(a);
+    var right = sortedValues(b);
+    if (left.length !== right.length) return false;
+    for (var i = 0; i < left.length; i++) {
+      if (left[i] !== right[i]) return false;
+    }
+    return true;
+  }
+
+  function optionalMoney(value) {
+    if (value === undefined || value === null || value === "") return null;
+    return money(value);
+  }
+
+  function moneyDelta(afterValue, beforeValue) {
+    var after = optionalMoney(afterValue);
+    var before = optionalMoney(beforeValue);
+    if (after === null || before === null) return null;
+    return money(after - before);
+  }
+
+  function compactHubspotSource(source) {
+    if (!source) return null;
+    return {
+      sourceId: String(source.sourceId || source.id || ""),
+      displayName: source.displayName || source.name || null,
+      platformContext: source.platformContext || null,
+      isActive: source.isActive === true,
+      recordCount: numberOrNull(source.recordCount),
+      revenueTotal: optionalMoney(source.revenueTotal),
+      mapping: source.mapping || null,
+      sourceModalExpected: source.sourceModalExpected || null
+    };
+  }
+
+  function selectHubspotSource(activeSources, sourceId) {
+    if (!Array.isArray(activeSources) || activeSources.length === 0) return null;
+    if (sourceId) {
+      var wanted = String(sourceId);
+      return activeSources.find(function (source) {
+        return String(source && (source.sourceId || source.id || "")) === wanted;
+      }) || null;
+    }
+    return activeSources[0] || null;
+  }
+
+  async function hubspotPropagationPoint(config, stage) {
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = config.propertyId ? String(config.propertyId) : null;
+    var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
+    var snapshotResult = await snapshot({
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      includeGa4: config.includeGa4,
+      stage: stage + "-snapshot"
+    });
+    var damageResult = await fetchJson(
+      "hubspotSourceDamageInventory",
+      "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"
+    );
+    var data = damageResult.data || {};
+    var provenance = data.hubspotProvenance || {};
+    var activeSources = Array.isArray(provenance.activeSources) ? provenance.activeSources : [];
+    var selectedSource = compactHubspotSource(selectHubspotSource(activeSources, config.sourceId));
+    var activeSourceIds = activeSources.map(function (source) {
+      return String(source && (source.sourceId || source.id || ""));
+    }).filter(Boolean).sort();
+    var endpointStatus = snapshotResult.endpointStatus.concat([compactEndpointStatus(damageResult)]);
+
+    return {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: stage,
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      endpointPass: endpointStatus.every(function (status) { return status.pass === true; }),
+      endpointStatus: endpointStatus,
+      readonly: data.readonly === true,
+      inventoryPass: data.hubspotInventoryPass === true,
+      provenancePass: data.hubspotProvenancePass === true,
+      hubspotSummary: data.hubspotSummary || null,
+      hubspotFindings: data.hubspotFindings || {},
+      hubspotFindingCount: Number(data.hubspotSummary && data.hubspotSummary.hubspotFindingCount || 0),
+      accountPresent: provenance.accountPresent === true,
+      activeHubspotSourceIds: activeSourceIds,
+      activeSource: selectedSource,
+      snapshot: {
+        revenueBreakdownTotal: snapshotResult.revenue.breakdownTotal,
+        revenueSourceCount: snapshotResult.revenue.sourceCount,
+        revenueSourceIds: snapshotResult.revenue.sourceIds || [],
+        spendBreakdownTotal: snapshotResult.spend.breakdownTotal,
+        spendSourceCount: snapshotResult.spend.sourceCount,
+        spendSourceIds: snapshotResult.spend.sourceIds || []
+      },
+      caveats: [
+        "This HubSpot propagation point is read-only and does not refresh, create, edit, delete, clean, recompute, or call provider APIs.",
+        "It must be used around a separate controlled HubSpot provider change and the existing scheduler/provider path.",
+        "A passing comparison proves only the configured campaign/source/provider-change packet."
+      ]
+    };
+  }
+
+  async function hubspotPropagationBefore(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var label = config.label || "4.8-hubspot-provider-propagation";
+    var key = storageKey("hubspot-propagation-" + label, campaignId);
+    var expectedActiveSourceCount = config.expectedActiveSourceCount == null ? 1 : Number(config.expectedActiveSourceCount);
+    var point = await hubspotPropagationPoint(config, "before-" + label);
+    var checks = {
+      endpointsPass: point.endpointPass,
+      readonly: point.readonly,
+      inventoryPass: point.inventoryPass,
+      provenancePass: point.provenancePass,
+      activeSourcePresent: !!point.activeSource,
+      activeHubspotSourceCountMatchesExpected: point.activeHubspotSourceIds.length === expectedActiveSourceCount,
+      hubspotFindingsClear: point.hubspotFindingCount === 0
+    };
+    var summary = Object.assign({}, point, {
+      baselineKey: key,
+      expectedActiveSourceCount: expectedActiveSourceCount,
+      checks: checks
+    });
+    summary.readyForProviderChange = Object.keys(checks).every(function (name) { return checks[name] === true; });
+    summary.overallPass = summary.readyForProviderChange;
+    localStorage.setItem(key, JSON.stringify(summary));
+    console.log(summary);
+    return summary;
+  }
+
+  async function hubspotPropagationAfter(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var label = config.label || "4.8-hubspot-provider-propagation";
+    var key = config.baselineKey || storageKey("hubspot-propagation-" + label, campaignId);
+    var baseline = JSON.parse(localStorage.getItem(key) || "null");
+    var point = await hubspotPropagationPoint(config, "after-" + label);
+    var expectedActiveSourceCount = config.expectedActiveSourceCount == null ? 1 : Number(config.expectedActiveSourceCount);
+    var expectedRevenueDelta = config.expectedRevenueDelta !== undefined ? config.expectedRevenueDelta : config.expectedHubspotRevenueDelta;
+    var beforeSource = baseline && baseline.activeSource || null;
+    var afterSource = point.activeSource || null;
+    var beforeHubspotRevenue = beforeSource ? optionalMoney(beforeSource.revenueTotal) : null;
+    var afterHubspotRevenue = afterSource ? optionalMoney(afterSource.revenueTotal) : null;
+    var hubspotRevenueDelta = moneyDelta(afterHubspotRevenue, beforeHubspotRevenue);
+    var revenueDelta = baseline ? moneyDelta(point.snapshot.revenueBreakdownTotal, baseline.snapshot && baseline.snapshot.revenueBreakdownTotal) : null;
+    var spendDelta = baseline ? moneyDelta(point.snapshot.spendBreakdownTotal, baseline.snapshot && baseline.snapshot.spendBreakdownTotal) : null;
+    var recordCountDelta = beforeSource && afterSource ? Number(afterSource.recordCount || 0) - Number(beforeSource.recordCount || 0) : null;
+    var providerExpectationProvided = config.expectedHubspotRevenueDelta !== undefined
+      || config.expectedHubspotRevenueTotal !== undefined
+      || config.expectedHubspotRecordCount !== undefined
+      || config.expectedHubspotRecordCountDelta !== undefined;
+    var expectedPipelineEnabled = typeof config.expectedPipelineEnabled === "boolean" ? config.expectedPipelineEnabled : null;
+
+    var checks = {
+      baselineFound: !!baseline,
+      endpointsPass: point.endpointPass,
+      readonly: point.readonly,
+      inventoryPass: point.inventoryPass,
+      provenancePass: point.provenancePass,
+      providerExpectationProvided: providerExpectationProvided,
+      activeSourcePresent: !!afterSource,
+      activeHubspotSourceCountMatchesExpected: point.activeHubspotSourceIds.length === expectedActiveSourceCount,
+      sameActiveHubspotSourceIds: baseline ? sameStringList(baseline.activeHubspotSourceIds, point.activeHubspotSourceIds) : false,
+      sameRevenueSourceIds: baseline ? sameStringList(baseline.snapshot && baseline.snapshot.revenueSourceIds, point.snapshot.revenueSourceIds) : false,
+      sameSpendSourceIds: baseline ? sameStringList(baseline.snapshot && baseline.snapshot.spendSourceIds, point.snapshot.spendSourceIds) : false,
+      activeSourceStayedSame: !!(beforeSource && afterSource && String(beforeSource.sourceId) === String(afterSource.sourceId)),
+      hubspotFindingsClear: point.hubspotFindingCount === 0,
+      revenueDeltaMatchesHubspotDelta: revenueDelta !== null && hubspotRevenueDelta !== null ? closeMoney(revenueDelta, hubspotRevenueDelta) : false,
+      spendUnchanged: config.expectSpendUnchanged === false ? undefined : closeMoney(spendDelta, 0)
+    };
+
+    if (expectedPipelineEnabled !== null) {
+      checks.pipelineExpectationPass = !!(afterSource && afterSource.mapping && afterSource.mapping.pipelineEnabled === expectedPipelineEnabled);
+    }
+    if (config.expectedHubspotRevenueDelta !== undefined) {
+      checks.hubspotRevenueDeltaMatchesExpected = hubspotRevenueDelta !== null && closeMoney(hubspotRevenueDelta, config.expectedHubspotRevenueDelta);
+    }
+    if (config.expectedHubspotRevenueTotal !== undefined) {
+      checks.hubspotRevenueTotalMatchesExpected = afterHubspotRevenue !== null && closeMoney(afterHubspotRevenue, config.expectedHubspotRevenueTotal);
+    }
+    if (expectedRevenueDelta !== undefined) {
+      checks.revenueDeltaMatchesExpected = revenueDelta !== null && closeMoney(revenueDelta, expectedRevenueDelta);
+    }
+    if (config.expectedHubspotRecordCount !== undefined) {
+      checks.hubspotRecordCountMatchesExpected = !!(afterSource && Number(afterSource.recordCount || 0) === Number(config.expectedHubspotRecordCount));
+    }
+    if (config.expectedHubspotRecordCountDelta !== undefined) {
+      checks.hubspotRecordCountDeltaMatchesExpected = recordCountDelta === Number(config.expectedHubspotRecordCountDelta);
+    }
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: point.checkedAt,
+      stage: point.stage,
+      campaignId: campaignId,
+      propertyId: point.propertyId,
+      dateRange: point.dateRange,
+      baselineKey: key,
+      expected: {
+        activeSourceCount: expectedActiveSourceCount,
+        pipelineEnabled: expectedPipelineEnabled,
+        hubspotRevenueDelta: config.expectedHubspotRevenueDelta,
+        hubspotRevenueTotal: config.expectedHubspotRevenueTotal,
+        revenueDelta: expectedRevenueDelta,
+        hubspotRecordCount: config.expectedHubspotRecordCount,
+        hubspotRecordCountDelta: config.expectedHubspotRecordCountDelta
+      },
+      before: baseline ? {
+        activeHubspotSourceIds: baseline.activeHubspotSourceIds || [],
+        activeSource: baseline.activeSource || null,
+        revenueBreakdownTotal: baseline.snapshot && baseline.snapshot.revenueBreakdownTotal,
+        revenueSourceIds: baseline.snapshot && baseline.snapshot.revenueSourceIds || [],
+        spendBreakdownTotal: baseline.snapshot && baseline.snapshot.spendBreakdownTotal,
+        spendSourceIds: baseline.snapshot && baseline.snapshot.spendSourceIds || []
+      } : null,
+      after: {
+        activeHubspotSourceIds: point.activeHubspotSourceIds,
+        activeSource: afterSource,
+        revenueBreakdownTotal: point.snapshot.revenueBreakdownTotal,
+        revenueSourceIds: point.snapshot.revenueSourceIds,
+        spendBreakdownTotal: point.snapshot.spendBreakdownTotal,
+        spendSourceIds: point.snapshot.spendSourceIds
+      },
+      deltas: {
+        hubspotRevenue: hubspotRevenueDelta,
+        revenueBreakdownTotal: revenueDelta,
+        spendBreakdownTotal: spendDelta,
+        hubspotRecordCount: recordCountDelta
+      },
+      endpointStatus: point.endpointStatus,
+      checks: effectiveChecks,
+      caveats: [
+        "This HubSpot propagation helper is read-only and does not trigger scheduler, call HubSpot, or mutate sources/records.",
+        "Run it only after a separate controlled HubSpot provider change and existing scheduler/provider propagation path have completed.",
+        "A pass does not certify Pipeline Proxy, other campaigns, alternate mappings, Reports, KPI/Benchmark, emails, or future provider mutations."
+      ]
+    };
+    summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
   function googleSheetsAmount(sourceRow, breakdownRows, family) {
     var id = sourceId(sourceRow);
     var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
@@ -1124,12 +1374,14 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.2')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.3')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
       "await GA4OverviewValidation.hubspotInventory({ campaignId })",
       "await GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })",
+      "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
+      "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
       "await GA4OverviewValidation.before('2g-tab-add', { campaignId, propertyId })",
       "await GA4OverviewValidation.after('2g-tab-add', { campaignId, propertyId, expectedSpendDelta: 123.45, expectedSpendSourceCountDelta: 1 })",
@@ -1152,6 +1404,8 @@
     sourceDamageInventory: sourceDamageInventory,
     hubspotInventory: hubspotInventory,
     hubspotProvenance: hubspotProvenance,
+    hubspotPropagationBefore: hubspotPropagationBefore,
+    hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,
     help: help
   };

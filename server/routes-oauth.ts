@@ -1487,6 +1487,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(Array.isArray(mapping?.pipelineValueRevenueTotals)
           ? mapping.pipelineValueRevenueTotals.map((item: any) => item?.campaignValue)
           : []),
+        ...(Array.isArray(mapping?.campaignMappings)
+          ? mapping.campaignMappings.flatMap((item: any) => [
+            item?.crmValue,
+            item?.linkedinCampaignUrn,
+            item?.linkedinCampaignName,
+            item?.googleAdsCampaignId,
+            item?.metaCampaignId,
+            item?.instagramCampaignId,
+            item?.tiktokCampaignId,
+          ])
+          : []),
       ].map(normalizeHubspotScopeValue).filter(Boolean);
       const hubspotFindings = {
         activeHubspotSourcesWithZeroRecords: activeHubspotRevenueSources

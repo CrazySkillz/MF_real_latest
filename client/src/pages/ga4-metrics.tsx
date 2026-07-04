@@ -6190,6 +6190,8 @@ export default function GA4Metrics() {
                         {revenueDisplaySources.map((s: any) => {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                           const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+                          const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
+                          const sourceTypeText = isPipelineOnlyRevenueSource ? `${revenueSourceTypeLabel(s.sourceType)} - Pipeline Proxy only` : revenueSourceTypeLabel(s.sourceType);
                           const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
                             ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                             : "";
@@ -6199,7 +6201,7 @@ export default function GA4Metrics() {
                                 <p className="truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
                                   {revenueSourceDisplayLabel(s)}{dateLabel}
                                 </p>
-                                <p className="text-xs text-muted-foreground/70">{revenueSourceTypeLabel(s.sourceType)}</p>
+                                <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium tabular-nums text-foreground">

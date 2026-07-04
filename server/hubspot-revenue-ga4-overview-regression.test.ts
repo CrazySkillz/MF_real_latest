@@ -216,6 +216,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "const revenueCards: [string, string][] = [",
       "      sourceRows(\"Revenue\", ["
     );
+    const revenueSourcesDialog = sliceBetween(
+      client,
+      "{revenueDisplaySources.map((s: any) => {",
+      "<AlertDialog open={!!deletingRevenueSourceId}"
+    );
 
     expect(pipelineRoute).toContain("requestedPlatformContext");
     expect(pipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
@@ -230,6 +235,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(financialRevenueBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(financialRevenueBlock).not.toContain("pipelineProxyData");
     expect(revenueExportBlock).toContain('if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);');
+    expect(revenueSourcesDialog).toContain("isPipelineOnlyRevenueSource");
+    expect(revenueSourcesDialog).toContain("Pipeline Proxy only");
   });
 
   it("exposes a read-only HubSpot GA4 Overview inventory runner", () => {
@@ -262,7 +269,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.5";');
+    expect(runner).toContain('var VERSION = "2026-07-04.6";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -302,6 +309,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).toContain("revenueProperty");
     expect(inventoryRoute).toContain("dateField");
     expect(inventoryRoute).toContain("pipelineEnabled");
+    expect(inventoryRoute).toContain("mapping.campaignMappings.flatMap");
+    expect(inventoryRoute).toContain("item?.linkedinCampaignName");
     expect(inventoryRoute).toContain("pipelineStageLabel");
     expect(inventoryRoute).toContain("pipelineTotalToDate");
     expect(inventoryRoute).toContain("pipelineValueRevenueTotals");
@@ -378,7 +387,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.5";');
+    expect(runner).toContain('var VERSION = "2026-07-04.6";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -405,12 +414,19 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "async function hubspotPipelineProxy(config)",
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
+    const pipelineChecks = sliceBetween(
+      pipelineRunner,
+      "var checks = {",
+      "    if (config.expectedPipelineStageId !== undefined) {"
+    );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.5";');
+    expect(runner).toContain('var VERSION = "2026-07-04.6";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
     expect(pipelineRunner).toContain("selectedSourceProvenancePresent");
+    expect(pipelineRunner).toContain("serverProvenancePass: data.hubspotProvenancePass === true");
+    expect(pipelineChecks).not.toContain("serverProvenancePass");
     expect(pipelineRunner).toContain("expectedConfirmedRevenueTotal");
     expect(pipelineRunner).toContain("expectedPipelineTotalToDate");
     expect(pipelineRunner).toContain("pipelineNotAddedToConfirmedRevenue");

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.5";
+  var VERSION = "2026-07-04.6";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -1207,7 +1207,6 @@
       endpointsPass: snapshotResult.endpointPass && damageResult.pass,
       readonly: data.readonly === true,
       inventoryPass: data.hubspotInventoryPass === true,
-      serverProvenancePass: data.hubspotProvenancePass === true,
       selectedSourceProvenancePresent: !!(activeSource && activeSource.mapping && activeSource.platformContext === "ga4" && mapping.platformContext === "ga4"),
       confirmedRevenueExpectationProvided: expectedConfirmedRevenueProvided,
       pipelineTotalExpectationProvided: expectedPipelineTotalProvided,
@@ -1556,7 +1555,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.5')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.6')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

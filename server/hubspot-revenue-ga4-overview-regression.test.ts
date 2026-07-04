@@ -17,6 +17,9 @@ const schedulerFile = () =>
 const validationRunnerFile = () =>
   readFileSync(join(process.cwd(), "client", "public", "ga4-overview-validation-runner.js"), "utf-8");
 
+const ga4ScheduledReportPdfFile = () =>
+  readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
+
 const hubspotWizardFile = () =>
   readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf-8");
 
@@ -321,7 +324,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.8";');
+    expect(runner).toContain('var VERSION = "2026-07-04.9";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -439,7 +442,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.8";');
+    expect(runner).toContain('var VERSION = "2026-07-04.9";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -472,7 +475,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.8";');
+    expect(runner).toContain('var VERSION = "2026-07-04.9";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -499,7 +502,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function parseStoredGa4CampaignFilterForRunner(raw)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.8";');
+    expect(runner).toContain('var VERSION = "2026-07-04.9";');
     expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
     expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
     expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
@@ -526,7 +529,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.8";');
+    expect(runner).toContain('var VERSION = "2026-07-04.9";');
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownBefore(config)");
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownAfter(config)");
     expect(campaignBreakdownRunner).toContain('"ga4Breakdown"');
@@ -545,5 +548,59 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(campaignBreakdownRunner).not.toContain("/pipeline-proxy");
     expect(runner).toContain("hubspotCampaignBreakdownBefore: hubspotCampaignBreakdownBefore");
     expect(runner).toContain("hubspotCampaignBreakdownAfter: hubspotCampaignBreakdownAfter");
+  });
+
+  it("keeps GA4 report payload formulas aligned with HubSpot mapped revenue", () => {
+    const pdf = ga4ScheduledReportPdfFile();
+    const payloadBlock = sliceBetween(
+      pdf,
+      "const importedRevenueForFinancials",
+      "const pipelineEntries"
+    );
+    const overviewReportBlock = sliceBetween(
+      pdf,
+      "if (sections.overview)",
+      "if (sections.ads)"
+    );
+
+    expect(payloadBlock).toContain("const importedRevenueForFinancials = Number(revenueBreakdown.reduce");
+    expect(payloadBlock).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");
+    expect(payloadBlock).toContain("const revenueDisplaySources = revenueBreakdown.length > 0");
+    expect(payloadBlock).toContain("mappingConfig: revenueSources.find");
+    expect(payloadBlock).toContain("const campaignBreakdownMatchedExternalRevenue = new Map<string, number>();");
+    expect(payloadBlock).toContain("campaignValueRevenueTotals");
+    expect(payloadBlock).toContain("campaignMappings");
+    expect(payloadBlock).toContain("mappedCampaignByValue");
+    expect(payloadBlock).toContain("mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn");
+    expect(overviewReportBlock).toContain("[\"Total Revenue\", formatMoney(payload.financialRevenue)]");
+    expect(overviewReportBlock).toContain("payload.revenueDisplaySources.map");
+    expect(overviewReportBlock).toContain("payload.campaignBreakdownMatchedExternalRevenue.get");
+    expect(overviewReportBlock).not.toContain("pipelineTotal + payload.financialRevenue");
+  });
+
+  it("exposes a read-only HubSpot Reports value propagation runner", () => {
+    const runner = validationRunnerFile();
+    const reportRunner = sliceBetween(
+      runner,
+      "async function hubspotReportValuePack(config)",
+      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+    );
+
+    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(reportRunner).toContain('"reports"');
+    expect(reportRunner).toContain('"snapshots"');
+    expect(reportRunner).toContain('"snapshotPdf"');
+    expect(reportRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(reportRunner).toContain("buildCampaignBreakdownRows(");
+    expect(reportRunner).toContain("reportFinancialRevenue");
+    expect(reportRunner).toContain("hubspotRevenueForFinancials");
+    expect(reportRunner).toContain("reportIncludesOverviewRevenue");
+    expect(reportRunner).toContain("reportIncludesOverviewCampaignBreakdown");
+    expect(reportRunner).toContain("pipelineProxyExcludedFromReportTotal");
+    expect(reportRunner).toContain("This HubSpot Reports helper is read-only");
+    expect(reportRunner).not.toContain('method: "POST"');
+    expect(reportRunner).not.toContain("send-test");
+    expect(reportRunner).not.toContain("createSnapshot");
+    expect(runner).toContain("hubspotReportValuePack: hubspotReportValuePack");
   });
 });

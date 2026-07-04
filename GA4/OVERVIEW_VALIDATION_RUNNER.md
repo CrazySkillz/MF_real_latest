@@ -1,4 +1,4 @@
-# GA4 Overview Validation Runner
+﻿# GA4 Overview Validation Runner
 
 ## Purpose
 
@@ -237,7 +237,24 @@ Remaining active HubSpot clean-certification queue after 4.11:
 4. Current Commit 4.15: HubSpot other-campaign portability pack.
 5. Current Commit 4.16: HubSpot alternate mapping matrix.
 
-Next step: implement Current Commit 4.12 as a read-only/local-first report payload and snapshot/PDF checker for the already proven HubSpot Overview values. It must not mutate sources, recompute provider data, trigger scheduler sends, or use non-HubSpot source-family evidence to prove HubSpot readiness.
+Current Commit 4.12 local implementation adds `hubspotReportValuePack(...)`; deployed 4.12 evidence remains pending. If it passes, the next commit is 4.13 KPI/Benchmark value propagation.
+
+For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
+
+```js
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.9');
+
+await GA4OverviewValidation.hubspotReportValuePack({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  reportId: 'GA4_REPORT_ID',
+  targetCampaignName: 'MAPPED_GA4_CAMPAIGN_ROW',
+  expectedTargetHubspotRevenue: 5100,
+  requirePdf: true
+});
+```
+
+This helper is read-only: it uses GET endpoints only, does not create snapshots, does not send emails, does not call HubSpot, does not trigger scheduler, and does not recompute provider data. Use expectedHubspotRevenueForFinancials only when you know the total HubSpot contribution across all active HubSpot revenue source rows, not just the target mapped row. It mirrors the GA4 scheduled/server report value formulas for Total Revenue, Revenue Sources, and mapped Campaign Breakdown values, then optionally checks an existing snapshot/PDF by GET. If no snapshot exists, first capture separate report snapshot evidence deliberately, then rerun this helper with `snapshotId` or `requirePdf: true`. A pass proves only the configured GA4 report value packet; KPI/Benchmark, emails, other campaigns, alternate mappings, and future provider mutations remain separate evidence.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

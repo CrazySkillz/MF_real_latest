@@ -223,12 +223,57 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.1";');
+    expect(runner).toContain('var VERSION = "2026-07-04.2";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
     expect(hubspotRunner).toContain("hubspotFindings.activeHubspotSourcesWithZeroRecords || []");
     expect(hubspotRunner).toContain("summary.overallPass = result.pass && data.success === true && data.readonly === true && data.hubspotInventoryPass === true");
     expect(runner).toContain("hubspotInventory: hubspotInventory");
+  });
+
+  it("exposes non-secret HubSpot provenance evidence without mutating provider or revenue state", () => {
+    const routes = routesFile();
+    const inventoryRoute = sliceBetween(
+      routes,
+      'app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory"',
+      'app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"'
+    );
+    const runner = validationRunnerFile();
+    const provenanceRunner = sliceBetween(
+      runner,
+      "async function hubspotProvenance(config)",
+      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+    );
+
+    expect(routes).toContain("hubspotConnections as hubspotConnectionsTable");
+    expect(inventoryRoute).toContain("portalId: hubspotConnectionsTable.portalId");
+    expect(inventoryRoute).toContain("portalName: hubspotConnectionsTable.portalName");
+    expect(inventoryRoute).toContain("mappingConfig: hubspotConnectionsTable.mappingConfig");
+    expect(inventoryRoute).toContain("hubspotProvenancePass");
+    expect(inventoryRoute).toContain("hubspotProvenance: {");
+    expect(inventoryRoute).toContain("sourceModalExpected");
+    expect(inventoryRoute).toContain("campaignProperty");
+    expect(inventoryRoute).toContain("selectedValues");
+    expect(inventoryRoute).toContain("revenueProperty");
+    expect(inventoryRoute).toContain("dateField");
+    expect(inventoryRoute).toContain("pipelineEnabled");
+    expect(inventoryRoute).toContain("sourceModalEvidenceBoundary");
+    expect(inventoryRoute).not.toContain("accessToken: hubspotConnectionsTable.accessToken");
+    expect(inventoryRoute).not.toContain("refreshToken: hubspotConnectionsTable.refreshToken");
+    expect(inventoryRoute).not.toContain("clientSecret: hubspotConnectionsTable.clientSecret");
+    expect(inventoryRoute).not.toContain("encryptedTokens: hubspotConnectionsTable.encryptedTokens");
+    expect(inventoryRoute).not.toContain("storage.getHubspotConnection(campaignId)");
+    expect(inventoryRoute).not.toContain("storage.getHubspotConnections(campaignId)");
+    expect(inventoryRoute).not.toContain("updateHubspotConnection");
+    expect(inventoryRoute).not.toContain("getHubspotAccessTokenForCampaign");
+
+    expect(provenanceRunner).toContain('"hubspotProvenance"');
+    expect(provenanceRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
+    expect(provenanceRunner).toContain("expectedPipelineEnabled");
+    expect(provenanceRunner).toContain("serverProvenancePass: data.hubspotProvenancePass === true");
+    expect(provenanceRunner).toContain("activeSources: activeSources");
+    expect(provenanceRunner).toContain("summary.overallPass = summary.provenancePass");
+    expect(runner).toContain("hubspotProvenance: hubspotProvenance");
   });
 });

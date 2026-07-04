@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -1399,8 +1399,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
-      const [campaign, allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
+      const [campaign, allHubspotConnections, allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
         storage.getCampaign(campaignId).catch(() => null as any),
+        db.select({
+          id: hubspotConnectionsTable.id,
+          portalId: hubspotConnectionsTable.portalId,
+          portalName: hubspotConnectionsTable.portalName,
+          isActive: hubspotConnectionsTable.isActive,
+          mappingConfig: hubspotConnectionsTable.mappingConfig,
+          connectedAt: hubspotConnectionsTable.connectedAt,
+          createdAt: hubspotConnectionsTable.createdAt,
+        }).from(hubspotConnectionsTable).where(eq(hubspotConnectionsTable.campaignId, campaignId)),
         db.select().from(revenueSourcesTable).where(eq(revenueSourcesTable.campaignId, campaignId)),
         db.select().from(revenueRecordsTable).where(eq(revenueRecordsTable.campaignId, campaignId)),
         db.select().from(spendSourcesTable).where(eq(spendSourcesTable.campaignId, campaignId)),
@@ -1509,6 +1518,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const hubspotFindingCount = Object.values(hubspotFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
       const hubspotInventoryPass = hubspotFindingCount === 0;
+      const hubspotConnectionsForProvenance = (allHubspotConnections as any[]).map((connection) => ({
+        connectionId: String(connection?.id || ""),
+        portalId: connection?.portalId ? String(connection.portalId) : null,
+        portalName: connection?.portalName ? String(connection.portalName) : null,
+        isActive: connection?.isActive !== false,
+        connectedAt: connection?.connectedAt || null,
+        createdAt: connection?.createdAt || null,
+      }));
+      const activeHubspotConnectionsForProvenance = hubspotConnectionsForProvenance.filter((connection) => connection.isActive);
+      const latestActiveHubspotConnection = activeHubspotConnectionsForProvenance
+        .slice()
+        .sort((a, b) => new Date(b.connectedAt || b.createdAt || 0).getTime() - new Date(a.connectedAt || a.createdAt || 0).getTime())[0] || null;
+      const hubspotAccountPresent = Boolean(latestActiveHubspotConnection?.portalId || latestActiveHubspotConnection?.portalName);
+      const summarizeHubspotMapping = (mapping: any) => ({
+        platformContext: mapping?.platformContext ? normalizeOverviewInventoryPlatformContext(mapping.platformContext) : null,
+        campaignProperty: mapping?.campaignProperty ? String(mapping.campaignProperty) : null,
+        selectedValues: Array.isArray(mapping?.selectedValues) ? mapping.selectedValues.map((value: any) => String(value)).filter(Boolean) : [],
+        selectedValuesCount: Array.isArray(mapping?.selectedValues) ? mapping.selectedValues.length : 0,
+        revenueProperty: mapping?.revenueProperty ? String(mapping.revenueProperty) : null,
+        dateField: mapping?.dateField ? String(mapping.dateField) : null,
+        pipelineEnabled: mapping?.pipelineEnabled === true,
+        pipelineStageId: mapping?.pipelineStageId ? String(mapping.pipelineStageId) : null,
+        dailyMaterialization: mapping?.dailyMaterialization ? String(mapping.dailyMaterialization) : null,
+      });
+      const hubspotSourceRevenueTotal = (sourceId: string) => centsOverviewInventoryTotal(
+        (allRevenueRecords as any[]).filter((record) => String(record?.revenueSourceId || "") === sourceId),
+        "revenue",
+      );
+      const hubspotDateLabel = (dateField: string | null) => {
+        if (dateField === "hs_lastmodifieddate") return "Modified Date";
+        if (dateField === "createdate") return "Created Date";
+        return "Close Date";
+      };
+      const summarizeHubspotProvenanceSource = (source: any) => {
+        const mapping = getHubspotMapping(source);
+        const mappingSummary = summarizeHubspotMapping(mapping);
+        const sourceId = String(source?.id || "");
+        return {
+          sourceId,
+          displayName: source?.displayName || null,
+          platformContext: normalizeOverviewInventoryPlatformContext(source?.platformContext),
+          isActive: source?.isActive !== false,
+          recordCount: revenueRecordCounts.get(sourceId) || 0,
+          revenueTotal: hubspotSourceRevenueTotal(sourceId),
+          connectedAt: source?.connectedAt || null,
+          createdAt: source?.createdAt || null,
+          mapping: mappingSummary,
+          sourceModalExpected: {
+            displayName: source?.displayName || "HubSpot (Deals)",
+            typeLabel: "HubSpot",
+            dateLabel: hubspotDateLabel(mappingSummary.dateField),
+            revenue: hubspotSourceRevenueTotal(sourceId),
+          },
+        };
+      };
+      const activeGa4HubspotRevenueSources = activeHubspotRevenueSources.filter((source) =>
+        normalizeOverviewInventoryPlatformContext(source?.platformContext) === "ga4"
+      );
+      const activeHubspotProvenanceSources = activeGa4HubspotRevenueSources.map(summarizeHubspotProvenanceSource);
+      const latestActiveHubspotConnectionRaw = (allHubspotConnections as any[])
+        .filter((connection) => connection?.isActive !== false)
+        .slice()
+        .sort((a, b) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0] || null;
+      const hubspotConnectionMapping = latestActiveHubspotConnectionRaw
+        ? summarizeHubspotMapping(normalizeOverviewInventoryMappingConfig(latestActiveHubspotConnectionRaw?.mappingConfig))
+        : null;
+      const normalizeHubspotSelectedValues = (values: any[]) => values.map((value) => String(value || "").trim()).filter(Boolean).sort().join("\n");
+      const hubspotMappingsMatch = (a: any, b: any) => Boolean(a && b)
+        && a.campaignProperty === b.campaignProperty
+        && normalizeHubspotSelectedValues(a.selectedValues || []) === normalizeHubspotSelectedValues(b.selectedValues || [])
+        && a.revenueProperty === b.revenueProperty
+        && a.dateField === b.dateField
+        && a.pipelineEnabled === b.pipelineEnabled;
+      const hubspotProvenanceFindings = {
+        missingActiveHubspotAccount: activeGa4HubspotRevenueSources.length > 0 && !hubspotAccountPresent ? [{ reason: "missing active HubSpot portalId/portalName" }] : [],
+        activeHubspotSourcesMissingMappingProvenance: activeHubspotProvenanceSources.filter((source: any) =>
+          !source.mapping.campaignProperty
+          || source.mapping.selectedValuesCount === 0
+          || !source.mapping.revenueProperty
+          || !source.mapping.dateField
+          || source.platformContext !== "ga4"
+        ),
+        hubspotConnectionSourceMappingMismatches: hubspotConnectionMapping
+          ? activeHubspotProvenanceSources.filter((source: any) => !hubspotMappingsMatch(source.mapping, hubspotConnectionMapping))
+          : [],
+      };
+      const hubspotProvenanceFindingCount = Object.values(hubspotProvenanceFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
+      const hubspotProvenancePass = activeGa4HubspotRevenueSources.length > 0 && hubspotProvenanceFindingCount === 0;
 
       res.json({
         success: true,
@@ -1543,6 +1640,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hubspotFindingCount,
         },
         hubspotFindings,
+        hubspotProvenancePass,
+        hubspotProvenance: {
+          account: latestActiveHubspotConnection,
+          accountPresent: hubspotAccountPresent,
+          connections: hubspotConnectionsForProvenance,
+          activeSources: activeHubspotProvenanceSources,
+          connectionMapping: hubspotConnectionMapping,
+          findingCount: hubspotProvenanceFindingCount,
+          findings: hubspotProvenanceFindings,
+          sourceModalEvidenceBoundary: "Expected source-modal labels and values are derived from the same revenue source fields used by the GA4 Overview source modal; this is endpoint evidence, not a screenshot or pixel assertion.",
+        },
+        hubspotProvenanceImpact: hubspotProvenancePass
+          ? "HubSpot account, active GA4 revenue source mapping, and source-modal expected values are present for the active HubSpot source."
+          : "HubSpot provenance is incomplete for clean certification; record or fix the returned account/source/mapping findings before certifying.",
         hubspotCertificationImpact: hubspotInventoryPass
           ? "No HubSpot zero-record, orphan-record, duplicate-active-source, context-mismatch, or Pipeline Proxy scope-mismatch candidates were found for this campaign inventory."
           : "HubSpot database health is not clean for this campaign inventory; document the returned source/record IDs before provider validation or cleanup claims.",
@@ -1552,6 +1663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         caveats: [
           "This route is read-only and campaign-access guarded; it does not prove other campaigns unless run for them.",
           "HubSpot-specific inventory is reported separately in hubspotInventoryPass/hubspotFindings; it does not clean data or prove provider lifecycle behavior.",
+          "HubSpot provenance output is non-secret endpoint evidence for the connected account, saved mapping, and source-modal expected values; it does not inspect rendered pixels.",
           "Duplicate detection uses source type, platform context, currency, and a sanitized mapping-config hash; suspicious groups still require human review before cleanup.",
           "Null revenue platform context is normalized as ga4 for legacy GA4 revenue-source compatibility.",
         ],

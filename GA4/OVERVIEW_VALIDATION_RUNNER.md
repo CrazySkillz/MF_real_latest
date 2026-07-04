@@ -16,6 +16,7 @@ Read-only functions:
 - `GA4OverviewValidation.overviewPack(config)`
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotInventory({ campaignId })`
+- `GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
@@ -34,7 +35,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.1');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.2');
 GA4OverviewValidation.help();
 ```
 
@@ -86,6 +87,18 @@ await GA4OverviewValidation.hubspotInventory({
 ```
 
 This calls the same campaign-access-guarded GET route and summarizes HubSpot-only zero-record, orphan-record, duplicate-active-source, source/mapping context, and Pipeline Proxy scope candidates. It does not create, refresh, delete, clean, recompute, certify provider behavior, or prove other campaigns.
+
+For Current Commit 4.7a read-only HubSpot provenance evidence after add/import or edit/update, use:
+
+```js
+await GA4OverviewValidation.hubspotProvenance({
+  campaignId: 'CAMPAIGN_ID',
+  stage: '4.7a-hubspot-provenance-after-add-or-edit',
+  expectedPipelineEnabled: false
+});
+```
+
+This records non-secret endpoint provenance for the active HubSpot account, active GA4 HubSpot revenue source, saved mapping fields, selected campaign values, revenue/date fields, Pipeline Proxy setting, source record count, source revenue, and source-modal expected label/value data. It does not expose OAuth tokens/secrets, refresh HubSpot, create/edit/delete sources, clean records, recompute metrics, inspect rendered pixels, or prove other campaigns.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

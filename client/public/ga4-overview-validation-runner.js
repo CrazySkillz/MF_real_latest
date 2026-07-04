@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.1";
+  var VERSION = "2026-07-04.2";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -819,6 +819,61 @@
     console.log(summary);
     return summary;
   }
+  async function hubspotProvenance(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var result = await fetchJson(
+      "hubspotProvenance",
+      "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"
+    );
+    var data = result.data || {};
+    var provenance = data.hubspotProvenance || {};
+    var activeSources = Array.isArray(provenance.activeSources) ? provenance.activeSources : [];
+    var expectedActiveSourceCount = config.expectedActiveSourceCount == null ? 1 : Number(config.expectedActiveSourceCount);
+    var expectedPipelineEnabled = typeof config.expectedPipelineEnabled === "boolean" ? config.expectedPipelineEnabled : null;
+    var activeSourceCountPass = !Number.isFinite(expectedActiveSourceCount) || activeSources.length === expectedActiveSourceCount;
+    var pipelineExpectationPass = expectedPipelineEnabled === null || activeSources.every(function (source) {
+      return !!source && !!source.mapping && source.mapping.pipelineEnabled === expectedPipelineEnabled;
+    });
+    var checks = {
+      endpointPass: result.pass,
+      readonly: data.readonly === true,
+      serverProvenancePass: data.hubspotProvenancePass === true,
+      activeSourceCountPass: activeSourceCountPass,
+      pipelineExpectationPass: pipelineExpectationPass
+    };
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: data.checkedAt || new Date().toISOString(),
+      stage: config.stage || "hubspot-ga4-overview-provenance",
+      campaignId: campaignId,
+      endpoint: {
+        pass: result.pass,
+        status: result.status,
+        error: result.error || null
+      },
+      readonly: data.readonly === true,
+      expectedActiveSourceCount: expectedActiveSourceCount,
+      expectedPipelineEnabled: expectedPipelineEnabled,
+      provenancePass: Object.keys(checks).every(function (key) { return checks[key] === true; }),
+      account: provenance.account || null,
+      accountPresent: provenance.accountPresent === true,
+      activeSources: activeSources,
+      connectionMapping: provenance.connectionMapping || null,
+      findings: provenance.findings || {},
+      findingCount: Number(provenance.findingCount || 0),
+      sourceModalEvidenceBoundary: provenance.sourceModalEvidenceBoundary || null,
+      checks: checks,
+      caveats: [
+        "This HubSpot provenance check is read-only and does not refresh, create, edit, delete, clean, or recompute data.",
+        "It records endpoint/source-modal data fields, not a screenshot or pixel assertion.",
+        "Do not include OAuth tokens or secrets in provenance evidence."
+      ].concat(data.caveats || [])
+    };
+    summary.overallPass = summary.provenancePass;
+    console.log(summary);
+    return summary;
+  }
   function googleSheetsAmount(sourceRow, breakdownRows, family) {
     var id = sourceId(sourceRow);
     var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
@@ -1069,11 +1124,12 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.1')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.2')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
       "await GA4OverviewValidation.hubspotInventory({ campaignId })",
+      "await GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
       "await GA4OverviewValidation.before('2g-tab-add', { campaignId, propertyId })",
       "await GA4OverviewValidation.after('2g-tab-add', { campaignId, propertyId, expectedSpendDelta: 123.45, expectedSpendSourceCountDelta: 1 })",
@@ -1095,6 +1151,7 @@
     reportPack: reportPack,
     sourceDamageInventory: sourceDamageInventory,
     hubspotInventory: hubspotInventory,
+    hubspotProvenance: hubspotProvenance,
     googleSheetsVariantPack: googleSheetsVariantPack,
     help: help
   };

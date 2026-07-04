@@ -95,7 +95,7 @@ Important meaning:
 - `GA4/OVERVIEW.md` explains what the Overview tab contains and how its cards/tables should be understood
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md` states that GA4 Overview is production-ready for the current GA4 code scope and provides the reusable future-platform readiness template
 - `GA4/FINANCIAL_SOURCES.md` explains the underlying revenue/spend source system that feeds Overview and other GA4 tabs
-- HubSpot-specific downstream certification is tracked in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; Current Commit 4.13 has local KPI/Benchmark propagation automation, the persisted-job financial-source fix, and deployed recompute/value-packet evidence closed only for the configured Revenue KPI/Benchmark packet
+- HubSpot-specific downstream certification is tracked in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; Current Commit 4.13 has local KPI/Benchmark propagation automation, the persisted-job financial-source fix, and deployed recompute/value-packet evidence closed only for the configured Revenue KPI/Benchmark packet. Current Commit 4.14 locally guards the HubSpot-backed GA4 report email attachment path, while deployed email delivery remains separate evidence.
 
 Why this file is separate:
 

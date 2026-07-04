@@ -20,6 +20,9 @@ const validationRunnerFile = () =>
 const ga4ScheduledReportPdfFile = () =>
   readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
+const reportSchedulerFile = () =>
+  readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
+
 const ga4KpiBenchmarkJobsFile = () =>
   readFileSync(join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"), "utf-8");
 
@@ -582,6 +585,58 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(overviewReportBlock).toContain("payload.revenueDisplaySources.map");
     expect(overviewReportBlock).toContain("payload.campaignBreakdownMatchedExternalRevenue.get");
     expect(overviewReportBlock).not.toContain("pipelineTotal + payload.financialRevenue");
+  });
+
+  it("keeps HubSpot-backed GA4 report values on the scheduled and test email attachment path", () => {
+    const scheduler = reportSchedulerFile();
+    const pdf = ga4ScheduledReportPdfFile();
+    const ga4BuilderBlock = sliceBetween(
+      scheduler,
+      'if (String((report as any)?.platformType || "") === "google_analytics")',
+      'if (String((report as any)?.platformType || "") === "instagram")'
+    );
+    const scheduledSendBlock = sliceBetween(
+      scheduler,
+      "const snapshotPayload = {",
+      "let sent = await sendReportEmailWithRetry"
+    );
+    const testSendBlock = sliceBetween(
+      scheduler,
+      "export async function sendTestReport",
+      "const safeName = String((report as any)?.name || \"MimoSaaS_Report\")"
+    );
+    const emailAttachmentBlock = sliceBetween(
+      scheduler,
+      "const sent = await emailService.sendEmail({",
+      "if (sent) {"
+    );
+    const payloadBlock = sliceBetween(
+      pdf,
+      "const importedRevenueForFinancials",
+      "const pipelineEntries"
+    );
+
+    expect(ga4BuilderBlock).toContain("buildGA4ScheduledPdfAttachment");
+    expect(ga4BuilderBlock).toContain("reportName: String((report as any)?.name || \"GA4 Report\")");
+    expect(ga4BuilderBlock).toContain("if (ga4Pdf) return ga4Pdf;");
+    expect(ga4BuilderBlock).toContain("GA4 PDF builder failed; refusing generic fallback");
+    expect(ga4BuilderBlock).toContain("Refusing generic fallback for GA4");
+
+    expect(scheduledSendBlock).toContain("const pdfBuffer = await buildPdfAttachmentForReport({");
+    expect(scheduledSendBlock).toContain("isTest: false");
+    expect(scheduler).toContain("attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\\s+/g, \"_\")}_${windowEnd}.pdf`, content: pdfBuffer } : null");
+    expect(testSendBlock).toContain("const pdfBuffer = await buildPdfAttachmentForReport({");
+    expect(testSendBlock).toContain("isTest: true");
+    expect(scheduler).toContain("attachment: pdfBuffer ? { filename: `${safeName}_${windowEnd}.pdf`, content: pdfBuffer } : null");
+    expect(emailAttachmentBlock).toContain("attachments: meta?.attachment ? [{ filename: meta.attachment.filename, content: meta.attachment.content, contentType: 'application/pdf' }] : undefined");
+
+    expect(payloadBlock).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");
+    expect(payloadBlock).toContain("const revenueDisplaySources = revenueBreakdown.length > 0");
+    expect(payloadBlock).toContain("campaignValueRevenueTotals");
+    expect(payloadBlock).toContain("campaignMappings");
+    expect(payloadBlock).toContain("campaignBreakdownMatchedExternalRevenue");
+    expect(payloadBlock).toContain("sourceRevenueBreakdowns");
+    expect(payloadBlock).not.toContain("pipelineTotal + financialRevenue");
   });
 
   it("exposes a read-only HubSpot Reports value propagation runner", () => {

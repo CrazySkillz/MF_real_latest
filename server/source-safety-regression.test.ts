@@ -802,7 +802,7 @@ describe("source safety regression guards", () => {
     expect(modal).toContain("Update Report");
 
     expect(reportScheduler).toContain("'google_sheets'");
-    expect(reportScheduler).toContain("return normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\" || normalized === \"custom-integration\" || normalized === \"custom_integration\";");
+    expect(reportScheduler).toContain("return normalized === \"google_analytics\" || normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\" || normalized === \"custom-integration\" || normalized === \"custom_integration\";");
     expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary");
     expect(reportScheduler).toContain("function getGoogleSheetsReportSourceScope");
     expect(reportScheduler).toContain("function isGoogleSheetsConfirmedFinancialMetric");
@@ -819,8 +819,8 @@ describe("source safety regression guards", () => {
     expect(reportScheduler).toContain("return buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
     expect(reportScheduler).not.toContain("if (String((report as any)?.platformType || \"\") === \"google_sheets\") {\n    const { jsPDF }");
 
-    expect(routesSource).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
-    expect(routesSource).toContain('sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-03.4";
+  var VERSION = "2026-07-04.1";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -778,6 +778,47 @@
     console.log(summary);
     return summary;
   }
+  async function hubspotInventory(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var result = await fetchJson(
+      "hubspotInventory",
+      "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"
+    );
+    var data = result.data || {};
+    var hubspotFindings = data.hubspotFindings || {};
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: data.checkedAt || new Date().toISOString(),
+      stage: config.stage || "hubspot-ga4-overview-inventory",
+      campaignId: campaignId,
+      endpoint: {
+        pass: result.pass,
+        status: result.status,
+        error: result.error || null
+      },
+      readonly: data.readonly === true,
+      inventoryPass: data.hubspotInventoryPass === true,
+      hubspotSummary: data.hubspotSummary || null,
+      hubspotFindings: {
+        activeHubspotSourcesWithZeroRecords: hubspotFindings.activeHubspotSourcesWithZeroRecords || [],
+        orphanHubspotRevenueRecordGroups: hubspotFindings.orphanHubspotRevenueRecordGroups || [],
+        duplicateActiveHubspotSourceGroups: hubspotFindings.duplicateActiveHubspotSourceGroups || [],
+        hubspotGa4ContextMismatchSources: hubspotFindings.hubspotGa4ContextMismatchSources || [],
+        hubspotPipelineProxyScopeMismatches: hubspotFindings.hubspotPipelineProxyScopeMismatches || []
+      },
+      hubspotCertificationImpact: data.hubspotCertificationImpact || null,
+      generalInventoryPass: data.overallPass === true,
+      generalSummary: data.summary || null,
+      caveats: [
+        "This HubSpot inventory is read-only and must be run before and after deployed provider lifecycle validation.",
+        "It does not create, refresh, delete, clean, recompute, or certify provider behavior."
+      ].concat(data.caveats || [])
+    };
+    summary.overallPass = result.pass && data.success === true && data.readonly === true && data.hubspotInventoryPass === true;
+    console.log(summary);
+    return summary;
+  }
   function googleSheetsAmount(sourceRow, breakdownRows, family) {
     var id = sourceId(sourceRow);
     var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
@@ -1028,10 +1069,11 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-03.4')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.1')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
+      "await GA4OverviewValidation.hubspotInventory({ campaignId })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
       "await GA4OverviewValidation.before('2g-tab-add', { campaignId, propertyId })",
       "await GA4OverviewValidation.after('2g-tab-add', { campaignId, propertyId, expectedSpendDelta: 123.45, expectedSpendSourceCountDelta: 1 })",
@@ -1052,6 +1094,7 @@
     overviewPack: overviewPack,
     reportPack: reportPack,
     sourceDamageInventory: sourceDamageInventory,
+    hubspotInventory: hubspotInventory,
     googleSheetsVariantPack: googleSheetsVariantPack,
     help: help
   };

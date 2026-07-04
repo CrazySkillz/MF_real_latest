@@ -2116,7 +2116,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     retry: false,
     queryFn: async () => {
-      const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy`);
+      const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },

@@ -15,6 +15,7 @@ Read-only functions:
 - `GA4OverviewValidation.after(label, config)`
 - `GA4OverviewValidation.overviewPack(config)`
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
+- `GA4OverviewValidation.hubspotInventory({ campaignId })`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
@@ -33,7 +34,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-03.4');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.1');
 GA4OverviewValidation.help();
 ```
 
@@ -69,6 +70,22 @@ await GA4OverviewValidation.sourceDamageInventory({
 ```
 
 This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
+
+For Current Commit 4.6 read-only HubSpot GA4 Overview inventory, run before and after deployed Current Commit 4.5 HubSpot provider lifecycle validation:
+
+```js
+await GA4OverviewValidation.hubspotInventory({
+  campaignId: 'CAMPAIGN_ID',
+  stage: '4.6-before-4.5-hubspot-provider-validation'
+});
+
+await GA4OverviewValidation.hubspotInventory({
+  campaignId: 'CAMPAIGN_ID',
+  stage: '4.6-after-4.5-hubspot-provider-validation'
+});
+```
+
+This calls the same campaign-access-guarded GET route and summarizes HubSpot-only zero-record, orphan-record, duplicate-active-source, source/mapping context, and Pipeline Proxy scope candidates. It does not create, refresh, delete, clean, recompute, certify provider behavior, or prove other campaigns.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

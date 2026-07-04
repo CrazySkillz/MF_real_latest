@@ -1399,7 +1399,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
-      const [allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
+      const [campaign, allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
+        storage.getCampaign(campaignId).catch(() => null as any),
         db.select().from(revenueSourcesTable).where(eq(revenueSourcesTable.campaignId, campaignId)),
         db.select().from(revenueRecordsTable).where(eq(revenueRecordsTable.campaignId, campaignId)),
         db.select().from(spendSourcesTable).where(eq(spendSourcesTable.campaignId, campaignId)),
@@ -1448,6 +1449,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const findingCount = Object.values(findings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
       const overallPass = findingCount === 0;
+      const normalizeHubspotScopeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
+      const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeHubspotScopeValue).filter(Boolean));
+      const hubspotRevenueSources = (allRevenueSources as any[]).filter((source) =>
+        String(source?.sourceType || "").toLowerCase() === "hubspot"
+      );
+      const activeHubspotRevenueSources = hubspotRevenueSources.filter((source) => source?.isActive !== false);
+      const hubspotRevenueSourceIds = new Set(hubspotRevenueSources.map((source) => String(source?.id || "")).filter(Boolean));
+      const hubspotRevenueRecords = (allRevenueRecords as any[]).filter((record) =>
+        String(record?.sourceType || "").toLowerCase() === "hubspot"
+        || hubspotRevenueSourceIds.has(String(record?.revenueSourceId || ""))
+      );
+      const getHubspotMapping = (source: any) => normalizeOverviewInventoryMappingConfig(source?.mappingConfig);
+      const summarizeHubspotSource = (source: any) => {
+        const mapping = getHubspotMapping(source);
+        return {
+          ...summarizeOverviewInventorySource(source, revenueRecordCounts.get(String(source?.id)) || 0),
+          mappingPlatformContext: mapping?.platformContext ? normalizeOverviewInventoryPlatformContext(mapping.platformContext) : null,
+          pipelineEnabled: mapping?.pipelineEnabled === true,
+          pipelineStageIdPresent: Boolean(String(mapping?.pipelineStageId || "").trim()),
+          selectedValuesCount: Array.isArray(mapping?.selectedValues) ? mapping.selectedValues.length : 0,
+          pipelineValueRevenueTotalCount: Array.isArray(mapping?.pipelineValueRevenueTotals) ? mapping.pipelineValueRevenueTotals.length : 0,
+        };
+      };
+      const getHubspotScopeValues = (mapping: any) => [
+        ...(Array.isArray(mapping?.selectedValues) ? mapping.selectedValues : []),
+        ...(Array.isArray(mapping?.pipelineValueRevenueTotals)
+          ? mapping.pipelineValueRevenueTotals.map((item: any) => item?.campaignValue)
+          : []),
+      ].map(normalizeHubspotScopeValue).filter(Boolean);
+      const hubspotFindings = {
+        activeHubspotSourcesWithZeroRecords: activeHubspotRevenueSources
+          .filter((source) => (revenueRecordCounts.get(String(source?.id)) || 0) === 0)
+          .map(summarizeHubspotSource),
+        orphanHubspotRevenueRecordGroups: findings.orphanRevenueRecordGroups.filter((group: any) =>
+          String(group?.sourceType || "").toLowerCase() === "hubspot"
+        ),
+        duplicateActiveHubspotSourceGroups: findings.duplicateActiveRevenueSourceGroups.filter((group: any) =>
+          String(group?.signature?.sourceType || "").toLowerCase() === "hubspot"
+        ),
+        hubspotGa4ContextMismatchSources: activeHubspotRevenueSources
+          .filter((source) => {
+            const sourceContext = normalizeOverviewInventoryPlatformContext(source?.platformContext);
+            const mappingContextRaw = getHubspotMapping(source)?.platformContext;
+            const mappingContext = mappingContextRaw ? normalizeOverviewInventoryPlatformContext(mappingContextRaw) : "";
+            return mappingContext.length > 0 && mappingContext !== sourceContext;
+          })
+          .map(summarizeHubspotSource),
+        hubspotPipelineProxyScopeMismatches: activeHubspotRevenueSources
+          .filter((source) => {
+            const sourceContext = normalizeOverviewInventoryPlatformContext(source?.platformContext);
+            const mapping = getHubspotMapping(source);
+            if (sourceContext !== "ga4" || mapping?.pipelineEnabled !== true || !String(mapping?.pipelineStageId || "").trim()) return false;
+            if (scopedCampaignSet.size === 0) return false;
+            return !getHubspotScopeValues(mapping).some((value) => scopedCampaignSet.has(value));
+          })
+          .map(summarizeHubspotSource),
+      };
+      const hubspotFindingCount = Object.values(hubspotFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
+      const hubspotInventoryPass = hubspotFindingCount === 0;
 
       res.json({
         success: true,
@@ -1467,11 +1528,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           findingCount,
         },
         findings,
+        hubspotInventoryPass,
+        hubspotSummary: {
+          hubspotRevenueSourceCount: hubspotRevenueSources.length,
+          activeHubspotRevenueSourceCount: activeHubspotRevenueSources.length,
+          activeGa4HubspotRevenueSourceCount: activeHubspotRevenueSources.filter((source) =>
+            normalizeOverviewInventoryPlatformContext(source?.platformContext) === "ga4"
+          ).length,
+          activeNonGa4HubspotRevenueSourceCount: activeHubspotRevenueSources.filter((source) =>
+            normalizeOverviewInventoryPlatformContext(source?.platformContext) !== "ga4"
+          ).length,
+          hubspotRevenueRecordCount: hubspotRevenueRecords.length,
+          scopedGa4CampaignValueCount: scopedCampaignSet.size,
+          hubspotFindingCount,
+        },
+        hubspotFindings,
+        hubspotCertificationImpact: hubspotInventoryPass
+          ? "No HubSpot zero-record, orphan-record, duplicate-active-source, context-mismatch, or Pipeline Proxy scope-mismatch candidates were found for this campaign inventory."
+          : "HubSpot database health is not clean for this campaign inventory; document the returned source/record IDs before provider validation or cleanup claims.",
         certificationImpact: overallPass
           ? "No orphan, inactive-source-record, duplicate-active-source, or unexpected-platform-context candidates were found for this campaign inventory."
           : "Production database health is not clean for this campaign inventory; document the returned source/record IDs before proposing cleanup.",
         caveats: [
           "This route is read-only and campaign-access guarded; it does not prove other campaigns unless run for them.",
+          "HubSpot-specific inventory is reported separately in hubspotInventoryPass/hubspotFindings; it does not clean data or prove provider lifecycle behavior.",
           "Duplicate detection uses source type, platform context, currency, and a sanitized mapping-config hash; suspicious groups still require human review before cleanup.",
           "Null revenue platform context is normalized as ga4 for legacy GA4 revenue-source compatibility.",
         ],
@@ -9146,13 +9226,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const HUBSPOT_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+  const signHubSpotOAuthState = (campaignId: string): string => {
+    const secret =
+      process.env.HUBSPOT_OAUTH_STATE_SECRET ||
+      process.env.SESSION_SECRET ||
+      process.env.APP_SECRET ||
+      "dev-hubspot-oauth-state-secret";
+    const payload = {
+      c: String(campaignId || "").trim(),
+      t: Date.now(),
+      n: randomBytes(12).toString("hex"),
+    };
+    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const sig = createHmac("sha256", secret).update(payloadB64).digest();
+    return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
+  };
+
+  const verifyHubSpotOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+    const secret =
+      process.env.HUBSPOT_OAUTH_STATE_SECRET ||
+      process.env.SESSION_SECRET ||
+      process.env.APP_SECRET ||
+      "dev-hubspot-oauth-state-secret";
+    const state = String(stateRaw || "").trim();
+    const parts = state.split(".");
+    if (parts.length !== 2) return { ok: false, error: "Invalid state" };
+    const [payloadB64, sigB64] = parts;
+    if (!payloadB64 || !sigB64) return { ok: false, error: "Invalid state" };
+    const expectedSig = createHmac("sha256", secret).update(payloadB64).digest();
+    const providedSig = Buffer.from(sigB64, "base64url");
+    if (providedSig.length !== expectedSig.length || !timingSafeEqual(providedSig, expectedSig)) {
+      return { ok: false, error: "Invalid state" };
+    }
+    try {
+      const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+      const campaignId = String(payload?.c || "").trim();
+      const issuedAt = Number(payload?.t || 0);
+      if (!campaignId || !Number.isFinite(issuedAt) || issuedAt <= 0) return { ok: false, error: "Invalid state" };
+      if (Date.now() - issuedAt > HUBSPOT_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
+      return { ok: true, campaignId };
+    } catch {
+      return { ok: false, error: "Invalid state" };
+    }
+  };
+
   // HubSpot OAuth - Start connection
   app.post("/api/auth/hubspot/connect", oauthRateLimiter, async (req, res) => {
     try {
       const { campaignId } = req.body;
-      if (!campaignId) {
+      const parsedCampaignId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedCampaignId.success) {
         return res.status(400).json({ message: "Campaign ID is required" });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
+      if (!ok) return;
 
       const rawBaseUrl =
         process.env.APP_BASE_URL ||
@@ -9172,12 +9302,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "HubSpot OAuth is not configured (missing HUBSPOT_CLIENT_ID)" });
       }
 
+      const state = signHubSpotOAuthState(parsedCampaignId.data);
       const authUrl =
         `https://app.hubspot.com/oauth/authorize?` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=${encodeURIComponent(scope)}&` +
-        `state=${encodeURIComponent(campaignId)}`;
+        `state=${encodeURIComponent(state)}`;
 
       res.json({ authUrl, message: "HubSpot OAuth flow initiated" });
     } catch (error) {
@@ -9757,7 +9888,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      const campaignId = String(state);
+      const verified = verifyHubSpotOAuthState(state);
+      if (!verified.ok) {
+        console.error(`[HubSpot OAuth] Invalid state: ${verified.error}`);
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>${verified.error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'hubspot_auth_error', error: ${JSON.stringify(verified.error)} }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = verified.campaignId;
 
       const rawBaseUrl =
         process.env.APP_BASE_URL ||
@@ -17422,6 +17573,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (e) {
         console.warn("[HubSpot Save Mappings] Failed to materialize revenue records:", e);
+        if (platformCtx === "ga4") {
+          return res.status(500).json({ error: "Failed to materialize HubSpot revenue records" });
+        }
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.

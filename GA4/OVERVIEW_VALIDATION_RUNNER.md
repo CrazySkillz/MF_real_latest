@@ -1,4 +1,4 @@
-﻿# GA4 Overview Validation Runner
+# GA4 Overview Validation Runner
 
 ## Purpose
 
@@ -44,7 +44,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
 GA4OverviewValidation.help();
 ```
 
@@ -200,7 +200,7 @@ Current Commit 4.10d note: HubSpot Revenue Sources mapped-campaign subtitles and
 For Current Commit 4.11 read-only HubSpot Campaign Breakdown exact mapped-revenue transition automation, capture the row baseline before the controlled provider/source transition:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
 
 await GA4OverviewValidation.hubspotCampaignBreakdownBefore({
   campaignId: 'CAMPAIGN_ID',
@@ -238,7 +238,7 @@ Recorded deployed Current Commit 4.12 evidence: runner `2026-07-04.9` returned `
 For Current Commit 4.13 read-only HubSpot KPI/Benchmark value propagation validation, first make sure the GA4 campaign has the KPI and Benchmark rows you want to prove. Then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
 
 await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
@@ -250,7 +250,7 @@ await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
 });
 ```
 
-This helper is read-only: it uses GET endpoints only, does not create KPI/Benchmark rows, does not refresh providers, does not call HubSpot, does not trigger scheduler, does not recompute metrics, does not send alerts/emails, and does not mutate source data. It mirrors the GA4 Overview financial formula used by KPI/Benchmark live values: selected GA4 native revenue plus active imported revenue, with Pipeline Proxy excluded. If one of the required KPI/Benchmark rows does not exist, the packet should fail that row-present check; create the missing row through the normal UI or remove it from the required list and do not claim that metric. A pass proves only the configured GA4 KPI/Benchmark value packet; alert delivery, emails, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
+This helper is read-only: it uses GET endpoints only, does not create KPI/Benchmark rows, does not refresh providers, does not call HubSpot, does not trigger scheduler, does not recompute metrics, does not send alerts/emails, and does not mutate source data. It mirrors the GA4 Overview financial formula used by KPI/Benchmark live values: selected GA4 native revenue plus active imported revenue, with Pipeline Proxy excluded. Version `2026-07-04.11` fixes the runner comparison boundary so required metrics are matched using the same metric/template fields the UI badges use, and formatted current values such as `44,864.15` can be parsed; this is validation-only and does not change KPI/Benchmark runtime behavior. If one of the required KPI/Benchmark rows does not exist, the packet should fail that row-present check; create the missing row through the normal UI or remove it from the required list and do not claim that metric. A pass proves only the configured GA4 KPI/Benchmark value packet; alert delivery, emails, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
 
 Remaining active HubSpot clean-certification queue after local 4.13 automation:
 
@@ -264,7 +264,7 @@ Current Commit 4.13 local automation is implemented and regression-covered. Depl
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
 
 await GA4OverviewValidation.hubspotReportValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',

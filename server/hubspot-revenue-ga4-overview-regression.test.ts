@@ -330,7 +330,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -448,7 +448,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -481,7 +481,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -508,7 +508,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function parseStoredGa4CampaignFilterForRunner(raw)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
     expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
     expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
@@ -535,7 +535,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownBefore(config)");
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownAfter(config)");
     expect(campaignBreakdownRunner).toContain('"ga4Breakdown"');
@@ -592,7 +592,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(reportRunner).toContain('"reports"');
     expect(reportRunner).toContain('"snapshots"');
     expect(reportRunner).toContain('"snapshotPdf"');
@@ -715,11 +715,15 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "async function hubspotReportValuePack(config)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(runner).toContain('var VERSION = "2026-07-04.11";');
     expect(kpiBenchmarkRunner).toContain('"kpis"');
     expect(kpiBenchmarkRunner).toContain('"benchmarks"');
     expect(kpiBenchmarkRunner).toContain('"hubspotSourceDamageInventory"');
     expect(kpiBenchmarkRunner).toContain("overviewFinancialSourceTotals(");
+    expect(runner).toContain("formattedNumberOrNull");
+    expect(runner).toContain("rowMetricKeys(row)");
+    expect(runner).toContain("rowMetricKeys(row).indexOf(key) !== -1");
+    expect(runner).toContain("rowMetricKeys: rowMetricKeys(row)");
     expect(kpiBenchmarkRunner).toContain("financialRevenueIncludesImportedRevenue");
     expect(kpiBenchmarkRunner).toContain("hubspotRevenueIncludedInImportedRevenue");
     expect(kpiBenchmarkRunner).toContain("requiredKpiRowsMatchExpected");

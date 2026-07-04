@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.10";
+  var VERSION = "2026-07-04.11";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -14,6 +14,16 @@
 
   function numberOrNull(value) {
     var n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formattedNumberOrNull(value) {
+    var parsed = numberOrNull(value);
+    if (parsed !== null) return parsed;
+    if (typeof value !== "string") return null;
+    var cleaned = value.replace(/[$,%x\s]/gi, "").replace(/,/g, "").trim();
+    if (!cleaned || cleaned === "-" || cleaned === ".") return null;
+    var n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
   }
 
@@ -2088,18 +2098,44 @@
     return null;
   }
 
+  function rowMetricKeys(row) {
+    if (!row) return [];
+    var config = objectValue(row.calculationConfig || row.calculation_config || row.config);
+    return [
+      row.metric,
+      row.metricType,
+      row.metricKey,
+      row.templateName,
+      row.template,
+      row.name,
+      row.label,
+      config.metric,
+      config.metricType,
+      config.metricKey,
+      config.templateName,
+      config.template
+    ].map(normalizeFinancialMetricKey).filter(Boolean);
+  }
+
   function metricRowKey(row) {
-    return normalizeFinancialMetricKey(row && (row.metric || row.name || row.label));
+    return rowMetricKeys(row)[0] || "";
   }
 
   function findMetricRow(rows, metric) {
     var key = normalizeFinancialMetricKey(metric);
-    return (Array.isArray(rows) ? rows : []).find(function (row) { return metricRowKey(row) === key; }) || null;
+    return (Array.isArray(rows) ? rows : []).find(function (row) {
+      return rowMetricKeys(row).indexOf(key) !== -1;
+    }) || null;
   }
 
   function rowCurrentValue(row) {
     if (!row) return null;
-    return money(firstNumber(row, ["currentValue", "current", "value", "actualValue"]));
+    var keys = ["currentValue", "current", "value", "actualValue"];
+    for (var i = 0; i < keys.length; i++) {
+      var parsed = formattedNumberOrNull(row[keys[i]]);
+      if (parsed !== null) return money(parsed);
+    }
+    return null;
   }
 
   function compareMetricRows(rows, metrics, values) {
@@ -2113,6 +2149,7 @@
         rowPresent: !!row,
         rowId: row && row.id || null,
         rowName: row && (row.name || row.metric) || null,
+        rowMetricKeys: rowMetricKeys(row),
         actualCurrentValue: actual,
         expectedCurrentValue: expected,
         matchesExpected: !!row && expected !== null && actual !== null && closeMoney(actual, expected)
@@ -2707,7 +2744,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.10')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.11')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

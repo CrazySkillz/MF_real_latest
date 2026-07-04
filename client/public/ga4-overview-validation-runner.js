@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.7";
+  var VERSION = "2026-07-04.8";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -1583,6 +1583,427 @@
     return summary;
   }
 
+  function parseStoredGa4CampaignFilterForRunner(raw) {
+    if (raw === null || raw === undefined) return [];
+    var value = String(raw || "").trim();
+    if (!value) return [];
+    if (value.charAt(0) === "[" && value.charAt(value.length - 1) === "]") {
+      try {
+        var parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.map(function (item) { return String(item || "").trim(); }).filter(Boolean);
+        }
+      } catch (_) {}
+    }
+    return [value];
+  }
+
+  function normalizeCampaignBreakdownKey(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+
+  function revenueDisplaySourcesForCampaignBreakdown(revenueSourcesData, revenueBreakdownData) {
+    var defs = rowsOf(revenueSourcesData);
+    var breakdownSources = rowsOf(revenueBreakdownData);
+    var getDefinitionRevenue = function (source) {
+      var cfg = mappingConfig(source);
+      return Number(source && (source.lastTotalRevenue || source.lastRevenue) || cfg.lastTotalRevenue || 0);
+    };
+    var defsMap = new Map();
+    var defsByType = new Map();
+    var defsWithCampaignTotalsByType = new Map();
+
+    defs.forEach(function (source) {
+      if (!source) return;
+      defsMap.set(String(source.id || source.sourceId || ""), source);
+      var type = sourceType(source);
+      if (!type) return;
+      defsByType.set(type, defsByType.has(type) ? null : source);
+      var cfg = mappingConfig(source);
+      if (Array.isArray(cfg.campaignValueRevenueTotals) && cfg.campaignValueRevenueTotals.length > 0) {
+        defsWithCampaignTotalsByType.set(type, source);
+      }
+    });
+
+    if (breakdownSources.length > 0) {
+      var rows = breakdownSources.map(function (source) {
+        var type = sourceType(source);
+        var byTypeWithTotals = defsWithCampaignTotalsByType.get(type);
+        var byType = defsByType.get(type);
+        var sourceDefinition = defsMap.get(String(sourceId(source) || "")) || byTypeWithTotals || byType || null;
+        return Object.assign({}, source, {
+          sourceId: sourceId(source) || source.sourceId || source.id,
+          sourceType: source.sourceType || source.type,
+          displayName: source.displayName || source.name,
+          mappingConfig: sourceDefinition && sourceDefinition.mappingConfig || source.mappingConfig || null
+        });
+      });
+      var shownIds = new Set(rows.map(function (source) { return String(source.sourceId || source.id || ""); }));
+      defs.filter(function (source) { return sourceActive(source); }).forEach(function (source) {
+        var id = String(source.id || source.sourceId || "");
+        if (shownIds.has(id)) return;
+        rows.push({
+          sourceId: id,
+          sourceType: source.sourceType || source.type,
+          displayName: source.displayName || source.name,
+          revenue: getDefinitionRevenue(source),
+          mappingConfig: source.mappingConfig || null
+        });
+      });
+      return rows;
+    }
+
+    return defs.filter(function (source) { return sourceActive(source); }).map(function (source) {
+      return {
+        sourceId: source.id || source.sourceId,
+        sourceType: source.sourceType || source.type,
+        displayName: source.displayName || source.name,
+        revenue: getDefinitionRevenue(source),
+        mappingConfig: source.mappingConfig || null
+      };
+    });
+  }
+
+  function campaignMappingTarget(mapping) {
+    return String(mapping && (mapping.linkedinCampaignName || mapping.linkedinCampaignUrn) || "").trim();
+  }
+
+  function buildCampaignBreakdownRows(ga4BreakdownData, revenueSourcesData, revenueBreakdownData, selectedGa4CampaignValues) {
+    var importedNames = new Set(arrayValues(selectedGa4CampaignValues).map(normalizeCampaignBreakdownKey).filter(Boolean));
+    var byName = new Map();
+    rowsOf(ga4BreakdownData).forEach(function (row) {
+      var name = String(row && (row.campaign || row.name) || "(not set)").trim();
+      var existing = byName.get(name) || { name: name, sessions: 0, users: 0, conversions: 0, nativeRevenue: 0 };
+      existing.sessions += Number(row && row.sessions || 0);
+      existing.users += Number(row && row.users || 0);
+      existing.conversions += Number(row && row.conversions || 0);
+      existing.nativeRevenue += Number(row && row.revenue || 0);
+      byName.set(name, existing);
+    });
+
+    var filteredRows = Array.from(byName.values()).filter(function (row) {
+      return importedNames.size === 0 || importedNames.has(normalizeCampaignBreakdownKey(row.name));
+    });
+    var rowByKey = new Map();
+    filteredRows.forEach(function (row) {
+      var key = normalizeCampaignBreakdownKey(row.name);
+      if (key) rowByKey.set(key, row);
+    });
+
+    var displaySources = revenueDisplaySourcesForCampaignBreakdown(revenueSourcesData, revenueBreakdownData);
+    displaySources.forEach(function (source) {
+      var cfg = mappingConfig(source);
+      var totals = Array.isArray(cfg.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      var mappings = Array.isArray(cfg.campaignMappings) ? cfg.campaignMappings : [];
+      var mappedCampaignByValue = new Map();
+      mappings.forEach(function (mapping) {
+        var valueKey = normalizeCampaignBreakdownKey(mapping && mapping.crmValue);
+        var mappedName = campaignMappingTarget(mapping);
+        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+      });
+      totals.forEach(function (item) {
+        if (!(Number(item && item.revenue || 0) > 0)) return;
+        var valueKey = normalizeCampaignBreakdownKey(item && item.campaignValue);
+        var name = String(mappedCampaignByValue.get(valueKey) || item && item.campaignValue || "").trim();
+        var key = normalizeCampaignBreakdownKey(name);
+        if (!key || rowByKey.has(key)) return;
+        if (importedNames.size > 0 && !importedNames.has(key)) return;
+        var row = { name: name, sessions: 0, users: 0, conversions: 0, nativeRevenue: 0 };
+        filteredRows.push(row);
+        rowByKey.set(key, row);
+      });
+    });
+
+    var externalByRowName = new Map();
+    var hubspotByRowName = new Map();
+    displaySources.forEach(function (source) {
+      var cfg = mappingConfig(source);
+      var totals = Array.isArray(cfg.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      var mappings = Array.isArray(cfg.campaignMappings) ? cfg.campaignMappings : [];
+      var mappedCampaignByValue = new Map();
+      mappings.forEach(function (mapping) {
+        var valueKey = normalizeCampaignBreakdownKey(mapping && mapping.crmValue);
+        var mappedName = campaignMappingTarget(mapping);
+        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+      });
+      totals.forEach(function (item) {
+        var valueKey = normalizeCampaignBreakdownKey(item && item.campaignValue);
+        var key = normalizeCampaignBreakdownKey(mappedCampaignByValue.get(valueKey) || item && item.campaignValue);
+        var row = rowByKey.get(key);
+        var revenue = Number(item && item.revenue || 0);
+        if (!row || !(revenue > 0)) return;
+        externalByRowName.set(row.name, Number(externalByRowName.get(row.name) || 0) + revenue);
+        if (sourceType(source).indexOf("hubspot") !== -1) {
+          hubspotByRowName.set(row.name, Number(hubspotByRowName.get(row.name) || 0) + revenue);
+        }
+      });
+    });
+
+    return filteredRows.map(function (row) {
+      var nativeRevenue = money(row.nativeRevenue || 0) || 0;
+      var externalRevenue = money(externalByRowName.get(row.name) || 0) || 0;
+      var hubspotRevenue = money(hubspotByRowName.get(row.name) || 0) || 0;
+      var displayedRevenue = money(nativeRevenue + externalRevenue) || 0;
+      return {
+        name: row.name,
+        key: normalizeCampaignBreakdownKey(row.name),
+        sessions: Number(row.sessions || 0),
+        users: Number(row.users || 0),
+        conversions: Number(row.conversions || 0),
+        nativeRevenue: nativeRevenue,
+        externalRevenue: externalRevenue,
+        hubspotRevenue: hubspotRevenue,
+        displayedRevenue: displayedRevenue,
+        conversionRate: Number(row.sessions || 0) > 0 ? (Number(row.conversions || 0) / Number(row.sessions || 0)) * 100 : 0,
+        revenuePerSession: Number(row.sessions || 0) > 0 ? displayedRevenue / Number(row.sessions || 0) : 0
+      };
+    }).sort(function (a, b) { return Number(b.sessions || 0) - Number(a.sessions || 0); });
+  }
+
+  function findCampaignBreakdownRow(rows, campaignName) {
+    var key = normalizeCampaignBreakdownKey(campaignName);
+    if (!key) return null;
+    return rows.find(function (row) { return row.key === key; }) || null;
+  }
+
+  function compactCampaignBreakdownRow(row) {
+    if (!row) return null;
+    return {
+      name: row.name,
+      key: row.key,
+      sessions: row.sessions,
+      users: row.users,
+      conversions: row.conversions,
+      nativeRevenue: row.nativeRevenue,
+      externalRevenue: row.externalRevenue,
+      hubspotRevenue: row.hubspotRevenue,
+      displayedRevenue: row.displayedRevenue
+    };
+  }
+
+  function namedCampaignBreakdownRows(rows, names) {
+    return arrayValues(names).map(function (name) {
+      var row = findCampaignBreakdownRow(rows, name);
+      return {
+        expectedName: name,
+        row: compactCampaignBreakdownRow(row)
+      };
+    });
+  }
+
+  async function hubspotCampaignBreakdownPoint(config, stage) {
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = requireValue(config.propertyId, "propertyId");
+    var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
+    var targetCampaignName = requireValue(config.targetCampaignName || config.expectedMappedCampaignName || config.mappedCampaignName, "targetCampaignName");
+    var unchangedCampaignNames = arrayValues(config.unchangedCampaignNames || config.expectedUnchangedCampaignNames || config.unaffectedCampaignNames);
+
+    var results = await Promise.all([
+      fetchJson("campaign", "/api/campaigns/" + encodeURIComponent(campaignId)),
+      fetchJson("ga4Breakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-breakdown?dateRange=" + encodeURIComponent(dateRange) + "&propertyId=" + encodeURIComponent(propertyId)),
+      fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
+      fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
+      fetchJson("hubspotSourceDamageInventory", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory")
+    ]);
+    var byName = endpointMap(results);
+    var campaign = byName.campaign && byName.campaign.data || {};
+    var damage = byName.hubspotSourceDamageInventory && byName.hubspotSourceDamageInventory.data || {};
+    var selectedGa4CampaignValues = config.selectedGa4CampaignValues !== undefined
+      ? arrayValues(config.selectedGa4CampaignValues)
+      : parseStoredGa4CampaignFilterForRunner(campaign.ga4CampaignFilter);
+    var rows = buildCampaignBreakdownRows(
+      byName.ga4Breakdown && byName.ga4Breakdown.data,
+      byName.revenueSources && byName.revenueSources.data,
+      byName.revenueBreakdown && byName.revenueBreakdown.data,
+      selectedGa4CampaignValues
+    );
+    var targetRow = findCampaignBreakdownRow(rows, targetCampaignName);
+    var unchangedRows = namedCampaignBreakdownRows(rows, unchangedCampaignNames);
+    var endpointStatuses = results.map(compactEndpointStatus);
+
+    return {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: stage,
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      readonly: true,
+      endpointPass: endpointStatuses.every(function (status) { return status.pass === true; }),
+      endpointStatus: endpointStatuses,
+      inventoryPass: damage.hubspotInventoryPass === true,
+      hubspotSummary: damage.hubspotSummary || null,
+      hubspotFindings: damage.hubspotFindings || {},
+      hubspotFindingCount: Number(damage.hubspotSummary && damage.hubspotSummary.hubspotFindingCount || 0),
+      selectedGa4CampaignValues: selectedGa4CampaignValues,
+      targetCampaignName: targetCampaignName,
+      targetRow: compactCampaignBreakdownRow(targetRow),
+      unchangedCampaignNames: unchangedCampaignNames,
+      unchangedRows: unchangedRows,
+      rowCount: rows.length,
+      rows: config.includeRows === true ? rows.map(compactCampaignBreakdownRow) : undefined,
+      caveats: [
+        "This HubSpot Campaign Breakdown helper is read-only and does not call HubSpot, trigger scheduler, create/edit/delete sources, recompute metrics, send reports, or mutate records.",
+        "It mirrors the GA4 Overview Campaign Breakdown endpoint-plus-mapped-source merge; it does not inspect rendered pixels.",
+        "A pass proves only the configured campaign/property/date-range row transition and named unchanged rows; Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, and future provider mutations remain separate evidence."
+      ]
+    };
+  }
+
+  async function hubspotCampaignBreakdownBefore(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var label = config.label || "4.11-hubspot-campaign-breakdown-transition";
+    var key = storageKey("hubspot-campaign-breakdown-" + label, campaignId);
+    var point = await hubspotCampaignBreakdownPoint(config, "before-" + label);
+    var checks = {
+      endpointsPass: point.endpointPass,
+      readonly: point.readonly,
+      inventoryPass: point.inventoryPass,
+      targetCampaignProvided: !!point.targetCampaignName,
+      targetRowPresent: !!point.targetRow,
+      targetHubspotRevenuePresent: config.expectTargetHubspotRevenuePresent === undefined ? undefined : (!!(point.targetRow && Number(point.targetRow.hubspotRevenue || 0) > 0) === (config.expectTargetHubspotRevenuePresent !== false)),
+      unchangedCampaignNamesProvided: point.unchangedCampaignNames.length > 0,
+      unchangedRowsPresent: point.unchangedCampaignNames.length > 0 ? point.unchangedRows.every(function (item) { return !!item.row; }) : false,
+      hubspotFindingsClear: point.hubspotFindingCount === 0
+    };
+
+    if (config.expectedTargetRevenueBefore !== undefined) {
+      checks.targetRevenueBeforeMatchesExpected = !!point.targetRow && closeMoney(point.targetRow.displayedRevenue, config.expectedTargetRevenueBefore);
+    }
+    if (config.expectedTargetHubspotRevenueBefore !== undefined) {
+      checks.targetHubspotRevenueBeforeMatchesExpected = !!point.targetRow && closeMoney(point.targetRow.hubspotRevenue, config.expectedTargetHubspotRevenueBefore);
+    }
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var summary = Object.assign({}, point, {
+      baselineKey: key,
+      expected: {
+        targetCampaignName: point.targetCampaignName,
+        targetRevenueBefore: config.expectedTargetRevenueBefore,
+        targetHubspotRevenueBefore: config.expectedTargetHubspotRevenueBefore,
+        unchangedCampaignNames: point.unchangedCampaignNames
+      },
+      checks: effectiveChecks
+    });
+    summary.readyForProviderChange = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    summary.overallPass = summary.readyForProviderChange;
+    localStorage.setItem(key, JSON.stringify(summary));
+    console.log(summary);
+    return summary;
+  }
+
+  async function hubspotCampaignBreakdownAfter(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var label = config.label || "4.11-hubspot-campaign-breakdown-transition";
+    var key = config.baselineKey || storageKey("hubspot-campaign-breakdown-" + label, campaignId);
+    var baseline = JSON.parse(localStorage.getItem(key) || "null");
+    var point = await hubspotCampaignBreakdownPoint(config, "after-" + label);
+    var beforeTarget = baseline && baseline.targetRow || null;
+    var afterTarget = point.targetRow || null;
+    var expectedTargetRevenueDelta = config.expectedTargetRevenueDelta !== undefined ? config.expectedTargetRevenueDelta : config.expectedRevenueDelta;
+    var expectedTargetHubspotRevenueDelta = config.expectedTargetHubspotRevenueDelta !== undefined ? config.expectedTargetHubspotRevenueDelta : expectedTargetRevenueDelta;
+    var targetDisplayedRevenueDelta = beforeTarget && afterTarget ? moneyDelta(afterTarget.displayedRevenue, beforeTarget.displayedRevenue) : null;
+    var targetHubspotRevenueDelta = beforeTarget && afterTarget ? moneyDelta(afterTarget.hubspotRevenue, beforeTarget.hubspotRevenue) : null;
+    var targetNativeRevenueDelta = beforeTarget && afterTarget ? moneyDelta(afterTarget.nativeRevenue, beforeTarget.nativeRevenue) : null;
+    var unchangedComparisons = point.unchangedCampaignNames.map(function (name) {
+      var beforeEntry = baseline && Array.isArray(baseline.unchangedRows)
+        ? baseline.unchangedRows.find(function (item) { return normalizeCampaignBreakdownKey(item.expectedName) === normalizeCampaignBreakdownKey(name); })
+        : null;
+      var afterEntry = point.unchangedRows.find(function (item) { return normalizeCampaignBreakdownKey(item.expectedName) === normalizeCampaignBreakdownKey(name); }) || null;
+      return {
+        expectedName: name,
+        before: beforeEntry && beforeEntry.row || null,
+        after: afterEntry && afterEntry.row || null,
+        displayedRevenueDelta: beforeEntry && beforeEntry.row && afterEntry && afterEntry.row
+          ? moneyDelta(afterEntry.row.displayedRevenue, beforeEntry.row.displayedRevenue)
+          : null,
+        hubspotRevenueDelta: beforeEntry && beforeEntry.row && afterEntry && afterEntry.row
+          ? moneyDelta(afterEntry.row.hubspotRevenue, beforeEntry.row.hubspotRevenue)
+          : null
+      };
+    });
+    var transitionExpectationProvided = expectedTargetRevenueDelta !== undefined && expectedTargetHubspotRevenueDelta !== undefined;
+
+    var checks = {
+      baselineFound: !!baseline,
+      endpointsPass: point.endpointPass,
+      readonly: point.readonly,
+      inventoryPass: point.inventoryPass,
+      targetRowPresentBefore: !!beforeTarget,
+      targetRowPresentAfter: !!afterTarget,
+      transitionExpectationProvided: transitionExpectationProvided,
+      unchangedCampaignNamesProvided: point.unchangedCampaignNames.length > 0,
+      unchangedRowsPresent: point.unchangedCampaignNames.length > 0 && unchangedComparisons.every(function (item) { return !!(item.before && item.after); }),
+      hubspotFindingsClear: point.hubspotFindingCount === 0,
+      targetNativeRevenueUnchanged: config.expectTargetNativeRevenueUnchanged === false ? undefined : closeMoney(targetNativeRevenueDelta, 0),
+      unchangedRowsDisplayedRevenueUnchanged: point.unchangedCampaignNames.length > 0 && unchangedComparisons.every(function (item) { return item.displayedRevenueDelta !== null && closeMoney(item.displayedRevenueDelta, 0); }),
+      unchangedRowsHubspotRevenueUnchanged: point.unchangedCampaignNames.length > 0 && unchangedComparisons.every(function (item) { return item.hubspotRevenueDelta !== null && closeMoney(item.hubspotRevenueDelta, 0); })
+    };
+
+    if (expectedTargetRevenueDelta !== undefined) {
+      checks.targetDisplayedRevenueDeltaMatchesExpected = targetDisplayedRevenueDelta !== null && closeMoney(targetDisplayedRevenueDelta, expectedTargetRevenueDelta);
+    }
+    if (expectedTargetHubspotRevenueDelta !== undefined) {
+      checks.targetHubspotRevenueDeltaMatchesExpected = targetHubspotRevenueDelta !== null && closeMoney(targetHubspotRevenueDelta, expectedTargetHubspotRevenueDelta);
+    }
+    if (config.expectedTargetRevenueAfter !== undefined) {
+      checks.targetRevenueAfterMatchesExpected = !!afterTarget && closeMoney(afterTarget.displayedRevenue, config.expectedTargetRevenueAfter);
+    }
+    if (config.expectedTargetHubspotRevenueAfter !== undefined) {
+      checks.targetHubspotRevenueAfterMatchesExpected = !!afterTarget && closeMoney(afterTarget.hubspotRevenue, config.expectedTargetHubspotRevenueAfter);
+    }
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: point.checkedAt,
+      stage: point.stage,
+      campaignId: campaignId,
+      propertyId: point.propertyId,
+      dateRange: point.dateRange,
+      baselineKey: key,
+      selectedGa4CampaignValues: point.selectedGa4CampaignValues,
+      expected: {
+        targetCampaignName: point.targetCampaignName,
+        targetRevenueDelta: expectedTargetRevenueDelta,
+        targetHubspotRevenueDelta: expectedTargetHubspotRevenueDelta,
+        targetRevenueAfter: config.expectedTargetRevenueAfter,
+        targetHubspotRevenueAfter: config.expectedTargetHubspotRevenueAfter,
+        unchangedCampaignNames: point.unchangedCampaignNames
+      },
+      before: baseline ? {
+        targetRow: beforeTarget,
+        unchangedRows: baseline.unchangedRows || []
+      } : null,
+      after: {
+        targetRow: afterTarget,
+        unchangedRows: point.unchangedRows
+      },
+      deltas: {
+        targetDisplayedRevenue: targetDisplayedRevenueDelta,
+        targetHubspotRevenue: targetHubspotRevenueDelta,
+        targetNativeRevenue: targetNativeRevenueDelta,
+        unchangedRows: unchangedComparisons
+      },
+      endpointStatus: point.endpointStatus,
+      inventoryPass: point.inventoryPass,
+      hubspotSummary: point.hubspotSummary,
+      hubspotFindings: point.hubspotFindings,
+      checks: effectiveChecks,
+      caveats: point.caveats
+    };
+    summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
   function googleSheetsAmount(sourceRow, breakdownRows, family) {
     var id = sourceId(sourceRow);
     var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
@@ -1833,7 +2254,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.7')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.8')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
@@ -1842,6 +2263,8 @@
       "await GA4OverviewValidation.hubspotPipelineProxy({ campaignId, propertyId, expectedConfirmedRevenueTotal: 7600, expectedPipelineTotalToDate: 1234.56, expectedSelectedValues: ['CAMPAIGN_VALUE'] })",
       "await GA4OverviewValidation.hubspotProxyTransitionBefore({ campaignId, propertyId, label: '4.10-hubspot-proxy-to-confirmed-transition', expectedPipelineTotalBefore: 5000, expectedConfirmedRevenueBefore: 7600 })",
       "await GA4OverviewValidation.hubspotProxyTransitionAfter({ campaignId, propertyId, label: '4.10-hubspot-proxy-to-confirmed-transition', expectedProxyDelta: -5000, expectedConfirmedRevenueDelta: 5000 })",
+      "await GA4OverviewValidation.hubspotCampaignBreakdownBefore({ campaignId, propertyId, label: '4.11-hubspot-campaign-breakdown-transition', targetCampaignName: 'GA4_CAMPAIGN_ROW', unchangedCampaignNames: ['UNCHANGED_ROW'], expectedTargetRevenueBefore: 7000, expectedTargetHubspotRevenueBefore: 7000 })",
+      "await GA4OverviewValidation.hubspotCampaignBreakdownAfter({ campaignId, propertyId, label: '4.11-hubspot-campaign-breakdown-transition', targetCampaignName: 'GA4_CAMPAIGN_ROW', unchangedCampaignNames: ['UNCHANGED_ROW'], expectedTargetRevenueDelta: 5000, expectedTargetHubspotRevenueDelta: 5000 })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -1869,6 +2292,8 @@
     hubspotPipelineProxy: hubspotPipelineProxy,
     hubspotProxyTransitionBefore: hubspotProxyTransitionBefore,
     hubspotProxyTransitionAfter: hubspotProxyTransitionAfter,
+    hubspotCampaignBreakdownBefore: hubspotCampaignBreakdownBefore,
+    hubspotCampaignBreakdownAfter: hubspotCampaignBreakdownAfter,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

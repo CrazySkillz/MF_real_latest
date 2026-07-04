@@ -40,7 +40,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.7');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.8');
 GA4OverviewValidation.help();
 ```
 
@@ -190,6 +190,42 @@ Root cause/gap: 4.9b proved static Pipeline Proxy provenance and confirmed-reven
 Recorded deployed Current Commit 4.10b evidence: runner `2026-07-04.7` returned `overallPass: true` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` / source `d4ad51ef-85fe-4b67-bbd5-854900be3dee` after one controlled `$5,000` HubSpot deal moved from `Contract Sent` to closed/won and the existing scheduler/provider path completed. The before packet had proxy `$5,000`, confirmed source-backed revenue `$7,600`, selected value `yesop_brand_search`, and spend `$498.75`. The after packet had proxy `$0`, confirmed source-backed revenue `$12,600`, selected-source revenue `$5,000`, selected value `yesop_brand_search`, and spend `$498.75`. Encoded checks all passed, including source/provenance presence, same selected pipeline source, same revenue/spend source IDs, clear HubSpot findings, proxy delta `-$5,000`, confirmed revenue delta `+$5,000`, combined proxy-plus-confirmed delta `$0`, active source revenue delta `+$5,000`, and spend delta `$0`. This closes only that configured transition packet; Campaign Breakdown, Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, sandbox provider mutation automation, future provider changes, and other HubSpot configurations remain unproven.
 
 Current Commit 4.10c note: HubSpot Review Settings campaign-mapping visibility is a UI display guard, not a runner packet. Root cause: Crosswalk mappings were already present in `selectedCampaignMappings` and preview/save payloads, but Review Settings did not render them. The fix renders the selected CRM value to mapped platform campaign pair before save and is guarded locally by `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`; deployed UI confirmation remains separate evidence.
+
+Current Commit 4.10d note: HubSpot Revenue Sources mapped-campaign subtitles and zero-proxy edit Review Settings suppression are UI display guards, not runner packets. Root causes: the Revenue Sources modal parsed source `mappingConfig` but rendered the generic `HubSpot` type label, and HubSpot edit-mode Review Settings rendered Pipeline Proxy whenever `pipelineEnabled` was true even when the effective unchanged proxy amount was `$0.00` after conversion to confirmed revenue. Local guards live in `server/hubspot-revenue-ga4-overview-regression.test.ts`; deployed UI confirmation remains separate evidence.
+
+For Current Commit 4.11 read-only HubSpot Campaign Breakdown exact mapped-revenue transition automation, capture the row baseline before the controlled provider/source transition:
+
+```js
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.8');
+
+await GA4OverviewValidation.hubspotCampaignBreakdownBefore({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  label: '4.11-hubspot-campaign-breakdown-transition',
+  targetCampaignName: 'MAPPED_GA4_CAMPAIGN_ROW',
+  unchangedCampaignNames: ['UNRELATED_GA4_CAMPAIGN_ROW'],
+  expectedTargetRevenueBefore: 7000,
+  expectedTargetHubspotRevenueBefore: 7000
+});
+```
+
+Then make exactly one controlled HubSpot/provider change outside this runner, let the existing scheduler/provider path finish, and compare the after-state:
+
+```js
+await GA4OverviewValidation.hubspotCampaignBreakdownAfter({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  label: '4.11-hubspot-campaign-breakdown-transition',
+  targetCampaignName: 'MAPPED_GA4_CAMPAIGN_ROW',
+  unchangedCampaignNames: ['UNRELATED_GA4_CAMPAIGN_ROW'],
+  expectedTargetRevenueDelta: 5000,
+  expectedTargetHubspotRevenueDelta: 5000,
+  expectedTargetRevenueAfter: 12000,
+  expectedTargetHubspotRevenueAfter: 12000
+});
+```
+
+This helper is read-only. It does not call HubSpot, trigger scheduler, create/edit/delete sources, recompute metrics, send reports, or mutate records. It mirrors the GA4 Overview Campaign Breakdown merge by fetching `campaign`, `ga4-breakdown`, `revenue-sources`, `revenue-breakdown`, and the read-only HubSpot inventory, then comparing the visible row formula: GA4 native row revenue plus exact mapped imported revenue from `campaignValueRevenueTotals` and saved `campaignMappings`. A passing packet proves only the configured campaign/property/date-range row transition and named unchanged rows. It does not certify Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, or future provider mutations. If the provider transition already happened before the `Before` packet was captured, automated 4.11 proof is still pending; start a new controlled transition or fixture so the runner has a real baseline.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

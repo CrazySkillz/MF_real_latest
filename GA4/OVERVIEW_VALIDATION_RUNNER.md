@@ -18,6 +18,8 @@ Read-only functions:
 - `GA4OverviewValidation.hubspotInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })`
 - `GA4OverviewValidation.hubspotPipelineProxy(config)`
+- `GA4OverviewValidation.hubspotProxyTransitionBefore(config)`
+- `GA4OverviewValidation.hubspotProxyTransitionAfter(config)`
 - `GA4OverviewValidation.hubspotPropagationBefore(config)`
 - `GA4OverviewValidation.hubspotPropagationAfter(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
@@ -38,7 +40,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.6');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.7');
 GA4OverviewValidation.help();
 ```
 
@@ -147,6 +149,43 @@ await GA4OverviewValidation.hubspotPipelineProxy({
 This helper is read-only. It does not call HubSpot, call the live `/pipeline-proxy` route, trigger scheduler, recompute, create/edit/delete sources, or mutate records. It selects the active pipeline-enabled HubSpot source by default; pass `sourceId` if more than one active pipeline-enabled HubSpot source exists. It validates persisted Pipeline Proxy provenance plus Overview confirmed-revenue separation: active GA4 HubSpot source, saved selected values, selected stage, positive proxy total, value-total sum, proxy values within selected values, expected source-backed confirmed revenue breakdown total excluding native GA4 revenue, and proof that the proxy total was not added into that confirmed revenue total. Explicit campaign mappings saved by the HubSpot wizard can satisfy the Pipeline Proxy scope check when the CRM value maps to the campaign saved GA4 campaign value. The selected-source packet is not blocked only because a different active HubSpot source has older non-pipeline mapping provenance; global server provenance remains informational in the output. Local static tests guard the live proxy endpoint saved-selected-values/stage scoping and the GA4 page separation of Pipeline Proxy from confirmed financial revenue. A deployed pass closes only that configured campaign/source/proxy packet.
 
 If the Revenue Sources modal shows a HubSpot row with `$0.00` while Pipeline Proxy is configured, that row can be the pipeline-only source-management entry: confirmed revenue is `$0`, while the Pipeline Proxy card carries the early-signal amount. The row should be labeled `Pipeline Proxy only` and should not be deleted or re-imported unless the user intentionally wants to remove that source configuration.
+
+Recorded deployed Current Commit 4.9b evidence: runner `2026-07-04.6` returned `overallPass: true` on `2026-07-04T12:52:07.447Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`. Selected source `d4ad51ef-85fe-4b67-bbd5-854900be3dee` was the only active pipeline-enabled HubSpot source, used `platformContext: ga4`, selected `yesop_brand_search`, stage `Contract Sent`, and proxy total `$5,000`. Confirmed source-backed revenue stayed `$7,600` and `revenueWithPipelineWouldBe` was `$12,600`, proving Pipeline Proxy was not added into confirmed revenue. Inventory passed with no HubSpot findings or Pipeline Proxy scope mismatches. `serverProvenancePass: false` was informational for the global all-HubSpot provenance packet and did not block the selected-source pass. This closes only that configured Pipeline Proxy packet.
+
+For Current Commit 4.10 read-only HubSpot proxy-to-confirmed transition automation, capture the proxy baseline before moving exactly one controlled deal out of the configured Pipeline Proxy stage:
+
+```js
+await GA4OverviewValidation.hubspotProxyTransitionBefore({
+  campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
+  propertyId: '542352127',
+  label: '4.10-hubspot-proxy-to-confirmed-transition',
+  sourceId: 'd4ad51ef-85fe-4b67-bbd5-854900be3dee',
+  expectedPipelineTotalBefore: 5000,
+  expectedConfirmedRevenueBefore: 7600,
+  expectedPipelineStageLabel: 'Contract Sent',
+  expectedSelectedValues: ['yesop_brand_search']
+});
+```
+
+Then move that one HubSpot deal from `Contract Sent` to the closed revenue state outside this runner, wait for the existing scheduler/provider path to finish, and compare the after-state. If the deal amount is not `$5,000`, change the deltas and totals to the exact controlled amount:
+
+```js
+await GA4OverviewValidation.hubspotProxyTransitionAfter({
+  campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
+  propertyId: '542352127',
+  label: '4.10-hubspot-proxy-to-confirmed-transition',
+  sourceId: 'd4ad51ef-85fe-4b67-bbd5-854900be3dee',
+  expectedProxyDelta: -5000,
+  expectedConfirmedRevenueDelta: 5000,
+  expectedCombinedRevenueAndProxyDelta: 0,
+  expectedPipelineTotalAfter: 0,
+  expectedConfirmedRevenueAfter: 12600,
+  expectedPipelineStageLabel: 'Contract Sent',
+  expectedSelectedValues: ['yesop_brand_search']
+});
+```
+
+Root cause/gap: 4.9b proved static Pipeline Proxy provenance and confirmed-revenue exclusion, but it did not prove the lifecycle handoff when the same provider deal leaves the proxy stage and becomes confirmed revenue. The 4.10 helper is read-only and compares the selected pipeline source, proxy delta, confirmed source-backed revenue delta, combined proxy-plus-confirmed conservation, spend unchanged state, active source revenue delta, source IDs, and HubSpot inventory findings. It does not call HubSpot, trigger scheduler, post `save-mappings`, mutate records, inspect rendered pixels, or certify Campaign Breakdown, Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, or future provider mutations.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.6";
+  var VERSION = "2026-07-04.7";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -1156,6 +1156,22 @@
     }, 0));
   }
 
+  function hubspotPipelineTotalFromMapping(mapping) {
+    mapping = mapping || {};
+    var pipelineValueRevenueTotals = compactPipelineValueRevenueTotals(mapping.pipelineValueRevenueTotals);
+    var pipelineValueRevenueTotal = sumPipelineValueRevenueTotals(pipelineValueRevenueTotals);
+    var persistedPipelineTotal = optionalMoney(mapping.pipelineTotalToDate);
+    var effectivePipelineTotal = persistedPipelineTotal !== null
+      ? persistedPipelineTotal
+      : (pipelineValueRevenueTotals.length > 0 ? pipelineValueRevenueTotal : (mapping.pipelineEnabled === true ? 0 : null));
+    return {
+      totalToDate: effectivePipelineTotal,
+      persistedTotalToDate: persistedPipelineTotal,
+      valueTotalsTotal: pipelineValueRevenueTotal,
+      pipelineValueRevenueTotals: pipelineValueRevenueTotals
+    };
+  }
+
   function hubspotPipelineValuesWithinSelectedValues(items, selectedValues) {
     var selected = new Set(arrayValues(selectedValues).map(normalizeHubspotPipelineValue).filter(Boolean));
     if (items.length === 0 || selected.size === 0) return false;
@@ -1305,6 +1321,268 @@
     console.log(summary);
     return summary;
   }
+
+  async function hubspotProxyTransitionPoint(config, stage) {
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = config.propertyId ? String(config.propertyId) : null;
+    var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
+    var snapshotResult = await snapshot({
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      includeGa4: config.includeGa4,
+      stage: stage + "-snapshot"
+    });
+    var damageResult = await fetchJson(
+      "hubspotSourceDamageInventory",
+      "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"
+    );
+    var data = damageResult.data || {};
+    var provenance = data.hubspotProvenance || {};
+    var activeSources = Array.isArray(provenance.activeSources) ? provenance.activeSources : [];
+    var activePipelineSources = activeSources.filter(isHubspotPipelineSource);
+    var activeSource = compactHubspotSource(selectHubspotPipelineSource(activeSources, config.sourceId));
+    var mapping = activeSource && activeSource.mapping || {};
+    var selectedValues = Array.isArray(mapping.selectedValues) ? mapping.selectedValues : [];
+    var pipelineTotals = hubspotPipelineTotalFromMapping(mapping);
+    var endpointStatus = snapshotResult.endpointStatus.concat([compactEndpointStatus(damageResult)]);
+
+    return {
+      runnerVersion: VERSION,
+      checkedAt: data.checkedAt || new Date().toISOString(),
+      stage: stage,
+      campaignId: campaignId,
+      propertyId: propertyId,
+      dateRange: dateRange,
+      endpointPass: endpointStatus.every(function (status) { return status.pass === true; }),
+      endpointStatus: endpointStatus,
+      readonly: data.readonly === true,
+      inventoryPass: data.hubspotInventoryPass === true,
+      serverProvenancePass: data.hubspotProvenancePass === true,
+      selectedSourceProvenancePresent: !!(activeSource && activeSource.mapping && activeSource.platformContext === "ga4" && mapping.platformContext === "ga4"),
+      activePipelineSourceIds: activePipelineSources.map(function (source) {
+        return String(source && (source.sourceId || source.id || ""));
+      }).filter(Boolean).sort(),
+      activePipelineSourceCount: activePipelineSources.length,
+      activeSource: activeSource,
+      proxy: {
+        pipelineEnabled: mapping.pipelineEnabled === true,
+        pipelineStageId: mapping.pipelineStageId || null,
+        pipelineStageLabel: mapping.pipelineStageLabel || null,
+        totalToDate: pipelineTotals.totalToDate,
+        persistedTotalToDate: pipelineTotals.persistedTotalToDate,
+        valueTotalsTotal: pipelineTotals.valueTotalsTotal,
+        selectedValues: selectedValues,
+        pipelineValueRevenueTotals: pipelineTotals.pipelineValueRevenueTotals
+      },
+      confirmedRevenue: {
+        revenueBreakdownTotal: snapshotResult.revenue.breakdownTotal,
+        revenueSourceCount: snapshotResult.revenue.sourceCount,
+        revenueSourceIds: snapshotResult.revenue.sourceIds || []
+      },
+      spend: {
+        spendBreakdownTotal: snapshotResult.spend.breakdownTotal,
+        spendSourceCount: snapshotResult.spend.sourceCount,
+        spendSourceIds: snapshotResult.spend.sourceIds || []
+      },
+      hubspotSummary: data.hubspotSummary || null,
+      hubspotFindings: data.hubspotFindings || {},
+      hubspotFindingCount: Number(data.hubspotSummary && data.hubspotSummary.hubspotFindingCount || 0),
+      caveats: [
+        "This HubSpot proxy-to-confirmed transition helper is read-only and does not trigger scheduler, call HubSpot, post save-mappings, create/edit/delete sources, recompute, send reports, or mutate records.",
+        "Run before, then move exactly one controlled HubSpot deal from the configured proxy stage into the closed revenue state outside this runner, let the existing scheduler/provider path complete, and run after.",
+        "A pass proves only the configured campaign/source/stage transition packet; Campaign Breakdown, Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, and future provider mutations remain separate evidence."
+      ]
+    };
+  }
+
+  async function hubspotProxyTransitionBefore(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var label = config.label || "4.10-hubspot-proxy-to-confirmed-transition";
+    var key = storageKey("hubspot-proxy-transition-" + label, campaignId);
+    var expectedPipelineSourceCount = config.expectedPipelineSourceCount == null ? 1 : Number(config.expectedPipelineSourceCount);
+    var point = await hubspotProxyTransitionPoint(config, "before-" + label);
+    var checks = {
+      endpointsPass: point.endpointPass,
+      readonly: point.readonly,
+      inventoryPass: point.inventoryPass,
+      selectedSourceProvenancePresent: point.selectedSourceProvenancePresent,
+      activeSourcePresent: !!point.activeSource,
+      activePipelineSourceCountMatchesExpected: point.activePipelineSourceCount === expectedPipelineSourceCount,
+      hubspotFindingsClear: point.hubspotFindingCount === 0,
+      pipelineEnabled: point.proxy.pipelineEnabled === true,
+      ga4PlatformContext: !!(point.activeSource && point.activeSource.platformContext === "ga4" && point.activeSource.mapping && point.activeSource.mapping.platformContext === "ga4"),
+      pipelineStagePresent: !!String(point.proxy.pipelineStageId || "").trim(),
+      selectedValuesPresent: point.proxy.selectedValues.length > 0,
+      proxyTotalPresent: point.proxy.totalToDate !== null,
+      proxyPositiveBefore: config.expectProxyPositiveBefore === false ? undefined : point.proxy.totalToDate !== null && point.proxy.totalToDate > 0
+    };
+
+    if (config.expectedPipelineTotalBefore !== undefined) {
+      checks.pipelineTotalBeforeMatchesExpected = point.proxy.totalToDate !== null && closeMoney(point.proxy.totalToDate, config.expectedPipelineTotalBefore);
+    }
+    if (config.expectedConfirmedRevenueBefore !== undefined) {
+      checks.confirmedRevenueBeforeMatchesExpected = closeMoney(point.confirmedRevenue.revenueBreakdownTotal, config.expectedConfirmedRevenueBefore);
+    }
+    if (config.expectedPipelineStageLabel !== undefined) {
+      checks.pipelineStageLabelMatchesExpected = String(point.proxy.pipelineStageLabel || "") === String(config.expectedPipelineStageLabel || "");
+    }
+    if (config.expectedSelectedValues !== undefined) {
+      checks.selectedValuesMatchExpected = sameStringList(point.proxy.selectedValues, config.expectedSelectedValues);
+    }
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var summary = Object.assign({}, point, {
+      baselineKey: key,
+      expected: {
+        pipelineSourceCount: expectedPipelineSourceCount,
+        pipelineTotalBefore: config.expectedPipelineTotalBefore,
+        confirmedRevenueBefore: config.expectedConfirmedRevenueBefore,
+        pipelineStageLabel: config.expectedPipelineStageLabel,
+        selectedValues: config.expectedSelectedValues
+      },
+      checks: effectiveChecks
+    });
+    summary.readyForProviderStageMove = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    summary.overallPass = summary.readyForProviderStageMove;
+    localStorage.setItem(key, JSON.stringify(summary));
+    console.log(summary);
+    return summary;
+  }
+
+  async function hubspotProxyTransitionAfter(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var label = config.label || "4.10-hubspot-proxy-to-confirmed-transition";
+    var key = config.baselineKey || storageKey("hubspot-proxy-transition-" + label, campaignId);
+    var baseline = JSON.parse(localStorage.getItem(key) || "null");
+    var point = await hubspotProxyTransitionPoint(config, "after-" + label);
+    var expectedPipelineSourceCount = config.expectedPipelineSourceCount == null ? 1 : Number(config.expectedPipelineSourceCount);
+    var beforeSource = baseline && baseline.activeSource || null;
+    var afterSource = point.activeSource || null;
+    var beforeProxyTotal = baseline && baseline.proxy ? baseline.proxy.totalToDate : null;
+    var afterProxyTotal = point.proxy.totalToDate;
+    var beforeConfirmedRevenue = baseline && baseline.confirmedRevenue ? baseline.confirmedRevenue.revenueBreakdownTotal : null;
+    var afterConfirmedRevenue = point.confirmedRevenue.revenueBreakdownTotal;
+    var beforeCombined = beforeProxyTotal !== null && beforeConfirmedRevenue !== null ? money(Number(beforeProxyTotal) + Number(beforeConfirmedRevenue)) : null;
+    var afterCombined = afterProxyTotal !== null && afterConfirmedRevenue !== null ? money(Number(afterProxyTotal) + Number(afterConfirmedRevenue)) : null;
+    var proxyDelta = moneyDelta(afterProxyTotal, beforeProxyTotal);
+    var confirmedRevenueDelta = moneyDelta(afterConfirmedRevenue, beforeConfirmedRevenue);
+    var combinedDelta = moneyDelta(afterCombined, beforeCombined);
+    var spendDelta = baseline ? moneyDelta(point.spend.spendBreakdownTotal, baseline.spend && baseline.spend.spendBreakdownTotal) : null;
+    var sourceRevenueDelta = beforeSource && afterSource ? moneyDelta(afterSource.revenueTotal, beforeSource.revenueTotal) : null;
+    var expectedProxyDelta = config.expectedProxyDelta !== undefined ? config.expectedProxyDelta : config.expectedPipelineDelta;
+    var expectedConfirmedRevenueDelta = config.expectedConfirmedRevenueDelta !== undefined ? config.expectedConfirmedRevenueDelta : config.expectedRevenueDelta;
+    var expectedCombinedDelta = config.expectedCombinedRevenueAndProxyDelta !== undefined
+      ? config.expectedCombinedRevenueAndProxyDelta
+      : (expectedProxyDelta !== undefined && expectedConfirmedRevenueDelta !== undefined ? money(Number(expectedProxyDelta || 0) + Number(expectedConfirmedRevenueDelta || 0)) : undefined);
+    var transitionExpectationProvided = expectedProxyDelta !== undefined && expectedConfirmedRevenueDelta !== undefined;
+
+    var checks = {
+      baselineFound: !!baseline,
+      endpointsPass: point.endpointPass,
+      readonly: point.readonly,
+      inventoryPass: point.inventoryPass,
+      selectedSourceProvenancePresent: point.selectedSourceProvenancePresent,
+      transitionExpectationProvided: transitionExpectationProvided,
+      activeSourcePresent: !!afterSource,
+      activePipelineSourceCountMatchesExpected: point.activePipelineSourceCount === expectedPipelineSourceCount,
+      activePipelineSourceStayedSame: !!(beforeSource && afterSource && String(beforeSource.sourceId) === String(afterSource.sourceId)),
+      sameRevenueSourceIds: baseline ? sameStringList(baseline.confirmedRevenue && baseline.confirmedRevenue.revenueSourceIds, point.confirmedRevenue.revenueSourceIds) : false,
+      sameSpendSourceIds: baseline ? sameStringList(baseline.spend && baseline.spend.spendSourceIds, point.spend.spendSourceIds) : false,
+      hubspotFindingsClear: point.hubspotFindingCount === 0,
+      proxyDecreased: proxyDelta !== null && proxyDelta < 0,
+      confirmedRevenueIncreased: confirmedRevenueDelta !== null && confirmedRevenueDelta > 0,
+      spendUnchanged: config.expectSpendUnchanged === false ? undefined : closeMoney(spendDelta, 0),
+      activeSourceRevenueDeltaMatchesConfirmedDelta: sourceRevenueDelta !== null && confirmedRevenueDelta !== null ? closeMoney(sourceRevenueDelta, confirmedRevenueDelta) : false
+    };
+
+    if (expectedProxyDelta !== undefined) {
+      checks.proxyDeltaMatchesExpected = proxyDelta !== null && closeMoney(proxyDelta, expectedProxyDelta);
+    }
+    if (expectedConfirmedRevenueDelta !== undefined) {
+      checks.confirmedRevenueDeltaMatchesExpected = confirmedRevenueDelta !== null && closeMoney(confirmedRevenueDelta, expectedConfirmedRevenueDelta);
+    }
+    if (expectedCombinedDelta !== undefined) {
+      checks.combinedRevenueAndProxyDeltaMatchesExpected = combinedDelta !== null && closeMoney(combinedDelta, expectedCombinedDelta);
+    }
+    if (config.expectedPipelineTotalAfter !== undefined) {
+      checks.pipelineTotalAfterMatchesExpected = afterProxyTotal !== null && closeMoney(afterProxyTotal, config.expectedPipelineTotalAfter);
+    }
+    if (config.expectedConfirmedRevenueAfter !== undefined) {
+      checks.confirmedRevenueAfterMatchesExpected = closeMoney(afterConfirmedRevenue, config.expectedConfirmedRevenueAfter);
+    }
+    if (config.expectedPipelineStageLabel !== undefined) {
+      checks.pipelineStageLabelMatchesExpected = String(point.proxy.pipelineStageLabel || "") === String(config.expectedPipelineStageLabel || "");
+    }
+    if (config.expectedSelectedValues !== undefined) {
+      checks.selectedValuesMatchExpected = sameStringList(point.proxy.selectedValues, config.expectedSelectedValues);
+    }
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: point.checkedAt,
+      stage: point.stage,
+      campaignId: campaignId,
+      propertyId: point.propertyId,
+      dateRange: point.dateRange,
+      baselineKey: key,
+      expected: {
+        pipelineSourceCount: expectedPipelineSourceCount,
+        proxyDelta: expectedProxyDelta,
+        confirmedRevenueDelta: expectedConfirmedRevenueDelta,
+        combinedRevenueAndProxyDelta: expectedCombinedDelta,
+        pipelineTotalAfter: config.expectedPipelineTotalAfter,
+        confirmedRevenueAfter: config.expectedConfirmedRevenueAfter,
+        pipelineStageLabel: config.expectedPipelineStageLabel,
+        selectedValues: config.expectedSelectedValues
+      },
+      before: baseline ? {
+        activePipelineSourceIds: baseline.activePipelineSourceIds || [],
+        activeSource: baseline.activeSource || null,
+        proxyTotalToDate: beforeProxyTotal,
+        confirmedRevenueBreakdownTotal: beforeConfirmedRevenue,
+        revenueSourceIds: baseline.confirmedRevenue && baseline.confirmedRevenue.revenueSourceIds || [],
+        spendBreakdownTotal: baseline.spend && baseline.spend.spendBreakdownTotal,
+        spendSourceIds: baseline.spend && baseline.spend.spendSourceIds || []
+      } : null,
+      after: {
+        activePipelineSourceIds: point.activePipelineSourceIds,
+        activeSource: afterSource,
+        proxyTotalToDate: afterProxyTotal,
+        confirmedRevenueBreakdownTotal: afterConfirmedRevenue,
+        revenueSourceIds: point.confirmedRevenue.revenueSourceIds,
+        spendBreakdownTotal: point.spend.spendBreakdownTotal,
+        spendSourceIds: point.spend.spendSourceIds
+      },
+      deltas: {
+        proxyTotalToDate: proxyDelta,
+        confirmedRevenueBreakdownTotal: confirmedRevenueDelta,
+        combinedRevenueAndProxy: combinedDelta,
+        activeSourceRevenue: sourceRevenueDelta,
+        spendBreakdownTotal: spendDelta
+      },
+      endpointStatus: point.endpointStatus,
+      checks: effectiveChecks,
+      inventoryPass: point.inventoryPass,
+      serverProvenancePass: point.serverProvenancePass,
+      hubspotSummary: point.hubspotSummary,
+      hubspotFindings: point.hubspotFindings,
+      caveats: point.caveats
+    };
+    summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
+
   function googleSheetsAmount(sourceRow, breakdownRows, family) {
     var id = sourceId(sourceRow);
     var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
@@ -1555,13 +1833,15 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.6')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.7')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
       "await GA4OverviewValidation.hubspotInventory({ campaignId })",
       "await GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })",
       "await GA4OverviewValidation.hubspotPipelineProxy({ campaignId, propertyId, expectedConfirmedRevenueTotal: 7600, expectedPipelineTotalToDate: 1234.56, expectedSelectedValues: ['CAMPAIGN_VALUE'] })",
+      "await GA4OverviewValidation.hubspotProxyTransitionBefore({ campaignId, propertyId, label: '4.10-hubspot-proxy-to-confirmed-transition', expectedPipelineTotalBefore: 5000, expectedConfirmedRevenueBefore: 7600 })",
+      "await GA4OverviewValidation.hubspotProxyTransitionAfter({ campaignId, propertyId, label: '4.10-hubspot-proxy-to-confirmed-transition', expectedProxyDelta: -5000, expectedConfirmedRevenueDelta: 5000 })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -1587,6 +1867,8 @@
     hubspotInventory: hubspotInventory,
     hubspotProvenance: hubspotProvenance,
     hubspotPipelineProxy: hubspotPipelineProxy,
+    hubspotProxyTransitionBefore: hubspotProxyTransitionBefore,
+    hubspotProxyTransitionAfter: hubspotProxyTransitionAfter,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

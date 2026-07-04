@@ -269,7 +269,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.6";');
+    expect(runner).toContain('var VERSION = "2026-07-04.7";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -384,10 +384,10 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const propagationRunner = sliceBetween(
       runner,
       "async function hubspotPropagationPoint(config, stage)",
-      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+      "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.6";');
+    expect(runner).toContain('var VERSION = "2026-07-04.7";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -412,7 +412,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const pipelineRunner = sliceBetween(
       runner,
       "async function hubspotPipelineProxy(config)",
-      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+      "async function hubspotProxyTransitionPoint(config, stage)"
     );
     const pipelineChecks = sliceBetween(
       pipelineRunner,
@@ -420,7 +420,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.6";');
+    expect(runner).toContain('var VERSION = "2026-07-04.7";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -437,5 +437,33 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineRunner).not.toContain('method: "POST"');
     expect(pipelineRunner).not.toContain("save-mappings");
     expect(runner).toContain("hubspotPipelineProxy: hubspotPipelineProxy");
+  });
+
+  it("exposes a read-only HubSpot proxy-to-confirmed transition runner", () => {
+    const runner = validationRunnerFile();
+    const transitionRunner = sliceBetween(
+      runner,
+      "async function hubspotProxyTransitionPoint(config, stage)",
+      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+    );
+
+    expect(runner).toContain('var VERSION = "2026-07-04.7";');
+    expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
+    expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
+    expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(transitionRunner).toContain("hubspotPipelineTotalFromMapping(mapping)");
+    expect(transitionRunner).toContain("expectedProxyDelta");
+    expect(transitionRunner).toContain("expectedConfirmedRevenueDelta");
+    expect(transitionRunner).toContain("combinedRevenueAndProxyDeltaMatchesExpected");
+    expect(transitionRunner).toContain("activeSourceRevenueDeltaMatchesConfirmedDelta");
+    expect(transitionRunner).toContain("proxyDecreased");
+    expect(transitionRunner).toContain("confirmedRevenueIncreased");
+    expect(transitionRunner).toContain("spendUnchanged");
+    expect(transitionRunner).toContain("sameRevenueSourceIds");
+    expect(transitionRunner).toContain("This HubSpot proxy-to-confirmed transition helper is read-only");
+    expect(transitionRunner).not.toContain("/pipeline-proxy");
+    expect(transitionRunner).not.toContain('method: "POST"');
+    expect(runner).toContain("hubspotProxyTransitionBefore: hubspotProxyTransitionBefore");
+    expect(runner).toContain("hubspotProxyTransitionAfter: hubspotProxyTransitionAfter");
   });
 });

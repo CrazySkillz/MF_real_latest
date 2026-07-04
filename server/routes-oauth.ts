@@ -1542,10 +1542,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pipelineStageId: mapping?.pipelineStageId ? String(mapping.pipelineStageId) : null,
         dailyMaterialization: mapping?.dailyMaterialization ? String(mapping.dailyMaterialization) : null,
       });
-      const hubspotSourceRevenueTotal = (sourceId: string) => centsOverviewInventoryTotal(
-        (allRevenueRecords as any[]).filter((record) => String(record?.revenueSourceId || "") === sourceId),
-        "revenue",
-      );
+      const hubspotSourceRevenueTotal = (sourceId: string) => {
+        let aggregate = 0;
+        let subCampaign = 0;
+        for (const record of (allRevenueRecords as any[]).filter((row) => String(row?.revenueSourceId || "") === sourceId)) {
+          const value = Number(record?.revenue);
+          if (!Number.isFinite(value)) continue;
+          if (record?.subCampaignUrn) subCampaign += value;
+          else aggregate += value;
+        }
+        return Math.round((aggregate > 0 ? aggregate : subCampaign) * 100) / 100;
+      };
       const hubspotDateLabel = (dateField: string | null) => {
         if (dateField === "hs_lastmodifieddate") return "Modified Date";
         if (dateField === "createdate") return "Created Date";

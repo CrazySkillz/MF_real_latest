@@ -253,6 +253,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).toContain("hubspotProvenancePass");
     expect(inventoryRoute).toContain("hubspotProvenance: {");
     expect(inventoryRoute).toContain("sourceModalExpected");
+    expect(inventoryRoute).toContain("const hubspotSourceRevenueTotal = (sourceId: string) => {");
+    expect(inventoryRoute).toContain("if (record?.subCampaignUrn) subCampaign += value;");
+    expect(inventoryRoute).toContain("else aggregate += value;");
+    expect(inventoryRoute).toContain("return Math.round((aggregate > 0 ? aggregate : subCampaign) * 100) / 100;");
+    expect(inventoryRoute).not.toContain("const hubspotSourceRevenueTotal = (sourceId: string) => centsOverviewInventoryTotal");
     expect(inventoryRoute).toContain("campaignProperty");
     expect(inventoryRoute).toContain("selectedValues");
     expect(inventoryRoute).toContain("revenueProperty");

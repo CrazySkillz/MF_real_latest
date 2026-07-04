@@ -232,6 +232,7 @@ export function HubSpotRevenueWizard(props: {
       platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
   }, [campaignMappings, isGA4, isGoogleAds, isInstagram, isMeta, isTikTok, platformCampaignOptions, selectedValues]);
+  const reviewPlatformLabel = isGA4 ? "GA4" : isTikTok ? "TikTok" : isInstagram ? "Instagram" : isMeta ? "Meta" : "Google Ads";
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
     const value = String(crmValue || "").trim();
@@ -1208,6 +1209,20 @@ export function HubSpotRevenueWizard(props: {
                             : "—"}
                         </div>
                       </div>
+
+                      {selectedCampaignMappings.length > 0 && (
+                        <div>
+                          <div className="text-xs text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>
+                          <div className="space-y-1 font-medium text-foreground">
+                            {selectedCampaignMappings.slice(0, 6).map((mapping) => (
+                              <div key={`${mapping.crmValue}-${mapping.linkedinCampaignUrn}`} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                                <span className="truncate">{mapping.crmValue}</span>
+                                <span className="truncate text-muted-foreground">{mapping.linkedinCampaignName || mapping.linkedinCampaignUrn}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-3">

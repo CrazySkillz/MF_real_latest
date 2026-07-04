@@ -17,6 +17,9 @@ const schedulerFile = () =>
 const validationRunnerFile = () =>
   readFileSync(join(process.cwd(), "client", "public", "ga4-overview-validation-runner.js"), "utf-8");
 
+const hubspotWizardFile = () =>
+  readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf-8");
+
 const sliceBetween = (source: string, startNeedle: string, endNeedle: string): string => {
   const start = source.indexOf(startNeedle);
   const end = source.indexOf(endNeedle, start);
@@ -83,6 +86,24 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(saveRoute).toContain("sourceType: 'hubspot',");
     expect(saveRoute).toContain("subCampaignUrn: urn,");
     expect(saveRoute).toContain("await storage.createRevenueRecords(records);");
+  });
+
+  it("shows selected HubSpot campaign mappings in review before save", () => {
+    const wizard = hubspotWizardFile();
+    const reviewBlock = sliceBetween(
+      wizard,
+      '{step === "review" && (',
+      '{reviewDealBreakdown.length > 0 && ('
+    );
+    const selectedDealsIndex = reviewBlock.indexOf("Selected deal(s)");
+    const mappingIndex = reviewBlock.indexOf("{selectedCampaignMappings.length > 0 && (");
+
+    expect(wizard).toContain('const reviewPlatformLabel = isGA4 ? "GA4"');
+    expect(mappingIndex).toBeGreaterThan(selectedDealsIndex);
+    expect(reviewBlock).toContain("{reviewPlatformLabel} campaign mapping");
+    expect(reviewBlock).toContain("mapping.crmValue");
+    expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
+    expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
   });
 
   it("fails closed when GA4 HubSpot revenue record materialization fails", () => {

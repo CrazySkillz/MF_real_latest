@@ -140,6 +140,7 @@ Current-value hierarchy:
 - revenue-dependent benchmarks should use recomputed campaign revenue values
 - spend-dependent benchmarks should use recomputed campaign spend values
 - efficiency benchmarks like `ROAS`, `ROI`, and `CPA` should be derived from the current recomputed financial state
+- HubSpot imported revenue must enter GA4 financial Benchmark values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); Current Commit 4.13 adds local HubSpot-specific guards and a read-only deployed checker, but deployed Benchmark row evidence remains pending
 - if dependencies are missing, the benchmark should be blocked instead of showing a misleading value
 
 Campaign-level benchmark source previews:

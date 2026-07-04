@@ -133,6 +133,7 @@ Current-value hierarchy:
 - revenue-dependent KPIs should use recomputed campaign revenue values
 - spend-dependent KPIs should use recomputed campaign spend values
 - efficiency KPIs like `ROAS`, `ROI`, and `CPA` should be derived from the current recomputed financial state
+- HubSpot imported revenue must enter GA4 financial KPI values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); Current Commit 4.13 adds local HubSpot-specific guards and a read-only deployed checker, but deployed KPI row evidence remains pending
 - if dependencies are missing, the KPI should be blocked instead of showing a misleading value
 
 Campaign-level KPI source previews:

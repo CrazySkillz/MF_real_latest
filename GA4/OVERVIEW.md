@@ -155,7 +155,8 @@ High-level rule:
   `Total Revenue = selected scoped GA4-native financial revenue + imported campaign revenue`
 - the `Total Revenue` Revenue Sources modal should show HubSpot mapped platform campaign names from saved `campaignMappings` when available, not only the generic `HubSpot` source type label
 - Campaign Breakdown row revenue must add imported HubSpot revenue only to rows matched by saved CRM-to-platform `campaignMappings`; the currently recorded HubSpot deployed evidence is limited to the Current Commit 4.11 `yesop_retargeting` mapped-row packet
-- GA4 report output must use the same HubSpot imported revenue and exact mapping rules as Overview; Current Commit 4.12 adds local/read-only validation for this report value path, with deployed report evidence still pending
+- GA4 report output must use the same HubSpot imported revenue and exact mapping rules as Overview; Current Commit 4.12 records local/read-only validation plus deployed evidence for the configured `GA4 Overview Report` packet only
+- GA4 KPI/Benchmark financial values must use the same HubSpot imported revenue included in Overview `Total Revenue`; Current Commit 4.13 adds local read-only automation and static guards, while deployed KPI/Benchmark value-packet evidence remains pending
 - GA4-native financial revenue is selected from the scoped GA4 to-date, daily, and breakdown totals by the most complete native revenue total; revenue and CPA conversions must come from that same selected GA4 source object
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign

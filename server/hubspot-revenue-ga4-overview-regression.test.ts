@@ -20,6 +20,12 @@ const validationRunnerFile = () =>
 const ga4ScheduledReportPdfFile = () =>
   readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
+const ga4KpiBenchmarkJobsFile = () =>
+  readFileSync(join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"), "utf-8");
+
+const campaignCurrentValuesFile = () =>
+  readFileSync(join(process.cwd(), "server", "utils", "campaign-current-values.ts"), "utf-8");
+
 const hubspotWizardFile = () =>
   readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf-8");
 
@@ -324,7 +330,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -442,7 +448,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -475,7 +481,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -502,7 +508,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function parseStoredGa4CampaignFilterForRunner(raw)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
     expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
     expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
     expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
@@ -529,7 +535,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownBefore(config)");
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownAfter(config)");
     expect(campaignBreakdownRunner).toContain('"ga4Breakdown"');
@@ -586,7 +592,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.9";');
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
     expect(reportRunner).toContain('"reports"');
     expect(reportRunner).toContain('"snapshots"');
     expect(reportRunner).toContain('"snapshotPdf"');
@@ -602,5 +608,127 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reportRunner).not.toContain("send-test");
     expect(reportRunner).not.toContain("createSnapshot");
     expect(runner).toContain("hubspotReportValuePack: hubspotReportValuePack");
+  });
+
+  it("keeps HubSpot-backed GA4 KPI and Benchmark live formulas aligned with Overview financial revenue", () => {
+    const ga4Metrics = ga4MetricsFile();
+    const financialBlock = sliceBetween(
+      ga4Metrics,
+      "const ga4FinancialTotalsSource = [",
+      "  const toRateRatio = (value: any) => {"
+    );
+    const kpiCreateBlock = sliceBetween(
+      ga4Metrics,
+      "const calculateKPIValueFromSources = (templateName: string, sources:",
+      "  // Create KPI mutation"
+    );
+    const kpiCreateMutationBlock = sliceBetween(
+      ga4Metrics,
+      "  // Create KPI mutation",
+      "  const updateKPIMutation = useMutation"
+    );
+    const kpiLiveBlock = sliceBetween(
+      ga4Metrics,
+      "const getLiveKpiValue = (kpi: any): string => {",
+      "  const getKpiDataSufficiency = (kpi: any) => {"
+    );
+    const benchmarkLiveBlock = sliceBetween(
+      ga4Metrics,
+      "const getLiveBenchmarkCurrentValue = (metric: string): number => {",
+      "  const { data: ga4DailyResp"
+    );
+
+    expect(financialBlock).toContain("const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);");
+    expect(financialBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
+    expect(financialBlock).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
+    expect(financialBlock).toContain("const financialSpend = Number(totalSpendForFinancials || 0);");
+    expect(financialBlock).toContain("const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;");
+    expect(financialBlock).toContain("const financialROI = computeRoiPercent(financialRevenue, financialSpend);");
+    expect(financialBlock).toContain("const financialCPA = computeCpa(financialSpend, financialConversions);");
+
+    expect(kpiCreateBlock).toContain("const revenue = Number(sources.revenue || 0);");
+    expect(kpiCreateBlock).toContain("return spend > 0 ? (revenue / spend).toFixed(2) : \"0.00\";");
+    expect(kpiCreateMutationBlock).toContain("revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0)");
+    expect(kpiCreateMutationBlock).toContain("spend: Number(financialSpend || 0)");
+    expect(kpiLiveBlock).toContain('if (name === "Revenue") return Number(financialRevenue || 0).toFixed(2);');
+    expect(kpiLiveBlock).toContain('if (name === "ROAS") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);');
+    expect(kpiLiveBlock).toContain('if (name === "ROI") return Number(financialROI || 0).toFixed(2);');
+    expect(kpiLiveBlock).toContain('if (name === "CPA") return Number(financialCPA || 0).toFixed(2);');
+
+    expect(benchmarkLiveBlock).toContain("const revenue = Number(financialRevenue || 0);");
+    expect(benchmarkLiveBlock).toContain("return Number(financialROAS || 0);");
+    expect(benchmarkLiveBlock).toContain("return Number(financialROI || 0);");
+    expect(benchmarkLiveBlock).toContain("return Number(financialCPA || 0);");
+    expect(benchmarkLiveBlock).toContain('case "revenue":');
+    expect(benchmarkLiveBlock).toContain("return revenue;");
+  });
+
+  it("keeps server GA4 KPI and Benchmark persisted/current-value formulas additive with HubSpot imported revenue", () => {
+    const jobs = ga4KpiBenchmarkJobsFile();
+    const campaignCurrent = campaignCurrentValuesFile();
+    const computeBlock = sliceBetween(
+      jobs,
+      "export function computeKpiValue(metricOrName: string, inputs:",
+      "function computeRollingAverage"
+    );
+    const jobInputBlock = sliceBetween(
+      jobs,
+      "const financialSourceWindow = getGA4KPIFinancialSourceWindow();",
+      "      // 1) KPI progress points"
+    );
+    const campaignTotalsBlock = sliceBetween(
+      campaignCurrent,
+      "async function getCampaignMetricTotals(campaignId: string): Promise<CampaignMetricTotals | null> {",
+      "function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number {"
+    );
+    const campaignConfigBlock = sliceBetween(
+      campaignCurrent,
+      "export function computeCampaignCurrentValueFromConfig",
+      "export async function resolveCampaignCurrentValueForAlert"
+    );
+
+    expect(computeBlock).toContain("const revenue = inputs.ga4Revenue + inputs.importedRevenue;");
+    expect(computeBlock).toContain('if (m === "revenue" || m === "totalrevenue") return round2(revenue);');
+    expect(computeBlock).toContain('if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));');
+    expect(computeBlock).toContain('if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));');
+    expect(computeBlock).toContain('if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));');
+    expect(jobInputBlock).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
+    expect(jobInputBlock).toContain("importedRevenue: round2(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0),");
+    expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);');
+    expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');
+
+    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 }))');
+    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[])');
+    expect(campaignTotalsBlock).toContain("revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),");
+    expect(campaignConfigBlock).toContain('if (metric === "revenue") return round2(sumSelected("revenue", cfg?.inputs?.revenue, totals));');
+    expect(campaignConfigBlock).toContain('if (metric === "roas") {');
+    expect(campaignConfigBlock).toContain('const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);');
+    expect(campaignConfigBlock).toContain('if (metric === "roi") {');
+    expect(campaignConfigBlock).toContain('if (metric === "cpa") {');
+  });
+
+  it("exposes a read-only HubSpot KPI/Benchmark value propagation runner", () => {
+    const runner = validationRunnerFile();
+    const kpiBenchmarkRunner = sliceBetween(
+      runner,
+      "async function hubspotKpiBenchmarkValuePack(config)",
+      "async function hubspotReportValuePack(config)"
+    );
+
+    expect(runner).toContain('var VERSION = "2026-07-04.10";');
+    expect(kpiBenchmarkRunner).toContain('"kpis"');
+    expect(kpiBenchmarkRunner).toContain('"benchmarks"');
+    expect(kpiBenchmarkRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(kpiBenchmarkRunner).toContain("overviewFinancialSourceTotals(");
+    expect(kpiBenchmarkRunner).toContain("financialRevenueIncludesImportedRevenue");
+    expect(kpiBenchmarkRunner).toContain("hubspotRevenueIncludedInImportedRevenue");
+    expect(kpiBenchmarkRunner).toContain("requiredKpiRowsMatchExpected");
+    expect(kpiBenchmarkRunner).toContain("requiredBenchmarkRowsMatchExpected");
+    expect(kpiBenchmarkRunner).toContain("pipelineProxyExcludedFromKpiBenchmarkRevenue");
+    expect(kpiBenchmarkRunner).toContain("This HubSpot KPI/Benchmark helper is read-only");
+    expect(kpiBenchmarkRunner).not.toContain('method: "POST"');
+    expect(kpiBenchmarkRunner).not.toContain("send-test");
+    expect(kpiBenchmarkRunner).not.toContain("createSnapshot");
+    expect(runner).toContain("hubspotKpiBenchmarkValuePack: hubspotKpiBenchmarkValuePack");
   });
 });

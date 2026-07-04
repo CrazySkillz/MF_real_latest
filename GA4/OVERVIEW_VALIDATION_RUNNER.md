@@ -22,6 +22,10 @@ Read-only functions:
 - `GA4OverviewValidation.hubspotProxyTransitionAfter(config)`
 - `GA4OverviewValidation.hubspotPropagationBefore(config)`
 - `GA4OverviewValidation.hubspotPropagationAfter(config)`
+- `GA4OverviewValidation.hubspotCampaignBreakdownBefore(config)`
+- `GA4OverviewValidation.hubspotCampaignBreakdownAfter(config)`
+- `GA4OverviewValidation.hubspotReportValuePack(config)`
+- `GA4OverviewValidation.hubspotKpiBenchmarkValuePack(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
@@ -40,7 +44,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.8');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
 GA4OverviewValidation.help();
 ```
 
@@ -196,7 +200,7 @@ Current Commit 4.10d note: HubSpot Revenue Sources mapped-campaign subtitles and
 For Current Commit 4.11 read-only HubSpot Campaign Breakdown exact mapped-revenue transition automation, capture the row baseline before the controlled provider/source transition:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.8');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
 
 await GA4OverviewValidation.hubspotCampaignBreakdownBefore({
   campaignId: 'CAMPAIGN_ID',
@@ -229,32 +233,50 @@ This helper is read-only. It does not call HubSpot, trigger scheduler, create/ed
 
 Recorded deployed Current Commit 4.11 evidence: runner `2026-07-04.8` returned `overallPass: true` on `2026-07-04T17:10:58.316Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`, date range `30days`. The after packet used target row `yesop_retargeting`, named unchanged row `yesop_email_nurture`, and selected GA4 campaign values `yesop_email_nurture`, `yesop_retargeting`, and `yesop_paid_social`. Checks passed for baseline presence, endpoints, read-only boundary, inventory, target row presence before/after, clear HubSpot findings, target native revenue unchanged, unchanged row stability, target displayed revenue delta `+$100`, and target HubSpot revenue delta `+$100`. HubSpot findings were empty, including no zero-record, orphan-record, duplicate-active-source, GA4 context mismatch, or Pipeline Proxy scope-mismatch candidates. This closes only that configured Campaign Breakdown mapped-row packet; Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, other Campaign Breakdown rows, and future provider mutations remain separate evidence.
 
-Remaining active HubSpot clean-certification queue after 4.11:
+Recorded deployed Current Commit 4.12 evidence: runner `2026-07-04.9` returned `overallPass: true` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` / report `c5a9ea60-3c0f-4809-98bf-7a5a0b118f9f` (`GA4 Overview Report`). Checks passed for endpoints, read-only boundary, report resolution, report platform, overview revenue inclusion, Campaign Breakdown inclusion, HubSpot inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, target row presence, snapshot endpoint, PDF endpoint, PDF content type/bytes, and expected target HubSpot revenue. The packet recorded report financial revenue `$44,864.15`, imported revenue `$16,700`, HubSpot revenue `$16,100`, pipeline proxy total `$0`, and target row `yesop_retargeting` HubSpot revenue `$16,100`. This closes only that configured GA4 Overview report value packet; KPI/Benchmark, emails, other campaigns, alternate mappings, other report variants, PDF text/pixel inspection, scheduler delivery, and future provider mutations remain separate evidence.
 
-1. Current Commit 4.12: HubSpot Reports value propagation.
-2. Current Commit 4.13: HubSpot KPI/Benchmark value propagation.
-3. Current Commit 4.14: HubSpot email evidence.
-4. Current Commit 4.15: HubSpot other-campaign portability pack.
-5. Current Commit 4.16: HubSpot alternate mapping matrix.
+For Current Commit 4.13 read-only HubSpot KPI/Benchmark value propagation validation, first make sure the GA4 campaign has the KPI and Benchmark rows you want to prove. Then run:
 
-Current Commit 4.12 local implementation adds `hubspotReportValuePack(...)`; deployed 4.12 evidence remains pending. If it passes, the next commit is 4.13 KPI/Benchmark value propagation.
+```js
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
+
+await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
+  campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
+  propertyId: '542352127',
+  requiredKpiMetrics: ['Revenue', 'ROAS', 'ROI', 'CPA'],
+  requiredBenchmarkMetrics: ['revenue', 'roas', 'roi', 'cpa'],
+  expectedFinancialRevenue: 44864.15,
+  expectedHubspotRevenueForFinancials: 16100
+});
+```
+
+This helper is read-only: it uses GET endpoints only, does not create KPI/Benchmark rows, does not refresh providers, does not call HubSpot, does not trigger scheduler, does not recompute metrics, does not send alerts/emails, and does not mutate source data. It mirrors the GA4 Overview financial formula used by KPI/Benchmark live values: selected GA4 native revenue plus active imported revenue, with Pipeline Proxy excluded. If one of the required KPI/Benchmark rows does not exist, the packet should fail that row-present check; create the missing row through the normal UI or remove it from the required list and do not claim that metric. A pass proves only the configured GA4 KPI/Benchmark value packet; alert delivery, emails, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
+
+Remaining active HubSpot clean-certification queue after local 4.13 automation:
+
+1. Current Commit 4.13b: deployed HubSpot KPI/Benchmark value packet using `hubspotKpiBenchmarkValuePack(...)`.
+2. Current Commit 4.14: HubSpot email evidence.
+3. Current Commit 4.15: HubSpot other-campaign portability pack.
+4. Current Commit 4.16: HubSpot alternate mapping matrix.
+
+Current Commit 4.13 local automation is implemented and regression-covered. Deployed 4.13 evidence is still pending.
 
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.9');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.10');
 
 await GA4OverviewValidation.hubspotReportValuePack({
-  campaignId: 'CAMPAIGN_ID',
-  propertyId: 'PROPERTY_ID',
-  reportId: 'GA4_REPORT_ID',
-  targetCampaignName: 'MAPPED_GA4_CAMPAIGN_ROW',
-  expectedTargetHubspotRevenue: 5100,
+  campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
+  propertyId: '542352127',
+  reportId: 'c5a9ea60-3c0f-4809-98bf-7a5a0b118f9f',
+  targetCampaignName: 'yesop_retargeting',
+  expectedTargetHubspotRevenue: 16100,
   requirePdf: true
 });
 ```
 
-This helper is read-only: it uses GET endpoints only, does not create snapshots, does not send emails, does not call HubSpot, does not trigger scheduler, and does not recompute provider data. Use expectedHubspotRevenueForFinancials only when you know the total HubSpot contribution across all active HubSpot revenue source rows, not just the target mapped row. It mirrors the GA4 scheduled/server report value formulas for Total Revenue, Revenue Sources, and mapped Campaign Breakdown values, then optionally checks an existing snapshot/PDF by GET. If no snapshot exists, first capture separate report snapshot evidence deliberately, then rerun this helper with `snapshotId` or `requirePdf: true`. A pass proves only the configured GA4 report value packet; KPI/Benchmark, emails, other campaigns, alternate mappings, and future provider mutations remain separate evidence.
+This helper is read-only: it uses GET endpoints only, does not create snapshots, does not send emails, does not call HubSpot, does not trigger scheduler, and does not recompute provider data. Use `expectedHubspotRevenueForFinancials` only when you know the total HubSpot contribution across all active HubSpot revenue source rows, not just the target mapped row. It mirrors the GA4 scheduled/server report value formulas for Total Revenue, Revenue Sources, and mapped Campaign Breakdown values, then optionally checks an existing snapshot/PDF by GET. If no snapshot exists, first capture separate report snapshot evidence deliberately, then rerun this helper with `snapshotId` or `requirePdf: true`. A pass proves only the configured GA4 report value packet; KPI/Benchmark, emails, other campaigns, alternate mappings, and future provider mutations remain separate evidence.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

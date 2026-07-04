@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var VERSION = "2026-07-04.9";
+  var VERSION = "2026-07-04.10";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -2034,6 +2034,241 @@
     return sourceType(sourceDefinitionsById.get(id));
   }
 
+  function endpointMetricTotals(data) {
+    var totals = data && data.totals || data || {};
+    return {
+      revenue: money(firstNumber(totals, ["revenue", "totalRevenue", "total", "amount"]) || 0) || 0,
+      conversions: money(firstNumber(totals, ["conversions", "totalConversions"]) || 0) || 0,
+      sessions: money(firstNumber(totals, ["sessions", "totalSessions"]) || 0) || 0,
+      users: money(firstNumber(totals, ["users", "totalUsers"]) || 0) || 0,
+      pageviews: money(firstNumber(totals, ["pageviews", "screenPageViews", "views"]) || 0) || 0,
+      engagementRate: money(firstNumber(totals, ["engagementRate"]) || 0) || 0
+    };
+  }
+
+  function summedMetricTotals(data) {
+    var rows = rowsOf(data);
+    return {
+      revenue: sumRows(rows, ["revenue", "totalRevenue", "amount", "total", "value"]) || 0,
+      conversions: sumRows(rows, ["conversions", "totalConversions"]) || 0,
+      sessions: sumRows(rows, ["sessions", "totalSessions"]) || 0,
+      users: sumRows(rows, ["users", "totalUsers"]) || 0,
+      pageviews: sumRows(rows, ["pageviews", "screenPageViews", "views"]) || 0,
+      engagementRate: money(firstNumber(rows[0] || {}, ["engagementRate"]) || 0) || 0
+    };
+  }
+
+  function overviewFinancialSourceTotals(ga4ToDateData, ga4BreakdownData, ga4DailyData) {
+    var candidates = [
+      { source: "ga4-to-date", totals: endpointMetricTotals(ga4ToDateData) },
+      { source: "ga4-daily", totals: summedMetricTotals(ga4DailyData) },
+      { source: "ga4-breakdown", totals: summedMetricTotals(ga4BreakdownData) }
+    ];
+    return candidates.reduce(function (best, current) {
+      return Number(current.totals.revenue || 0) > Number(best.totals.revenue || 0) ? current : best;
+    }, candidates[0]);
+  }
+
+  function normalizeFinancialMetricKey(value) {
+    var raw = String(value || "").trim();
+    var compact = raw.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    if (compact === "revenue" || compact === "totalrevenue") return "revenue";
+    if (compact === "roas") return "roas";
+    if (compact === "roi") return "roi";
+    if (compact === "cpa") return "cpa";
+    return compact;
+  }
+
+  function financialMetricValue(metric, values) {
+    var key = normalizeFinancialMetricKey(metric);
+    if (key === "revenue") return values.financialRevenue;
+    if (key === "roas") return values.roas;
+    if (key === "roi") return values.roi;
+    if (key === "cpa") return values.cpa;
+    return null;
+  }
+
+  function metricRowKey(row) {
+    return normalizeFinancialMetricKey(row && (row.metric || row.name || row.label));
+  }
+
+  function findMetricRow(rows, metric) {
+    var key = normalizeFinancialMetricKey(metric);
+    return (Array.isArray(rows) ? rows : []).find(function (row) { return metricRowKey(row) === key; }) || null;
+  }
+
+  function rowCurrentValue(row) {
+    if (!row) return null;
+    return money(firstNumber(row, ["currentValue", "current", "value", "actualValue"]));
+  }
+
+  function compareMetricRows(rows, metrics, values) {
+    return arrayValues(metrics).map(function (metric) {
+      var row = findMetricRow(rows, metric);
+      var expected = financialMetricValue(metric, values);
+      var actual = rowCurrentValue(row);
+      return {
+        metric: normalizeFinancialMetricKey(metric),
+        requestedMetric: String(metric),
+        rowPresent: !!row,
+        rowId: row && row.id || null,
+        rowName: row && (row.name || row.metric) || null,
+        actualCurrentValue: actual,
+        expectedCurrentValue: expected,
+        matchesExpected: !!row && expected !== null && actual !== null && closeMoney(actual, expected)
+      };
+    });
+  }
+
+  async function hubspotKpiBenchmarkValuePack(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = requireValue(config.propertyId, "propertyId");
+    var platformType = config.platformType || "google_analytics";
+    var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
+    var dailyDays = config.dailyDays || 90;
+    var requiredKpiMetrics = config.requiredKpiMetrics || [];
+    var requiredBenchmarkMetrics = config.requiredBenchmarkMetrics || [];
+
+    var results = await Promise.all([
+      fetchJson("ga4ToDate", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-to-date?propertyId=" + encodeURIComponent(propertyId) + "&dateRange=" + encodeURIComponent(dateRange)),
+      fetchJson("ga4Breakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-breakdown?propertyId=" + encodeURIComponent(propertyId) + "&dateRange=" + encodeURIComponent(dateRange)),
+      fetchJson("ga4Daily", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-daily?days=" + encodeURIComponent(String(dailyDays)) + "&propertyId=" + encodeURIComponent(propertyId)),
+      fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
+      fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
+      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown"),
+      fetchJson("hubspotSourceDamageInventory", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"),
+      fetchJson("kpis", "/api/platforms/" + encodeURIComponent(platformType) + "/kpis?campaignId=" + encodeURIComponent(campaignId)),
+      fetchJson("benchmarks", "/api/platforms/" + encodeURIComponent(platformType) + "/benchmarks?campaignId=" + encodeURIComponent(campaignId))
+    ]);
+    var byName = endpointMap(results);
+    var damage = byName.hubspotSourceDamageInventory && byName.hubspotSourceDamageInventory.data || {};
+    var sourceDefinitions = rowsOf(byName.revenueSources && byName.revenueSources.data);
+    var sourceDefinitionsById = new Map();
+    sourceDefinitions.forEach(function (source) {
+      var id = String(sourceId(source) || "");
+      if (id) sourceDefinitionsById.set(id, source);
+    });
+    var revenueBreakdownRows = rowsOf(byName.revenueBreakdown && byName.revenueBreakdown.data);
+    var spendBreakdownRows = rowsOf(byName.spendBreakdown && byName.spendBreakdown.data);
+    var hubspotRevenueRows = revenueBreakdownRows.filter(function (row) {
+      return effectiveSourceType(row, sourceDefinitionsById).indexOf("hubspot") !== -1;
+    });
+    var importedRevenueForFinancials = sumRows(revenueBreakdownRows, ["revenue", "amount", "totalRevenue", "total", "value"]) || 0;
+    var hubspotRevenueForFinancials = sumRows(hubspotRevenueRows, ["revenue", "amount", "totalRevenue", "total", "value"]) || 0;
+    var spendForFinancials = sumRows(spendBreakdownRows, ["spend", "amount", "totalSpend", "total", "cost", "value"]) || 0;
+    var financialSource = overviewFinancialSourceTotals(
+      byName.ga4ToDate && byName.ga4ToDate.data,
+      byName.ga4Breakdown && byName.ga4Breakdown.data,
+      byName.ga4Daily && byName.ga4Daily.data
+    );
+    var ga4RevenueForFinancials = money(financialSource.totals.revenue || 0) || 0;
+    var financialConversions = money(financialSource.totals.conversions || 0) || 0;
+    var financialRevenue = money(Number(ga4RevenueForFinancials || 0) + Number(importedRevenueForFinancials || 0)) || 0;
+    var financialROI = spendForFinancials > 0 ? money(((financialRevenue - spendForFinancials) / spendForFinancials) * 100) : 0;
+    var financialROAS = spendForFinancials > 0 ? money(financialRevenue / spendForFinancials) : 0;
+    var financialCPA = financialConversions > 0 ? money(spendForFinancials / financialConversions) : 0;
+    var values = {
+      financialRevenue: financialRevenue,
+      roas: financialROAS,
+      roi: financialROI,
+      cpa: financialCPA
+    };
+    var activeHubspotSources = damage && damage.hubspotProvenance && Array.isArray(damage.hubspotProvenance.activeSources)
+      ? damage.hubspotProvenance.activeSources
+      : [];
+    var pipelineProxyTotalToDate = money(activeHubspotSources.reduce(function (sum, source) {
+      var mapping = source && source.mapping || {};
+      return sum + Number(mapping.pipelineTotalToDate || 0);
+    }, 0)) || 0;
+    var kpiRows = Array.isArray(byName.kpis && byName.kpis.data) ? byName.kpis.data : rowsOf(byName.kpis && byName.kpis.data);
+    var benchmarkRows = Array.isArray(byName.benchmarks && byName.benchmarks.data) ? byName.benchmarks.data : rowsOf(byName.benchmarks && byName.benchmarks.data);
+    var kpiComparisons = compareMetricRows(kpiRows, requiredKpiMetrics, values);
+    var benchmarkComparisons = compareMetricRows(benchmarkRows, requiredBenchmarkMetrics, values);
+    var endpointStatuses = results.map(compactEndpointStatus);
+
+    var checks = {
+      endpointsPass: endpointStatuses.every(function (status) { return status.pass === true; }),
+      readonly: true,
+      kpisEndpointPasses: !!(byName.kpis && byName.kpis.pass),
+      benchmarksEndpointPasses: !!(byName.benchmarks && byName.benchmarks.pass),
+      inventoryPass: damage.hubspotInventoryPass === true,
+      hubspotFindingsClear: Number(damage.hubspotSummary && damage.hubspotSummary.hubspotFindingCount || 0) === 0,
+      hubspotRevenuePresent: Number(hubspotRevenueForFinancials || 0) > 0,
+      financialRevenueIncludesImportedRevenue: closeMoney(financialRevenue, Number(ga4RevenueForFinancials || 0) + Number(importedRevenueForFinancials || 0)),
+      hubspotRevenueIncludedInImportedRevenue: Number(hubspotRevenueForFinancials || 0) > 0 && Number(importedRevenueForFinancials || 0) + 0.01 >= Number(hubspotRevenueForFinancials || 0),
+      pipelineProxyExcludedFromKpiBenchmarkRevenue: Number(pipelineProxyTotalToDate || 0) > 0 ? !closeMoney(financialRevenue, Number(ga4RevenueForFinancials || 0) + Number(importedRevenueForFinancials || 0) + Number(pipelineProxyTotalToDate || 0)) : undefined,
+      requiredKpiRowsPresent: arrayValues(requiredKpiMetrics).length > 0 ? kpiComparisons.every(function (item) { return item.rowPresent; }) : undefined,
+      requiredKpiRowsMatchExpected: arrayValues(requiredKpiMetrics).length > 0 ? kpiComparisons.every(function (item) { return item.matchesExpected; }) : undefined,
+      requiredBenchmarkRowsPresent: arrayValues(requiredBenchmarkMetrics).length > 0 ? benchmarkComparisons.every(function (item) { return item.rowPresent; }) : undefined,
+      requiredBenchmarkRowsMatchExpected: arrayValues(requiredBenchmarkMetrics).length > 0 ? benchmarkComparisons.every(function (item) { return item.matchesExpected; }) : undefined
+    };
+    if (config.expectedFinancialRevenue !== undefined) checks.financialRevenueMatchesExpected = closeMoney(financialRevenue, config.expectedFinancialRevenue);
+    if (config.expectedHubspotRevenueForFinancials !== undefined) checks.hubspotRevenueMatchesExpected = closeMoney(hubspotRevenueForFinancials, config.expectedHubspotRevenueForFinancials);
+    if (config.expectedRoas !== undefined) checks.roasMatchesExpected = closeMoney(financialROAS, config.expectedRoas);
+    if (config.expectedRoi !== undefined) checks.roiMatchesExpected = closeMoney(financialROI, config.expectedRoi);
+    if (config.expectedCpa !== undefined) checks.cpaMatchesExpected = closeMoney(financialCPA, config.expectedCpa);
+
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: config.stage || "4.13-hubspot-kpi-benchmark-value-propagation",
+      campaignId: campaignId,
+      propertyId: propertyId,
+      platformType: platformType,
+      dateRange: dateRange,
+      dailyDays: dailyDays,
+      readonly: true,
+      financialSource: financialSource.source,
+      values: {
+        ga4RevenueForFinancials: ga4RevenueForFinancials,
+        importedRevenueForFinancials: importedRevenueForFinancials,
+        hubspotRevenueForFinancials: hubspotRevenueForFinancials,
+        financialRevenue: financialRevenue,
+        spendForFinancials: spendForFinancials,
+        financialConversions: financialConversions,
+        roas: financialROAS,
+        roi: financialROI,
+        cpa: financialCPA,
+        pipelineProxyTotalToDate: pipelineProxyTotalToDate,
+        hubspotRevenueSourceIds: hubspotRevenueRows.map(sourceId).filter(Boolean)
+      },
+      kpis: {
+        count: kpiRows.length,
+        requiredMetrics: arrayValues(requiredKpiMetrics),
+        comparisons: kpiComparisons
+      },
+      benchmarks: {
+        count: benchmarkRows.length,
+        requiredMetrics: arrayValues(requiredBenchmarkMetrics),
+        comparisons: benchmarkComparisons
+      },
+      expected: {
+        financialRevenue: config.expectedFinancialRevenue,
+        hubspotRevenueForFinancials: config.expectedHubspotRevenueForFinancials,
+        roas: config.expectedRoas,
+        roi: config.expectedRoi,
+        cpa: config.expectedCpa
+      },
+      inventoryPass: damage.hubspotInventoryPass === true,
+      hubspotSummary: damage.hubspotSummary || null,
+      hubspotFindings: damage.hubspotFindings || {},
+      endpointStatus: endpointStatuses,
+      checks: effectiveChecks,
+      caveats: [
+        "This HubSpot KPI/Benchmark helper is read-only and does not create, edit, delete, refresh, recompute, send alerts, send emails, call HubSpot, or mutate records.",
+        "It mirrors the GA4 Overview financial formula used by KPI/Benchmark live values: selected GA4 native revenue plus active source-backed imported revenue, with Pipeline Proxy excluded.",
+        "A pass proves only the configured GA4 KPI/Benchmark value packet; emails, alert delivery, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence."
+      ]
+    };
+    summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
   async function hubspotReportValuePack(config) {
     config = config || {};
     var campaignId = requireValue(config.campaignId, "campaignId");
@@ -2472,7 +2707,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.9')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-04.10')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
@@ -2484,6 +2719,7 @@
       "await GA4OverviewValidation.hubspotCampaignBreakdownBefore({ campaignId, propertyId, label: '4.11-hubspot-campaign-breakdown-transition', targetCampaignName: 'GA4_CAMPAIGN_ROW', unchangedCampaignNames: ['UNCHANGED_ROW'], expectedTargetRevenueBefore: 7000, expectedTargetHubspotRevenueBefore: 7000 })",
       "await GA4OverviewValidation.hubspotCampaignBreakdownAfter({ campaignId, propertyId, label: '4.11-hubspot-campaign-breakdown-transition', targetCampaignName: 'GA4_CAMPAIGN_ROW', unchangedCampaignNames: ['UNCHANGED_ROW'], expectedTargetRevenueDelta: 5000, expectedTargetHubspotRevenueDelta: 5000 })",
       "await GA4OverviewValidation.hubspotReportValuePack({ campaignId, propertyId, reportId, targetCampaignName: 'GA4_CAMPAIGN_ROW', expectedTargetHubspotRevenue: 5000, requirePdf: true })",
+      "await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({ campaignId, propertyId, requiredKpiMetrics: ['Revenue', 'ROAS', 'ROI', 'CPA'], requiredBenchmarkMetrics: ['revenue', 'roas', 'roi', 'cpa'] })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -2514,6 +2750,7 @@
     hubspotCampaignBreakdownBefore: hubspotCampaignBreakdownBefore,
     hubspotCampaignBreakdownAfter: hubspotCampaignBreakdownAfter,
     hubspotReportValuePack: hubspotReportValuePack,
+    hubspotKpiBenchmarkValuePack: hubspotKpiBenchmarkValuePack,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

@@ -1540,6 +1540,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateField: mapping?.dateField ? String(mapping.dateField) : null,
         pipelineEnabled: mapping?.pipelineEnabled === true,
         pipelineStageId: mapping?.pipelineStageId ? String(mapping.pipelineStageId) : null,
+        pipelineStageLabel: mapping?.pipelineStageLabel ? String(mapping.pipelineStageLabel) : null,
+        pipelineTotalToDate: Number.isFinite(Number(mapping?.pipelineTotalToDate)) ? Math.round(Number(mapping.pipelineTotalToDate) * 100) / 100 : null,
+        pipelineCurrency: mapping?.pipelineCurrency ? String(mapping.pipelineCurrency) : null,
+        pipelineLastUpdatedAt: mapping?.pipelineLastUpdatedAt ? String(mapping.pipelineLastUpdatedAt) : null,
+        pipelineProxyMode: mapping?.pipelineProxyMode ? String(mapping.pipelineProxyMode) : null,
+        pipelineWarning: mapping?.pipelineWarning ? String(mapping.pipelineWarning) : null,
+        pipelineValueRevenueTotals: Array.isArray(mapping?.pipelineValueRevenueTotals)
+          ? mapping.pipelineValueRevenueTotals.map((item: any) => ({
+            campaignValue: String(item?.campaignValue || "").trim(),
+            revenue: Number.isFinite(Number(item?.revenue)) ? Math.round(Number(item.revenue) * 100) / 100 : 0,
+          })).filter((item: any) => item.campaignValue)
+          : [],
         dailyMaterialization: mapping?.dailyMaterialization ? String(mapping.dailyMaterialization) : null,
       });
       const hubspotSourceRevenueTotal = (sourceId: string) => {
@@ -1597,7 +1609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && normalizeHubspotSelectedValues(a.selectedValues || []) === normalizeHubspotSelectedValues(b.selectedValues || [])
         && a.revenueProperty === b.revenueProperty
         && a.dateField === b.dateField
-        && a.pipelineEnabled === b.pipelineEnabled;
+        && a.pipelineEnabled === b.pipelineEnabled
+        && a.pipelineStageId === b.pipelineStageId;
       const hubspotProvenanceFindings = {
         missingActiveHubspotAccount: activeGa4HubspotRevenueSources.length > 0 && !hubspotAccountPresent ? [{ reason: "missing active HubSpot portalId/portalName" }] : [],
         activeHubspotSourcesMissingMappingProvenance: activeHubspotProvenanceSources.filter((source: any) =>

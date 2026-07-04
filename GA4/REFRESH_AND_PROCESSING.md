@@ -244,6 +244,13 @@ External revenue/spend startup-refresh validation:
 - confirm `[Auto Refresh] Running once on startup (AUTO_REFRESH_RUN_ON_STARTUP=true)...` and `=== AUTO-REFRESH COMPLETE (...s) ===`
 - this is useful for quick provider-refresh testing, but it does not prove the configured daily scheduled time fired
 
+HubSpot deployed provider-propagation evidence:
+
+- Current Commit 4.8b passed on `2026-07-04T11:19:09.927Z` with validation runner `2026-07-04.3` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`
+- the controlled Total Revenue-only packet showed the same active HubSpot source, HubSpot source revenue delta `-$100`, total revenue delta `-$100`, spend delta `$0`, unchanged HubSpot record count, and clear inventory/provenance checks
+- this proves only that exact controlled scheduler/provider propagation packet; it does not prove the normal wall-clock daily scheduled time, Pipeline Proxy, other campaigns, alternate mappings, Reports, KPI/Benchmark, emails, sandbox provider mutation automation, or future provider changes
+- after startup-fired validation, set `AUTO_REFRESH_RUN_ON_STARTUP=false` and redeploy/restart so production returns to the normal daily schedule
+
 Ad-platform spend auto-refresh rule:
 
 - Meta and Google Ads spend refresh must reuse the campaign IDs saved in the Spend source mapping

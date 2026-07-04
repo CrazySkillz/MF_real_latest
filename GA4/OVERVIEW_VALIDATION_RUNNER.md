@@ -17,6 +17,7 @@ Read-only functions:
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })`
+- `GA4OverviewValidation.hubspotPipelineProxy(config)`
 - `GA4OverviewValidation.hubspotPropagationBefore(config)`
 - `GA4OverviewValidation.hubspotPropagationAfter(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
@@ -37,7 +38,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.3');
+await import('/ga4-overview-validation-runner.js?v=2026-07-04.4');
 GA4OverviewValidation.help();
 ```
 
@@ -126,6 +127,24 @@ await GA4OverviewValidation.hubspotPropagationAfter({
 ```
 
 This helper is read-only. It does not trigger the scheduler, call HubSpot, create/edit/delete sources, recompute metrics, send reports, or mutate provider/source data. It compares the same active HubSpot source ID, active revenue/spend source IDs, HubSpot source revenue delta, overall revenue delta, spend unchanged state, inventory findings, and provenance state. A passing packet proves only the configured provider-change packet and does not certify Pipeline Proxy, other campaigns, alternate mappings, Reports, KPI/Benchmark, emails, or future provider mutations.
+
+Recorded deployed Current Commit 4.8b evidence: runner `2026-07-04.3` returned `overallPass: true` on `2026-07-04T11:19:09.927Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` with label `4.8b-after-provenance-fix`. The controlled Total Revenue-only packet showed HubSpot source revenue delta `-$100`, total revenue delta `-$100`, spend delta `$0`, unchanged HubSpot record count, the same active HubSpot source, and clear inventory/provenance checks. This closes only that exact controlled HubSpot scheduler/provider propagation packet; Pipeline Proxy, other campaigns, alternate mappings, Reports, KPI/Benchmark, emails, sandbox provider mutation automation, and future provider changes remain unproven.
+
+For Current Commit 4.9 read-only HubSpot Pipeline Proxy validation after configuring `Total Revenue + Pipeline (Proxy)`, use:
+
+```js
+await GA4OverviewValidation.hubspotPipelineProxy({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID',
+  stage: '4.9-hubspot-pipeline-proxy',
+  expectedConfirmedRevenueTotal: 7600, // source-backed revenue breakdown total, excluding native GA4 revenue
+  expectedPipelineTotalToDate: 1234.56,
+  expectedSelectedValues: ['HUBSPOT_CAMPAIGN_VALUE'],
+  expectedPipelineStageLabel: 'PIPELINE_STAGE_LABEL'
+});
+```
+
+This helper is read-only. It does not call HubSpot, call the live `/pipeline-proxy` route, trigger scheduler, recompute, create/edit/delete sources, or mutate records. It validates persisted Pipeline Proxy provenance plus Overview confirmed-revenue separation: active GA4 HubSpot source, saved selected values, selected stage, positive proxy total, value-total sum, proxy values within selected values, expected source-backed confirmed revenue breakdown total excluding native GA4 revenue, and proof that the proxy total was not added into that confirmed revenue total. Local static tests guard the live proxy endpoint's saved-selected-values/stage scoping and the GA4 page's separation of Pipeline Proxy from confirmed financial revenue. A deployed pass closes only that configured campaign/source/proxy packet.
 
 For Current Commit 2g Google Sheets mapping variant validation, use the read-only variant pack after controlled fixture sources already exist:
 

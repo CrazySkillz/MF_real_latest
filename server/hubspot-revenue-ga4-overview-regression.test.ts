@@ -193,6 +193,45 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(hubspotQuery).not.toContain('/pipeline-proxy`);');
   });
 
+  it("keeps HubSpot Pipeline Proxy scoped and separate from confirmed GA4 financial revenue", () => {
+    const routes = routesFile();
+    const client = ga4MetricsFile();
+    const pipelineRoute = sliceBetween(
+      routes,
+      'app.get("/api/hubspot/:campaignId/pipeline-proxy"',
+      'app.delete("/api/hubspot/:campaignId/pipeline-proxy"'
+    );
+    const pipelineMemo = sliceBetween(
+      client,
+      "const pipelineProxyData = useMemo(() => {",
+      "  // Availability flags for UI gating"
+    );
+    const financialRevenueBlock = sliceBetween(
+      client,
+      "const importedRevenueForFinancials",
+      "const revenueSourceLabels = useMemo"
+    );
+    const revenueExportBlock = sliceBetween(
+      client,
+      "const revenueCards: [string, string][] = [",
+      "      sourceRows(\"Revenue\", ["
+    );
+
+    expect(pipelineRoute).toContain("requestedPlatformContext");
+    expect(pipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
+    expect(pipelineRoute).toContain("const pipelineSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];");
+    expect(pipelineRoute).toContain("{ propertyName: campaignProp, operator: 'IN', values: pipelineSelectedValues }");
+    expect(pipelineRoute).toContain("{ propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] }");
+    expect(pipelineRoute).toContain("totalToDate: Number(cfg.pipelineTotalToDate || 0)");
+
+    expect(pipelineMemo).toContain('getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot")');
+    expect(pipelineMemo).toContain("sourceMatchesGa4Scope");
+    expect(pipelineMemo).toContain("providerEntries: entries.map");
+    expect(financialRevenueBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
+    expect(financialRevenueBlock).not.toContain("pipelineProxyData");
+    expect(revenueExportBlock).toContain('if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);');
+  });
+
   it("exposes a read-only HubSpot GA4 Overview inventory runner", () => {
     const routes = routesFile();
     const inventoryRoute = sliceBetween(
@@ -223,7 +262,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.3";');
+    expect(runner).toContain('var VERSION = "2026-07-04.4";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -263,6 +302,10 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).toContain("revenueProperty");
     expect(inventoryRoute).toContain("dateField");
     expect(inventoryRoute).toContain("pipelineEnabled");
+    expect(inventoryRoute).toContain("pipelineStageLabel");
+    expect(inventoryRoute).toContain("pipelineTotalToDate");
+    expect(inventoryRoute).toContain("pipelineValueRevenueTotals");
+    expect(inventoryRoute).toContain("&& a.pipelineStageId === b.pipelineStageId;");
     expect(inventoryRoute).toContain("sourceModalEvidenceBoundary");
     expect(inventoryRoute).not.toContain("accessToken: hubspotConnectionsTable.accessToken");
     expect(inventoryRoute).not.toContain("refreshToken: hubspotConnectionsTable.refreshToken");
@@ -335,7 +378,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.3";');
+    expect(runner).toContain('var VERSION = "2026-07-04.4";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -353,5 +396,27 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(propagationRunner).not.toContain('method: "POST"');
     expect(runner).toContain("hubspotPropagationBefore: hubspotPropagationBefore");
     expect(runner).toContain("hubspotPropagationAfter: hubspotPropagationAfter");
+  });
+
+  it("exposes a read-only HubSpot Pipeline Proxy validation runner", () => {
+    const runner = validationRunnerFile();
+    const pipelineRunner = sliceBetween(
+      runner,
+      "async function hubspotPipelineProxy(config)",
+      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+    );
+
+    expect(runner).toContain('var VERSION = "2026-07-04.4";');
+    expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(pipelineRunner).toContain("expectedConfirmedRevenueTotal");
+    expect(pipelineRunner).toContain("expectedPipelineTotalToDate");
+    expect(pipelineRunner).toContain("pipelineNotAddedToConfirmedRevenue");
+    expect(pipelineRunner).toContain("pipelineValuesWithinSelectedValues");
+    expect(pipelineRunner).toContain("pipelineTotalMatchesValueTotals");
+    expect(pipelineRunner).toContain("This HubSpot Pipeline Proxy helper is read-only");
+    expect(pipelineRunner).not.toContain("/pipeline-proxy");
+    expect(pipelineRunner).not.toContain('method: "POST"');
+    expect(pipelineRunner).not.toContain("save-mappings");
+    expect(runner).toContain("hubspotPipelineProxy: hubspotPipelineProxy");
   });
 });

@@ -299,7 +299,7 @@ The user journey is:
 7. if `Total Revenue + Pipeline (Proxy)` is selected, the user chooses the HubSpot pipeline/deal stage to apply to those selected campaign values
 8. the user chooses the HubSpot revenue property
 9. the user chooses the date field / lookback window used for the import
-10. the final `Review Settings` step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
+10. the final `Review Settings` step shows confirmed Total Revenue, selected deal values, any selected platform campaign mapping, and Pipeline Proxy stage/amount separately
 11. the user clicks `Import revenue`
 12. the system saves a HubSpot revenue source with the mapping configuration
 13. the system materializes normalized revenue records for the matched HubSpot records
@@ -327,6 +327,7 @@ Important meaning:
 - the `Review Settings` details card should not repeat a second heading such as `Review HubSpot revenue settings`
 - the `Review Settings` details card should keep `Selected deal(s)` directly under `Total Revenue (to date)` so the confirmed revenue and selected deals read as one continuous summary
 - `Selected deal(s)` should list each selected HubSpot value on its own line with the amount that will be imported for that selected deal/value when preview data provides it
+- when a selected HubSpot value is mapped to a GA4/paid-platform campaign in Crosswalk, `Review Settings` must show that mapping before save using the same `selectedCampaignMappings` state that preview/save uses; hiding this mapping is a display bug, not evidence that the mapping was lost
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step

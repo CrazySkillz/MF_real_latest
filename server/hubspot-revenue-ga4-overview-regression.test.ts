@@ -105,6 +105,27 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
     expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
   });
+  it("hides zero Pipeline Proxy summary in unchanged HubSpot edit review", () => {
+    const wizard = hubspotWizardFile();
+    const visibilityBlock = sliceBetween(
+      wizard,
+      "const showReviewPipelineProxy = useMemo(() => {",
+      "  // Advanced options"
+    );
+    const reviewSummaryBlock = sliceBetween(
+      wizard,
+      '<div className="text-xs text-muted-foreground/70">Campaign identifier field</div>',
+      '<div className="text-xs text-muted-foreground/70">Date field</div>'
+    );
+
+    expect(visibilityBlock).toContain('if (!pipelineEnabled) return false;');
+    expect(visibilityBlock).toContain('mode === "edit" && !hasEditChanges');
+    expect(visibilityBlock).toContain('Number(reviewPipelineProxyDisplayAmount) <= 0');
+    expect(reviewSummaryBlock).toContain('{showReviewPipelineProxy && (');
+    expect(reviewSummaryBlock).not.toContain('{pipelineEnabled && (');
+    expect(wizard).toContain('pipelineEnabled,');
+    expect(wizard).toContain('pipelineStageId: pipelineEnabled ? pipelineStageId : null');
+  });
 
   it("fails closed when GA4 HubSpot revenue record materialization fails", () => {
     const routes = routesFile();
@@ -242,6 +263,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "{revenueDisplaySources.map((s: any) => {",
       "<AlertDialog open={!!deletingRevenueSourceId}"
     );
+    const mappedCampaignLabelHelper = sliceBetween(
+      client,
+      "const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {",
+      "  // Merged spend sources"
+    );
 
     expect(pipelineRoute).toContain("requestedPlatformContext");
     expect(pipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
@@ -258,6 +284,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueExportBlock).toContain('if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);');
     expect(revenueSourcesDialog).toContain("isPipelineOnlyRevenueSource");
     expect(revenueSourcesDialog).toContain("Pipeline Proxy only");
+    expect(mappedCampaignLabelHelper).toContain('String(source?.sourceType || "").trim().toLowerCase() !== "hubspot"');
+    expect(mappedCampaignLabelHelper).toContain("cfg?.campaignMappings");
+    expect(mappedCampaignLabelHelper).toContain("mapping?.linkedinCampaignName");
+    expect(revenueSourcesDialog).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
+    expect(revenueSourcesDialog).toContain('isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText');
   });
 
   it("exposes a read-only HubSpot GA4 Overview inventory runner", () => {

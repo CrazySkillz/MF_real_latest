@@ -2259,6 +2259,15 @@ export default function GA4Metrics() {
     return rawLabel || "Revenue";
   };
 
+  const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {
+    if (String(source?.sourceType || "").trim().toLowerCase() !== "hubspot") return "";
+    const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+    const labels = mappings
+      .map((mapping: any) => String(mapping?.linkedinCampaignName || mapping?.platformCampaignName || mapping?.campaignName || mapping?.linkedinCampaignUrn || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(labels)).join(", ");
+  };
+
   // Merged spend sources for micro copy display: prefer breakdown (has amounts), fallback to source definitions
   const spendDisplaySources = useMemo(() => {
     const defs = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
@@ -6191,7 +6200,10 @@ export default function GA4Metrics() {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                           const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
-                          const sourceTypeText = isPipelineOnlyRevenueSource ? `${revenueSourceTypeLabel(s.sourceType)} - Pipeline Proxy only` : revenueSourceTypeLabel(s.sourceType);
+                          const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
+                          const sourceTypeText = mappedCampaignText
+                            ? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText
+                            : isPipelineOnlyRevenueSource ? `${revenueSourceTypeLabel(s.sourceType)} - Pipeline Proxy only` : revenueSourceTypeLabel(s.sourceType);
                           const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
                             ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                             : "";

@@ -154,6 +154,12 @@ export function HubSpotRevenueWizard(props: {
     return null;
   }, [hasEditChanges, initialMappingConfig, mode, reviewPipelineProxyAmount]);
 
+  const showReviewPipelineProxy = useMemo(() => {
+    if (!pipelineEnabled) return false;
+    if (mode === "edit" && !hasEditChanges && reviewPipelineProxyDisplayAmount != null && Number(reviewPipelineProxyDisplayAmount) <= 0) return false;
+    return true;
+  }, [hasEditChanges, mode, pipelineEnabled, reviewPipelineProxyDisplayAmount]);
+
   // Advanced options intentionally hidden for exec flow simplicity.
   // Revenue classification hardcoded to offsite — users should not add HubSpot revenue that's already in GA4
 
@@ -1231,7 +1237,7 @@ export function HubSpotRevenueWizard(props: {
                         <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
                       </div>
 
-                      {pipelineEnabled && (
+                      {showReviewPipelineProxy && (
                         <div>
                           <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
                           <div className="font-medium text-foreground">

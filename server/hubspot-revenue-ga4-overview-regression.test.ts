@@ -694,6 +694,14 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(computeBlock).toContain('if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));');
     expect(jobInputBlock).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
     expect(jobInputBlock).toContain("importedRevenue: round2(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0),");
+    expect(jobs).toContain("const isGA4FinancialKpiMetric = (metricOrName: string) => {");
+    expect(jobInputBlock).toContain("let financialInputs = { ...inputs };");
+    expect(jobInputBlock).toContain("const hasFinancialMetric = [");
+    expect(jobInputBlock).toContain("if (hasFinancialMetric && !isYesopMockProperty(propertyId)) {");
+    expect(jobInputBlock).toContain('ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, campaignFilter)');
+    expect(jobInputBlock).toContain("const inputsForMetric = (metric: string) => isGA4FinancialKpiMetric(metric) ? financialInputs : inputs;");
+    expect(jobs).toContain("const valueNum = computeKpiValue(metricOrName, inputsForMetric(metricOrName));");
+    expect(jobs).toContain("const currentValue = computeKpiValue(metricKey, inputsForMetric(metricKey));");
     expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);');
     expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');
 

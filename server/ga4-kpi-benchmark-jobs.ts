@@ -143,6 +143,11 @@ export function isComputableGA4KpiMetric(metricOrName: string) {
   );
 }
 
+const isGA4FinancialKpiMetric = (metricOrName: string) => {
+  const m = normalizeGA4KpiMetricName(metricOrName);
+  return m === "revenue" || m === "totalrevenue" || m === "roas" || m === "roi" || m === "cpa";
+};
+
 export function computeKpiValue(metricOrName: string, inputs: {
   users: number;
   sessions: number;
@@ -375,9 +380,45 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         spend: round2(spendToDate || 0),
         engagementRate: Number((row as any)?.engagementRate || 0) || 0,
       };
+      const kpis = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []);
+      const benchmarkStorage = storage as typeof storage & {
+        getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
+        updateBenchmark(id: string, benchmark: any): Promise<any>;
+        getBenchmarkHistory(benchmarkId: string): Promise<any[]>;
+        recordBenchmarkHistory(history: any): Promise<any>;
+      };
+      const benchmarks = await benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []);
+      const hasFinancialMetric = [
+        ...(Array.isArray(kpis) ? kpis : []).map((kpi: any) => String(kpi?.metric || kpi?.name || "")),
+        ...(Array.isArray(benchmarks) ? benchmarks : []).map((benchmark: any) => String(benchmark?.metric || "")),
+      ].some(isGA4FinancialKpiMetric);
+
+      let financialInputs = { ...inputs };
+      const applyGA4FinancialCandidate = (candidate: any) => {
+        const candidateRevenue = Number(candidate?.revenue || candidate?.ga4Revenue || 0) || 0;
+        if (candidateRevenue <= Number(financialInputs.ga4Revenue || 0)) return;
+        financialInputs = {
+          ...financialInputs,
+          users: Math.round(Number(candidate?.users || financialInputs.users || 0) || 0),
+          sessions: Math.round(Number(candidate?.sessions || candidate?.sessionsRaw || financialInputs.sessions || 0) || 0),
+          pageviews: Math.round(Number(candidate?.pageviews || financialInputs.pageviews || 0) || 0),
+          conversions: Math.round(Number(candidate?.conversions || financialInputs.conversions || 0) || 0),
+          ga4Revenue: round2(candidateRevenue),
+          engagementRate: Number(candidate?.engagementRate || financialInputs.engagementRate || 0) || 0,
+        };
+      };
+      applyGA4FinancialCandidate(inputs);
+      if (hasFinancialMetric && !isYesopMockProperty(propertyId)) {
+        try {
+          const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, campaignFilter);
+          applyGA4FinancialCandidate((breakdown as any)?.totals || {});
+        } catch {
+          // Keep the existing to-date/daily financial source if breakdown is unavailable.
+        }
+      }
+      const inputsForMetric = (metric: string) => isGA4FinancialKpiMetric(metric) ? financialInputs : inputs;
 
       // 1) KPI progress points (daily)
-      const kpis = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []);
       for (const kpi of Array.isArray(kpis) ? kpis : []) {
         const kpiId = String((kpi as any)?.id || "");
         if (!kpiId) continue;
@@ -385,7 +426,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const metricOrName = String((kpi as any)?.metric || (kpi as any)?.name || "");
         if (!isComputableGA4KpiMetric(metricOrName)) continue;
 
-        const valueNum = computeKpiValue(metricOrName, inputs);
+        const valueNum = computeKpiValue(metricOrName, inputsForMetric(metricOrName));
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {
@@ -425,20 +466,13 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
 
       // 2) Benchmark history points (daily)
-      const benchmarkStorage = storage as typeof storage & {
-        getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
-        updateBenchmark(id: string, benchmark: any): Promise<any>;
-        getBenchmarkHistory(benchmarkId: string): Promise<any[]>;
-        recordBenchmarkHistory(history: any): Promise<any>;
-      };
-      const benchmarks = await benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []);
       for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
         const benchmarkId = String((b as any)?.id || "");
         if (!benchmarkId) continue;
         const metricKey = String((b as any)?.metric || "").trim();
         if (!metricKey) continue; // can't compute without a metric key
 
-        const currentValue = computeKpiValue(metricKey, inputs);
+        const currentValue = computeKpiValue(metricKey, inputsForMetric(metricKey));
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {

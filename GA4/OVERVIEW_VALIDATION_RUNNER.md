@@ -252,14 +252,16 @@ await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
 
 This helper is read-only: it uses GET endpoints only, does not create KPI/Benchmark rows, does not refresh providers, does not call HubSpot, does not trigger scheduler, does not recompute metrics, does not send alerts/emails, and does not mutate source data. It mirrors the GA4 Overview financial formula used by KPI/Benchmark live values: selected GA4 native revenue plus active imported revenue, with Pipeline Proxy excluded. Version `2026-07-04.11` fixes the runner comparison boundary so required metrics are matched using the same metric/template fields the UI badges use, and formatted current values such as `44,864.15` can be parsed; this is validation-only and does not change KPI/Benchmark runtime behavior. If one of the required KPI/Benchmark rows does not exist, the packet should fail that row-present check; create the missing row through the normal UI or remove it from the required list and do not claim that metric. A pass proves only the configured GA4 KPI/Benchmark value packet; alert delivery, emails, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
 
+Recorded 4.13 deployed mismatch before the persisted-job fix: if the packet shows `actualCurrentValue: 35317.57` and `expectedCurrentValue: 44864.15`, do not change the expected values. That output proves the KPI/Benchmark endpoint rows are using GA4 to-date native revenue `$18,617.57` plus imported revenue `$16,700`, while Overview uses breakdown native revenue `$28,164.15` plus imported revenue `$16,700`. The local runtime fix is in `server/ga4-kpi-benchmark-jobs.ts`: persisted GA4 KPI/Benchmark financial metrics now use the same highest-native-revenue financial candidate model as Overview, with Pipeline Proxy still excluded. Existing deployed rows will update only after the fixed recompute path runs; use the existing campaign-scoped GA4 refresh endpoint or wait for scheduler/source recompute before rerunning this read-only helper.
+
 Remaining active HubSpot clean-certification queue after local 4.13 automation:
 
-1. Current Commit 4.13b: deployed HubSpot KPI/Benchmark value packet using `hubspotKpiBenchmarkValuePack(...)`.
+1. Current Commit 4.13b: deploy the persisted GA4 KPI/Benchmark financial-source fix, run an existing campaign-scoped GA4 recompute path, then capture the deployed value packet using `hubspotKpiBenchmarkValuePack(...)`.
 2. Current Commit 4.14: HubSpot email evidence.
 3. Current Commit 4.15: HubSpot other-campaign portability pack.
 4. Current Commit 4.16: HubSpot alternate mapping matrix.
 
-Current Commit 4.13 local automation is implemented and regression-covered. Deployed 4.13 evidence is still pending.
+Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented and regression-covered. Deployed 4.13 evidence is still pending until recompute plus `hubspotKpiBenchmarkValuePack(...)` pass.
 
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 

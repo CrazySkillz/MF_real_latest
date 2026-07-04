@@ -256,12 +256,11 @@ Recorded 4.13 deployed mismatch before the persisted-job fix: if the packet show
 
 Remaining active HubSpot clean-certification queue after local 4.13 automation:
 
-1. Current Commit 4.13b: deploy the persisted GA4 KPI/Benchmark financial-source fix, run an existing campaign-scoped GA4 recompute path, then capture the deployed value packet using `hubspotKpiBenchmarkValuePack(...)`.
-2. Current Commit 4.14: HubSpot email evidence.
-3. Current Commit 4.15: HubSpot other-campaign portability pack.
-4. Current Commit 4.16: HubSpot alternate mapping matrix.
+1. Current Commit 4.14: HubSpot email evidence.
+2. Current Commit 4.15: HubSpot other-campaign portability pack.
+3. Current Commit 4.16: HubSpot alternate mapping matrix.
 
-Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented and regression-covered. Deployed 4.13 evidence is still pending until recompute plus `hubspotKpiBenchmarkValuePack(...)` pass.
+Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented, regression-covered, deployed, recomputed, and validated for the configured Revenue KPI/Benchmark packet. The deployed helper returned `overallPass: true`; endpoint, read-only, KPI endpoint, Benchmark endpoint, inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, required row presence, required row value matches, financial revenue match, and HubSpot revenue match checks all passed. This closes only that configured packet; email delivery, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
 
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 

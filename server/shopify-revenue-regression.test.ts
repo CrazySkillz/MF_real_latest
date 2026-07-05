@@ -4,6 +4,7 @@ import { join } from "path";
 
 const ROUTES_FILE = join(__dirname, "routes-oauth.ts");
 const SHOPIFY_WIZARD_FILE = join(__dirname, "..", "client", "src", "components", "ShopifyRevenueWizard.tsx");
+const GA4_METRICS_FILE = join(__dirname, "..", "client", "src", "pages", "ga4-metrics.tsx");
 const LINKEDIN_ANALYTICS_FILE = join(__dirname, "..", "client", "src", "pages", "linkedin-analytics.tsx");
 const REVENUE_MODAL_FILE = join(__dirname, "..", "client", "src", "components", "AddRevenueWizardModal.tsx");
 const LINKEDIN_REVENUE_FILE = join(__dirname, "utils", "linkedin-revenue.ts");
@@ -49,6 +50,28 @@ describe("Shopify revenue regression guard", () => {
 
     expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? (');
     expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."');
+  });
+
+  it("deletes Shopify revenue through the scoped GA4 Overview source route", () => {
+    const ga4Metrics = read(GA4_METRICS_FILE);
+    const routes = read(ROUTES_FILE);
+    const deleteRoute = routeSection(
+      routes,
+      'app.delete("/api/campaigns/:id/revenue-sources/:sourceId"',
+      "// Individual spend source delete",
+    );
+
+    expect(ga4Metrics).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}?platformContext=ga4`, { method: "DELETE", credentials: "include" })');
+    expect(deleteRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
+    expect(deleteRoute).toContain("const source = await storage.getRevenueSource(campaignId, sourceId);");
+    expect(deleteRoute).toContain("sourcePlatformContext.toLowerCase() !== requestedPlatformContext");
+    expect(deleteRoute.indexOf("await storage.deleteRevenueSource(sourceId);")).toBeGreaterThan(
+      deleteRoute.indexOf("const source = await storage.getRevenueSource(campaignId, sourceId);")
+    );
+    expect(deleteRoute.indexOf("await storage.deleteRevenueRecordsBySource(sourceId);")).toBeGreaterThan(
+      deleteRoute.indexOf("const source = await storage.getRevenueSource(campaignId, sourceId);")
+    );
+    expect(deleteRoute).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });");
   });
 
   it("includes TikTok scoped revenue sources in the source picker inventory", () => {

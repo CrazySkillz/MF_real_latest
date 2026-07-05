@@ -6391,7 +6391,7 @@ export default function GA4Metrics() {
                           className="bg-red-600 hover:bg-red-700 text-white"
                           onClick={async () => {
                             try {
-                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}`, { method: "DELETE", credentials: "include" });
+                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}?platformContext=ga4`, { method: "DELETE", credentials: "include" });
                               const json = await resp.json().catch(() => null);
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove revenue source");

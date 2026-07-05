@@ -27,10 +27,21 @@ describe("Shopify revenue regression guard", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
     const routes = read(ROUTES_FILE);
 
-    expect(modal).toContain("sourceId: initialSource?.id ? String(initialSource.id) : undefined");
-    expect(wizard).toContain("initialMappingConfig?.sourceId");
+    expect(modal).toContain('sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "shopify" ? String(initialSource?.id || "") : undefined}');
+    expect(wizard).toContain('sourceId?: string;');
+    expect(wizard).toContain('const editSourceId = mode === "edit" ? String(sourceId || initialMappingConfig?.sourceId || "").trim() : "";');
+    expect(wizard).toContain("...(editSourceId ? { sourceId: editSourceId } : {})");
     expect(routes).toContain('sourceId: z.string().trim().optional()');
     expect(routes).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
+    expect(routes).toContain('if (requestedSourceId && !existingShopify) {');
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+    expect(saveRoute.indexOf("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any)")).toBeLessThan(
+      saveRoute.indexOf("await storage.updateShopifyConnection")
+    );
   });
 
   it("shows Shopify as connected when an active scoped Shopify revenue source exists", () => {

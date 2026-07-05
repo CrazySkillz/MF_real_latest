@@ -32483,6 +32483,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rcRaw = String(revenueClassification || "").trim();
       const rc = rcRaw === "offsite_not_in_ga4" || rcRaw === "onsite_in_ga4" ? rcRaw : "onsite_in_ga4";
 
+      const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
+      const existingShopify = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
+        if (!s || (s as any).isActive === false || String((s as any).sourceType || "") !== "shopify") return false;
+        if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;
+        return true;
+      });
+      if (requestedSourceId && !existingShopify) {
+        return res.status(404).json({ error: "Shopify revenue source not found" });
+      }
+
       // Persist mapping config on the active Shopify connection
       const shopifyConn: any = await storage.getShopifyConnection(campaignId);
       if (shopifyConn) {
@@ -32541,13 +32551,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // ignore
           }
         }
-
-        const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
-        const existingShopify = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
-          if (!s || (s as any).isActive === false || String((s as any).sourceType || "") !== "shopify") return false;
-          if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;
-          return true;
-        });
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.
 

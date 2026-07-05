@@ -14,6 +14,7 @@ type UniqueValue = { value: string; count: number };
 
 export function ShopifyRevenueWizard(props: {
   campaignId: string;
+  sourceId?: string;
   onBack?: () => void;
   onClose?: () => void;
   onSuccess?: (result: any) => void;
@@ -38,7 +39,7 @@ export function ShopifyRevenueWizard(props: {
     campaignDisplayName?: string;
   } | null;
 }) {
-  const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4", externalStep, externalNavNonce, onStepChange, mode = "connect", initialMappingConfig } = props;
+  const { campaignId, sourceId, onBack, onClose, onSuccess, platformContext = "ga4", externalStep, externalNavNonce, onStepChange, mode = "connect", initialMappingConfig } = props;
   const { toast } = useToast();
   const isGA4 = platformContext === "ga4";
   const isLinkedIn = platformContext === "linkedin";
@@ -117,6 +118,8 @@ export function ShopifyRevenueWizard(props: {
     });
     return normalize({ campaignField, selectedValues, revenueMetric, campaignDisplayName, campaignMappings }) !== normalize(initialMappingConfig);
   }, [campaignDisplayName, campaignField, campaignMappings, initialMappingConfig, mode, revenueMetric, selectedValues]);
+
+  const editSourceId = mode === "edit" ? String(sourceId || initialMappingConfig?.sourceId || "").trim() : "";
 
   const campaignFieldLabel = useMemo(() => {
     if (campaignField === "utm_campaign") return "UTM Campaign (recommended)";
@@ -518,7 +521,7 @@ export function ShopifyRevenueWizard(props: {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {}),
+            ...(editSourceId ? { sourceId: editSourceId } : {}),
             campaignField,
             selectedValues,
             revenueMetric,
@@ -558,7 +561,7 @@ export function ShopifyRevenueWizard(props: {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {}),
+            ...(editSourceId ? { sourceId: editSourceId } : {}),
             campaignField,
             selectedValues,
             revenueMetric,
@@ -582,7 +585,7 @@ export function ShopifyRevenueWizard(props: {
     if (step !== "review") return;
     void fetchPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, campaignField, revenueMetric, days, platformContext, selectedValues.join("|")]);
+  }, [step, campaignField, revenueMetric, days, platformContext, editSourceId, selectedValues.join("|")]);
 
   return (
     <div className="space-y-6">

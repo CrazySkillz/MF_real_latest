@@ -27,6 +27,7 @@ Read-only functions:
 - `GA4OverviewValidation.hubspotReportValuePack(config)`
 - `GA4OverviewValidation.hubspotKpiBenchmarkValuePack(config)`
 - `GA4OverviewValidation.hubspotOtherCampaignPortabilityPack(config)`
+- `GA4OverviewValidation.hubspotAlternateMappingMatrixPack(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
@@ -45,7 +46,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
 GA4OverviewValidation.help();
 ```
 
@@ -201,7 +202,7 @@ Current Commit 4.10d note: HubSpot Revenue Sources mapped-campaign subtitles and
 For Current Commit 4.11 read-only HubSpot Campaign Breakdown exact mapped-revenue transition automation, capture the row baseline before the controlled provider/source transition:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
 
 await GA4OverviewValidation.hubspotCampaignBreakdownBefore({
   campaignId: 'CAMPAIGN_ID',
@@ -239,7 +240,7 @@ Recorded deployed Current Commit 4.12 evidence: runner `2026-07-04.9` returned `
 For Current Commit 4.13 read-only HubSpot KPI/Benchmark value propagation validation, first make sure the GA4 campaign has the KPI and Benchmark rows you want to prove. Then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
 
 await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
@@ -255,17 +256,16 @@ This helper is read-only: it uses GET endpoints only, does not create KPI/Benchm
 
 Recorded 4.13 deployed mismatch before the persisted-job fix: if the packet shows `actualCurrentValue: 35317.57` and `expectedCurrentValue: 44864.15`, do not change the expected values. That output proves the KPI/Benchmark endpoint rows are using GA4 to-date native revenue `$18,617.57` plus imported revenue `$16,700`, while Overview uses breakdown native revenue `$28,164.15` plus imported revenue `$16,700`. The local runtime fix is in `server/ga4-kpi-benchmark-jobs.ts`: persisted GA4 KPI/Benchmark financial metrics now use the same highest-native-revenue financial candidate model as Overview, with Pipeline Proxy still excluded. Existing deployed rows will update only after the fixed recompute path runs; use the existing campaign-scoped GA4 refresh endpoint or wait for scheduler/source recompute before rerunning this read-only helper.
 
-Remaining active HubSpot clean-certification queue after local 4.15 other-campaign portability automation:
+Remaining active HubSpot clean-certification queue after local 4.16 alternate-mapping automation:
 
-1. Capture deployed Current Commit 4.15 output for at least one additional campaign/property packet.
-2. Current Commit 4.16: HubSpot alternate mapping matrix.
+1. Capture deployed Current Commit 4.16 HubSpot alternate-mapping matrix packets for the configured variants.
 
-Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented, regression-covered, deployed, recomputed, and validated for the configured Revenue KPI/Benchmark packet. The deployed helper returned `overallPass: true`; endpoint, read-only, KPI endpoint, Benchmark endpoint, inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, required row presence, required row value matches, financial revenue match, and HubSpot revenue match checks all passed. Current Commit 4.14 adds local regression coverage that scheduled/test report emails attach the GA4 PDF built from the same HubSpot-aware report payload, and deployed email/PDF evidence is user-confirmed for the configured GA4 Overview Report packet: the PDF was attached/openable and matched the HubSpot-aware GA4 report values. Exact provider delivery-event IDs are not recorded in this repo. These close only their configured packets. Current Commit 4.15 adds a local read-only portability runner for additional campaign/property entries, but deployed other-campaign evidence remains pending until `hubspotOtherCampaignPortabilityPack(...)` passes for supplied expected HubSpot values. Other unlisted campaigns, alternate mappings, other KPI/Benchmark metrics, other report/email variants, future sends, and future provider mutations remain separate evidence.
+Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented, regression-covered, deployed, recomputed, and validated for the configured Revenue KPI/Benchmark packet. The deployed helper returned `overallPass: true`; endpoint, read-only, KPI endpoint, Benchmark endpoint, inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, required row presence, required row value matches, financial revenue match, and HubSpot revenue match checks all passed. Current Commit 4.14 adds local regression coverage that scheduled/test report emails attach the GA4 PDF built from the same HubSpot-aware report payload, and deployed email/PDF evidence is user-confirmed for the configured GA4 Overview Report packet: the PDF was attached/openable and matched the HubSpot-aware GA4 report values. Exact provider delivery-event IDs are not recorded in this repo. These close only their configured packets. Current Commit 4.15 deployed evidence is user-captured for the two supplied campaign/property entries: original campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` with HubSpot revenue `$16,100` and additional campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418` with HubSpot revenue `$8,000`; `overallPass: true`, all campaign packets passed, and no active/revenue HubSpot source IDs overlapped across campaigns. Other unlisted campaigns, alternate mappings, other KPI/Benchmark metrics, other report/email variants, future sends, and future provider mutations remain separate evidence. Current Commit 4.16 adds local read-only alternate-mapping matrix automation and regression coverage in runner version `2026-07-05.2`; deployed variant evidence is still pending.
 
 For Current Commit 4.15 read-only HubSpot other-campaign portability validation, use the latest runner after the additional campaign has an already-created HubSpot revenue source:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-05.1');
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
 
 await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({
   campaigns: [
@@ -288,10 +288,38 @@ await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({
 ```
 
 This helper is read-only: it uses GET endpoints only, does not create/edit/delete sources, does not refresh providers, does not call HubSpot, does not trigger scheduler, does not recompute metrics, does not send reports/emails, and does not mutate source data. Each campaign entry must provide `expectedHubspotRevenueForFinancials` and `expectedSelectedValues`; otherwise the packet fails by design. A pass proves only the supplied campaign/property entries, their expected HubSpot selected values/totals, and cross-campaign HubSpot source-ID separation returned by deployed endpoints. It does not prove unlisted campaigns, alternate mappings, raw database rows, HubSpot provider objects, Reports, KPI/Benchmark, emails, or future provider mutations.
+
+For Current Commit 4.16 read-only HubSpot alternate-mapping matrix validation, use the latest runner after each variant source already exists and after any edit/update source-ID stability evidence has been captured:
+
+```js
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
+
+await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({
+  variants: [
+    {
+      label: 'dealname-amount-closedate-single',
+      campaignId: 'CAMPAIGN_ID',
+      propertyId: 'PROPERTY_ID',
+      expectedSourceId: 'HUBSPOT_SOURCE_ID',
+      expectedCampaignProperty: 'dealname',
+      expectedSelectedValues: ['HUBSPOT_SELECTED_VALUE'],
+      expectedRevenueProperty: 'amount',
+      expectedDateField: 'closedate',
+      expectedDailyMaterialization: 'selected_date_field_v1',
+      expectedHubspotRevenue: 8000,
+      expectedRecordCount: 2,
+      expectedPipelineEnabled: false
+    }
+  ]
+});
+```
+
+This helper is read-only and strict. It uses GET endpoints only and does not create/edit/delete sources, refresh providers, call HubSpot, trigger scheduler, recompute metrics, send reports/emails, or mutate source data. It validates persisted HubSpot source provenance, daily materialization metadata, and revenue-breakdown totals for each supplied variant; it does not inspect raw daily row dates. A variant fails if expected campaign property, selected values/count, revenue property, date field, daily materialization, source ID, or HubSpot revenue are missing/mismatched. Source-ID stability is proven only when `expectedSourceId` comes from a separate before/after edit check. A pass proves only the configured variant rows; unlisted mappings, raw HubSpot provider objects, rendered pixels, Reports, KPI/Benchmark, emails, and future provider mutations remain unproven.
+
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-04.11');
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
 
 await GA4OverviewValidation.hubspotReportValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',

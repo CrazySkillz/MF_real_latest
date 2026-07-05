@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-05.1";
+  var VERSION = "2026-07-05.2";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -2694,6 +2694,194 @@
     console.log(summary);
     return summary;
   }
+  function hubspotMappingSourceRevenue(source, revenueBreakdownRows) {
+    var id = sourceId(source);
+    var breakdownRow = id ? revenueBreakdownRows.find(function (row) { return sourceId(row) === id; }) || null : null;
+    var breakdownAmount = sourceAmount(breakdownRow, "revenue");
+    if (breakdownAmount !== null) return breakdownAmount;
+    var sourceRevenue = firstNumber(source, ["revenueTotal", "revenue", "amount", "totalRevenue", "total", "value"]);
+    if (sourceRevenue !== null) return money(sourceRevenue);
+    return null;
+  }
+
+  function hubspotMappingSelectedValues(source) {
+    var mapping = source && source.mapping || mappingConfig(source);
+    return arrayValues(mapping.selectedValues || mapping.campaignValues || mapping.campaignValue);
+  }
+
+  function hubspotMappingResolveSource(activeSources, config) {
+    var expectedSourceId = config.expectedSourceId || config.sourceId || null;
+    var expectedSelectedValues = config.expectedSelectedValues !== undefined
+      ? hubspotPortabilityUniqueSorted(config.expectedSelectedValues)
+      : null;
+    if (expectedSourceId) {
+      return activeSources.find(function (source) {
+        return String(source && (source.sourceId || source.id || sourceId(source)) || "") === String(expectedSourceId);
+      }) || null;
+    }
+    if (expectedSelectedValues) {
+      return activeSources.find(function (source) {
+        return hubspotPortabilitySameValues(hubspotMappingSelectedValues(source), expectedSelectedValues);
+      }) || null;
+    }
+    return activeSources.length === 1 ? activeSources[0] : null;
+  }
+
+  async function hubspotAlternateMappingVariantPoint(config, index) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "variants[" + index + "].campaignId");
+    var propertyId = requireValue(config.propertyId, "variants[" + index + "].propertyId");
+    var results = await Promise.all([
+      fetchJson("campaign", "/api/campaigns/" + encodeURIComponent(campaignId)),
+      fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
+      fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
+      fetchJson("hubspotSourceDamageInventory", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory")
+    ]);
+    var byName = endpointMap(results);
+    var damage = byName.hubspotSourceDamageInventory && byName.hubspotSourceDamageInventory.data || {};
+    var sourceDefinitions = rowsOf(byName.revenueSources && byName.revenueSources.data);
+    var revenueBreakdownRows = rowsOf(byName.revenueBreakdown && byName.revenueBreakdown.data);
+    var provenanceSources = damage && damage.hubspotProvenance && Array.isArray(damage.hubspotProvenance.activeSources)
+      ? damage.hubspotProvenance.activeSources
+      : [];
+    var fallbackHubspotSources = sourceDefinitions.filter(function (source) {
+      return sourceActive(source) && sourceType(source).indexOf("hubspot") !== -1;
+    });
+    var activeHubspotSources = provenanceSources.length > 0 ? provenanceSources : fallbackHubspotSources;
+    var activeSource = hubspotMappingResolveSource(activeHubspotSources, config);
+    var mapping = activeSource && activeSource.mapping || mappingConfig(activeSource);
+    var expectedSourceId = config.expectedSourceId || config.sourceId || null;
+    var expectedSelectedValues = config.expectedSelectedValues !== undefined
+      ? hubspotPortabilityUniqueSorted(config.expectedSelectedValues)
+      : null;
+    var selectedValues = activeSource ? hubspotPortabilityUniqueSorted(hubspotMappingSelectedValues(activeSource)) : [];
+    var expectedSelectedValuesCount = config.expectedSelectedValuesCount !== undefined
+      ? Number(config.expectedSelectedValuesCount)
+      : (expectedSelectedValues ? expectedSelectedValues.length : undefined);
+    var actualRevenue = activeSource ? hubspotMappingSourceRevenue(activeSource, revenueBreakdownRows) : null;
+    var expectedHubspotRevenueProvided = config.expectedHubspotRevenue !== undefined || config.expectedHubspotRevenueForFinancials !== undefined;
+    var expectedHubspotRevenue = config.expectedHubspotRevenue !== undefined ? config.expectedHubspotRevenue : config.expectedHubspotRevenueForFinancials;
+    var endpointStatuses = results.map(compactEndpointStatus);
+    var checks = {
+      endpointsPass: endpointStatuses.every(function (status) { return status.pass === true; }),
+      readonly: damage.readonly === true,
+      campaignEndpointPasses: !!(byName.campaign && byName.campaign.pass),
+      inventoryPass: damage.hubspotInventoryPass === true,
+      hubspotFindingsClear: Number(damage.hubspotSummary && damage.hubspotSummary.hubspotFindingCount || 0) === 0,
+      activeSourceResolved: !!activeSource,
+      sourceIdStableEvidenceProvided: !!expectedSourceId,
+      expectedSourceIdMatches: expectedSourceId ? !!activeSource && String(activeSource.sourceId || activeSource.id || sourceId(activeSource)) === String(expectedSourceId) : undefined,
+      ga4PlatformContext: !!activeSource && String(activeSource.platformContext || "ga4").toLowerCase() === "ga4" && String(mapping.platformContext || "ga4").toLowerCase() === "ga4",
+      expectedCampaignPropertyProvided: config.expectedCampaignProperty !== undefined,
+      campaignPropertyMatchesExpected: config.expectedCampaignProperty !== undefined ? String(mapping.campaignProperty || "") === String(config.expectedCampaignProperty) : false,
+      expectedSelectedValuesProvided: expectedSelectedValues !== null,
+      selectedValuesMatchExpected: expectedSelectedValues !== null ? hubspotPortabilitySameValues(selectedValues, expectedSelectedValues) : false,
+      selectedValuesCountMatchesExpected: expectedSelectedValuesCount !== undefined ? selectedValues.length === expectedSelectedValuesCount : false,
+      expectedRevenuePropertyProvided: config.expectedRevenueProperty !== undefined,
+      revenuePropertyMatchesExpected: config.expectedRevenueProperty !== undefined ? String(mapping.revenueProperty || "") === String(config.expectedRevenueProperty) : false,
+      expectedDateFieldProvided: config.expectedDateField !== undefined,
+      dateFieldMatchesExpected: config.expectedDateField !== undefined ? String(mapping.dateField || "") === String(config.expectedDateField) : false,
+      expectedDailyMaterializationProvided: config.expectedDailyMaterialization !== undefined,
+      dailyMaterializationMatchesExpected: config.expectedDailyMaterialization !== undefined ? String(mapping.dailyMaterialization || "") === String(config.expectedDailyMaterialization || "") : false,
+      expectedHubspotRevenueProvided: expectedHubspotRevenueProvided,
+      hubspotRevenueMatchesExpected: expectedHubspotRevenueProvided ? closeMoney(actualRevenue, expectedHubspotRevenue) : false,
+      recordCountMatchesExpected: config.expectedRecordCount !== undefined ? Number(activeSource && activeSource.recordCount || 0) === Number(config.expectedRecordCount) : undefined,
+      pipelineEnabledMatchesExpected: config.expectedPipelineEnabled !== undefined ? !!(mapping && mapping.pipelineEnabled) === !!config.expectedPipelineEnabled : undefined,
+      proofUsesHubspotRowsOnly: true
+    };
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var point = {
+      label: config.label || null,
+      campaignId: campaignId,
+      propertyId: propertyId,
+      readonly: true,
+      activeSource: activeSource ? {
+        sourceId: activeSource.sourceId || activeSource.id || sourceId(activeSource),
+        displayName: activeSource.displayName || activeSource.name || null,
+        platformContext: activeSource.platformContext || null,
+        isActive: activeSource.isActive !== false,
+        recordCount: Number(activeSource.recordCount || 0),
+        revenueTotal: actualRevenue,
+        mapping: {
+          platformContext: mapping.platformContext || null,
+          campaignProperty: mapping.campaignProperty || null,
+          selectedValues: selectedValues,
+          selectedValuesCount: selectedValues.length,
+          revenueProperty: mapping.revenueProperty || null,
+          dateField: mapping.dateField || null,
+          pipelineEnabled: mapping.pipelineEnabled === true,
+          pipelineStageId: mapping.pipelineStageId || null,
+          pipelineStageLabel: mapping.pipelineStageLabel || null,
+          dailyMaterialization: mapping.dailyMaterialization || null
+        }
+      } : null,
+      expected: {
+        sourceId: expectedSourceId,
+        campaignProperty: config.expectedCampaignProperty,
+        selectedValues: expectedSelectedValues,
+        selectedValuesCount: expectedSelectedValuesCount,
+        revenueProperty: config.expectedRevenueProperty,
+        dateField: config.expectedDateField,
+        dailyMaterialization: config.expectedDailyMaterialization,
+        hubspotRevenue: expectedHubspotRevenue,
+        recordCount: config.expectedRecordCount,
+        pipelineEnabled: config.expectedPipelineEnabled
+      },
+      activeHubspotSourceIds: hubspotPortabilityUniqueSorted(activeHubspotSources.map(function (source) { return source && (source.sourceId || source.id || sourceId(source)); })),
+      hubspotSummary: damage.hubspotSummary || null,
+      hubspotFindings: damage.hubspotFindings || {},
+      endpointStatus: endpointStatuses,
+      checks: effectiveChecks
+    };
+    point.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    return point;
+  }
+
+  async function hubspotAlternateMappingMatrixPack(config) {
+    config = config || {};
+    var variants = Array.isArray(config.variants) ? config.variants : [];
+    if (variants.length === 0 && config.campaignId) variants = [config];
+    var points = await Promise.all(variants.map(function (variant, index) {
+      return hubspotAlternateMappingVariantPoint(variant, index);
+    }));
+    var labels = hubspotPortabilityUniqueSorted(points.map(function (point, index) { return point.label || "variant-" + index; }));
+    var expectedSourceIds = hubspotPortabilityUniqueSorted(variants.map(function (variant) { return variant && (variant.expectedSourceId || variant.sourceId); }));
+    var actualSourceIds = hubspotPortabilityUniqueSorted(points.map(function (point) { return point.activeSource && point.activeSource.sourceId; }));
+    var checks = {
+      readonly: true,
+      variantsProvided: variants.length > 0,
+      variantLabelsUnique: labels.length === points.length,
+      sourceIdsUniqueWhenProvided: expectedSourceIds.length === 0 || expectedSourceIds.length === variants.filter(function (variant) { return !!(variant && (variant.expectedSourceId || variant.sourceId)); }).length,
+      allVariantPacketsPass: points.length === variants.length && points.every(function (point) { return point.overallPass === true; }),
+      resolvedSourceIdsUniqueWithinMatrix: actualSourceIds.length === points.filter(function (point) { return !!(point.activeSource && point.activeSource.sourceId); }).length,
+      proofUsesHubspotRowsOnly: true
+    };
+    var effectiveChecks = Object.keys(checks).reduce(function (map, name) {
+      if (checks[name] !== undefined) map[name] = checks[name];
+      return map;
+    }, {});
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: config.stage || "4.16-hubspot-alternate-mapping-matrix",
+      readonly: true,
+      variantCount: points.length,
+      variants: points,
+      checks: effectiveChecks,
+      caveats: [
+        "This HubSpot alternate mapping matrix helper is read-only and uses GET endpoints only; it does not create, edit, delete, refresh, recompute, send reports/emails, call HubSpot, or mutate records.",
+        "It validates persisted source provenance, daily materialization metadata, and revenue breakdown totals for supplied variants only; it does not inspect raw daily row dates, raw HubSpot provider objects, or rendered UI pixels.",
+        "Source-ID stability is evidence only when the expectedSourceId was captured from a separate before/after edit flow; unlisted mappings and future provider mutations remain unproven."
+      ]
+    };
+    summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
+
   function googleSheetsAmount(sourceRow, breakdownRows, family) {
     var id = sourceId(sourceRow);
     var breakdownRow = breakdownRows.find(function (row) { return sourceId(row) === id; }) || null;
@@ -2944,7 +3132,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-05.1')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-05.2')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
@@ -2958,6 +3146,7 @@
       "await GA4OverviewValidation.hubspotReportValuePack({ campaignId, propertyId, reportId, targetCampaignName: 'GA4_CAMPAIGN_ROW', expectedTargetHubspotRevenue: 5000, requirePdf: true })",
       "await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({ campaignId, propertyId, requiredKpiMetrics: ['Revenue', 'ROAS', 'ROI', 'CPA'], requiredBenchmarkMetrics: ['revenue', 'roas', 'roi', 'cpa'] })",
       "await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({ campaigns: [{ campaignId: 'CAMPAIGN_A', propertyId: 'PROPERTY_A', expectedHubspotRevenueForFinancials: 1000, expectedSelectedValues: ['CRM_VALUE_A'] }, { campaignId: 'CAMPAIGN_B', propertyId: 'PROPERTY_B', expectedHubspotRevenueForFinancials: 2000, expectedSelectedValues: ['CRM_VALUE_B'] }] })",
+      "await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({ variants: [{ label: 'dealname-amount-closedate', campaignId: 'CAMPAIGN_ID', propertyId: 'PROPERTY_ID', expectedSourceId: 'SOURCE_ID', expectedCampaignProperty: 'dealname', expectedSelectedValues: ['CRM_VALUE'], expectedRevenueProperty: 'amount', expectedDateField: 'closedate', expectedDailyMaterialization: 'selected_date_field_v1', expectedHubspotRevenue: 8000, expectedRecordCount: 2 }] })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -2990,6 +3179,7 @@
     hubspotReportValuePack: hubspotReportValuePack,
     hubspotKpiBenchmarkValuePack: hubspotKpiBenchmarkValuePack,
     hubspotOtherCampaignPortabilityPack: hubspotOtherCampaignPortabilityPack,
+    hubspotAlternateMappingMatrixPack: hubspotAlternateMappingMatrixPack,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

@@ -26,6 +26,7 @@ Read-only functions:
 - `GA4OverviewValidation.hubspotCampaignBreakdownAfter(config)`
 - `GA4OverviewValidation.hubspotReportValuePack(config)`
 - `GA4OverviewValidation.hubspotKpiBenchmarkValuePack(config)`
+- `GA4OverviewValidation.hubspotOtherCampaignPortabilityPack(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
 
 Explicit mutation helpers:
@@ -254,14 +255,39 @@ This helper is read-only: it uses GET endpoints only, does not create KPI/Benchm
 
 Recorded 4.13 deployed mismatch before the persisted-job fix: if the packet shows `actualCurrentValue: 35317.57` and `expectedCurrentValue: 44864.15`, do not change the expected values. That output proves the KPI/Benchmark endpoint rows are using GA4 to-date native revenue `$18,617.57` plus imported revenue `$16,700`, while Overview uses breakdown native revenue `$28,164.15` plus imported revenue `$16,700`. The local runtime fix is in `server/ga4-kpi-benchmark-jobs.ts`: persisted GA4 KPI/Benchmark financial metrics now use the same highest-native-revenue financial candidate model as Overview, with Pipeline Proxy still excluded. Existing deployed rows will update only after the fixed recompute path runs; use the existing campaign-scoped GA4 refresh endpoint or wait for scheduler/source recompute before rerunning this read-only helper.
 
-Remaining active HubSpot clean-certification queue after local 4.14 email attachment automation:
+Remaining active HubSpot clean-certification queue after local 4.15 other-campaign portability automation:
 
-1. Deployed HubSpot email delivery evidence for the configured GA4 Overview Report, if not intentionally deferred.
-2. Current Commit 4.15: HubSpot other-campaign portability pack.
-3. Current Commit 4.16: HubSpot alternate mapping matrix.
+1. Capture deployed Current Commit 4.15 output for at least one additional campaign/property packet.
+2. Current Commit 4.16: HubSpot alternate mapping matrix.
 
-Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented, regression-covered, deployed, recomputed, and validated for the configured Revenue KPI/Benchmark packet. The deployed helper returned `overallPass: true`; endpoint, read-only, KPI endpoint, Benchmark endpoint, inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, required row presence, required row value matches, financial revenue match, and HubSpot revenue match checks all passed. Current Commit 4.14 adds local regression coverage that scheduled/test report emails attach the GA4 PDF built from the same HubSpot-aware report payload, but it does not send email. Deployed email delivery still requires a real test-send or scheduled-send with provider acceptance plus actual inbox receipt or provider delivery-event evidence. These close only their configured packets; other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
+Current Commit 4.13 local automation and the persisted-job financial-source runtime fix are implemented, regression-covered, deployed, recomputed, and validated for the configured Revenue KPI/Benchmark packet. The deployed helper returned `overallPass: true`; endpoint, read-only, KPI endpoint, Benchmark endpoint, inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, required row presence, required row value matches, financial revenue match, and HubSpot revenue match checks all passed. Current Commit 4.14 adds local regression coverage that scheduled/test report emails attach the GA4 PDF built from the same HubSpot-aware report payload, and deployed email/PDF evidence is user-confirmed for the configured GA4 Overview Report packet: the PDF was attached/openable and matched the HubSpot-aware GA4 report values. Exact provider delivery-event IDs are not recorded in this repo. These close only their configured packets. Current Commit 4.15 adds a local read-only portability runner for additional campaign/property entries, but deployed other-campaign evidence remains pending until `hubspotOtherCampaignPortabilityPack(...)` passes for supplied expected HubSpot values. Other unlisted campaigns, alternate mappings, other KPI/Benchmark metrics, other report/email variants, future sends, and future provider mutations remain separate evidence.
 
+For Current Commit 4.15 read-only HubSpot other-campaign portability validation, use the latest runner after the additional campaign has an already-created HubSpot revenue source:
+
+```js
+await import('/ga4-overview-validation-runner.js?v=2026-07-05.1');
+
+await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({
+  campaigns: [
+    {
+      label: 'original-validated-campaign',
+      campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
+      propertyId: '542352127',
+      expectedHubspotRevenueForFinancials: 16100,
+      expectedSelectedValues: ['yesop_brand_search', 'LI_B2B_SaaS_US_Q1 - Deal 3', 'LI_Enterprise_ABN_Q2']
+    },
+    {
+      label: 'additional-campaign-under-test',
+      campaignId: 'OTHER_CAMPAIGN_ID',
+      propertyId: 'OTHER_PROPERTY_ID',
+      expectedHubspotRevenueForFinancials: 1234.56,
+      expectedSelectedValues: ['OTHER_HUBSPOT_VALUE']
+    }
+  ]
+});
+```
+
+This helper is read-only: it uses GET endpoints only, does not create/edit/delete sources, does not refresh providers, does not call HubSpot, does not trigger scheduler, does not recompute metrics, does not send reports/emails, and does not mutate source data. Each campaign entry must provide `expectedHubspotRevenueForFinancials` and `expectedSelectedValues`; otherwise the packet fails by design. A pass proves only the supplied campaign/property entries, their expected HubSpot selected values/totals, and cross-campaign HubSpot source-ID separation returned by deployed endpoints. It does not prove unlisted campaigns, alternate mappings, raw database rows, HubSpot provider objects, Reports, KPI/Benchmark, emails, or future provider mutations.
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 
 ```js

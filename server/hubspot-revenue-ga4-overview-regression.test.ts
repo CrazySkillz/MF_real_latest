@@ -333,7 +333,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -451,7 +451,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -484,7 +484,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -511,7 +511,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function parseStoredGa4CampaignFilterForRunner(raw)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
     expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
     expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
@@ -538,7 +538,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownBefore(config)");
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownAfter(config)");
     expect(campaignBreakdownRunner).toContain('"ga4Breakdown"');
@@ -647,7 +647,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(reportRunner).toContain('"reports"');
     expect(reportRunner).toContain('"snapshots"');
     expect(reportRunner).toContain('"snapshotPdf"');
@@ -778,7 +778,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "async function hubspotReportValuePack(config)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-04.11";');
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
     expect(kpiBenchmarkRunner).toContain('"kpis"');
     expect(kpiBenchmarkRunner).toContain('"benchmarks"');
     expect(kpiBenchmarkRunner).toContain('"hubspotSourceDamageInventory"');
@@ -797,5 +797,33 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(kpiBenchmarkRunner).not.toContain("send-test");
     expect(kpiBenchmarkRunner).not.toContain("createSnapshot");
     expect(runner).toContain("hubspotKpiBenchmarkValuePack: hubspotKpiBenchmarkValuePack");
+  });
+  it("exposes a read-only HubSpot other-campaign portability runner", () => {
+    const runner = validationRunnerFile();
+    const portabilityRunner = sliceBetween(
+      runner,
+      "function hubspotPortabilityUniqueSorted(values)",
+      "function googleSheetsAmount(sourceRow, breakdownRows, family)"
+    );
+
+    expect(runner).toContain('var VERSION = "2026-07-05.1";');
+    expect(portabilityRunner).toContain("hubspotPortabilityCampaignPoint");
+    expect(portabilityRunner).toContain('"campaign"');
+    expect(portabilityRunner).toContain('"ga4ToDate"');
+    expect(portabilityRunner).toContain('"ga4Breakdown"');
+    expect(portabilityRunner).toContain('"revenueSources"');
+    expect(portabilityRunner).toContain('"revenueBreakdown"');
+    expect(portabilityRunner).toContain('"hubspotSourceDamageInventory"');
+    expect(portabilityRunner).toContain("expectedHubspotRevenueForFinancials");
+    expect(portabilityRunner).toContain("expectedSelectedValues");
+    expect(portabilityRunner).toContain("selectedValuesMatchExpected");
+    expect(portabilityRunner).toContain("activeHubspotSourceIdsUniqueAcrossCampaigns");
+    expect(portabilityRunner).toContain("hubspotRevenueSourceIdsUniqueAcrossCampaigns");
+    expect(portabilityRunner).toContain("proofUsesHubspotRowsOnly");
+    expect(portabilityRunner).toContain("This HubSpot other-campaign portability helper is read-only");
+    expect(portabilityRunner).not.toContain('method: "POST"');
+    expect(portabilityRunner).not.toContain("send-test");
+    expect(portabilityRunner).not.toContain("createSnapshot");
+    expect(runner).toContain("hubspotOtherCampaignPortabilityPack: hubspotOtherCampaignPortabilityPack");
   });
 });

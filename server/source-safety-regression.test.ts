@@ -106,6 +106,40 @@ describe("source safety regression guards", () => {
     expect(shopifyConnectRoute).not.toContain("process.env.APP_BASE_URL ||\n        process.env.RENDER_EXTERNAL_URL");
   });
 
+  it("Shopify OAuth start verifies campaign access before storing OAuth state", () => {
+    const source = readRoutesSource();
+    const routeStart = source.indexOf('app.post("/api/auth/shopify/connect"');
+    const routeEnd = source.indexOf("// Salesforce OAuth callback", routeStart);
+    const route = source.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(routeEnd).toBeGreaterThan(routeStart);
+    const accessGuard = "const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);";
+    expect(route).toContain(accessGuard);
+    expect(route.indexOf(accessGuard)).toBeGreaterThan(route.indexOf('if (!shop) return res.status(400).json({ message: "Shop domain is required" });'));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("const clientId = process.env.SHOPIFY_CLIENT_ID"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("getShopifyRedirectUri()"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("shopifyOauthStore.set"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("res.json({ authUrl"));
+  });
+
+  it("Shopify Admin API token connect verifies campaign access before connection mutation", () => {
+    const source = readRoutesSource();
+    const routeStart = source.indexOf('app.post("/api/shopify/connect"');
+    const routeEnd = source.indexOf('app.get("/api/shopify/:campaignId/status"', routeStart);
+    const route = source.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(routeEnd).toBeGreaterThan(routeStart);
+    const accessGuard = "const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);";
+    expect(route).toContain(accessGuard);
+    expect(route.indexOf(accessGuard)).toBeGreaterThan(route.indexOf('if (!token) return res.status(400).json({ error: "accessToken is required" });'));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("shopifyApiFetch({"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.getShopifyConnections(campaignIdStr)"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.updateShopifyConnection"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.createShopifyConnection"));
+  });
+
   it("CSV revenue process refuses to update non-CSV revenue sources", () => {
     const source = readRoutesSource();
     const routeStart = source.indexOf('"/api/campaigns/:id/revenue/csv/process"');

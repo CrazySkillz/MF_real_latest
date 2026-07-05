@@ -10,7 +10,15 @@ const LINKEDIN_REVENUE_FILE = join(__dirname, "utils", "linkedin-revenue.ts");
 const KPI_REFRESH_FILE = join(__dirname, "utils", "kpi-refresh.ts");
 
 function read(file: string): string {
-  return readFileSync(file, "utf-8");
+  return readFileSync(file, "utf-8").replace(/\r\n/g, "\n");
+}
+
+function routeSection(content: string, start: string, end: string): string {
+  const startIndex = content.indexOf(start);
+  expect(startIndex).toBeGreaterThan(-1);
+  const endIndex = content.indexOf(end, startIndex);
+  expect(endIndex).toBeGreaterThan(startIndex);
+  return content.slice(startIndex, endIndex);
 }
 
 describe("Shopify revenue regression guard", () => {
@@ -46,6 +54,37 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain("const seenUrls = new Set<string>();");
     expect(routes).toContain("if (nextUrl) {");
     expect(routes).toContain("Shopify orders pagination limit exceeded");
+  });
+
+  it("uses paginated Shopify order reads when saving revenue mappings", () => {
+    const routes = read(ROUTES_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    expect(saveRoute).toContain("const orders = await shopifyFetchAllOrders({");
+    expect(saveRoute).toContain("apiVersion,");
+    expect(saveRoute).toContain("createdAtMin,");
+    expect(saveRoute).not.toContain("const ordersResp = await shopifyApiFetch({");
+    expect(saveRoute).not.toContain("const orders: any[] = Array.isArray(ordersResp?.orders)");
+  });
+
+  it("fails closed when Shopify revenue record materialization fails", () => {
+    const routes = read(ROUTES_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+    const catchStart = saveRoute.indexOf('console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);');
+    expect(catchStart).toBeGreaterThan(-1);
+    const catchBlock = saveRoute.slice(catchStart, saveRoute.indexOf("// Ensure KPIs/alerts", catchStart));
+
+    expect(catchBlock).toContain("return res.status(500).json({");
+    expect(catchBlock).toContain("success: false");
+    expect(catchBlock).toContain("Failed to materialize Shopify revenue records");
   });
 
   it("infers missing Shopify auth type without overriding saved auth type", () => {

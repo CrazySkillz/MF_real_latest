@@ -9524,6 +9524,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!campaignIdStr) return res.status(400).json({ message: "Campaign ID is required" });
       if (!shop) return res.status(400).json({ message: "Shop domain is required" });
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);
+      if (!ok) return;
 
       const clientId = process.env.SHOPIFY_CLIENT_ID || "";
       const scopeRaw = String(process.env.SHOPIFY_SCOPES || "read_orders,read_customers");
@@ -31971,6 +31973,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignIdStr) return res.status(400).json({ error: "campaignId is required" });
       if (!shop) return res.status(400).json({ error: "shopDomain is required" });
       if (!token) return res.status(400).json({ error: "accessToken is required" });
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);
+      if (!ok) return;
 
       // Validate token by fetching shop info
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
@@ -32365,12 +32369,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
       const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
-      const ordersResp = await shopifyApiFetch({
+      const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
-        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+        apiVersion,
+        createdAtMin,
       });
-      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
 
       const getFieldValue = (o: any): string => {
         const utm = getUtmFromOrder(o);
@@ -32707,8 +32711,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // best-effort cleanup; ignore errors
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
+        return res.status(500).json({
+          success: false,
+          error: e?.message || "Failed to materialize Shopify revenue records",
+        });
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.

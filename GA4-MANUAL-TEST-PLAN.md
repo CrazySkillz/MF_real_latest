@@ -843,6 +843,7 @@ Checkpoint after Journey 8:
 - [ ] Confirm Shopify `Review Settings` revenue breakdown rows show campaign/value label and amount without order-count text such as `(1 order)`
 - [ ] After Shopify edit/re-import, verify revenue, KPI, Benchmark, Reports, and Notifications requests refetch; the recorded Current Commit 6 deployed packet closed this cache/refetch check only, not report PDF contents, KPI/Benchmark row-value parity, notification row values, or email delivery
 - [ ] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes
+- [ ] Current Commit 8 portability/provider-boundary validation: capture a Shopify-specific read-only endpoint packet for another Admin API token campaign or another mapping; real >250 matching-order provider evidence requires a Shopify store/window with more than 250 matching orders
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts
@@ -1224,6 +1225,7 @@ Required reconciliation checks:
 - [ ] If a new order comes in → verify revenue updates after scheduler
 - [ ] For Current Commit 6 downstream cache/refetch validation, use the browser watcher around Shopify edit/re-import and confirm `overallPass: true`, revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, one Shopify source is present, and Shopify breakdown revenue matches the imported amount; do not treat this as email/PDF/value-level proof
 - [ ] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path: report/PDF values, KPI/Benchmark row values, notification row values, and actual delivered report email were user-confirmed. Repeat this validation for future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes
+- [ ] Current Commit 8 deployed portability evidence requires a second Shopify Admin API token campaign/mapping endpoint packet proving Shopify source/revenue totals are present, inventory is clean, source IDs do not overlap with the original campaign, and unrelated spend/revenue totals are unchanged. Real >250 matching-order provider evidence remains unproven without a matching Shopify fixture
 
 ### GA4 (real connection)
 - [ ] Connect a real GA4 property (not yesop mock)

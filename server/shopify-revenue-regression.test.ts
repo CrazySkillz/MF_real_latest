@@ -168,6 +168,58 @@ describe("Shopify revenue regression guard", () => {
     expect(saveRoute).not.toContain("const orders: any[] = Array.isArray(ordersResp?.orders)");
   });
 
+  it("uses paginated Shopify order reads for every Shopify order endpoint", () => {
+    const routes = read(ROUTES_FILE);
+    const autoRecalc = routeSection(
+      routes,
+      "const recalculateShopifyConversionValueIfNeeded",
+      'app.post("/api/shopify/connect"',
+    );
+    const previewRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/orders/preview"',
+      'app.get("/api/shopify/:campaignId/orders/unique-values"',
+    );
+    const uniqueValuesRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/orders/unique-values"',
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+    );
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    for (const block of [autoRecalc, previewRoute, uniqueValuesRoute, saveRoute]) {
+      expect(block).toContain("shopifyFetchAllOrders({");
+      expect(block).not.toContain("orders.json?status=any&limit=250");
+    }
+  });
+
+  it("keeps Shopify save portable across campaign and mapping variants", () => {
+    const routes = read(ROUTES_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    expect(saveRoute).toContain("const campaignId = req.params.id;");
+    expect(saveRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
+    expect(saveRoute).toContain("const conn = await getShopifyConnectionForCampaign(campaignId);");
+    expect(saveRoute).toContain("const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);");
+    expect(saveRoute).toContain("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);");
+    expect(saveRoute).toContain("campaignId,\n              sourceType: \"shopify\",\n              platformContext: platformCtx,");
+    expect(saveRoute).toContain("await storage.deleteRevenueRecordsBySource(String((source as any).id));");
+    expect(saveRoute).toContain("campaignId,\n          revenueSourceId: String((source as any).id),");
+    expect(saveRoute).toContain("const orderCrmValue = getFieldValue(o).trim();");
+    expect(saveRoute).toContain("const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds);");
+    expect(saveRoute).toContain("const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);");
+    expect(saveRoute).toContain("subCampaignUrn: urn,");
+    expect(saveRoute).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });");
+  });
+
   it("fails closed when Shopify revenue record materialization fails", () => {
     const routes = read(ROUTES_FILE);
     const saveRoute = routeSection(

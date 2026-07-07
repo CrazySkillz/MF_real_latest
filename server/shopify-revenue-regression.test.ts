@@ -10,6 +10,8 @@ const LINKEDIN_ANALYTICS_FILE = join(__dirname, "..", "client", "src", "pages", 
 const REVENUE_MODAL_FILE = join(__dirname, "..", "client", "src", "components", "AddRevenueWizardModal.tsx");
 const LINKEDIN_REVENUE_FILE = join(__dirname, "utils", "linkedin-revenue.ts");
 const KPI_REFRESH_FILE = join(__dirname, "utils", "kpi-refresh.ts");
+const GA4_SCHEDULED_REPORT_PDF_FILE = join(__dirname, "ga4-scheduled-report-pdf.ts");
+const GA4_KPI_BENCHMARK_JOBS_FILE = join(__dirname, "ga4-kpi-benchmark-jobs.ts");
 
 function read(file: string): string {
   return readFileSync(file, "utf-8").replace(/\r\n/g, "\n");
@@ -98,6 +100,48 @@ describe("Shopify revenue regression guard", () => {
     expect(scheduler).toContain('reprocessShopify(campaignId, shopCfg, String(shopifySource.id))');
     expect(scheduler).toContain('const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);');
     expect(scheduler).toContain('if (isStaleRevenueSourceReprocess(result)) {');
+  });
+
+  it("keeps Shopify GA4 downstream consumers on source-backed revenue after source changes", () => {
+    const modal = read(REVENUE_MODAL_FILE);
+    const ga4Metrics = read(GA4_METRICS_FILE);
+    const routes = read(ROUTES_FILE);
+    const reportPdf = read(GA4_SCHEDULED_REPORT_PDF_FILE);
+    const kpiBenchmarkJobs = read(GA4_KPI_BENCHMARK_JOBS_FILE);
+
+    const modalDownstreamBlock = routeSection(
+      modal,
+      "// GA4 downstream caches consume source-backed revenue for KPI, Benchmark, Report, and alert values.",
+      "// Best-effort immediate refresh"
+    );
+    expect(modalDownstreamBlock).toContain('["/api/platforms/google_analytics/benchmarks", String(campaignId || "")]');
+    expect(modalDownstreamBlock).toContain('["/api/platforms/google_analytics/reports", campaignId]');
+    expect(modalDownstreamBlock).toContain('["/api/notifications"]');
+
+    const ga4AddRevenueBlock = routeSection(
+      ga4Metrics,
+      "<AddRevenueWizardModal",
+      "<Dialog open={showRevenueSourcesDialog}"
+    );
+    const ga4DeleteRevenueBlock = routeSection(
+      ga4Metrics,
+      'fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}?platformContext=ga4`',
+      'toast({ title: "Revenue source removed"'
+    );
+    for (const block of [ga4AddRevenueBlock, ga4DeleteRevenueBlock]) {
+      expect(block).toContain('[`/api/platforms/google_analytics/kpis`, campaignId]');
+      expect(block).toContain('[`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")]');
+      expect(block).toContain('["/api/platforms/google_analytics/reports", campaignId]');
+      expect(block).toContain("void refreshNotificationQueries();");
+    }
+
+    expect(reportPdf).toContain("const importedRevenueForFinancials = Number(revenueBreakdown.reduce");
+    expect(reportPdf).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");
+    expect(reportPdf).toContain('["Total Revenue", formatMoney(payload.financialRevenue)]');
+    expect(kpiBenchmarkJobs).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
+    expect(kpiBenchmarkJobs).toContain("const inputsForMetric = (metric: string) => isGA4FinancialKpiMetric(metric) ? financialInputs : inputs;");
+    expect(routes).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
+    expect(routes).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs : ga4Inputs;");
   });
 
   it("does not silently truncate Shopify order pagination", () => {

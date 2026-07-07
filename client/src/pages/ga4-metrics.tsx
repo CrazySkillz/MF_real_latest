@@ -6170,6 +6170,10 @@ export default function GA4Metrics() {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
                       queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
                       queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+                      void refreshNotificationQueries();
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
@@ -6403,6 +6407,10 @@ export default function GA4Metrics() {
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
                               queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
                               queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")], exact: false });
+                              queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+                              void refreshNotificationQueries();
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
                               queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });

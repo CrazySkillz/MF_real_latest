@@ -144,13 +144,16 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/custom-integration/reports", campaignId], exact: false });
     }
 
-    // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
+    // GA4 downstream caches consume source-backed revenue for KPI, Benchmark, Report, and alert values.
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
     if (platformContext === 'ga4') {
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/benchmarks", String(campaignId || "")], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/notifications"], exact: false });
     }
     void queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
@@ -163,6 +166,8 @@ export function AddRevenueWizardModal(props: {
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
     if (platformContext === 'ga4') {
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/benchmarks", String(campaignId || "")], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
     }
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
     void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });

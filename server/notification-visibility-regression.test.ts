@@ -40,7 +40,7 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toContain('import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
+    expect(routesFile).toMatch(/import \{[^}]*resolveCampaignCurrentValueForAlert[^}]*\} from "\.\/utils\/campaign-current-values";/);
     expect(routesFile).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> => {");
     expect(routesFile).toContain("const resolved = await resolveCampaignCurrentValueForAlert(row);");
     expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean => {");

@@ -842,7 +842,7 @@ Checkpoint after Journey 8:
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
 - [ ] Confirm Shopify `Review Settings` revenue breakdown rows show campaign/value label and amount without order-count text such as `(1 order)`
 - [ ] After Shopify edit/re-import, verify revenue, KPI, Benchmark, Reports, and Notifications requests refetch; the recorded Current Commit 6 deployed packet closed this cache/refetch check only, not report PDF contents, KPI/Benchmark row-value parity, notification row values, or email delivery
-- [ ] Current Commit 6a: validate Shopify downstream value/content paths separately: Reports/PDF value content, KPI/Benchmark row-value parity, notification row value content, and optional email provider/delivery evidence
+- [ ] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts
@@ -1223,7 +1223,7 @@ Required reconciliation checks:
 - [ ] Verify order count + revenue match Shopify
 - [ ] If a new order comes in → verify revenue updates after scheduler
 - [ ] For Current Commit 6 downstream cache/refetch validation, use the browser watcher around Shopify edit/re-import and confirm `overallPass: true`, revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, one Shopify source is present, and Shopify breakdown revenue matches the imported amount; do not treat this as email/PDF/value-level proof
-- [ ] For Current Commit 6a value/content validation, verify the actual downstream values after Shopify revenue changes: report/PDF values, KPI/Benchmark row values, notification row values, and optional email provider/delivery evidence
+- [ ] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path: report/PDF values, KPI/Benchmark row values, notification row values, and actual delivered report email were user-confirmed. Repeat this validation for future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes
 
 ### GA4 (real connection)
 - [ ] Connect a real GA4 property (not yesop mock)

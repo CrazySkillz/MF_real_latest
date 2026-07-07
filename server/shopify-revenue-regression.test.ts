@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const ROUTES_FILE = join(__dirname, "routes-oauth.ts");
+const AUTO_REFRESH_SCHEDULER_FILE = join(__dirname, "auto-refresh-scheduler.ts");
 const SHOPIFY_WIZARD_FILE = join(__dirname, "..", "client", "src", "components", "ShopifyRevenueWizard.tsx");
 const GA4_METRICS_FILE = join(__dirname, "..", "client", "src", "pages", "ga4-metrics.tsx");
 const LINKEDIN_ANALYTICS_FILE = join(__dirname, "..", "client", "src", "pages", "linkedin-analytics.tsx");
@@ -79,6 +80,24 @@ describe("Shopify revenue regression guard", () => {
 
     expect(routes).toContain("storage.getRevenueSources(campaignId, 'tiktok')");
     expect(routes).toContain("...tiktokRev.map((s: any) => ({ ...s, platformContext: 'tiktok' }))");
+  });
+
+  it("traces Shopify refresh applicability to scheduler only", () => {
+    const ga4Metrics = read(GA4_METRICS_FILE);
+    const routes = read(ROUTES_FILE);
+    const scheduler = read(AUTO_REFRESH_SCHEDULER_FILE);
+
+    expect(routes).not.toContain('shopify-refresh/run-now');
+    expect(routes).not.toContain('shopify-reprocess/run-now');
+    expect(routes).not.toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/shopify');
+    expect(ga4Metrics).not.toContain('shopify-refresh/run-now');
+    expect(ga4Metrics).not.toContain('shopify-reprocess/run-now');
+    expect(scheduler).toContain('async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>');
+    expect(scheduler).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
+    expect(scheduler).toContain('const shopCfg = shopCfgRaw ? { ...shopCfgRaw, platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx } : null;');
+    expect(scheduler).toContain('reprocessShopify(campaignId, shopCfg, String(shopifySource.id))');
+    expect(scheduler).toContain('const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);');
+    expect(scheduler).toContain('if (isStaleRevenueSourceReprocess(result)) {');
   });
 
   it("does not silently truncate Shopify order pagination", () => {

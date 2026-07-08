@@ -4558,7 +4558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
         if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
-        if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== String(platformContext).trim().toLowerCase()) {
+        if (platformContext && String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== String(platformContext).trim().toLowerCase()) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
         if (overrideSourceType && String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
@@ -23769,7 +23769,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const connection = await storage.getGoogleAdsConnection(campaignId);
-      if (!connection || (connection as any).spendOnly) return res.json({ success: true, metrics: [] });
+      if (!connection) return res.json({ success: true, metrics: [] });
+      const spendPreview = String((req.query as any)?.spendPreview || "").toLowerCase() === "1" || String((req.query as any)?.spendPreview || "").toLowerCase() === "true";
+      if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });
+      if ((connection as any).spendOnly && String((connection as any).method || "") === "test_mode") return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);

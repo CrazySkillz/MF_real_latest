@@ -718,8 +718,13 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
 
             let rows: any[] = [];
             if (displayName.includes("Google Ads")) {
+              if (!selectedIds || selectedIds.size === 0) {
+                console.error(`[Auto Refresh] Refusing Google Ads spend reprocess for campaign ${campaignId}: missing selected campaign IDs`);
+                skipped++;
+                continue;
+              }
               rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
-              if (selectedIds && selectedIds.size > 0) rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));
+              rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));
             } else if (displayName.includes("Meta")) {
               rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate)) || [];
               if (selectedIds && selectedIds.size > 0) rows = rows.filter((r: any) => selectedIds.has(String(r?.metaCampaignId || "").trim()));

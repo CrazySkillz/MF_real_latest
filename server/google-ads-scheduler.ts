@@ -268,8 +268,9 @@ export async function refreshGoogleAdsForCampaign(
     connection = await storage.getGoogleAdsConnection(campaignId);
   }
   if (!connection) return;
-  if ((connection as any).spendOnly) return;
-
+  const isSpendOnly = !!(connection as any).spendOnly;
+  const isTestMode = String((connection as any).method || "") === "test_mode";
+  if (isSpendOnly && isTestMode) return;
   const campaign = await storage.getCampaign(campaignId).catch(() => null);
   if (!campaign) {
     console.warn(`[Google Ads Scheduler] Skipping refresh for missing campaign ${campaignId}`);

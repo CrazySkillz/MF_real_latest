@@ -590,25 +590,34 @@ Important current-state note:
 
 ## Spend Source 3: Google Ads Journey
 
-The user journey is:
+The intended production user journey is:
 
 1. user clicks `+` on `Total Spend`
 2. the modal opens and the user selects `Google Ads`
-3. if Google Ads is not connected yet, the panel shows two paths
-4. the user can connect a real Google Ads account through OAuth
-5. or the user can enable `Test mode`
-6. once connected, the system fetches Google Ads daily-metrics data and groups it by campaign
-7. the user sees a campaign list with spend, impressions, and clicks
-8. the user selects one or more Google Ads campaigns to include
-9. the user clicks `Import spend`
-10. the system saves a Google Ads spend source with campaign-selection breakdown metadata
-11. the system materializes spend records and recomputes campaign financial values
-12. the GA4 cards and source modal provenance refetches
+3. if Google Ads is not connected yet, the panel shows the real OAuth connection path
+4. after OAuth/customer selection, the system fetches Google Ads daily-metrics data and groups it by campaign
+5. the user sees a campaign list with spend, impressions, and clicks
+6. the user selects one or more Google Ads campaigns to include
+7. the user clicks `Import spend`
+8. the system saves a Google Ads spend source with campaign-selection breakdown metadata
+9. the system materializes spend records and recomputes campaign financial values
+10. the GA4 cards and source modal provenance refetches
 
 Important current-state note:
 
-- `Test mode` is supported here and is intended for validating the full import flow with mock Google Ads data
+- Google Ads test mode is not a production-readiness validation path and must not be used as evidence that Google Ads spend is ready for GA4 Overview
+- Google Ads spend validation must use the real OAuth/customer-selection/provider daily-metrics path
 - like the Meta flow, the selected total is currently persisted through the manual spend-processing route with `ad_platforms` metadata
+
+Google Ads spend Current Commit status:
+
+1. Current Commit 1 is implemented and locally validated. Google Ads test mode has been removed from the GA4 Overview spend evidence path; Meta demo/test mode remains separate, and Google Ads test mode must not be used as readiness evidence.
+2. Current Commit 2 is implemented and locally validated. The GA4 Overview modal handles Google Ads OAuth callback tokens/customer choices, saves a spend-only Google Ads customer selection, triggers refresh, reads spend-only daily metrics only through `spendPreview=1`, and the scheduler allows production spend-only OAuth refresh while still skipping spend-only test mode. The provider call is covered by mocked-provider automation, not live Google Ads provider evidence.
+3. Current Commit 3 is implemented and locally validated. GA4 Overview passes `platformContext="ga4"` into the spend modal, legacy null-context GA4 spend source edits are guarded as GA4, Google Ads import/lifecycle/downstream paths are regression-covered, and scheduler reprocess fails closed when saved Google Ads selected campaign IDs are missing.
+
+Current Commit 3 local validation passed with the focused Google Ads/GA4 spend suite, `npm run check`, and `git diff --check`. This closes the local automated-test gate for Current Commit 3 only. Current Commit 3 does not require UI validation to close the local implementation/test commit; UI validation belongs to the next live-provider certification gate.
+
+These commits do not clean-certify Google Ads spend as production-ready. Live OAuth popup behavior, real Google Ads customer selection, real provider daily metrics, deployed browser add/import/edit/delete behavior, deployed scheduler execution, production database inventory for Google Ads spend rows, and any Google Ads report/email value packets remain unproven until captured with Google Ads-specific evidence.
 
 ## Spend Source 4: Google Sheets Journey
 

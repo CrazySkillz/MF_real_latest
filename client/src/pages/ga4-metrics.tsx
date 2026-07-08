@@ -6144,6 +6144,7 @@ export default function GA4Metrics() {
                     onOpenChange={setShowSpendDialog}
                     currency={(campaign as any)?.currency || "USD"}
                     dateRange={dateRange}
+                    platformContext="ga4"
                     initialSource={editingSpendSource || undefined}
                     onProcessed={() => {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });

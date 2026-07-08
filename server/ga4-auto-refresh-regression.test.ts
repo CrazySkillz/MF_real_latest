@@ -107,6 +107,8 @@ describe("GA4 external value auto-refresh regression guard", () => {
     const content = schedulerFile();
 
     expect(content).toContain("selectedCampaignIds");
+    expect(content).toContain("if (!selectedIds || selectedIds.size === 0)");
+    expect(content).toContain("Refusing Google Ads spend reprocess for campaign ${campaignId}: missing selected campaign IDs");
     expect(content).toContain("selectedIds.has(String(r?.googleCampaignId || \"\").trim())");
     expect(content).toContain("selectedIds.has(String(r?.metaCampaignId || \"\").trim())");
     expect(content).toContain('displayName.includes("Google Ads") ? "Google Ads" : displayName.includes("Meta") ? "Meta" : "Ad platform"');

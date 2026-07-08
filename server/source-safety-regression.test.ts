@@ -1352,7 +1352,10 @@ describe("source safety regression guards", () => {
     expect(dailyRoute).toContain("const selectedSet = new Set(selectedCampaignIds);");
     expect(dailyRoute.indexOf("const selectedSet = new Set(selectedCampaignIds);")).toBeLessThan(dailyRoute.indexOf("res.json({ success: true, metrics })"));
     expect(dailyRoute).toContain('selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId || ""))');
-    expect(dailyRoute).toContain("return res.json({ success: true, metrics: [] });");
+    expect(dailyRoute).toContain("if (!connection) return res.json({ success: true, metrics: [] });");
+    expect(dailyRoute).toContain("const spendPreview =");
+    expect(dailyRoute).toContain("if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });");
+    expect(dailyRoute).toContain('String((connection as any).method || "") === "test_mode"');
 
     const storageSource = readStorageSource();
     const methodStart = storageSource.indexOf("async deleteGoogleAdsConnection(campaignId: string)");
@@ -1365,16 +1368,18 @@ describe("source safety regression guards", () => {
     expect(method.indexOf("tx.delete(googleAdsConnections)")).toBeLessThan(method.indexOf("tx.delete(googleAdsDailyMetrics)"));
   });
 
-  it("Google Ads scheduler fails closed before refreshing stale or spend-only connections", () => {
+  it("Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections", () => {
     const schedulerSource = fs.readFileSync(path.join(process.cwd(), "server", "google-ads-scheduler.ts"), "utf8");
     const refreshStart = schedulerSource.indexOf("export async function refreshGoogleAdsForCampaign");
-    const refreshEnd = schedulerSource.indexOf("/**\n * Start the Google Ads scheduler", refreshStart);
+    const refreshEnd = schedulerSource.indexOf("export function startGoogleAdsScheduler", refreshStart);
     const refreshRoute = schedulerSource.slice(refreshStart, refreshEnd);
 
-    expect(refreshRoute).toContain("if ((connection as any).spendOnly) return;");
+    expect(refreshRoute).toContain("const isSpendOnly = !!(connection as any).spendOnly;");
+    expect(refreshRoute).toContain('const isTestMode = String((connection as any).method || "") === "test_mode";');
+    expect(refreshRoute).toContain("if (isSpendOnly && isTestMode) return;");
     expect(refreshRoute).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => null);");
     expect(refreshRoute).toContain("Skipping refresh for missing campaign");
-    expect(refreshRoute.indexOf("if ((connection as any).spendOnly) return;")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
+    expect(refreshRoute.indexOf("if (isSpendOnly && isTestMode) return;")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("fetchRealGoogleAdsData"));
   });

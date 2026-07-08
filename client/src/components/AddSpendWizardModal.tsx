@@ -40,6 +40,12 @@ type LinkedInSpendCampaign = {
   clicks: number;
 };
 
+type GoogleAdsSpendCustomer = {
+  id: string;
+  descriptiveName?: string;
+  resourceName?: string;
+  manager?: boolean;
+};
 type CsvPreview = {
   success: boolean;
   fileName?: string;
@@ -153,6 +159,9 @@ export function AddSpendWizardModal(props: {
     id: string; name: string; spend: number; impressions: number; clicks: number;
   }>>([]);
   const [selectedAdPlatformCampaignIds, setSelectedAdPlatformCampaignIds] = useState<string[]>([]);
+  const [googleAdsSpendCustomers, setGoogleAdsSpendCustomers] = useState<GoogleAdsSpendCustomer[]>([]);
+  const [selectedGoogleAdsCustomerId, setSelectedGoogleAdsCustomerId] = useState<string>("");
+  const [googleAdsPendingTokens, setGoogleAdsPendingTokens] = useState<{ accessToken?: string; refreshToken?: string; expiresIn?: number } | null>(null);
 
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
@@ -213,6 +222,9 @@ export function AddSpendWizardModal(props: {
       setIsAdPlatformConnecting(false);
       setAdPlatformCampaigns([]);
       setSelectedAdPlatformCampaignIds([]);
+      setGoogleAdsSpendCustomers([]);
+      setSelectedGoogleAdsCustomerId("");
+      setGoogleAdsPendingTokens(null);
   }, [props.open, props.initialSource]);
 
   // Prefill when editing an existing spend source (e.g., after ROAS/ROI are computed).
@@ -337,7 +349,7 @@ export function AddSpendWizardModal(props: {
       setSelectedPlatform(platform);
       setAdPlatformConnected(true);
       setAdPlatformConnectionName(mapping?.adAccountName || "Connected Account");
-      setIsAdPlatformTestMode(!!mapping?.testMode);
+      setIsAdPlatformTestMode(platform === "meta" && !!mapping?.testMode);
       // Fetch ALL campaigns from daily-metrics, then pre-select previously selected ones
       const prevSelectedIds = Array.isArray(mapping?.selectedCampaignIds) ? mapping.selectedCampaignIds : null;
       fetchAdPlatformPreview(platform).then(() => {
@@ -1101,8 +1113,9 @@ export function AddSpendWizardModal(props: {
       }
 
       const apiPath = platform === "google_ads" ? "google-ads" : platform;
+      const spendPreviewParam = platform === "google_ads" ? "&spendPreview=1" : "";
       const resp = await fetch(
-        `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}`
+        `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}${spendPreviewParam}`
       , { credentials: "include" });
       const json = await resp.json().catch(() => ({ metrics: [] }));
       const metrics = json?.metrics || [];
@@ -1166,7 +1179,7 @@ export function AddSpendWizardModal(props: {
           ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
           mappingConfig: {
             platform: selectedPlatform,
-            adAccountName: adPlatformConnectionName || "Test Account",
+            adAccountName: adPlatformConnectionName || `${platformLabel} Account`,
             selectedCampaignIds: selectedAdPlatformCampaignIds,
             breakdown: selectedCampaigns.map(c => ({
               campaignId: c.id,
@@ -1176,7 +1189,7 @@ export function AddSpendWizardModal(props: {
               clicks: c.clicks,
             })),
             fetchedAt: new Date().toISOString(),
-            testMode: isAdPlatformTestMode,
+            testMode: selectedPlatform === "meta" ? isAdPlatformTestMode : false,
           },
         }),
       });
@@ -1221,25 +1234,67 @@ export function AddSpendWizardModal(props: {
         setAdPlatformConnectionName(
           platform === "google_ads" ? (json.customerName || "Google Ads Account") : (json.adAccountName || "Meta Account")
         );
-        setIsAdPlatformTestMode(json.method === "test_mode");
+        setIsAdPlatformTestMode(platform === "meta" && json.method === "test_mode");
         // Auto-fetch spend data
         await fetchAdPlatformPreview(platform);
       }
     } catch { /* ignore */ }
   };
+  const connectGoogleAdsSpendCustomer = async () => {
+    if (selectedPlatform !== "google_ads") return;
+    const selected = googleAdsSpendCustomers.find((customer) => String(customer.id) === selectedGoogleAdsCustomerId);
+    if (!selected || !googleAdsPendingTokens?.accessToken) {
+      toast({ title: "Google Ads account required", description: "Select a Google Ads account to continue.", variant: "destructive" });
+      return;
+    }
 
-  // Handle test mode toggle for Meta / Google Ads
+    setIsAdPlatformConnecting(true);
+    try {
+      const resp = await fetch(`/api/google-ads/${props.campaignId}/select-customer`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: selected.id,
+          customerName: selected.descriptiveName,
+          accessToken: googleAdsPendingTokens.accessToken,
+          refreshToken: googleAdsPendingTokens.refreshToken,
+          expiresIn: googleAdsPendingTokens.expiresIn,
+          managerAccountId: selected.manager ? selected.id : undefined,
+          spendOnly: true,
+        }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success === false) throw new Error(json?.error || json?.message || "Failed to connect Google Ads account");
+
+      const refreshResp = await fetch(`/api/google-ads/${props.campaignId}/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const refreshJson = await refreshResp.json().catch(() => null);
+      if (!refreshResp.ok || refreshJson?.success === false) throw new Error(refreshJson?.error || refreshJson?.message || "Failed to refresh Google Ads spend data");
+
+      setAdPlatformConnected(true);
+      setAdPlatformConnectionName(selected.descriptiveName || "Google Ads Account");
+      setIsAdPlatformTestMode(false);
+      setGoogleAdsSpendCustomers([]);
+      setSelectedGoogleAdsCustomerId("");
+      setGoogleAdsPendingTokens(null);
+      await fetchAdPlatformPreview("google_ads");
+      toast({ title: "Connected to Google Ads", description: "Google Ads spend data is ready to preview and import." });
+    } catch (e: any) {
+      toast({ title: "Connection failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsAdPlatformConnecting(false);
+    }
+  };
+  // Handle test mode toggle for Meta demos only
   const handleAdPlatformTestToggle = async (checked: boolean) => {
-    if (!checked || !selectedPlatform || selectedPlatform === "linkedin") return;
-    if (selectedPlatform === "meta" && !ENABLE_AD_PLATFORM_TEST_MODE) return;
-    if (selectedPlatform !== "meta" && selectedPlatform !== "google_ads") return;
+    if (!checked || selectedPlatform !== "meta" || !ENABLE_AD_PLATFORM_TEST_MODE) return;
     setIsAdPlatformTestMode(true);
     setIsAdPlatformConnecting(true);
     try {
-      const endpoint = selectedPlatform === "google_ads"
-        ? `/api/google-ads/${props.campaignId}/connect-test`
-        : `/api/meta/${props.campaignId}/connect-test`;
-      const resp = await fetch(endpoint, {
+      const resp = await fetch(`/api/meta/${props.campaignId}/connect-test`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ spendOnly: true }),
@@ -1247,14 +1302,12 @@ export function AddSpendWizardModal(props: {
       const json = await resp.json().catch(() => null);
       if (resp.ok && (json?.success !== false)) {
         setAdPlatformConnected(true);
-        setAdPlatformConnectionName(
-          selectedPlatform === "google_ads" ? "Test Google Ads Account" : "Test Meta Ad Account"
-        );
+        setAdPlatformConnectionName("Test Meta Ad Account");
         setIsAdPlatformTestMode(true);
-        toast({ title: "Test mode enabled", description: `Using mock ${selectedPlatform === "google_ads" ? "Google Ads" : "Meta"} data. You can test the full import flow.` });
+        toast({ title: "Test mode enabled", description: "Using mock Meta data. You can test the full import flow." });
         // Auto-fetch all available spend data
         setIsAdPlatformConnecting(false);
-        await fetchAdPlatformPreview(selectedPlatform);
+        await fetchAdPlatformPreview("meta");
         return;
       } else {
         throw new Error(json?.error || "Failed to enable test mode");
@@ -1296,10 +1349,21 @@ export function AddSpendWizardModal(props: {
         const successType = platform === "google_ads" ? "google_ads_auth_success" : "meta_auth_success";
         if (event.data.type === successType) {
           window.removeEventListener("message", handleMessage);
+          if (platform === "google_ads") {
+            const customers = Array.isArray(event.data.customers) ? event.data.customers : [];
+            setGoogleAdsPendingTokens(event.data.tokens || null);
+            setGoogleAdsSpendCustomers(customers);
+            setSelectedGoogleAdsCustomerId(customers.length === 1 ? String(customers[0]?.id || "") : "");
+            setIsAdPlatformConnecting(false);
+            if (customers.length === 0) {
+              toast({ title: "No Google Ads accounts found", description: "The connected Google account has no accessible Google Ads customer accounts.", variant: "destructive" });
+            }
+            return;
+          }
           // Check connection status after OAuth
           await checkAdPlatformConnection(platform);
           setIsAdPlatformConnecting(false);
-          toast({ title: `Connected to ${platform === "google_ads" ? "Google Ads" : "Meta"}!`, description: "You can now preview and import spend data." });
+          toast({ title: "Connected to Meta!", description: "You can now preview and import spend data." });
         }
         const errorType = platform === "google_ads" ? "google_ads_auth_error" : "meta_auth_error";
         if (event.data.type === errorType) {
@@ -1815,7 +1879,7 @@ export function AddSpendWizardModal(props: {
                               <div className="text-sm font-medium">
                                 {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Not connected
                               </div>
-                              {(selectedPlatform === "google_ads" || (selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE)) && (
+                              {selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE && (
                                 <div className="flex items-center gap-2">
                                   <Label htmlFor="ap-test-mode" className="text-xs text-muted-foreground cursor-pointer">Test mode</Label>
                                   <Switch
@@ -1832,7 +1896,41 @@ export function AddSpendWizardModal(props: {
                                 ? "Use Meta test data to validate the spend import flow."
                                 : `Connect your ${selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.`}
                             </p>
-                            {isAdPlatformConnecting ? (
+                            {selectedPlatform === "google_ads" && googleAdsPendingTokens ? (
+                              <div className="space-y-3">
+                                {googleAdsSpendCustomers.length > 0 ? (
+                                  <>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="google-ads-spend-customer">Google Ads account</Label>
+                                      <Select value={selectedGoogleAdsCustomerId} onValueChange={setSelectedGoogleAdsCustomerId}>
+                                        <SelectTrigger id="google-ads-spend-customer">
+                                          <SelectValue placeholder="Select an account..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                          {googleAdsSpendCustomers.map((customer) => (
+                                            <SelectItem key={customer.id} value={String(customer.id)}>
+                                              {customer.descriptiveName || `Account ${customer.id}`}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="default"
+                                      size="sm"
+                                      disabled={!selectedGoogleAdsCustomerId || isAdPlatformConnecting}
+                                      onClick={connectGoogleAdsSpendCustomer}
+                                    >
+                                      {isAdPlatformConnecting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                                      Connect account
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground/70">No accessible Google Ads accounts found.</p>
+                                )}
+                              </div>
+                            ) : isAdPlatformConnecting ? (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 {isAdPlatformTestMode ? "Setting up test data..." : "Connecting..."}

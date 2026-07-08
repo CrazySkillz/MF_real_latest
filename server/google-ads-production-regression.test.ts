@@ -71,7 +71,10 @@ describe("Google Ads production readiness regression guard", () => {
     expect(routes).toContain("const clearGoogleAdsAttributedRevenueSourcesForCampaign = async (campaignId: string) => {");
     expect(routes).toContain("const existing = await storage.getRevenueSources(campaignId, 'google_ads');");
     expect(routes).toContain("const deleted = await storage.deleteGoogleAdsConnection(campaignId);");
-    expect(routes).toContain("if (!connection || (connection as any).spendOnly) return res.json({ success: true, metrics: [] });");
+    expect(routes).toContain("if (!connection) return res.json({ success: true, metrics: [] });");
+    expect(routes).toContain("const spendPreview = String((req.query as any)?.spendPreview || \"\").toLowerCase() === \"1\"");
+    expect(routes).toContain("if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });");
+    expect(routes).toContain("if ((connection as any).spendOnly && String((connection as any).method || \"\") === \"test_mode\") return res.json({ success: true, metrics: [] });");
     expect(selectRoute).toContain("await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);");
     expect(selectRoute).toContain("await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});");
     expect(selectRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.createGoogleAdsConnection"));
@@ -127,5 +130,65 @@ describe("Google Ads production readiness regression guard", () => {
     expect(analytics).toContain("Native Google Ads conversion value and derived conversion-value efficiency. Imported attributed revenue is shown separately.");
     expect(analytics).toContain("Native Google Ads conversion value");
     expect(analytics).toContain("No value recorded");
+  });
+  it("keeps GA4 Overview Google Ads spend production-only and out of test mode", () => {
+    const modal = read("client", "src", "components", "AddSpendWizardModal.tsx");
+    const financialSources = read("GA4", "FINANCIAL_SOURCES.md");
+    const testToggle = sliceBetween(
+      modal,
+      "const handleAdPlatformTestToggle = async (checked: boolean)",
+      "const connectAdPlatformOAuth = async () =>"
+    );
+
+    expect(testToggle).toContain('selectedPlatform !== "meta" || !ENABLE_AD_PLATFORM_TEST_MODE');
+    expect(testToggle).toContain('`/api/meta/${props.campaignId}/connect-test`');
+    expect(testToggle).not.toContain('/api/google-ads/${props.campaignId}/connect-test');
+    expect(modal).toContain('selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE');
+    expect(modal).not.toContain('selectedPlatform === "google_ads" || (selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE)');
+    expect(modal).toContain('testMode: selectedPlatform === "meta" ? isAdPlatformTestMode : false');
+    expect(financialSources).toContain("Google Ads test mode is not a production-readiness validation path");
+    expect(financialSources).toContain("Google Ads spend validation must use the real OAuth/customer-selection/provider daily-metrics path");
+  });
+  it("routes GA4 Overview Google Ads spend through production OAuth customer selection and provider refresh", () => {
+    const modal = read("client", "src", "components", "AddSpendWizardModal.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const scheduler = read("server", "google-ads-scheduler.ts");
+    const oauthHandler = sliceBetween(
+      modal,
+      "if (event.data.type === successType)",
+      "const errorType = platform === \"google_ads\" ? \"google_ads_auth_error\" : \"meta_auth_error\";"
+    );
+    const customerConnect = sliceBetween(
+      modal,
+      "const connectGoogleAdsSpendCustomer = async () =>",
+      "// Handle test mode toggle for Meta demos only"
+    );
+    const dailyRoute = sliceBetween(
+      routes,
+      'app.get("/api/google-ads/:campaignId/daily-metrics"',
+      'app.post("/api/google-ads/:campaignId/refresh"'
+    );
+    const refreshFn = sliceBetween(
+      scheduler,
+      "export async function refreshGoogleAdsForCampaign",
+      "export function startGoogleAdsScheduler"
+    );
+
+    expect(modal).toContain("type GoogleAdsSpendCustomer = {");
+    expect(oauthHandler).toContain('if (platform === "google_ads")');
+    expect(oauthHandler).toContain("setGoogleAdsPendingTokens(event.data.tokens || null);");
+    expect(oauthHandler).toContain("setGoogleAdsSpendCustomers(customers);");
+    expect(oauthHandler).toContain('setSelectedGoogleAdsCustomerId(customers.length === 1 ? String(customers[0]?.id || "") : "");');
+    expect(oauthHandler.indexOf('if (platform === "google_ads")')).toBeLessThan(oauthHandler.indexOf("await checkAdPlatformConnection(platform);"));
+    expect(customerConnect).toContain('fetch(`/api/google-ads/${props.campaignId}/select-customer`');
+    expect(customerConnect).toContain("spendOnly: true");
+    expect(customerConnect).toContain('fetch(`/api/google-ads/${props.campaignId}/refresh`');
+    expect(modal).toContain('const spendPreviewParam = platform === "google_ads" ? "&spendPreview=1" : "";');
+    expect(dailyRoute).toContain("const spendPreview =");
+    expect(dailyRoute).toContain("if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });");
+    expect(dailyRoute).toContain('String((connection as any).method || "") === "test_mode"');
+    expect(refreshFn).toContain("const isSpendOnly = !!(connection as any).spendOnly;");
+    expect(refreshFn).toContain('const isTestMode = String((connection as any).method || "") === "test_mode";');
+    expect(refreshFn).toContain("if (isSpendOnly && isTestMode) return;");
   });
 });

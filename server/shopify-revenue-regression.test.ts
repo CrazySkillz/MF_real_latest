@@ -220,6 +220,20 @@ describe("Shopify revenue regression guard", () => {
     expect(saveRoute).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });");
   });
 
+  it("shows mapped campaign label under Shopify in GA4 revenue sources modal", () => {
+    const ga4Metrics = read(GA4_METRICS_FILE);
+    const helper = routeSection(
+      ga4Metrics,
+      "const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {",
+      "// Merged spend sources for micro copy display",
+    );
+
+    expect(helper).toContain('if (sourceType !== "hubspot" && sourceType !== "shopify") return "";');
+    expect(helper).toContain("mapping?.linkedinCampaignName || mapping?.platformCampaignName || mapping?.campaignName || mapping?.linkedinCampaignUrn");
+    expect(ga4Metrics).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
+    expect(ga4Metrics).toContain("? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText");
+  });
+
   it("fails closed when Shopify revenue record materialization fails", () => {
     const routes = read(ROUTES_FILE);
     const saveRoute = routeSection(

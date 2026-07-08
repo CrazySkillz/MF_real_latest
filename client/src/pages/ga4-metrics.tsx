@@ -2260,7 +2260,8 @@ export default function GA4Metrics() {
   };
 
   const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {
-    if (String(source?.sourceType || "").trim().toLowerCase() !== "hubspot") return "";
+    const sourceType = String(source?.sourceType || "").trim().toLowerCase();
+    if (sourceType !== "hubspot" && sourceType !== "shopify") return "";
     const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
     const labels = mappings
       .map((mapping: any) => String(mapping?.linkedinCampaignName || mapping?.platformCampaignName || mapping?.campaignName || mapping?.linkedinCampaignUrn || "").trim())

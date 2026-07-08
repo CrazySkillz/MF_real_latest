@@ -1584,6 +1584,7 @@ export function AddRevenueWizardModal(props: {
 
   const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
+  const showSalesforceRevenueSource = false; // Salesforce revenue is deferred for v1.
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1689,7 +1690,7 @@ export function AddRevenueWizardModal(props: {
                   </Card>
                 )}
 
-                {!hideCrmSources && (
+                {!hideCrmSources && showSalesforceRevenueSource && (
                   <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "salesforce" || crmDisconnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("salesforce")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">

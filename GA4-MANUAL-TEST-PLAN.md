@@ -103,11 +103,15 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
 - Add revenue source chooser: Google Sheets shows `Connected` after an active Google Sheets revenue source exists, and Upload CSV shows `Uploaded` after an active CSV revenue source exists
+- Add revenue source chooser: Salesforce is hidden for v1; visible v1 choices remain Shopify, HubSpot, Google Sheets, and Upload CSV when CRM/ecommerce choices are allowed
+- Revenue Sources modal: Shopify rows show the mapped campaign name under `Shopify` when saved `campaignMappings` exist, falling back to `Shopify` only when no mapping is saved
 - Source import security: CSV/Sheets preview and process routes only work for campaigns the signed-in user can access
 - Notifications: `View KPI` and `View Benchmark` open the correct GA4 tab and exact card, including when already on the same campaign page
-- Bell: clicking a KPI or Benchmark alert opens the correct GA4 tab and exact card, including when already on the same campaign page
+- Bell: clicking the top-bar bell opens Notifications; the row action from Notifications opens the correct GA4 tab and exact card, including when already on the same campaign page
 - Notifications: page filter uses `Client`, not `Campaign`
 - Alerts: bell + Notifications keep one active in-app alert record per unresolved breach; the first breached KPI/Benchmark email sends immediately on save, and `Immediate`, `Daily`, and `Weekly` control later reminder email cadence
+- Alerts: enabling an alert is not enough to create a bell or Notifications row; only currently breached KPI/Benchmark alert conditions should be visible there
+- Alerts: GA4 Revenue/ROAS/ROI/CPA notification current values and breach visibility must match the live KPI card financial-source model, not a stale persisted-row or imported-only value
 - Alerts: new GA4 KPI and Benchmark forms preselect `Immediate` for `Alert Frequency`; editing an existing item preserves its saved frequency
 - Alerts: bell, Notifications, and email text use card-style number formatting with `Client:`, `Campaign:`, `Current value:`, and `Alert threshold value:` labels instead of raw decimal/parenthesized values
 - Alerts: if a GA4 KPI/Benchmark card is breached but its in-app alert row is missing, the alert should return after the next GA4 recompute / scheduler cycle; simply opening the bell, Notifications, or GA4 page should not be treated as the backfill trigger
@@ -296,6 +300,8 @@ Checkpoint after Journey 1:
 - [ ] Close the dialog
 
 ### Step 11: Verify Insights tab
+
+Status note: GA4 Insights production-readiness validation passed for the current GA4 code scope. Keep the checks below as future regression validation, not as evidence that the current status is still pending.
 - [ ] Click the **Insights** tab
 - [ ] Scroll to **Executive Financials** section: Revenue ≈ $240,352, Spend = $0
 - [ ] Scroll to **Data Summary** section: Sessions/Conversions/CR/Revenue cards populated
@@ -488,8 +494,10 @@ Checkpoint after Journey 5:
 
 ### Step 4: Verify Insights Trends
 - [ ] Click the **Insights** tab → scroll to **Trends** section
-- [ ] **Daily** chart: data points visible (simulation + Run Refresh days)
+- [ ] **Daily** chart: data points visible only for persisted completed GA4 daily rows in the selected property/campaign scope
+- [ ] Downloaded Insights PDF Trends chart uses the same visual contract as the UI for the rendered data: zero-based y-axis, light gridlines, muted axes, blue line, and readable `MM-DD` labels
 - [ ] **Daily** table: rows with day-over-day deltas
+- [ ] `Latest imported day` matches the latest visible chart/table row and may be older than `Completed-day cutoff` when GA4 returned no row for the latest completed day
 - [ ] **7d**: if fewer than 14 days exist, the message says 14 days are required
 - [ ] **30d**: if fewer than 60 days exist, the message says 60 days are required
 - [ ] **Monthly**: if fewer than 2 calendar months exist, the message says 2 calendar months are required
@@ -842,8 +850,9 @@ Checkpoint after Journey 8:
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
 - [ ] Confirm Shopify `Review Settings` revenue breakdown rows show campaign/value label and amount without order-count text such as `(1 order)`
 - [ ] After Shopify edit/re-import, verify revenue, KPI, Benchmark, Reports, and Notifications requests refetch; the recorded Current Commit 6 deployed packet closed this cache/refetch check only, not report PDF contents, KPI/Benchmark row-value parity, notification row values, or email delivery
-- [ ] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes
-- [ ] Current Commit 8 portability/provider-boundary validation: capture a Shopify-specific read-only endpoint packet for another Admin API token campaign or another mapping; real >250 matching-order provider evidence requires a Shopify store/window with more than 250 matching orders
+- [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, or future provider changes
+- [x] Current Commit 8 portability/provider-boundary validation is recorded closed for the user-validated second Shopify Admin API token campaign/mapping packet; real >250 matching-order provider evidence remains excluded until a Shopify store/window with more than 250 matching orders exists
+- [x] Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified for the validated v1 source-family scope. Explicit exclusions remain Shopify OAuth, real >250 matching-order provider pagination, future Shopify/API/provider changes, future untested report/email variants or sends, revenue-changing scheduler provider mutation proof, optional strict normal wall-clock scheduler timing, and any non-Shopify source family.
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts
@@ -912,14 +921,15 @@ Checkpoint after Journey 8:
 - [ ] Example: current = 65,600, threshold = 70,000, condition = below → BREACHED
 - [ ] Red pulsing dot on card
 - [ ] Tooltip: "Alert Threshold Breached" + Current + Threshold + condition
-- [ ] **Notifications bell**: badge count increased
+- [ ] **Notifications bell**: red breach dot appears
 - [ ] **/notifications page**: new entry
 - [ ] Bell/page current value matches the live KPI card current value
+- [ ] For GA4 financial KPIs such as Revenue, a stale active alert disappears from bell and `/notifications` when the live KPI card value no longer breaches the threshold; no new alert creation is required
 - [ ] Bell/page alert text uses threshold-focused formatting, e.g. `Current value 72,660 is below the alert threshold 75,000`
 - [ ] If older duplicate KPI rows exist for the same GA4 campaign + metric, only the latest row is allowed to produce the active alert
 - [ ] Reopening the bell reflects the current server state (old resolved alerts do not linger from stale client cache)
-- [ ] Clicking the KPI alert from the bell opens the correct campaign `KPIs` tab and lands on the exact KPI card
-- [ ] Clicking the KPI alert from `/notifications` does the same
+- [ ] Clicking the top-bar bell opens `/notifications`
+- [ ] Clicking the KPI alert row action from `/notifications` opens the correct campaign `KPIs` tab and lands on the exact KPI card
 - [ ] Repeat the click test while already on the same GA4 campaign page and confirm the tab/item still updates correctly
 
 ### Step 2: Run Refresh → dedup
@@ -932,6 +942,8 @@ Checkpoint after Journey 8:
 ### Step 3: Non-breached alert
 - [ ] Create KPI with threshold well below current
 - [ ] Yellow icon only (no red dot)
+- [ ] Bell and `/notifications` show no row for this KPI
+- [ ] Repeat with a GA4 Revenue alert where current Total Revenue is above a `below` threshold and confirm the existing row is hidden after refresh
 - [ ] Tooltip: "Alerts enabled — threshold: X (below)"
 
 ---
@@ -984,7 +996,7 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Overview `Total Revenue` card equals GA4 native revenue plus all active imported revenue sources
 - [ ] Overview revenue source rows/microcopy show the correct source amount and do not duplicate edited sources
 - [ ] Overview `Campaign Breakdown` uses the column label `Revenue` and includes exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
-- [ ] Overview `Landing Pages` has no revenue column; campaign-only imported revenue is not allocated into landing-page rows, and missing row conversions are supplemented only by exact landing page + source/medium matches when available
+- [ ] Overview `Landing Pages` has no revenue column; campaign-only imported revenue is not allocated into landing-page rows, and missing row conversions are supplemented only from conversion-prioritized same-scope `pageLocation` rows by exact landing page + source/medium match when available
 - [ ] Overview `Conversion Events` has no revenue column; campaign-only imported revenue is not allocated into event rows, and missing row conversions are supplemented only by exact event-name matches when available
 - [ ] Overview top `Users` card follows the same coherent selected-campaign source hierarchy as the other Summary cards; daily facts can use summed daily users, while to-date totals use the GA4 to-date user count
 - [ ] Overview table `Users` values are treated as row-level directional counts and are not expected to sum or reconcile exactly to the top `Users` card
@@ -1204,6 +1216,7 @@ Required reconciliation checks:
 - [ ] Verify ROAS/Revenue KPIs updated
 
 ### Salesforce (real connection)
+Deferred for v1. Do not use the Salesforce checklist as current release validation unless Salesforce is explicitly re-enabled.
 - [ ] Connect real Salesforce account via OAuth
 - [ ] Complete wizard: campaign field → revenue field → date field
 - [ ] Confirm the final Salesforce review step is titled `Review Settings`, says `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`, and the primary button says `Import revenue`
@@ -1224,18 +1237,19 @@ Required reconciliation checks:
 - [ ] Verify order count + revenue match Shopify
 - [ ] If a new order comes in → verify revenue updates after scheduler
 - [ ] For Current Commit 6 downstream cache/refetch validation, use the browser watcher around Shopify edit/re-import and confirm `overallPass: true`, revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, one Shopify source is present, and Shopify breakdown revenue matches the imported amount; do not treat this as email/PDF/value-level proof
-- [ ] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path: report/PDF values, KPI/Benchmark row values, notification row values, and actual delivered report email were user-confirmed. Repeat this validation for future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes
-- [ ] Current Commit 8 deployed portability evidence requires a second Shopify Admin API token campaign/mapping endpoint packet proving Shopify source/revenue totals are present, inventory is clean, source IDs do not overlap with the original campaign, and unrelated spend/revenue totals are unchanged. Real >250 matching-order provider evidence remains unproven without a matching Shopify fixture
+- [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path: report/PDF values, KPI/Benchmark row values, notification row values, and actual delivered report email were user-confirmed. Repeat this validation for future report/email sends, other report variants, OAuth, or future provider changes
+- [x] Current Commit 8 deployed portability evidence is recorded closed for the user-validated second Shopify Admin API token campaign/mapping packet: Shopify source/revenue totals were present, inventory was clean, source IDs did not overlap with the original campaign, and unrelated spend/revenue totals were unchanged. Real >250 matching-order provider evidence remains excluded without a matching Shopify fixture
 
 ### GA4 (real connection)
 - [ ] Connect a real GA4 property (not yesop mock)
+- [ ] Confirm a numeric GA4 property is not treated as the yesop simulator; `/ga4-daily`, `/ga4-breakdown`, and `/ga4-to-date` responses must not include `isSimulated: true` or `simulationReason`
 - [ ] After selecting the property, verify real UTM campaign values appear in the Configure step without manually retyping `campaignName`
 - [ ] Verify placeholder values such as `(direct)` are not the only choices when tagged URLs contain real `utm_campaign` values
 - [ ] Select a real UTM campaign value and finish campaign creation
 - [ ] Verify sessions/users/conversions/revenue populate from real GA4 data
 - [ ] Verify Campaign Breakdown, Landing Pages, and Conversion Events populate for the selected UTM campaign scope
 - [ ] If fresh Measurement Protocol traffic was used, expect values to update after GA4 processing; a later refetch can increase metrics without another script run
-- [ ] Wait 24 hours → verify `ga4-daily` has a new row with yesterday's data
+- [ ] After the next completed reporting day and refresh, verify `ga4-daily` has a new row only when GA4 returned data for the selected scope; otherwise `Completed-day cutoff` may advance while `Latest imported day` remains on the prior visible row
 - [ ] Verify Overview cards updated with latest values
 
 ### What to verify after each real scheduler run
@@ -1291,7 +1305,7 @@ Use this instead of rerunning the full plan after every small fix:
 7. Blocked KPIs excluded from scoring + show integrity insight
 8. Notifications created when thresholds breached
 9. All production GA4 spend sources (CSV/Sheets/LinkedIn/Meta/Google Ads) work, and any existing stored Manual spend remains editable/deletable
-10. All production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Salesforce/Shopify) work, and any existing stored legacy Manual revenue remains editable/deletable
+10. All v1 production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Shopify) work, Salesforce revenue is deferred/hidden for v1, and any existing stored legacy Manual revenue remains editable/deletable
 11. Total Spend = sum of source-modal spend rows (exact)
 12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
 13. Edit spend/revenue sources → no duplicates. Delete → recalculates.

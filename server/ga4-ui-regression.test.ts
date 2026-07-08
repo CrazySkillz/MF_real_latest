@@ -41,6 +41,20 @@ describe("GA4 UI regression guard", () => {
     expect(revenueModal).not.toContain("This is a one-time import and does not auto-sync");
   });
 
+  it("keeps Salesforce hidden from the v1 Add Revenue source picker", () => {
+    const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
+    const salesforceCardStart = revenueModal.indexOf("Salesforce (CRM)");
+    const salesforceGateStart = revenueModal.lastIndexOf("{!hideCrmSources", salesforceCardStart);
+    const salesforceGate = revenueModal.slice(salesforceGateStart, salesforceCardStart);
+
+    expect(revenueModal).toContain("Shopify (Ecommerce)");
+    expect(revenueModal).toContain("HubSpot (CRM)");
+    expect(revenueModal).toContain("const showSalesforceRevenueSource = false;");
+    expect(salesforceCardStart).toBeGreaterThan(-1);
+    expect(salesforceGateStart).toBeGreaterThan(-1);
+    expect(salesforceGate).toContain("!hideCrmSources && showSalesforceRevenueSource && (");
+  });
+
   it("shows active Google Sheets and CSV revenue status in the Add Revenue picker", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
 

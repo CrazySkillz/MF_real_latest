@@ -312,6 +312,7 @@ Shopify auto-reprocess rule:
 - Shopify auto-reprocess should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId`
 - refreshed Shopify revenue should update the existing source's materialized order-date revenue records and recomputed campaign financial state
 - Shopify `Tags` attribution should match exact individual Shopify order tags during manual edit and scheduled refresh
+- Shopify certification boundary: the validated clean-certification evidence covers the startup-fired auto-refresh path for an active Admin API token Shopify source with stable source identity, no duplicate source, unchanged totals, and clean inventory. Normal wall-clock daily scheduler timing and a revenue-changing Shopify provider mutation are not part of the closed evidence unless separately captured; they are optional operational proof beyond the validated startup-fired scheduler path.
 
 CRM token continuity rule:
 

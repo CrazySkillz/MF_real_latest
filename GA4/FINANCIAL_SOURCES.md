@@ -195,15 +195,16 @@ Example:
 - open CRM records in other stages, or records for other campaign values, do not contribute to this Pipeline Proxy amount
 - if `yesop_prospecting` exists only as an open `Proposal/Price Quote` record, Proxy mode must still make it selectable so the user can include it in Pipeline Proxy
 
-## The Five `Total Revenue +` Options
+## The V1 `Total Revenue +` Options
 
 Revenue source options:
 
 1. `Shopify`
 2. `HubSpot`
-3. `Salesforce`
-4. `Google Sheets`
-5. `Upload CSV`
+3. `Google Sheets`
+4. `Upload CSV`
+
+Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
 
 Visible source-picker helper text:
 
@@ -212,7 +213,7 @@ Visible source-picker helper text:
 
 Visible source-picker status badges:
 
-- Shopify, HubSpot, and Salesforce should show `Connected` only when the relevant live connection and/or active source state proves the source is usable for the current campaign/platform context; Salesforce may show `Reconnect required` when an active saved source exists but live OAuth is not currently durable
+- Shopify and HubSpot should show `Connected` only when the relevant live connection and/or active source state proves the source is usable for the current campaign/platform context
 - Google Sheets should show `Connected` when an active Google Sheets revenue source exists for the current campaign and platform context
 - Upload CSV should show `Uploaded` when an active CSV revenue source exists for the current campaign and platform context
 - these badges describe saved/imported source state for the current campaign/platform context, not merely a provider-level OAuth token
@@ -220,12 +221,12 @@ Visible source-picker status badges:
 When the user clicks `+` on the `Total Revenue` card:
 
 1. the revenue-source modal opens
-2. the user sees these five options
+2. the user sees the v1 revenue source options
 3. selecting an option starts a source-specific workflow
 
 Important meaning:
 
-- these are five distinct user journeys
+- these are four visible v1 user journeys
 - they are not six labels pointing to one generic "add revenue" action
 - future development should preserve the source-specific flow for each option
 - direct `Manual` revenue entry is no longer selectable for new source creation
@@ -233,7 +234,7 @@ Important meaning:
 
 ### Revenue Workflow Meaning
 
-- `Shopify`, `HubSpot`, and `Salesforce` are connection + attribution/mapping workflows, not simple value entry
+- `Shopify` and `HubSpot` are visible v1 connection + attribution/mapping workflows, not simple value entry; retained Salesforce workflow docs are deferred/non-v1
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
 - Crosswalk/value-selection stages should not render a redundant `Selected Campaigns label` field or disabled text input; selected count, selected rows, and review-step summaries are the supported selection indicators
 - disconnecting HubSpot, Salesforce, or Shopify must only deactivate the connection that belongs to the current campaign; a supplied connection ID from another campaign must fail closed and must not affect that other campaign
@@ -253,6 +254,8 @@ Executive-UX note:
 - if this is improved later, the priority should be reducing setup friction without weakening attribution accuracy or source provenance
 
 ## Revenue Source 1: Shopify Journey
+
+Certification status for future reference: Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified under the strict no-overclaiming standard for the validated v1 source-family scope. The closed scope includes Admin API token ownership guard behavior, add/import materialization, edit/update rematerialization, delete/deactivate, source modal display/provenance including mapped-campaign subtitle, Total Revenue/source/breakdown reconciliation, startup-fired scheduler reprocess with stable source ID, downstream Reports/KPI/Benchmark/notification/report-PDF/email value content, delivered report email, and second-campaign/mapping portability. Shopify OAuth, real >250 matching-order provider pagination, future Shopify/API/provider changes, future untested report/email variants or sends, revenue-changing scheduler provider mutation proof, and optional strict wall-clock scheduler timing remain excluded unless separately validated. This certification is Shopify-specific and does not prove any other source family.
 
 The user journey is:
 
@@ -282,15 +285,15 @@ Important meaning:
 - `SHOPIFY_REDIRECT_URI` must be preserved exactly after whitespace trim. Do not strip or add a trailing slash because Shopify compares the complete `redirect_uri` against the app's allowed redirection URL.
 - OAuth connection success does not prove Shopify Orders API access. If Shopify returns protected-customer-data 403 when reading orders, keep OAuth selected and show a protected-data approval message; do not switch users to Admin API token automatically.
 - The Admin API token path is separate from Shopify OAuth. If GA4 Shopify works through `Admin API token`, that does not prove Shopify OAuth is configured correctly, because the token path posts directly to `/api/shopify/connect` and does not use a Shopify OAuth `redirect_uri`.
-- Current Shopify deployed validation may use `Admin API token (fallback)` only. Shopify OAuth setup is intentionally deferred until the Shopify app callback URL and OAuth environment configuration are completed; Admin API token validation must not be treated as OAuth validation. Deployed Admin API token save/materialization evidence is closed only for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` on `2026-07-05T09:31:41.568Z` with Shopify `$99.99` matching source and breakdown endpoints; OAuth and the >250-order provider boundary remain unproven.
+- Current Shopify deployed validation may use `Admin API token (fallback)` only. Shopify OAuth setup is intentionally deferred until the Shopify app callback URL and OAuth environment configuration are completed; Admin API token validation must not be treated as OAuth validation. Shopify Admin API token GA4 Overview revenue is clean-certified for the validated source lifecycle, downstream propagation, and second-campaign/mapping portability packets recorded here and in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. OAuth is excluded. Real >250 matching-order provider pagination is excluded until a matching Shopify fixture exists.
 - both the inner Shopify `Back` button and the modal header `Back` button should move one step at a time through the Shopify flow and preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
 - Shopify order reads used for attribution values, preview, save, and auto-recalculation should follow Shopify pagination and must fail clearly rather than silently saving partial revenue when an extreme page limit is exceeded
 - Shopify revenue edit saves should carry the existing revenue `sourceId` through the modal, wizard, and save route so the exact source being edited is updated instead of another active Shopify source; Current Commit 3 explicitly passes the selected Shopify source ID into the wizard preview/save payloads and makes the save route fail closed if a requested source cannot be resolved before connection/source mutation. Deployed UI edit evidence is closed only for the validated Admin API token campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: the browser packet on `2026-07-05T10:10:51.441Z` returned `overallPass: true`, kept one Shopify source with the same ID, rematerialized Shopify revenue from `$99.99` to `$199.98`, and kept Shopify source/breakdown totals aligned. The shortened packet did not separately archive every unrelated source row.
 - Shopify revenue source deletion is exposed through the GA4 Overview Revenue Sources modal. Current Commit 4 keeps the existing shared delete route but makes the GA4 Overview caller pass `platformContext=ga4`, so the route's existing context guard must reject a stale non-GA4 source ID before deleting. Local regression coverage proves campaign access, source resolution, context validation, exact source/record deletion order, and scoped recompute. Deployed delete/deactivate evidence is closed only for the validated Admin API token campaign after the user-supplied browser packet on `2026-07-05`: one Shopify source was removed, Shopify revenue dropped from `$199.98` to `$0`, Total Revenue dropped from `$16,899.98` to `$16,700`, spend stayed `$498.75`, non-Shopify revenue source totals stayed unchanged, and inventory stayed clean.
 - Shopify scheduled refresh should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId` so refresh updates the existing source instead of creating or updating the wrong Shopify source. Current Commit 5 traced no GA4 Overview Shopify user-facing run-now route or UI action; Shopify refresh/reprocess is applicable only through the daily auto-refresh scheduler for active Shopify revenue sources. Local regression coverage guards the no-run-now boundary and the scheduler stable-source-ID path. Deployed startup-fired scheduler validation is closed only for the validated Admin API token campaign after user-confirmed Render auto-refresh logs occurred between before/after snapshots: one Shopify source stayed present with the same ID, no duplicate Shopify source was created, Shopify revenue stayed `$99.99`, Total Revenue stayed `$16,799.99`, spend stayed `$498.75`, and inventory stayed clean. This did not prove a revenue-changing provider mutation, normal wall-clock scheduler timing, OAuth, or the >250-order provider boundary.
 - Shopify downstream propagation is separate from Current Commit 2. Current Commit 6 traced that GA4 scheduled/server report PDF output, GA4 KPI/Benchmark recompute jobs, and `/api/notifications` already consume GA4 imported revenue through the shared source-backed financial model. The confirmed runtime gap was frontend cache freshness after GA4 Shopify source add/edit/delete: existing success paths refreshed Overview and KPI data but did not refresh GA4 Benchmark, Reports, or notification queries. The smallest safe fix adds only those GA4 query invalidations/refetches; it does not change Shopify materialization, GA4 calculations, scheduler timing, report/email generation, storage, or API response contracts. Local regression coverage guards the source-backed downstream consumers and cache invalidations. Deployed Current Commit 6 cache-refresh validation is closed only for the validated Admin API token campaign after a Shopify edit/re-import browser watcher packet returned `overallPass: true`: endpoint checks passed, one active Shopify source was present, Shopify breakdown revenue was `$199.98`, Total Revenue was `$16,899.98`, observed revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, and endpoint counts were `7` KPIs, `2` Benchmarks, `3` Reports, and `5` Notifications. The packet did not inspect report PDF contents, KPI/Benchmark row values, notification row value content, provider email acceptance, or delivered-email/inbox receipt. The script-reported `shopifySourceTotal: 0` was a parser-field limitation on the source row, not source absence; source presence and Shopify breakdown total were the trusted deployed evidence.
-- Current Commit 6a adds Shopify-specific local downstream value/content regression coverage in `server/shopify-downstream-content-regression.test.ts`: scheduled GA4 PDF text includes Shopify source revenue and the combined Total Revenue, GA4 KPI and Benchmark current rows persist the Shopify-backed revenue value, and `/api/notifications` returns the recomputed Shopify-backed GA4 Revenue KPI alert metadata. Deployed Current Commit 6a is closed only for the validated Admin API token campaign/report/email packet after commit `ae72bbd4` deployed: the value/content browser validation was user-confirmed complete, the GA4 report PDF was opened/downloaded and showed Shopify revenue plus the same Total Revenue as the endpoint packet, and the report email was actually delivered with the report attached. This does not prove future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, or future provider changes. Current Commit 6 cache/refetch evidence must not be treated as proof of these value/content paths.
-- Current Commit 8 is local-code validation only: no runtime bug was found, and `server/shopify-revenue-regression.test.ts` now guards that every Shopify order-reading path uses the paginated reader and that save/materialization remains campaign-access guarded, campaign-connection scoped, source-ID scoped, platform-context scoped, exact mapping scoped, revenue-record scoped, and recompute scoped. Deployed second-campaign/mapping evidence and real >250 matching-order provider evidence remain unproven until their own Shopify Admin API token packets are captured.
+- Current Commit 6a adds Shopify-specific local downstream value/content regression coverage in `server/shopify-downstream-content-regression.test.ts`: scheduled GA4 PDF text includes Shopify source revenue and the combined Total Revenue, GA4 KPI and Benchmark current rows persist the Shopify-backed revenue value, and `/api/notifications` returns the recomputed Shopify-backed GA4 Revenue KPI alert metadata. Deployed Current Commit 6a is closed only for the validated Admin API token campaign/report/email packet after commit `ae72bbd4` deployed: the value/content browser validation was user-confirmed complete, the GA4 report PDF was opened/downloaded and showed Shopify revenue plus the same Total Revenue as the endpoint packet, and the report email was actually delivered with the report attached. Current Commit 6 cache/refetch evidence must not be treated as proof of these value/content paths.
+- Current Commit 8 is deployed-validated for the user-confirmed second Shopify Admin API token campaign/mapping packet. No runtime bug was found, and `server/shopify-revenue-regression.test.ts` guards that every Shopify order-reading path uses the paginated reader and that save/materialization remains campaign-access guarded, campaign-connection scoped, source-ID scoped, platform-context scoped, exact mapping scoped, revenue-record scoped, and recompute scoped. Together with the earlier lifecycle and downstream packets, this closes Shopify Admin API token GA4 Overview revenue clean certification for the validated scope. OAuth and real >250 matching-order provider pagination remain excluded. Future Shopify/API/provider changes are future revalidation triggers, not current blockers.
 
 ## Revenue Source 2: HubSpot Journey
 
@@ -337,7 +340,7 @@ Important meaning:
 - in the GA4 Overview `Revenue Sources` modal, HubSpot rows should show the mapped platform campaign name under `HubSpot (Deals)` when saved `campaignMappings` provide one; if no mapping is saved, fall back to the source type label `HubSpot`
 - HubSpot imported revenue should enter Campaign Breakdown only through exact saved `campaignMappings`; the recorded deployed 4.11 evidence proves one `yesop_retargeting` mapped-row delta and does not prove other rows, other campaigns, or alternate mappings
 - HubSpot-backed GA4 report values should use the same source-backed financial total and exact mapped Campaign Breakdown formula; Current Commit 4.12 records local guards and deployed evidence for the configured `GA4 Overview Report` packet only
-- HubSpot-backed GA4 KPI/Benchmark financial values should use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); Current Commit 4.13 records local guards, a read-only deployed runner, a persisted-job financial-source fix, and deployed recompute/value-packet evidence closed only for the configured Revenue KPI/Benchmark packet. Current Commit 4.14 locally guards the HubSpot-backed GA4 report email attachment path and has user-confirmed deployed email/PDF evidence only for the configured GA4 Overview Report packet. Current Commit 4.15 has deployed other-campaign portability evidence closed only for the supplied two-campaign packet. Current Commit 4.16 adds local read-only alternate-mapping matrix automation and regression coverage; deployed variant evidence is pending.
+- HubSpot-backed GA4 KPI/Benchmark financial values should use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); Current Commit 4.13 records local guards, a read-only deployed runner, a persisted-job financial-source fix, and deployed recompute/value-packet evidence closed only for the configured Revenue KPI/Benchmark packet. Current Commit 4.14 locally guards the HubSpot-backed GA4 report email attachment path and has user-confirmed deployed email/PDF evidence only for the configured GA4 Overview Report packet. Current Commit 4.15 has deployed other-campaign portability evidence closed only for the supplied two-campaign packet. Current Commit 4.16 has deployed alternate-mapping matrix evidence closed only for the configured one-variant packet (`2026-07-05.2`, `overallPass: true`, `variantCount: 1`); it does not prove other mappings, raw HubSpot provider objects, raw daily row dates, untested report/KPI/email variants, or future provider changes. HubSpot revenue is production-ready for the validated GA4 Overview revenue section after Current Commit 4.16; future scoped evidence, not current release blockers, would be needed for every possible HubSpot mapping, raw HubSpot provider-object audit, raw daily-row date audit, every report/KPI/email variant, and future provider changes.
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step
@@ -349,6 +352,8 @@ Important meaning:
 - in GA4 `Total Revenue only` mode, the Crosswalk unique-values list should show only values backed by confirmed/Closed Won deals so users cannot select open-stage-only values that would contribute `$0` to confirmed revenue
 
 ## Revenue Source 3: Salesforce Journey
+
+V1 scope note: Salesforce revenue is deferred for v1 and hidden from the `Add revenue source` chooser. This section documents retained/non-v1 behavior only; it is not current v1 production-certification evidence.
 
 The user journey is:
 
@@ -390,7 +395,7 @@ Important meaning:
 - the Salesforce Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again
-- if a saved Salesforce revenue source exists but live OAuth is down, the `Add revenue source` chooser should show `Reconnect required` rather than `Not connected`
+- if Salesforce is re-enabled after v1 and a saved Salesforce revenue source exists but live OAuth is down, the source-selection surface should show `Reconnect required` rather than `Not connected`
 - if Salesforce is disconnected, the wizard should still show the persisted Salesforce org/account label instead of `—`
 
 - Salesforce status recovery should attempt refresh-token recovery before source-selection surfaces fall back to `Reconnect required`
@@ -514,7 +519,7 @@ Spend source options:
 When the user clicks `+` on the `Total Spend` card:
 
 1. the spend-source modal opens
-2. the user sees these five options
+2. the user sees the v1 revenue source options
 3. selecting an option starts a source-specific workflow
 
 ### Spend Workflow Meaning

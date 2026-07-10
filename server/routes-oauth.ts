@@ -5177,8 +5177,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
-      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
+      let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.
+      if (!conn) {
+        connections = await storage.getGoogleSheetsConnections(campaignId);
+        conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      }
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
 
       // Proactively refresh near-expiry tokens.
@@ -5317,8 +5322,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const platformContext = requestedPlatformContext || null;
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
-      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
+      let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.
+      if (!conn) {
+        connections = await storage.getGoogleSheetsConnections(campaignId);
+        conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      }
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
 
       let accessToken = conn.accessToken;

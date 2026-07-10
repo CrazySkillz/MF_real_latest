@@ -15,6 +15,8 @@ Use this file to answer whether GA4 Overview is production-ready, what has been 
 
 This file supersedes scattered Overview status notes in broader GA4 trackers when the question is specifically about GA4 Overview readiness.
 
+For GA4 Overview spend-only readiness involving Google Sheets or Upload CSV, use `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` as the component file. It is the scoped evidence file for those two spend paths and must not be used as proof for Google Ads or other source families.
+
 ## Current Status
 
 GA4 Overview is clean-certified as production-ready for the current local GA4 Overview code scope documented in this file.
@@ -69,6 +71,8 @@ Read in this order:
 6. `Validation Evidence`
 7. `Future Platform Template`
 8. `Stable Response For Future Chats`
+
+For a spend-only question about Google Sheets or Upload CSV, read `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` before using any broader Overview evidence. Keep Google Ads and other source-family evidence out of that spend-only certification unless a packet explicitly traces downstream propagation from Google Sheets or CSV spend.
 
 Do not reopen GA4 KPIs, GA4 Benchmarks, GA4 Ad Comparison, or GA4 Reports unless an Overview code path directly depends on a narrow value from those sections.
 
@@ -246,6 +250,8 @@ These matrices define the current certification boundary. `Proven locally` means
 ## Current Commit Queue
 
 This queue is the clean-certification queue for GA4 Overview. The detailed historical fix queue below preserves earlier implementation labels, but this table is the current source of truth for outstanding Overview work.
+
+For the scoped Google Sheets and Upload CSV GA4 Overview spend queue, use `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`.
 
 | Current Commit | Status | Scope | Smallest safe action | Blocks current local Overview certification? |
 | --- | --- | --- | --- | --- |

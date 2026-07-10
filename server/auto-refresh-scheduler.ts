@@ -22,6 +22,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 
 type AnyRecord = Record<string, any>;
+type ReprocessResult = { success: boolean; status?: number; error?: string };
 type AutoRefreshSchedulerConfig = {
   enabled: boolean;
   reportingTimeZone: string;
@@ -220,12 +221,12 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
   return true;
 }
 
-async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<ReprocessResult> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
-  if (!connectionId) return false;
+  if (!connectionId) return { success: false, error: "missing_connection_id" };
   if (isSourceOutsideCampaign(source, campaignId)) {
     console.error(`[Auto Refresh] Refusing Google Sheets spend reprocess for source outside campaign ${campaignId}: source=${String(source?.id || "")}`);
-    return false;
+    return { success: false, error: "source_outside_campaign" };
   }
   const body = {
     connectionId,
@@ -234,12 +235,16 @@ async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappi
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/sheets/process`, body);
   if (!result.ok) {
-    console.error(`[Auto Refresh] Google Sheets spend reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
-    return false;
+    const error = result.json?.error || result.json?.message || result.text || `HTTP ${result.status}`;
+    console.error(`[Auto Refresh] Google Sheets spend reprocess failed for campaign ${campaignId}:`, result.status, error);
+    return { success: false, status: result.status, error };
   }
-  return true;
+  return { success: true, status: result.status };
 }
 
+async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
+  return (await reprocessGoogleSheetsSpendWithDetails(campaignId, source, mappingConfig)).success;
+}
 async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return false;
@@ -378,7 +383,7 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
   }
 }
 
-export async function runGoogleSheetsSpendSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<{ success: boolean; reason?: string; campaignId: string; sourceId: string; platformContext?: string }> {
+export async function runGoogleSheetsSpendSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<{ success: boolean; reason?: string; campaignId: string; sourceId: string; platformContext?: string; processStatus?: number; processError?: string }> {
   const normalizedCampaignId = String(campaignId || "").trim();
   const normalizedSourceId = String(sourceId || "").trim();
   if (!normalizedCampaignId || !normalizedSourceId) {
@@ -401,8 +406,16 @@ export async function runGoogleSheetsSpendSourceRefreshForValidation(campaignId:
     return { success: false, reason: "missing_google_sheets_spend_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: (source as any).platformContext || undefined };
   }
 
-  const success = await reprocessGoogleSheetsSpend(normalizedCampaignId, source, mappingConfig);
-  return { success, reason: success ? undefined : "reprocess_failed", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: mappingConfig.platformContext || (source as any).platformContext || undefined };
+  const result = await reprocessGoogleSheetsSpendWithDetails(normalizedCampaignId, source, mappingConfig);
+  return {
+    success: result.success,
+    reason: result.success ? undefined : "reprocess_failed",
+    campaignId: normalizedCampaignId,
+    sourceId: normalizedSourceId,
+    platformContext: mappingConfig.platformContext || (source as any).platformContext || undefined,
+    processStatus: result.status,
+    processError: result.error,
+  };
 }
 
 export async function runGoogleSheetsRevenueSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<{ success: boolean; reason?: string; campaignId: string; sourceId: string; platformContext?: string }> {

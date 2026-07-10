@@ -56,6 +56,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {
     const content = schedulerFile();
 
+    expect(content).toContain("async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<ReprocessResult>");
     expect(content).toContain("async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean>");
     expect(content).toContain("async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean>");
     expect(content).toContain('String((s as any).sourceType || "") === "google_sheets"');
@@ -118,7 +119,9 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(scheduler).toContain("reason: \"source_not_found\"");
     expect(scheduler).toContain("reason: \"missing_google_sheets_spend_mapping\"");
     expect(scheduler).toContain("reprocessGoogleSheetsRevenue(normalizedCampaignId, source, mappingConfig)");
-    expect(scheduler).toContain("reprocessGoogleSheetsSpend(normalizedCampaignId, source, mappingConfig)");
+    expect(scheduler).toContain("const result = await reprocessGoogleSheetsSpendWithDetails(normalizedCampaignId, source, mappingConfig);");
+    expect(scheduler).toContain("processStatus: result.status");
+    expect(scheduler).toContain("processError: result.error");
     expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"');
     expect(routes).toContain('app.post("/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now"');
     expect(routes).toContain("googleSheetsRateLimiter, requireCampaignAccessParamId");

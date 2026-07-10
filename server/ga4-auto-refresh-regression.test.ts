@@ -81,6 +81,29 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(processRoute.indexOf("sheetSampleRows: rows.slice(0, 25),")).toBeGreaterThan(processRoute.indexOf("for (let i = 1; i < values.length; i++)"));
     expect(processRoute.indexOf("sheetSampleRows: rows.slice(0, 25),")).toBeLessThan(processRoute.indexOf("const nextSpendMappingConfig = JSON.stringify(mappingForStorage);"));
   });
+  it("refreshes fallback Google Sheets spend tokens before self-healing stale spend connections", () => {
+    const routes = routesFile();
+    const previewStart = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/preview"');
+    const previewEnd = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"', previewStart);
+    const processStart = previewEnd;
+    const processEnd = routes.indexOf("  // ---------------------------------------------------------------------------", processStart);
+    const previewRoute = routes.slice(previewStart, previewEnd);
+    const processRoute = routes.slice(processStart, processEnd);
+
+    expect(previewStart).toBeGreaterThan(-1);
+    expect(previewEnd).toBeGreaterThan(previewStart);
+    expect(processStart).toBeGreaterThan(-1);
+    expect(processEnd).toBeGreaterThan(processStart);
+    for (const route of [previewRoute, processRoute]) {
+      expect(route).toContain("const fallback = (await storage.getGoogleSheetsConnections(campaignId))");
+      expect(route).toContain("let fallbackAccessToken = fallback.accessToken;");
+      expect(route).toContain("if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken)");
+      expect(route).toContain("fallbackAccessToken = await refreshGoogleSheetsToken(fallback);");
+      expect(route).toContain('{ headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }');
+      expect(route).toContain("accessToken: fallbackAccessToken,");
+      expect(route).not.toContain('const fallback = (await storage.getGoogleSheetsConnections(campaignId, "spend"))');
+    }
+  });
   it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();
     const routes = routesFile();

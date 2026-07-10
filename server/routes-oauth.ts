@@ -5225,19 +5225,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       if (!resp.ok && resp.status === 401) {
-        const fallback = (await storage.getGoogleSheetsConnections(campaignId, "spend"))
+        const fallback = (await storage.getGoogleSheetsConnections(campaignId))
           .filter((c: any) => c && String(c.id) !== String(conn.id) && c.accessToken)
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
         if (fallback?.accessToken) {
-          const fallbackResp = await fetch(
+          let fallbackAccessToken = fallback.accessToken;
+          let fallbackResp = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-            { headers: { "Authorization": `Bearer ${fallback.accessToken}` } }
+            { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
           );
+          if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken) {
+            try {
+              fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
+              fallbackResp = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+                { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
+              );
+            } catch {
+              // fall through to original error response
+            }
+          }
           if (fallbackResp.ok) {
             resp = fallbackResp;
-            accessToken = fallback.accessToken;
+            accessToken = fallbackAccessToken;
             await storage.updateGoogleSheetsConnection(String(conn.id), {
-              accessToken: fallback.accessToken,
+              accessToken: fallbackAccessToken,
               refreshToken: fallback.refreshToken || conn.refreshToken || null,
               clientId: fallback.clientId || conn.clientId,
               clientSecret: fallback.clientSecret || conn.clientSecret,
@@ -5351,19 +5363,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       if (!resp.ok && resp.status === 401) {
-        const fallback = (await storage.getGoogleSheetsConnections(campaignId, "spend"))
+        const fallback = (await storage.getGoogleSheetsConnections(campaignId))
           .filter((c: any) => c && String(c.id) !== String(conn.id) && c.accessToken)
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
         if (fallback?.accessToken) {
-          const fallbackResp = await fetch(
+          let fallbackAccessToken = fallback.accessToken;
+          let fallbackResp = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-            { headers: { "Authorization": `Bearer ${fallback.accessToken}` } }
+            { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
           );
+          if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken) {
+            try {
+              fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
+              fallbackResp = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+                { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
+              );
+            } catch {
+              // fall through to original error response
+            }
+          }
           if (fallbackResp.ok) {
             resp = fallbackResp;
-            accessToken = fallback.accessToken;
+            accessToken = fallbackAccessToken;
             await storage.updateGoogleSheetsConnection(String(conn.id), {
-              accessToken: fallback.accessToken,
+              accessToken: fallbackAccessToken,
               refreshToken: fallback.refreshToken || conn.refreshToken || null,
               clientId: fallback.clientId || conn.clientId,
               clientSecret: fallback.clientSecret || conn.clientSecret,

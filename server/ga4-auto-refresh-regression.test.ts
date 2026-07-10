@@ -99,12 +99,15 @@ describe("GA4 external value auto-refresh regression guard", () => {
       expect(route).toContain('let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");');
       expect(route).toContain("connections = await storage.getGoogleSheetsConnections(campaignId);");
       expect(route.indexOf("connections = await storage.getGoogleSheetsConnections(campaignId);")).toBeLessThan(route.indexOf('if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });'));
-      expect(route).toContain("const fallback = (await storage.getGoogleSheetsConnections(campaignId))");
+      expect(route).toContain("const fallbackCandidates = (await storage.getGoogleSheetsConnections(campaignId))");
+      expect(route).toContain("(c.accessToken || c.refreshToken)");
+      expect(route).toContain("for (const fallback of fallbackCandidates)");
       expect(route).toContain("let fallbackAccessToken = fallback.accessToken;");
-      expect(route).toContain("if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken)");
+      expect(route).toContain("if ((!fallbackResp || (!fallbackResp.ok && fallbackResp.status === 401)) && fallback.refreshToken)");
       expect(route).toContain("fallbackAccessToken = await refreshGoogleSheetsToken(fallback);");
       expect(route).toContain('{ headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }');
       expect(route).toContain("accessToken: fallbackAccessToken,");
+      expect(route).toContain("break;");
       expect(route).not.toContain('const fallback = (await storage.getGoogleSheetsConnections(campaignId, "spend"))');
     }
   });

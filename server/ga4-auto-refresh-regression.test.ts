@@ -125,6 +125,22 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(route).toContain("refreshToken: durableRefreshToken");
     expect(route).not.toContain("refreshToken: refresh_token || null");
   });
+  it("does not reuse a rejected Google Sheets refresh token during explicit reconnect", () => {
+    const routes = routesFile();
+    const connectStart = routes.indexOf('app.post("/api/auth/google-sheets/connect"');
+    const callbackStart = routes.indexOf('app.get("/api/auth/google-sheets/callback"', connectStart);
+    const callbackEnd = routes.indexOf("  const HUBSPOT_OAUTH_STATE_TTL_MS", callbackStart);
+    const connectRoute = routes.slice(connectStart, callbackStart);
+    const callbackRoute = routes.slice(callbackStart, callbackEnd);
+
+    expect(connectStart).toBeGreaterThan(-1);
+    expect(callbackStart).toBeGreaterThan(connectStart);
+    expect(callbackEnd).toBeGreaterThan(callbackStart);
+    expect(connectRoute).toContain("access_type=offline&");
+    expect(connectRoute).toContain("prompt=consent&");
+    expect(callbackRoute).toContain("const durableRefreshToken = tokens.refresh_token || null;");
+    expect(callbackRoute).not.toContain("tokens.refresh_token || reusableRefreshToken");
+  });
   it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();
     const routes = routesFile();

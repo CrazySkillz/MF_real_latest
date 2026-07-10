@@ -20,10 +20,16 @@ describe("Spend source additivity", () => {
     expect(route).not.toContain("String(cfg?.connectionId || \"\") === String(connectionId)");
   });
 
-  it("Total Spend source totals use the full imported record window unless the campaign has an explicit start date", () => {
+  it("Total Spend source totals use the full imported lifetime window", () => {
     const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
-    expect(routesFile).toContain('const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";');
-    expect(routesFile).not.toContain('toISODateUTC((campaign as any)?.createdAt) || "2020-01-01"');
+    const helperStart = routesFile.indexOf("const recalcCampaignSpend");
+    const helperEnd = routesFile.indexOf("const getGoogleSheetsConfirmedFinancialsForAggregate", helperStart);
+    const helper = routesFile.slice(helperStart, helperEnd);
+
+    expect(helperStart).toBeGreaterThan(-1);
+    expect(helperEnd).toBeGreaterThan(helperStart);
+    expect(helper).toContain('const startDate = "1900-01-01";');
+    expect(helper).not.toContain("campaign as any)?.startDate");
   });
 
   it("Google Sheets spend duplicate inspection is read-only", () => {

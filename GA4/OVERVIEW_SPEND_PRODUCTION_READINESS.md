@@ -19,11 +19,13 @@ Google Ads spend is on hold and is excluded from this file. Do not use Google Ad
 
 ## Current Status
 
-Bounded clean certification:
+Current clean-certification status:
 
-`GA4 Overview spend is production-ready for the current local Google Sheets spend and Upload CSV spend code paths, with recorded deployed evidence for the specific Google Sheets and CSV lifecycle packets listed below. The certification does not include Google Ads spend, other spend source families, unlisted Google Sheets tabs/mappings, other uploaded CSV file shapes, other campaigns/properties beyond recorded packets, normal wall-clock scheduler timing beyond the recorded startup-fired Google Sheets spend packet, or future provider/runtime behavior.`
+- **Google Sheets spend is unproven in the deployed runtime.** On `2026-07-10`, the natural scheduler reached source `618e5e12-0f3f-44a2-837a-d2677ad95f64` but the Google Sheets API fetch failed with `401 UNAUTHENTICATED`. The same packet exposed `spend-to-date = 0` while `spend-breakdown = 498.75`. Historical successful packets remain evidence for those exact earlier runs, but they do not override the current failure.
+- **Upload CSV spend retains its bounded historical lifecycle evidence.** Current local tests cover the shared lifetime spend recompute change, but new deployed CSV file shapes or mappings remain unproven.
+- Local fixes now require a newly issued refresh token during explicit Google Sheets reconnect and align persisted spend-to-date with the lifetime spend-record window. These fixes are not deployed/provider proof.
 
-Lower the affected path to unproven if any relevant Overview, spend-source, scheduler, storage, report, KPI, Benchmark, or shared aggregate code changes in a way that can affect GA4 Overview spend values.
+Do not call the Google Sheets spend path production-ready again until Current Commits 5, 6, and 7 are closed with deployed evidence.
 
 ## Scope
 
@@ -48,9 +50,11 @@ Excluded:
 
 Root cause of the current evidence gap:
 
-- The existing Overview readiness file contains Google Sheets and CSV spend evidence, but it is mixed with whole-tab, provider, Reports, Shopify, HubSpot, Google Ads, KPI, Benchmark, scheduler, and cleanup evidence.
-- That structure makes it easy to overclaim by reusing adjacent source-family evidence as proof for GA4 Overview spend.
-- No runtime code bug was identified in the current local Google Sheets or CSV GA4 Overview spend trace. The immediate gap is documentation structure and strict scoping.
+- The deployed Google Sheets spend source held credentials that Google rejected with `401 UNAUTHENTICATED`; automatic refresh and all campaign fallback connections failed to produce a usable token.
+- The explicit OAuth callback could reuse an old stored refresh token when Google omitted a new refresh token. After a failed connection, that could silently carry the rejected credential into the replacement connection instead of repairing it.
+- The shared spend recompute started at `campaign.startDate`, while the documented spend-to-date and Overview breakdown contracts use the full imported lifetime window. This produced the observed split: `spend-to-date = 0` and `spend-breakdown = 498.75`.
+- The validation runner's successful endpoint/source-state packet did not prove provider refresh success when the raw run-now route returned `502`; unchanged materialized spend is not evidence that updated sheet values propagated.
+- Whether Google invalidated the original refresh token because of OAuth consent-screen Testing status, user/admin revocation, token limits, or another provider policy is not locally distinguishable.
 
 Google Sheets spend evidence gap:
 
@@ -81,10 +85,11 @@ Run automated local evidence before using provider/UI validation:
 npm test -- server/spend-source-additivity.test.ts server/ga4-auto-refresh-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/ga4-ui-regression.test.ts server/report-email-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/google-sheets-aggregate-source.test.ts
 ```
 
-Recorded local result for this spend-readiness pass:
+Recorded local result after the Current Commit 5 fixes on `2026-07-11`:
 
 - 9 test files passed.
-- 113 tests passed.
+- 116 tests passed.
+- The four in-scope source-safety checks passed inside the broad file run. The broad file still failed only on seven unrelated Instagram assertions, so the full file is not claimed as passing evidence.
 
 Targeted `server/source-safety-regression.test.ts` checks to run before provider/UI validation:
 
@@ -144,21 +149,25 @@ Scheduler trace:
 
 | Source family | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Boundary |
 | --- | --- | --- | --- | --- | --- |
-| Google Sheets spend | Closed for recorded deployed source `8f67b03f-a00b-434f-b81f-db1b2b951595` at `$240`; closed for second campaign/property source `62772549-88dc-4cc5-bfe6-2e991d518ef5` at `$507.70`. | Closed for source `8f67b03f-a00b-434f-b81f-db1b2b951595` at `$420.20`; closed for second campaign/property source `62772549-88dc-4cc5-bfe6-2e991d518ef5` at `$706.45`. | Closed for run-now source `8f67b03f-a00b-434f-b81f-db1b2b951595` at `$198.75`; closed for startup-fired scheduler source `618e5e12-0f3f-44a2-837a-d2677ad95f64` at `$678.95`; closed for second-campaign refresh/edit-preview freshness at `$807.70`; configured mapping fixture closed at `$678.95`. | Closed for source `8f67b03f-a00b-434f-b81f-db1b2b951595` with `$198.75` removed; closed for second-campaign source `62772549-88dc-4cc5-bfe6-2e991d518ef5` with `$807.70` removed. | Certified only for listed campaign/source packets, recorded startup-fired scheduler path, and configured mapping fixture. Unlisted tabs/mappings, other campaigns/properties, and normal wall-clock scheduled-hour proof remain unproven. |
+| Google Sheets spend | Historical packets closed for sources `8f67b03f-a00b-434f-b81f-db1b2b951595` and `62772549-88dc-4cc5-bfe6-2e991d518ef5`. | Historical packets closed for those exact sources and runs. | **Currently unproven:** the `2026-07-10` natural scheduler and raw run-now attempts for source `618e5e12-0f3f-44a2-837a-d2677ad95f64` failed with Google Sheets `401 UNAUTHENTICATED`. Earlier run-now/startup packets remain historical evidence only. | Historical delete packets remain closed for their exact source IDs. | Requires deployed Current Commit 5 credential repair, source-stable provider mutation proof, spend-to-date/breakdown parity, and a successful natural scheduler packet before a current production-ready claim. |
 | Upload CSV spend | Closed for recorded deployed CSV spend add/import at `$2,020`. | Closed for recorded deployed CSV spend edit/update at `$3,120`. | Not applicable as a separate scheduler/provider action. Manual edit/re-upload or stored-row recalculation is the reprocess path covered by edit/update evidence. | Closed for source `c3611c0f-4bbf-47b9-8615-93e4b140385e` with `$3,120` removed. | Certified only for the recorded CSV spend campaign/source lifecycle. Other files, mappings, campaigns, and properties remain unproven. |
 
 ## Current Commit Queue
 
 This queue is scoped only to GA4 Overview spend readiness for Google Sheets and Upload CSV.
 
-| Current Commit | Status | Scope | Smallest safe action | Blocks current Google Sheets/CSV Overview spend certification? |
+| Current Commit | Status | Scope | Smallest safe action | Blocking? |
 | --- | --- | --- | --- | --- |
-| Current Commit 1: Create GA4 Overview spend readiness doc | Completed in this documentation pass. | Split Google Sheets and CSV GA4 Overview spend readiness into this component file and point the main Overview readiness file to it. | Documentation-only update; no runtime code changes. | No. This reduces overclaiming risk and does not change behavior. |
-| Current Commit 2: Automated local validation packet | Completed on `2026-07-10`. | Google Sheets and Upload CSV GA4 Overview spend local regression evidence before provider/UI validation. | Focused suite passed 9 files / 113 tests; four isolated source-safety spend checks passed 1 test each with 86 skipped. Broad `source-safety-regression.test.ts` full-file run remains excluded because unrelated Instagram tests fail. | No. |
-| Current Commit 3: Normal wall-clock Google Sheets scheduler proof | Optional external validation if strict scheduled-hour proof is required. | Google Sheets spend scheduler timer beyond the recorded startup-fired packet. | Capture a natural scheduled-hour before/after packet for one campaign/source without mixing it with source lifecycle validation. | No for current local code certification; yes only for strict normal-clock deployed scheduler certification. |
-| Current Commit 4: Additional Google Sheets tab/mapping variants | Optional external validation if broader mapping certification is required. | Google Sheets spend tabs/mappings not covered by recorded packets or configured variant pack. | Run a configured variant packet and UI parity check per new tab/mapping shape. | No for recorded scopes; yes for unlisted tab/mapping claims. |
-| Current Commit 5: Additional CSV file/mapping variants | Optional external validation if broader upload certification is required. | CSV spend files/mappings not covered by the recorded lifecycle packet. | Run preview/process/edit/delete before/after evidence for each new file shape or mapping family. | No for recorded scope; yes for unlisted file/mapping claims. |
-| Current Commit 6: Additional production source inventory | Optional external validation for new campaigns/scopes. | Production database source health outside recorded target campaigns. | Run bounded read-only inventory before making cleanup or database-health claims for another campaign/scope. | No for recorded scopes; yes for new campaign/scope health claims. |
+| Current Commit 1: Create GA4 Overview spend readiness doc | Completed and committed. | Separate Google Sheets/CSV spend evidence from whole-Overview evidence. | No further action. | No. |
+| Current Commit 2: Automated local validation packet | Completed and committed; refreshed on `2026-07-11`. | Local Google Sheets/CSV spend regression evidence. | Current focused suite: 9 files / 116 tests passed. Four spend source-safety assertions passed inside the broad run; seven unrelated Instagram assertions failed. | No. |
+| Current Commit 3: Natural scheduler proof | **Attempted and failed on `2026-07-10`.** | Source `618e5e12-0f3f-44a2-837a-d2677ad95f64`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`. | Preserve the failed `401 UNAUTHENTICATED` packet as root-cause evidence; do not count unchanged `$498.75` as refresh success. | Yes for Google Sheets automatic-update readiness. |
+| Current Commit 4: Token lookup/self-heal hardening | Completed across commits `ce4c8947`, `fc6d9f30`, `72294e3e`, `3264e61d`, and `df68595d`. | Purpose-agnostic connection lookup, fallback token refresh, failure details, and durable-token storage guard. | No further code in this group. Existing invalid production credentials still require one explicit repair after deployment. | Did not close Current Commit 3 by itself. |
+| Current Commit 5: Fresh reconnect token and lifetime spend parity | **Implemented locally; uncommitted.** | Prevent explicit reconnect from reusing a rejected refresh token; make persisted spend-to-date use the same lifetime window as spend breakdown. | Commit only `server/routes-oauth.ts`, the two focused tests, and this readiness file after diff review. | Yes until committed, deployed, and validated. |
+| Current Commit 6: Deployed provider mutation and propagation packet | Outstanding external validation. | Existing source `618e5e12-0f3f-44a2-837a-d2677ad95f64`. | After Current Commit 5 deploys: reconnect Google Sheets once without deleting the spend source; confirm raw run-now `200/success:true`; change a known sheet spend value; rerun; prove the same source ID, expected new total, `spend-to-date === spend-breakdown`, Overview parity, and unchanged unrelated revenue. | Yes for Google Sheets production readiness. |
+| Current Commit 7: Successful natural wall-clock scheduler mutation | Outstanding external validation. | Automatic update after a user changes the sheet. | Capture before values, change one known sheet value, wait for the configured natural scheduler, then prove provider success, same source ID, exact delta, spend-to-date/breakdown/Overview parity, and downstream financial parity. | Yes for the claim that user sheet edits update automatically. |
+| Current Commit 8: Additional Google Sheets tab/mapping variants | Optional for broader claims. | Unlisted tabs, headers, dates, filters, and mappings. | Run one bounded packet per mapping family. | Only blocks broader mapping claims. |
+| Current Commit 9: Additional CSV file/mapping variants | Optional for broader claims. | Unlisted CSV shapes and mappings. | Run preview/process/edit/delete evidence per file family. | Only blocks broader CSV claims. |
+| Current Commit 10: Additional production source inventory | Optional for broader campaigns. | Other campaign/source health. | Run bounded read-only inventory per new campaign scope. | Only blocks broader production-data claims. |
 
 ## Proven
 
@@ -174,11 +183,14 @@ Proven locally for current code:
 
 Proven by recorded deployed evidence:
 
-- Google Sheets spend add/import, edit/update, run-now refresh, startup-fired scheduler reprocess, configured mapping fixture, second-campaign lifecycle, source modal parity, and delete/deactivate for the source IDs and amounts listed in the lifecycle matrix.
-- Upload CSV spend add/import, edit/update, source modal parity, no separate scheduler refresh path, and delete/deactivate for the source ID and amounts listed in the lifecycle matrix.
+- Historical Google Sheets spend add/import, edit/update, run-now refresh, startup-fired scheduler reprocess, configured mapping fixture, second-campaign lifecycle, source modal parity, and delete/deactivate remain proven only for the exact earlier source IDs and runs listed in the lifecycle matrix. They do not prove the currently failing production credential.
+- Upload CSV spend add/import, edit/update, source modal parity, no separate scheduler refresh path, and delete/deactivate remain proven for the recorded source ID and lifecycle packet.
 
 ## Unproven
 
+- Current deployed Google Sheets credential durability and provider refresh success after the Current Commit 5 change.
+- Exact propagation of a new sheet value to the same spend source, spend records, campaign spend-to-date, spend breakdown, GA4 Overview, and derived financial consumers.
+- Successful natural wall-clock scheduler processing after a real sheet mutation.
 - Google Ads spend, because it is on hold and excluded from this component.
 - Unlisted Google Sheets tabs, header layouts, date formats, campaign filters, and mapping shapes.
 - Unlisted CSV files, parser edge cases, mappings, date formats, and campaign filters.
@@ -190,8 +202,9 @@ Proven by recorded deployed evidence:
 
 ## Not Locally Verifiable
 
-- Live Google Sheets API availability, permissions, token/provider behavior, and sheet cell contents.
-- Deployed normal wall-clock scheduler timing beyond the recorded startup-fired Google Sheets spend packet.
+- Live Google Sheets API availability, permissions, token/provider behavior, OAuth consent-screen Publishing status, and sheet cell contents.
+- Whether Google invalidated the prior refresh token because of Testing status, user/admin revocation, token limits, or another provider policy.
+- Deployed reconnect, provider mutation, and normal wall-clock scheduler behavior after Current Commit 5.
 - Browser UI pixel parity beyond user-confirmed recorded packets.
 - Production database inventory for campaigns/scopes not explicitly inventoried.
 - Inbox delivery or provider delivery events for future emails.
@@ -200,4 +213,4 @@ Proven by recorded deployed evidence:
 
 Use only when the request is limited to GA4 Overview spend from Google Sheets and Upload CSV:
 
-`GA4 Overview spend is production-ready for the current local Google Sheets spend and Upload CSV spend code paths, with recorded deployed evidence for the specific lifecycle packets listed in GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md. Google Ads spend and all other source families remain excluded. Unlisted Google Sheets tabs/mappings, unlisted CSV file shapes, other campaigns/properties, normal wall-clock scheduler proof beyond the recorded startup-fired Google Sheets packet, and future provider/runtime behavior remain unproven.`
+`GA4 Overview Google Sheets spend is not currently production-ready: the latest deployed natural scheduler/run-now packet failed with Google Sheets 401, and the same evidence showed spend-to-date 0 versus spend-breakdown 498.75. Current Commit 5 fixes stale refresh-token reuse during explicit reconnect and aligns lifetime spend recompute locally; Current Commits 6 and 7 must still prove deployed provider mutation, same-source propagation, spend-to-date/breakdown/Overview parity, and natural scheduler success. Upload CSV retains only its previously recorded bounded lifecycle evidence. Google Ads and all other source families remain excluded.`

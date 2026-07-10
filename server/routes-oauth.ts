@@ -4482,7 +4482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recalcCampaignSpend = async (campaignId: string) => {
     const campaign = await storage.getCampaign(campaignId);
-    const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+    const startDate = "1900-01-01";
     const endDate = new Date().toISOString().slice(0, 10);
     const breakdown = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
     const recordsTotal = breakdown.reduce((sum: number, s: any) => sum + s.spend, 0);
@@ -9340,11 +9340,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('Failed to obtain access token');
       }
 
-      const existingSheetsConnections = await storage.getGoogleSheetsConnections(campaignId, purpose || undefined).catch(() => [] as any[]);
-      const reusableRefreshToken = (existingSheetsConnections as any[])
-        .filter((c: any) => c?.refreshToken)
-        .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0]?.refreshToken;
-      const durableRefreshToken = tokens.refresh_token || reusableRefreshToken || null;
+      // This callback is an explicit consent flow. Do not carry a previously rejected
+      // refresh token into the replacement connection when Google omits a new one.
+      const durableRefreshToken = tokens.refresh_token || null;
       if (!durableRefreshToken) {
         return sendPopupError("Google Sheets did not return a durable refresh token. Please reconnect Google Sheets and approve access so scheduled refresh can continue without reconnecting.");
       }

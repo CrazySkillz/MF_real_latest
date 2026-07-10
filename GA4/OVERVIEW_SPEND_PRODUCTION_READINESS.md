@@ -89,16 +89,21 @@ Recorded local result for this spend-readiness pass:
 Targeted `server/source-safety-regression.test.ts` checks to run before provider/UI validation:
 
 ```powershell
-npm test -- server/source-safety-regression.test.ts -t "CSV spend process refuses"
-npm test -- server/source-safety-regression.test.ts -t "individual spend source delete"
-npm test -- server/source-safety-regression.test.ts -t "CSV preview routes"
-npm test -- server/source-safety-regression.test.ts -t "Google Sheets spend source delete"
+.\node_modules\.bin\vitest.cmd run --pool forks server/source-safety-regression.test.ts -t "CSV spend process refuses"
+.\node_modules\.bin\vitest.cmd run --pool forks server/source-safety-regression.test.ts -t "individual spend source delete"
+.\node_modules\.bin\vitest.cmd run --pool forks server/source-safety-regression.test.ts -t "CSV preview routes"
+.\node_modules\.bin\vitest.cmd run --pool forks server/source-safety-regression.test.ts -t "Google Sheets spend source delete"
 ```
 
-Recorded local result for this spend-readiness pass:
+Current Commit 2 recorded local validation packet on `2026-07-10`:
 
-- All four targeted source-safety checks passed.
-- The full `server/source-safety-regression.test.ts` file is not used as a passing evidence packet here because unrelated Instagram tests failed in the broad file run.
+- Focused suite command above passed: 9 test files, 113 tests.
+- `CSV spend process refuses` isolated source-safety check passed: 1 test, 86 skipped.
+- `individual spend source delete` isolated source-safety check passed: 1 test, 86 skipped.
+- `CSV preview routes` isolated source-safety check passed: 1 test, 86 skipped.
+- `Google Sheets spend source delete` isolated source-safety check passed: 1 test, 86 skipped.
+
+The full `server/source-safety-regression.test.ts` file is not used as a passing evidence packet here because unrelated Instagram tests failed in the broad file run. During this validation pass, npm argument forwarding also ran the whole file instead of applying the test-name filter; only the isolated local Vitest binary runs above are used as the targeted passing packet.
 
 Provider/UI validation must come after these tests and must stay scoped to one source family, one campaign, and one lifecycle action per packet.
 
@@ -149,10 +154,11 @@ This queue is scoped only to GA4 Overview spend readiness for Google Sheets and 
 | Current Commit | Status | Scope | Smallest safe action | Blocks current Google Sheets/CSV Overview spend certification? |
 | --- | --- | --- | --- | --- |
 | Current Commit 1: Create GA4 Overview spend readiness doc | Completed in this documentation pass. | Split Google Sheets and CSV GA4 Overview spend readiness into this component file and point the main Overview readiness file to it. | Documentation-only update; no runtime code changes. | No. This reduces overclaiming risk and does not change behavior. |
-| Current Commit 2: Normal wall-clock Google Sheets scheduler proof | Optional external validation if strict scheduled-hour proof is required. | Google Sheets spend scheduler timer beyond the recorded startup-fired packet. | Capture a natural scheduled-hour before/after packet for one campaign/source without mixing it with source lifecycle validation. | No for current local code certification; yes only for strict normal-clock deployed scheduler certification. |
-| Current Commit 3: Additional Google Sheets tab/mapping variants | Optional external validation if broader mapping certification is required. | Google Sheets spend tabs/mappings not covered by recorded packets or configured variant pack. | Run a configured variant packet and UI parity check per new tab/mapping shape. | No for recorded scopes; yes for unlisted tab/mapping claims. |
-| Current Commit 4: Additional CSV file/mapping variants | Optional external validation if broader upload certification is required. | CSV spend files/mappings not covered by the recorded lifecycle packet. | Run preview/process/edit/delete before/after evidence for each new file shape or mapping family. | No for recorded scope; yes for unlisted file/mapping claims. |
-| Current Commit 5: Additional production source inventory | Optional external validation for new campaigns/scopes. | Production database source health outside recorded target campaigns. | Run bounded read-only inventory before making cleanup or database-health claims for another campaign/scope. | No for recorded scopes; yes for new campaign/scope health claims. |
+| Current Commit 2: Automated local validation packet | Completed on `2026-07-10`. | Google Sheets and Upload CSV GA4 Overview spend local regression evidence before provider/UI validation. | Focused suite passed 9 files / 113 tests; four isolated source-safety spend checks passed 1 test each with 86 skipped. Broad `source-safety-regression.test.ts` full-file run remains excluded because unrelated Instagram tests fail. | No. |
+| Current Commit 3: Normal wall-clock Google Sheets scheduler proof | Optional external validation if strict scheduled-hour proof is required. | Google Sheets spend scheduler timer beyond the recorded startup-fired packet. | Capture a natural scheduled-hour before/after packet for one campaign/source without mixing it with source lifecycle validation. | No for current local code certification; yes only for strict normal-clock deployed scheduler certification. |
+| Current Commit 4: Additional Google Sheets tab/mapping variants | Optional external validation if broader mapping certification is required. | Google Sheets spend tabs/mappings not covered by recorded packets or configured variant pack. | Run a configured variant packet and UI parity check per new tab/mapping shape. | No for recorded scopes; yes for unlisted tab/mapping claims. |
+| Current Commit 5: Additional CSV file/mapping variants | Optional external validation if broader upload certification is required. | CSV spend files/mappings not covered by the recorded lifecycle packet. | Run preview/process/edit/delete before/after evidence for each new file shape or mapping family. | No for recorded scope; yes for unlisted file/mapping claims. |
+| Current Commit 6: Additional production source inventory | Optional external validation for new campaigns/scopes. | Production database source health outside recorded target campaigns. | Run bounded read-only inventory before making cleanup or database-health claims for another campaign/scope. | No for recorded scopes; yes for new campaign/scope health claims. |
 
 ## Proven
 

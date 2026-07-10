@@ -13913,13 +13913,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        const existingSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
+        const reusableRefreshConnection = (existingSheetsConnections as any[])
+          .filter((c: any) => c?.refreshToken && String(c?.clientId || "") === String(clientId) && String(c?.clientSecret || "") === String(clientSecret))
+          .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
+        const durableRefreshToken = refresh_token || reusableRefreshConnection?.refreshToken || null;
+        if (!durableRefreshToken) {
+          return res.status(400).json({
+            success: false,
+            error: "Google Sheets did not return a durable refresh token. Reconnect and approve access so scheduled refresh can continue without reconnecting.",
+            errorCode: "GOOGLE_SHEETS_REFRESH_TOKEN_MISSING",
+            requiresReauthorization: true,
+          });
+        }
+
         // Store OAuth connection temporarily (no spreadsheet selected yet)
         const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
         await storage.createGoogleSheetsConnection({
           campaignId,
           spreadsheetId: 'pending', // Will be set when user selects spreadsheet
           accessToken: access_token,
-          refreshToken: refresh_token || null,
+          refreshToken: durableRefreshToken,
           clientId: clientId,
           clientSecret: clientSecret,
           expiresAt: expiresAt
@@ -13930,7 +13944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const key = (typeof campaignId === 'string' && (campaignId as any).includes(':')) ? campaignId : String(campaignId);
         (global as any).googleSheetsConnections.set(key, {
           accessToken: access_token,
-          refreshToken: refresh_token,
+          refreshToken: durableRefreshToken,
           expiresAt: Date.now() + (tokens.expires_in * 1000),
           spreadsheets,
           connectedAt: new Date().toISOString()

@@ -111,6 +111,20 @@ describe("GA4 external value auto-refresh regression guard", () => {
       expect(route).not.toContain('const fallback = (await storage.getGoogleSheetsConnections(campaignId, "spend"))');
     }
   });
+  it("does not save legacy Google Sheets OAuth connections without durable refresh tokens", () => {
+    const routes = routesFile();
+    const start = routes.indexOf('app.post("/api/google-sheets/oauth-exchange"');
+    const end = routes.indexOf("  // Get available sheets/tabs from a spreadsheet", start);
+    const route = routes.slice(start, end);
+
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(route).toContain("const durableRefreshToken = refresh_token || reusableRefreshConnection?.refreshToken || null;");
+    expect(route).toContain('errorCode: "GOOGLE_SHEETS_REFRESH_TOKEN_MISSING"');
+    expect(route).toContain("requiresReauthorization: true");
+    expect(route).toContain("refreshToken: durableRefreshToken");
+    expect(route).not.toContain("refreshToken: refresh_token || null");
+  });
   it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();
     const routes = routesFile();

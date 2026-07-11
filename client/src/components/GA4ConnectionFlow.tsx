@@ -600,6 +600,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
             onClick={startOAuth}
             disabled={step === 'connecting'}
             className="w-full"
+            data-testid="button-connect-ga4"
           >
             {step === 'connecting' ? (
               <>

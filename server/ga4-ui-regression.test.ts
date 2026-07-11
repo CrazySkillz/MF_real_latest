@@ -90,6 +90,10 @@ describe("GA4 UI regression guard", () => {
     expect(campaignDetail).toContain('platform.requiresReauthorization ? "Reconnect required"');
     expect(campaignDetail).toContain('platform.requiresReauthorization ? "Reconnect Required"');
     expect(campaignDetail).toContain("Reconnect Google Analytics");
+    expect(campaignDetail).toContain('document.getElementById(`ga4-reconnect-flow-${campaign.id}`)');
+    expect(campaignDetail).toContain('querySelector<HTMLButtonElement>(\'[data-testid="button-connect-ga4"]\')?.focus()');
+    expect(campaignDetail).toContain('id={platform.platform === "Google Analytics" ? `ga4-reconnect-flow-${campaign.id}` : undefined}');
+    expect(readClient("components/GA4ConnectionFlow.tsx")).toContain('data-testid="button-connect-ga4"');
     expect(campaignDetail).toContain("|| platform.requiresReauthorization || customIntegrationEmailReady");
   });
   it("keeps Add Spend source picker copy explicit about sync behavior", () => {

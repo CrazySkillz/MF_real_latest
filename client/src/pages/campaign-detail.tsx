@@ -5782,6 +5782,11 @@ export default function CampaignDetail() {
                                   className="mt-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                                   onClick={() => {
                                     setExpandedPlatform("Google Analytics");
+                                    window.setTimeout(() => {
+                                      const reconnectFlow = document.getElementById(`ga4-reconnect-flow-${campaign.id}`);
+                                      reconnectFlow?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                      reconnectFlow?.querySelector<HTMLButtonElement>('[data-testid="button-connect-ga4"]')?.focus();
+                                    }, 0);
                                   }}
                                 >
                                   Reconnect Google Analytics
@@ -5905,7 +5910,10 @@ export default function CampaignDetail() {
                       ? true
                       : (!platform.connected || platform.needsSetup || platform.requiresImport || platform.requiresReauthorization || customIntegrationEmailReady || customIntegrationCanConfigure || (platform.platform === "Google Sheets" && canAddMoreSheets))
                   ) && (
-                    <div className="border-t bg-muted/50 p-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                    <div
+                      id={platform.platform === "Google Analytics" ? `ga4-reconnect-flow-${campaign.id}` : undefined}
+                      className="border-t bg-muted/50 p-3 animate-in fade-in-0 slide-in-from-top-1 duration-200"
+                    >
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow
                           campaignId={campaign.id}

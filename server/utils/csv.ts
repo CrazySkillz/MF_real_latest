@@ -43,7 +43,7 @@ export function aggregateCsvSpendRows(
     totalSpend += spend;
     if (mapping.dateColumn) {
       const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
-      const date = rawDate ? new Date(rawDate) : null;
+      const date = rawDate && !/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(rawDate) ? new Date(rawDate) : null;
       if (!date || Number.isNaN(date.getTime())) {
         undatedSpend += spend;
         continue;

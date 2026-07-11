@@ -55,6 +55,14 @@ type CsvPreview = {
   error?: string;
 };
 
+const isCsvDateLikeValue = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw || /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(raw)) return false;
+  return !Number.isNaN(new Date(raw).getTime());
+};
+const isCsvDateLikeHeader = (header: string) =>
+  /(^|[_\s-])(date|day|timestamp)($|[_\s-])/i.test(header.trim());
+
 export function AddSpendWizardModal(props: {
   campaignId: string;
   open: boolean;
@@ -426,7 +434,15 @@ export function AddSpendWizardModal(props: {
     [campaignKeyColumn, inferredCampaignColumn]
   );
   const dateColumnHeaders = step === "csv_map"
-    ? headers.filter((header: string) => header !== spendColumn && header !== effectiveCampaignColumn)
+    ? headers.filter((header: string) => {
+        if (header === spendColumn || header === effectiveCampaignColumn) return false;
+        if (isCsvDateLikeHeader(header)) return true;
+        const nonEmptyValues = sampleRows
+          .map((row: any) => String(row?.[header] ?? "").trim())
+          .filter(Boolean);
+        if (nonEmptyValues.length === 0) return header === spendDateColumn;
+        return nonEmptyValues.every(isCsvDateLikeValue);
+      })
     : headers;
 
   useEffect(() => {

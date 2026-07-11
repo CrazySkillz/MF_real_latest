@@ -120,6 +120,21 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     expect(result.dailySpend.reduce((sum, row) => sum + row.spend, result.undatedSpend)).toBe(result.totalSpend);
   });
 
+  it("does not coerce numeric metric values into calendar years", () => {
+    expect(aggregateCsvSpendRows([
+      { Date: "500", Spend: "10" },
+      { Date: "600", Spend: "20" },
+    ], {
+      spendColumn: "Spend",
+      dateColumn: "Date",
+    })).toEqual({
+      keptRows: 2,
+      totalSpend: 30,
+      dailySpend: [],
+      undatedSpend: 30,
+    });
+  });
+
   it("returns no accepted rows when the selected mapping has no valid positive spend", () => {
     expect(aggregateCsvSpendRows([
       { Date: "", Spend: "0" },
@@ -161,7 +176,10 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
       route.indexOf("const aggregation = aggregateCsvSpendRows(parsedRows"),
     );
     expect(spendModalSource).toContain('const dateColumnHeaders = step === "csv_map"');
-    expect(spendModalSource).toContain("header !== spendColumn && header !== effectiveCampaignColumn");
+    expect(spendModalSource).toContain("if (header === spendColumn || header === effectiveCampaignColumn) return false;");
+    expect(spendModalSource).toContain("if (isCsvDateLikeHeader(header)) return true;");
+    expect(spendModalSource).toContain("return nonEmptyValues.every(isCsvDateLikeValue);");
+    expect(spendModalSource).toContain('if (!raw || /^[+-]?(?:\\d+\\.?\\d*|\\.\\d+)$/.test(raw)) return false;');
     expect(spendModalSource).toContain("{dateColumnHeaders.map((h) => <SelectItem");
     expect(spendModalSource).toContain('if (step === "csv_map" && spendDateColumn === value) setSpendDateColumn("");');
     expect(spendModalSource).toContain('if (step === "csv_map" && spendDateColumn === v) setSpendDateColumn("");');

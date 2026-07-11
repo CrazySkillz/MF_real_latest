@@ -199,7 +199,7 @@ describe("Google Sheets aggregate source adapter", () => {
     );
     expect(csvSpendRoute).toContain("requestedPlatformContext");
     expect(csvSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
-    expect(csvSpendRoute).toContain("platformContext: platformContext || null");
+    expect(csvSpendRoute).toContain("...(platformContext ? { platformContext } : {})");
     expect(csvSpendRoute).toContain('String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext');
 
     const linkedInSpendRoute = sliceBetween(

@@ -146,6 +146,12 @@ export interface IStorage {
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
+  replaceCsvSpendSourceWithRecords(
+    campaignId: string,
+    existingSourceId: string | null,
+    source: InsertSpendSource,
+    records: Array<Omit<InsertSpendRecord, "spendSourceId">>,
+  ): Promise<SpendSource>;
   getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
   getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>>;
 
@@ -1109,6 +1115,46 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return results;
+  }
+  async replaceCsvSpendSourceWithRecords(
+    campaignId: string,
+    existingSourceId: string | null,
+    source: InsertSpendSource,
+    records: Array<Omit<InsertSpendRecord, "spendSourceId">>,
+  ): Promise<SpendSource> {
+    return await db.transaction(async (tx: any) => {
+      let savedSource: SpendSource | undefined;
+      if (existingSourceId) {
+        [savedSource] = await tx
+          .update(spendSources)
+          .set(source as any)
+          .where(and(
+            sql`${spendSources.id}::text = ${existingSourceId}`,
+            eq(spendSources.campaignId, campaignId),
+            eq(spendSources.sourceType, "csv"),
+            eq(spendSources.isActive, true),
+          ))
+          .returning();
+        if (!savedSource) throw new Error("Spend source not found");
+      } else {
+        [savedSource] = await tx
+          .insert(spendSources)
+          .values({ ...source, campaignId, sourceType: "csv", isActive: true } as any)
+          .returning();
+      }
+
+      if (!savedSource) throw new Error("Failed to save CSV spend source");
+      const sourceId = String(savedSource.id);
+      await tx.delete(spendRecords).where(eq(spendRecords.spendSourceId, sourceId));
+      await tx.insert(spendRecords).values(records.map((record) => ({
+        ...record,
+        campaignId,
+        spendSourceId: sourceId,
+        sourceType: "csv",
+      })) as any);
+
+      return savedSource;
+    });
   }
 
   async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {

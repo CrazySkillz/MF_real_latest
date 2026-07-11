@@ -698,6 +698,9 @@ Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
 - CSV spend can materialize daily spend records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
+- when a date column is mapped, positive-spend rows with blank or invalid dates are excluded consistently from kept-row, response-total, and persisted daily-record totals
+- an import with no valid positive spend rows for the selected mapping must fail before creating or updating a source
+- CSV spend source add/edit and replacement spend records must commit in one campaign/source/type-scoped transaction; record materialization failure must roll back and return failure rather than false success
 - the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Spend`; optional campaign mapping is handled on the mapping screen
 - the CSV spend mapping screen should show `Spend` as a direct dropdown field; it should not require an `Edit columns` sub-action to change the spend column
 - the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; the visible controls are the spend dropdown, optional date-column dropdown, optional campaign identifier/value controls, preview table, and action buttons

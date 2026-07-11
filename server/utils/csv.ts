@@ -3,6 +3,66 @@ export type ParsedCsv = {
   rows: Array<Record<string, string>>;
 };
 
+export type CsvSpendAggregation = {
+  keptRows: number;
+  totalSpend: number;
+  dailySpend: Array<{ date: string; spend: number }>;
+};
+
+export function aggregateCsvSpendRows(
+  rows: Array<Record<string, any>>,
+  mapping: {
+    spendColumn: string;
+    dateColumn?: string | null;
+    campaignColumn?: string | null;
+    campaignValue?: string | null;
+    campaignValues?: string[] | null;
+  },
+): CsvSpendAggregation {
+  const selectedCampaigns = Array.isArray(mapping.campaignValues) && mapping.campaignValues.length > 0
+    ? new Set(mapping.campaignValues.map((value) => String(value ?? "").trim()).filter(Boolean))
+    : null;
+  const campaignValue = mapping.campaignValue ? String(mapping.campaignValue).trim() : null;
+  const dailySpend = new Map<string, number>();
+  let keptRows = 0;
+  let totalSpend = 0;
+
+  for (const row of rows) {
+    if (mapping.campaignColumn && (selectedCampaigns || campaignValue)) {
+      const value = String(row?.[mapping.campaignColumn] ?? "").trim();
+      if (selectedCampaigns ? !selectedCampaigns.has(value) : value !== campaignValue) continue;
+    }
+
+    const rawSpend = String(row?.[mapping.spendColumn] ?? "").replace(/[$,]/g, "").trim();
+    const spend = Number.parseFloat(rawSpend);
+    if (!Number.isFinite(spend) || spend <= 0) continue;
+
+    let normalizedDate: string | null = null;
+    if (mapping.dateColumn) {
+      const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
+      if (!rawDate) continue;
+      const date = new Date(rawDate);
+      if (Number.isNaN(date.getTime())) continue;
+      normalizedDate = date.toISOString().split("T")[0];
+    }
+
+    keptRows++;
+    totalSpend += spend;
+    if (normalizedDate) {
+      dailySpend.set(normalizedDate, (dailySpend.get(normalizedDate) || 0) + spend);
+    }
+  }
+
+  return {
+    keptRows,
+    totalSpend: Number(totalSpend.toFixed(2)),
+    dailySpend: Array.from(dailySpend.entries()).map(([date, spend]) => ({
+      date,
+      spend: Number(spend.toFixed(2)),
+    })),
+  };
+}
+
 // Simple, robust-enough delimited text parser for typical exports (handles quotes and delimiter chars in quotes).
 export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
   const text = String(csvText || "")

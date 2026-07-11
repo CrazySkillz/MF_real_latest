@@ -9,7 +9,7 @@ import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import multer from "multer";
-import { parseCsvText } from "./utils/csv";
+import { aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
@@ -5033,35 +5033,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      let kept = 0;
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
-      let totalSpend = 0;
-      const dailySpendMap = new Map<string, number>();
-
-      for (const row of parsedRows) {
-        if (campaignCol && (campaignValueSet || campaignValue)) {
-          const v = String((row as any)[campaignCol] ?? "").trim();
-          if (campaignValueSet) {
-            if (!campaignValueSet.has(v)) continue;
-          } else if (campaignValue && v !== campaignValue) {
-            continue;
-          }
-        }
-        const spend = parseNum((row as any)[spendCol]);
-        if (!(spend > 0)) continue;
-        kept++;
-        totalSpend += spend;
-        if (dateCol) {
-          const dateStr = String((row as any)[dateCol] ?? "").trim();
-          if (dateStr) {
-            const date = new Date(dateStr);
-            if (!isNaN(date.getTime())) {
-              const normalizedDate = date.toISOString().split('T')[0];
-              dailySpendMap.set(normalizedDate, (dailySpendMap.get(normalizedDate) || 0) + spend);
-            }
-          }
-        }
+      const aggregation = aggregateCsvSpendRows(parsedRows, {
+        spendColumn: spendCol,
+        dateColumn: dateCol,
+        campaignColumn: campaignCol,
+        campaignValue,
+        campaignValues,
+      });
+      const kept = aggregation.keptRows;
+      const totalSpend = aggregation.totalSpend;
+      const dailySpendMap = new Map(aggregation.dailySpend.map(({ date, spend }) => [date, spend]));
+      if (kept === 0) {
+        return res.status(400).json({ success: false, error: "No valid spend rows found for the selected mapping" });
       }
 
       const campaign = await storage.getCampaign(campaignId);
@@ -5095,7 +5080,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       delete mappingForStorage.sourceId; // don't persist sourceId in mappingConfig
 
-      let source: any;
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
         if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
@@ -5105,55 +5089,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
-        source = await storage.updateSpendSource(existingSourceId, {
-          displayName: mapping.displayName || "CSV",
-          currency,
-          mappingConfig: JSON.stringify(mappingForStorage),
-          ...(platformContext ? { platformContext } : {}),
-          isActive: true,
-        } as any);
-        if (!source) return res.status(404).json({ success: false, error: "Spend source not found" });
-        await storage.deleteSpendRecordsBySource(existingSourceId);
-      } else {
-        source = await storage.createSpendSource({
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const records = dateCol
+        ? Array.from(dailySpendMap.entries()).map(([date, spend]) => ({
+            campaignId,
+            date,
+            spend: Number(spend.toFixed(2)).toFixed(2),
+            currency,
+            sourceType: "csv",
+          }))
+        : [{
+            campaignId,
+            date: today,
+            spend: totalSpend.toFixed(2),
+            currency,
+            sourceType: "csv",
+          }];
+      const source = await storage.replaceCsvSpendSourceWithRecords(
+        campaignId,
+        existingSourceId ? String(existingSourceId) : null,
+        {
           campaignId,
           sourceType: "csv",
           displayName: mapping.displayName || "CSV",
           currency,
           mappingConfig: JSON.stringify(mappingForStorage),
-          platformContext: platformContext || null,
+          ...(platformContext ? { platformContext } : {}),
           isActive: true,
-        } as any);
-      }
-
-      // Create spend_record(s) so spend-breakdown shows correct per-source amount
-      try {
-        if (dateCol && dailySpendMap.size > 0) {
-          const records = Array.from(dailySpendMap.entries())
-            .filter(([, spend]) => spend > 0)
-            .map(([date, spend]) => ({
-              campaignId,
-              spendSourceId: String(source.id),
-              date,
-              spend: Number(spend.toFixed(2)).toFixed(2),
-              currency,
-              sourceType: "csv",
-            }));
-          if (records.length > 0) await storage.createSpendRecords(records as any);
-        } else {
-          const today = new Date().toISOString().split("T")[0];
-          await storage.createSpendRecords([{
-            campaignId,
-            spendSourceId: String(source.id),
-            date: today,
-            spend: totalSpend.toFixed(2),
-            currency,
-            sourceType: "csv",
-          }] as any);
-        }
-      } catch (e: any) {
-        console.warn("[CSV Spend] Failed to create spend_record:", e?.message);
-      }
+        } as any,
+        records as any,
+      );
 
       await recalcCampaignSpend(campaignId);
       scheduleGA4SpendPostResponseRecompute(campaignId);

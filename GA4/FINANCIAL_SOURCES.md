@@ -698,8 +698,8 @@ Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
 - CSV spend can materialize daily spend records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
-- campaign filtering must sum every selected positive-spend row even when its mapped date is blank or invalid
-- when a date column is mapped, valid dates remain daily records and selected blank/invalid-date spend is retained as one import-date fallback amount so Total Spend and persisted records reconcile
+- campaign filtering must consider only the selected campaign values and must sum every selected positive-spend row for snapshot imports
+- when a date column is mapped, every selected positive-spend row must have a valid date; blank or invalid dates must fail before source mutation because the app must not invent a spend date
 - GA4 CSV spend must normalize the UI ga4 context to the default unscoped spend context rather than returning Unsupported spend platformContext
 - an import with no selected positive-spend rows must fail before creating or updating a source
 - CSV spend source add/edit and replacement spend records must commit in one campaign/source/type-scoped transaction; record materialization failure must roll back and return failure rather than false success

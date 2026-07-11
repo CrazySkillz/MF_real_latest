@@ -5049,6 +5049,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (kept === 0) {
         return res.status(400).json({ success: false, error: "No valid spend rows found for the selected mapping" });
       }
+      if (dateCol && aggregation.undatedSpend > 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Selected spend rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.",
+        });
+      }
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
@@ -5093,9 +5099,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const today = new Date().toISOString().split("T")[0];
-      if (dateCol && aggregation.undatedSpend > 0) {
-        dailySpendMap.set(today, (dailySpendMap.get(today) || 0) + aggregation.undatedSpend);
-      }
       const records = dateCol
         ? Array.from(dailySpendMap.entries()).map(([date, spend]) => ({
             campaignId,

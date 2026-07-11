@@ -92,7 +92,7 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     })).toMatchObject({ keptRows: 2, totalSpend: 400 });
   });
 
-  it("imports all selected Alpha spend while retaining valid daily dates", () => {
+  it("identifies selected Alpha spend that cannot be imported as dated records", () => {
     const rows = [
       { Date: "2026-07-01", Campaign: "Alpha", Spend: "100.25" },
       { Date: "2026-07-01", Campaign: "Alpha", Spend: "49.75" },
@@ -137,6 +137,7 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     expect(route).toContain("const aggregation = aggregateCsvSpendRows(parsedRows");
     expect(route).toContain('if (kept === 0)');
     expect(route).toContain("if (dateCol && aggregation.undatedSpend > 0)");
+    expect(route).toContain("Selected spend rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
     expect(route).toContain('No valid spend rows found for the selected mapping');
     expect(route.indexOf("const aggregation = aggregateCsvSpendRows(parsedRows")).toBeLessThan(
       route.indexOf("const campaign = await storage.getCampaign(campaignId);"),
@@ -144,6 +145,10 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     expect(route.indexOf('if (kept === 0)')).toBeLessThan(
       route.indexOf("storage.replaceCsvSpendSourceWithRecords"),
     );
+    expect(route.indexOf("if (dateCol && aggregation.undatedSpend > 0)")).toBeLessThan(
+      route.indexOf("const campaign = await storage.getCampaign(campaignId);"),
+    );
+    expect(route).not.toContain("dailySpendMap.set(today, (dailySpendMap.get(today) || 0) + aggregation.undatedSpend)");
   });
 
   it("preserves stored-row edit mapping guards and stable source identity", () => {

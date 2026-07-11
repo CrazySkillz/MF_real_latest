@@ -673,6 +673,9 @@ Important current-state note:
 - Google Sheets OAuth placeholder rows with `spreadsheetId='pending'` must not be returned to source choosers as selectable sheet connections
 - spreadsheet-tab loading should use the same newest/pending OAuth token selection pattern as spreadsheet listing so reconnects do not list files with one token and try to load tabs with an older token
 - if a saved Google Sheets spend connection's token fails during preview or import, the spend path may self-heal by verifying the same spreadsheet/tab with the newest campaign Google Sheets token and updating the saved connection tokens before asking the user to reconnect
+- deployed Google Sheets spend refresh code does not by itself prove durable OAuth credentials; recurring disconnects were traced to the Google OAuth app being `External + Testing`
+- Publishing status is now `In production`, but public `mumus.app` pages/domain ownership, Google branding/data-access verification, final post-publish Google Sheets and GA4 reconnects, automatic token renewal, and more-than-seven-day durability proof are explicitly on hold
+- until the hold closes, Google Sheets spend must not be clean-certified as a stable production connection; the exact blocking queue is in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
 ## Spend Source 5: CSV Journey

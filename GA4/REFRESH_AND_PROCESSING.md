@@ -18,6 +18,13 @@ User expectation:
 - users should not need to reselect or manually type GA4 campaign values after property selection when the selected property exposes real UTM campaign values through GA4 dimensions or tagged page URLs
 - GA4 Data API values can change after Google finishes processing already-sent events, so a later refetch can show higher values even when no new seed script run occurred
 
+Google OAuth continuity boundary:
+
+- recurring Google Sheets and GA4 disconnects were traced to the OAuth app being `External + Testing`, whose relevant authorizations expired after seven days
+- Publishing status has been changed to `In production`, but public `mumus.app` pages/domain ownership, branding/data-access verification, final post-publish reconnects, automatic token renewal, and more-than-seven-day durability proof are explicitly on hold
+- until that work resumes and the evidence is captured, background refresh code and a successful repaired manual refresh must not be described as stable production OAuth operation
+- the authoritative hold and blocking commit queue are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
+
 ## Campaign Reporting Timezone Configuration
 
 The campaign reporting timezone is the source of truth for completed-day GA4 history in Insights Trends.

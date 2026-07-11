@@ -425,6 +425,19 @@ export function AddSpendWizardModal(props: {
     () => campaignKeyColumn || inferredCampaignColumn || "",
     [campaignKeyColumn, inferredCampaignColumn]
   );
+  const dateColumnHeaders = step === "csv_map"
+    ? headers.filter((header: string) => header !== spendColumn && header !== effectiveCampaignColumn)
+    : headers;
+
+  useEffect(() => {
+    if (
+      step === "csv_map"
+      && spendDateColumn
+      && (spendDateColumn === spendColumn || spendDateColumn === effectiveCampaignColumn)
+    ) {
+      setSpendDateColumn("");
+    }
+  }, [step, spendDateColumn, spendColumn, effectiveCampaignColumn]);
 
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -2457,7 +2470,13 @@ export function AddSpendWizardModal(props: {
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                               <Label className="font-normal">Spend</Label>
-                              <Select value={spendColumn} onValueChange={setSpendColumn}>
+                              <Select
+                                value={spendColumn}
+                                onValueChange={(value) => {
+                                  setSpendColumn(value);
+                                  if (step === "csv_map" && spendDateColumn === value) setSpendDateColumn("");
+                                }}
+                              >
                                 <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                   {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
@@ -2481,7 +2500,7 @@ export function AddSpendWizardModal(props: {
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
                                 <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
-                                {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                {dateColumnHeaders.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground/70">
@@ -2499,6 +2518,7 @@ export function AddSpendWizardModal(props: {
                                 value={campaignKeyColumn || CAMPAIGN_COL_NONE}
                                 onValueChange={(v) => {
                                   campaignKeyTouchedRef.current = true;
+                                  if (step === "csv_map" && spendDateColumn === v) setSpendDateColumn("");
                                   setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
                                   setCampaignDisplayName("");
                                 }}

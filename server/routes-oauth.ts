@@ -5036,6 +5036,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      if (dateCol && (dateCol === spendCol || dateCol === campaignCol)) {
+        return res.status(400).json({
+          success: false,
+          error: "Date column must be different from the Spend and Campaign columns.",
+        });
+      }
       const aggregation = aggregateCsvSpendRows(parsedRows, {
         spendColumn: spendCol,
         dateColumn: dateCol,

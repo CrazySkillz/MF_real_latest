@@ -5,6 +5,7 @@ import { aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const storageSource = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
+const spendModalSource = readFileSync(join(process.cwd(), "client", "src", "components", "AddSpendWizardModal.tsx"), "utf8");
 
 const csvSpendRoute = () => {
   const start = routes.indexOf('app.post("/api/campaigns/:id/spend/csv/process"');
@@ -149,6 +150,21 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
       route.indexOf("const campaign = await storage.getCampaign(campaignId);"),
     );
     expect(route).not.toContain("dailySpendMap.set(today, (dailySpendMap.get(today) || 0) + aggregation.undatedSpend)");
+  });
+
+  it("rejects duplicate CSV date roles and removes them from the CSV Date options", () => {
+    const route = csvSpendRoute();
+
+    expect(route).toContain("if (dateCol && (dateCol === spendCol || dateCol === campaignCol))");
+    expect(route).toContain("Date column must be different from the Spend and Campaign columns.");
+    expect(route.indexOf("if (dateCol && (dateCol === spendCol || dateCol === campaignCol))")).toBeLessThan(
+      route.indexOf("const aggregation = aggregateCsvSpendRows(parsedRows"),
+    );
+    expect(spendModalSource).toContain('const dateColumnHeaders = step === "csv_map"');
+    expect(spendModalSource).toContain("header !== spendColumn && header !== effectiveCampaignColumn");
+    expect(spendModalSource).toContain("{dateColumnHeaders.map((h) => <SelectItem");
+    expect(spendModalSource).toContain('if (step === "csv_map" && spendDateColumn === value) setSpendDateColumn("");');
+    expect(spendModalSource).toContain('if (step === "csv_map" && spendDateColumn === v) setSpendDateColumn("");');
   });
 
   it("preserves stored-row edit mapping guards and stable source identity", () => {

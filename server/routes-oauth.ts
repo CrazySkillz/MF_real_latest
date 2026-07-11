@@ -9162,6 +9162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'No access token'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
           </body></html>`);
         }
+        if (!ga4RefreshToken) {
+          return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2>Authentication Failed</h2><p>Google Analytics did not return a durable refresh token.</p>
+            <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Google Analytics did not return a durable refresh token. Reconnect and approve access.'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          </body></html>`);
+        }
 
         // Fetch GA4 accounts and properties
         let ga4Properties: Array<{ id: string; name: string; account?: string }> = [];
@@ -9203,19 +9209,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('[GA4 OAuth] Failed to fetch properties:', error);
         }
 
-        // Deactivate any stale GA4 connections for this campaign before creating the new one
         const existingGA4Conns = await storage.getGA4Connections(ga4CampaignId);
-        for (const old of existingGA4Conns) {
-          await storage.deleteGA4Connection(old.id);
-          console.log(`[GA4 OAuth] Deactivated stale connection ${old.id} for campaign ${ga4CampaignId}`);
-        }
 
-        // Store GA4 connection
+        // Store and promote the durable replacement before removing any prior connection.
         const ga4ExpiresAt = new Date(Date.now() + ((ga4Tokens.expires_in || 3600) * 1000));
-        await storage.createGA4Connection({
+        const newGA4Connection = await storage.createGA4Connection({
           campaignId: ga4CampaignId,
           accessToken: ga4AccessToken,
-          refreshToken: ga4RefreshToken || null,
+          refreshToken: ga4RefreshToken,
           propertyId: '',
           method: 'access_token',
           propertyName: 'OAuth Connection',
@@ -9223,6 +9224,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clientSecret: ga4ClientSecret,
           expiresAt: ga4ExpiresAt,
         });
+        if (existingGA4Conns.length > 0) {
+          const promoted = await storage.setPrimaryGA4Connection(ga4CampaignId, newGA4Connection.id);
+          if (!promoted) {
+            await storage.deleteGA4Connection(newGA4Connection.id);
+            throw new Error('Failed to promote replacement GA4 connection');
+          }
+          for (const old of existingGA4Conns) {
+            await storage.deleteGA4Connection(old.id);
+            console.log(`[GA4 OAuth] Deactivated stale connection ${old.id} for campaign ${ga4CampaignId}`);
+          }
+        }
 
         (global as any).oauthConnections = (global as any).oauthConnections || new Map();
         (global as any).oauthConnections.set(ga4CampaignId, {

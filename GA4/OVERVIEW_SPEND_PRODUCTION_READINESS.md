@@ -25,7 +25,7 @@ Current clean-certification status:
 - **Upload CSV spend retains its bounded historical lifecycle evidence.** Current local tests cover the shared lifetime spend recompute change, but new deployed CSV file shapes or mappings remain unproven.
 - Local fixes now require a newly issued refresh token during explicit Google Sheets reconnect and align persisted spend-to-date with the lifetime spend-record window. These fixes are not deployed/provider proof.
 
-Do not call the Google Sheets spend path production-ready again until Current Commits 5, 6, and 7 are closed with deployed evidence.
+Do not call the Google Sheets spend path production-ready again until Current Commits 5, 6, and 7 are closed with deployed evidence. Do not certify GA4-derived spend consumers while the campaign's GA4 OAuth connection remains unable to refresh; Current Commit 8 tracks that separate blocking credential repair.
 
 ## Scope
 
@@ -90,6 +90,12 @@ Recorded local result after the Current Commit 5 fixes on `2026-07-11`:
 - 9 test files passed.
 - 116 tests passed.
 - The four in-scope source-safety checks passed inside the broad file run. The broad file still failed only on seven unrelated Instagram assertions, so the full file is not claimed as passing evidence.
+
+Current Commit 8 local validation on `2026-07-11`:
+
+- Focused OAuth/spend packet passed: 4 files, 27 tests.
+- Broader Overview spend packet passed: 9 files, 117 tests.
+- `npm run check` passed.
 
 Targeted `server/source-safety-regression.test.ts` checks to run before provider/UI validation:
 
@@ -159,15 +165,16 @@ This queue is scoped only to GA4 Overview spend readiness for Google Sheets and 
 | Current Commit | Status | Scope | Smallest safe action | Blocking? |
 | --- | --- | --- | --- | --- |
 | Current Commit 1: Create GA4 Overview spend readiness doc | Completed and committed. | Separate Google Sheets/CSV spend evidence from whole-Overview evidence. | No further action. | No. |
-| Current Commit 2: Automated local validation packet | Completed and committed; refreshed on `2026-07-11`. | Local Google Sheets/CSV spend regression evidence. | Current focused suite: 9 files / 116 tests passed. Four spend source-safety assertions passed inside the broad run; seven unrelated Instagram assertions failed. | No. |
+| Current Commit 2: Automated local validation packet | Completed and committed; refreshed on `2026-07-11`. | Local Google Sheets/CSV spend regression evidence. | Current focused suite: 9 files / 117 tests passed after Current Commit 8. Four spend source-safety assertions passed inside the broad run; seven unrelated Instagram assertions failed. | No. |
 | Current Commit 3: Natural scheduler proof | **Attempted and failed on `2026-07-10`.** | Source `618e5e12-0f3f-44a2-837a-d2677ad95f64`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`. | Preserve the failed `401 UNAUTHENTICATED` packet as root-cause evidence; do not count unchanged `$498.75` as refresh success. | Yes for Google Sheets automatic-update readiness. |
 | Current Commit 4: Token lookup/self-heal hardening | Completed across commits `ce4c8947`, `fc6d9f30`, `72294e3e`, `3264e61d`, and `df68595d`. | Purpose-agnostic connection lookup, fallback token refresh, failure details, and durable-token storage guard. | No further code in this group. Existing invalid production credentials still require one explicit repair after deployment. | Did not close Current Commit 3 by itself. |
 | Current Commit 5: Fresh reconnect token and lifetime spend parity | **Completed and committed as `0701861a`; deployed validation pending.** | Prevent explicit reconnect from reusing a rejected refresh token; make persisted spend-to-date use the same lifetime window as spend breakdown. | Deploy `0701861a`, then complete Current Commit 6. | Yes until deployed and validated. |
 | Current Commit 6: Deployed provider mutation and propagation packet | Outstanding external validation. | Existing source `618e5e12-0f3f-44a2-837a-d2677ad95f64`. | After Current Commit 5 deploys: reconnect Google Sheets once without deleting the spend source; confirm raw run-now `200/success:true`; change a known sheet spend value; rerun; prove the same source ID, expected new total, `spend-to-date === spend-breakdown`, Overview parity, and unchanged unrelated revenue. | Yes for Google Sheets production readiness. |
 | Current Commit 7: Successful natural wall-clock scheduler mutation | Outstanding external validation. | Automatic update after a user changes the sheet. | Capture before values, change one known sheet value, wait for the configured natural scheduler, then prove provider success, same source ID, exact delta, spend-to-date/breakdown/Overview parity, and downstream financial parity. | Yes for the claim that user sheet edits update automatically. |
-| Current Commit 8: Additional Google Sheets tab/mapping variants | Optional for broader claims. | Unlisted tabs, headers, dates, filters, and mappings. | Run one bounded packet per mapping family. | Only blocks broader mapping claims. |
-| Current Commit 9: Additional CSV file/mapping variants | Optional for broader claims. | Unlisted CSV shapes and mappings. | Run preview/process/edit/delete evidence per file family. | Only blocks broader CSV claims. |
-| Current Commit 10: Additional production source inventory | Optional for broader campaigns. | Other campaign/source health. | Run bounded read-only inventory per new campaign scope. | Only blocks broader production-data claims. |
+| Current Commit 8: Durable GA4 OAuth reconnect | **Implemented locally; uncommitted.** | Require a newly issued GA4 refresh token, preserve existing GA4 rows until a durable replacement is created and promoted, and regression-cover the replacement order. | Commit the three scoped files, deploy, reconnect GA4 once, and prove automatic GA4 token refresh without another consent prompt. | Yes for GA4-derived downstream spend-consumer validation; does not block source-backed Total Spend itself. |
+| Current Commit 9: Additional Google Sheets tab/mapping variants | Optional for broader claims. | Unlisted tabs, headers, dates, filters, and mappings. | Run one bounded packet per mapping family. | Only blocks broader mapping claims. |
+| Current Commit 10: Additional CSV file/mapping variants | Optional for broader claims. | Unlisted CSV shapes and mappings. | Run preview/process/edit/delete evidence per file family. | Only blocks broader CSV claims. |
+| Current Commit 11: Additional production source inventory | Optional for broader campaigns. | Other campaign/source health. | Run bounded read-only inventory per new campaign scope. | Only blocks broader production-data claims. |
 
 ## Proven
 

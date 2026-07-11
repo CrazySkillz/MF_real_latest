@@ -1977,7 +1977,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: 15 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-to-date`);
@@ -2144,7 +2144,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: 15 * 1000, // 15 seconds
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`);
@@ -2175,7 +2175,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: 15 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-breakdown`);

@@ -188,6 +188,8 @@ Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
+- active Google Sheets spend sources also use a source-family-only polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; this timer does not refresh Google Sheets revenue, CSV, CRM, ecommerce, LinkedIn, Meta, or Google Ads
+- the Google Sheets spend timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
 - if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
 - `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override and defaults to `false`
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected complete day
@@ -267,9 +269,12 @@ Google Sheets spend auto-refresh rule:
 
 - creating a new Google Sheets spend source is additive and must not reuse an existing source just because the same Google Sheets connection or tab is selected
 - Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by the GA4 daily refresh scheduler
+- after setup, a mapped Google Sheets spend-value edit must update the same active source automatically without a wizard resave; the default near-real-time target is a provider pull within 1 minute and an open GA4 Overview refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions
+- this is near-real-time polling, not a literal zero-latency guarantee; provider/runtime failures can delay convergence and must be logged without replacing the last successful stored value. Google Drive webhook/channel registration and renewal are not implemented or certified in this path
+- the frequent Google Sheets spend timer must remain isolated from Upload CSV and all other provider families
 - GA4 daily refresh env vars such as `GA4_DAILY_REFRESH_HOUR`, `GA4_DAILY_REFRESH_MINUTE`, and `GA4_DAILY_REFRESH_RUN_ON_STARTUP` are not valid fast tests for Google Sheets spend
-- to validate Google Sheets spend auto-refresh quickly in a deployed environment, temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true`, redeploy/restart, wait for the auto-refresh run to complete, then remove that flag after the test
-- production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the normal scheduler runs on its daily schedule
+- to validate the normal Google Sheets spend update contract, change a known mapped value and wait for `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES` plus the Overview display-refetch interval; `AUTO_REFRESH_RUN_ON_STARTUP=true` exercises the full scheduler and is not proof that the source-family timer fired
+- production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the full scheduler remains daily while Google Sheets spend uses its separate bounded interval
 - on refresh, the saved Google Sheets spend source is reprocessed from the current sheet rows and replaces the previous stored amount for that source
 - refresh must update by stable spend `sourceId`; it must not create a duplicate source, update another source that shares the same connection, or append duplicate rows on repeated scheduler runs
 - if a `Date` column is mapped, daily spend records are materialized from the dated rows; adding a new matching dated row should increase `Total Spend` by that row's spend amount after refresh

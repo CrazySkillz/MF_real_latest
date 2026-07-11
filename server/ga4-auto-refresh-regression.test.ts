@@ -9,6 +9,9 @@ const schedulerFile = () =>
 const routesFile = () =>
   readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
 
+const ga4MetricsFile = () =>
+  readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
+
 describe("GA4 external value auto-refresh regression guard", () => {
   it("schedules external refresh by configured reporting timezone instead of server local time", () => {
     const content = schedulerFile();
@@ -25,6 +28,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
       hour: 3,
       minute: 0,
       runOnStartup: true,
+      googleSheetsSpendIntervalMinutes: 1,
     });
     expect(getNextAutoRefreshRunAt(new Date("2026-06-20T22:30:00.000Z"), config).toISOString()).toBe("2026-06-21T01:00:00.000Z");
     expect(content).toContain("AUTO_REFRESH_TIME_ZONE || env.GA4_DAILY_REFRESH_TIME_ZONE || \"UTC\"");
@@ -53,6 +57,45 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("Skipping stale Salesforce revenue source");
   });
 
+  it("polls only active Google Sheets spend sources and refreshes open Overview spend state", () => {
+    const scheduler = schedulerFile();
+    const routes = routesFile();
+    const metrics = ga4MetricsFile();
+    const refreshStart = scheduler.indexOf("export async function runGoogleSheetsSpendAutoRefreshOnce");
+    const refreshEnd = scheduler.indexOf("export async function runDailyAutoRefreshOnce", refreshStart);
+    const refreshFunction = scheduler.slice(refreshStart, refreshEnd);
+    const processStart = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"');
+    const processEnd = routes.indexOf("  // ---------------------------------------------------------------------------", processStart);
+    const processRoute = routes.slice(processStart, processEnd);
+
+    expect(getAutoRefreshSchedulerConfig({} as any).googleSheetsSpendIntervalMinutes).toBe(1);
+    expect(getAutoRefreshSchedulerConfig({ GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES: "0" } as any).googleSheetsSpendIntervalMinutes).toBe(1);
+    expect(getAutoRefreshSchedulerConfig({ GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES: "90" } as any).googleSheetsSpendIntervalMinutes).toBe(60);
+    expect(refreshStart).toBeGreaterThan(-1);
+    expect(refreshEnd).toBeGreaterThan(refreshStart);
+    expect(refreshFunction).toContain("storage.getSpendSources(campaignId)");
+    expect(refreshFunction).toContain('String(source.sourceType || "") === "google_sheets"');
+    expect(refreshFunction).toContain("source.isActive !== false");
+    expect(refreshFunction).toContain("reprocessGoogleSheetsSpend(campaignId, source, mappingConfig)");
+    expect(processRoute).toContain("scheduleGA4SpendPostResponseRecompute(campaignId);");
+    expect(refreshFunction).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
+    expect(refreshFunction).not.toContain("reprocessGoogleSheetsRevenue");
+    expect(refreshFunction).not.toContain("reprocessHubSpot");
+    expect(refreshFunction).not.toContain("reprocessLinkedInSpend");
+    expect(refreshFunction).not.toContain('sourceType || "") === "csv"');
+    expect(scheduler).toContain("setInterval(runGoogleSheetsSpendRefresh, googleSheetsSpendIntervalMs)");
+    expect(refreshFunction).toContain("__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress");
+    expect(scheduler).toContain("while ((global as any).__googleSheetsSpendRefreshInProgress)");
+    expect(scheduler).toContain("Waiting for Google Sheets spend refresh to finish");
+    expect(processRoute.indexOf("if (!resp.ok) {")).toBeLessThan(processRoute.indexOf("await storage.deleteSpendRecordsBySource"));
+
+    for (const queryName of ["spendToDateResp", "spendSourcesResp", "spendBreakdownResp"]) {
+      const queryStart = metrics.indexOf(`const { data: ${queryName} }`);
+      const queryEnd = metrics.indexOf("  });", queryStart);
+      expect(queryStart).toBeGreaterThan(-1);
+      expect(metrics.slice(queryStart, queryEnd)).toContain("refetchInterval: 15 * 1000");
+    }
+  });
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {
     const content = schedulerFile();
 
@@ -218,7 +261,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("AUTO_REFRESH_LINKEDIN_TIMEOUT_MS");
     expect(content).toContain('await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);');
     expect(content).toContain("__autoRefreshInProgress");
-    expect(content).toContain('console.log("[Auto Refresh] Skipping run (already in progress)")');
+    expect(content).toContain('console.log("[Auto Refresh] Skipping run (daily refresh already in progress)")');
     expect(content).toContain("=== AUTO-REFRESH COMPLETE");
   });
 });

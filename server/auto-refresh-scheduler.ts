@@ -29,6 +29,7 @@ type AutoRefreshSchedulerConfig = {
   hour: number;
   minute: number;
   runOnStartup: boolean;
+  googleSheetsSpendIntervalMinutes: number;
 };
 const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;
 const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;
@@ -45,7 +46,8 @@ export function getAutoRefreshSchedulerConfig(env: NodeJS.ProcessEnv = process.e
   const hour = parseBoundedInt(env.AUTO_REFRESH_DAILY_HOUR, 3, 0, 23);
   const minute = parseBoundedInt(env.AUTO_REFRESH_DAILY_MINUTE, 0, 0, 59);
   const runOnStartup = String(env.AUTO_REFRESH_RUN_ON_STARTUP || "false").toLowerCase() === "true";
-  return { enabled, reportingTimeZone, hour, minute, runOnStartup };
+  const googleSheetsSpendIntervalMinutes = parseBoundedInt(env.GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES, 1, 1, 60);
+  return { enabled, reportingTimeZone, hour, minute, runOnStartup, googleSheetsSpendIntervalMinutes };
 }
 
 export function getNextAutoRefreshRunAt(now = new Date(), config: AutoRefreshSchedulerConfig = getAutoRefreshSchedulerConfig()): Date {
@@ -580,14 +582,47 @@ export async function refreshGoogleSheetsDataForCampaign(campaignId: string): Pr
   return anyUpdated;
 }
 
-export async function runDailyAutoRefreshOnce(): Promise<void> {
-  // Prevent overlapping runs (e.g. slow API + interval overlap).
-  if ((global as any).__autoRefreshInProgress) {
-    console.log("[Auto Refresh] Skipping run (already in progress)");
+export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress) {
+    console.log("[Google Sheets Spend Refresh] Skipping run (refresh already in progress)");
     return;
   }
-  (global as any).__autoRefreshInProgress = true;
+  (global as any).__googleSheetsSpendRefreshInProgress = true;
 
+  try {
+    const campaigns = await storage.getCampaigns();
+    for (const campaign of campaigns) {
+      const campaignId = String(campaign.id);
+      try {
+        const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+        const sheetSpendSources = (Array.isArray(spendSources) ? spendSources : []).filter((source: any) =>
+          source && source.isActive !== false && String(source.sourceType || "") === "google_sheets"
+        );
+        for (const source of sheetSpendSources) {
+          const mappingConfig = safeJsonParse(source?.mappingConfig);
+          if (!mappingConfig?.connectionId || !mappingConfig?.spendColumn) continue;
+          await reprocessGoogleSheetsSpend(campaignId, source, mappingConfig);
+        }
+      } catch (e: any) {
+        console.error(`[Google Sheets Spend Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
+      }
+    }
+  } finally {
+    (global as any).__googleSheetsSpendRefreshInProgress = false;
+  }
+}
+export async function runDailyAutoRefreshOnce(): Promise<void> {
+  // Give the daily job priority without overlapping a Sheets spend refresh.
+  if ((global as any).__autoRefreshInProgress) {
+    console.log("[Auto Refresh] Skipping run (daily refresh already in progress)");
+    return;
+  }
+  // Claim priority before waiting so another Sheets spend interval cannot start.
+  (global as any).__autoRefreshInProgress = true;
+  while ((global as any).__googleSheetsSpendRefreshInProgress) {
+    console.log("[Auto Refresh] Waiting for Google Sheets spend refresh to finish");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
   const startedAt = Date.now();
   console.log("\n=== DAILY AUTO-REFRESH + AUTO-PROCESS RUNNING ===");
   console.log(`Timestamp: ${new Date().toISOString()}`);
@@ -854,6 +889,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
  * Defaults:
  * - Enabled by default (AUTO_REFRESH_ENABLED=true unless explicitly set to "false")
  * - Runs daily at 3:00 AM in AUTO_REFRESH_TIME_ZONE or GA4_DAILY_REFRESH_TIME_ZONE, default UTC
+ * - Polls active Google Sheets spend sources every minute by default
  * - Optional: run once on startup if AUTO_REFRESH_RUN_ON_STARTUP=true
  */
 export function startDailyAutoRefreshScheduler(): void {
@@ -871,6 +907,15 @@ export function startDailyAutoRefreshScheduler(): void {
   console.log("\n🔁 Daily Auto-Refresh + Auto-Process Scheduler Started");
   console.log(`   Enabled: ${config.enabled}`);
   console.log(`   Scheduled time: ${config.hour.toString().padStart(2, "0")}:${config.minute.toString().padStart(2, "0")} (${config.reportingTimeZone})`);
+  console.log(`   Google Sheets spend interval: ${config.googleSheetsSpendIntervalMinutes} minute(s)`);
+
+  const googleSheetsSpendIntervalMs = config.googleSheetsSpendIntervalMinutes * 60 * 1000;
+  const runGoogleSheetsSpendRefresh = () => {
+    void runGoogleSheetsSpendAutoRefreshOnce().catch((e: any) => {
+      console.error("[Google Sheets Spend Refresh] Interval run failed:", e?.message || e);
+    });
+  };
+  (global as any).__autoRefreshSchedulerInterval = setInterval(runGoogleSheetsSpendRefresh, googleSheetsSpendIntervalMs);
 
   const scheduleNextRun = () => {
     const nextRun = getNextAutoRefreshRunAt(new Date(), config);

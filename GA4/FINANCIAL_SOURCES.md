@@ -128,6 +128,8 @@ Budget & Financial Analysis pacing metadata, including campaign start and end da
 
 Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
 
+After setup, edits to mapped Google Sheets spend values must automatically reprocess the same active spend source without requiring the user to reopen or resave the wizard. The default near-real-time target is a provider pull within 1 minute and an open GA4 Overview spend-query refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions. This is not an instantaneous Google Sheets push guarantee. A failed provider read must preserve the last successful source records and total, report the source-specific failure, and retry on a later interval; it must not create a replacement source or write a guessed zero.
+
 Google Sheets revenue and spend setup must keep the modal visually stable. Do not show transient placeholder text such as `Checking Google connection`, `Checking connection...`, `Checking connected Google Sheets...`, or `Loading...` while switching into the Google Sheets chooser, going Back, or changing sheet selections.
 
 ### Previous-Day Spend Records

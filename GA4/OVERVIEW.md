@@ -164,6 +164,8 @@ High-level rule:
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
+- active Google Sheets spend sources must be repulled automatically after mapped sheet values change; the default near-real-time target is a provider pull within 1 minute, and the open Overview spend queries refetch persisted values within 15 additional seconds
+- this Google Sheets spend contract is bounded polling rather than an instantaneous provider push; failed pulls must retain the last successful stored spend instead of clearing or replacing it with guessed values
 - profit and efficiency metrics are derived outputs, not manually stored totals
 
 Pipeline Proxy rule:

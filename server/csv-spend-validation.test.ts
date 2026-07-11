@@ -92,50 +92,51 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     })).toMatchObject({ keptRows: 2, totalSpend: 400 });
   });
 
-  it("keeps dated response totals equal to persisted daily totals", () => {
+  it("imports all selected Alpha spend while retaining valid daily dates", () => {
     const rows = [
-      { Date: "2026-07-01", Spend: "100.25" },
-      { Date: "2026-07-01", Spend: "49.75" },
-      { Date: "2026-07-02", Spend: "25" },
-      { Date: "", Spend: "500" },
-      { Date: "not-a-date", Spend: "600" },
-      { Date: "2026-07-03", Spend: "0" },
-      { Date: "2026-07-03", Spend: "-10" },
-      { Date: "2026-07-03", Spend: "invalid" },
+      { Date: "2026-07-01", Campaign: "Alpha", Spend: "100.25" },
+      { Date: "2026-07-01", Campaign: "Alpha", Spend: "49.75" },
+      { Date: "2026-07-02", Campaign: "Beta", Spend: "25" },
+      { Date: "", Campaign: "Alpha", Spend: "500" },
+      { Date: "not-a-date", Campaign: "Alpha", Spend: "600" },
     ];
 
     const result = aggregateCsvSpendRows(rows, {
       spendColumn: "Spend",
       dateColumn: "Date",
+      campaignColumn: "Campaign",
+      campaignValues: ["Alpha"],
     });
 
     expect(result).toEqual({
-      keptRows: 3,
-      totalSpend: 175,
+      keptRows: 4,
+      totalSpend: 1250,
       dailySpend: [
         { date: "2026-07-01", spend: 150 },
-        { date: "2026-07-02", spend: 25 },
       ],
+      undatedSpend: 1100,
     });
-    expect(result.dailySpend.reduce((sum, row) => sum + row.spend, 0)).toBe(result.totalSpend);
+    expect(result.dailySpend.reduce((sum, row) => sum + row.spend, result.undatedSpend)).toBe(result.totalSpend);
   });
 
   it("returns no accepted rows when the selected mapping has no valid positive spend", () => {
     expect(aggregateCsvSpendRows([
-      { Date: "", Spend: "100" },
-      { Date: "bad-date", Spend: "200" },
-      { Date: "2026-07-01", Spend: "0" },
+      { Date: "", Spend: "0" },
+      { Date: "bad-date", Spend: "-10" },
+      { Date: "2026-07-01", Spend: "invalid" },
     ], {
       spendColumn: "Spend",
       dateColumn: "Date",
-    })).toEqual({ keptRows: 0, totalSpend: 0, dailySpend: [] });
+    })).toEqual({ keptRows: 0, totalSpend: 0, dailySpend: [], undatedSpend: 0 });
   });
 
   it("wires validated aggregation into the route before source mutation", () => {
     const route = csvSpendRoute();
 
+    expect(route).toContain('const requestedPlatformContext = rawPlatformContext === "ga4" ? "" : rawPlatformContext;');
     expect(route).toContain("const aggregation = aggregateCsvSpendRows(parsedRows");
     expect(route).toContain('if (kept === 0)');
+    expect(route).toContain("if (dateCol && aggregation.undatedSpend > 0)");
     expect(route).toContain('No valid spend rows found for the selected mapping');
     expect(route.indexOf("const aggregation = aggregateCsvSpendRows(parsedRows")).toBeLessThan(
       route.indexOf("const campaign = await storage.getCampaign(campaignId);"),

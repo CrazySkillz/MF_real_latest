@@ -7,6 +7,7 @@ export type CsvSpendAggregation = {
   keptRows: number;
   totalSpend: number;
   dailySpend: Array<{ date: string; spend: number }>;
+  undatedSpend: number;
 };
 
 export function aggregateCsvSpendRows(
@@ -26,6 +27,7 @@ export function aggregateCsvSpendRows(
   const dailySpend = new Map<string, number>();
   let keptRows = 0;
   let totalSpend = 0;
+  let undatedSpend = 0;
 
   for (const row of rows) {
     if (mapping.campaignColumn && (selectedCampaigns || campaignValue)) {
@@ -37,18 +39,16 @@ export function aggregateCsvSpendRows(
     const spend = Number.parseFloat(rawSpend);
     if (!Number.isFinite(spend) || spend <= 0) continue;
 
-    let normalizedDate: string | null = null;
-    if (mapping.dateColumn) {
-      const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
-      if (!rawDate) continue;
-      const date = new Date(rawDate);
-      if (Number.isNaN(date.getTime())) continue;
-      normalizedDate = date.toISOString().split("T")[0];
-    }
-
     keptRows++;
     totalSpend += spend;
-    if (normalizedDate) {
+    if (mapping.dateColumn) {
+      const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
+      const date = rawDate ? new Date(rawDate) : null;
+      if (!date || Number.isNaN(date.getTime())) {
+        undatedSpend += spend;
+        continue;
+      }
+      const normalizedDate = date.toISOString().split("T")[0];
       dailySpend.set(normalizedDate, (dailySpend.get(normalizedDate) || 0) + spend);
     }
   }
@@ -60,6 +60,7 @@ export function aggregateCsvSpendRows(
       date,
       spend: Number(spend.toFixed(2)),
     })),
+    undatedSpend: Number(undatedSpend.toFixed(2)),
   };
 }
 

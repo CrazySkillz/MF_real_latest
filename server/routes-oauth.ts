@@ -4941,7 +4941,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!mapping?.spendColumn) {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
-      const requestedPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();
+      const rawPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();
+      const requestedPlatformContext = rawPlatformContext === "ga4" ? "" : rawPlatformContext;
       if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
@@ -5092,6 +5093,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const today = new Date().toISOString().split("T")[0];
+      if (dateCol && aggregation.undatedSpend > 0) {
+        dailySpendMap.set(today, (dailySpendMap.get(today) || 0) + aggregation.undatedSpend);
+      }
       const records = dateCol
         ? Array.from(dailySpendMap.entries()).map(([date, spend]) => ({
             campaignId,

@@ -22,9 +22,9 @@ Google Ads spend is on hold and is excluded from this file. Do not use Google Ad
 Current clean-certification status:
 
 - **Google Sheets spend remains unproven for clean certification.** On `2026-07-11`, the deployed run-now path first reproduced `502` with an underlying Google Sheets `401 UNAUTHENTICATED`. After one explicit Google Sheets repair reconnect, the same campaign/source run-now route returned `200/success:true`, and the user confirmed GA4 Overview Total Spend displayed the newly added sheet value. This proves one repaired manual provider reprocess and visible value ingestion for source `618e5e12-0f3f-44a2-837a-d2677ad95f64`; it does not prove the automatic one-minute timer, exact before/after delta reconciliation, lifetime endpoint parity, or credential durability.
-- **Upload CSV spend retains its bounded historical lifecycle evidence, and Current Commit 10b now has bounded deployed UI validation.** The mixed-date Alpha import displayed the expected blank/invalid-date rejection. After the user removed those invalid-date rows, the remaining valid dated CSV imported as a CSV source and GA4 Overview Total Spend updated. Exact rejected-state before/after parity and a corrected all-row $1,250 dated import remain unproven.
-- Current Commit 10c locally prevents the selected Spend or Campaign identifier column from also being mapped as Date and rejects duplicate-role requests server-side before aggregation. Deployment and UI validation remain pending.
-- Current Commit 10d locally filters remaining CSV Date choices by sampled date-like values and rejects purely numeric date values server-side, closing the non-date revenue/conversion option and JavaScript year-coercion gap. Deployment and UI validation remain pending.
+- **Upload CSV spend now has a complete bounded dated-fixture reconciliation packet for Current Commit 10e.** From a $1,598.75 / 4-source baseline, the invalid-date Alpha import left both values unchanged; a valid $150 add produced $1,748.75 / 5 and delete restored the baseline; editing the existing $150 CSV source to the corrected four-row Alpha total of $1,250 produced $2,698.75 while preserving 4 sources. This proves exact filtering, add/delete cleanup, edit replacement, and visible Total Spend propagation for this fixture only.
+- Current Commit 10c is committed and pushed as ab54104e; its duplicate-role server guard remains automated evidence only.
+- Current Commit 10d is committed and pushed as 7b8ee0f0. The user confirmed the deployed CSV Date dropdown no longer exposes the non-date revenue/conversion choices. The forged numeric-date server rejection remains automated evidence only.
 - The durable reconnect guard and lifetime spend-window fixes are deployed. The successful repaired run provides partial provider evidence, but the repaired token was issued while the Google OAuth app was still `External + Testing` and therefore is not durable production-token evidence.
 - Product requirement added on `2026-07-11`: mapped Google Sheets spend edits must update the same source, GA4 Overview, and downstream financial consumers automatically. The implementation target is a source-family-only provider poll every 1 minute plus an open Overview refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions; literal zero-latency delivery is not guaranteed.
 
@@ -95,8 +95,8 @@ CSV spend evidence gap:
 - Current Commit 10a restored GA4 context normalization and exact campaign summation but its import-date fallback is not valid readiness evidence.
 - Current Commit 10b fails dated imports before mutation when any selected positive row has a blank/invalid date. Deployed UI evidence now confirms the rejection message and successful Total Spend propagation after the invalid-date rows were removed.
 - Snapshot behavior remains available by selecting None for Date column, but that alternative was not part of this deployed Current Commit 10b validation.
-- Current Commit 10c locally removes the current Spend and Campaign identifier selections from CSV Date choices, clears a stale collision, and adds a server fail-closed guard before aggregation. Valid Date and None mappings remain unchanged.
-- Current Commit 10d locally limits CSV Date choices to columns whose non-empty preview values are date-like and treats purely numeric mapped dates as invalid. Google Sheets Date choices and existing nonnumeric CSV date formats remain unchanged.
+- Current Commit 10c removes the current Spend and Campaign identifier selections from CSV Date choices, clears a stale collision, and adds a server fail-closed guard before aggregation. Valid Date and None mappings remain unchanged.
+- Current Commit 10d limits CSV Date choices to explicitly date-named columns or columns whose non-empty preview values are date-like and treats purely numeric mapped dates as invalid. Deployed UI validation confirms the non-date choices are removed; Google Sheets Date choices and existing nonnumeric CSV date formats remain unchanged.
 
 ## Value Inventory
 
@@ -172,6 +172,19 @@ Current Commit 10d local regression validation on 2026-07-11:
 - npm run check passed.
 - git diff --check passed for the Current Commit 10d files.
 
+Current Commit 10d deployed UI validation on 2026-07-12:
+
+- The user confirmed the deployed CSV Date dropdown no longer shows the non-date revenue and conversion-value columns.
+- This proves the visible Date-option filter for the tested CSV only. The server-side forged numeric-date rejection was not manually invoked and remains automated evidence.
+
+Current Commit 10e deployed reconciliation validation on 2026-07-12:
+
+- Baseline: Total Spend $1,598.75; 4 sources.
+- Mixed blank/invalid-date Alpha import returned the expected error and left Total Spend at $1,598.75 with 4 sources.
+- Importing only the two valid Alpha rows added $150 exactly: Total Spend $1,748.75; 5 sources.
+- Deleting that test CSV source restored Total Spend to $1,598.75 and 4 sources.
+- Editing the existing $150 CSV source with all four Alpha rows corrected to valid dates replaced its value with $1,250: Total Spend $2,698.75; sources remained 4. The exact $1,100 delta proves replacement rather than addition, and the exact $1,250 source value excludes Beta.
+
 Current Commit 8 local validation on `2026-07-11`:
 
 - Focused OAuth/spend packet passed: 4 files, 27 tests.
@@ -237,7 +250,7 @@ Scheduler trace:
 | Source family | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Boundary |
 | --- | --- | --- | --- | --- | --- |
 | Google Sheets spend | Historical packets closed for sources `8f67b03f-a00b-434f-b81f-db1b2b951595` and `62772549-88dc-4cc5-bfe6-2e991d518ef5`. | Historical packets closed for those exact sources and runs. | **Partially revalidated:** source `618e5e12-0f3f-44a2-837a-d2677ad95f64` failed with `401`, then returned `200/success:true` after an explicit repair reconnect and visibly ingested the newly added sheet value through the manual run-now route. Automatic timer execution, exact delta/parity, and durable production-token operation remain unproven. | Historical delete packets remain closed for their exact source IDs. | Requires Current Commits 5, 6, 7, 8b, and 8c evidence before a current production-ready claim. OAuth verification work is on hold. |
-| Upload CSV spend | Historical deployed add/import remains closed at $2,020. Current Commit 10b now has deployed rejection evidence plus successful valid-dated-row Total Spend propagation after invalid rows were removed. | Historical deployed edit/update remains closed at $3,120; atomic replacement and stored-row guards remain locally covered. | Not applicable as a scheduler/provider action. | Historical delete remains closed for source c3611c0f-4bbf-47b9-8615-93e4b140385e. | Exact rejected-state parity, corrected all-row $1,250 dated import, and optional no-date snapshot UI validation remain unproven. |
+| Upload CSV spend | Current Commit 10e proves invalid-date no-mutation plus exact $150 add from a $1,598.75 baseline. Historical deployed add/import also remains bounded at $2,020. | Current Commit 10e proves same-source replacement from $150 to $1,250 with a $1,100 Total Spend delta and no source-count increase. Historical edit evidence remains bounded at $3,120. | Not applicable as a scheduler/provider action. | Current Commit 10e proves the temporary $150 source deletion restored the exact $1,598.75 / 4-source baseline; historical delete remains bounded to source c3611c0f-4bbf-47b9-8615-93e4b140385e. | Dated Alpha fixture lifecycle is closed; optional no-date snapshot UI validation and unlisted CSV shapes remain outside this claim. |
 
 ## Current Commit Queue
 
@@ -257,11 +270,12 @@ This queue is scoped only to GA4 Overview spend readiness for Google Sheets and 
 | Current Commit 8b: Automatic Google Sheets spend propagation | **Committed, pushed, deployed; automatic timer evidence pending.** | Replace the once-daily-only Google Sheets spend freshness gap without increasing any other source-family cadence. | Commit `e4c3de5a` adds a 1-minute source-only timer and 15-second Overview polling. The manual repaired run reached the UI, but no successful no-click timer mutation packet has been captured. | Yes for automatic-update readiness. |
 | Current Commit 8c: Production Google OAuth publishing and verification | **Partially completed, explicitly on hold.** | Eliminate Testing-mode seven-day token expiry for Google Sheets and GA4. | Confirmed `External + Testing`, changed Publishing status to `In production`; remaining `mumus.app` public pages/domain verification, Google branding/data-access verification, final post-publish reconnects, automatic token renewal, and >7-day durability proof are deferred until the user resumes this work. | Yes for stable-connection clean certification. |
 | Current Commit 9: Additional Google Sheets tab/mapping variants | Optional for broader claims. | Unlisted tabs, headers, dates, filters, and mappings. | Run one bounded packet per mapping family. | Only blocks broader mapping claims. |
-| Current Commit 10: Upload CSV automated validation packet | **Committed and pushed as efef0493, but failed first deployed validation.** | CSV parser, aggregation, filtering, edit, negative, and atomic materialization paths. | Preserve the Unsupported spend platformContext response and rejected $150 expectation as regression evidence. Current Commits 10a and 10b supersede the affected behavior. | Yes until Current Commit 10b is deployed and validated. |
+| Current Commit 10: Upload CSV automated validation packet | **Committed and pushed as efef0493; failed first deployed validation and retained as negative evidence.** | CSV parser, aggregation, filtering, edit, negative, and atomic materialization paths. | Unsupported spend platformContext and the incorrect $150 expectation are preserved as regression evidence; Current Commits 10a-10e supersede and reconcile the affected behavior. | No; superseded by completed 10b-10e evidence. |
 | Current Commit 10a: Restore GA4 CSV compatibility and all-selected-row totals | **Committed and pushed as 20db9ff8; superseded before clean validation.** | GA4 context normalization plus the Alpha $1,250 filter case. | GA4 normalization and campaign summation remain valid; the import-date fallback is analytically unsafe and is removed by Current Commit 10b. | Superseded by Current Commit 10b. |
-| Current Commit 10b: Reject unknown dates without inventing spend timing | **Committed and pushed as e6149110; deployed bounded UI validation passed.** | Dated CSV inputs containing selected positive rows with blank/invalid dates. | Deployed rejection message observed; removing invalid rows produced a valid CSV source and updated Total Spend. Exact rejected-state parity and corrected all-row $1,250 dated proof remain outstanding. | Closed for the reported invalid-date fallback defect; broader variant certification remains bounded. |
-| Current Commit 10c: Prevent duplicate CSV mapping roles | **Implemented locally; commit, deployment, and UI validation pending.** | CSV Date mapped to the selected Spend or Campaign identifier column. | Omit conflicting Date choices only in the CSV wizard, clear stale collisions, and reject duplicate-role requests server-side before aggregation. | Yes for duplicate-role mapping safety. |
-| Current Commit 10d: Filter CSV Date choices by sampled values | **Implemented locally; commit, deployment, and UI validation pending.** | Non-date revenue/conversion columns shown as Date choices and numeric values coerced into years. | Show only date-like sampled CSV columns, preserve None and nonnumeric date formats, and reject purely numeric date values before record materialization. | Yes for CSV Date type safety. |
+| Current Commit 10b: Reject unknown dates without inventing spend timing | **Committed and pushed as e6149110; deployed exact no-mutation validation passed under 10e.** | Dated CSV inputs containing selected positive rows with blank/invalid dates. | Invalid import preserved the exact $1,598.75 / 4-source baseline; corrected rows subsequently reconciled through add/delete and edit. | Closed for the tested dated fixture. |
+| Current Commit 10c: Prevent duplicate CSV mapping roles | **Committed and pushed as ab54104e; deployed UI behavior is covered by the stricter 10d filter.** | CSV Date mapped to the selected Spend or Campaign identifier column. | Omit conflicting Date choices only in the CSV wizard, clear stale collisions, and reject duplicate-role requests server-side before aggregation. | Closed for visible role filtering; forged server request remains automated evidence. |
+| Current Commit 10d: Filter CSV Date choices by sampled values | **Committed and pushed as 7b8ee0f0; deployed bounded UI validation passed.** | Non-date revenue/conversion columns shown as Date choices and numeric values coerced into years. | Tested CSV no longer exposes revenue/conversion as Date choices; None and the date column remain the intended choices. | Closed for the reported dropdown defect; forged numeric-date rejection remains automated evidence. |
+| Current Commit 10e: Final deployed CSV reconciliation packet | **Complete on 2026-07-12.** | Exact no-mutation rejection and successful all-row dated replacement after 10d. | Baseline $1,598.75 / 4; invalid unchanged; $150 add $1,748.75 / 5; delete restored baseline; existing $150 source edited to $1,250, yielding $2,698.75 / 4 with Beta excluded. | Closed for the tested dated Alpha fixture. |
 | Current Commit 11: Additional production source inventory | Optional for broader campaigns. | Other campaign/source health. | Run bounded read-only inventory per new campaign scope. | Only blocks broader production-data claims. |
 
 ## Proven
@@ -289,6 +303,8 @@ Proven by recorded deployed evidence:
 - Historical lifecycle packets remain bounded to their recorded source IDs. For the current source, one repaired manual run-now returned `200/success:true` and the user confirmed the new sheet value appeared in Total Spend. This does not prove automatic timer execution, exact reconciliation, or durable production OAuth.
 - Upload CSV spend add/import, edit/update, source modal parity, no separate scheduler refresh path, and delete/deactivate remain proven for the recorded source ID and lifecycle packet.
 - Current Commit 10b deployed UI evidence confirms mixed blank/invalid-date input is rejected and that the remaining valid dated rows update Total Spend through a CSV source after those invalid rows are removed.
+- Current Commit 10d deployed UI evidence confirms non-date revenue and conversion-value columns are removed from Date choices for the tested CSV.
+- Current Commit 10e deployed evidence confirms exact invalid-import no-mutation, $150 add, exact delete restoration, and same-source edit replacement to $1,250 with Beta excluded and no source-count increase.
 
 ## Unproven
 
@@ -298,10 +314,8 @@ Proven by recorded deployed evidence:
 - Deployed proof that the Google Sheets-spend-only timer fires at the configured one-minute interval, preserves source identity, propagates an exact changed value, and becomes visible in an already-open Overview within the approximately 75-second normal target.
 - Google Ads spend, because it is on hold and excluded from this component.
 - Unlisted Google Sheets tabs, header layouts, date formats, campaign filters, and mapping shapes.
-- Exact deployed before/after proof that the rejected mixed-date Alpha fixture leaves source count and Total Spend unchanged.
-- A corrected all-row Alpha dated import totaling $1,250 with Beta excluded, and the optional no-date snapshot import of the same selected total.
-- Deployed Current Commit 10c proof that Spend and Campaign are absent from CSV Date choices after those roles are selected, while a forged duplicate-role request fails without source or Total Spend mutation.
-- Deployed Current Commit 10d proof that revenue and conversion-value columns are absent from Date choices, Date and None remain available, valid dated import still updates Total Spend, and a forged numeric-date request fails without mutation.
+- The optional no-date snapshot import remains unproven through the current deployed UI packet.
+- Deployed manual proof that forged duplicate-role and numeric-date requests fail without source or Total Spend mutation; these server guards currently have automated evidence only.
 - Duplicate-header files, locale-specific decimal formats, ambiguous non-ISO valid dates, row/file limit boundaries, and other unlisted mappings remain unproven.
 - Other campaigns/properties that are not part of the recorded deployed packets.
 - Other spend source families.
@@ -322,4 +336,4 @@ Proven by recorded deployed evidence:
 
 Use only when the request is limited to GA4 Overview spend from Google Sheets and Upload CSV:
 
-GA4 Overview Google Sheets spend is not yet clean-certified. Google Sheets OAuth and automatic-update evidence remain on hold as documented above. Upload CSV retains its historical bounded lifecycle evidence plus deployed Current Commit 10b rejection and valid-row Total Spend propagation evidence. Current Commits 10c and 10d mapping protections are local only; exact rejected-state parity, corrected all-row $1,250 dated proof, optional snapshot UI validation, and deployed mapping-safety evidence remain unproven. Google Ads and all other source families remain excluded.
+GA4 Overview Google Sheets spend is not yet clean-certified. Google Sheets OAuth and automatic-update evidence remain on hold as documented above. Upload CSV now has a complete bounded deployed dated-Alpha lifecycle packet: exact invalid rejection, add, delete restoration, same-source edit to $1,250, Beta exclusion, source-count stability, and Total Spend propagation. This does not certify optional no-date snapshot UI behavior, forged-request deployment behavior, or unlisted CSV shapes. Google Ads and all other source families remain excluded.

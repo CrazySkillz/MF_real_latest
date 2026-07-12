@@ -679,24 +679,24 @@ particular:
 | Requested path | Status | Reason |
 |---|---|---|
 | authentication and campaign ownership | Partially proven | Local campaign guards and signed state are traced; deployed secrets/provider/token lifecycle are not locally verifiable. |
-| add/import | Partially proven | H1-H3 locally guard rollback, date integrity, and incomplete pagination; identical-signature semantics and deployed variants remain open. |
+| add/import | Locally guarded/traced through H8; deployed dynamic evidence pending | H1-H3 guard rollback/date/pagination; H8 explicitly traces identical-signature reuse, distinct additive selection, and source-ID edit/refresh semantics. |
 | edit/update | Locally fixed by H1; deployed evidence pending | Stable ID and transaction rollback are locally guarded; deployed provider/write failure evidence remains pending. |
 | single-source delete/deactivate | Partially proven | Exact transactional storage delete and one packet; metadata/recompute failures not fully exercised. |
 | full disconnect | Broken | Sequential multi-source deletion plus connection deletion is not atomic. |
-| mapping and filtering | Partially proven | Exact happy path traced; complete variant/negative matrix absent. |
+| mapping and filtering | Locally guarded through H8; deployed dynamic evidence pending | One shared normalized key and unique-row guard cover multi-value/source accumulation plus blank, zero, unmatched, punctuation, and ambiguous variants without guessed allocation. |
 | date handling and daily materialization | Locally fixed by H2/H3; deployed evidence pending | Strict calendar validation, total reconciliation, and incomplete-page rejection run before mutation. |
 | Pipeline Proxy exclusion and transition | Locally fixed by H7; deployed evidence pending | One transition packet passed; H7 removes proxy data/rendering from browser and scheduled report artifacts while preserving operational surfaces. |
 | provider refresh/scheduler/reprocess | Partially proven | H1 protects rollback and H3 rejects incomplete pages locally; normal deployed scheduler/provider evidence remains pending. |
 | transaction and failure retention | Locally proven by H1; deployed evidence pending | One GA4-only transaction now covers connection, source, delete, and insert with forced rollback tests. |
 | source modal and provenance | Partially proven | One provenance packet; configuration fallback can mask missing records. |
 | Total Revenue, Profit, ROAS, ROI, CPA | Partially proven | Overview formulas traced; input integrity and cross-surface parity are not certified. |
-| Campaign Breakdown | Partially proven | One row-level packet; complete mapping lifecycle absent. |
-| Ad Comparison | Partially proven | Same mapping path traced; no complete HubSpot-specific dynamic packet. |
-| KPI and Benchmark values | Partially proven / source parity broken | One configured packet; campaign-level helper can use a different native GA4 source. |
+| Campaign Breakdown | Locally guarded through H8; deployed dynamic evidence pending | Mapping lifecycle and unique-row fail-closed allocation are guarded across Overview and browser/scheduled report paths. |
+| Ad Comparison | Locally guarded through H8; deployed dynamic evidence pending | Ad Comparison uses the shared allocation key, unique-row guard, multi-source accumulation, and residual/unallocated contract. |
+| KPI and Benchmark values | Locally guarded/traced through H6/H8; deployed evidence pending | Native/imported formula parity is locally guarded and H8 traces HubSpot save/delete/refresh to the shared GA4 recompute path. |
 | Reports/snapshots/PDFs/emails | Locally fixed by H7; deployed evidence pending | Browser and scheduled PDF branches no longer consume/render proxy; positive deployed artifacts, delivery, and report variants remain unproven. |
-| notifications | Partially proven | Local resolver traced; HubSpot-specific lifecycle packet absent. |
+| notifications | Locally traced through H8; deployed evidence pending | HubSpot save/delete/refresh schedules the shared GA4 KPI/Benchmark recompute and subsequent performance-alert evaluation. |
 | multi-campaign isolation | Partially proven | Route/storage scoping plus two-campaign packet; concurrency and full downstream matrix absent. |
-| damaged-data inventory and cleanup | Unproven for current production | Existing inventory is incomplete and no fresh production scan/cleanup boundary exists. |
+| damaged-data inventory and cleanup | H9 read-only inventory expanded locally; current production unproven | Totals, dates, grains, partial replacements, connection/source, campaign, type, context, and currency candidates are now guarded; no fresh production scan or cleanup authority exists. |
 
 ## Proven, partial, unproven, excluded, and external summary
 
@@ -919,18 +919,69 @@ it does not prove deployed bytes, inbox receipt, or a production snapshot.
 
 ### Current Commit H8 — mapping and downstream variant matrix
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - test distinct and identical add semantics explicitly
 - cover mapping edit/remap/delete, unmatched values, multiple values, multiple
   active sources, Campaign Breakdown, and Ad Comparison
 - prove KPI/Benchmark and notification add/edit/delete/refresh propagation
 
+H8 makes the campaign-allocation boundary deterministic across Overview,
+browser PDF, Ad Comparison, and scheduled PDF. The confirmed root cause was
+duplicated downstream allocation code using two different campaign-key
+normalizers, while Overview Campaign Breakdown and scheduled PDF lacked the
+ambiguity guard already present in Ad Comparison/browser PDF. Punctuation or
+spacing variants could therefore match differently by surface, and two rows
+with the same normalized key could receive revenue on an arbitrary row.
+
+All four consumers now use one shared allocation-key normalizer. Overview and
+scheduled PDF now count normalized rows and allocate imported revenue only when
+exactly one row owns the key. Multiple CRM values and multiple active sources
+still add to that unique row; blank, zero, unmatched, and ambiguous normalized
+rows remain unallocated rather than guessed.
+
+The H8 matrix also records the existing source lifecycle contract without
+changing it: add without `sourceId` reuses an identical saved signature and a
+distinct signature creates an additive source; edit and scheduler refresh carry
+the exact source ID; mapping config is replaced from the current selected
+values/mappings; transactional delete removes only the selected source; and
+save/delete call the same GA4 recompute path that refreshes financial current
+values and schedules KPI/Benchmark plus alert evaluation.
+
 ### Current Commit H9 — damaged-data inventory expansion
+
+Status: read-only implementation completed locally on 2026-07-12; focused
+validation passed; deployed production inventory pending.
 
 - add read-only invariants for config totals, campaign totals, record sums,
   dates, duplicate grains, partial replacements, connection/source mismatch, and
   source/type/context mismatch
 - run a fresh authorized production inventory and record exact candidates
 - keep cleanup in a later separately approved commit
+
+H9 adds a pure GA4 HubSpot Revenue integrity inspector to the existing
+campaign-access-guarded source-damage endpoint. The prior HubSpot inventory
+could pass after checking source counts/orphans/duplicate signatures/context,
+without reconciling source mapping totals to records or validating the retained
+record grains. A partial replacement or contradictory source could therefore
+remain invisible to `hubspotInventoryPass`.
+
+The expanded inventory now reports exact candidates for configured
+`lastTotalRevenue` versus effective materialized record totals,
+`campaignValueRevenueTotals` versus configured totals, impossible/noncanonical
+dates, duplicate `source + date + subCampaignUrn` grains, cross-campaign record
+ownership, source/record type mismatches, source/record currency mismatches,
+partial-replacement signatures, and connection/source mapping mismatch. It
+also lowers the HubSpot inventory result for a missing active account or missing
+active-source mapping provenance, and retains the existing zero-record, orphan,
+duplicate-source, context, and proxy scope checks.
+
+The endpoint and runner expose the complete sanitized finding object plus a
+cleanup assessment with `automaticCleanupAllowed: false`. No cleanup, delete,
+update, insert, provider call, refresh, or recompute path is added. A fresh
+authorized deployed inventory is still required before describing current
+production data as clean or proposing any cleanup boundary.
 
 ### Current Commit H10 — deployed clean-certification evidence
 
@@ -1337,11 +1388,115 @@ Not proven by local H7:
 - mapping/downstream variants, damaged-data expansion, or deployed
   clean-certification evidence reserved for H8-H10
 
+### H8 local implementation validation
+
+Root cause fixed:
+
+- Overview/browser report/scheduled report campaign allocation normalized
+  punctuation away, while Ad Comparison normalized whitespace only
+- Overview Campaign Breakdown and scheduled PDF stored one row name per
+  normalized key without counting collisions, so duplicate-normalized rows
+  could receive imported revenue on whichever row was stored last
+- this could make the same HubSpot mapping display differently by downstream
+  surface even though Total Revenue remained unchanged
+
+Local H8 behavior:
+
+- one shared campaign-allocation normalizer is used by Overview, browser PDF,
+  Ad Comparison, and scheduled PDF
+- Overview and scheduled PDF now match the existing fail-closed ambiguity
+  contract: imported revenue is allocated only when exactly one normalized row
+  owns the key
+- multiple positive campaign-value totals and multiple active sources still
+  accumulate on a unique row; zero, blank, unmatched, and ambiguous values are
+  not guessed
+- source add/edit/scheduler identity, mapping replacement, transactional delete,
+  KPI/Benchmark recompute, and alert-evaluation call paths are regression-traced
+  without changing those runtime paths
+
+Files changed for H8:
+
+- `shared/ga4-financial-source.ts`
+- `client/src/pages/ga4-metrics.tsx`
+- `client/src/pages/ga4-ad-comparison.tsx`
+- `server/ga4-scheduled-report-pdf.ts`
+- `server/hubspot-mapping-downstream-matrix.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- H8 mapping/downstream matrix: 4/4 passed
+- GA4 UI, Ad Comparison card, and report-email regressions: 59/59 passed
+- H1-H4 transaction/date/pagination/disconnect plus financial-source parity:
+  27/27 passed
+- `npm run check` passed
+
+Not proven by local H8:
+
+- live HubSpot add/edit/remap/delete/refresh outcomes for every matrix variant
+- deployed rendered Campaign Breakdown, Ad Comparison, KPI/Benchmark, alert,
+  notification, report, PDF, or email parity for those variants
+- simultaneous provider mutations or complete multi-campaign concurrency
+- current damaged production data, H9 inventory expansion, or H10 deployed
+  clean-certification evidence
+
+### H9 local implementation validation
+
+Root cause fixed:
+
+- the existing HubSpot inventory could return a clean result without comparing
+  saved source totals, campaign-value totals, and effective materialized rows
+- retained record dates, duplicate daily/subcampaign grains, record source
+  type/currency, cross-campaign ownership, and partial-replacement signatures
+  were absent from the HubSpot-specific pass/fail boundary
+- connection/source mapping mismatches were provenance findings but did not
+  lower `hubspotInventoryPass`
+
+Local H9 behavior:
+
+- a pure inspector scopes strict checks to GA4/null-context HubSpot sources and
+  uses the same aggregate-versus-attributed total rule as the revenue reads
+- every finding returns bounded source IDs, record IDs, counts, totals, dates,
+  grains, currencies, types, and issue codes as applicable
+- connection/source mapping mismatch now participates in the HubSpot inventory
+  pass/fail result
+- non-GA4 HubSpot sources are excluded from GA4 daily-materialization checks
+- the endpoint remains GET-only/read-only and explicitly forbids automatic
+  cleanup
+- runner `2026-07-12.2` exposes the complete sanitized finding object and
+  cleanup assessment
+
+Files changed for H9:
+
+- `server/utils/hubspot-revenue-damage-inventory.ts`
+- `server/routes-oauth.ts`
+- `client/public/ga4-overview-validation-runner.js`
+- `server/hubspot-revenue-damaged-data-inventory.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- clean reconciliation, contradictory totals, impossible date, duplicate
+  grain, cross-campaign, type/currency mismatch, partial-replacement,
+  non-GA4 exclusion, endpoint read-only, and no-cleanup guards: 4/4 passed
+- combined HubSpot H8, H9, and adjacent CSV inventory suites: 12/12 passed
+- broader H1-H9 transaction/date/pagination/disconnect, financial-source, GA4
+  UI, Ad Comparison, report-email, and inventory regression set: 98/98 passed
+- validation runner syntax passed
+- `npm run check` passed
+
+Not proven by local H9:
+
+- current production candidate counts or IDs; no deployed inventory was run
+- whether any reported candidate is safe to repair or delete
+- historical damage outside the authorized campaign passed to the endpoint
+- provider lifecycle behavior, deployed H8 variants, or H10 certification
+
 ## Certification gate
 
-At committed H6 baseline `c8c8a95f10503dc190a9e4b8b04259714b5631ba`
-plus the local H7 working-tree change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1-H7 are locally proven within their documented bounds but
-deployment evidence remains pending. Current Commit H8 is the next smallest
-isolated item; completing it will still not certify HubSpot until the remaining
-documented matrix is closed.
+At committed H7 baseline `56f57c773f185dbd2efc322de9d5315d560a6004`
+plus the local H8 and H9 working-tree changes, GA4 Overview HubSpot Revenue is
+**not clean-certified**. H1-H9 have local evidence within their documented
+bounds, but deployed inventory and lifecycle evidence remain pending. Current
+Commit H10 is the next certification phase; it must not certify HubSpot until
+the complete deployed matrix is closed.

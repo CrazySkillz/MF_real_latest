@@ -49,7 +49,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-12.1');
+await import('/ga4-overview-validation-runner.js?v=2026-07-12.2');
 GA4OverviewValidation.help();
 ```
 
@@ -85,6 +85,26 @@ await GA4OverviewValidation.sourceDamageInventory({
 ```
 
 This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
+
+## Current Commit H9 HubSpot Read-Only Damage Inventory
+
+After H9 is deployed, run only against the authorized target campaign:
+
+```js
+await GA4OverviewValidation.hubspotInventory({
+  campaignId: 'CAMPAIGN_ID',
+  stage: 'h9-hubspot-damage-inventory'
+});
+```
+
+The packet fails when the endpoint reports contradictory configured/record/
+campaign-value totals, invalid dates, duplicate daily/subcampaign grains,
+partial-replacement candidates, cross-campaign records, source/type/currency/
+context mismatches, connection/source mapping mismatch, or the earlier
+zero-record/orphan/duplicate/proxy-scope findings. It returns sanitized IDs and
+metadata only. `cleanupAssessment.automaticCleanupAllowed` must remain `false`.
+A pass applies only to that campaign at `checkedAt`; it does not authorize
+cleanup or certify provider lifecycle behavior.
 
 ## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
 

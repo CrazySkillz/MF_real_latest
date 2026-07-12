@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-12.1";
+  var VERSION = "2026-07-12.2";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -848,13 +848,14 @@
       readonly: data.readonly === true,
       inventoryPass: data.hubspotInventoryPass === true,
       hubspotSummary: data.hubspotSummary || null,
-      hubspotFindings: {
+      hubspotFindings: Object.assign({}, hubspotFindings, {
         activeHubspotSourcesWithZeroRecords: hubspotFindings.activeHubspotSourcesWithZeroRecords || [],
         orphanHubspotRevenueRecordGroups: hubspotFindings.orphanHubspotRevenueRecordGroups || [],
         duplicateActiveHubspotSourceGroups: hubspotFindings.duplicateActiveHubspotSourceGroups || [],
         hubspotGa4ContextMismatchSources: hubspotFindings.hubspotGa4ContextMismatchSources || [],
         hubspotPipelineProxyScopeMismatches: hubspotFindings.hubspotPipelineProxyScopeMismatches || []
-      },
+      }),
+      cleanupAssessment: data.hubspotCleanupAssessment || null,
       hubspotCertificationImpact: data.hubspotCertificationImpact || null,
       generalInventoryPass: data.overallPass === true,
       generalSummary: data.summary || null,
@@ -863,7 +864,8 @@
         "It does not create, refresh, delete, clean, recompute, or certify provider behavior."
       ].concat(data.caveats || [])
     };
-    summary.overallPass = result.pass && data.success === true && data.readonly === true && data.hubspotInventoryPass === true;
+    summary.overallPass = result.pass && data.success === true && data.readonly === true && data.hubspotInventoryPass === true
+      && data.hubspotCleanupAssessment && data.hubspotCleanupAssessment.automaticCleanupAllowed === false;
     console.log(summary);
     return summary;
   }

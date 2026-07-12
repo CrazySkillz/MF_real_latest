@@ -11,6 +11,7 @@ import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from 
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
+import { inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
@@ -1472,6 +1473,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allRevenueRecords as any[],
         referencedRevenueSources as any[],
       );
+      const hubspotIntegrityInventory = inspectGa4HubspotRevenueDamage(
+        allRevenueSources as any[],
+        allRevenueRecords as any[],
+        referencedRevenueSources as any[],
+      );
       const duplicateActiveCsvSourceGroups = findings.duplicateActiveRevenueSourceGroups.filter((group: any) =>
         String(group?.signature?.sourceType || "").toLowerCase() === "csv"
         && normalizeOverviewInventoryPlatformContext(group?.signature?.platformContext) === "ga4"
@@ -1519,6 +1525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : []),
       ].map(normalizeHubspotScopeValue).filter(Boolean);
       const hubspotFindings = {
+        ...hubspotIntegrityInventory.findings,
         activeHubspotSourcesWithZeroRecords: activeHubspotRevenueSources
           .filter((source) => (revenueRecordCounts.get(String(source?.id)) || 0) === 0)
           .map(summarizeHubspotSource),
@@ -1545,9 +1552,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return !getHubspotScopeValues(mapping).some((value) => scopedCampaignSet.has(value));
           })
           .map(summarizeHubspotSource),
+        hubspotConnectionSourceMappingMismatches: [] as any[],
+        missingActiveHubspotAccount: [] as any[],
+        activeHubspotSourcesMissingMappingProvenance: [] as any[],
       };
-      const hubspotFindingCount = Object.values(hubspotFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
-      const hubspotInventoryPass = hubspotFindingCount === 0;
       const hubspotConnectionsForProvenance = (allHubspotConnections as any[]).map((connection) => ({
         connectionId: String(connection?.id || ""),
         portalId: connection?.portalId ? String(connection.portalId) : null,
@@ -1656,6 +1664,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const hubspotProvenanceFindingCount = Object.values(hubspotProvenanceFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
       const hubspotProvenancePass = activeGa4HubspotRevenueSources.length > 0 && hubspotProvenanceFindingCount === 0;
+      hubspotFindings.hubspotConnectionSourceMappingMismatches = hubspotProvenanceFindings.hubspotConnectionSourceMappingMismatches;
+      hubspotFindings.missingActiveHubspotAccount = hubspotProvenanceFindings.missingActiveHubspotAccount;
+      hubspotFindings.activeHubspotSourcesMissingMappingProvenance = hubspotProvenanceFindings.activeHubspotSourcesMissingMappingProvenance;
+      const hubspotFindingCount = Object.values(hubspotFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
+      const hubspotInventoryPass = hubspotFindingCount === 0;
 
       res.json({
         success: true,
@@ -1687,6 +1700,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         hubspotInventoryPass,
         hubspotSummary: {
+          ga4HubspotSourceCount: hubspotIntegrityInventory.summary.ga4HubspotSourceCount,
+          activeGa4HubspotSourceCount: hubspotIntegrityInventory.summary.activeGa4HubspotSourceCount,
+          ga4HubspotRecordCount: hubspotIntegrityInventory.summary.ga4HubspotRecordCount,
+          hubspotIntegrityFindingCount: hubspotIntegrityInventory.summary.findingCount,
           hubspotRevenueSourceCount: hubspotRevenueSources.length,
           activeHubspotRevenueSourceCount: activeHubspotRevenueSources.length,
           activeGa4HubspotRevenueSourceCount: activeHubspotRevenueSources.filter((source) =>
@@ -1700,6 +1717,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hubspotFindingCount,
         },
         hubspotFindings,
+        hubspotCleanupAssessment: {
+          candidateReviewRequired: !hubspotInventoryPass,
+          automaticCleanupAllowed: false,
+          reason: hubspotInventoryPass
+            ? "No GA4 HubSpot Revenue damage candidates were found for this campaign."
+            : "Review the exact HubSpot source and record IDs before proposing a separate transactional cleanup; this inventory does not mutate data.",
+        },
         hubspotProvenancePass,
         hubspotProvenance: {
           account: latestActiveHubspotConnection,
@@ -1715,7 +1739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? "HubSpot account, active GA4 revenue source mapping, and source-modal expected values are present for the active HubSpot source."
           : "HubSpot provenance is incomplete for clean certification; record or fix the returned account/source/mapping findings before certifying.",
         hubspotCertificationImpact: hubspotInventoryPass
-          ? "No HubSpot zero-record, orphan-record, duplicate-active-source, context-mismatch, or Pipeline Proxy scope-mismatch candidates were found for this campaign inventory."
+          ? "No HubSpot total, date, grain, record-metadata, partial-replacement, zero-record, orphan-record, duplicate-active-source, connection/source, context, or Pipeline Proxy scope-mismatch candidates were found for this campaign inventory."
           : "HubSpot database health is not clean for this campaign inventory; document the returned source/record IDs before provider validation or cleanup claims.",
         certificationImpact: overallPass
           ? "No orphan, inactive-source-record, duplicate-active-source, or unexpected-platform-context candidates were found for this campaign inventory."

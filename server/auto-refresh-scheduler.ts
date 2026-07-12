@@ -20,6 +20,7 @@ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { aggregateCsvRevenueRows } from "./utils/csv";
 
 type AnyRecord = Record<string, any>;
 type ReprocessResult = { success: boolean; status?: number; error?: string };
@@ -311,16 +312,32 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     const campaignCol = String(mappingConfig.campaignColumn || "");
     const campaignValues: string[] = Array.isArray(mappingConfig.campaignValues) ? mappingConfig.campaignValues : [];
     const campaignValueSet = campaignValues.length > 0 ? new Set(campaignValues) : null;
+    const mappedRows = dataRows.map((row) => {
+      const rowObj: AnyRecord = {};
+      headers.forEach((header, index) => { rowObj[header] = row[index] ?? ""; });
+      return rowObj;
+    });
 
     const parseNum = (v: any) => { const n = parseFloat(String(v || "0").replace(/[^0-9.\-]/g, "")); return Number.isFinite(n) ? n : 0; };
 
     const dateCol = mappingConfig.dateColumn ? String(mappingConfig.dateColumn) : null;
+    if (String(mappingConfig.platformContext || source?.platformContext || "") === "ga4") {
+      if (campaignCol === revenueCol || (dateCol && (dateCol === revenueCol || dateCol === campaignCol))) return false;
+      const validation = aggregateCsvRevenueRows(mappedRows.map((row) => ({
+        ...row,
+        [revenueCol]: parseNum(row[revenueCol]),
+      })), {
+        revenueColumn: revenueCol,
+        dateColumn: dateCol,
+        campaignColumn: campaignCol || null,
+        campaignValues,
+      });
+      if (validation.keptRows === 0 || (dateCol && validation.undatedRevenue > 0)) return false;
+    }
     let totalRevenue = 0;
     let kept = 0;
     const dailyRevenueMap = new Map<string, number>(); // date -> revenue
-    for (const row of dataRows) {
-      const rowObj: any = {};
-      headers.forEach((h, i) => { rowObj[h] = row[i] ?? ""; });
+    for (const rowObj of mappedRows) {
       if (campaignCol && campaignValueSet) {
         const v = String(rowObj[campaignCol] ?? "").trim();
         if (!campaignValueSet.has(v)) continue;

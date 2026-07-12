@@ -937,6 +937,19 @@ export function AddRevenueWizardModal(props: {
 
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
+  const sheetsDateColumnHeaders = useMemo(() => {
+    if (platformContext !== "ga4") return sheetsHeaders;
+    const sampleRows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview.sampleRows : [];
+    return sheetsHeaders.filter((header) => {
+      if (header === sheetsRevenueCol || header === sheetsCampaignCol) return false;
+      if (isCsvDateLikeHeader(header)) return true;
+      const nonEmptyValues = sampleRows
+        .map((row) => String(row?.[header] ?? "").trim())
+        .filter(Boolean);
+      if (nonEmptyValues.length === 0) return header === sheetsDateCol;
+      return nonEmptyValues.every(isCsvDateLikeValue);
+    });
+  }, [platformContext, sheetsHeaders, sheetsPreview, sheetsRevenueCol, sheetsCampaignCol, sheetsDateCol]);
   const csvDateColumnHeaders = useMemo(() => {
     if (platformContext !== "ga4") return csvHeaders;
     const sampleRows = Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : [];
@@ -950,6 +963,12 @@ export function AddRevenueWizardModal(props: {
       return nonEmptyValues.every(isCsvDateLikeValue);
     });
   }, [platformContext, csvHeaders, csvPreview, csvRevenueCol, csvCampaignCol, csvDateCol]);
+
+  useEffect(() => {
+    if (platformContext === "ga4" && sheetsDateCol && !sheetsDateColumnHeaders.includes(sheetsDateCol)) {
+      setSheetsDateCol("");
+    }
+  }, [platformContext, sheetsDateCol, sheetsDateColumnHeaders]);
 
   useEffect(() => {
     if (platformContext === "ga4" && csvDateCol && !csvDateColumnHeaders.includes(csvDateCol)) {
@@ -2403,7 +2422,7 @@ export function AddRevenueWizardModal(props: {
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
                                 <SelectItem value={SELECT_NONE}>None</SelectItem>
-                                {sheetsHeaders.map((h) => (
+                                {sheetsDateColumnHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>{h}</SelectItem>
                                 ))}
                               </SelectContent>

@@ -4302,6 +4302,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueCol = revenueColumn ? String(revenueColumn) : "";
       const convCol = conversionValueColumn ? String(conversionValueColumn) : "";
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      if (platformContext === "ga4") {
+        if (campaignCol === revenueCol) {
+          return sendBadRequest(res, "Revenue column must be different from the Campaign column.");
+        }
+        if (dateCol && (dateCol === revenueCol || dateCol === campaignCol)) {
+          return sendBadRequest(res, "Date column must be different from the Revenue and Campaign columns.");
+        }
+        const validation = aggregateCsvRevenueRows(rows, {
+          revenueColumn: revenueCol,
+          dateColumn: dateCol,
+          campaignColumn: campaignCol,
+          campaignValue,
+          campaignValues,
+        });
+        if (validation.keptRows === 0) {
+          return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
+        }
+        if (dateCol && validation.undatedRevenue > 0) {
+          return sendBadRequest(res, "Selected revenue rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
+        }
+      }
       let totalRevenueToDate = 0;
       const conversionValues: number[] = [];
       const dailyRevenueMap = new Map<string, number>(); // date -> revenue

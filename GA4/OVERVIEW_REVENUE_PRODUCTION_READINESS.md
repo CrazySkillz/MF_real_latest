@@ -21,9 +21,9 @@ It separates these two source families from whole-Overview and spend certificati
 
 ## Current Status
 
-- **Google Sheets Revenue is not clean-certified.** Historical deployed lifecycle evidence exists for exact sources on one campaign, but the current add/edit and scheduler replacement paths are non-transactional, automatic updates rely on the daily external refresh path rather than bounded source-family polling, open Overview revenue queries refetch only every ten minutes, and failure-retention/idempotency evidence is incomplete.
-- **Upload CSV Revenue is not clean-certified.** Current Commit 2 locally closes the tested deterministic validation boundary. Current Commit 3 now commits GA4 CSV source metadata and replacement records in one campaign/type/context-scoped transaction, with forced add/edit insertion-failure rollback tests. Historical deployed lifecycle evidence remains bounded to exact sources on one campaign; deployed negative/failure evidence and complete downstream propagation remain unproven.
-- Current Commit 1 was documentation only. Current Commits 2 and 3 change only GA4 CSV Revenue validation/materialization and do not certify the source.
+- **Google Sheets Revenue is not clean-certified.** Current Commit 4 locally closes the tested GA4 deterministic mapping/date/row validation boundary for foreground and scheduler reprocessing. Add/edit and scheduler replacement remain non-transactional, automatic updates rely on the daily external refresh path rather than bounded source-family polling, open Overview revenue queries refetch only every ten minutes, and deployed provider/failure/idempotency evidence is incomplete.
+- **Upload CSV Revenue is not clean-certified.** Current Commit 2 locally closes the tested deterministic validation boundary. Current Commit 3 commits GA4 CSV source metadata and replacement records in one campaign/type/context-scoped transaction, with forced add/edit insertion-failure rollback tests. The user confirmed the deployed normal UI flow passed after Commits 2 and 3, but no exact numeric/source-ID or forced-failure packet was recorded; deployed negative/failure evidence and complete downstream propagation remain unproven.
+- Current Commit 1 was documentation only. Current Commits 2 through 4 are bounded source fixes and do not certify either source.
 
 ## Explicit Scope
 
@@ -55,8 +55,8 @@ The current gaps are implementation and evidence gaps, not merely missing wordin
 - Google Sheets add/edit performs source create/update, old-record deletion, and new-record insertion as separate operations. The scheduler helper independently deletes old records before inserting refreshed records. Neither path is transactional.
 - In Google Sheets Revenue and other still-non-transactional paths, a failure after old-record deletion can remove the last valid stored source value. GA4 CSV now has local rollback evidence, but deployed PostgreSQL rollback remains unproven.
 - Before Current Commit 2, CSV Date choices included Revenue, Campaign, and non-date columns, and the server did not reject those role collisions. Current Commit 2 filters only the GA4 CSV Date chooser, clears stale invalid Date selections, and repeats authoritative collision validation on the server before mutation.
-- Before Current Commit 2, CSV positive-revenue rows with blank, invalid, or numeric mapped dates could be counted but omitted from persisted daily records. CSV now rejects the whole request before mutation; the equivalent Google Sheets Revenue gap remains open for Current Commit 4.
-- CSV now rejects empty/no-positive selected rows before source creation/update or old-record deletion. Google Sheets Revenue can still reach source mutation and old-record deletion with a zero total.
+- Before Current Commit 2, CSV positive-revenue rows with blank, invalid, or numeric mapped dates could be counted but omitted from persisted daily records. CSV now rejects the whole request before mutation.
+- Before Current Commit 4, Google Sheets exposed every header as a Date choice and its foreground and scheduler paths could count positive rows whose blank, invalid, or numeric mapped dates were omitted from daily persistence. Current Commit 4 filters only the GA4 Date chooser and rejects role collisions, empty/no-positive selections, and any undated selected positive revenue before source/record mutation in both paths.
 - Revenue source delete first verifies campaign ownership and optional platform context, but source deactivation and record deletion are separate writes. A failure between them can leave a deactivated source with records or an incomplete cleanup result.
 - Existing tests are useful local/static guards, but they do not prove rollback, provider-failure retention, automatic timing, repeated-refresh idempotency, or complete source-specific downstream propagation.
 - Historical deployed lifecycle packets prove only the exact interactions recorded. They do not satisfy the new automatic-update, transactional retention, deterministic mapping/date validation, or complete negative-case requirements.
@@ -146,7 +146,7 @@ Historical bounded evidence, not current clean certification:
 | Delete/deactivate | Shared ownership/context guard applies; deactivation and record deletion are separate writes | Same shared route and same non-atomic boundary | Transactional exact-source delete plus unrelated-source preservation |
 | Source modal/list | Active source/list queries and historical UI packets traced | Active source/list queries and historical UI packets traced | Automated source-specific add/edit/delete provenance parity |
 | Totals/recomputation | Storage active joins and immediate user-mutation refetch traced; external refetch is ten minutes | Same totals path and immediate user-mutation refetch | Exact record/source/to-date/breakdown/Overview/formula parity |
-| Validation failure | Provider and mapping errors exist, but empty/invalid selected-row no-mutation is incomplete | GA4 role/date/row guards now fail before mutation for the local fixtures | Deployed CSV negatives and Google Sheets guards remain required |
+| Validation failure | GA4 role/date/row guards now fail before foreground or scheduler revenue source/record mutation for the local fixtures | GA4 role/date/row guards now fail before mutation for the local fixtures | Deployed negative/provider packets remain required |
 | Rollback | No transaction restores old source metadata/records after materialization failure | No transaction restores old source metadata/records after materialization failure | Forced-failure tests proving last valid value retention |
 | Damaged-data risk | Orphan records, active zero-record sources, partial replacement, duplicate records, and stale mapping metadata are possible | Same, plus incomplete stored rows and date-loss mismatches | Read-only inventory by campaign/source ID before any cleanup |
 
@@ -159,12 +159,12 @@ Historical bounded evidence, not current clean certification:
 | Wrong source family | Requires `google_sheets` target | Requires `csv` target | Locally guarded |
 | Missing/invalid connection or provider auth | Error responses traced before row mutation | Not applicable | Provider retention after prior valid value unproven |
 | Missing Revenue column | Shared mapping requires it for GA4 | Shared mapping requires it for GA4 | Locally guarded |
-| Revenue column equals Campaign column | No independent role-collision rejection proven | Rejected before mutation for GA4 | CSV locally proven; Google Sheets unproven |
-| Date column equals Revenue/Campaign column | No independent role-collision rejection proven | Filtered/cleared in GA4 UI and rejected by server before mutation | CSV locally proven; Google Sheets unproven |
-| Non-date Date column | Invalid values can be silently omitted | Sampled non-date columns are hidden; forged invalid values are rejected before mutation | CSV local fixtures only; Google Sheets unproven |
-| Blank/invalid date among positive rows | Row total can exceed persisted daily total | Whole GA4 CSV request is rejected before mutation | CSV locally proven; Google Sheets unproven |
-| No positive selected rows | Can mutate source/delete old records before returning success with no records | Rejected before mutation | CSV locally proven; Google Sheets unproven |
-| Mixed valid/invalid dated rows | Persists valid-date subset only | Whole GA4 CSV request is rejected before mutation | CSV locally proven; Google Sheets unproven |
+| Revenue column equals Campaign column | Rejected before foreground or scheduler revenue source/record mutation for GA4 | Rejected before mutation for GA4 | Locally guarded |
+| Date column equals Revenue/Campaign column | Filtered/cleared in GA4 UI and rejected before foreground or scheduler revenue source/record mutation | Filtered/cleared in GA4 UI and rejected by server before mutation | Locally guarded |
+| Non-date Date column | Sampled non-date columns are hidden; forged invalid values fail before foreground or scheduler revenue source/record mutation | Sampled non-date columns are hidden; forged invalid values are rejected before mutation | Local fixtures only |
+| Blank/invalid date among positive rows | Whole GA4 request fails before foreground or scheduler revenue source/record mutation | Whole GA4 CSV request is rejected before mutation | Locally guarded |
+| No positive selected rows | Rejected before foreground or scheduler revenue source/record mutation | Rejected before mutation | Locally guarded |
+| Mixed valid/invalid dated rows | Whole GA4 request fails before foreground or scheduler revenue source/record mutation | Whole GA4 CSV request is rejected before mutation | Locally guarded |
 | Record insert failure | Old records may already be deleted | Forced add/edit insertion failures roll back source and records locally | CSV locally proven; deployed CSV and Google Sheets unproven |
 | Source metadata update failure | Partial or stale state possible | Source update/create and record replacement share one transaction | Transaction boundary locally guarded; deployed failure unproven |
 | Repeated identical refresh | `onConflictDoNothing` exists, but delete/reinsert idempotency and failure boundary are not proven | Reprocess replacement idempotency not proven | Unproven |
@@ -199,10 +199,15 @@ Current relevant local/static guards include:
 - `server/latest-day-revenue-regression.test.ts`: revenue endpoint date semantics have local coverage. It is not source-specific lifecycle, negative-case, or rollback proof.
 - `server/csv-revenue-validation.test.ts`: Current Commit 2 dynamically covers exact campaign filtering, dated-total reconciliation, blank/invalid/numeric date accounting, and empty/no-positive rows, and statically guards GA4-only UI filtering plus server validation ordering before mutation. It does not prove transactionality, deployed behavior, every CSV shape, or downstream value propagation.
 - `server/csv-revenue-transaction.test.ts`: Current Commit 3 forces source-update, old-record-delete, edit replacement-insert, and add replacement-insert failures; it verifies exact prior-state retention and no orphan add source. This is mocked local transaction-boundary evidence, not deployed PostgreSQL evidence.
+- `server/google-sheets-revenue-validation.test.ts`: Current Commit 4 dynamically covers exact filtered dated and snapshot fixtures plus blank/invalid/numeric dates, and statically guards GA4-only Date filtering and fail-before-mutation ordering in foreground and scheduler paths. It does not prove provider behavior, transactionality, deployed behavior, every sheet shape, or downstream value propagation.
 
 Current Commit 2 local validation on `2026-07-12`: the focused test passed 5/5; the adjacent seven-file packet passed 100/100; `npm run check` passed. The broad source-safety file passed all 80 non-Instagram assertions, including the CSV Revenue guard, and failed its seven unrelated Instagram assertions. These results are local code evidence only.
 
 Current Commit 3 local validation on `2026-07-12`: the focused validation/rollback packet passed 2 files and 10/10 tests; the adjacent eight-file packet passed 105/105; `npm run check` passed. Forced failures use a transactional mock and do not substitute for deployed PostgreSQL evidence.
+
+Current Commits 2 and 3 deployed UI validation on `2026-07-12`: the user confirmed the normal browser flow passed after deployment. No exact campaign/property, file identity, mapping, source ID, record count, before/after amount, or injected-failure output was supplied for this documentation packet. This confirms only the user-observed normal UI flow; forged-request rejection, rollback under forced failure, exact reconciliation, and unrelated-source preservation remain bounded to local automation or unproven deployed evidence as stated above.
+
+Current Commit 4 local validation on `2026-07-12`: the focused test passed 5/5; the adjacent eight-file revenue/scheduler/UI packet passed 98/98; `npm run check` passed. Provider calls, deployed UI behavior, and transaction rollback were not exercised.
 
 ## Current Commit Queue
 
@@ -211,10 +216,10 @@ Use isolated commits in this order:
 | Current Commit | Scope | Status / gate |
 | --- | --- | --- |
 | 1 | This documentation baseline | Documentation-only baseline; does not certify runtime behavior |
-| 2 | CSV Revenue deterministic mapping/date/row validation | Implemented and locally validated; deployed negative cases remain Current Commit 10 evidence |
-| 3 | CSV Revenue transactional add/edit replacement | Implemented and locally validated; deployed failure retention remains Current Commit 10 evidence |
-| 4 | Google Sheets Revenue deterministic mapping/date/row validation | Next |
-| 5 | Google Sheets Revenue transactional manual/scheduler replacement | Pending Current Commit 4 |
+| 2 | CSV Revenue deterministic mapping/date/row validation | Implemented, locally validated, and normal UI flow user-confirmed; deployed negative cases remain Current Commit 10 evidence |
+| 3 | CSV Revenue transactional add/edit replacement | Implemented, locally validated, and normal UI flow user-confirmed; deployed forced-failure retention remains Current Commit 10 evidence |
+| 4 | Google Sheets Revenue deterministic mapping/date/row validation | Implemented and locally validated; deployed/provider negatives remain Current Commit 11 evidence |
+| 5 | Google Sheets Revenue transactional manual/scheduler replacement | Next |
 | 6 | Bounded Google Sheets Revenue-only polling and Overview revenue refetch | Pending |
 | 7 | Transactional revenue source delete | Pending |
 | 8 | Google Sheets/CSV Revenue-specific downstream propagation automation | Pending fixes above |
@@ -237,7 +242,8 @@ Use isolated commits in this order:
 - GA4 CSV Revenue Date choices now exclude the selected Revenue/Campaign roles and sampled non-date columns; stale invalid Date selections are cleared.
 - The GA4 CSV Revenue server path rejects role collisions, empty/no-positive selections, and blank/invalid/numeric dated positive rows before source mutation.
 - GA4 CSV Revenue add/edit now scopes source update/create, exact-source record deletion, and replacement insertion to one database transaction; forced add/edit insertion failures retain the last valid state locally.
-- Google Sheets Revenue can still count positive revenue whose blank/invalid mapped date is omitted from dated persistence.
+- The GA4 Google Sheets Revenue Date chooser excludes selected role columns and sampled non-date columns, and clears stale invalid Date selections.
+- GA4 Google Sheets Revenue foreground and scheduler paths reject role collisions, empty/no-positive selections, and blank/invalid/numeric dated positive rows before source or record mutation.
 
 ## Partially Proven
 
@@ -250,9 +256,8 @@ Use isolated commits in this order:
 ## Unproven
 
 - Clean certification for either source.
-- Deterministic Google Sheets Revenue role/date/row validation across supported mappings.
 - Deployed CSV Revenue negative-case behavior and unusual/unlisted file, header, date, and mapping shapes beyond the local fixtures.
-- Fail-before-mutation behavior for Google Sheets Revenue empty/no-positive selected rows and invalid mapping/date cases.
+- Deployed/provider proof of Google Sheets Revenue fail-before-mutation behavior and unusual/unlisted sheet, tab, header, mapping, filter, and date shapes beyond the local fixtures.
 - Atomic Google Sheets add/edit/scheduler replacement and shared revenue source delete behavior.
 - Deployed PostgreSQL proof of GA4 CSV add/edit rollback and last-valid-value retention.
 - Google Sheets last-valid-value retention after provider, source-update, record-delete, or record-insert failure.
@@ -316,4 +321,4 @@ Any new defect immediately lowers the affected source/path to unproven until roo
 
 Use only when the question is limited to GA4 Overview Google Sheets Revenue and Upload CSV Revenue:
 
-Google Sheets Revenue and Upload CSV Revenue are not yet clean-certified. Historical deployed lifecycle packets remain bounded to the exact campaign, property, source IDs, values, dates, and UI/endpoint checks recorded in this file. Current Commit 2 locally closes the tested GA4 CSV Revenue deterministic validation boundary. Current Commit 3 locally makes GA4 CSV add/edit source and record replacement transactional and proves forced add/edit insertion-failure rollback with a transactional mock. Remaining blockers include deployed CSV negative/failure evidence, Google Sheets deterministic validation and transactional replacement, missing bounded Google Sheets Revenue-only polling, ten-minute open-Overview revenue refetch, shared delete transactionality, incomplete idempotency tests, incomplete damaged-data inventory, and incomplete source-specific downstream/deployed evidence. Spend and all other source families are excluded as proof. The exact next task is Current Commit 4 — Google Sheets Revenue deterministic mapping/date/row validation.
+Google Sheets Revenue and Upload CSV Revenue are not yet clean-certified. Current Commits 2 and 3 have local automation plus user-confirmed normal CSV browser-flow validation, without an exact numeric/source-ID or forced-failure deployed packet. Current Commit 4 locally closes the tested GA4 Google Sheets deterministic role/date/row validation boundary in foreground and scheduler paths. Remaining blockers include deployed CSV negative/failure evidence, Google Sheets transactional replacement and deployed/provider evidence, missing bounded Google Sheets Revenue-only polling, ten-minute open-Overview revenue refetch, shared delete transactionality, incomplete idempotency tests, incomplete damaged-data inventory, and incomplete source-specific downstream/deployed evidence. Spend and all other source families are excluded as proof. The exact next task is Current Commit 5 — Google Sheets Revenue transactional manual/scheduler replacement.

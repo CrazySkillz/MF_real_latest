@@ -206,7 +206,9 @@ Revenue source options:
 3. `Google Sheets`
 4. `Upload CSV`
 
-Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Current Commits 2 and 3 have user-confirmed deployed UI validation for the normal CSV Revenue flow, without an archived exact numeric/source-ID or forced-failure packet. Current Commit 4 locally adds GA4-only deterministic Google Sheets Revenue role/date/row validation before foreground and scheduler revenue source/record mutation. These bounded results do not clean-certify either source.
+Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Current Commits 2 and 3 have user-confirmed deployed UI validation for the normal CSV Revenue flow, without an archived exact numeric/source-ID or forced-failure packet. Current Commit 4 locally adds GA4-only deterministic Google Sheets Revenue role/date/row validation before foreground and scheduler revenue source/record mutation. Current Commit 7 has user-confirmed deployed UI validation for normal exact-source deletion, while forced-failure rollback remains local automated evidence. These bounded results do not clean-certify either source.
+
+All further Google Sheets Revenue coverage is on hold, including transactional replacement, polling, provider/OAuth and scheduler evidence, damaged-data inventory, downstream propagation automation, and deployed validation. Current Commit 8 is limited to Upload CSV Revenue downstream propagation automation.
 
 Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
 

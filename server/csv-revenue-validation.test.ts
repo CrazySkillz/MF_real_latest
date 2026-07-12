@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { aggregateCsvRevenueRows, parseCsvText } from "./utils/csv";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
+const storageSource = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
 const revenueModal = readFileSync(join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
 
 const csvRevenueRoute = () => {
@@ -70,6 +71,7 @@ describe("GA4 Overview Upload CSV revenue deterministic validation", () => {
   it("fails GA4 CSV revenue validation before any source mutation", () => {
     const route = csvRevenueRoute();
     const validationStart = route.indexOf('if (platformContext === "ga4")');
+    const transactionMutation = route.indexOf("storage.replaceGa4CsvRevenueSourceWithRecords", validationStart);
     const updateMutation = route.indexOf("storage.updateRevenueSource", validationStart);
     const createMutation = route.indexOf("storage.createRevenueSource", validationStart);
     const firstMutation = Math.min(updateMutation, createMutation);
@@ -82,10 +84,39 @@ describe("GA4 Overview Upload CSV revenue deterministic validation", () => {
     expect(route).toContain("No valid revenue rows found for the selected mapping");
     expect(route).toContain("Selected revenue rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
     expect(validationStart).toBeGreaterThanOrEqual(0);
+    expect(transactionMutation).toBeGreaterThan(validationStart);
     expect(updateMutation).toBeGreaterThan(validationStart);
     expect(createMutation).toBeGreaterThan(validationStart);
-    expect(route.indexOf("if (validation.keptRows === 0)")).toBeLessThan(firstMutation);
-    expect(route.indexOf("if (dateCol && validation.undatedRevenue > 0)")).toBeLessThan(firstMutation);
+    expect(route.indexOf("if (validation.keptRows === 0)")).toBeLessThan(transactionMutation);
+    expect(route.indexOf("if (dateCol && validation.undatedRevenue > 0)")).toBeLessThan(transactionMutation);
+    expect(transactionMutation).toBeLessThan(firstMutation);
+  });
+
+  it("atomically replaces only the campaign-owned GA4 CSV source and its records", () => {
+    const route = csvRevenueRoute();
+    const methodStart = storageSource.indexOf("async replaceGa4CsvRevenueSourceWithRecords(");
+    const methodEnd = storageSource.indexOf("async getRevenueTotalForRange", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+    const transactionCall = route.indexOf("await storage.replaceGa4CsvRevenueSourceWithRecords(");
+
+    expect(methodStart).toBeGreaterThanOrEqual(0);
+    expect(methodEnd).toBeGreaterThan(methodStart);
+    expect(method).toContain("if (!records.length) throw new Error");
+    expect(method).toContain("return await db.transaction(async (tx: any) => {");
+    expect(method).toContain('sourceType: "csv"');
+    expect(method).toContain('platformContext: "ga4"');
+    expect(method).toContain("eq(revenueSources.campaignId, campaignId)");
+    expect(method).toContain('eq(revenueSources.sourceType, "csv")');
+    expect(method).toContain("eq(revenueSources.isActive, true)");
+    expect(method).toContain('or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext))');
+    expect(method.indexOf("await tx.delete(revenueRecords)")).toBeLessThan(
+      method.indexOf("await tx.insert(revenueRecords)"),
+    );
+    expect(transactionCall).toBeGreaterThan(route.indexOf('if (platformContext === "ga4")'));
+    expect(transactionCall).toBeLessThan(route.indexOf("await recomputeCampaignDerivedValues", transactionCall));
+    expect(route.indexOf("return res.json({", transactionCall)).toBeLessThan(
+      route.indexOf("let source: any", transactionCall),
+    );
   });
 
   it("limits only GA4 CSV Date choices and clears stale collisions", () => {

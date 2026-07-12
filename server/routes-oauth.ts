@@ -3781,6 +3781,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         delete (normalizedMapping as any).sourceId; // don't persist sourceId in mappingConfig
 
+        if (platformContext === "ga4") {
+          if (existingSourceIdOrNull) {
+            const existingSource = existingSourceForEdit || await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
+            if (
+              !existingSource
+              || String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv"
+              || String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== "ga4"
+            ) {
+              return res.status(404).json({ success: false, error: "Revenue source not found" });
+            }
+          }
+          const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+          const revenueRecordsToInsert: any[] = [];
+          if (dateCol && dailyRevenueMap.size > 0) {
+            revenueRecordsToInsert.push(...Array.from(dailyRevenueMap.entries())
+              .filter(([, rev]) => rev > 0)
+              .map(([date, rev]) => ({
+                campaignId,
+                date,
+                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+                currency,
+              } as any)));
+          } else if (totalRevenue > 0) {
+            revenueRecordsToInsert.push({
+              campaignId,
+              date: endDate,
+              revenue: totalRevenue.toFixed(2) as any,
+              currency,
+            } as any);
+          }
+          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
+            const [date, ...urnParts] = key.split(":");
+            const subCampaignUrn = urnParts.join(":");
+            if (date && subCampaignUrn && rev > 0) {
+              revenueRecordsToInsert.push({
+                campaignId,
+                date,
+                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+                currency,
+                subCampaignUrn,
+              } as any);
+            }
+          }
+          const source = await storage.replaceGa4CsvRevenueSourceWithRecords(
+            campaignId,
+            existingSourceIdOrNull ? String(existingSourceIdOrNull) : null,
+            {
+              campaignId,
+              sourceType: "csv",
+              platformContext: "ga4",
+              displayName: mapping.displayName || file?.originalname || "CSV",
+              currency,
+              mappingConfig: JSON.stringify(normalizedMapping),
+              isActive: true,
+            } as any,
+            revenueRecordsToInsert,
+          );
+          await recomputeCampaignDerivedValues(campaignId, { platformContext });
+          return res.json({
+            success: true,
+            sourceId: source.id,
+            currency,
+            rowCount: rowCountForResponse,
+            keptRows: kept,
+            date: endDate,
+            mode: "revenue_to_date",
+            totalRevenue,
+          });
+        }
+
       let source: any;
       if (existingSourceIdOrNull) {
         const existingSource = existingSourceForEdit || await storage.getRevenueSource(campaignId, existingSourceIdOrNull);

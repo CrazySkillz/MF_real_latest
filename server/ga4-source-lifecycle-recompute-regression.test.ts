@@ -48,11 +48,20 @@ describe("GA4 source lifecycle recompute route guards", () => {
 
   it("passes platform context through GA4 revenue source add, edit, and delete recompute paths", () => {
     const platformContextCalls = routes.match(/await recomputeCampaignDerivedValues\(campaignId, \{ platformContext \}\);/g) || [];
-    expect(platformContextCalls.length).toBe(6);
+    expect(platformContextCalls.length).toBe(7);
 
     const platformCtxCalls = routes.match(/await recomputeCampaignDerivedValues\(campaignId, \{ platformContext: platformCtx \}\);/g) || [];
     expect(platformCtxCalls.length).toBe(5);
     expect(routes).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });");
+
+    const csvRevenueRoute = sliceBetween(
+      routes,
+      '"/api/campaigns/:id/revenue/csv/process"',
+      'app.post("/api/campaigns/:id/revenue/sheets/preview"',
+    );
+    expect(csvRevenueRoute.indexOf("await storage.replaceGa4CsvRevenueSourceWithRecords")).toBeLessThan(
+      csvRevenueRoute.indexOf("await recomputeCampaignDerivedValues(campaignId, { platformContext });"),
+    );
 
     const bulkDeleteRoute = sliceBetween(
       routes,

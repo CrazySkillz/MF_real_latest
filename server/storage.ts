@@ -163,6 +163,12 @@ export interface IStorage {
   deleteRevenueSource(sourceId: string): Promise<boolean>;
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
+  replaceGa4CsvRevenueSourceWithRecords(
+    campaignId: string,
+    existingSourceId: string | null,
+    source: InsertRevenueSource,
+    records: Array<Omit<InsertRevenueRecord, "revenueSourceId">>,
+  ): Promise<RevenueSource>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
   getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
@@ -1294,6 +1300,55 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return results;
+  }
+
+  async replaceGa4CsvRevenueSourceWithRecords(
+    campaignId: string,
+    existingSourceId: string | null,
+    source: InsertRevenueSource,
+    records: Array<Omit<InsertRevenueRecord, "revenueSourceId">>,
+  ): Promise<RevenueSource> {
+    if (!records.length) throw new Error("No valid revenue records to save");
+    return await db.transaction(async (tx: any) => {
+      const sourceValues = {
+        ...source,
+        campaignId,
+        sourceType: "csv",
+        platformContext: "ga4",
+        isActive: true,
+      } as any;
+      let savedSource: RevenueSource | undefined;
+      if (existingSourceId) {
+        [savedSource] = await tx
+          .update(revenueSources)
+          .set(sourceValues)
+          .where(and(
+            sql`${revenueSources.id}::text = ${existingSourceId}`,
+            eq(revenueSources.campaignId, campaignId),
+            eq(revenueSources.sourceType, "csv"),
+            eq(revenueSources.isActive, true),
+            or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext)),
+          ))
+          .returning();
+        if (!savedSource) throw new Error("Revenue source not found");
+      } else {
+        [savedSource] = await tx
+          .insert(revenueSources)
+          .values(sourceValues)
+          .returning();
+      }
+
+      if (!savedSource) throw new Error("Failed to save CSV revenue source");
+      const sourceId = String(savedSource.id);
+      await tx.delete(revenueRecords).where(eq(revenueRecords.revenueSourceId, sourceId));
+      await tx.insert(revenueRecords).values(records.map((record) => ({
+        ...record,
+        campaignId,
+        revenueSourceId: sourceId,
+      })) as any);
+
+      return savedSource;
+    });
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {

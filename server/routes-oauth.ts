@@ -8,6 +8,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
+import { getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes } from './utils/shopify-revenue';
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
@@ -32103,7 +32104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let nextUrl: string | null = `${base}/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`;
 
     for (let page = 0; nextUrl && page < maxPages; page++) {
-      if (seenUrls.has(nextUrl)) break;
+      if (seenUrls.has(nextUrl)) throw new Error('Shopify orders pagination repeated a cursor URL');
       seenUrls.add(nextUrl);
       const resp: Response = await fetch(nextUrl, { headers });
       const text: string = await resp.text().catch(() => "");
@@ -32126,7 +32127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw err;
       }
 
-      const pageOrders = Array.isArray(json?.orders) ? json.orders : [];
+      if (!Array.isArray(json?.orders)) {
+        throw new Error('Shopify orders response is incomplete');
+      }
+      const pageOrders = json.orders;
       orders.push(...pageOrders);
 
       const linkHeader: string = resp.headers.get("link") || resp.headers.get("Link") || "";
@@ -32248,7 +32252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connCfg = connRaw ? (typeof connRaw === "string" ? JSON.parse(connRaw) : connRaw) : {};
       const field = String(cfg?.campaignField || connCfg?.campaignField || "utm_campaign");
       const selected: string[] = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues : (Array.isArray(connCfg?.selectedValues) ? connCfg.selectedValues : []);
-      const metric = String(cfg?.revenueMetric || connCfg?.revenueMetric || "total_price");
+      const metric = "current_total_price";
       const rangeDays = Number(cfg?.days || connCfg?.days || 30) || 30;
 
       if (selected.length === 0) {
@@ -32272,34 +32276,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");
         if (field === "discount_code") {
-          const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
+          const codes = getShopifyDiscountCodes(o);
           return codes.length > 0 ? String(codes[0]) : "";
         }
         if (field === "tags") return getShopifyOrderTags(o)[0] || "";
         return "";
       };
 
-      const parseMoney = (val: any): number => {
-        const n = Number(String(val ?? "").replace(/[^0-9.\-]/g, ""));
-        return Number.isFinite(n) ? n : 0;
-      };
-
-      const getOrderAmount = (o: any) => {
-        const set = metric === "current_total_price" ? (o?.current_total_price_set || {}) : (o?.total_price_set || {});
-        const shopMoney = set?.shop_money || set?.shopMoney || null;
-        const shopAmount = shopMoney?.amount ?? (metric === "current_total_price" ? o?.current_total_price : o?.total_price);
-        return parseMoney(shopAmount);
-      };
-
       let totalRevenue = 0;
       const matchedOrders: any[] = [];
       const selectedSet = new Set(selected);
       for (const o of orders) {
-        const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);
+        const values = field === "tags"
+          ? getShopifyOrderTags(o)
+          : field === "discount_code"
+            ? getShopifyDiscountCodes(o)
+            : [getFieldValue(o).trim()].filter(Boolean);
         const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
+        const confirmedRevenue = getShopifyConfirmedRevenueAmounts(o);
+        if (!confirmedRevenue) continue;
         matchedOrders.push(o);
-        totalRevenue += getOrderAmount(o);
+        totalRevenue += confirmedRevenue.shopAmount;
       }
 
       if (matchedOrders.length === 0) {
@@ -32312,6 +32310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the revenue source mappingConfig with the calculated values
       const updatedCfg = {
         ...cfg,
+        revenueMetric: metric,
         lastConversionValue: calculatedCv,
         lastMatchedOrderCount: matchedOrders.length,
         lastTotalRevenue: Number(totalRevenue.toFixed(2)),
@@ -32629,7 +32628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");
         if (field === "discount_code") {
-          const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
+          const codes = getShopifyDiscountCodes(o);
           return codes.length > 0 ? String(codes[0]) : "";
         }
         if (field === "tags") return getShopifyOrderTags(o)[0] || "";
@@ -32639,7 +32638,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const counts = new Map<string, number>();
       const sample: string[] = [];
       for (const o of orders) {
-        const values = field === "tags" ? getShopifyOrderTags(o) : [getValue(o).trim()].filter(Boolean);
+        if (!getShopifyConfirmedRevenueAmounts(o)) continue;
+        const values = field === "tags"
+          ? getShopifyOrderTags(o)
+          : field === "discount_code"
+            ? getShopifyDiscountCodes(o)
+            : [getValue(o).trim()].filter(Boolean);
         for (const v of values) {
           counts.set(v, (counts.get(v) || 0) + 1);
           if (sample.length < 5 && !sample.includes(v)) sample.push(v);
@@ -32709,7 +32713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const field = body.data.campaignField;
       const selected = body.data.selectedValues;
-      const metric = String(body.data.revenueMetric || "total_price").trim();
+      const metric = "current_total_price";
       const rangeDays = Math.min(Math.max(parseInt(String(body.data.days ?? 90), 10) || 90, 1), 3650);
       const platformCtx = body.data.platformContext || "ga4";
       const revenueClassification = body.data.revenueClassification;
@@ -32753,37 +32757,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");
         if (field === "discount_code") {
-          const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
+          const codes = getShopifyDiscountCodes(o);
           return codes.length > 0 ? String(codes[0]) : "";
         }
         return "";
-      };
-
-      const parseMoney = (val: any): number => {
-        const n = Number(String(val ?? "").replace(/[^0-9.\-]/g, ""));
-        return Number.isFinite(n) ? n : 0;
-      };
-
-      // Shopify orders can contain both "shop money" (store currency) and "presentment money" (customer currency).
-      // For enterprise-grade consistency, we treat "shop money" as the canonical amount for totals, and surface
-      // presentment totals as diagnostics.
-      const getOrderAmounts = (o: any) => {
-        const set =
-          metric === "current_total_price"
-            ? (o?.current_total_price_set || o?.current_total_price_set)
-            : (o?.total_price_set || o?.total_price_set);
-        const shopMoney = set?.shop_money || set?.shopMoney || null;
-        const presMoney = set?.presentment_money || set?.presentmentMoney || null;
-        const shopAmount = shopMoney?.amount ?? (metric === "current_total_price" ? o?.current_total_price : o?.total_price);
-        const shopCurrency = shopMoney?.currency_code ?? o?.currency ?? null;
-        const presentmentAmount = presMoney?.amount ?? null;
-        const presentmentCurrency = presMoney?.currency_code ?? o?.presentment_currency ?? null;
-        return {
-          shopAmount: parseMoney(shopAmount),
-          shopCurrency: shopCurrency ? String(shopCurrency).trim().toUpperCase() : null,
-          presentmentAmount: presentmentAmount === null ? null : parseMoney(presentmentAmount),
-          presentmentCurrency: presentmentCurrency ? String(presentmentCurrency).trim().toUpperCase() : null,
-        };
       };
 
       let totalRevenue = 0;
@@ -32795,11 +32772,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignValueRevenueTotals = new Map<string, number>();
       const campaignValueOrderCounts = new Map<string, number>();
       for (const o of orders) {
-        const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);
+        const values = field === "tags"
+          ? getShopifyOrderTags(o)
+          : field === "discount_code"
+            ? getShopifyDiscountCodes(o)
+            : [getFieldValue(o).trim()].filter(Boolean);
         const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
+        const amt = getShopifyConfirmedRevenueAmounts(o);
+        if (!amt) continue;
         matchedOrders.push(o);
-        const amt = getOrderAmounts(o);
         if (amt.shopCurrency) matchedCurrencies.add(amt.shopCurrency);
         totalRevenue += amt.shopAmount;
         campaignValueRevenueTotals.set(v, (campaignValueRevenueTotals.get(v) || 0) + amt.shopAmount);
@@ -32864,7 +32846,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Shopify revenue source not found" });
       }
 
-      // Persist mapping config on the active Shopify connection
+      // Persist GA4 connection metadata with its revenue replacement transaction below.
+      let shopifyConnectionId: string | null = null;
+      let shopifyConnectionMappingConfig: string | null = null;
       const shopifyConn: any = await storage.getShopifyConnection(campaignId);
       if (shopifyConn) {
         let existingConnConfig: any = {};
@@ -32897,7 +32881,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMatchedOrderCount: matchedOrders.length,
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
-        await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+        shopifyConnectionId = String(shopifyConn.id);
+        shopifyConnectionMappingConfig = JSON.stringify(mappingConfig);
+        if (platformCtx !== 'ga4') {
+          await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: shopifyConnectionMappingConfig } as any);
+        }
       }
 
       // Materialize revenue into revenue_sources/revenue_records so the correct platform context can use it.
@@ -32949,26 +32937,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         });
 
-        const source =
-          existingShopify
-            ? await storage.updateRevenueSource(String((existingShopify as any).id), {
-              displayName: `Shopify (${conn.shopDomain})`,
-              currency: cur,
-              mappingConfig: mappingCfg,
-              isActive: true,
-              connectedAt: new Date(),
-            } as any)
-            : await storage.createRevenueSource({
-              campaignId,
-              sourceType: "shopify",
-              platformContext: platformCtx,
-              displayName: `Shopify (${conn.shopDomain})`,
-              currency: cur,
-              mappingConfig: mappingCfg,
-              isActive: true,
-            } as any);
-
-        await storage.deleteRevenueRecordsBySource(String((source as any).id));
+        const sourceValues = {
+          campaignId,
+          sourceType: 'shopify',
+          platformContext: platformCtx,
+          displayName: `Shopify (${conn.shopDomain})`,
+          currency: cur,
+          mappingConfig: mappingCfg,
+          isActive: true,
+          ...(existingShopify ? { connectedAt: new Date() } : {}),
+        } as any;
+        let nonGa4Source: any = null;
+        if (platformCtx !== 'ga4') {
+          nonGa4Source = existingShopify
+            ? await storage.updateRevenueSource(String((existingShopify as any).id), sourceValues)
+            : await storage.createRevenueSource(sourceValues);
+          await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));
+        }
 
         // Use yesterday (UTC) as the materialized end date when creating LinkedIn-scoped
         // Shopify revenue so it lines up with the LinkedIn 30-day window (which uses yesterdayUTC).
@@ -32985,7 +32970,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const o of matchedOrders) {
           const orderDate = String(o?.created_at || "").split("T")[0];
           if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
-            const amt = getOrderAmounts(o);
+            const amt = getShopifyConfirmedRevenueAmounts(o);
+            if (!amt) continue;
             const current = revenueByDate.get(orderDate) || 0;
             revenueByDate.set(orderDate, current + amt.shopAmount);
 
@@ -33028,7 +33014,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const records = recordDates.map(d => ({
           campaignId,
-          revenueSourceId: String((source as any).id),
           date: d,
           revenue: Number((revenueByDate.get(d) || 0).toFixed(2)) as any,
           currency: cur,
@@ -33043,7 +33028,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (date && urn && recordDates.includes(date)) {
               records.push({
                 campaignId,
-                revenueSourceId: String((source as any).id),
                 date,
                 revenue: Number(rev.toFixed(2)) as any,
                 currency: cur,
@@ -33054,7 +33038,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        await storage.createRevenueRecords(records);
+        if (platformCtx === 'ga4') {
+          if (!shopifyConnectionId || !shopifyConnectionMappingConfig) {
+            throw new Error('Active Shopify connection not found');
+          }
+          await storage.replaceGa4ShopifyRevenueSourceWithRecords(
+            campaignId,
+            existingShopify ? String((existingShopify as any).id) : null,
+            shopifyConnectionId,
+            shopifyConnectionMappingConfig,
+            sourceValues,
+            records,
+          );
+        } else {
+          await storage.createRevenueRecords(records.map(record => ({
+            ...record,
+            revenueSourceId: String(nonGa4Source.id),
+          })));
+        }
 
         if (platformCtx === "linkedin") {
           await clearLatestLinkedInImportSessionConversionValue(campaignId);

@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const ROUTES_FILE = join(__dirname, "routes-oauth.ts");
+const STORAGE_FILE = join(__dirname, "storage.ts");
 const AUTO_REFRESH_SCHEDULER_FILE = join(__dirname, "auto-refresh-scheduler.ts");
 const SHOPIFY_WIZARD_FILE = join(__dirname, "..", "client", "src", "components", "ShopifyRevenueWizard.tsx");
 const GA4_METRICS_FILE = join(__dirname, "..", "client", "src", "pages", "ga4-metrics.tsx");
@@ -26,6 +27,46 @@ function routeSection(content: string, start: string, end: string): string {
 }
 
 describe("Shopify revenue regression guard", () => {
+  it("applies the confirmed-revenue policy to selection, save, and recalculation", () => {
+    const routes = read(ROUTES_FILE);
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+    const valuesRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/orders/unique-values"',
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+    );
+
+    expect(saveRoute).toContain('const metric = "current_total_price";');
+    expect(saveRoute).toContain('const amt = getShopifyConfirmedRevenueAmounts(o);');
+    expect(valuesRoute).toContain('if (!getShopifyConfirmedRevenueAmounts(o)) continue;');
+    expect(routes).toContain('const confirmedRevenue = getShopifyConfirmedRevenueAmounts(o);');
+    expect(routes).toContain("throw new Error('Shopify orders response is incomplete')");
+    expect(routes).toContain("throw new Error('Shopify orders pagination repeated a cursor URL')");
+    expect(wizard).toContain('const revenueMetric = "current_total_price";');
+    expect(wizard).not.toContain('Total price (default)');
+  });
+
+  it("routes GA4 Shopify replacement through the campaign-scoped transaction", () => {
+    const routes = read(ROUTES_FILE);
+    const storage = read(STORAGE_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    expect(saveRoute).toContain("if (platformCtx === 'ga4') {");
+    expect(saveRoute).toContain('await storage.replaceGa4ShopifyRevenueSourceWithRecords(');
+    expect(storage).toContain('return await db.transaction(async (tx: any) => {');
+    expect(storage).toContain("eq(shopifyConnections.campaignId, campaignId)");
+    expect(storage).toContain("eq(revenueRecords.campaignId, campaignId)");
+  });
+
   it("preserves stable source identity through Shopify revenue edit mode", () => {
     const modal = read(REVENUE_MODAL_FILE);
     const wizard = read(SHOPIFY_WIZARD_FILE);
@@ -207,9 +248,10 @@ describe("Shopify revenue regression guard", () => {
     expect(saveRoute).toContain("const conn = await getShopifyConnectionForCampaign(campaignId);");
     expect(saveRoute).toContain("const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);");
     expect(saveRoute).toContain("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);");
-    expect(saveRoute).toContain("campaignId,\n              sourceType: \"shopify\",\n              platformContext: platformCtx,");
-    expect(saveRoute).toContain("await storage.deleteRevenueRecordsBySource(String((source as any).id));");
-    expect(saveRoute).toContain("campaignId,\n          revenueSourceId: String((source as any).id),");
+    expect(saveRoute).toContain("const sourceValues = {\n          campaignId,\n          sourceType: 'shopify',\n          platformContext: platformCtx,");
+    expect(saveRoute).toContain('await storage.replaceGa4ShopifyRevenueSourceWithRecords(');
+    expect(saveRoute).toContain('await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));');
+    expect(saveRoute).toContain('revenueSourceId: String(nonGa4Source.id),');
     expect(saveRoute).toContain("const orderCrmValue = getFieldValue(o).trim();");
     expect(saveRoute).toContain("const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds);");
     expect(saveRoute).toContain("const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);");

@@ -64,7 +64,7 @@ export function ShopifyRevenueWizard(props: {
   // We keep a long lookback under the hood but do not expose it in the UI.
   const [days] = useState<number>(3650);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
-  const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
+  const revenueMetric = "current_total_price";
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
 
@@ -99,7 +99,6 @@ export function ShopifyRevenueWizard(props: {
     setSelectedValues(Array.isArray(initialMappingConfig.selectedValues) ? initialMappingConfig.selectedValues.map(String) : []);
     setCampaignDisplayName(String(initialMappingConfig.campaignDisplayName || ""));
     setCampaignMappings(Array.isArray(initialMappingConfig.campaignMappings) ? initialMappingConfig.campaignMappings : []);
-    if (initialMappingConfig.revenueMetric) setRevenueMetric(String(initialMappingConfig.revenueMetric));
     setStep("review");
   }, [mode, initialMappingConfig]);
 
@@ -112,7 +111,7 @@ export function ShopifyRevenueWizard(props: {
     const normalize = (cfg: any) => JSON.stringify({
       campaignField: String(cfg?.campaignField || "utm_campaign"),
       selectedValues: Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map(String).sort() : [],
-      revenueMetric: String(cfg?.revenueMetric || "total_price"),
+      revenueMetric: "current_total_price",
       campaignDisplayName: String(cfg?.campaignDisplayName || ""),
       campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
     });
@@ -863,15 +862,9 @@ export function ShopifyRevenueWizard(props: {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Revenue metric</Label>
-                <Select value={revenueMetric} onValueChange={(v) => setRevenueMetric(v)}>
-                  <SelectTrigger>
-                    <span>{revenueMetric === "total_price" ? "Total price (default)" : "Current total price (after adjustments)"}</span>
-                  </SelectTrigger>
-                  <SelectContent className="z-[10000]">
-                    <SelectItem value="total_price">Total price (default)</SelectItem>
-                    <SelectItem value="current_total_price">Current total price (after adjustments)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                  Current total price after returns, refunds, and order adjustments
+                </div>
               </div>
             </div>
           )}
@@ -886,7 +879,7 @@ export function ShopifyRevenueWizard(props: {
                 {selectedValues.length === 0 ? "—" : selectedValues.length <= 3 ? selectedValues.join(", ") : `${selectedValues.slice(0, 3).join(", ")} + ${selectedValues.length - 3} more`}
               </div>
               <div>
-                <strong>Revenue metric:</strong> {revenueMetric}
+                <strong>Revenue metric:</strong> Current total price after adjustments
               </div>
               <div className="rounded-md border border-border bg-muted/40 p-3">
                 <div className="font-medium">Preview</div>

@@ -179,6 +179,14 @@ export interface IStorage {
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
   ): Promise<RevenueSource>;
+  replaceGa4ShopifyRevenueSourceWithRecords(
+    campaignId: string,
+    existingSourceId: string | null,
+    connectionId: string,
+    connectionMappingConfig: string,
+    source: InsertRevenueSource,
+    records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
+  ): Promise<RevenueSource>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
   getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
@@ -1504,6 +1512,47 @@ export class DatabaseStorage implements IStorage {
         .returning({ id: hubspotConnections.id });
       if (!savedConnection) throw new Error('HubSpot connection not found');
 
+      return savedSource;
+    });
+  }
+
+  async replaceGa4ShopifyRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource> {
+    if (!records.length) throw new Error('No Shopify revenue records to save');
+    return await db.transaction(async (tx: any) => {
+      const sourceValues = { ...source, campaignId, sourceType: 'shopify', platformContext: 'ga4', isActive: true } as any;
+      let savedSource: RevenueSource | undefined;
+      if (existingSourceId) {
+        [savedSource] = await tx.update(revenueSources).set(sourceValues).where(and(
+          eq(revenueSources.id, existingSourceId),
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, 'shopify'),
+          eq(revenueSources.isActive, true),
+          or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+        )).returning();
+        if (!savedSource) throw new Error('Shopify revenue source not found');
+      } else {
+        [savedSource] = await tx.insert(revenueSources).values(sourceValues).returning();
+      }
+
+      if (!savedSource) throw new Error('Failed to save Shopify revenue source');
+      const sourceId = String(savedSource.id);
+      await tx.delete(revenueRecords).where(and(
+        eq(revenueRecords.revenueSourceId, sourceId),
+        eq(revenueRecords.campaignId, campaignId),
+      ));
+      await tx.insert(revenueRecords).values(records.map((record) => ({
+        ...record, campaignId, revenueSourceId: sourceId, sourceType: 'shopify',
+      })) as any);
+
+      const [savedConnection] = await tx.update(shopifyConnections)
+        .set({ mappingConfig: connectionMappingConfig } as any)
+        .where(and(
+          eq(shopifyConnections.id, connectionId),
+          eq(shopifyConnections.campaignId, campaignId),
+          eq(shopifyConnections.isActive, true),
+        ))
+        .returning({ id: shopifyConnections.id });
+      if (!savedConnection) throw new Error('Shopify connection not found');
       return savedSource;
     });
   }

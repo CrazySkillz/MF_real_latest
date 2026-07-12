@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-05.2";
+  var VERSION = "2026-07-12.1";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -256,6 +256,20 @@
     };
   }
 
+  function buildCsvRevenueSources(sourceRows, breakdownRows) {
+    return sourceRows.filter(function (row) {
+      return sourceActive(row) && sourceType(row) === "csv";
+    }).map(function (row) {
+      var id = String(sourceId(row) || "");
+      var breakdown = breakdownRows.find(function (item) { return String(sourceId(item) || "") === id; }) || null;
+      return {
+        sourceId: id,
+        displayName: sourceDisplayName(row),
+        amount: breakdown ? sourceAmount(breakdown, "revenue") : sourceAmount(row, "revenue")
+      };
+    });
+  }
+
   function buildTotals(byName) {
     var revenueBreakdownRows = rowsOf(byName.revenueBreakdown && byName.revenueBreakdown.data);
     var spendBreakdownRows = rowsOf(byName.spendBreakdown && byName.spendBreakdown.data);
@@ -323,7 +337,8 @@
       endpointStatus: endpointStatus(results),
       revenue: Object.assign({
         toDate: totals.revenueToDate,
-        breakdownTotal: totals.revenueBreakdownTotal
+        breakdownTotal: totals.revenueBreakdownTotal,
+        csvSources: buildCsvRevenueSources(revenueSources, revenueBreakdownRows)
       }, buildSourceSummary(revenueSources, "revenue", targetSourceId), buildBreakdownTarget(revenueBreakdownRows, targetSourceId, "revenue")),
       spend: Object.assign({
         toDate: totals.spendToDate,
@@ -403,12 +418,25 @@
       if (config.expectSpendUnchanged === true) {
         checks.spendUnchanged = closeMoney(result.spend.breakdownTotal, baseline.spend.breakdownTotal) && result.spend.sourceCount === baseline.spend.sourceCount;
       }
+      if (config.requireRevenueEndpointParity === true) {
+        checks.beforeRevenueToDateMatchesBreakdown = closeMoney(baseline.revenue.toDate, baseline.revenue.breakdownTotal);
+        checks.afterRevenueToDateMatchesBreakdown = closeMoney(result.revenue.toDate, result.revenue.breakdownTotal);
+      }
     }
 
     if (config.targetSourceId) {
       if (config.targetFamily === "revenue") {
+        checks.targetRevenueSourceStateBeforeMatches = config.targetShouldExistBefore === undefined || !baseline
+          ? undefined
+          : baseline.revenue.targetPresent === config.targetShouldExistBefore;
         checks.targetRevenueSourceStateMatches = config.targetShouldExist === undefined ? undefined : result.revenue.targetPresent === config.targetShouldExist;
         checks.targetRevenueBreakdownStateMatches = config.targetShouldExist === undefined ? undefined : result.revenue.targetInBreakdown === config.targetShouldExist;
+        checks.targetRevenueAmountMatchesExpected = config.expectedTargetAmount === undefined
+          ? undefined
+          : closeMoney(result.revenue.targetAmount, config.expectedTargetAmount) && closeMoney(result.revenue.targetBreakdownAmount, config.expectedTargetAmount);
+        checks.targetRevenueAmountDeltaMatchesExpected = config.expectedTargetAmountDelta === undefined || !baseline
+          ? undefined
+          : compareNumberDelta(baseline.revenue.targetAmount, result.revenue.targetAmount, config.expectedTargetAmountDelta);
       } else if (config.targetFamily === "spend") {
         checks.targetSpendSourceStateMatches = config.targetShouldExist === undefined ? undefined : result.spend.targetPresent === config.targetShouldExist;
         checks.targetSpendBreakdownStateMatches = config.targetShouldExist === undefined ? undefined : result.spend.targetInBreakdown === config.targetShouldExist;
@@ -437,11 +465,16 @@
         spendTotal: config.expectedSpendTotal,
         targetSourceId: config.targetSourceId || null,
         targetFamily: config.targetFamily || null,
-        targetShouldExist: config.targetShouldExist
+        targetShouldExistBefore: config.targetShouldExistBefore,
+        targetShouldExist: config.targetShouldExist,
+        targetAmount: config.expectedTargetAmount,
+        targetAmountDelta: config.expectedTargetAmountDelta,
+        requireRevenueEndpointParity: config.requireRevenueEndpointParity === true
       },
       before: baseline ? {
         revenueBreakdownTotal: baseline.revenue.breakdownTotal,
         revenueSourceCount: baseline.revenue.sourceCount,
+        targetRevenueAmount: config.targetSourceId ? baseline.revenue.targetAmount : undefined,
         spendBreakdownTotal: baseline.spend.breakdownTotal,
         spendSourceCount: baseline.spend.sourceCount
       } : null,
@@ -452,6 +485,7 @@
         spendSourceCount: result.spend.sourceCount,
         targetInRevenueSources: config.targetSourceId ? result.revenue.targetPresent : undefined,
         targetInRevenueBreakdown: config.targetSourceId ? result.revenue.targetInBreakdown : undefined,
+        targetRevenueAmount: config.targetSourceId ? result.revenue.targetAmount : undefined,
         targetInSpendSources: config.targetSourceId ? result.spend.targetPresent : undefined,
         targetInSpendBreakdown: config.targetSourceId ? result.spend.targetInBreakdown : undefined
       },
@@ -771,6 +805,10 @@
       readonly: data.readonly === true,
       inventoryPass: data.overallPass === true,
       summary: data.summary || null,
+      csvInventoryPass: data.csvInventoryPass === true,
+      csvSummary: data.csvSummary || null,
+      csvFindings: data.csvFindings || null,
+      csvCleanupAssessment: data.csvCleanupAssessment || null,
       findings: {
         orphanRevenueRecordGroups: findings.orphanRevenueRecordGroups || [],
         orphanSpendRecordGroups: findings.orphanSpendRecordGroups || [],
@@ -828,6 +866,76 @@
     summary.overallPass = result.pass && data.success === true && data.readonly === true && data.hubspotInventoryPass === true;
     console.log(summary);
     return summary;
+  }
+
+  async function csvRevenueInventory(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var result = await fetchJson(
+      "csvRevenueInventory",
+      "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"
+    );
+    var data = result.data || {};
+    var findings = data.csvFindings || {};
+    var expectedInactiveIds = sortedValues(config.expectedInactiveSourceIds || []);
+    var inactiveRows = Array.isArray(findings.inactiveCsvSourceRecordGroups) ? findings.inactiveCsvSourceRecordGroups : [];
+    var inactiveIds = inactiveRows.map(function (row) { return String(row && row.sourceId || ""); }).filter(Boolean).sort();
+    var activeFindingKeys = [
+      "activeSourcesWithZeroRecords",
+      "orphanCsvRecordGroups",
+      "crossCampaignCsvRecordGroups",
+      "wrongSourceTypeRecordGroups",
+      "incompleteStoredMappingSources",
+      "storedTotalMismatchSources",
+      "datedRevenueLossSources",
+      "duplicateRecordGroups",
+      "duplicateActiveCsvSourceGroups"
+    ];
+    var activeFindingsClear = activeFindingKeys.every(function (key) {
+      return !Array.isArray(findings[key]) || findings[key].length === 0;
+    });
+    var checks = {
+      endpointPasses: result.pass && data.success === true,
+      inventoryIsReadOnly: data.readonly === true,
+      activeAndReconciliationFindingsClear: activeFindingsClear,
+      inactiveFindingsMatchExpectedBoundary: expectedInactiveIds.length > 0
+        ? JSON.stringify(inactiveIds) === JSON.stringify(expectedInactiveIds)
+        : inactiveIds.length === 0,
+      automaticCleanupBlocked: data.csvCleanupAssessment && data.csvCleanupAssessment.automaticCleanupAllowed === false
+    };
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: data.checkedAt || new Date().toISOString(),
+      stage: config.stage || "csv-revenue-read-only-inventory",
+      campaignId: campaignId,
+      endpoint: compactEndpointStatus(result),
+      csvSummary: data.csvSummary || null,
+      inactiveSourceIds: inactiveIds,
+      inactiveRecordCount: inactiveRows.reduce(function (sum, row) { return sum + Number(row && row.recordCount || 0); }, 0),
+      activeFindingKeys: activeFindingKeys,
+      cleanupAssessment: data.csvCleanupAssessment || null,
+      caveats: [
+        "This function is GET-only and does not clean, edit, delete, refresh, or recompute source data.",
+        "Known inactive-source rows must be supplied explicitly; unexpected active or reconciliation findings fail the packet.",
+        "A pass applies only to this campaign at checkedAt and does not replace the UI add/edit/delete lifecycle packet."
+      ],
+      checks: checks
+    };
+    summary.overallPass = Object.keys(checks).every(function (name) { return checks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
+
+  async function csvRevenueBefore(label, config) {
+    return before(label, Object.assign({ targetFamily: "revenue" }, config || {}));
+  }
+
+  async function csvRevenueAfter(label, config) {
+    return after(label, Object.assign({
+      targetFamily: "revenue",
+      expectSpendUnchanged: true,
+      requireRevenueEndpointParity: true
+    }, config || {}));
   }
   async function hubspotProvenance(config) {
     config = config || {};
@@ -3132,10 +3240,13 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-05.2')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.1')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
+      "await GA4OverviewValidation.csvRevenueInventory({ campaignId, expectedInactiveSourceIds: [] })",
+      "await GA4OverviewValidation.csvRevenueBefore('csv10-add', { campaignId, propertyId })",
+      "await GA4OverviewValidation.csvRevenueAfter('csv10-add', { campaignId, propertyId, targetSourceId: sourceId, targetShouldExist: true, expectedTargetAmount: 150, expectedRevenueDelta: 150, expectedRevenueSourceCountDelta: 1 })",
       "await GA4OverviewValidation.hubspotInventory({ campaignId })",
       "await GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })",
       "await GA4OverviewValidation.hubspotPipelineProxy({ campaignId, propertyId, expectedConfirmedRevenueTotal: 7600, expectedPipelineTotalToDate: 1234.56, expectedSelectedValues: ['CAMPAIGN_VALUE'] })",
@@ -3164,11 +3275,14 @@
     snapshot: snapshot,
     before: before,
     after: after,
+    csvRevenueBefore: csvRevenueBefore,
+    csvRevenueAfter: csvRevenueAfter,
     refreshSpend: refreshSpend,
     refreshRevenue: refreshRevenue,
     overviewPack: overviewPack,
     reportPack: reportPack,
     sourceDamageInventory: sourceDamageInventory,
+    csvRevenueInventory: csvRevenueInventory,
     hubspotInventory: hubspotInventory,
     hubspotProvenance: hubspotProvenance,
     hubspotPipelineProxy: hubspotPipelineProxy,

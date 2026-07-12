@@ -13,6 +13,9 @@ Read-only functions:
 - `GA4OverviewValidation.snapshot(config)`
 - `GA4OverviewValidation.before(label, config)`
 - `GA4OverviewValidation.after(label, config)`
+- `GA4OverviewValidation.csvRevenueBefore(label, config)`
+- `GA4OverviewValidation.csvRevenueAfter(label, config)`
+- `GA4OverviewValidation.csvRevenueInventory(config)`
 - `GA4OverviewValidation.overviewPack(config)`
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotInventory({ campaignId })`
@@ -46,7 +49,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-05.2');
+await import('/ga4-overview-validation-runner.js?v=2026-07-12.1');
 GA4OverviewValidation.help();
 ```
 
@@ -82,6 +85,124 @@ await GA4OverviewValidation.sourceDamageInventory({
 ```
 
 This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
+
+## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
+
+Use one disposable source named `csv10-revenue.csv` and this exact fixture:
+
+```csv
+Date,Campaign,Revenue
+2026-07-01,Alpha,100
+2026-07-02,Alpha,50
+2026-07-03,Beta,1100
+```
+
+For the rejection check, use `csv10-revenue-invalid.csv`, whose second Alpha date is `invalid`. Map Revenue, Campaign, and Date, and select only `Alpha`. The invalid copy must be rejected; the valid copy totals `$150` for Alpha. Selecting Alpha plus Beta on edit totals `$1,250`.
+
+Set the deployed campaign/property IDs after loading the runner:
+
+```js
+const campaignId = 'CAMPAIGN_ID';
+const propertyId = 'PROPERTY_ID';
+```
+
+Run the read-only inventory before and after the lifecycle. For a campaign with no known inactive CSV findings:
+
+```js
+await GA4OverviewValidation.csvRevenueInventory({ campaignId, expectedInactiveSourceIds: [] });
+```
+
+If the Current Commit 9 inventory recorded known inactive source IDs for this exact campaign, pass only that documented ID list. Any unexpected active/reconciliation finding still fails.
+
+Invalid import, expected no mutation:
+
+```js
+await GA4OverviewValidation.csvRevenueBefore('csv10-invalid', { campaignId, propertyId });
+// Attempt the invalid CSV import through Total Revenue -> + -> Upload CSV.
+await GA4OverviewValidation.csvRevenueAfter('csv10-invalid', {
+  campaignId,
+  propertyId,
+  expectRevenueUnchanged: true,
+  expectedRevenueDelta: 0,
+  expectedRevenueSourceCountDelta: 0
+});
+```
+
+Valid Alpha add, expected `$150` and one new source:
+
+```js
+await GA4OverviewValidation.csvRevenueBefore('csv10-add', { campaignId, propertyId });
+// Import the valid fixture through the UI with Alpha selected.
+const added = await GA4OverviewValidation.snapshot({ campaignId, propertyId });
+console.table(added.revenue.csvSources);
+const sourceId = added.revenue.csvSources.find((row) => row.displayName === 'csv10-revenue.csv' && row.amount === 150).sourceId;
+await GA4OverviewValidation.csvRevenueAfter('csv10-add', {
+  campaignId,
+  propertyId,
+  targetSourceId: sourceId,
+  targetShouldExist: true,
+  expectedTargetAmount: 150,
+  expectedRevenueDelta: 150,
+  expectedRevenueSourceCountDelta: 1
+});
+```
+
+First same-source edit, select Alpha plus Beta and expect `$1,250` without a new source:
+
+```js
+await GA4OverviewValidation.csvRevenueBefore('csv10-edit-1', { campaignId, propertyId, targetSourceId: sourceId });
+// Edit this source through Total Revenue -> Sources and select Alpha plus Beta.
+await GA4OverviewValidation.csvRevenueAfter('csv10-edit-1', {
+  campaignId,
+  propertyId,
+  targetSourceId: sourceId,
+  targetShouldExistBefore: true,
+  targetShouldExist: true,
+  expectedTargetAmount: 1250,
+  expectedTargetAmountDelta: 1100,
+  expectedRevenueDelta: 1100,
+  expectedRevenueSourceCountDelta: 0
+});
+```
+
+Second same-source edit, return to Alpha only and expect `$150` with the same source ID/count:
+
+```js
+await GA4OverviewValidation.csvRevenueBefore('csv10-edit-2', { campaignId, propertyId, targetSourceId: sourceId });
+// Edit the same source and return to Alpha only.
+await GA4OverviewValidation.csvRevenueAfter('csv10-edit-2', {
+  campaignId,
+  propertyId,
+  targetSourceId: sourceId,
+  targetShouldExistBefore: true,
+  targetShouldExist: true,
+  expectedTargetAmount: 150,
+  expectedTargetAmountDelta: -1100,
+  expectedRevenueDelta: -1100,
+  expectedRevenueSourceCountDelta: 0
+});
+```
+
+Delete through `Total Revenue -> Sources`, expecting exact baseline restoration:
+
+```js
+await GA4OverviewValidation.csvRevenueBefore('csv10-delete', { campaignId, propertyId, targetSourceId: sourceId });
+// Delete this exact CSV source through the UI.
+await GA4OverviewValidation.csvRevenueAfter('csv10-delete', {
+  campaignId,
+  propertyId,
+  targetSourceId: sourceId,
+  targetShouldExistBefore: true,
+  targetShouldExist: false,
+  expectedRevenueDelta: -150,
+  expectedRevenueSourceCountDelta: -1
+});
+await GA4OverviewValidation.csvRevenueInventory({ campaignId, expectedInactiveSourceIds: [] });
+```
+
+For every stage, record the visible `Total Revenue`, `Profit`, `ROAS`, `ROI`, and `CPA` cards plus the Revenue Sources modal. Total Revenue and Profit must move by the exact CSV delta, ROAS/ROI must recompute from unchanged spend, CPA must remain unchanged, the source amount/count must match the runner, and delete must restore the baseline. A runner pass without these visible checks is endpoint evidence only, not complete Current Commit 10 UI evidence.
+
+All three CSV functions are evidence-only. `csvRevenueBefore`/`csvRevenueAfter` perform GET requests and localStorage baseline comparison; `csvRevenueInventory` is GET-only. The actual add/edit/delete actions are performed deliberately through the deployed UI.
 
 For Current Commit 4.6 read-only HubSpot GA4 Overview inventory, run before and after deployed Current Commit 4.5 HubSpot provider lifecycle validation:
 

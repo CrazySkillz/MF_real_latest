@@ -22,10 +22,10 @@ It separates these two source families from whole-Overview and spend certificati
 ## Current Status
 
 - **Google Sheets Revenue is not clean-certified.** Current Commit 4 locally closes the tested GA4 deterministic mapping/date/row validation boundary for foreground and scheduler reprocessing. Add/edit and scheduler replacement remain non-transactional, automatic updates rely on the daily external refresh path rather than bounded source-family polling, open Overview revenue queries refetch only every ten minutes, and deployed provider/failure/idempotency evidence is incomplete.
-- **Upload CSV Revenue is not clean-certified.** Current Commit 2 locally closes the tested deterministic validation boundary. Current Commit 3 commits GA4 CSV source metadata and replacement records in one campaign/type/context-scoped transaction, with forced add/edit insertion-failure rollback tests. Current Commit 8 adds CSV-specific local downstream propagation automation. The user confirmed the deployed normal UI flow passed after Commits 2 and 3, but no exact numeric/source-ID or forced-failure packet was recorded; deployed negative/failure and numeric downstream propagation evidence remain unproven.
+- **Upload CSV Revenue is not clean-certified.** Current Commit 2 locally closes the tested deterministic validation boundary. Current Commit 3 commits GA4 CSV source metadata and replacement records in one campaign/type/context-scoped transaction, with forced add/edit insertion-failure rollback tests. Current Commit 8 adds CSV-specific local downstream propagation automation. Current Commit 9 adds a campaign-guarded read-only CSV damage assessment and completed the configured target-database scan: 4 campaigns, 22 GA4 CSV sources, 21 linked records, and 5 inactive-source record groups containing 17 records. No active-source, orphan, cross-campaign, wrong-type, retained-mapping, total-drift, dated-loss, duplicate-row, or duplicate-active-source candidate was found. No cleanup was applied. The user confirmed the deployed normal UI flow passed after Commits 2 and 3, but no exact numeric/source-ID or forced-failure packet was recorded; deployed negative/failure and numeric downstream propagation evidence remain unproven.
 - **All further Google Sheets Revenue coverage is on hold.** Do not start new Google Sheets Revenue transaction, polling, provider/OAuth, scheduler, inventory, downstream propagation, or deployed-validation work until the user explicitly resumes it. Existing bounded evidence remains recorded but is not extended by Current Commit 8.
 - Current Commit 7 has user-confirmed deployed UI validation for the normal exact-source deletion flow. No exact campaign, source ID/type, before/after amount, or injected-failure output was supplied for this documentation packet, so deployed rollback remains unproven.
-- Current Commit 1 was documentation only. Current Commits 2 through 4, 7, and the CSV-only portion of 8 are bounded source fixes/evidence and do not certify either source.
+- Current Commit 1 was documentation only. Current Commits 2 through 4, 7, and the CSV-only portions of 8 and 9 are bounded source fixes/evidence and do not certify either source.
 
 ## Explicit Scope
 
@@ -60,6 +60,7 @@ The current gaps are implementation and evidence gaps, not merely missing wordin
 - Before Current Commit 2, CSV positive-revenue rows with blank, invalid, or numeric mapped dates could be counted but omitted from persisted daily records. CSV now rejects the whole request before mutation.
 - Before Current Commit 4, Google Sheets exposed every header as a Date choice and its foreground and scheduler paths could count positive rows whose blank, invalid, or numeric mapped dates were omitted from daily persistence. Current Commit 4 filters only the GA4 Date chooser and rejects role collisions, empty/no-positive selections, and any undated selected positive revenue before source/record mutation in both paths.
 - Before Current Commit 7, the current UI's shared individual revenue-source delete verified campaign ownership and optional platform context, but source deactivation and record deletion were separate writes. Current Commit 7 repeats the active source/campaign/context boundary inside one transaction and deletes only records matching that source and campaign. The legacy bulk-delete route has no current frontend caller and remains outside this exact-source fix.
+- Before Current Commit 9, the existing read-only Overview source-damage endpoint reported generic orphan, inactive-source-record, duplicate-source, and context findings, but it omitted retained CSV rows from mapping analysis and could not prove CSV stored-row completeness, expected-versus-materialized totals, dated-row loss, or duplicate materialized row grains. Current Commit 9 adds only that CSV-specific assessment to the existing campaign-access-guarded GET route; it adds no cleanup or mutation path.
 - Existing tests are useful local/static guards, but they do not prove rollback, provider-failure retention, automatic timing, repeated-refresh idempotency, or complete source-specific downstream propagation.
 - Historical deployed lifecycle packets prove only the exact interactions recorded. They do not satisfy the new automatic-update, transactional retention, deterministic mapping/date validation, or complete negative-case requirements.
 
@@ -75,7 +76,7 @@ The current gaps are implementation and evidence gaps, not merely missing wordin
 | Snapshot record | One record dated yesterday UTC when no Date column is mapped | Revenue-to-date style imported total | Locally traced; full negative/deployed reconciliation is not current evidence. |
 | Imported revenue-to-date | `getRevenueTotalForRange` over active `ga4` sources and records | `/revenue-to-date`, GA4 Overview imported revenue | Active-source join is traced; source-specific end-to-end automation is incomplete. |
 | Revenue breakdown | `getRevenueBreakdownBySource` over active sources/records | `/revenue-breakdown`, source amounts, Total Revenue composition | Local aggregation is traced; full Google Sheets/CSV propagation matrix is unproven. |
-| Revenue source list | Active sources enriched with lifetime breakdown amounts | `/revenue-sources`, Revenue Sources modal | Local route/query is traced; damaged/orphan inventory is unproven. |
+| Revenue source list | Active sources enriched with lifetime breakdown amounts | `/revenue-sources`, Revenue Sources modal | Local route/query and CSV read-only inventory logic are traced; the bounded target-database result is recorded below. |
 | Total Revenue | Selected scoped GA4-native financial revenue plus imported GA4-context revenue | Overview Total Revenue | Only the imported Google Sheets/CSV contribution is in scope; native revenue is excluded as proof. |
 | Profit | `Total Revenue - Total Spend` | Overview financial card | Only the imported-revenue input edge is in scope; Spend proof is excluded. |
 | ROAS | `Total Revenue / Total Spend` | Overview financial card | Same boundary as Profit. |
@@ -150,7 +151,7 @@ Historical bounded evidence, not current clean certification:
 | Totals/recomputation | Storage active joins and immediate user-mutation refetch traced; external refetch is ten minutes | Same totals path and immediate user-mutation refetch | Exact record/source/to-date/breakdown/Overview/formula parity |
 | Validation failure | GA4 role/date/row guards now fail before foreground or scheduler revenue source/record mutation for the local fixtures | GA4 role/date/row guards now fail before mutation for the local fixtures | Deployed negative/provider packets remain required |
 | Rollback | No transaction restores old source metadata/records after materialization failure | No transaction restores old source metadata/records after materialization failure | Forced-failure tests proving last valid value retention |
-| Damaged-data risk | Orphan records, active zero-record sources, partial replacement, duplicate records, and stale mapping metadata are possible | Same, plus incomplete stored rows and date-loss mismatches | Read-only inventory by campaign/source ID before any cleanup |
+| Damaged-data risk | Orphan records, active zero-record sources, partial replacement, duplicate records, and stale mapping metadata are possible | Local read-only checks cover active zero-record sources, inactive-source records, proven CSV missing/cross-campaign/wrong-type source links, incomplete retained mapping metadata, stored-total mismatch, dated-row loss, duplicate row grains, and suspicious duplicate active sources | Bounded target scan recorded; rerun after relevant data/code changes and before any separate cleanup plan |
 
 ## Negative-Case Matrix
 
@@ -204,6 +205,7 @@ Current relevant local/static guards include:
 - `server/google-sheets-revenue-validation.test.ts`: Current Commit 4 dynamically covers exact filtered dated and snapshot fixtures plus blank/invalid/numeric dates, and statically guards GA4-only Date filtering and fail-before-mutation ordering in foreground and scheduler paths. It does not prove provider behavior, transactionality, deployed behavior, every sheet shape, or downstream value propagation.
 - `server/revenue-source-delete-transaction.test.ts`: Current Commit 7 forces source-deactivation and record-deletion failures, verifies rollback, and proves the successful mock transaction preserves an unrelated source plus a cross-campaign row. Static route/storage guards repeat campaign, active-source, platform-context, source-ID, and record-campaign scoping. This is local mocked transaction evidence, not deployed PostgreSQL evidence.
 - `server/csv-revenue-downstream-propagation.test.ts`: Current Commit 8 dynamically proves an exact filtered CSV delta enters Total Revenue, Profit, ROAS, and ROI once while CPA remains unchanged, and statically links the GA4 CSV transaction to active campaign/context source totals, breakdown, source-list amounts, Overview formulas, and post-mutation query refresh. It is local CSV-only automation; it does not add Google Sheets evidence or deployed numeric proof.
+- `server/csv-revenue-damaged-data-inventory.test.ts`: Current Commit 9 dynamically proves clean reconciliation, active zero-record, inactive-source-record, proven CSV missing/cross-campaign/wrong-type source-link, incomplete retained mapping, stored-total mismatch, dated-row loss, duplicate row-grain, and non-GA4/non-CSV exclusion behavior. It also statically guards the campaign-access and read-only/no-cleanup endpoint boundary. It does not inspect a target database or authorize cleanup.
 
 Current Commit 2 local validation on `2026-07-12`: the focused test passed 5/5; the adjacent seven-file packet passed 100/100; `npm run check` passed. The broad source-safety file passed all 80 non-Instagram assertions, including the CSV Revenue guard, and failed its seven unrelated Instagram assertions. These results are local code evidence only.
 
@@ -219,6 +221,8 @@ Current Commit 7 deployed UI validation on `2026-07-12`: the user confirmed the 
 
 Current Commit 8 CSV-only local validation on `2026-07-12`: the focused downstream propagation test passed 6/6; the adjacent ten-file CSV lifecycle/cross-tab/UI/financial-math packet passed 204/204; `npm run check` passed. No production runtime code changed. Google Sheets Revenue coverage was explicitly excluded and remains on hold.
 
+Current Commit 9 CSV-only validation on `2026-07-12`: the focused inventory test passed 4/4; the adjacent six-file CSV lifecycle/source-inventory packet passed 29/29; `npm run check` passed. The configured target-database read-only scan completed at `2026-07-12T10:49:40.451Z` and returned 4 campaigns, 22 GA4 CSV sources, 21 linked records, and 5 finding groups. All 5 groups were inactive sources retaining 17 records; no active or reconciliation finding was returned. No cleanup path was added and no data was mutated.
+
 ## Current Commit Queue
 
 Use isolated commits in this order:
@@ -233,7 +237,7 @@ Use isolated commits in this order:
 | 6 | Bounded Google Sheets Revenue-only polling and Overview revenue refetch | On hold with Google setup/provider work |
 | 7 | Transactional revenue source delete | Implemented, locally validated, and normal deployed UI flow user-confirmed for the current shared individual-source route |
 | 8 | Google Sheets/CSV Revenue-specific downstream propagation automation | CSV-only portion implemented and locally validated; Google Sheets portion on hold |
-| 9 | Read-only damaged-data inventory | CSV-only inventory is the next non-Google task; Google Sheets inventory on hold; no cleanup in this commit |
+| 9 | Read-only damaged-data inventory | CSV-only campaign-guarded automation, local validation, target-database scan, and no-cleanup assessment complete; Google Sheets inventory on hold; no cleanup applied |
 | 10 | Deployed CSV lifecycle/reconciliation evidence | Pending automated gates and deployment |
 | 11 | Deployed Google Sheets automatic mutation/failure/OAuth durability evidence | On hold |
 | 12 | Final certification rerun and documentation update | Blocking final gate; do not pre-write the result |
@@ -257,6 +261,7 @@ Use isolated commits in this order:
 - The current UI shared individual revenue-source delete transaction rechecks the active source ID, campaign, and platform context; source deactivation and exact campaign/source record deletion roll back together locally.
 - Normal deployed exact-source deletion behavior is user-confirmed for Current Commit 7; the confirmation has no archived numeric/source-ID or forced-failure packet.
 - CSV Revenue locally propagates its exact filtered delta once through the active campaign/GA4 source-backed total, breakdown, source list, Total Revenue, Profit, ROAS, and ROI paths; CPA remains spend divided by conversions and does not change with revenue.
+- The existing campaign-access-guarded Overview source-damage GET route now reports CSV-only source/record counts and exact candidate IDs for active zero-record sources, inactive-source records, proven CSV missing/cross-campaign/wrong-type source links, incomplete retained mapping metadata, stored-total mismatch, dated-row loss, duplicate materialized row grains, and suspicious duplicate active sources. It never cleans or mutates data.
 
 ## Partially Proven
 
@@ -280,32 +285,45 @@ Use isolated commits in this order:
 - Exact automatic Google Sheets provider mutation propagation through source, records, endpoints, Overview, and every claimed downstream consumer.
 - Deployed numeric source-specific propagation evidence for CSV Revenue beyond the bounded normal UI confirmations.
 - Unlisted files, delimiters, encodings, duplicate headers, locale numbers, ambiguous dates, large-file boundaries, sheets, tabs, mappings, filters, campaigns, properties, and currencies.
-- Production data health outside an exact read-only inventory.
+- Future target-database changes after the recorded Current Commit 9 read-only scan.
 
 ## Not Locally Verifiable
 
 - Live Google Sheets contents, permissions, API availability, provider latency, quota behavior, OAuth consent state, refresh-token renewal, revocation, and durability beyond the observed period.
 - Deployed scheduler execution at the configured time and future low-latency timer execution.
-- Production database contents and damaged rows without an authorized read-only inventory.
+- Production database contents after the recorded scan or outside the CSV-only Current Commit 9 boundary.
 - Browser rendering and already-open-page convergence under deployed runtime conditions.
 - Provider acceptance, generated artifact content, or delivery for any downstream report/email path unless separately captured.
 - Future provider, infrastructure, database, or code behavior.
 
 ## Damaged-Data Inventory And Cleanup Boundary
 
-Prior non-transactional behavior may have persisted damaged or ambiguous state. The read-only inventory must check, by campaign and source ID:
+Prior non-transactional behavior may have persisted damaged or ambiguous state. Current Commit 9 implements these CSV-only checks in `/api/campaigns/:id/ga4-overview/source-damage-inventory`, by campaign and source ID:
 
-- active Google Sheets/CSV sources with zero records or zero materialized total despite a positive saved/expected mapping total;
-- inactive sources that still retain records;
-- records whose source is missing, belongs to another campaign, or has the wrong source type/context;
-- duplicate active sources or duplicated daily records created by repeated attempts;
-- source mapping totals that differ from materialized lifetime totals;
-- dated mappings where stored selected positive rows include blank/invalid dates or where persisted daily totals omit those rows;
-- CSV mapping configs missing complete stored rows/headers/role metadata needed for a safe edit;
-- Google Sheets sources missing stable connection, spreadsheet, tab, Revenue column, campaign filter, or Date mapping metadata;
-- stale `lastSyncedAt` or source metadata inconsistent with the last valid record set.
+- active GA4 CSV sources with zero records;
+- inactive GA4 CSV sources that still retain records;
+- proven CSV records whose source is missing, belongs to another campaign, or has the wrong source type;
+- suspicious duplicate active GA4 CSV sources or duplicate source/date/sub-campaign record grains;
+- retained CSV row totals that differ from the effective materialized lifetime total;
+- dated retained CSV rows whose selected positive revenue has a blank/invalid date;
+- active CSV mapping configs missing complete stored rows, headers, row count, or unique Revenue/Campaign/Date role metadata needed for a safe edit.
 
-Inventory is read-only Current Commit 9. Do not deactivate, delete, merge, rewrite, backfill, or invent dates/allocations during inventory. Any cleanup requires a separate targeted plan listing exact campaign IDs, source IDs, record IDs/counts, the proven damage rule, expected before/after totals, rollback, and unrelated-source checks.
+Google Sheets inventory, connection metadata, scheduler metadata, and `lastSyncedAt` checks remain on hold and are not Current Commit 9 CSV evidence.
+
+Current Commit 9 inventory is read-only, campaign-access guarded, excludes non-GA4 CSV and every non-CSV family from its CSV result, and returns `automaticCleanupAllowed: false`. Missing legacy retained rows are reported as incomplete rather than guessed. Do not deactivate, delete, merge, rewrite, backfill, or invent dates/allocations during inventory. Any cleanup requires a separate targeted plan listing exact campaign IDs, source IDs, record IDs/counts, the proven damage rule, expected before/after totals, rollback, and unrelated-source checks.
+
+Target-database result recorded at `2026-07-12T10:49:40.451Z`:
+
+- scanned 4 campaigns, 22 GA4 CSV sources, and 21 records linked to those sources;
+- 2 active GA4 CSV sources were present, and neither produced an active-source, retained-mapping, stored-total, dated-loss, duplicate-row, orphan, cross-campaign, or wrong-type finding;
+- campaign `73eaa049-edb4-4852-9321-76d7924fc725` had four inactive sources retaining 16 records:
+  - source `a9f8f8b7-24d6-4a15-87ba-e16faa202823`: record `aca7e3e8-c5d5-40e9-b604-22e838473c72`;
+  - source `7b751b6d-d43d-4be3-970e-8559492d86ad`: record `1accda7f-72a0-40cf-bb3a-9fba8c9c1322`;
+  - source `33e1de1d-5426-4d5c-ab29-6c0fe076fe87`: records `b5c659ed-e6ad-449a-b0b8-e0cd5c2a9ee0`, `8233dd99-0b10-4bb0-9092-fde096866009`, `a9beec79-4cbb-4803-aaa0-8dca11df0f02`, `24448855-2a51-4d1f-8158-8321cf102d6c`, `a933b19d-8d61-4baf-807b-694d7054f3cd`, `c7151fe0-35b1-4b85-8c95-b31e789ba476`, and `5a19c0f5-7313-4e93-a455-0b06d7ce7619`;
+  - source `24416e0b-a65d-45cb-86d4-68a69d4473a9`: records `cee5f6f9-9fd3-4954-844b-5fc164476b5a`, `aa06734b-1712-4841-9703-79d71ba9e040`, `51e54c4f-be48-4766-b3f1-792d4fff2a5b`, `2150514f-d62d-4342-b84f-10d61bf7f367`, `86c115cb-27e8-4c97-b778-a11de9bbb53d`, `e444161a-727e-469a-8286-80a8b94c747c`, and `2dae6a49-331f-419d-aac5-be212fd1e1f8`;
+- campaign `79e0bbf4-c990-4595-9b31-e245aee8156a` had inactive source `d87ca77c-d995-49ae-8d8e-7c9500d33fd6` retaining record `7faf7eb5-a493-47a1-81bb-2538dbb17387`;
+- these inactive rows are excluded from live revenue totals by the existing active-source joins. Their creation history cannot be proven from persisted rows alone, although the state is consistent with the previously non-transactional deactivate/delete boundary fixed prospectively by Current Commit 7;
+- cleanup assessment: no cleanup is required for current numeric correctness. The smallest no-side-effect decision is to leave the inactive history untouched. If storage hygiene cleanup is later requested, it must be a separate exact campaign/source/record-scoped transactional commit with before/after total and unrelated-source checks.
 
 ## External Provider/Deployed Validation Gates
 
@@ -335,4 +353,4 @@ Any new defect immediately lowers the affected source/path to unproven until roo
 
 Use only when the question is limited to GA4 Overview Google Sheets Revenue and Upload CSV Revenue:
 
-Google Sheets Revenue and Upload CSV Revenue are not yet clean-certified. All further Google Sheets Revenue coverage is on hold until the user explicitly resumes it. Current Commits 2 and 3 have local automation plus user-confirmed normal CSV browser-flow validation, without an exact numeric/source-ID or forced-failure deployed packet. Current Commit 7 locally makes the current UI shared individual source delete transactional and campaign/context scoped, and its normal deployed UI deletion flow is user-confirmed without an archived numeric/source-ID or forced-failure packet. Current Commit 8 locally closes the CSV-only downstream automation gap for source-backed totals, breakdown, source list, Total Revenue, Profit, ROAS, ROI, and CPA immutability; it adds no Google Sheets evidence and no deployed numeric packet. Remaining active CSV blockers include deployed negative/failure evidence, deployed forced-failure delete rollback, incomplete idempotency tests, CSV-only damaged-data inventory, and deployed numeric propagation evidence. Spend and all other source families are excluded as proof. The next non-Google task is the CSV-only portion of Current Commit 9 — read-only damaged-data inventory.
+Google Sheets Revenue and Upload CSV Revenue are not yet clean-certified. All further Google Sheets Revenue coverage is on hold until the user explicitly resumes it. Current Commits 2 and 3 have local automation plus user-confirmed normal CSV browser-flow validation, without an exact numeric/source-ID or forced-failure deployed packet. Current Commit 7 locally makes the current UI shared individual source delete transactional and campaign/context scoped, and its normal deployed UI deletion flow is user-confirmed without an archived numeric/source-ID or forced-failure packet. Current Commit 8 locally closes the CSV-only downstream automation gap for source-backed totals, breakdown, source list, Total Revenue, Profit, ROAS, ROI, and CPA immutability. Current Commit 9 completed local campaign-guarded read-only automation plus the configured target-database scan; only five inactive-source groups retaining 17 records were found, they do not feed live totals, and no cleanup was applied or required for numeric correctness. Remaining active CSV blockers include deployed negative/failure evidence, deployed forced-failure delete rollback, incomplete idempotency tests, and deployed numeric propagation evidence. Spend and all other source families are excluded as proof. The next queued non-Google commit is Current Commit 10 — deployed CSV lifecycle/reconciliation evidence.

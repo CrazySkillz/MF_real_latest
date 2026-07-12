@@ -10,6 +10,7 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetr
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
+import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
@@ -24,7 +25,7 @@ import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation } from "./auto-refresh-scheduler";
@@ -1458,6 +1459,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const findingCount = Object.values(findings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
       const overallPass = findingCount === 0;
+      const referencedRevenueSourceIds = Array.from(new Set((allRevenueRecords as any[])
+        .map((record) => String(record?.revenueSourceId || ""))
+        .filter(Boolean)));
+      const referencedRevenueSources = referencedRevenueSourceIds.length > 0
+        ? await db.select().from(revenueSourcesTable).where(inArray(revenueSourcesTable.id, referencedRevenueSourceIds))
+        : [];
+      const csvInventory = inspectGa4CsvRevenueDamage(
+        allRevenueSources as any[],
+        allRevenueRecords as any[],
+        referencedRevenueSources as any[],
+      );
+      const duplicateActiveCsvSourceGroups = findings.duplicateActiveRevenueSourceGroups.filter((group: any) =>
+        String(group?.signature?.sourceType || "").toLowerCase() === "csv"
+        && normalizeOverviewInventoryPlatformContext(group?.signature?.platformContext) === "ga4"
+      );
+      const csvFindingCount = csvInventory.summary.findingCount + duplicateActiveCsvSourceGroups.length;
       const normalizeHubspotScopeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
       const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
       const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeHubspotScopeValue).filter(Boolean));
@@ -1656,6 +1673,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           findingCount,
         },
         findings,
+        csvInventoryPass: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0,
+        csvSummary: { ...csvInventory.summary, findingCount: csvFindingCount },
+        csvFindings: { ...csvInventory.findings, duplicateActiveCsvSourceGroups },
+        csvCleanupAssessment: {
+          candidateReviewRequired: !(csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0),
+          automaticCleanupAllowed: false,
+          reason: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0
+            ? "No GA4 CSV Revenue damage candidates were found for this campaign."
+            : "Review the exact CSV source and record IDs before proposing a separate transactional cleanup; this inventory does not mutate data.",
+        },
         hubspotInventoryPass,
         hubspotSummary: {
           hubspotRevenueSourceCount: hubspotRevenueSources.length,
@@ -1693,6 +1720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : "Production database health is not clean for this campaign inventory; document the returned source/record IDs before proposing cleanup.",
         caveats: [
           "This route is read-only and campaign-access guarded; it does not prove other campaigns unless run for them.",
+          "CSV findings recompute only from retained normalized CSV rows; incomplete legacy mappings are reported for review rather than guessed or repaired.",
           "HubSpot-specific inventory is reported separately in hubspotInventoryPass/hubspotFindings; it does not clean data or prove provider lifecycle behavior.",
           "HubSpot provenance output is non-secret endpoint evidence for the connected account, saved mapping, and source-modal expected values; it does not inspect rendered pixels.",
           "Duplicate detection uses source type, platform context, currency, and a sanitized mapping-config hash; suspicious groups still require human review before cleanup.",

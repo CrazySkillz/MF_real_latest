@@ -206,7 +206,7 @@ Revenue source options:
 3. `Google Sheets`
 4. `Upload CSV`
 
-Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Current Commits 2 and 3 have user-confirmed deployed UI validation for the normal CSV Revenue flow, without an archived exact numeric/source-ID or forced-failure packet. Current Commit 4 locally adds GA4-only deterministic Google Sheets Revenue role/date/row validation before foreground and scheduler revenue source/record mutation. Current Commit 7 has user-confirmed deployed UI validation for normal exact-source deletion, while forced-failure rollback remains local automated evidence. These bounded results do not clean-certify either source.
+Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Current Commits 2 and 3 have user-confirmed deployed UI validation for the normal CSV Revenue flow, without an archived exact numeric/source-ID or forced-failure packet. Current Commit 4 locally adds GA4-only deterministic Google Sheets Revenue role/date/row validation before foreground and scheduler revenue source/record mutation. Current Commit 7 has user-confirmed deployed UI validation for normal exact-source deletion, while forced-failure rollback remains local automated evidence. Current Commit 9 completed campaign-guarded, read-only CSV damaged-data automation plus the configured target-database scan: five inactive-source groups retained 17 records, no active/reconciliation candidate was found, inactive rows do not feed live totals, and no cleanup was applied or required for numeric correctness. These bounded results do not clean-certify either source.
 
 All further Google Sheets Revenue coverage is on hold, including transactional replacement, polling, provider/OAuth and scheduler evidence, damaged-data inventory, downstream propagation automation, and deployed validation. Current Commit 8 is limited to Upload CSV Revenue downstream propagation automation.
 
@@ -496,6 +496,7 @@ Important meaning:
 - CSV revenue preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 - CSV revenue process/edit must verify that any provided existing `sourceId` is an active CSV revenue source for the requested campaign and platform context before updating records
 - deleting a CSV revenue source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized revenue records tied to that verified source ID
+- CSV damaged-data inventory must remain campaign-access guarded and read-only. It may report exact active zero-record, inactive-source-record, proven missing/cross-campaign/wrong-type source-link, incomplete retained mapping, stored-total mismatch, dated-row loss, duplicate row-grain, and suspicious duplicate-source candidates, but it must not clean, merge, backfill, allocate, or mutate them. Missing legacy retained rows are an incomplete-evidence finding, not permission to guess the original CSV.
 
 ## Revenue Source 6: Existing Stored Manual Revenue
 

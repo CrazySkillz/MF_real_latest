@@ -2963,6 +2963,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Atomic GA4 HubSpot source + connection disconnect
+  app.delete('/api/campaigns/:id/ga4/hubspot/disconnect', async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || '');
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      const result = await storage.disconnectGa4HubspotRevenue(campaignId);
+      try {
+        await recomputeCampaignDerivedValues(campaignId, { platformContext: 'ga4' });
+      } catch (error) {
+        console.error('[HubSpot] Post-disconnect GA4 recompute failed:', error);
+      }
+      res.json({ success: true, removedSourceIds: result.sourceIds });
+    } catch (error: any) {
+      if (error?.code === 'HUBSPOT_CONNECTION_IN_USE') {
+        return res.status(409).json({ success: false, error: error.message });
+      }
+      if (error?.code === 'HUBSPOT_CONNECTION_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: error.message });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to disconnect HubSpot' });
+    }
+  });
+
   // Individual revenue source delete
   app.delete("/api/campaigns/:id/revenue-sources/:sourceId", async (req, res) => {
     try {

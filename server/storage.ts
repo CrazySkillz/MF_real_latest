@@ -163,6 +163,7 @@ export interface IStorage {
   deleteRevenueSource(sourceId: string): Promise<boolean>;
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
   deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean>;
+  disconnectGa4HubspotRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
@@ -1319,6 +1320,63 @@ export class DatabaseStorage implements IStorage {
         eq(revenueRecords.campaignId, campaignId),
       ));
       return true;
+    });
+  }
+
+  async disconnectGa4HubspotRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }> {
+    return await db.transaction(async (tx: any) => {
+      const activeSources = await tx
+        .select({ id: revenueSources.id, platformContext: revenueSources.platformContext })
+        .from(revenueSources)
+        .where(and(
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, 'hubspot'),
+          eq(revenueSources.isActive, true),
+        ));
+      if (activeSources.some((source: any) => String(source.platformContext || 'ga4').toLowerCase() !== 'ga4')) {
+        throw Object.assign(new Error('HubSpot is still used by another platform in this campaign'), { code: 'HUBSPOT_CONNECTION_IN_USE' });
+      }
+      const [connection] = await tx
+        .select({ id: hubspotConnections.id })
+        .from(hubspotConnections)
+        .where(and(eq(hubspotConnections.campaignId, campaignId), eq(hubspotConnections.isActive, true)))
+        .orderBy(desc(hubspotConnections.connectedAt))
+        .limit(1);
+      if (!connection) {
+        throw Object.assign(new Error('No active HubSpot connection found'), { code: 'HUBSPOT_CONNECTION_NOT_FOUND' });
+      }
+
+      const sourceIds = activeSources.map((source: any) => String(source.id));
+      if (sourceIds.length > 0) {
+        const disabledSources = await tx
+          .update(revenueSources)
+          .set({ isActive: false } as any)
+          .where(and(
+            eq(revenueSources.campaignId, campaignId),
+            eq(revenueSources.sourceType, 'hubspot'),
+            eq(revenueSources.isActive, true),
+            or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+            inArray(revenueSources.id, sourceIds),
+          ))
+          .returning({ id: revenueSources.id });
+        if (disabledSources.length !== sourceIds.length) throw new Error('HubSpot revenue sources changed during disconnect');
+        await tx.delete(revenueRecords).where(and(
+          eq(revenueRecords.campaignId, campaignId),
+          inArray(revenueRecords.revenueSourceId, sourceIds),
+        ));
+      }
+
+      const [disabledConnection] = await tx
+        .update(hubspotConnections)
+        .set({ isActive: false })
+        .where(and(
+          eq(hubspotConnections.id, String(connection.id)),
+          eq(hubspotConnections.campaignId, campaignId),
+          eq(hubspotConnections.isActive, true),
+        ))
+        .returning({ id: hubspotConnections.id });
+      if (!disabledConnection) throw new Error('HubSpot connection changed during disconnect');
+      return { sourceIds, connectionId: String(disabledConnection.id) };
     });
   }
 

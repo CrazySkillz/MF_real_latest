@@ -824,12 +824,28 @@ pagination-only fix and is not certified by H3.
 
 ### Current Commit H4 — atomic/fail-safe full disconnect
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - preserve campaign/source ownership
 - make deletion of all targeted active HubSpot GA4 sources and the connection an
   all-or-nothing storage operation, or provide an equivalently proven resumable
   state machine within the current architecture
 - prove failure at every source and connection boundary and isolation from other
   campaigns/providers
+
+H4 replaces the GA4 modal's source-by-source requests followed by a separate
+connection request with one campaign-guarded endpoint and one storage
+transaction. It deactivates every active GA4 HubSpot source (including legacy
+null-context rows), deletes only those sources' campaign-scoped records, and
+deactivates the selected active campaign connection together. A failed source
+update, record delete, or connection update rolls the complete unit back.
+
+Because the OAuth connection is campaign-shared, H4 returns `409` without
+mutation when an active non-GA4 HubSpot revenue source exists in the campaign.
+It also retains active sources and returns `404` when there is no active campaign
+connection. Non-GA4 modal paths and the existing individual-source endpoint are
+unchanged.
 
 ### Current Commit H5 — remove stale display/fallback authority
 
@@ -1055,11 +1071,67 @@ Not proven by local H3:
 - deployed scheduler/UI error presentation
 - any H4-H10 item
 
+### H4 local implementation validation
+
+Root cause fixed:
+
+- the shared revenue modal issued one committed delete per matching source and
+  only then issued an independent HubSpot connection delete
+- any request failure could therefore leave a subset of sources removed, retain
+  or remove the connection inconsistently, and report only a generic failure
+- the connection is shared at campaign scope, so unconditional GA4 connection
+  removal could also break an active non-GA4 HubSpot source
+
+Local H4 behavior:
+
+- only the GA4 HubSpot modal path uses the new atomic endpoint
+- campaign access is checked before the transaction
+- source selection/deactivation is restricted to active `hubspot` rows in the
+  exact campaign and GA4/null platform context
+- record deletion is restricted by both campaign and selected source IDs
+- connection deactivation is restricted to the exact active campaign connection
+- active non-GA4 HubSpot use and missing-connection damage states fail before
+  mutation
+- derived-value recomputation runs after a successful disconnect; its failure is
+  logged without misreporting the already-committed disconnect as rolled back
+
+Files changed for H4:
+
+- `client/src/components/AddRevenueWizardModal.tsx`
+- `server/routes-oauth.ts`
+- `server/storage.ts`
+- `server/hubspot-ga4-disconnect-transaction.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- eight focused tests cover success, source failure, record failure, connection
+  failure, shared-connection conflict, missing connection, OAuth-only
+  disconnect, route ownership, and GA4 UI routing
+- forced failures retain every source, record, and connection
+- success isolates another provider in the same campaign and HubSpot data in
+  another campaign
+- `npm run check` passed
+- H1-H4, source-delete, scheduler, outcome-total, and report-email suites passed:
+  57/57 tests
+- the broader HubSpot Overview regression file has 10 unrelated pre-existing
+  dirty-tree failures, including stale runner-version expectations
+  (`2026-07-05.2` expected versus `2026-07-12.1` present); H4 did not
+  modify those runner or mapped-label paths
+
+Not proven by local H4:
+
+- deployed PostgreSQL failure injection, transaction isolation under concurrent
+  save/disconnect requests, or production damaged-data state
+- deployed UI handling of the `409` shared-connection conflict
+- successful post-disconnect derived-value recomputation in production
+- any H5-H10 item
+
 ## Certification gate
 
-At committed H2 baseline `48430f611fabc40b2ba1d0ad42310b6f848b8908` plus
-the local H3 working-tree change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1-H3 are locally proven but deployment evidence remains
-pending. Current Commit H4 is the next smallest isolated runtime item;
-completing it will still not certify HubSpot until the remaining documented
-matrix is closed.
+At committed H3 baseline `30e72a6ca476e30f114de713663d4f7fd6d1170f` plus
+the local H4 working-tree change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1-H4 are locally proven within their documented bounds but
+deployment evidence remains pending. Current Commit H5 is the next smallest
+isolated runtime item; completing it will still not certify HubSpot until the
+remaining documented matrix is closed.

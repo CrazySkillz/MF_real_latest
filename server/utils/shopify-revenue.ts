@@ -7,6 +7,28 @@ export type ShopifyConfirmedRevenueAmounts = {
   presentmentCurrency: string | null;
 };
 
+const normalizeCurrencyCode = (value: unknown, label: string): string => {
+  const currency = String(value || '').trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) throw new Error(`${label} currency is missing or invalid`);
+  return currency;
+};
+
+export const resolveShopifyGa4RevenueCurrency = (
+  amounts: ShopifyConfirmedRevenueAmounts[],
+  campaignCurrency: unknown,
+): string => {
+  const expectedCurrency = normalizeCurrencyCode(campaignCurrency, 'Campaign');
+  const currencies = new Set(amounts.map(amount => normalizeCurrencyCode(amount.shopCurrency, 'Shopify shop-money')));
+  if (currencies.size > 1) {
+    throw new Error(`Shopify shop-money contains multiple currencies: ${Array.from(currencies).sort().join(', ')}`);
+  }
+  const shopCurrency = currencies.size === 1 ? Array.from(currencies)[0] : expectedCurrency;
+  if (shopCurrency !== expectedCurrency) {
+    throw new Error(`Shopify shop-money currency ${shopCurrency} does not match campaign currency ${expectedCurrency}`);
+  }
+  return expectedCurrency;
+};
+
 const explicitNonRevenueStatuses = new Set([
   'pending',
   'authorized',

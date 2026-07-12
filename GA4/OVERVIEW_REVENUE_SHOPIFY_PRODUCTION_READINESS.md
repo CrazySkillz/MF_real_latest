@@ -251,15 +251,16 @@ Status: eligibility, current amount, order-ID deduplication, original-date resta
 
 Current behavior:
 
-- shop-money amounts are used as canonical amounts
-- presentment money is diagnostics only
-- if all matched orders share one shop currency, that currency is stored
-- if multiple shop currencies appear, the returned currency is null but the numeric amounts are still summed
-- downstream totals sum source numbers without currency conversion and format the result using campaign/report currency
+- Shopify shop-money is the only GA4 financial amount; presentment money remains diagnostics only
+- every positive matched order must have a valid three-letter shop-money currency
+- all matched shop-money currencies must be identical
+- the Shopify shop-money currency must exactly equal the campaign currency
+- a complete zero result uses the validated campaign currency
+- resolved currency is persisted on the connection mapping, source mapping, source row, every revenue row, preview response, and save response
 
-Status: **confirmed blocker**.
+Status: **Current Commit 4 implemented locally.** Missing, invalid, mixed, or campaign-mismatched Shopify currency fails before dry-run or persistence, preserving last-good data.
 
-The path must either require exact campaign/source currency parity or perform a documented conversion with an authoritative rate and date. It currently does neither. A Shopify source in EUR can be numerically added to GA4/spend values displayed as USD.
+No currency conversion is attempted or invented. This follows Shopify's definition of MoneyBag: shop money is the amount in the shop base currency and presentment money is the customer's selected currency. [Shopify MoneyBag](https://shopify.dev/docs/api/admin-graphql/latest/objects/moneybag).
 
 ## Daily Materialization, Identity, And Atomicity
 
@@ -444,9 +445,9 @@ Therefore the historical `inventory clean` packets do not establish Shopify data
 
 | Existing claim/evidence | Fresh result |
 |---|---|
-| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Contradicted.** Current eligibility is now locally guarded, but currency, changed-order/date completeness, connection-lifecycle atomicity, API version, freshness, and damaged-data scope remain unresolved. |
+| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Contradicted.** Eligibility, identity/date, and currency ingress are now locally guarded, but connection-lifecycle atomicity, API version, freshness, deployed evidence, and damaged-data scope remain unresolved. |
 | Admin token ownership guard | **Proven locally**, but arbitrary shop-host SSRF/token-forwarding remains a blocker. |
-| Paginated reads prevent truncation | **Partially proven.** Cursor loop and page-limit failure exist; real >250 evidence, rate-limit recovery, ordering, and dedup are absent. |
+| Paginated reads prevent truncation | **Partially proven.** Cursor loop, stable initial ordering, deduplication, and page-limit failure exist; real >250 evidence and rate-limit recovery remain absent. |
 | Materialization fails closed | **Now proven locally for traced GA4 Shopify boundaries.** Durable replacement rolls back on tested persistence failures; malformed successful payloads, repeated cursors, and unclassifiable matched orders fail before writes. Complete empty results intentionally replace revenue with zero. Post-commit recompute failure remains separate. |
 | Stable source identity on edit | **Proven locally** for explicit edit `sourceId`. Add mode still selects the first active Shopify source rather than creating a clearly separate source. |
 | Delete/deactivate exact boundary | **Proven locally** for individual source+record deletion. Full disconnect is multi-step and non-atomic. |
@@ -487,6 +488,8 @@ This first audit creates the canonical correction without editing those already-
 - GA4 per-order `externalId` persistence through the transactional replacement test
 - campaign-reporting-timezone order-date conversion and fail-closed window validation
 - original-order-date refund restatement policy for full campaign-window snapshots
+- exact GA4 Shopify shop-money/campaign-currency parity with missing, invalid, mixed, mismatch, and zero-result tests
+- resolved currency propagation into connection/source provenance, source/record persistence, preview, and save response
 - exact tag matching and current supported attribution-field wiring
 - REST Link pagination loop and page-limit failure
 - stable source ID passed by the scheduler
@@ -509,7 +512,6 @@ This first audit creates the canonical correction without editing those already-
 
 - transaction-level confirmation beyond Shopify financial status and real-provider policy behavior
 - real-provider older order/refund mutation convergence
-- currency parity/conversion
 - atomic connect/reconnect/disconnect beyond the now-transactional GA4 materialization replacement
 - OAuth security/completeness/provider behavior
 - valid Shopify host enforcement
@@ -533,7 +535,7 @@ This first audit creates the canonical correction without editing those already-
 
 ## Isolated Current Commit Queue
 
-Current Commits 1 through 3 are implemented in the working tree. Shopify remains uncertified because the remaining queue is unresolved.
+Current Commits 1 through 4 are implemented in the working tree. Shopify remains uncertified because the remaining queue is unresolved.
 
 ### Current Commit 1 — Transactional Shopify replacement and last-good retention
 
@@ -589,18 +591,21 @@ Completion evidence: executable duplicate/newest-state/identity/timezone/invalid
 
 ### Remaining queue after Current Commit 3
 
-### Current Commit 4 - Currency correctness and propagation
+### Current Commit 4 - Currency correctness and propagation — implemented locally
 
 Objective: prevent mixed-currency Shopify amounts from being presented as one campaign currency.
 
-Smallest safe scope:
+Implemented scope:
 
-- fail closed on incompatible currencies unless an authoritative conversion mechanism already exists
-- define shop versus presentment currency precedence
-- preserve currency with every materialized value
-- verify propagation through Overview, Campaign Breakdown, Ad Comparison, KPI/Benchmark, Campaign DeepDive, and reports
+- failed before preview/persistence for missing, invalid, mixed, or campaign-mismatched shop-money currency
+- made Shopify shop money authoritative and retained presentment money as diagnostics only
+- used campaign currency for a complete zero-order result
+- persisted the resolved currency in connection/source provenance, source and per-order records, and API responses
+- preserved downstream response shapes and relied on the existing source-backed propagation path
 
-Completion evidence: same-currency, mixed-currency, missing-currency, and downstream currency-parity tests plus bounded deployed evidence.
+Completion evidence: executable same/mixed/missing/mismatch/invalid/zero currency tests, static pre-mutation route ordering guards, and the existing Shopify downstream financial suite. Bounded deployed evidence remains deferred to Current Commit 8.
+
+### Remaining queue after Current Commit 4
 
 ### Current Commit 5 - Authentication, provider, and connection hardening
 
@@ -657,7 +662,7 @@ Smallest safe scope:
 
 Completion evidence: a complete evidence matrix with no in-scope value path left partially proven, unproven, or contradicted before any clean-certification claim.
 
-Estimated remaining work: **5 engineering/evidence steps** after Current Commit 3. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
+Estimated remaining work: **4 engineering/evidence steps** after Current Commit 4. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
 
 ## Certification Gate
 

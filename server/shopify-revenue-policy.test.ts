@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow } from './utils/shopify-revenue';
+import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency } from './utils/shopify-revenue';
 
 const order = (overrides: Record<string, unknown> = {}) => ({
   test: false,
@@ -98,5 +98,24 @@ describe('Shopify confirmed-revenue policy', () => {
     expect(() => getShopifyOrderReportingDateWithinWindow(
       { id: 42, created_at: '2026-06-30T12:00:00Z' }, 'UTC', '2026-07-01', '2026-07-03',
     )).toThrow('outside the campaign reporting window');
+  });
+
+  it('accepts one shop-money currency only when it matches the campaign', () => {
+    const usd = getShopifyConfirmedRevenueAmounts(order())!;
+    expect(resolveShopifyGa4RevenueCurrency([usd, usd], 'usd')).toBe('USD');
+    expect(resolveShopifyGa4RevenueCurrency([], 'EUR')).toBe('EUR');
+  });
+
+  it('fails closed for missing, mixed, mismatched, or invalid currency', () => {
+    const usd = getShopifyConfirmedRevenueAmounts(order())!;
+    const eur = { ...usd, shopCurrency: 'EUR' };
+    expect(() => resolveShopifyGa4RevenueCurrency([{ ...usd, shopCurrency: null }], 'USD'))
+      .toThrow('Shopify shop-money currency is missing or invalid');
+    expect(() => resolveShopifyGa4RevenueCurrency([usd, eur], 'USD'))
+      .toThrow('multiple currencies: EUR, USD');
+    expect(() => resolveShopifyGa4RevenueCurrency([usd], 'EUR'))
+      .toThrow('does not match campaign currency EUR');
+    expect(() => resolveShopifyGa4RevenueCurrency([], '$'))
+      .toThrow('Campaign currency is missing or invalid');
   });
 });

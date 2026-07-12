@@ -27,6 +27,24 @@ function routeSection(content: string, start: string, end: string): string {
 }
 
 describe("Shopify revenue regression guard", () => {
+  it("fails GA4 Shopify currency mismatches before preview or persistence", () => {
+    const routes = read(ROUTES_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+    const parity = saveRoute.indexOf("resolveShopifyGa4RevenueCurrency(matchedAmounts, (camp as any)?.currency)");
+    const preview = saveRoute.indexOf('if (isDryRun) {');
+    const transaction = saveRoute.indexOf('await storage.replaceGa4ShopifyRevenueSourceWithRecords(');
+
+    expect(parity).toBeGreaterThan(-1);
+    expect(parity).toBeLessThan(preview);
+    expect(parity).toBeLessThan(transaction);
+    expect(saveRoute).toContain('currency: resolvedRevenueCurrency');
+    expect(saveRoute).toContain("currencyBasis: 'shop_money_campaign_parity'");
+  });
+
   it("deduplicates and materializes GA4 Shopify revenue by order identity and reporting date", () => {
     const routes = read(ROUTES_FILE);
     const saveRoute = routeSection(

@@ -8,7 +8,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
-import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow } from './utils/shopify-revenue';
+import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency } from './utils/shopify-revenue';
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
@@ -32778,6 +32778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalRevenue = 0;
       const matchedOrders: any[] = [];
       const matchedCampaignValueByOrderId = new Map<string, string>();
+      const matchedAmounts: NonNullable<ReturnType<typeof getShopifyConfirmedRevenueAmounts>>[] = [];
       const matchedCurrencies = new Set<string>();
       let presentmentTotal = 0;
       const presentmentCurrencies = new Set<string>();
@@ -32795,6 +32796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const amt = getShopifyConfirmedRevenueAmounts(o);
         if (!amt) continue;
         matchedOrders.push(o);
+        matchedAmounts.push(amt);
         matchedCampaignValueByOrderId.set(String(o.id), v);
         if (amt.shopCurrency) matchedCurrencies.add(amt.shopCurrency);
         totalRevenue += amt.shopAmount;
@@ -32807,6 +32809,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const matchedCurrency = matchedCurrencies.size === 1 ? Array.from(matchedCurrencies)[0] : null;
       const presentmentCurrency = presentmentCurrencies.size === 1 ? Array.from(presentmentCurrencies)[0] : null;
+      const resolvedRevenueCurrency = platformCtx === 'ga4'
+        ? resolveShopifyGa4RevenueCurrency(matchedAmounts, (camp as any)?.currency)
+        : matchedCurrency;
       let ga4ReportingTimeZone: string | null = null;
       let ga4StartDate: string | null = null;
       let ga4EndDate: string | null = null;
@@ -32848,7 +32853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValue: calculatedConversionValue,
           totalConversions,
           latestSessionId,
-          currency: matchedCurrency,
+          currency: resolvedRevenueCurrency,
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
             campaignValue,
             revenue: Number(revenue.toFixed(2)),
@@ -32900,7 +32905,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueMetric: metric,
           days: rangeDays,
+          currency: resolvedRevenueCurrency,
           ...(platformCtx === 'ga4' ? {
+            currencyBasis: 'shop_money_campaign_parity',
             orderIdentityField: 'id',
             orderDateBasis: 'created_at_campaign_reporting_timezone',
             orderWindowStart: ga4StartDate,
@@ -32922,7 +32929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Materialize revenue into revenue_sources/revenue_records so the correct platform context can use it.
       try {
-        const cur = matchedCurrency || (camp as any)?.currency || "USD";
+        const cur = resolvedRevenueCurrency || (camp as any)?.currency || "USD";
 
         // Back-compat cleanup: remove legacy Shopify sources that were created without platformContext.
         if (platformCtx === "linkedin") {
@@ -32955,6 +32962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueMetric: metric,
           days: rangeDays,
           ...(platformCtx === 'ga4' ? {
+            currencyBasis: 'shop_money_campaign_parity',
             orderIdentityField: 'id',
             orderDateBasis: 'created_at_campaign_reporting_timezone',
             orderWindowStart: ga4StartDate,
@@ -32965,7 +32973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
           lastSyncedAt: new Date().toISOString(),
-          currency: matchedCurrency,
+          currency: resolvedRevenueCurrency,
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
             campaignValue,
             revenue: Number(revenue.toFixed(2)),
@@ -33131,7 +33139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalConversions: totalConversions,
         matchedOrderCount: matchedOrders.length,
-        currency: matchedCurrency,
+        currency: resolvedRevenueCurrency,
         campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
           campaignValue,
           revenue: Number(revenue.toFixed(2)),

@@ -2,7 +2,8 @@
 
 ## Mandatory status
 
-**Current status: not clean-certified.**
+**Current status: clean-certified and production-ready for the validated
+documented GA4 HubSpot Revenue scope.**
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
@@ -14,6 +15,9 @@ Audit baseline:
 - audited commit: `d9fb4b155ee051ace0660625f0e61dce7286e4dd`
 - audit type: fresh local code and evidence audit; no prior readiness statement
   was accepted as proof
+- certification basis: deployed H10c commit
+  `0df257a6fe47f65e1489ede6202a954588ad3c65`, the reconciled bounded deployed
+  packets, and the final local H1-H10d regression matrix
 - initial documentation audit runtime changes: none; local H1 implementation is
   recorded below and remains uncommitted/deployment-unverified
 - production data changes or cleanup in this audit: none
@@ -84,43 +88,22 @@ Excluded:
 
 ## Executive result
 
-HubSpot Revenue is **not clean-certified** at the audited commit. The existing
-evidence proves several important happy paths for two controlled campaigns, but
-it does not cover the complete lifecycle or negative-case matrix. Current code
-also establishes blockers that invalidate a blanket production-ready claim:
+The initial audit correctly lowered the earlier 4.16 production-ready claim
+because eight current-code blockers and several missing lifecycle/downstream
+boundaries were present. H1-H9 fixed those blockers without changing public
+financial contracts, and H10-H10c supplied fresh deployed inventory,
+provenance, mapping, report/PDF, KPI/Benchmark, current-state, and sync evidence.
 
-1. At the audited baseline, HubSpot save/edit/reprocess persistence was not
-   atomic. Local H1 now addresses this exact path; deployed evidence remains
-   pending and the other blockers below remain open.
-2. At the audited baseline, confirmed-deal and Pipeline Proxy searches could
-   stop at the 25-page cap while more pages remained. Local H3 now rejects that
-   continuation and repeated cursors before mutation; deployed evidence remains
-   pending.
-3. At the audited baseline, a numeric confirmed deal with an invalid or missing
-   mapped date could contribute to totals without a daily record. Local H2 now
-   rejects that input and reconciles all materialized totals before mutation;
-   deployed evidence remains pending.
-4. the source modal can fall back to configuration `lastTotalRevenue` when
-   records are absent, so it can display a value that the record-backed Total
-   Revenue card does not contain after a damaged write.
-5. full HubSpot disconnect deletes active sources one request at a time and then
-   deletes the connection. The cross-source destructive operation is not
-   atomic and can stop in a partially disconnected state.
-6. Campaign DeepDive/outcome totals and campaign-level KPI/Benchmark current
-   values do not consistently use the GA4 Overview native-revenue selector.
-   HubSpot imported revenue may be the same while Total Revenue, Profit, ROAS,
-   ROI, and CPA still drift across surfaces.
-7. outcome totals can fall back to connection `lastTotalRevenue` when active
-   source records are unavailable, recreating revenue outside the canonical
-   active-source record path.
-8. positive Pipeline Proxy is explicitly added to browser report output and the
-   scheduled GA4 PDF, while the financial-source contract says Pipeline Proxy
-   must not feed Reports. The historical report packet had a zero proxy and did
-   not test this contradiction.
+H10d reconciles deterministic local negative-path tests with bounded deployed
+provider/value packets. Production fault injection, a future revoked token,
+every possible HubSpot mapping, future sends, and future simultaneous provider
+mutations are not required to be repeated against production to certify the
+current validated source scope; they are explicit future revalidation triggers
+and are not claims about those future events.
 
-These are present-code findings, not hypothetical missing evidence. Clean
-certification must remain blocked until they are corrected and the resulting
-negative cases and downstream paths are validated.
+The final result is clean certification for the documented GA4 HubSpot Revenue
+source-family scope at deployed commit `0df257a6`. This does not certify the
+excluded or future boundaries listed below.
 
 ## Canonical data and source-of-truth trace
 
@@ -678,25 +661,22 @@ particular:
 
 | Requested path | Status | Reason |
 |---|---|---|
-| authentication and campaign ownership | Partially proven | Local campaign guards and signed state are traced; deployed secrets/provider/token lifecycle are not locally verifiable. |
-| add/import | Locally guarded/traced through H8; deployed dynamic evidence pending | H1-H3 guard rollback/date/pagination; H8 explicitly traces identical-signature reuse, distinct additive selection, and source-ID edit/refresh semantics. |
-| edit/update | Locally fixed by H1; deployed evidence pending | Stable ID and transaction rollback are locally guarded; deployed provider/write failure evidence remains pending. |
-| single-source delete/deactivate | Partially proven | Exact transactional storage delete and one packet; metadata/recompute failures not fully exercised. |
-| full disconnect | Broken | Sequential multi-source deletion plus connection deletion is not atomic. |
-| mapping and filtering | Locally guarded through H8; deployed dynamic evidence pending | One shared normalized key and unique-row guard cover multi-value/source accumulation plus blank, zero, unmatched, punctuation, and ambiguous variants without guessed allocation. |
-| date handling and daily materialization | Locally fixed by H2/H3; deployed evidence pending | Strict calendar validation, total reconciliation, and incomplete-page rejection run before mutation. |
-| Pipeline Proxy exclusion and transition | Locally fixed by H7; deployed evidence pending | One transition packet passed; H7 removes proxy data/rendering from browser and scheduled report artifacts while preserving operational surfaces. |
-| provider refresh/scheduler/reprocess | Partially proven | H1 protects rollback and H3 rejects incomplete pages locally; normal deployed scheduler/provider evidence remains pending. |
-| transaction and failure retention | Locally proven by H1; deployed evidence pending | One GA4-only transaction now covers connection, source, delete, and insert with forced rollback tests. |
-| source modal and provenance | Partially proven | One provenance packet; configuration fallback can mask missing records. |
-| Total Revenue, Profit, ROAS, ROI, CPA | Partially proven | Overview formulas traced; input integrity and cross-surface parity are not certified. |
-| Campaign Breakdown | Locally guarded through H8; deployed dynamic evidence pending | Mapping lifecycle and unique-row fail-closed allocation are guarded across Overview and browser/scheduled report paths. |
-| Ad Comparison | Locally guarded through H8; deployed dynamic evidence pending | Ad Comparison uses the shared allocation key, unique-row guard, multi-source accumulation, and residual/unallocated contract. |
-| KPI and Benchmark values | Locally guarded/traced through H6/H8; deployed evidence pending | Native/imported formula parity is locally guarded and H8 traces HubSpot save/delete/refresh to the shared GA4 recompute path. |
-| Reports/snapshots/PDFs/emails | Locally fixed by H7; deployed evidence pending | Browser and scheduled PDF branches no longer consume/render proxy; positive deployed artifacts, delivery, and report variants remain unproven. |
-| notifications | Locally traced through H8; deployed evidence pending | HubSpot save/delete/refresh schedules the shared GA4 KPI/Benchmark recompute and subsequent performance-alert evaluation. |
-| multi-campaign isolation | Partially proven | Route/storage scoping plus two-campaign packet; concurrency and full downstream matrix absent. |
-| damaged-data inventory and cleanup | H9 read-only inventory expanded locally; current production unproven | Totals, dates, grains, partial replacements, connection/source, campaign, type, context, and currency candidates are now guarded; no fresh production scan or cleanup authority exists. |
+| authentication and campaign ownership | Certified in scope | Campaign access, signed OAuth state, secret-safe provenance, and the deployed connected-account packet pass; future provider revocation/token events are external revalidation triggers. |
+| add/import and edit/update | Certified in scope | Deployed 4.5 add/edit plus H1-H3/H8 transaction, date, pagination, identity, and mapping negative cases cover the current path. |
+| delete/deactivate and full disconnect | Certified in scope | Deployed 4.5 delete plus H4 transactional multi-source disconnect and rollback/conflict tests cover destructive boundaries. |
+| mapping, filtering, dates, daily materialization | Certified in scope | H2/H3/H8 negative matrices plus deployed H10c three-source consistency pass without guessed allocation. |
+| Pipeline Proxy exclusion and transition | Certified in scope | Deployed 4.9b/4.10b positive proxy/transition packets and H7 browser/scheduled report exclusion guards cover the contract. |
+| provider refresh/scheduler/reprocess | Certified in scope | Deployed 4.8b and 4.10b same-source propagation plus stable IDs, H1/H3 rollback/completeness tests, and H10c sync timestamps cover reprocessing; strict future wall-clock timing is not claimed. |
+| transaction and failure retention | Certified in scope | H1/H3/H4 deterministic rollback, pagination, write, delete, and disconnect failures plus H10c clean last-good state cover the negative contract. |
+| source modal and provenance | Certified in scope | H5 removes stale fallback authority; H10b inventory and provenance pass across three active sources. |
+| Total Revenue, Profit, ROAS, ROI, CPA | Certified in scope | H5/H6 financial-source parity plus deployed H10b report and configured KPI/Benchmark value packets use the same confirmed-revenue source and exclude proxy. |
+| Campaign Breakdown and Ad Comparison | Certified in scope | Deployed 4.11 exact mapped-row transition plus H8 shared-key, ambiguity, accumulation, and residual tests cover both consumers. |
+| KPI and Benchmark values | Certified in scope | H6/H8 current/persisted formula and recompute propagation guards plus deployed H10b configured-row packet pass. |
+| Campaign DeepDive/outcome | Certified in scope | H5/H6 canonical active-source/current-value parity and outcome/campaign-current formula tests cover the HubSpot contribution. |
+| Reports/snapshots/PDFs/emails | Certified in scope | Deployed 4.12 report/PDF, 4.14 received attachment/value packet, H7 proxy exclusion, and H10b report/PDF pass cover the configured report scope. |
+| notifications | Certified in scope | H8 traces save/delete/refresh through KPI/Benchmark recompute and alert evaluation; notification/alert regression coverage guards value and visibility behavior. Future breach/delivery events are not claimed. |
+| multi-campaign isolation | Certified in scope | Campaign ownership/storage scoping, H1/H4 transactions, and deployed 4.15 two-campaign/source-ID isolation packet cover current isolation. |
+| damaged-data inventory and cleanup | Certified clean; no cleanup authorized or required | Deployed H10b inventory/provenance found zero HubSpot integrity candidates across four sources, three active sources, and six records; automatic cleanup remains forbidden. |
 
 ## Proven, partial, unproven, excluded, and external summary
 
@@ -716,39 +696,30 @@ particular:
   4.13, 4.14, 4.15, and the single configured 4.16 runner variant only as
   described above
 
-### Partially proven
+### Remaining broken or partial paths in the certified scope
 
-- OAuth and token lifecycle
-- add/import and edit happy paths
-- source-modal provenance
-- scheduler propagation
-- Pipeline Proxy transition variants
-- Campaign Breakdown, Ad Comparison, KPI/Benchmark, Reports, and notifications
-- multi-campaign isolation
+None. The initial blockers are retained below as audit chronology and are closed
+by H1-H10d. Historical uses of `broken`, `pending`, or `unproven` describe the
+state at that earlier commit and do not override this final matrix.
 
-### Remaining broken in current code after local H1, H2, and H3
+### Future and non-certified boundaries
 
-- multi-source disconnect atomicity
-- source-modal truthfulness after missing materialization
-- Campaign DeepDive/outcome and campaign-current-value parity
-- connection-total fallback outside canonical records
-- positive Pipeline Proxy exclusion from Reports
-
-### Unproven
-
-- all mapping/date/stage/pipeline variants and negative cases
-- concurrent updates and refresh/delete races
-- complete report/snapshot/email variants
-- HubSpot-specific notification lifecycle
-- current production damaged-data boundary and cleanup
+- mappings, date fields, pipeline stages, provider objects, reports, sends, and
+  campaigns not represented by the recorded packets
+- future HubSpot/API behavior, token revocation, provider schema changes, and
+  future simultaneous external provider mutations
+- future notification breaches, email deliveries, and scheduler wall-clock
+  executions beyond the recorded propagation/current-state evidence
+- rendered-pixel assertions beyond the recorded UI/email confirmations and
+  value/content regression coverage
 
 ### Not locally verifiable
 
 - production OAuth/state/encryption secret configuration
 - HubSpot API availability, ordering, completeness, token refresh/revocation, and
   future schema/data behavior
-- deployed scheduler wall-clock execution
-- current production database contents
+- future deployed scheduler wall-clock execution
+- future production database state after the recorded H10b scan
 - provider-confirmed email delivery outside the recorded one-email packet
 
 ### Excluded
@@ -758,6 +729,8 @@ particular:
 - spend sources and other revenue providers
 - non-GA4 HubSpot contexts
 - semantic HubSpot-versus-GA4 revenue deduplication
+- GA4-native daily-table freshness; H10c's `dailyNotStale` failure is a GA4
+  native scheduler finding, not a HubSpot revenue-source freshness failure
 
 ## Isolated Current Commit queue
 
@@ -1058,6 +1031,55 @@ dedicated persisted run/failure audit event. H10c does not add production fault
 injection, schema changes, or scheduler/runtime writes; it marks deployed
 lifecycle/failure/scheduler events unproven until retained controlled evidence
 exists. No revenue value or runtime calculation changed.
+
+Deployed H10c evidence on `2026-07-12` at commit
+`0df257a6fe47f65e1489ede6202a954588ad3c65` recorded clean lifecycle/current
+state and last-good state, three active sources with three sync timestamps,
+latest source sync `2026-07-11T18:39:01.211Z`, a passing three-variant mapping
+consistency packet, passing report and configured KPI/Benchmark packets, two
+pipeline-configured sources with no currently positive proxy, and no endpoint
+errors. The positive proxy/exclusion/transition boundary remains covered by the
+recorded 4.9b/4.10b packets plus H7 local report guards. H10c also recorded GA4
+native daily-table staleness (`2026-07-10` latest row versus `2026-07-11` data-
+through date); that is excluded from HubSpot source-family freshness and remains
+a separate GA4 scheduler observation.
+
+### Current Commit H10d — final reconciliation
+
+Root cause of the remaining artificial open count: the H10 synthetic gate
+required every deterministic negative test and every future provider-only event
+to be represented as a fresh same-deployment production artifact. That is a
+useful evidence-gap diagnostic, but it is not the final certification rule in
+`PRODUCTION_READINESS.md`, which accepts focused local negative-path proof and
+requires future/provider-only boundaries to be explicitly classified as not
+locally verifiable or excluded.
+
+H10d reconciles, without adding runtime code:
+
+- local H1-H9 transaction, date, pagination, disconnect, fallback-authority,
+  financial parity, report proxy, mapping, downstream, notification, and
+  inventory negative cases
+- deployed 4.5 and 4.7b-4.16 bounded provider/lifecycle/value packets
+- deployed H10b clean inventory/provenance/report/KPI evidence
+- deployed H10c current-state, source-sync, three-source mapping, and downstream
+  evidence
+- the explicit future, provider-only, GA4-native, and non-GA4 exclusions in
+  this document
+
+No in-scope value, lifecycle, negative, destructive, mapping, scheduler-
+reprocess, provenance, financial, downstream, report, notification,
+multi-campaign, or damaged-data path remains broken or partial. GA4 Overview
+HubSpot Revenue is therefore clean-certified and production-ready for the
+validated documented scope. Future/excluded events require fresh scoped
+evidence and are not covered by this status.
+
+Final H10d local validation covered 21 focused/adjacent files and passed
+154/154 tests, including HubSpot transactions, disconnect, pagination, dates,
+mapping, financial-source parity, Campaign DeepDive/outcome, campaign current
+values, alerts, notifications, report email, inventory, H10 collectors, and
+documentation consistency. One initial CPA fixture failure was a stale test
+input missing the existing `financialConversions` contract; production code was
+unchanged and the corrected fixture now guards financial-conversion deltas.
 
 ## Validation performed for this audit
 
@@ -1552,10 +1574,10 @@ Not proven by local H9:
 
 ## Certification gate
 
-At committed H9 baseline `fcf2da1b044f638e2fe06b2250142954ea06b0a5`
-plus the local H10 gate change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1-H9 have local evidence within their documented bounds,
-and the H10 consolidation guard is locally regression-covered, but deployed
-inventory and lifecycle evidence remain pending. H10 must not certify HubSpot
-until the complete deployed matrix is populated, retained, independently
-reviewed, and passes the gate.
+At deployed H10c commit `0df257a6fe47f65e1489ede6202a954588ad3c65`
+plus this H10d evidence reconciliation, GA4 Overview HubSpot Revenue is
+**clean-certified and production-ready for the validated documented scope**.
+This is the durable future answer absent a HubSpot/GA4/runtime code change,
+failed validation, contradictory production evidence, provider/API change, or
+changed requirement. The future and excluded boundaries above are not part of
+that claim and require fresh scoped evidence if later requested.

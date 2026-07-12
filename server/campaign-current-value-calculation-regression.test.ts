@@ -4,8 +4,10 @@ import { computeCampaignCurrentValueFromConfig } from "./utils/campaign-current-
 describe("campaign current-value calculation regression guard", () => {
   const totals = (overrides: Record<string, unknown> = {}) => ({
     revenue: 1200,
+    ga4Revenue: 1200,
     spend: 300,
     conversions: 60,
+    financialConversions: 60,
     users: 1000,
     sessions: 2000,
     engagementRate: 50,
@@ -27,7 +29,7 @@ describe("campaign current-value calculation regression guard", () => {
     expect(computeCampaignCurrentValueFromConfig(roasConfig, totals({ revenue: 1800 }))).toBe(6);
   });
 
-  it("updates campaign Benchmark values when connected-platform spend or conversion totals change", () => {
+  it("updates campaign Benchmark values when connected-platform spend or financial conversion totals change", () => {
     const cpaConfig = {
       metric: "cpa",
       inputs: {
@@ -38,5 +40,6 @@ describe("campaign current-value calculation regression guard", () => {
 
     expect(computeCampaignCurrentValueFromConfig(cpaConfig, totals())).toBe(5);
     expect(computeCampaignCurrentValueFromConfig(cpaConfig, totals({ spend: 480 }))).toBe(8);
+    expect(computeCampaignCurrentValueFromConfig(cpaConfig, totals({ financialConversions: 75 }))).toBe(4);
   });
 });

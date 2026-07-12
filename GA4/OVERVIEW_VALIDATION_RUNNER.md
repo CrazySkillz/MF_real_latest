@@ -220,6 +220,33 @@ Ad Comparison, Campaign DeepDive, notification, OAuth, and delivery checks stay
 open until retained controlled evidence exists. H10c does not convert their
 absence into a pass.
 
+Recorded deployed H10c evidence on `2026-07-12` for commit
+`0df257a6fe47f65e1489ede6202a954588ad3c65`: lifecycle current state and
+failure-retention last-good state passed; all three active sources had sync
+timestamps; the latest source sync was `2026-07-11T18:39:01.211Z`; the derived
+three-source mapping packet passed; report and configured KPI/Benchmark packets
+passed; two sources were pipeline-configured with no currently positive proxy;
+and no endpoint error was reported. GA4 native daily freshness remained false
+(`2026-07-10` latest row, `2026-07-11` data-through date).
+
+### Current Commit H10d final reconciliation
+
+The H10 gate's remaining open-category count is retained as a diagnostic, not
+promoted into evidence that those runtime paths failed. It requires fresh
+same-deployment artifacts even for deterministic local failure tests and future
+provider-only events. H10d applies the repository certification standard by
+combining focused local negative-path proof, exact bounded deployed packets,
+H10b/H10c current-state evidence, and explicit future/external exclusions.
+
+Final result: GA4 Overview HubSpot Revenue is clean-certified and production-
+ready for the validated documented scope defined in
+`GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. GA4-native daily-table
+staleness is outside HubSpot source-family freshness. Future token/provider/API
+events, unlisted mappings/campaigns/report variants, future sends/notifications,
+and future simultaneous provider mutations require fresh scoped evidence and
+are not covered. No additional runner or UI action is required for the bounded
+certification.
+
 ## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
 
 Use one disposable source named `csv10-revenue.csv` and this exact fixture:

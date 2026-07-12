@@ -204,6 +204,10 @@ For every stage, record the visible `Total Revenue`, `Profit`, `ROAS`, `ROI`, an
 
 All three CSV functions are evidence-only. `csvRevenueBefore`/`csvRevenueAfter` perform GET requests and localStorage baseline comparison; `csvRevenueInventory` is GET-only. The actual add/edit/delete actions are performed deliberately through the deployed UI.
 
+Recorded deployed Current Commit 10 UI evidence on `2026-07-12`: the user confirmed the normal fixture lifecycle passed. Adding `Alpha` showed `$150`; editing the same source to `Alpha + Beta` showed `$1,250` without a duplicate; editing it back to `Alpha` showed `$150` without a duplicate; deleting it removed the source and restored the original Total Revenue; Total Spend remained unchanged throughout. No invalid-file result, runner output, campaign/property/source IDs, endpoint-parity or inventory packet, or exact Profit/ROAS/ROI/CPA values were supplied. This is bounded normal UI lifecycle evidence, not the complete runner packet described above.
+
+Current Commit 12 certification rerun outcome on `2026-07-12`: the CSV-only bounded local packet passed 44/44, the runner syntax check passed, and TypeScript passed. A refreshed read-only target-database scan covered 4 campaigns, 23 GA4 CSV sources, and 21 linked records; it found only the same five known inactive-source record groups, with no active/reconciliation damage and no cleanup performed. Upload CSV Revenue was not clean-certified because this document's deployed invalid-file no-mutation and complete runner/source-ID/endpoint-parity/derived-card packet was not supplied. Google Sheets Revenue remains on hold.
+
 For Current Commit 4.6 read-only HubSpot GA4 Overview inventory, run before and after deployed Current Commit 4.5 HubSpot provider lifecycle validation:
 
 ```js

@@ -1010,6 +1010,17 @@ no network or mutation work. Focused and adjacent runner tests pass 36/36.
 This closes only the fragmented-evidence aggregation defect; it does not create
 the deployed artifacts and does not close H10 certification.
 
+Local H10a status on `2026-07-12`: runner `2026-07-12.4` adds
+`hubspotH10CollectEvidence`, which orchestrates only the existing read-only
+inventory, provenance, Overview, report/snapshot/PDF, KPI/Benchmark, optional
+Pipeline Proxy, optional mapping, and optional multi-campaign packets. It builds
+a partial evidence manifest, runs the strict H10 gate, and returns the first
+open category/check list. It never marks unsupported deployed checks true.
+Focused H10/H10a and adjacent runner tests pass 39/39. H10a does not close
+OAuth, lifecycle, forced-failure, provider-transition, Ad Comparison,
+Campaign DeepDive, notification, concurrent-refresh, or email-delivery proof,
+and therefore does not close H10 certification by itself.
+
 ## Validation performed for this audit
 
 This first audit is a documentation and root-cause baseline. It included:

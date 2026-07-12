@@ -135,6 +135,36 @@ validates supplied evidence metadata; retained artifacts must still be
 independently reviewed. A local synthetic gate pass is regression evidence for
 the gate only and must never be recorded as deployed HubSpot evidence.
 
+### Current Commit H10a automated read-only collection
+
+Runner `2026-07-12.4` collects the existing safe deployed packets and feeds the
+result directly into the H10 gate:
+
+```js
+const h10a = await GA4OverviewValidation.hubspotH10CollectEvidence({
+  deploymentCommit: 'DEPLOYED_COMMIT',
+  deploymentId: 'PRODUCTION_DEPLOYMENT_ID',
+  campaignId: 'PRIMARY_CAMPAIGN_ID',
+  propertyId: 'PRIMARY_PROPERTY_ID'
+});
+
+console.log(h10a.nextAction);
+```
+
+The minimum command collects HubSpot inventory/provenance, Overview endpoint
+health, the configured GA4 report and existing snapshot/PDF, and Revenue/ROAS/
+ROI/CPA KPI/Benchmark values. Optional `pipeline`, `variants`, and `campaigns`
+configuration adds the existing Pipeline Proxy, alternate-mapping, and
+two-campaign packets. Every child call is read-only.
+
+H10a creates only checks that the returned packets directly prove. It does not
+auto-pass OAuth/token refresh, add/edit/delete/disconnect, forced failures,
+scheduler/provider transitions, Ad Comparison, Campaign DeepDive,
+notifications, concurrent refresh, email acceptance, or inbox delivery. Those
+remain visible in `certificationGate.openCategories` and
+`nextAction.missingOrFailedChecks`. `h10a.overallPass` is the strict H10 gate
+result, not a statement that collection merely finished.
+
 ## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
 
 Use one disposable source named `csv10-revenue.csv` and this exact fixture:

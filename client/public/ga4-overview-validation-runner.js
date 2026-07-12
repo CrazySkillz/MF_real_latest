@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-12.3";
+  var VERSION = "2026-07-12.4";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -3315,9 +3315,175 @@
     return summary;
   }
 
+  function hubspotH10CollectedArtifact(category, packets) {
+    var retainedPackets = Object.keys(packets || {}).reduce(function (map, name) {
+      if (packets[name]) map[name] = packets[name];
+      return map;
+    }, {});
+    var packetNames = Object.keys(retainedPackets);
+    return {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: "hubspot-h10a-" + category,
+      packetNames: packetNames,
+      packets: retainedPackets,
+      overallPass: packetNames.length > 0 && packetNames.every(function (name) {
+        return retainedPackets[name].overallPass === true;
+      })
+    };
+  }
+
+  function hubspotH10CollectedEntry(category, config, packets, checks) {
+    var artifact = hubspotH10CollectedArtifact(category, packets);
+    return {
+      evidenceId: "h10a-" + category + "-" + String(config.deploymentId),
+      deploymentCommit: String(config.deploymentCommit),
+      deploymentId: String(config.deploymentId),
+      capturedAt: artifact.checkedAt,
+      artifact: artifact,
+      checks: checks
+    };
+  }
+
+  function hubspotH10BuildCollectedEvidence(config, artifacts) {
+    var evidence = {};
+    var inventory = artifacts.inventory || null;
+    var mapping = artifacts.mapping || null;
+    var pipeline = artifacts.pipeline || null;
+    var overview = artifacts.overview || null;
+    var report = artifacts.report || null;
+    var kpiBenchmark = artifacts.kpiBenchmark || null;
+    var portability = artifacts.portability || null;
+
+    if (mapping) {
+      evidence.dateMappingAndPipelineVariants = hubspotH10CollectedEntry("dateMappingAndPipelineVariants", config, { mapping: mapping }, {
+        mappingVariantsPass: mapping.overallPass === true
+      });
+    }
+    if (pipeline || report) {
+      evidence.proxyContract = hubspotH10CollectedEntry("proxyContract", config, { pipeline: pipeline, report: report }, {
+        overviewExclusionPass: !!(pipeline && pipeline.checks && pipeline.checks.pipelineNotAddedToConfirmedRevenue === true),
+        reportExclusionPass: !!(report && report.checks && report.checks.pipelineProxyExcludedFromReportTotal === true)
+      });
+    }
+    if (overview || report || kpiBenchmark) {
+      evidence.downstreamValues = hubspotH10CollectedEntry("downstreamValues", config, {
+        overview: overview,
+        report: report,
+        kpiBenchmark: kpiBenchmark
+      }, {
+        overviewPass: !!(overview && overview.overallPass === true && kpiBenchmark && kpiBenchmark.checks && kpiBenchmark.checks.hubspotRevenuePresent === true),
+        campaignBreakdownPass: !!(report && report.checks && report.checks.targetReportRowPresent === true),
+        kpiPass: !!(kpiBenchmark && kpiBenchmark.checks && kpiBenchmark.checks.requiredKpiRowsMatchExpected === true),
+        benchmarkPass: !!(kpiBenchmark && kpiBenchmark.checks && kpiBenchmark.checks.requiredBenchmarkRowsMatchExpected === true)
+      });
+    }
+    if (report) {
+      evidence.reportsAndDelivery = hubspotH10CollectedEntry("reportsAndDelivery", config, { report: report }, {
+        reportPass: report.overallPass === true,
+        snapshotPass: !!(report.checks && report.checks.snapshotsEndpointPasses === true && report.checks.snapshotAvailableWhenRequired === true),
+        pdfPass: !!(report.checks && report.checks.pdfAvailableWhenRequired === true)
+      });
+    }
+    if (portability) {
+      evidence.multiCampaignIsolation = hubspotH10CollectedEntry("multiCampaignIsolation", config, { portability: portability }, {
+        twoCampaignsPass: portability.overallPass === true && Number(portability.campaignCount || 0) >= 2,
+        sourceIdsIsolated: !!(portability.checks && portability.checks.activeHubspotSourceIdsUniqueAcrossCampaigns === true && portability.checks.hubspotRevenueSourceIdsUniqueAcrossCampaigns === true),
+        valuesIsolated: !!(portability.checks && portability.checks.allCampaignPacketsPass === true)
+      });
+    }
+    if (inventory) {
+      evidence.damagedDataInventory = hubspotH10CollectedEntry("damagedDataInventory", config, { inventory: inventory }, {
+        readOnlyInventoryPass: inventory.overallPass === true && inventory.readonly === true,
+        noUnexpectedDamage: inventory.inventoryPass === true,
+        automaticCleanupBlocked: !!(inventory.cleanupAssessment && inventory.cleanupAssessment.automaticCleanupAllowed === false)
+      });
+    }
+
+    return evidence;
+  }
+
+  function hubspotH10CollectionFailure(name, error) {
+    return {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: "hubspot-h10a-" + name + "-collection-failure",
+      overallPass: false,
+      error: String(error && error.message || error)
+    };
+  }
+
+  async function hubspotH10CollectEvidence(config) {
+    config = config || {};
+    var deploymentCommit = requireValue(config.deploymentCommit, "deploymentCommit");
+    var deploymentId = requireValue(config.deploymentId, "deploymentId");
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = requireValue(config.propertyId, "propertyId");
+    var base = { campaignId: campaignId, propertyId: propertyId, dateRange: config.dateRange || DEFAULT_DATE_RANGE };
+    var tasks = {
+      inventory: function () { return hubspotInventory(Object.assign({}, base, config.inventory || {})); },
+      provenance: function () { return hubspotProvenance(Object.assign({}, base, config.provenance || {})); },
+      overview: function () { return overviewPack(Object.assign({}, base, config.overview || {})); },
+      report: function () { return hubspotReportValuePack(Object.assign({ requireSnapshot: true, requirePdf: true }, base, config.report || {})); },
+      kpiBenchmark: function () { return hubspotKpiBenchmarkValuePack(Object.assign({
+        requiredKpiMetrics: ["Revenue", "ROAS", "ROI", "CPA"],
+        requiredBenchmarkMetrics: ["revenue", "roas", "roi", "cpa"]
+      }, base, config.kpiBenchmark || {})); }
+    };
+    if (config.pipeline) tasks.pipeline = function () { return hubspotPipelineProxy(Object.assign({}, base, config.pipeline)); };
+    if (Array.isArray(config.variants) && config.variants.length > 0) tasks.mapping = function () {
+      return hubspotAlternateMappingMatrixPack({ variants: config.variants });
+    };
+    if (Array.isArray(config.campaigns) && config.campaigns.length > 0) tasks.portability = function () {
+      return hubspotOtherCampaignPortabilityPack({ campaigns: config.campaigns });
+    };
+
+    var names = Object.keys(tasks);
+    var values = await Promise.all(names.map(function (name) {
+      return Promise.resolve().then(tasks[name]).catch(function (error) { return hubspotH10CollectionFailure(name, error); });
+    }));
+    var artifacts = names.reduce(function (map, name, index) {
+      map[name] = values[index];
+      return map;
+    }, {});
+    var gateConfig = { deploymentCommit: deploymentCommit, deploymentId: deploymentId };
+    var evidence = hubspotH10BuildCollectedEvidence(gateConfig, artifacts);
+    var gate = hubspotCleanCertificationGate({
+      deploymentCommit: deploymentCommit,
+      deploymentId: deploymentId,
+      evidence: evidence
+    });
+    var nextCategory = gate.openCategories[0] || null;
+    var nextCategoryResult = nextCategory ? gate.categories.find(function (category) { return category.category === nextCategory; }) : null;
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: "hubspot-h10a-automated-evidence-collection",
+      deploymentCommit: deploymentCommit,
+      deploymentId: deploymentId,
+      readonly: true,
+      artifactNames: names,
+      artifacts: artifacts,
+      evidence: evidence,
+      certificationGate: gate,
+      nextAction: nextCategoryResult ? {
+        category: nextCategoryResult.category,
+        missingOrFailedChecks: nextCategoryResult.missingOrFailedChecks
+      } : null,
+      caveats: [
+        "This collector uses existing read-only GET/PDF packets only and does not connect OAuth, mutate sources, trigger refresh, call HubSpot, send email, or change notifications.",
+        "Missing lifecycle, failure, transition, notification, concurrent-refresh, and delivery checks remain open; the collector never converts local tests or absent deployed evidence into passing attestations.",
+        "certificationGate.overallPass, not artifact collection completion, is the strict certification result."
+      ]
+    };
+    summary.overallPass = gate.overallPass === true;
+    console.log(summary);
+    return summary;
+  }
+
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.3')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.4')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
@@ -3336,6 +3502,7 @@
       "await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({ campaigns: [{ campaignId: 'CAMPAIGN_A', propertyId: 'PROPERTY_A', expectedHubspotRevenueForFinancials: 1000, expectedSelectedValues: ['CRM_VALUE_A'] }, { campaignId: 'CAMPAIGN_B', propertyId: 'PROPERTY_B', expectedHubspotRevenueForFinancials: 2000, expectedSelectedValues: ['CRM_VALUE_B'] }] })",
       "await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({ variants: [{ label: 'dealname-amount-closedate', campaignId: 'CAMPAIGN_ID', propertyId: 'PROPERTY_ID', expectedSourceId: 'SOURCE_ID', expectedCampaignProperty: 'dealname', expectedSelectedValues: ['CRM_VALUE'], expectedRevenueProperty: 'amount', expectedDateField: 'closedate', expectedDailyMaterialization: 'selected_date_field_v1', expectedHubspotRevenue: 8000, expectedRecordCount: 2 }] })",
       "GA4OverviewValidation.hubspotCleanCertificationGate({ deploymentCommit: 'DEPLOYED_COMMIT', deploymentId: 'PRODUCTION_DEPLOYMENT_ID', evidence: h10Evidence })",
+      "await GA4OverviewValidation.hubspotH10CollectEvidence({ deploymentCommit: 'DEPLOYED_COMMIT', deploymentId: 'PRODUCTION_DEPLOYMENT_ID', campaignId, propertyId, report: { targetCampaignName: 'GA4_CAMPAIGN_ROW' }, pipeline: { expectedConfirmedRevenueTotal: 7600, expectedPipelineTotalToDate: 5000 }, variants: mappingVariants, campaigns: campaignVariants })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -3373,6 +3540,8 @@
     hubspotOtherCampaignPortabilityPack: hubspotOtherCampaignPortabilityPack,
     hubspotAlternateMappingMatrixPack: hubspotAlternateMappingMatrixPack,
     hubspotCleanCertificationGate: hubspotCleanCertificationGate,
+    hubspotH10BuildCollectedEvidence: hubspotH10BuildCollectedEvidence,
+    hubspotH10CollectEvidence: hubspotH10CollectEvidence,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

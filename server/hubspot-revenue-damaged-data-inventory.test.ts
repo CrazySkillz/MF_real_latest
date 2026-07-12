@@ -91,7 +91,7 @@ describe('HubSpot Revenue damaged-data inventory', () => {
     expect(route).not.toContain('deleteRevenue');
     expect(route).not.toContain('recomputeCampaignDerivedValues');
     const runner = readFileSync('client/public/ga4-overview-validation-runner.js', 'utf8');
-    expect(runner).toContain('var VERSION = "2026-07-12.3";');
+    expect(runner).toContain('var VERSION = "2026-07-12.4";');
     expect(runner).toContain('hubspotFindings: Object.assign({}, hubspotFindings');
     expect(runner).toContain('cleanupAssessment: data.hubspotCleanupAssessment || null');
     expect(runner).toContain('data.hubspotCleanupAssessment.automaticCleanupAllowed === false');

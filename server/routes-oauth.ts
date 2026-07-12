@@ -20,7 +20,7 @@ import { detectColumnTypes, type DetectedColumn } from "./utils/column-detection
 import { discoverSchema } from "./utils/schema-discovery";
 import { autoMapColumns, validateMappings, isMappingValid } from "./utils/auto-mapping";
 import { getPlatformFields, getRequiredFields } from "./utils/field-definitions";
-import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValue } from "./utils/data-transformation";
+import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValue, normalizeStrictUtcDateKey } from "./utils/data-transformation";
 import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
@@ -17465,6 +17465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pages = 0;
       let seen = 0;
       let importedDealCount = 0;
+      let invalidConfirmedRevenueDateCount = 0;
       while (pages < MAX_HUBSPOT_PAGES) {
         const body: any = {
           filterGroups: [
@@ -17508,7 +17509,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!Number.isFinite(r)) continue;
           importedDealCount += 1;
           totalRevenue += r;
-          const revenueDate = normalizeDate(props?.[dateFieldChoice]);
+          const revenueDate = platformCtx === 'ga4'
+            ? normalizeStrictUtcDateKey(props?.[dateFieldChoice])
+            : normalizeDate(props?.[dateFieldChoice]);
+          if (platformCtx === 'ga4' && !revenueDate) invalidConfirmedRevenueDateCount += 1;
           if (revenueDate) revenueByCloseDate.set(revenueDate, (revenueByCloseDate.get(revenueDate) || 0) + r);
           const campaignValue = String(props[campaignProp] || "").trim();
           if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
@@ -17550,6 +17554,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         after = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
         if (!after) break;
         pages += 1;
+      }
+
+      if (platformCtx === 'ga4' && invalidConfirmedRevenueDateCount > 0) {
+        return res.status(422).json({
+          error: `HubSpot returned ${invalidConfirmedRevenueDateCount} confirmed revenue deal(s) without a valid ${dateFieldChoice} value. Fix the deal dates before importing revenue.`,
+          code: 'HUBSPOT_INVALID_CONFIRMED_REVENUE_DATES',
+          dateField: dateFieldChoice,
+          invalidDealCount: invalidConfirmedRevenueDateCount,
+        });
+      }
+      if (platformCtx === 'ga4') {
+        const confirmedRevenueTotal = Number(totalRevenue.toFixed(2));
+        const dailyMaterializedTotal = Number(Array.from(revenueByCloseDate.values()).reduce((sum, revenue) => sum + revenue, 0).toFixed(2));
+        const campaignValueMaterializedTotal = Number(Array.from(campaignValueRevenueTotals.values()).reduce((sum, revenue) => sum + revenue, 0).toFixed(2));
+        if (dailyMaterializedTotal !== confirmedRevenueTotal || campaignValueMaterializedTotal !== confirmedRevenueTotal) {
+          return res.status(422).json({
+            error: 'HubSpot confirmed revenue could not be reconciled to its daily and campaign-value materialization. No revenue changes were saved.',
+            code: 'HUBSPOT_REVENUE_MATERIALIZATION_MISMATCH',
+            confirmedRevenueTotal,
+            dailyMaterializedTotal,
+            campaignValueMaterializedTotal,
+          });
+        }
       }
 
       if (currencies.size > 1) {

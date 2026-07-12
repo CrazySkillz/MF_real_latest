@@ -94,9 +94,10 @@ also establishes blockers that invalidate a blanket production-ready claim:
    pending and the other blockers below remain open.
 2. confirmed-deal and Pipeline Proxy searches can stop at the 25-page cap while
    more pages remain, silently accepting a partial result.
-3. a numeric confirmed deal with an invalid or missing mapped date contributes
-   to `lastTotalRevenue` and campaign mapping totals but not to daily revenue
-   records. The stored total and materialized total can therefore diverge.
+3. At the audited baseline, a numeric confirmed deal with an invalid or missing
+   mapped date could contribute to totals without a daily record. Local H2 now
+   rejects that input and reconciles all materialized totals before mutation;
+   deployed evidence remains pending.
 4. the source modal can fall back to configuration `lastTotalRevenue` when
    records are absent, so it can display a value that the record-backed Total
    Revenue card does not contain after a damaged write.
@@ -676,12 +677,12 @@ particular:
 | Requested path | Status | Reason |
 |---|---|---|
 | authentication and campaign ownership | Partially proven | Local campaign guards and signed state are traced; deployed secrets/provider/token lifecycle are not locally verifiable. |
-| add/import | Partially proven | One exact packet passed; pagination, dates, identical-signature semantics, and rollback remain open/broken. |
+| add/import | Partially proven | H1/H2 locally guard rollback and date integrity; pagination, identical-signature semantics, and deployed variants remain open. |
 | edit/update | Locally fixed by H1; deployed evidence pending | Stable ID and transaction rollback are locally guarded; deployed provider/write failure evidence remains pending. |
 | single-source delete/deactivate | Partially proven | Exact transactional storage delete and one packet; metadata/recompute failures not fully exercised. |
 | full disconnect | Broken | Sequential multi-source deletion plus connection deletion is not atomic. |
 | mapping and filtering | Partially proven | Exact happy path traced; complete variant/negative matrix absent. |
-| date handling and daily materialization | Broken | Invalid/missing dates can create total-versus-record divergence; page truncation also affects completeness. |
+| date handling and daily materialization | Locally fixed by H2; deployed evidence pending | Strict calendar validation and total reconciliation run before mutation; page truncation remains a separate completeness blocker. |
 | Pipeline Proxy exclusion and transition | Partially proven / broken in Reports | One transition packet passed; reports include positive proxy contrary to contract. |
 | provider refresh/scheduler/reprocess | Partially proven | Stable source and one propagation packet; H1 locally protects database rollback, while normal deployed scheduler failure evidence remains pending. |
 | transaction and failure retention | Locally proven by H1; deployed evidence pending | One GA4-only transaction now covers connection, source, delete, and insert with forced rollback tests. |
@@ -703,6 +704,8 @@ particular:
 - stable source identity on guarded edit and scheduler wiring
 - active-source record-backed total/breakdown storage semantics
 - transactional single-source delete boundary
+- strict GA4 HubSpot calendar-date validation and pre-mutation reconciliation in
+  local H2 tests
 - Overview formula definitions and proxy exclusion from those formulas
 - exact campaign mapping rather than proportional allocation
 - bounded packets 4.5, 4.7b, 4.8b, 4.9b, 4.10b, 4.11, 4.12,
@@ -719,9 +722,8 @@ particular:
 - Campaign Breakdown, Ad Comparison, KPI/Benchmark, Reports, and notifications
 - multi-campaign isolation
 
-### Remaining broken in current code after local H1
+### Remaining broken in current code after local H1 and H2
 
-- invalid/missing date completeness invariant
 - provider page-cap completeness
 - multi-source disconnect atomicity
 - source-modal truthfulness after missing materialization
@@ -784,12 +786,20 @@ does not clean-certify HubSpot Revenue.
 
 ### Current Commit H2 — confirmed-date materialization invariant
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - require every included numeric confirmed deal to have a valid supported date
 - reject impossible calendar dates
 - require confirmed total, campaign-value totals, and daily record sum to
   reconcile before persistence
 - prove all three supported date fields, offset timestamps, local-midnight/DST
   boundaries, missing dates, and invalid dates
+
+H2 uses one strict parser for all three allowed HubSpot date fields, retains UTC
+day-key behavior for offset timestamps, rejects impossible calendar dates, and
+requires confirmed, daily, and campaign-value totals to reconcile before the H1
+transaction. H2 does not close provider pagination or certify production data.
 
 ### Current Commit H3 — fail-closed provider pagination
 
@@ -940,10 +950,56 @@ Not proven by local H1:
   downstream clean-certification paths
 - any H2-H10 item
 
+### H2 local implementation validation
+
+Root cause fixed:
+
+- numeric confirmed revenue was accumulated before the mapped date was proven
+  materializable
+- shape-only date parsing accepted impossible calendar keys
+- no pre-mutation invariant reconciled confirmed, daily, and campaign-value
+  totals
+
+Local H2 behavior:
+
+- all GA4 HubSpot numeric confirmed deals use a strict UTC date-key parser
+- missing and impossible dates return `422` before connection, source, or record
+  mutation
+- confirmed revenue, daily materialization, and campaign-value materialization
+  are rounded consistently and must match before persistence
+- non-GA4 HubSpot contexts retain the previous date parser and persistence path
+
+Files changed for H2:
+
+- `server/routes-oauth.ts`
+- `server/utils/data-transformation.ts`
+- `server/hubspot-revenue-date-integrity.test.ts`
+- `server/latest-day-revenue-regression.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- strict valid dates, leap days, invalid dates, epoch seconds/milliseconds,
+  offset day rollover, and DST-boundary-like offsets are covered
+- route guards prove both error branches precede the H1 transaction and the
+  non-GA4 connection update
+- `npm run check` passed
+- H2, H1 rollback, scheduler, source-delete, outcome-total, and report-email
+  suites passed: 53/53 tests
+
+Not proven by local H2:
+
+- current production HubSpot data quality
+- every future provider timestamp representation
+- provider pagination completeness
+- deployed scheduler and UI error presentation
+- any H3-H10 item
+
 ## Certification gate
 
-At `d9fb4b155ee051ace0660625f0e61dce7286e4dd` plus the local H1 working-tree
-change, GA4 Overview HubSpot Revenue is **not clean-certified**. H1 is locally
-proven but deployment evidence remains pending. Current Commit H2 is the next
-smallest isolated runtime item; completing it will still not certify HubSpot
-until the remaining documented matrix is closed.
+At committed H1 baseline `3059db41b8dd77ccbadddfacfb5e0e6020d06a59` plus
+the local H2 working-tree change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1 and H2 are locally proven but deployment evidence remains
+pending. Current Commit H3 is the next smallest isolated runtime item;
+completing it will still not certify HubSpot until the remaining documented
+matrix is closed.

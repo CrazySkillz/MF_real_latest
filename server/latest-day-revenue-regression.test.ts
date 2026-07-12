@@ -32,10 +32,11 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain('if (sourceType === "hubspot") {');
     expect(routesFile).toContain('if (cfg?.pipelineEnabled === true) return String(cfg?.dailyMaterialization || "") === "selected_date_field_v1";');
     expect(routesFile).toContain('const date = String(req.query.date || "").trim() || yesterdayUTC();');
-    expect(routesFile).toContain('const revenueDate = normalizeDate(props?.[dateFieldChoice]);');
+    expect(routesFile).toContain("? normalizeStrictUtcDateKey(props?.[dateFieldChoice])");
+    expect(routesFile).toContain("code: 'HUBSPOT_INVALID_CONFIRMED_REVENUE_DATES'");
     expect(routesFile).toContain('if (/^\\d{10,13}$/.test(s)) {');
     expect(routesFile).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByCloseDate.size > 0 ? "selected_date_field_v1" : null,');
-    expect(routesFile).toContain('if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {');
+    expect(routesFile).toContain('source = await storage.replaceGa4HubspotRevenueSourceWithRecords(');
     expect(routesFile).toContain('sourceId: z.string().trim().optional(),');
     expect(routesFile).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
     expect(routesFile).toContain('&& String(cfg?.dateField || "") === dateFieldChoice');

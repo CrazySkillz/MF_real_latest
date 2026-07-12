@@ -132,6 +132,33 @@ export function normalizeDate(value: any): Date | null {
   return null;
 }
 
+export function normalizeStrictUtcDateKey(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+
+  const validDateKey = (year: number, month: number, day: number): string | null => {
+    if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return null;
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  const yearFirst = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (yearFirst) return validDateKey(Number(yearFirst[1]), Number(yearFirst[2]), Number(yearFirst[3]));
+
+  const monthFirst = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (monthFirst) return validDateKey(Number(monthFirst[3]), Number(monthFirst[1]), Number(monthFirst[2]));
+
+  const isoDatePrefix = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:T|\s)/);
+  if (isoDatePrefix && !validDateKey(Number(isoDatePrefix[1]), Number(isoDatePrefix[2]), Number(isoDatePrefix[3]))) return null;
+
+  const parsed = /^\d{10,13}$/.test(raw)
+    ? new Date(raw.length === 10 ? Number(raw) * 1000 : Number(raw))
+    : new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return validDateKey(parsed.getUTCFullYear(), parsed.getUTCMonth() + 1, parsed.getUTCDate());
+}
+
 /**
  * Normalize number value (handle various formats)
  */

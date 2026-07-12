@@ -10,6 +10,67 @@ export type CsvSpendAggregation = {
   undatedSpend: number;
 };
 
+export type CsvRevenueAggregation = {
+  keptRows: number;
+  totalRevenue: number;
+  dailyRevenue: Array<{ date: string; revenue: number }>;
+  undatedRevenue: number;
+};
+
+export function aggregateCsvRevenueRows(
+  rows: Array<Record<string, any>>,
+  mapping: {
+    revenueColumn: string;
+    dateColumn?: string | null;
+    campaignColumn?: string | null;
+    campaignValue?: string | null;
+    campaignValues?: string[] | null;
+  },
+): CsvRevenueAggregation {
+  const selectedCampaigns = Array.isArray(mapping.campaignValues) && mapping.campaignValues.length > 0
+    ? new Set(mapping.campaignValues.map((value) => String(value ?? "").trim()).filter(Boolean))
+    : null;
+  const campaignValue = mapping.campaignValue ? String(mapping.campaignValue).trim() : null;
+  const dailyRevenue = new Map<string, number>();
+  let keptRows = 0;
+  let totalRevenue = 0;
+  let undatedRevenue = 0;
+
+  for (const row of rows) {
+    if (mapping.campaignColumn && (selectedCampaigns || campaignValue)) {
+      const value = String(row?.[mapping.campaignColumn] ?? "").trim();
+      if (selectedCampaigns ? !selectedCampaigns.has(value) : value !== campaignValue) continue;
+    }
+
+    const rawRevenue = String(row?.[mapping.revenueColumn] ?? "").replace(/[$,]/g, "").trim();
+    const revenue = Number.parseFloat(rawRevenue);
+    if (!Number.isFinite(revenue) || revenue <= 0) continue;
+
+    keptRows++;
+    totalRevenue += revenue;
+    if (mapping.dateColumn) {
+      const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
+      const date = rawDate && !/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(rawDate) ? new Date(rawDate) : null;
+      if (!date || Number.isNaN(date.getTime())) {
+        undatedRevenue += revenue;
+        continue;
+      }
+      const normalizedDate = date.toISOString().split("T")[0];
+      dailyRevenue.set(normalizedDate, (dailyRevenue.get(normalizedDate) || 0) + revenue);
+    }
+  }
+
+  return {
+    keptRows,
+    totalRevenue: Number(totalRevenue.toFixed(2)),
+    dailyRevenue: Array.from(dailyRevenue.entries()).map(([date, revenue]) => ({
+      date,
+      revenue: Number(revenue.toFixed(2)),
+    })),
+    undatedRevenue: Number(undatedRevenue.toFixed(2)),
+  };
+}
+
 export function aggregateCsvSpendRows(
   rows: Array<Record<string, any>>,
   mapping: {

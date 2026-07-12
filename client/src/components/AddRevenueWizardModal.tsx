@@ -29,6 +29,14 @@ type Preview = {
   rowCount: number;
 };
 
+const isCsvDateLikeValue = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw || /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(raw)) return false;
+  return !Number.isNaN(new Date(raw).getTime());
+};
+const isCsvDateLikeHeader = (header: string) =>
+  /(^|[_\s-])(date|day|timestamp)($|[_\s-])/i.test(header.trim());
+
 export function AddRevenueWizardModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -929,6 +937,25 @@ export function AddRevenueWizardModal(props: {
 
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
+  const csvDateColumnHeaders = useMemo(() => {
+    if (platformContext !== "ga4") return csvHeaders;
+    const sampleRows = Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : [];
+    return csvHeaders.filter((header) => {
+      if (header === csvRevenueCol || header === csvCampaignCol) return false;
+      if (isCsvDateLikeHeader(header)) return true;
+      const nonEmptyValues = sampleRows
+        .map((row) => String(row?.[header] ?? "").trim())
+        .filter(Boolean);
+      if (nonEmptyValues.length === 0) return header === csvDateCol;
+      return nonEmptyValues.every(isCsvDateLikeValue);
+    });
+  }, [platformContext, csvHeaders, csvPreview, csvRevenueCol, csvCampaignCol, csvDateCol]);
+
+  useEffect(() => {
+    if (platformContext === "ga4" && csvDateCol && !csvDateColumnHeaders.includes(csvDateCol)) {
+      setCsvDateCol("");
+    }
+  }, [platformContext, csvDateCol, csvDateColumnHeaders]);
 
   const uniqueValuesFromPreview = (preview: Preview | null, col: string) => {
     if (!preview || !col) return [];
@@ -1346,6 +1373,14 @@ export function AddRevenueWizardModal(props: {
     }
     if (!csvRevenueCol) {
       toast({ title: "Select a revenue column", variant: "destructive" });
+      return;
+    }
+    if (platformContext === "ga4" && csvRevenueCol === csvCampaignCol) {
+      toast({ title: "Choose different Revenue and Campaign columns", variant: "destructive" });
+      return;
+    }
+    if (platformContext === "ga4" && csvDateCol && (csvDateCol === csvRevenueCol || csvDateCol === csvCampaignCol)) {
+      toast({ title: "Choose a different Date column", description: "Date must be different from Revenue and Campaign.", variant: "destructive" });
       return;
     }
     setCsvProcessing(true);
@@ -2023,7 +2058,7 @@ export function AddRevenueWizardModal(props: {
                             </SelectTrigger>
                             <SelectContent className="z-[10000]">
                               <SelectItem value={SELECT_NONE}>None</SelectItem>
-                              {csvHeaders.map((h) => (
+                              {csvDateColumnHeaders.map((h) => (
                                 <SelectItem key={h} value={h}>{h}</SelectItem>
                               ))}
                             </SelectContent>

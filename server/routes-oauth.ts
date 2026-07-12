@@ -9,7 +9,7 @@ import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import multer from "multer";
-import { aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
+import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
@@ -3661,10 +3661,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+        if (platformContext === "ga4") {
+          if (campaignCol === revenueColumn) {
+            return sendBadRequest(res, "Revenue column must be different from the Campaign column.");
+          }
+          if (dateCol && (dateCol === revenueColumn || dateCol === campaignCol)) {
+            return sendBadRequest(res, "Date column must be different from the Revenue and Campaign columns.");
+          }
+          const validation = aggregateCsvRevenueRows(parsedRows, {
+            revenueColumn,
+            dateColumn: dateCol,
+            campaignColumn: campaignCol,
+            campaignValue,
+            campaignValues,
+          });
+          if (validation.keptRows === 0) {
+            return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
+          }
+          if (dateCol && validation.undatedRevenue > 0) {
+            return sendBadRequest(res, "Selected revenue rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
+          }
+        }
+
         let kept = 0;
         let totalRevenueToDate = 0;
         const conversionValues: number[] = [];
-        const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
         const dailyRevenueMap = new Map<string, number>(); // date -> revenue
         const revenueByDateAndCampaign = new Map<string, number>();
         const campaignValueRevenueTotals = new Map<string, number>();

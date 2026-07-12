@@ -508,25 +508,23 @@ Important meaning:
 - it behaves more like a manually maintained revenue snapshot and is best treated as a higher-friction, less automated path
 - it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
-## The Five `Total Spend +` Options
+## The Three V1 `Total Spend +` Options
 
 Spend source options:
 
-1. `LinkedIn Ads`
-2. `Meta / Facebook`
-3. `Google Ads`
-4. `Google Sheets`
-5. `Upload CSV`
+1. `Google Ads`
+2. `Google Sheets`
+3. `Upload CSV`
 
 When the user clicks `+` on the `Total Spend` card:
 
 1. the spend-source modal opens
-2. the user sees the v1 revenue source options
+2. the user sees the v1 spend source options
 3. selecting an option starts a source-specific workflow
 
 ### Spend Workflow Meaning
 
-- `LinkedIn Ads`, `Meta / Facebook`, and `Google Ads` are connector-based spend workflows with campaign selection inside the modal
+- `Google Ads` is the v1 connector-based spend workflow with campaign selection inside the modal
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
 
 Production direction note:
@@ -534,14 +532,17 @@ Production direction note:
 - new direct `Manual` spend entry has been removed from the production spend-source picker
 - the reason is data-quality and data-integrity protection: unrestricted manual spend entry creates avoidable provenance, duplication, and audit-risk issues
 - existing stored manual spend sources are still supported for continuity until the user edits or removes them
+- `LinkedIn Ads` and `Meta / Facebook` are removed from the new-source Spend chooser for v1
+- existing stored LinkedIn/Meta spend sources and their edit/backend continuity paths remain supported; this chooser change does not delete records, disconnect providers, or certify those source families
 
 Important meaning:
 
-- these are five distinct spend-source journeys
-- they are not six labels pointing to one generic "add spend" action
-- some ad-platform paths support `Test mode` so users can validate the flow with mock data before using live connector data
+- these are three distinct active v1 spend-source journeys
+- they are not labels pointing to one generic "add spend" action
 
-## Spend Source 1: LinkedIn Ads Journey
+## Deferred V1 Reference: LinkedIn Ads Journey
+
+V1 status: hidden from the new-source Spend chooser. The retained implementation below exists only for existing-source continuity and possible future release work.
 
 The user journey is:
 
@@ -564,7 +565,9 @@ Important meaning:
 - LinkedIn spend is a campaign-selection workflow, not a freeform value entry flow
 - `Test mode` is intentionally available here so users can validate the full selection/import flow with mock campaigns
 
-## Spend Source 2: Meta / Facebook Journey
+## Deferred V1 Reference: Meta / Facebook Journey
+
+V1 status: hidden from the new-source Spend chooser. The retained implementation below exists only for existing-source continuity and possible future release work.
 
 The user journey is:
 
@@ -590,7 +593,7 @@ Important current-state note:
 - the import flow is campaign-selection-based, but the selected total is currently persisted through the manual spend-processing route with `ad_platforms` metadata
 - future changes should preserve the visible user journey while improving backend specialization only if needed
 
-## Spend Source 3: Google Ads Journey
+## Spend Source 1: Google Ads Journey
 
 The intended production user journey is:
 
@@ -621,7 +624,7 @@ Current Commit 3 local validation passed with the focused Google Ads/GA4 spend s
 
 These commits do not clean-certify Google Ads spend as production-ready. Live OAuth popup behavior, real Google Ads customer selection, real provider daily metrics, deployed browser add/import/edit/delete behavior, deployed scheduler execution, production database inventory for Google Ads spend rows, and any Google Ads report/email value packets remain unproven until captured with Google Ads-specific evidence.
 
-## Spend Source 4: Google Sheets Journey
+## Spend Source 2: Google Sheets Journey
 
 The user journey is:
 
@@ -678,7 +681,7 @@ Important current-state note:
 - until the hold closes, Google Sheets spend must not be clean-certified as a stable production connection; the exact blocking queue is in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
-## Spend Source 5: CSV Journey
+## Spend Source 3: CSV Journey
 
 The user journey is:
 
@@ -719,7 +722,7 @@ Important meaning:
 - CSV spend process/edit must verify that any provided existing `sourceId` is an active CSV spend source for the requested campaign before updating records
 - deleting a CSV spend source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized spend records tied to that verified source ID
 
-## Spend Source 6: Existing Stored Manual Spend
+## Continuity Reference: Existing Stored Manual Spend
 
 Current production-state rule:
 

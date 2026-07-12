@@ -519,6 +519,23 @@ describe("GA4 UI regression guard", () => {
     expect(mapSection).not.toContain("Loading spreadsheet data");
   });
 
+  it("limits the v1 new spend source chooser without removing existing-source continuity code", () => {
+    const spendModal = readClient("components/AddSpendWizardModal.tsx");
+    const chooserStart = spendModal.indexOf('{step === "select" && (');
+    const chooserEnd = spendModal.indexOf('{step === "ad_platform" && (', chooserStart);
+    const chooser = spendModal.slice(chooserStart, chooserEnd);
+
+    expect(chooserStart).toBeGreaterThan(-1);
+    expect(chooserEnd).toBeGreaterThan(chooserStart);
+    expect(chooser).not.toContain("LinkedIn Ads");
+    expect(chooser).not.toContain("Meta / Facebook");
+    expect(chooser).toContain("Google Ads");
+    expect(chooser).toContain("Google Sheets");
+    expect(chooser).toContain("Upload CSV");
+    expect(spendModal).toContain('selectedPlatform === "linkedin"');
+    expect(spendModal).toContain('selectedPlatform === "meta"');
+  });
+
   it("keeps revenue and spend add-source modals vertically scrollable inside the viewport", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
     const spendModal = readClient("components/AddSpendWizardModal.tsx");

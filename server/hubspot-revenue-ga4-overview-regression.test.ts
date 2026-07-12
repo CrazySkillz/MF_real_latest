@@ -668,7 +668,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const ga4Metrics = ga4MetricsFile();
     const financialBlock = sliceBetween(
       ga4Metrics,
-      "const ga4FinancialTotalsSource = [",
+      "const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource([",
       "  const toRateRatio = (value: any) => {"
     );
     const kpiCreateBlock = sliceBetween(
@@ -732,7 +732,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const campaignTotalsBlock = sliceBetween(
       campaignCurrent,
-      "async function getCampaignMetricTotals(campaignId: string): Promise<CampaignMetricTotals | null> {",
+      "async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false): Promise<CampaignMetricTotals | null> {",
       "function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number {"
     );
     const campaignConfigBlock = sliceBetween(
@@ -759,13 +759,15 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);');
     expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');
 
-    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 }))');
-    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[])');
+    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 }))');
+    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[])');
     expect(campaignTotalsBlock).toContain("revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),");
+    expect(campaignTotalsBlock).toContain("selectGA4FinancialTotalsSource([");
     expect(campaignConfigBlock).toContain('if (metric === "revenue") return round2(sumSelected("revenue", cfg?.inputs?.revenue, totals));');
     expect(campaignConfigBlock).toContain('if (metric === "roas") {');
     expect(campaignConfigBlock).toContain('const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);');
     expect(campaignConfigBlock).toContain('if (metric === "roi") {');
+    expect(campaignConfigBlock).toContain('if (metric === "profit") {');
     expect(campaignConfigBlock).toContain('if (metric === "cpa") {');
   });
 

@@ -36,7 +36,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("let financialSpendInputs: any[] = [];");
     expect(route).toContain("financialSpendInputs = spendBreakdown");
     expect(route).toContain("performanceSummarySpendTotals");
-    expect(route).toContain("unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend");
+    expect(route).toContain("const financialSpendForOutcome = webAnalyticsProvider === \"ga4\" ? performanceSummarySpend : unifiedSpend;");
+    expect(route).toContain("unifiedSpend: financialSpendForOutcome");
     expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, \"ga4\");");
     expect(route).toContain('const revenueStartDate = "1900-01-01";');
     expect(route).toContain("Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.");
@@ -123,10 +124,12 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("const financialGa4Totals = { ...ga4Totals };");
+    expect(route).toContain("let financialGa4Totals = { ...ga4Totals };");
     expect(route).toContain("const financialWebAnalytics = { ...webAnalytics };");
     expect(route).toContain("ga4Service.getTotalsWithRevenue(");
-    expect(route).toContain('financialGa4Totals.toDateSource = "ga4_to_date";');
+    expect(route).toContain("financialGa4Totals = selectGA4FinancialTotalsSource([");
+    expect(route).toContain("toDateFinancialCandidate || {}");
+    expect(route).toContain("persistedFinancialCandidate || {}");
     expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
     expect(route).toContain("ga4: financialGa4Totals,");
     expect(route).toContain("webAnalytics: financialWebAnalytics,");

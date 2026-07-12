@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
+import { selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 
 interface Campaign {
@@ -2480,13 +2481,11 @@ export default function GA4Metrics() {
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
   // Keep GA4 Revenue from understating larger scoped GA4 totals used by visible rows.
   // Revenue and conversions must come from one source object, not per-metric maxima.
-  const ga4FinancialTotalsSource = [
+  const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource([
     ga4ToDateOverviewTotals,
     dailySummedTotals,
     ga4BreakdownTotals,
-  ].reduce((best, current) => (
-    Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best
-  ), ga4ToDateOverviewTotals);
+  ], ga4ToDateOverviewTotals);
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
 

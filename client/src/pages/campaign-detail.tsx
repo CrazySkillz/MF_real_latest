@@ -274,12 +274,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     };
   }, [kpiGA4DailyResp, kpiGA4ToDate]);
   const kpiConnectedPlatformTotals = useMemo(() => ({
-    revenue: Number((Number((kpiGA4MetricTotals as any)?.revenue || 0) + Number((kpiImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
-    spend: Number((kpiSpendBreakdownResp as any)?.totalSpend || (kpiSpendToDateResp as any)?.spendToDate || 0),
-    conversions: Number((kpiGA4MetricTotals as any)?.conversions || 0),
+    revenue: Number((outcomeTotals as any)?.financials?.totalRevenue ?? (Number((kpiGA4MetricTotals as any)?.revenue || 0) + Number((kpiImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
+    spend: Number((outcomeTotals as any)?.financials?.spend ?? (kpiSpendBreakdownResp as any)?.totalSpend ?? (kpiSpendToDateResp as any)?.spendToDate ?? 0),
+    conversions: Number((outcomeTotals as any)?.financials?.conversions ?? (kpiGA4MetricTotals as any)?.conversions ?? 0),
     users: Number((kpiGA4MetricTotals as any)?.users || 0),
     sessions: Number((kpiGA4MetricTotals as any)?.sessions || 0),
-  }), [kpiGA4MetricTotals, kpiImportedRevenueToDateResp, kpiSpendBreakdownResp, kpiSpendToDateResp]);
+  }), [outcomeTotals, kpiGA4MetricTotals, kpiImportedRevenueToDateResp, kpiSpendBreakdownResp, kpiSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -984,12 +984,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const web = ot?.webAnalytics || ot?.ga4 || {};
     const spend = ot?.spend || {};
     const rev = ot?.revenue || {};
-    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
-    const onsiteRevenue = parseNumSafe(rev?.onsiteRevenue ?? web?.revenue);
+    const financials = ot?.financials || {};
+    const unifiedSpend = parseNumSafe(financials?.spend ?? spend?.unifiedSpend);
+    const onsiteRevenue = parseNumSafe(financials?.nativeRevenue ?? rev?.onsiteRevenue ?? web?.revenue);
     const offsiteRevenue = parseNumSafe(rev?.offsiteRevenue);
-    const totalRevenue = parseNumSafe(rev?.totalRevenue);
+    const totalRevenue = parseNumSafe(financials?.totalRevenue ?? rev?.totalRevenue);
     const conversions = parseNumSafe(web?.conversions);
-    const totalConversions = getUnifiedConversions();
+    const totalConversions = parseNumSafe(financials?.conversions) || getUnifiedConversions();
     const sessions = parseNumSafe(web?.sessions);
     const users = parseNumSafe(web?.users);
 
@@ -1033,12 +1034,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const web = ot?.webAnalytics || ot?.ga4 || {};
     const spend = ot?.spend || {};
     const rev = ot?.revenue || {};
-    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
-    const onsiteRevenue = parseNumSafe(rev?.onsiteRevenue ?? web?.revenue);
+    const financials = ot?.financials || {};
+    const unifiedSpend = parseNumSafe(financials?.spend ?? spend?.unifiedSpend);
+    const onsiteRevenue = parseNumSafe(financials?.nativeRevenue ?? rev?.onsiteRevenue ?? web?.revenue);
     const offsiteRevenue = parseNumSafe(rev?.offsiteRevenue);
-    const totalRevenue = parseNumSafe(rev?.totalRevenue);
+    const totalRevenue = parseNumSafe(financials?.totalRevenue ?? rev?.totalRevenue);
     const conversions = parseNumSafe(web?.conversions);
-    const totalConversions = getUnifiedConversions();
+    const totalConversions = parseNumSafe(financials?.conversions) || getUnifiedConversions();
     const sessions = parseNumSafe(web?.sessions);
     const users = parseNumSafe(web?.users);
 
@@ -2623,13 +2625,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     };
   }, [benchGA4DailyResp, benchGA4ToDate]);
   const benchConnectedPlatformTotals = useMemo(() => ({
-    revenue: Number((Number((benchGA4MetricTotals as any)?.revenue || 0) + Number((benchImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
-    spend: Number((benchSpendBreakdownResp as any)?.totalSpend || (benchSpendToDateResp as any)?.spendToDate || 0),
-    conversions: Number((benchGA4MetricTotals as any)?.conversions || 0),
+    revenue: Number((outcomeTotals as any)?.financials?.totalRevenue ?? (Number((benchGA4MetricTotals as any)?.revenue || 0) + Number((benchImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
+    spend: Number((outcomeTotals as any)?.financials?.spend ?? (benchSpendBreakdownResp as any)?.totalSpend ?? (benchSpendToDateResp as any)?.spendToDate ?? 0),
+    conversions: Number((outcomeTotals as any)?.financials?.conversions ?? (benchGA4MetricTotals as any)?.conversions ?? 0),
     sessions: Number((benchGA4MetricTotals as any)?.sessions || 0),
     users: Number((benchGA4MetricTotals as any)?.users || 0),
     engagementRate: Number((benchGA4MetricTotals as any)?.engagementRate || 0),
-  }), [benchGA4MetricTotals, benchImportedRevenueToDateResp, benchSpendBreakdownResp, benchSpendToDateResp]);
+  }), [outcomeTotals, benchGA4MetricTotals, benchImportedRevenueToDateResp, benchSpendBreakdownResp, benchSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);

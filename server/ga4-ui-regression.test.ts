@@ -173,12 +173,11 @@ describe("GA4 UI regression guard", () => {
   it("keeps GA4 Overview financial totals on one complete scoped source", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
-    expect(ga4Metrics).toContain("const ga4FinancialTotalsSource = [");
+    expect(ga4Metrics).toContain("const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource([");
     expect(ga4Metrics).toContain("ga4ToDateOverviewTotals,");
     expect(ga4Metrics).toContain("dailySummedTotals,");
     expect(ga4Metrics).toContain("ga4BreakdownTotals,");
-    expect(ga4Metrics).toContain("Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best");
-    expect(ga4Metrics).toContain("), ga4ToDateOverviewTotals);");
+    expect(ga4Metrics).toContain("], ga4ToDateOverviewTotals);");
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
     expect(ga4Metrics).toContain("const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;");
     expect(ga4Metrics.indexOf("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);")).toBeLessThan(

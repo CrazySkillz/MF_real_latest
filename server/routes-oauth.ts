@@ -33,6 +33,7 @@ import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefr
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
+import { selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
@@ -13364,37 +13365,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? parseNum(custom?.users)
               : 0,
       };
-      const financialGa4Totals = { ...ga4Totals };
+      let financialGa4Totals = { ...ga4Totals };
       const financialWebAnalytics = { ...webAnalytics };
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         try {
+          let persistedFinancialCandidate: any = null;
+          let toDateFinancialCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
-          if (primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
-            const rawStart = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
-            const startDateUsed = rawStart && !Number.isNaN(new Date(rawStart).getTime())
-              ? new Date(rawStart).toISOString().slice(0, 10)
-              : "2000-01-01";
-            const now = new Date();
-            const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-            const endDateUsed = formatISODateUTC(new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000));
-            const toDate = await ga4Service.getTotalsWithRevenue(
-              String(primaryGA4.propertyId),
-              String(primaryGA4.accessToken),
-              startDateUsed,
-              endDateUsed,
-              parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter)
-            );
-            const totals = (toDate as any)?.totals || {};
-            financialGa4Totals.revenue = parseNum(totals.revenue);
-            financialGa4Totals.conversions = parseNum(totals.conversions);
-            financialGa4Totals.sessions = parseNum(totals.sessions);
-            financialGa4Totals.users = parseNum(totals.users) || parseNum(financialGa4Totals.users);
-            financialGa4Totals.toDateSource = "ga4_to_date";
-            financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
-            financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
-            financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
-            financialWebAnalytics.users = parseNum(financialGa4Totals.users);
+          const rawStart = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+          const startDateUsed = rawStart && !Number.isNaN(new Date(rawStart).getTime())
+            ? new Date(rawStart).toISOString().slice(0, 10)
+            : "2000-01-01";
+          const now = new Date();
+          const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+          const endDateUsed = formatISODateUTC(new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000));
+          const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDateUsed, endDateUsed).catch(() => [] as any[]);
+          if (persistedFinancialRows.length > 0) {
+            persistedFinancialCandidate = persistedFinancialRows.reduce((totals: any, row: any) => ({
+              revenue: totals.revenue + parseNum(row?.revenue),
+              conversions: totals.conversions + parseNum(row?.conversions),
+              sessions: totals.sessions + parseNum(row?.sessions),
+              users: totals.users + parseNum(row?.users),
+              source: "ga4_daily",
+            }), { revenue: 0, conversions: 0, sessions: 0, users: 0, source: "ga4_daily" });
           }
+          if (primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
+            try {
+              const toDate = await ga4Service.getTotalsWithRevenue(
+                String(primaryGA4.propertyId),
+                String(primaryGA4.accessToken),
+                startDateUsed,
+                endDateUsed,
+                parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter)
+              );
+              const totals = (toDate as any)?.totals || {};
+              toDateFinancialCandidate = { ...totals, source: "ga4_to_date" };
+            } catch {
+              // Keep the other complete GA4 candidates when to-date provider totals are unavailable.
+            }
+          }
+          financialGa4Totals = selectGA4FinancialTotalsSource([
+            toDateFinancialCandidate || {},
+            persistedFinancialCandidate || {},
+            financialGa4Totals,
+          ], toDateFinancialCandidate || financialGa4Totals);
+          financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
+          financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
+          financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
+          financialWebAnalytics.users = parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users);
         } catch {
           // Keep the date-range GA4 result if to-date financial alignment is unavailable.
         }
@@ -13459,6 +13477,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const onsiteRevenue = parseNum(financialWebAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
+      const financialSpendForOutcome = webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
+      const financialConversionsForOutcome = parseNum(financialWebAnalytics.conversions);
+      const financials = {
+        nativeRevenue: onsiteRevenue,
+        importedRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
+        totalRevenue: totalRevenueUnified,
+        spend: financialSpendForOutcome,
+        conversions: financialConversionsForOutcome,
+        profit: parseFloat((totalRevenueUnified - financialSpendForOutcome).toFixed(2)),
+        roas: financialSpendForOutcome > 0 ? totalRevenueUnified / financialSpendForOutcome : 0,
+        roi: financialSpendForOutcome > 0 ? ((totalRevenueUnified - financialSpendForOutcome) / financialSpendForOutcome) * 100 : 0,
+        cpa: financialConversionsForOutcome > 0 ? financialSpendForOutcome / financialConversionsForOutcome : 0,
+      };
       const financialInputs = {
         revenue: [
           ...(financialWebAnalytics.provider === "ga4" && onsiteRevenue > 0
@@ -13481,7 +13512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         webAnalytics: financialWebAnalytics,
         spend: {
           persistedSpend: performanceSummarySpend,
-          unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend,
+          unifiedSpend: financialSpendForOutcome,
           spendSource,
           startDate,
           endDate,
@@ -13528,6 +13559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
           totalRevenue: totalRevenueUnified,
         },
+        financials,
         revenueSources,
         financialInputs,
         performanceSummary,

@@ -868,11 +868,22 @@ retain their prior fallback behavior.
 
 ### Current Commit H6 — downstream native-source parity
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - make Campaign DeepDive/outcome totals and campaign-level KPI/Benchmark current
   values use the same native GA4 financial candidate contract as Overview
 - preserve imported active-source revenue and proxy exclusion
 - add parity tests for daily/to-date/breakdown disagreement and all five
   financial values
+
+H6 centralizes the native GA4 financial selector used by Overview, outcome
+totals, and campaign current values. Candidate order is to-date, persisted daily,
+then breakdown; the candidate with the greatest native revenue wins, and ties
+retain the earlier candidate. Conversions remain attached to the selected
+candidate for CPA rather than being independently maximized. Materialized
+imported revenue and spend use the complete persisted-source window, and Pipeline
+Proxy is not an input.
 
 ### Current Commit H7 — Reports Pipeline Proxy contract
 
@@ -1193,11 +1204,79 @@ Not proven by local H5:
   Comparison, and report parity reserved for H6-H8
 - any H6-H10 item
 
+### H6 local implementation validation
+
+Root cause fixed:
+
+- Overview selected the greatest-revenue GA4 candidate while outcome totals
+  unconditionally replaced their existing GA4 result with to-date totals
+- campaign current values used persisted daily GA4 rows only, narrowed imported
+  financial sources to campaign start, and resolved an explicitly selected
+  `ga4` revenue input as zero
+- Campaign DeepDive financial formulas could combine selected lifetime revenue
+  with date-range/fallback spend or conversions from a different GA4 candidate
+
+Local H6 behavior:
+
+- one pure selector now preserves complete candidate objects and deterministic
+  to-date/daily/breakdown tie ordering
+- Overview, outcome totals, and campaign financial current values use that
+  selector
+- campaign provider reads occur only when a Revenue, Profit, ROAS, ROI, or CPA
+  calculation requires the full financial candidate; financial/base cache
+  entries are isolated
+- `ga4` revenue means selected native GA4 revenue, while `total_revenue`
+  remains selected native plus active materialized imported revenue
+- CPA uses conversions attached to the selected financial candidate without
+  changing the base conversions value used by nonfinancial campaign metrics
+- outcome totals expose one additive `financials` object for Total Revenue,
+  spend, conversions, Profit, ROAS, ROI, and CPA; existing date-range response
+  fields remain backward compatible
+- Campaign DeepDive and campaign KPI/Benchmark live values prefer that financial
+  object and retain the previous reads as compatibility fallback
+- Pipeline Proxy remains excluded
+
+Files changed for H6:
+
+- `shared/ga4-financial-source.ts`
+- `client/src/pages/ga4-metrics.tsx`
+- `client/src/pages/campaign-detail.tsx`
+- `server/routes-oauth.ts`
+- `server/utils/campaign-current-values.ts`
+- `server/ga4-financial-source-parity.test.ts`
+- `server/campaign-current-financial-formulas.test.ts`
+- related GA4 UI, outcome, and HubSpot parity regression guards
+- this canonical readiness document
+
+Local evidence:
+
+- pure tests prove greatest-revenue selection, whole-candidate conversion
+  retention, and deterministic tie handling
+- formula tests prove native GA4 plus exact materialized HubSpot revenue without
+  duplication and aligned Revenue, Profit, ROAS, ROI, and CPA outputs
+- H1-H6, GA4 UI, outcome, Campaign DeepDive KPI/Benchmark, performance-summary,
+  source-delete, latest-day, and report-email suites passed: 149/149 tests
+- the exact HubSpot Overview/KPI parity guard passed separately
+- `npm run check` passed
+- two broader pre-existing guards retain unrelated stale assertions: the
+  campaign scheduler guard expects an obsolete no-argument job call, and the
+  campaign financial-analysis guard expects platform fallback spend to omit the
+  already-present Custom Integration value
+
+Not proven by local H6:
+
+- live provider disagreement across all three candidates in production
+- deployed Campaign DeepDive, campaign KPI/Benchmark refresh, alert, and email
+  values
+- current production damaged-data state
+- report Pipeline Proxy behavior reserved for H7
+- any H7-H10 item
+
 ## Certification gate
 
-At committed H4 baseline `882b5208e43810c6c6acc6a8d805c99b47bffd10`
-plus the local H5 working-tree change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1-H5 are locally proven within their documented bounds but
-deployment evidence remains pending. Current Commit H6 is the next smallest
+At committed H5 baseline `ff23003c285f502c6c1e1f6304d09df20c45c558`
+plus the local H6 working-tree change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1-H6 are locally proven within their documented bounds but
+deployment evidence remains pending. Current Commit H7 is the next smallest
 isolated runtime item; completing it will still not certify HubSpot until the
 remaining documented matrix is closed.

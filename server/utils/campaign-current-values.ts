@@ -1,4 +1,6 @@
 import { storage } from "../storage";
+import { ga4Service } from "../analytics";
+import { selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
 
 type CalcConfig = {
   metric?: string;
@@ -7,8 +9,10 @@ type CalcConfig = {
 
 type CampaignMetricTotals = {
   revenue: number;
+  ga4Revenue: number;
   spend: number;
   conversions: number;
+  financialConversions: number;
   users: number;
   sessions: number;
   engagementRate: number;
@@ -31,6 +35,12 @@ const toISODateUTC = (value: unknown): string | null => {
 };
 
 const todayUTC = () => new Date().toISOString().slice(0, 10);
+const financialSourceStartDate = "1900-01-01";
+const previousCompleteUTC = () => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
 
 const parseConfig = (raw: unknown): CalcConfig | null => {
   if (!raw) return null;
@@ -48,6 +58,9 @@ const isCampaignLevel = (row: any) => {
   const platformType = String(row?.platformType || "").trim().toLowerCase();
   return !platformType || platformType === "campaign";
 };
+
+const isFinancialMetric = (metric: unknown) =>
+  ["revenue", "profit", "roas", "roi", "cpa"].includes(String(metric || "").trim().toLowerCase());
 
 const normalizePropertyIdForMock = (propertyId: string) => {
   const raw = String(propertyId || "").trim();
@@ -107,7 +120,7 @@ const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: unkno
   };
 };
 
-async function getCampaignMetricTotals(campaignId: string): Promise<CampaignMetricTotals | null> {
+async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false): Promise<CampaignMetricTotals | null> {
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
   if (!campaign) return null;
 
@@ -115,6 +128,7 @@ async function getCampaignMetricTotals(campaignId: string): Promise<CampaignMetr
   const endDate = todayUTC();
   let ga4Revenue = 0;
   let conversions = 0;
+  let financialConversions: number | null = null;
   let users = 0;
   let sessions = 0;
   let engagementRate = 0;
@@ -145,20 +159,68 @@ async function getCampaignMetricTotals(campaignId: string): Promise<CampaignMetr
       conversions += baseline.conversions;
       ga4Revenue += baseline.revenue;
       engagementRate = engagementRate > 0 ? engagementRate : baseline.engagementRate;
+      financialConversions = conversions;
+    } else if (useFullFinancialCandidate) {
+      const financialEndDate = previousCompleteUTC();
+      const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, financialEndDate).catch(() => [] as any[]);
+      const dailyCandidate = (financialRows || []).reduce((totals: any, row: any) => ({
+        revenue: totals.revenue + parseNum(row?.revenue),
+        conversions: totals.conversions + parseNum(row?.conversions),
+      }), { revenue: 0, conversions: 0 });
+      let toDateCandidate: any = null;
+      let breakdownCandidate: any = null;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && startDate <= financialEndDate) {
+        try {
+          const toDate = await ga4Service.getTotalsWithRevenue(
+            propertyId,
+            String((primary as any).accessToken),
+            startDate,
+            financialEndDate,
+            campaignFilter,
+          );
+          toDateCandidate = (toDate as any)?.totals || {};
+        } catch {
+          // Keep persisted and breakdown candidates when to-date provider totals are unavailable.
+        }
+      }
+      try {
+        const breakdown = await ga4Service.getAcquisitionBreakdown(
+          campaignId,
+          storage,
+          "90daysAgo",
+          propertyId,
+          2000,
+          campaignFilter,
+        );
+        breakdownCandidate = (breakdown as any)?.totals || {};
+      } catch {
+        // Keep persisted and to-date candidates when breakdown totals are unavailable.
+      }
+      const selectedFinancialCandidate = selectGA4FinancialTotalsSource([
+        toDateCandidate || {},
+        dailyCandidate,
+        breakdownCandidate || {},
+      ], toDateCandidate || dailyCandidate);
+      ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
+      financialConversions = parseNum(selectedFinancialCandidate?.conversions);
     }
   }
+  if (financialConversions === null) financialConversions = conversions;
 
   const [revenueTotals, spendTotals, revenueBreakdown, spendBreakdown] = await Promise.all([
-    storage.getRevenueTotalForRange(campaignId, startDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 })),
-    storage.getSpendTotalForRange(campaignId, startDate, endDate).catch(() => ({ totalSpend: 0 })),
-    storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
+    storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 })),
+    storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate).catch(() => ({ totalSpend: 0 })),
+    storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[]),
+    storage.getSpendBreakdownBySource(campaignId, financialSourceStartDate, endDate).catch(() => [] as any[]),
   ]);
 
   return {
     revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),
+    ga4Revenue: round2(ga4Revenue),
     spend: round2(parseNum((spendTotals as any)?.totalSpend)),
     conversions: Math.round(conversions),
+    financialConversions: Math.round(financialConversions),
     users: Math.round(users),
     sessions: Math.round(sessions),
     engagementRate: round2(engagementRate),
@@ -176,6 +238,7 @@ function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricT
   if (sourceId === "total_engagement_rate") return totals.engagementRate;
   if (sourceId.startsWith("revenue-source:")) return totals.revenueBySource.get(sourceId.replace("revenue-source:", "")) || 0;
   if (sourceId.startsWith("spend-source:")) return totals.spendBySource.get(sourceId.replace("spend-source:", "")) || 0;
+  if (sourceId === "ga4" && inputKey === "revenue") return totals.ga4Revenue;
   if (sourceId === "ga4" && inputKey === "conversions") return totals.conversions;
   if (sourceId === "ga4" && inputKey === "users") return totals.users;
   if (sourceId === "ga4" && inputKey === "sessions") return totals.sessions;
@@ -185,6 +248,14 @@ function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricT
 
 function sumSelected(inputKey: string, sourceIds: string[] | undefined, totals: CampaignMetricTotals): number {
   return (sourceIds || []).reduce((sum, id) => sum + sourceValue(inputKey, String(id), totals), 0);
+}
+
+function sumSelectedFinancialConversions(sourceIds: string[] | undefined, totals: CampaignMetricTotals): number {
+  return (sourceIds || []).reduce((sum, id) => {
+    const sourceId = String(id);
+    if (sourceId === "total_conversions" || sourceId === "ga4") return sum + totals.financialConversions;
+    return sum + sourceValue("conversions", sourceId, totals);
+  }, 0);
 }
 
 export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals: CampaignMetricTotals): number | null {
@@ -213,9 +284,14 @@ export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
     return spend > 0 ? round2(((revenue - spend) / spend) * 100) : 0;
   }
+  if (metric === "profit") {
+    const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);
+    const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
+    return round2(revenue - spend);
+  }
   if (metric === "cpa") {
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
-    const conversions = sumSelected("conversions", cfg?.inputs?.conversions, totals);
+    const conversions = sumSelectedFinancialConversions(cfg?.inputs?.conversions, totals);
     return conversions > 0 ? round2(spend / conversions) : 0;
   }
 
@@ -229,8 +305,11 @@ export async function resolveCampaignCurrentValueForAlert<T extends { campaignId
   const campaignId = String(row?.campaignId || "").trim();
   if (!campaignId || !isCampaignLevel(row) || !row?.calculationConfig) return row;
 
-  const totalsPromise = cache?.get(campaignId) || getCampaignMetricTotals(campaignId);
-  if (cache && !cache.has(campaignId)) cache.set(campaignId, totalsPromise);
+  const config = parseConfig(row.calculationConfig);
+  const useFullFinancialCandidate = isFinancialMetric(config?.metric);
+  const cacheKey = `${campaignId}:${useFullFinancialCandidate ? "financial" : "base"}`;
+  const totalsPromise = cache?.get(cacheKey) || getCampaignMetricTotals(campaignId, useFullFinancialCandidate);
+  if (cache && !cache.has(cacheKey)) cache.set(cacheKey, totalsPromise);
   const totals = await totalsPromise;
   if (!totals) return row;
 
@@ -243,13 +322,14 @@ export async function refreshCampaignCurrentValuesForCampaign(campaignId: string
   const id = String(campaignId || "").trim();
   if (!id) return { kpisUpdated: 0, benchmarksUpdated: 0 };
 
-  const totals = await getCampaignMetricTotals(id);
-  if (!totals) return { kpisUpdated: 0, benchmarksUpdated: 0 };
-
   const [kpis, benchmarks] = await Promise.all([
     storage.getCampaignKPIs(id).catch(() => [] as any[]),
     storage.getCampaignBenchmarks(id).catch(() => [] as any[]),
   ]);
+  const rows = [...(Array.isArray(kpis) ? kpis : []), ...(Array.isArray(benchmarks) ? benchmarks : [])];
+  const useFullFinancialCandidate = rows.some((row: any) => isFinancialMetric(parseConfig(row?.calculationConfig)?.metric));
+  const totals = await getCampaignMetricTotals(id, useFullFinancialCandidate);
+  if (!totals) return { kpisUpdated: 0, benchmarksUpdated: 0 };
 
   let kpisUpdated = 0;
   for (const kpi of Array.isArray(kpis) ? kpis : []) {

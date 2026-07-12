@@ -849,11 +849,22 @@ unchanged.
 
 ### Current Commit H5 — remove stale display/fallback authority
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - prevent source modal and outcome consumers from treating connection/source
   `lastTotalRevenue` as confirmed materialized revenue when active records are
   missing
 - retain provenance without presenting it as a current financial value
 - define a stable damaged/unavailable state without modal layout jumps
+
+H5 makes active GA4 HubSpot records the sole current-revenue authority on the
+source-list and outcome fallback paths. A source with a materialized breakdown
+publishes its record total, including a legitimate zero. A source without a
+materialized breakdown publishes `lastTotalRevenue: null` and
+`materializedRevenueStatus: "unavailable"`; its mapping remains available as
+provenance and for repair. Non-GA4 HubSpot contexts and non-HubSpot providers
+retain their prior fallback behavior.
 
 ### Current Commit H6 — downstream native-source parity
 
@@ -1127,11 +1138,66 @@ Not proven by local H4:
 - successful post-disconnect derived-value recomputation in production
 - any H5-H10 item
 
+### H5 local implementation validation
+
+Root cause fixed:
+
+- the GA4 revenue-source route used `recordTotal || cfgTotal`, so a missing
+  HubSpot breakdown and a legitimate materialized zero could both publish stale
+  configuration revenue
+- when the outcome breakdown produced no positive source rows, the outcome route
+  read HubSpot connection `lastTotalRevenue` and added it to offsite and total
+  revenue
+- the GA4 source modal and HubSpot edit prefill then treated those fallback
+  values as current confirmed revenue
+
+Local H5 behavior:
+
+- the GA4 revenue-source response distinguishes record presence from record
+  value and publishes an additive `available`/`unavailable` status for
+  HubSpot only
+- record-backed zero remains available and displays as `$0.00`
+- missing HubSpot records display `Unavailable` in the existing stable source
+  row while mapping/provenance and edit/remove actions remain present
+- HubSpot edit review receives no stored current revenue for an unavailable GA4
+  source; live preview or a successful save can establish a current value
+- outcome fallback retains HubSpot connection provenance but cannot add its
+  cached configuration total to financial revenue
+- Salesforce, Shopify, other providers, and non-GA4 HubSpot contexts are
+  unchanged
+
+Files changed for H5:
+
+- `server/routes-oauth.ts`
+- `client/src/pages/ga4-metrics.tsx`
+- `client/src/components/AddRevenueWizardModal.tsx`
+- `server/hubspot-stale-revenue-authority.test.ts`
+- `server/latest-day-revenue-regression.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- four focused guards cover source response authority, outcome exclusion, stable
+  unavailable display/provenance, and edit prefill
+- H1-H5, source-delete, outcome-total, latest-day, and report-email suites
+  passed: 76/76 tests
+- `npm run check` passed
+
+Not proven by local H5:
+
+- current deployed damaged-data inventory or the count of unavailable HubSpot
+  sources
+- deployed source-modal and outcome responses
+- production scheduler repair of an unavailable source
+- downstream Campaign DeepDive, KPI/Benchmark, Campaign Breakdown, Ad
+  Comparison, and report parity reserved for H6-H8
+- any H6-H10 item
+
 ## Certification gate
 
-At committed H3 baseline `30e72a6ca476e30f114de713663d4f7fd6d1170f` plus
-the local H4 working-tree change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1-H4 are locally proven within their documented bounds but
-deployment evidence remains pending. Current Commit H5 is the next smallest
+At committed H4 baseline `882b5208e43810c6c6acc6a8d805c99b47bffd10`
+plus the local H5 working-tree change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1-H5 are locally proven within their documented bounds but
+deployment evidence remains pending. Current Commit H6 is the next smallest
 isolated runtime item; completing it will still not certify HubSpot until the
 remaining documented matrix is closed.

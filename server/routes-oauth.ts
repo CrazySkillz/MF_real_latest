@@ -2770,8 +2770,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const cfg = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
           cfgTotal = Number(cfg?.lastTotalRevenue || 0);
         } catch {}
-        const recordTotal = totalsBySource.get(String(source?.id || "")) || 0;
-        return { ...source, lastTotalRevenue: Number((recordTotal || cfgTotal || 0).toFixed(2)) };
+        const sourceId = String(source?.id || "");
+        const hasMaterializedRevenue = totalsBySource.has(sourceId);
+        const recordTotal = totalsBySource.get(sourceId) || 0;
+        const isGa4Hubspot = platformContext === "ga4" && String(source?.sourceType || "").trim().toLowerCase() === "hubspot";
+        return {
+          ...source,
+          lastTotalRevenue: isGa4Hubspot
+            ? hasMaterializedRevenue ? Number(recordTotal.toFixed(2)) : null
+            : Number((recordTotal || cfgTotal || 0).toFixed(2)),
+          ...(isGa4Hubspot ? { materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable" } : {}),
+        };
       });
       res.json({ success: true, sources: sourcesWithTotals });
     } catch (e: any) {
@@ -13175,11 +13184,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueToDateTotal = 0;
       let importedRevenueSources: any[] = [];
       let financialRevenueInputs: any[] = [];
+      const materializedRevenueSourceTypes = new Set<string>();
       try {
         // Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.
         const revenueStartDate = "1900-01-01";
         const revenueEndDate = new Date().toISOString().slice(0, 10);
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
+        for (const source of revenueBreakdown) {
+          materializedRevenueSourceTypes.add(String(source?.sourceType || "").trim().toLowerCase());
+        }
         importedRevenueToDateTotal = Number(revenueBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));
         financialRevenueInputs = revenueBreakdown
           .filter((source: any) => parseNum(source?.revenue) > 0)
@@ -13423,18 +13436,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const cfg = parseMappingConfig((s.conn as any)?.mappingConfig);
             if (!cfg) continue;
             const revenueClassification = String(cfg.revenueClassification || "");
-            const lastTotalRevenue = parseNum(cfg.lastTotalRevenue);
+            const isHubspot = s.type === "hubspot";
+            const hubspotMaterialized = isHubspot && materializedRevenueSourceTypes.has("hubspot");
+            const lastTotalRevenue = isHubspot ? hubspotMaterialized ? 0 : null : parseNum(cfg.lastTotalRevenue);
             const offsite = revenueClassification === "offsite_not_in_ga4";
             const platformContext = String(cfg.platformContext || "").trim() || null;
             revenueSources.push({
               type: s.type,
               connected: true,
               revenueClassification: revenueClassification || null,
-              lastTotalRevenue: lastTotalRevenue || 0,
+              lastTotalRevenue,
               offsite,
               platformContext,
+              ...(isHubspot ? { materializedRevenueStatus: hubspotMaterialized ? "available" : "unavailable" } : {}),
             });
-            if (offsite && lastTotalRevenue > 0) offsiteRevenueTotal += lastTotalRevenue;
+            if (!isHubspot && offsite && Number(lastTotalRevenue) > 0) offsiteRevenueTotal += Number(lastTotalRevenue);
           }
         }
       } catch {

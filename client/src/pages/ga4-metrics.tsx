@@ -46,6 +46,7 @@ interface Campaign {
   ga4CampaignFilter?: string;
 }
 
+
 interface GA4Metrics {
   impressions: number;
   clicks: number;
@@ -2300,6 +2301,10 @@ export default function GA4Metrics() {
   const revenueDisplaySources = useMemo(() => {
     const defs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     const getDefinitionRevenue = (source: any) => {
+      const isHubspot = String(source?.sourceType || "").trim().toLowerCase() === "hubspot";
+      if (isHubspot) {
+        return source?.materializedRevenueStatus === "available" ? Number(source?.lastTotalRevenue || 0) : null;
+      }
       const cfg = typeof source?.mappingConfig === "string"
         ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return null; } })()
         : source?.mappingConfig;
@@ -2323,17 +2328,22 @@ export default function GA4Metrics() {
 
     const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
     if (breakdownSources.length > 0) {
-      const rows = breakdownSources.map((s: any) => ({
-        ...s,
-        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig
-          || defsWithCampaignTotalsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig
-          || defsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig
-          || null,
-      }));
+      const rows = breakdownSources.map((s: any) => {
+        const definition = defsMap.get(String(s.sourceId));
+        const sourceType = String(s.sourceType || "").toLowerCase();
+        return {
+          ...s,
+          mappingConfig: definition?.mappingConfig
+            || defsWithCampaignTotalsByType.get(sourceType)?.mappingConfig
+            || defsByType.get(sourceType)?.mappingConfig
+            || null,
+          ...(sourceType === "hubspot" ? { materializedRevenueStatus: "available" } : {}),
+        };
+      });
       const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
       for (const d of defs.filter((d: any) => d?.isActive !== false)) {
         if (!shownIds.has(String(d.id))) {
-          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig });
+          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus });
         }
       }
       return rows;
@@ -2344,6 +2354,7 @@ export default function GA4Metrics() {
       displayName: d.displayName,
       revenue: getDefinitionRevenue(d),
       mappingConfig: d.mappingConfig,
+      materializedRevenueStatus: d.materializedRevenueStatus,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const pipelineProxyData = useMemo(() => {
@@ -6205,6 +6216,7 @@ export default function GA4Metrics() {
                         {revenueDisplaySources.map((s: any) => {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                           const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+                          const materializedRevenueUnavailable = s.sourceType === "hubspot" && s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
                           const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
                           const sourceTypeText = mappedCampaignText
@@ -6223,12 +6235,12 @@ export default function GA4Metrics() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium tabular-nums text-foreground">
-                                  {formatMoney(Number(s.revenue || 0))}
+                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                 </span>
                                 <button
                                   onClick={() => {
                                     setShowRevenueSourcesDialog(false);
-                                    setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue });
+                                    setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
                                     setShowRevenueDialog(true);
                                   }}
                                   className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
@@ -9824,5 +9836,3 @@ export default function GA4Metrics() {
     </div>
   );
 }
-
-

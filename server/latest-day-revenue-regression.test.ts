@@ -233,7 +233,8 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(clientFile).toContain("const shownIds = new Set(rows.map((s: any) => String(s.sourceId || \"\")));");
-    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig });");
+    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus });");
+    expect(clientFile).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))');
   });
 
   it("Total Revenue source provenance is not narrowed by campaign pacing metadata", () => {

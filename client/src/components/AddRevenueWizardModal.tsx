@@ -842,8 +842,10 @@ export function AddRevenueWizardModal(props: {
         pipelineStageId: config?.pipelineStageId ? String(config.pipelineStageId) : undefined,
         pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
         pipelineTotalToDate: Number.isFinite(Number(config?.pipelineTotalToDate)) ? Number(config.pipelineTotalToDate) : undefined,
-        lastTotalRevenue: Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
-          : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
+        lastTotalRevenue: platformContext === "ga4"
+          ? initialSource?.materializedRevenueStatus === "available" && Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined
+          : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
+            : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
         campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,

@@ -10,6 +10,7 @@ import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
+import { normalizeGA4CampaignAllocationKey } from "@shared/ga4-financial-source";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
@@ -67,7 +68,7 @@ export default function GA4AdComparison({
   revenueDisplaySources = [],
   importedRevenue: importedRevenueTotal,
 }: GA4AdComparisonProps) {
-  const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
 
   const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
   const ga4RevenueTotalValue = Number(ga4RevenueTotal);

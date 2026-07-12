@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
-import { selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
+import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 
 interface Campaign {
@@ -3142,7 +3142,7 @@ export default function GA4Metrics() {
         if (metric === "conversionRate") return formatGA4AdComparisonCardPct(value);
         return fmtMetricValue(metric, value);
       };
-      const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
       const rowCounts = new Map<string, number>();
       const rowNameByKey = new Map<string, string>();
       rows.forEach((row: any) => {
@@ -5187,7 +5187,7 @@ export default function GA4Metrics() {
   }, [insightsRollups?.availableDays]);
 
   // Collect GA4 campaign names from the current campaign's saved GA4 scope.
-  const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
 
   const importedGA4CampaignNames = useMemo(() => {
     const names = new Set<string>();
@@ -5267,10 +5267,13 @@ export default function GA4Metrics() {
   }, [ga4Breakdown, importedGA4CampaignNames, revenueDisplaySources]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
+    const rowCounts = new Map<string, number>();
     const rowNameByKey = new Map<string, string>();
     for (const row of campaignBreakdownAgg) {
       const key = normalizeCampaignKey(row.name);
-      if (key) rowNameByKey.set(key, row.name);
+      if (!key) continue;
+      rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
+      if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
     }
     const matched = new Map<string, number>();
     for (const source of revenueDisplaySources) {
@@ -5288,6 +5291,7 @@ export default function GA4Metrics() {
         const valueKey = normalizeCampaignKey(item?.campaignValue);
         const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || item?.campaignValue);
         const revenue = Number(item?.revenue || 0);
+        if (rowCounts.get(key) !== 1) continue;
         const rowName = rowNameByKey.get(key);
         if (rowName && revenue > 0) matched.set(rowName, (matched.get(rowName) || 0) + revenue);
       }

@@ -8,3 +8,7 @@ export function selectGA4FinancialTotalsSource<T>(
       : best
   ), fallback);
 }
+
+export function normalizeGA4CampaignAllocationKey(value: unknown): string {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}

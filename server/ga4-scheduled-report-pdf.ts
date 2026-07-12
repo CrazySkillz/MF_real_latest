@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { getReportingDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
+import { normalizeGA4CampaignAllocationKey } from "../shared/ga4-financial-source";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -127,7 +128,7 @@ const reportIncludesKPISection = (report: any): boolean => {
   return Boolean(cfg.sections?.kpis || cfg.subsections?.kpis?.items || cfg.selectedKpiIds.length > 0);
 };
 
-const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
 const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
 const parseMappingConfig = (value: any) => {
@@ -620,10 +621,13 @@ async function buildGA4ReportPayload(report: any) {
     })
     .sort((a, b) => b.sessions - a.sessions);
 
+  const rowCounts = new Map<string, number>();
   const rowNameByKey = new Map<string, string>();
   for (const row of campaignBreakdownAgg) {
     const key = normalizeCampaignKey(row.name);
-    if (key) rowNameByKey.set(key, row.name);
+    if (!key) continue;
+    rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
+    if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
   }
   const campaignBreakdownMatchedExternalRevenue = new Map<string, number>();
   for (const source of revenueDisplaySources) {
@@ -640,6 +644,7 @@ async function buildGA4ReportPayload(report: any) {
       const valueKey = normalizeCampaignKey(item?.campaignValue);
       const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || item?.campaignValue);
       const revenue = Number(item?.revenue || 0);
+      if (rowCounts.get(key) !== 1) continue;
       const rowName = rowNameByKey.get(key);
       if (rowName && revenue > 0) campaignBreakdownMatchedExternalRevenue.set(rowName, (campaignBreakdownMatchedExternalRevenue.get(rowName) || 0) + revenue);
     }

@@ -292,7 +292,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineMemo).toContain("providerEntries: entries.map");
     expect(financialRevenueBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(financialRevenueBlock).not.toContain("pipelineProxyData");
-    expect(revenueExportBlock).toContain('if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);');
+    expect(revenueExportBlock).not.toContain("pipelineProxyData");
+    expect(revenueExportBlock).not.toContain("Pipeline Proxy");
     expect(revenueSourcesDialog).toContain("isPipelineOnlyRevenueSource");
     expect(revenueSourcesDialog).toContain("Pipeline Proxy only");
     expect(mappedCampaignLabelHelper).toContain('String(source?.sourceType || "").trim().toLowerCase() !== "hubspot"');
@@ -563,7 +564,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const payloadBlock = sliceBetween(
       pdf,
       "const importedRevenueForFinancials",
-      "const pipelineEntries"
+      "const insightsRollups"
     );
     const overviewReportBlock = sliceBetween(
       pdf,
@@ -583,7 +584,45 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(overviewReportBlock).toContain("[\"Total Revenue\", formatMoney(payload.financialRevenue)]");
     expect(overviewReportBlock).toContain("payload.revenueDisplaySources.map");
     expect(overviewReportBlock).toContain("payload.campaignBreakdownMatchedExternalRevenue.get");
+    expect(overviewReportBlock).not.toContain("Pipeline Proxy");
+    expect(overviewReportBlock).not.toContain("pipelineEntries");
     expect(overviewReportBlock).not.toContain("pipelineTotal + payload.financialRevenue");
+  });
+
+  it("excludes Pipeline Proxy from GA4 report artifacts while retaining its operational Overview card", () => {
+    const client = ga4MetricsFile();
+    const pdf = ga4ScheduledReportPdfFile();
+    const browserReportRevenue = sliceBetween(
+      client,
+      "const revenueCards: [string, string][] = [",
+      "      sourceRows(\"Revenue\", ["
+    );
+    const operationalOverview = sliceBetween(
+      client,
+      "<p className=\"text-sm font-medium text-muted-foreground/70\">Pipeline Proxy</p>",
+      "<p className=\"text-sm font-medium text-muted-foreground/70\">Profit</p>"
+    );
+    const reportPayload = sliceBetween(
+      pdf,
+      "const importedRevenueForFinancials",
+      "const insightsRollups"
+    );
+    const scheduledReportOverview = sliceBetween(
+      pdf,
+      "if (sections.overview)",
+      "if (sections.ads)"
+    );
+
+    expect(browserReportRevenue).toContain("Total Revenue");
+    expect(browserReportRevenue).not.toContain("Pipeline Proxy");
+    expect(browserReportRevenue).not.toContain("pipelineProxyData");
+    expect(operationalOverview).toContain("Pipeline Proxy");
+    expect(operationalOverview).toContain("pipelineProxyData.totalToDate");
+    expect(reportPayload).not.toContain("pipelineTotalToDate");
+    expect(reportPayload).not.toContain("pipelineValueRevenueTotals");
+    expect(scheduledReportOverview).toContain("Total Revenue");
+    expect(scheduledReportOverview).not.toContain("Pipeline Proxy");
+    expect(scheduledReportOverview).not.toContain("pipelineEntries");
   });
 
   it("keeps HubSpot-backed GA4 report values on the scheduled and test email attachment path", () => {
@@ -612,7 +651,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const payloadBlock = sliceBetween(
       pdf,
       "const importedRevenueForFinancials",
-      "const pipelineEntries"
+      "const insightsRollups"
     );
 
     expect(ga4BuilderBlock).toContain("buildGA4ScheduledPdfAttachment");
@@ -635,6 +674,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(payloadBlock).toContain("campaignMappings");
     expect(payloadBlock).toContain("campaignBreakdownMatchedExternalRevenue");
     expect(payloadBlock).toContain("sourceRevenueBreakdowns");
+    expect(payloadBlock).not.toContain("pipelineTotalToDate");
+    expect(payloadBlock).not.toContain("pipelineValueRevenueTotals");
     expect(payloadBlock).not.toContain("pipelineTotal + financialRevenue");
   });
 

@@ -685,7 +685,7 @@ particular:
 | full disconnect | Broken | Sequential multi-source deletion plus connection deletion is not atomic. |
 | mapping and filtering | Partially proven | Exact happy path traced; complete variant/negative matrix absent. |
 | date handling and daily materialization | Locally fixed by H2/H3; deployed evidence pending | Strict calendar validation, total reconciliation, and incomplete-page rejection run before mutation. |
-| Pipeline Proxy exclusion and transition | Partially proven / broken in Reports | One transition packet passed; reports include positive proxy contrary to contract. |
+| Pipeline Proxy exclusion and transition | Locally fixed by H7; deployed evidence pending | One transition packet passed; H7 removes proxy data/rendering from browser and scheduled report artifacts while preserving operational surfaces. |
 | provider refresh/scheduler/reprocess | Partially proven | H1 protects rollback and H3 rejects incomplete pages locally; normal deployed scheduler/provider evidence remains pending. |
 | transaction and failure retention | Locally proven by H1; deployed evidence pending | One GA4-only transaction now covers connection, source, delete, and insert with forced rollback tests. |
 | source modal and provenance | Partially proven | One provenance packet; configuration fallback can mask missing records. |
@@ -693,7 +693,7 @@ particular:
 | Campaign Breakdown | Partially proven | One row-level packet; complete mapping lifecycle absent. |
 | Ad Comparison | Partially proven | Same mapping path traced; no complete HubSpot-specific dynamic packet. |
 | KPI and Benchmark values | Partially proven / source parity broken | One configured packet; campaign-level helper can use a different native GA4 source. |
-| Reports/snapshots/PDFs/emails | Partially proven / proxy broken | One report/email packet; positive proxy contradiction and variants remain. |
+| Reports/snapshots/PDFs/emails | Locally fixed by H7; deployed evidence pending | Browser and scheduled PDF branches no longer consume/render proxy; positive deployed artifacts, delivery, and report variants remain unproven. |
 | notifications | Partially proven | Local resolver traced; HubSpot-specific lifecycle packet absent. |
 | multi-campaign isolation | Partially proven | Route/storage scoping plus two-campaign packet; concurrency and full downstream matrix absent. |
 | damaged-data inventory and cleanup | Unproven for current production | Existing inventory is incomplete and no fresh production scan/cleanup boundary exists. |
@@ -887,11 +887,35 @@ Proxy is not an input.
 
 ### Current Commit H7 — Reports Pipeline Proxy contract
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - reconcile the implementation/test contradiction in favor of the documented
   confirmed-financial contract unless product requirements explicitly change
 - prove positive proxy appears only on allowed operational surfaces and is
   absent from browser/scheduled financial reports, snapshots, PDFs, and emails
 - repeat report value parity with a deliberately positive proxy
+
+H7 resolves the contradiction in favor of the confirmed-financial contract.
+The root cause was not a Total Revenue formula error: both report builders
+already calculated Total Revenue, Profit, ROAS, ROI, and CPA without Pipeline
+Proxy. The contract violation was two explicit report-only presentation
+branches that appended positive Pipeline Proxy as a separate Revenue card in
+the browser PDF and scheduled PDF.
+
+The browser report branch no longer reads `pipelineProxyData`. The scheduled
+report payload no longer carries `pipelineTotalToDate` or
+`pipelineValueRevenueTotals`, and its PDF renderer no longer creates a Pipeline
+Proxy card. The operational GA4 Overview Pipeline Proxy card, source modal,
+provider endpoint, persisted proxy metadata, and confirmed-revenue formulas are
+unchanged.
+
+Scheduled/test emails attach the scheduled PDF builder output. Manual and
+scheduled snapshot JSON contains report identity/window metadata rather than
+financial values, and snapshot PDF downloads rebuild through that same
+scheduled PDF path. The local trace therefore closes the known runtime branches
+for browser PDF, scheduled/test email attachment, and snapshot PDF generation;
+it does not prove deployed bytes, inbox receipt, or a production snapshot.
 
 ### Current Commit H8 — mapping and downstream variant matrix
 
@@ -1272,11 +1296,52 @@ Not proven by local H6:
 - report Pipeline Proxy behavior reserved for H7
 - any H7-H10 item
 
+### H7 local implementation validation
+
+Root cause fixed:
+
+- browser PDF generation explicitly appended a positive Pipeline Proxy card to
+  its Revenue section
+- scheduled PDF generation built proxy entries from active CRM mapping config
+  and explicitly appended their positive total as a Pipeline Proxy card
+- scheduled/test email attachments and snapshot PDF downloads reuse the
+  scheduled PDF builder, so that presentation branch propagated to those
+  artifacts even though confirmed financial formulas remained correct
+
+Files changed for H7:
+
+- `client/src/pages/ga4-metrics.tsx`
+- `server/ga4-scheduled-report-pdf.ts`
+- `server/hubspot-revenue-ga4-overview-regression.test.ts`
+- `server/report-email-regression.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- the focused H7 guard proves the browser report and scheduled report payload/
+  renderer do not consume or render Pipeline Proxy while the operational
+  Overview card still consumes and renders it: 1/1 passed
+- the adjacent scheduled report formula and scheduled/test attachment path
+  guards passed: 2/2
+- the report email regression suite passed: 20/20
+- the complete HubSpot guard still has 10 unrelated pre-existing failures from
+  stale runner-version and mapped-label expectations; H7 does not edit those
+  unrelated baselines
+
+Not proven by local H7:
+
+- deployed browser, scheduled, test-email, or snapshot PDF bytes with a
+  deliberately positive production proxy
+- provider acceptance, delivery events, or inbox receipt for an H7 artifact
+- historical PDFs already generated before H7
+- mapping/downstream variants, damaged-data expansion, or deployed
+  clean-certification evidence reserved for H8-H10
+
 ## Certification gate
 
-At committed H5 baseline `ff23003c285f502c6c1e1f6304d09df20c45c558`
-plus the local H6 working-tree change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1-H6 are locally proven within their documented bounds but
-deployment evidence remains pending. Current Commit H7 is the next smallest
-isolated runtime item; completing it will still not certify HubSpot until the
-remaining documented matrix is closed.
+At committed H6 baseline `c8c8a95f10503dc190a9e4b8b04259714b5631ba`
+plus the local H7 working-tree change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1-H7 are locally proven within their documented bounds but
+deployment evidence remains pending. Current Commit H8 is the next smallest
+isolated item; completing it will still not certify HubSpot until the remaining
+documented matrix is closed.

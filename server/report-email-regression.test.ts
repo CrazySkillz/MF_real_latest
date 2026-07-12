@@ -104,7 +104,7 @@ describe("scheduled report email regression guard", () => {
     expect(payloadStart).toBeGreaterThan(-1);
     expect(adsStart).toBeGreaterThan(-1);
     expect(adsEnd).toBeGreaterThan(adsStart);
-    expect(source.slice(payloadStart, source.indexOf("const pipelineEntries", payloadStart))).toContain("campaignValueRevenueTotals");
+    expect(source.slice(payloadStart, source.indexOf("const insightsRollups", payloadStart))).toContain("campaignValueRevenueTotals");
     expect(adsSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((payload.importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));");
     expect(adsSection).toContain("REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
     expect(adsSection).toContain('allCampaignRows.push(["Unallocated External Revenue", "", "", "", formatMoney(unallocatedExternalRevenue)])');

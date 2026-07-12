@@ -654,26 +654,6 @@ async function buildGA4ReportPayload(report: any) {
       return [String(source?.sourceId || ""), totals];
     })
   );
-  const pipelineEntries = revenueSources
-    .filter((source: any) => source?.isActive !== false)
-    .map((source: any) => {
-      const cfg = parseMappingConfig(source?.mappingConfig);
-      if (cfg?.pipelineEnabled !== true || !(cfg.pipelineStageLabel || cfg.pipelineStageName || cfg.pipelineStageId)) return null;
-      const providerLabel = source?.sourceType === "salesforce" ? "Salesforce" : source?.sourceType === "hubspot" ? "HubSpot" : String(source?.displayName || source?.sourceType || "CRM");
-      const stage = String(cfg.pipelineStageLabel || cfg.pipelineStageName || cfg.pipelineStageId || "").trim();
-      const totals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
-      const campaignValues = totals.length > 0
-        ? totals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
-        : Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [];
-      return {
-        providerLabel,
-        pipelineStageLabel: stage,
-        totalToDate: Number(cfg.pipelineTotalToDate || 0),
-        campaignValues,
-      };
-    })
-    .filter(Boolean) as Array<{ providerLabel: string; pipelineStageLabel: string; totalToDate: number; campaignValues: string[] }>;
-
   const insightsRollups = buildTrendRollups(dailyRows);
   const currency = String((campaign as any)?.currency || "USD");
   const formatMoney = (value: number) => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -705,7 +685,6 @@ async function buildGA4ReportPayload(report: any) {
     campaignBreakdownAgg,
     campaignBreakdownMatchedExternalRevenue,
     sourceRevenueBreakdowns,
-    pipelineEntries,
     insightsRollups,
     insightsFreshness: {
       dataThroughDate: reportingWindow.dataThroughDate,
@@ -936,11 +915,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (includeRevenue || includeSpend || includePerformance) subheading("Revenue & Financial", 10);
     if (includeRevenue) {
       subheading("Revenue");
-      const pipelineTotal = payload.pipelineEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
       const revenueCards: [string, string][] = [
         ["Total Revenue", formatMoney(payload.financialRevenue)],
       ];
-      if (pipelineTotal > 0) revenueCards.push(["Pipeline Proxy", formatMoney(pipelineTotal)]);
       metricCards(revenueCards, Math.min(revenueCards.length, 3));
       addSimpleTable(
         "Revenue Sources",

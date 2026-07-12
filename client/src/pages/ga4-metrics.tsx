@@ -3038,7 +3038,6 @@ export default function GA4Metrics() {
       const revenueCards: [string, string][] = [
         ["Total Revenue", fC(rev)],
       ];
-      if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);
       metricCards(revenueCards, Math.min(revenueCards.length, 3));
       sourceRows("Revenue", [
         ...(ga4RevenueForFinancials > 0 ? [["GA4 Revenue", fC(ga4RevenueForFinancials)] as [string, string]] : []),

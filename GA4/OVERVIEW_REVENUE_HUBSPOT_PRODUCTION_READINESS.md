@@ -92,8 +92,10 @@ also establishes blockers that invalidate a blanket production-ready claim:
 1. At the audited baseline, HubSpot save/edit/reprocess persistence was not
    atomic. Local H1 now addresses this exact path; deployed evidence remains
    pending and the other blockers below remain open.
-2. confirmed-deal and Pipeline Proxy searches can stop at the 25-page cap while
-   more pages remain, silently accepting a partial result.
+2. At the audited baseline, confirmed-deal and Pipeline Proxy searches could
+   stop at the 25-page cap while more pages remained. Local H3 now rejects that
+   continuation and repeated cursors before mutation; deployed evidence remains
+   pending.
 3. At the audited baseline, a numeric confirmed deal with an invalid or missing
    mapped date could contribute to totals without a daily record. Local H2 now
    rejects that input and reconciles all materialized totals before mutation;
@@ -677,14 +679,14 @@ particular:
 | Requested path | Status | Reason |
 |---|---|---|
 | authentication and campaign ownership | Partially proven | Local campaign guards and signed state are traced; deployed secrets/provider/token lifecycle are not locally verifiable. |
-| add/import | Partially proven | H1/H2 locally guard rollback and date integrity; pagination, identical-signature semantics, and deployed variants remain open. |
+| add/import | Partially proven | H1-H3 locally guard rollback, date integrity, and incomplete pagination; identical-signature semantics and deployed variants remain open. |
 | edit/update | Locally fixed by H1; deployed evidence pending | Stable ID and transaction rollback are locally guarded; deployed provider/write failure evidence remains pending. |
 | single-source delete/deactivate | Partially proven | Exact transactional storage delete and one packet; metadata/recompute failures not fully exercised. |
 | full disconnect | Broken | Sequential multi-source deletion plus connection deletion is not atomic. |
 | mapping and filtering | Partially proven | Exact happy path traced; complete variant/negative matrix absent. |
-| date handling and daily materialization | Locally fixed by H2; deployed evidence pending | Strict calendar validation and total reconciliation run before mutation; page truncation remains a separate completeness blocker. |
+| date handling and daily materialization | Locally fixed by H2/H3; deployed evidence pending | Strict calendar validation, total reconciliation, and incomplete-page rejection run before mutation. |
 | Pipeline Proxy exclusion and transition | Partially proven / broken in Reports | One transition packet passed; reports include positive proxy contrary to contract. |
-| provider refresh/scheduler/reprocess | Partially proven | Stable source and one propagation packet; H1 locally protects database rollback, while normal deployed scheduler failure evidence remains pending. |
+| provider refresh/scheduler/reprocess | Partially proven | H1 protects rollback and H3 rejects incomplete pages locally; normal deployed scheduler/provider evidence remains pending. |
 | transaction and failure retention | Locally proven by H1; deployed evidence pending | One GA4-only transaction now covers connection, source, delete, and insert with forced rollback tests. |
 | source modal and provenance | Partially proven | One provenance packet; configuration fallback can mask missing records. |
 | Total Revenue, Profit, ROAS, ROI, CPA | Partially proven | Overview formulas traced; input integrity and cross-surface parity are not certified. |
@@ -706,6 +708,8 @@ particular:
 - transactional single-source delete boundary
 - strict GA4 HubSpot calendar-date validation and pre-mutation reconciliation in
   local H2 tests
+- fail-closed confirmed/proxy continuation and repeated-cursor handling in local
+  H3 tests
 - Overview formula definitions and proxy exclusion from those formulas
 - exact campaign mapping rather than proportional allocation
 - bounded packets 4.5, 4.7b, 4.8b, 4.9b, 4.10b, 4.11, 4.12,
@@ -722,9 +726,8 @@ particular:
 - Campaign Breakdown, Ad Comparison, KPI/Benchmark, Reports, and notifications
 - multi-campaign isolation
 
-### Remaining broken in current code after local H1 and H2
+### Remaining broken in current code after local H1, H2, and H3
 
-- provider page-cap completeness
 - multi-source disconnect atomicity
 - source-modal truthfulness after missing materialization
 - Campaign DeepDive/outcome and campaign-current-value parity
@@ -803,10 +806,21 @@ transaction. H2 does not close provider pagination or certify production data.
 
 ### Current Commit H3 — fail-closed provider pagination
 
+Status: implemented locally on 2026-07-12; focused validation passed; deployment
+evidence pending.
+
 - detect a continuation cursor after the allowed last page
 - fail before mutation rather than accept confirmed or proxy partial totals
-- cover exactly-at-limit, one-over-limit, repeated cursor, and provider failure
-  cases for confirmed and Pipeline Proxy searches
+- cover exactly-at-limit, one-over-limit, and repeated-cursor cases for
+  confirmed and Pipeline Proxy searches
+
+For GA4, H3 applies one cursor contract to confirmed revenue, Pipeline Proxy
+preview, Pipeline Proxy save, and on-demand Pipeline Proxy recompute. Exactly 25
+complete pages are accepted. A continuation after page 25 or a repeated cursor returns
+`HUBSPOT_PAGINATION_INCOMPLETE` before publishing source, record, connection, or
+proxy metadata. Non-GA4 HubSpot contexts retain their prior behavior.
+Non-pagination provider retry/fallback behavior remains outside this
+pagination-only fix and is not certified by H3.
 
 ### Current Commit H4 — atomic/fail-safe full disconnect
 
@@ -995,11 +1009,57 @@ Not proven by local H2:
 - deployed scheduler and UI error presentation
 - any H3-H10 item
 
+### H3 local implementation validation
+
+Root cause fixed:
+
+- four HubSpot publishing loops stopped at 25 pages without distinguishing a
+  complete last page from a response that still advertised another page
+- two Pipeline Proxy branches could silently swallow the incomplete result
+- repeated provider cursors were not detected
+
+Local H3 behavior:
+
+- GA4 confirmed revenue, Pipeline Proxy preview, Pipeline Proxy save, and
+  on-demand Pipeline Proxy recompute share one bounded cursor contract
+- a last page without a continuation is accepted at the exact limit
+- a continuation after the last safe page or a repeated cursor throws the typed
+  `HUBSPOT_PAGINATION_INCOMPLETE` error
+- save/preview returns `413`, and on-demand proxy recompute returns `413`, before
+  any affected financial/proxy metadata write
+- H1 therefore retains the last complete persisted source and records
+- non-GA4 HubSpot contexts retain their prior pagination behavior
+
+Files changed for H3:
+
+- `server/routes-oauth.ts`
+- `server/utils/hubspot-pagination.ts`
+- `server/hubspot-pagination.test.ts`
+- this canonical readiness document
+
+Local evidence:
+
+- exactly-at-limit completion, next-page overflow, and repeated-cursor cases are
+  covered by focused unit tests
+- route guards cover all four publishing loops and prove their guards precede
+  the relevant source/connection mutation
+- `npm run check` passed
+- H3, H2, H1 rollback, latest-day, scheduler, source-delete, outcome-total, and
+  report-email suites passed: 77/77 tests
+
+Not proven by local H3:
+
+- a live HubSpot account with more than 2,500 matching deals
+- future provider cursor formats
+- non-pagination provider retry/fallback behavior
+- deployed scheduler/UI error presentation
+- any H4-H10 item
+
 ## Certification gate
 
-At committed H1 baseline `3059db41b8dd77ccbadddfacfb5e0e6020d06a59` plus
-the local H2 working-tree change, GA4 Overview HubSpot Revenue is **not
-clean-certified**. H1 and H2 are locally proven but deployment evidence remains
-pending. Current Commit H3 is the next smallest isolated runtime item;
+At committed H2 baseline `48430f611fabc40b2ba1d0ad42310b6f848b8908` plus
+the local H3 working-tree change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1-H3 are locally proven but deployment evidence remains
+pending. Current Commit H4 is the next smallest isolated runtime item;
 completing it will still not certify HubSpot until the remaining documented
 matrix is closed.

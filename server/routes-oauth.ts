@@ -37,6 +37,7 @@ import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-shee
 import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign, resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
+import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -2293,7 +2294,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const MAX_SALESFORCE_RESULTS = 5_000;
   const MAX_SELECTED_VALUES = 200; // caps IN filters (prevents runaway queries)
   const MAX_CRM_REVIEW_BREAKDOWN_ROWS = 200;
-  const MAX_HUBSPOT_PAGES = 25; // 25 * 100 = 2,500 deals max per request (hard stop)
   const MAX_SALESFORCE_PAGES = 10; // paging guardrail for large orgs
 
   const countLinesUpTo = (text: string, limit: number): number => {
@@ -17062,6 +17062,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = selectedPipelineSource.cfg;
         pipelineSource = selectedPipelineSource.source;
       }
+      const requireCompletePipelinePagination = String(
+        cfg?.platformContext || pipelineSource?.platformContext || requestedPlatformContext || 'ga4',
+      ).trim().toLowerCase() === 'ga4';
 
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageId) {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
@@ -17091,6 +17094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let after3: string | undefined;
             let pages3 = 0;
             let seen3 = 0;
+            const requestedPipelineCursors = new Set<string>();
             while (pages3 < MAX_HUBSPOT_PAGES) {
               const body3: any = {
                 filterGroups: [
@@ -17106,9 +17110,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 after: after3,
               };
               const json3 = await hubspotSearchDeals(accessToken, body3);
+              pages3 += 1;
               const results3 = Array.isArray(json3?.results) ? json3.results : [];
               seen3 += results3.length;
-              if (seen3 > MAX_HUBSPOT_RESULTS) break;
+              if (seen3 > MAX_HUBSPOT_RESULTS) {
+                if (requireCompletePipelinePagination) throw hubspotPaginationError(`result limit ${MAX_HUBSPOT_RESULTS} exceeded`);
+                break;
+              }
               for (const d of results3) {
                 const props = d?.properties || {};
                 const rRaw = props[revenueProp];
@@ -17120,9 +17128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const campaignValue = String(props?.[campaignProp] || '').trim();
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
               }
-              after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+              after3 = requireCompletePipelinePagination
+                ? nextHubspotPageCursor(json3?.paging?.next?.after, pages3, requestedPipelineCursors)
+                : json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
               if (!after3) break;
-              pages3 += 1;
             }
           }
 
@@ -17153,7 +17162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateRevenueSource(String(pipelineSource.id), { mappingConfig: JSON.stringify(cfg) } as any);
           }
         }
-      } catch {
+      } catch (error: any) {
+        if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE) {
+          return res.status(413).json({ success: false, error: error.message, code: error.code });
+        }
         recomputeFailed = true;
       }
 
@@ -17466,6 +17478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let seen = 0;
       let importedDealCount = 0;
       let invalidConfirmedRevenueDateCount = 0;
+      const requestedConfirmedRevenueCursors = new Set<string>();
       while (pages < MAX_HUBSPOT_PAGES) {
         const body: any = {
           filterGroups: [
@@ -17494,6 +17507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
         const json = await hubspotSearchDeals(accessToken, body);
+        pages += 1;
         const results = Array.isArray(json?.results) ? json.results : [];
         seen += results.length;
         if (seen > MAX_HUBSPOT_RESULTS) {
@@ -17551,9 +17565,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        after = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+        after = platformCtx === 'ga4'
+          ? nextHubspotPageCursor(json?.paging?.next?.after, pages, requestedConfirmedRevenueCursors)
+          : json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
         if (!after) break;
-        pages += 1;
       }
 
       if (platformCtx === 'ga4' && invalidConfirmedRevenueDateCount > 0) {
@@ -17597,6 +17612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let total = 0;
         let afterPipeline: string | undefined;
         let pipelinePages = 0;
+        const requestedPipelinePreviewCursors = new Set<string>();
         while (pipelinePages < MAX_HUBSPOT_PAGES) {
           const json = await hubspotSearchDeals(accessToken, {
             filterGroups: [{ filters: [
@@ -17607,14 +17623,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             limit: 100,
             after: afterPipeline,
           });
+          pipelinePages += 1;
           for (const d of Array.isArray(json?.results) ? json.results : []) {
             const raw = d?.properties?.[revenueProp];
             const amt = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
             if (Number.isFinite(amt)) total += amt;
           }
-          afterPipeline = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+          afterPipeline = platformCtx === 'ga4'
+            ? nextHubspotPageCursor(json?.paging?.next?.after, pipelinePages, requestedPipelinePreviewCursors)
+            : json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
           if (!afterPipeline) break;
-          pipelinePages += 1;
         }
         return Number(total.toFixed(2));
       };
@@ -17675,6 +17693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let after3: string | undefined;
             let pages3 = 0;
             let seen3 = 0;
+            const requestedPipelineSaveCursors = new Set<string>();
             while (pages3 < MAX_HUBSPOT_PAGES) {
               const body3: any = {
                 filterGroups: [
@@ -17691,9 +17710,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               };
 
               const json3 = await hubspotSearchDeals(accessToken, body3);
+              pages3 += 1;
               const results3 = Array.isArray(json3?.results) ? json3.results : [];
               seen3 += results3.length;
-              if (seen3 > MAX_HUBSPOT_RESULTS) break;
+              if (seen3 > MAX_HUBSPOT_RESULTS) {
+                if (platformCtx === 'ga4') throw hubspotPaginationError(`result limit ${MAX_HUBSPOT_RESULTS} exceeded`);
+                break;
+              }
 
               for (const d of results3) {
                 const props = d?.properties || {};
@@ -17708,9 +17731,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
               }
 
-              after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+              after3 = platformCtx === 'ga4'
+                ? nextHubspotPageCursor(json3?.paging?.next?.after, pages3, requestedPipelineSaveCursors)
+                : json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
               if (!after3) break;
-              pages3 += 1;
             }
 
             if (pipelineCurrencies.size > 1) {
@@ -17733,7 +17757,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 revenue: Number(revenue.toFixed(2)),
               }));
             }
-          } catch {
+          } catch (error: any) {
+            if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE) throw error;
             // ignore (proxy is optional)
           }
         }
@@ -17981,7 +18006,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);
-      res.status(500).json({ error: error.message || 'Failed to save HubSpot mappings' });
+      const paginationIncomplete = error?.code === HUBSPOT_PAGINATION_ERROR_CODE;
+      res.status(paginationIncomplete ? 413 : 500).json({
+        error: error.message || 'Failed to save HubSpot mappings',
+        ...(paginationIncomplete ? { code: error.code } : {}),
+      });
     }
   });
 

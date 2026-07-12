@@ -85,19 +85,19 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(saveRoute).toContain('return res.status(404).json({ error: "HubSpot revenue source not found" });');
     expect(saveRoute).toContain("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);");
     expect(saveRoute).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
-    expect(saveRoute).toContain("existingHubspot\n            ? await storage.updateRevenueSource");
-    expect(saveRoute).toContain(": await storage.createRevenueSource({");
-    expect(saveRoute).toContain("await storage.deleteRevenueRecordsBySource(String((source as any).id));");
+    expect(saveRoute).toContain('let ga4HubspotConnectionId: string | null = null;');
+    expect(saveRoute).toContain('let ga4HubspotConnectionMappingConfig: string | null = null;');
+    expect(saveRoute).toContain(`if (platformCtx === 'ga4') {`);
+    expect(saveRoute).toContain('source = await storage.replaceGa4HubspotRevenueSourceWithRecords(');
+    expect(saveRoute).toContain('ga4HubspotConnectionId,');
+    expect(saveRoute).toContain('ga4HubspotConnectionMappingConfig,');
     expect(saveRoute).toContain("Note: do NOT deactivate existing sources");
 
     expect(saveRoute).toContain('platformContext: platformCtx,');
     expect(saveRoute).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByCloseDate.size > 0 ? "selected_date_field_v1" : null,');
-    expect(saveRoute).toContain('if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {');
     expect(saveRoute).toContain("Array.from(revenueByCloseDate.entries())");
-    expect(saveRoute).toContain("revenueSourceId: String((source as any).id),");
     expect(saveRoute).toContain("sourceType: 'hubspot',");
     expect(saveRoute).toContain("subCampaignUrn: urn,");
-    expect(saveRoute).toContain("await storage.createRevenueRecords(records);");
   });
 
   it("shows selected HubSpot campaign mappings in review before save", () => {

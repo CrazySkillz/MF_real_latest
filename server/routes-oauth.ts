@@ -17607,6 +17607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Persist mapping config on the active HubSpot connection
       let pipelineProxyFields: any = {};
+      let ga4HubspotConnectionId: string | null = null;
+      let ga4HubspotConnectionMappingConfig: string | null = null;
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
       if (hubspotConn) {
         const rcRaw = String(revenueClassification || '').trim();
@@ -17716,7 +17718,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineWarning: (mappingConfig as any).pipelineWarning,
           pipelineValueRevenueTotals: (mappingConfig as any).pipelineValueRevenueTotals,
         };
-        await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+        const serializedConnectionMapping = JSON.stringify(mappingConfig);
+        if (platformCtx === 'ga4') {
+          ga4HubspotConnectionId = String(hubspotConn.id);
+          ga4HubspotConnectionMappingConfig = serializedConnectionMapping;
+        } else {
+          await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: serializedConnectionMapping } as any);
+        }
       }
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
@@ -17775,8 +17783,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         });
 
-        const source =
-          existingHubspot
+        let source: any;
+        if (platformCtx === 'ga4') {
+          if (!ga4HubspotConnectionId || ga4HubspotConnectionMappingConfig === null) {
+            throw new Error('Active HubSpot connection not found');
+          }
+          const sourceValues = {
+            campaignId,
+            sourceType: 'hubspot',
+            platformContext: platformCtx,
+            displayName: `HubSpot (Deals)`,
+            currency: cur,
+            mappingConfig,
+            isActive: true,
+            ...(existingHubspot ? { connectedAt: new Date() } : {}),
+          } as any;
+          const records: any[] = revenueByCloseDate.size > 0
+            ? Array.from(revenueByCloseDate.entries())
+              .sort((a, b) => a[0].localeCompare(b[0]))
+              .map(([date, revenue]) => ({
+                campaignId,
+                date,
+                revenue: Number(revenue.toFixed(2)).toFixed(2) as any,
+                currency: cur,
+                sourceType: 'hubspot',
+              } as any))
+            : [{
+              campaignId,
+              date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+              revenue: Number(Number(totalRevenue || 0).toFixed(2)).toFixed(2) as any,
+              currency: cur,
+              sourceType: 'hubspot',
+            } as any];
+          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
+            const [date, ...urnParts] = key.split(':');
+            const urn = urnParts.join(':');
+            if (date && urn && rev > 0) {
+              records.push({
+                campaignId,
+                date,
+                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+                currency: cur,
+                sourceType: 'hubspot',
+                subCampaignUrn: urn,
+              } as any);
+            }
+          }
+          source = await storage.replaceGa4HubspotRevenueSourceWithRecords(
+            campaignId,
+            existingHubspot ? String((existingHubspot as any).id) : null,
+            ga4HubspotConnectionId,
+            ga4HubspotConnectionMappingConfig,
+            sourceValues,
+            records,
+          );
+        } else {
+          source = existingHubspot
             ? await storage.updateRevenueSource(String((existingHubspot as any).id), {
               displayName: `HubSpot (Deals)`,
               currency: cur,
@@ -17786,15 +17848,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } as any)
             : await storage.createRevenueSource({
               campaignId,
-              sourceType: "hubspot",
+              sourceType: 'hubspot',
               platformContext: platformCtx,
               displayName: `HubSpot (Deals)`,
               currency: cur,
               mappingConfig,
               isActive: true,
             } as any);
-
-        await storage.deleteRevenueRecordsBySource(String((source as any).id));
+          await storage.deleteRevenueRecordsBySource(String((source as any).id));
+        }
 
         if (platformCtx === "linkedin" && effectiveValueSource === "conversion_value") {
           const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
@@ -17826,36 +17888,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // GA4 HubSpot uses each matched deal's selected date field as real daily revenue history.
         // Other platform contexts keep the existing to-date snapshot behavior for compatibility.
-        if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {
-          const records: any[] = Array.from(revenueByCloseDate.entries())
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([date, revenue]) => ({
-              campaignId,
-              revenueSourceId: String((source as any).id),
-              date,
-              revenue: Number(revenue.toFixed(2)).toFixed(2) as any,
-              currency: cur,
-              sourceType: 'hubspot',
-            } as any));
-          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-            const [date, ...urnParts] = key.split(":");
-            const urn = urnParts.join(":");
-            if (date && urn && rev > 0) {
-              records.push({
-                campaignId,
-                revenueSourceId: String((source as any).id),
-                date,
-                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
-                currency: cur,
-                sourceType: 'hubspot',
-                subCampaignUrn: urn,
-              } as any);
-            }
-          }
-          await storage.createRevenueRecords(records);
-        } else {
+        if (platformCtx !== 'ga4') {
         const recordDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
         if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram" || platformCtx === "tiktok") && revenueByLinkedinCampaign.size > 0) {

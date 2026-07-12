@@ -14,6 +14,29 @@ const parseMapping = (value: any): Record<string, any> | null => {
   }
 };
 
+const normalizeSelectedValues = (values: any[]) => values
+  .map((value) => String(value || '').trim())
+  .filter(Boolean)
+  .sort()
+  .join('\n');
+
+export const hubspotInventoryMappingsMatch = (a: any, b: any) => Boolean(a && b)
+  && a.campaignProperty === b.campaignProperty
+  && normalizeSelectedValues(a.selectedValues || []) === normalizeSelectedValues(b.selectedValues || [])
+  && a.revenueProperty === b.revenueProperty
+  && a.dateField === b.dateField
+  && a.pipelineEnabled === b.pipelineEnabled
+  && a.pipelineStageId === b.pipelineStageId;
+
+export function findHubspotConnectionSourceMappingMismatches(activeSources: any[], connectionMapping: any) {
+  if (!connectionMapping || activeSources.length === 0) return [];
+  if (activeSources.some((source) => hubspotInventoryMappingsMatch(source?.mapping, connectionMapping))) return [];
+  return [{
+    reason: 'active HubSpot connection mapping does not match any active GA4 HubSpot source',
+    activeSourceIds: activeSources.map((source) => String(source?.sourceId || '')).filter(Boolean),
+  }];
+}
+
 const isStrictDateKey = (value: any) => {
   const raw = String(value || '');
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);

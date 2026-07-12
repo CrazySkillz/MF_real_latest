@@ -11,7 +11,7 @@ import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from 
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
-import { inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
+import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
@@ -1641,14 +1641,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hubspotConnectionMapping = latestActiveHubspotConnectionRaw
         ? summarizeHubspotMapping(normalizeOverviewInventoryMappingConfig(latestActiveHubspotConnectionRaw?.mappingConfig))
         : null;
-      const normalizeHubspotSelectedValues = (values: any[]) => values.map((value) => String(value || "").trim()).filter(Boolean).sort().join("\n");
-      const hubspotMappingsMatch = (a: any, b: any) => Boolean(a && b)
-        && a.campaignProperty === b.campaignProperty
-        && normalizeHubspotSelectedValues(a.selectedValues || []) === normalizeHubspotSelectedValues(b.selectedValues || [])
-        && a.revenueProperty === b.revenueProperty
-        && a.dateField === b.dateField
-        && a.pipelineEnabled === b.pipelineEnabled
-        && a.pipelineStageId === b.pipelineStageId;
       const hubspotProvenanceFindings = {
         missingActiveHubspotAccount: activeGa4HubspotRevenueSources.length > 0 && !hubspotAccountPresent ? [{ reason: "missing active HubSpot portalId/portalName" }] : [],
         activeHubspotSourcesMissingMappingProvenance: activeHubspotProvenanceSources.filter((source: any) =>
@@ -1658,9 +1650,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           || !source.mapping.dateField
           || source.platformContext !== "ga4"
         ),
-        hubspotConnectionSourceMappingMismatches: hubspotConnectionMapping
-          ? activeHubspotProvenanceSources.filter((source: any) => !hubspotMappingsMatch(source.mapping, hubspotConnectionMapping))
-          : [],
+        hubspotConnectionSourceMappingMismatches: findHubspotConnectionSourceMappingMismatches(
+          activeHubspotProvenanceSources,
+          hubspotConnectionMapping,
+        ),
       };
       const hubspotProvenanceFindingCount = Object.values(hubspotProvenanceFindings).reduce((sum, value: any) => sum + (Array.isArray(value) ? value.length : 0), 0);
       const hubspotProvenancePass = activeGa4HubspotRevenueSources.length > 0 && hubspotProvenanceFindingCount === 0;

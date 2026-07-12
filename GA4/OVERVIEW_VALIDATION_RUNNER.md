@@ -165,6 +165,25 @@ remain visible in `certificationGate.openCategories` and
 `nextAction.missingOrFailedChecks`. `h10a.overallPass` is the strict H10 gate
 result, not a statement that collection merely finished.
 
+Recorded deployed H10a runner `2026-07-12.4` evidence on `2026-07-12` for the
+primary campaign found four GA4 HubSpot sources, three active sources, six
+records, and zero total/date/grain/campaign/type/currency/partial-replacement/
+zero-record/orphan/duplicate/context/proxy-scope integrity candidates. The only
+two HubSpot findings were connection/source mapping mismatches. Code trace
+confirmed those were validator false positives: the connection row stores the
+latest processed source mapping, while three distinct active source mappings
+are valid. H10a also incorrectly expected one active source and required
+optional ROAS/ROI/CPA KPI/Benchmark rows. Separately, GA4 daily evidence was
+stale (`dataThroughDate: 2026-07-11`, `dailyLatestDate: 2026-07-10`); H10b does
+not close or suppress that scheduler/freshness finding.
+
+Runner `2026-07-12.5` implements H10b. The inventory now passes a multi-source
+campaign when the latest connection mapping matches at least one active source,
+but still reports a real finding when it matches none. H10a allows any positive
+active-source count unless the caller supplies an exact expectation and
+validates only configured Revenue/ROAS/ROI/CPA KPI/Benchmark rows. These are
+validation-only changes; a fresh deployed H10a rerun is required.
+
 ## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
 
 Use one disposable source named `csv10-revenue.csv` and this exact fixture:

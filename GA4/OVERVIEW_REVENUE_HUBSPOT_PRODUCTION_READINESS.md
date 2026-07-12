@@ -1021,6 +1021,27 @@ OAuth, lifecycle, forced-failure, provider-transition, Ad Comparison,
 Campaign DeepDive, notification, concurrent-refresh, or email-delivery proof,
 and therefore does not close H10 certification by itself.
 
+Deployed H10a runner `2026-07-12.4` evidence on `2026-07-12` found zero
+persisted HubSpot total, campaign-value, date, duplicate-grain, cross-campaign,
+record-type, currency, partial-replacement, zero-record, orphan, duplicate-
+source, context, or Pipeline Proxy scope candidates across four sources, three
+active sources, and six records. Its two connection/source mismatch findings
+were validator false positives: atomic GA4 HubSpot processing stores the latest
+processed source mapping on the single connection row, so it cannot equal all
+three valid distinct active-source mappings. The same packet exposed two H10a
+assumption defects—an implicit one-active-source expectation and required
+optional ROAS/ROI/CPA KPI/Benchmark rows—and a separate real GA4 daily
+freshness finding (`2026-07-10` latest daily row against `2026-07-11` data-
+through date).
+
+Local H10b status on `2026-07-12`: runner `2026-07-12.5` and the read-only
+inventory now require the connection mapping to match at least one active
+source, retain a finding when it matches none, allow multiple active sources,
+and validate only configured financial KPI/Benchmark rows. No HubSpot save,
+provider, scheduler, record, revenue calculation, cleanup, or UI path changed.
+The GA4 freshness finding and all other open H10 deployed categories remain
+open pending fresh evidence.
+
 ## Validation performed for this audit
 
 This first audit is a documentation and root-cause baseline. It included:

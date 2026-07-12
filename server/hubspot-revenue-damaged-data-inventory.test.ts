@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { inspectGa4HubspotRevenueDamage } from './utils/hubspot-revenue-damage-inventory';
+import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from './utils/hubspot-revenue-damage-inventory';
 
 const mapping = (total: number, campaignTotal = total) => JSON.stringify({
   provider: 'hubspot',
@@ -14,6 +14,27 @@ const mapping = (total: number, campaignTotal = total) => JSON.stringify({
 });
 
 describe('HubSpot Revenue damaged-data inventory', () => {
+  it('allows distinct active source mappings when the latest connection mapping matches one source', () => {
+    const source = (sourceId: string, selectedValue: string) => ({
+      sourceId,
+      mapping: {
+        campaignProperty: 'dealname',
+        selectedValues: [selectedValue],
+        revenueProperty: 'amount',
+        dateField: 'closedate',
+        pipelineEnabled: false,
+        pipelineStageId: null,
+      },
+    });
+    const sources = [source('hs-alpha', 'Alpha'), source('hs-beta', 'Beta'), source('hs-gamma', 'Gamma')];
+
+    expect(findHubspotConnectionSourceMappingMismatches(sources, sources[2].mapping)).toEqual([]);
+    expect(findHubspotConnectionSourceMappingMismatches(sources, source('missing', 'Missing').mapping)).toEqual([{
+      reason: 'active HubSpot connection mapping does not match any active GA4 HubSpot source',
+      activeSourceIds: ['hs-alpha', 'hs-beta', 'hs-gamma'],
+    }]);
+  });
+
   it('passes a reconciled GA4 source without double-counting attributed records', () => {
     const result = inspectGa4HubspotRevenueDamage([
       { id: 'hs-clean', campaignId: 'c1', sourceType: 'hubspot', platformContext: 'ga4', currency: 'USD', isActive: true, mappingConfig: mapping(150) },
@@ -91,7 +112,7 @@ describe('HubSpot Revenue damaged-data inventory', () => {
     expect(route).not.toContain('deleteRevenue');
     expect(route).not.toContain('recomputeCampaignDerivedValues');
     const runner = readFileSync('client/public/ga4-overview-validation-runner.js', 'utf8');
-    expect(runner).toContain('var VERSION = "2026-07-12.4";');
+    expect(runner).toContain('var VERSION = "2026-07-12.5";');
     expect(runner).toContain('hubspotFindings: Object.assign({}, hubspotFindings');
     expect(runner).toContain('cleanupAssessment: data.hubspotCleanupAssessment || null');
     expect(runner).toContain('data.hubspotCleanupAssessment.automaticCleanupAllowed === false');

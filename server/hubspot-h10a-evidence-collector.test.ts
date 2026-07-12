@@ -107,6 +107,10 @@ describe("HubSpot H10a automated evidence collector", () => {
     expect(collector).toContain("hubspotPipelineProxy");
     expect(collector).toContain("hubspotAlternateMappingMatrixPack");
     expect(collector).toContain("hubspotOtherCampaignPortabilityPack");
+    expect(collector).toContain("allowAnyActiveSourceCount: true");
+    expect(collector).toContain("validateConfiguredFinancialMetrics: true");
+    expect(collector).not.toContain('requiredKpiMetrics: ["Revenue", "ROAS", "ROI", "CPA"]');
+    expect(collector).not.toContain('requiredBenchmarkMetrics: ["revenue", "roas", "roi", "cpa"]');
     expect(collector).not.toContain('method: "POST"');
     expect(collector).not.toContain("hubspotProxyTransitionAfter");
     expect(collector).not.toContain("hubspotPropagationAfter");

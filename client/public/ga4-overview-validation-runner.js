@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-12.4";
+  var VERSION = "2026-07-12.5";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -949,7 +949,9 @@
     var data = result.data || {};
     var provenance = data.hubspotProvenance || {};
     var activeSources = Array.isArray(provenance.activeSources) ? provenance.activeSources : [];
-    var expectedActiveSourceCount = config.expectedActiveSourceCount == null ? 1 : Number(config.expectedActiveSourceCount);
+    var expectedActiveSourceCount = config.allowAnyActiveSourceCount === true
+      ? null
+      : (config.expectedActiveSourceCount == null ? 1 : Number(config.expectedActiveSourceCount));
     var expectedPipelineEnabled = typeof config.expectedPipelineEnabled === "boolean" ? config.expectedPipelineEnabled : null;
     var activeSourceCountPass = !Number.isFinite(expectedActiveSourceCount) || activeSources.length === expectedActiveSourceCount;
     var pipelineExpectationPass = expectedPipelineEnabled === null || activeSources.every(function (source) {
@@ -2330,6 +2332,18 @@
     }, 0)) || 0;
     var kpiRows = Array.isArray(byName.kpis && byName.kpis.data) ? byName.kpis.data : rowsOf(byName.kpis && byName.kpis.data);
     var benchmarkRows = Array.isArray(byName.benchmarks && byName.benchmarks.data) ? byName.benchmarks.data : rowsOf(byName.benchmarks && byName.benchmarks.data);
+    if (config.validateConfiguredFinancialMetrics === true) {
+      if (arrayValues(requiredKpiMetrics).length === 0) {
+        requiredKpiMetrics = ["Revenue", "ROAS", "ROI", "CPA"].filter(function (metric) {
+          return compareMetricRows(kpiRows, [metric], values)[0].rowPresent;
+        });
+      }
+      if (arrayValues(requiredBenchmarkMetrics).length === 0) {
+        requiredBenchmarkMetrics = ["revenue", "roas", "roi", "cpa"].filter(function (metric) {
+          return compareMetricRows(benchmarkRows, [metric], values)[0].rowPresent;
+        });
+      }
+    }
     var kpiComparisons = compareMetricRows(kpiRows, requiredKpiMetrics, values);
     var benchmarkComparisons = compareMetricRows(benchmarkRows, requiredBenchmarkMetrics, values);
     var endpointStatuses = results.map(compactEndpointStatus);
@@ -3422,12 +3436,11 @@
     var base = { campaignId: campaignId, propertyId: propertyId, dateRange: config.dateRange || DEFAULT_DATE_RANGE };
     var tasks = {
       inventory: function () { return hubspotInventory(Object.assign({}, base, config.inventory || {})); },
-      provenance: function () { return hubspotProvenance(Object.assign({}, base, config.provenance || {})); },
+      provenance: function () { return hubspotProvenance(Object.assign({ allowAnyActiveSourceCount: true }, base, config.provenance || {})); },
       overview: function () { return overviewPack(Object.assign({}, base, config.overview || {})); },
       report: function () { return hubspotReportValuePack(Object.assign({ requireSnapshot: true, requirePdf: true }, base, config.report || {})); },
       kpiBenchmark: function () { return hubspotKpiBenchmarkValuePack(Object.assign({
-        requiredKpiMetrics: ["Revenue", "ROAS", "ROI", "CPA"],
-        requiredBenchmarkMetrics: ["revenue", "roas", "roi", "cpa"]
+        validateConfiguredFinancialMetrics: true
       }, base, config.kpiBenchmark || {})); }
     };
     if (config.pipeline) tasks.pipeline = function () { return hubspotPipelineProxy(Object.assign({}, base, config.pipeline)); };
@@ -3483,7 +3496,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.4')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.5')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

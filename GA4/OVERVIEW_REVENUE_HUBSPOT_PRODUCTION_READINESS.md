@@ -22,6 +22,32 @@ Audit baseline:
   recorded below and remains uncommitted/deployment-unverified
 - production data changes or cleanup in this audit: none
 
+Future-reference rule: the mandatory status above and the final certification
+gate at the end of this file are the current answer. Intermediate H1-H10 and
+Current Commit 4.x statements are retained as audit chronology; their earlier
+`pending`, `unproven`, `broken`, or narrow-scope status does not override the
+H10d result.
+
+Implementation alignment at H10d:
+
+- `server/routes-oauth.ts`, `server/storage.ts`, and
+  `server/utils/hubspot-pagination.ts` implement campaign-scoped OAuth/source
+  ownership, atomic replacement/disconnect, last-good retention, and fail-closed
+  provider pagination.
+- `server/utils/data-transformation.ts` and the saved HubSpot mapping contract
+  implement strict confirmed-date daily materialization and exact mapping.
+- `client/src/pages/ga4-metrics.tsx`,
+  `server/utils/campaign-current-values.ts`, and
+  `server/ga4-scheduled-report-pdf.ts` use the canonical active-source financial
+  values downstream and exclude Pipeline Proxy from confirmed revenue.
+- The H1-H10d regression matrix named in this file guards lifecycle, failure,
+  mapping, financial, report, notification, isolation, and damaged-data paths.
+
+If any of those implementation contracts changes, or new contradictory runtime
+evidence appears, the affected path must be lowered from certified until it is
+re-audited. Documentation alone must never preserve this status after such a
+change.
+
 The recorded Current Commit 4.16 runner pass remains useful bounded evidence.
 It does not establish clean certification for the complete lifecycle and
 downstream propagation scope required by `AGENTS.md` and
@@ -424,7 +450,9 @@ does not deduplicate business revenue already represented in native GA4; correct
 offsite selection is a user/provider data responsibility disclosed by the
 wizard.
 
-Result: formula contract proven; HubSpot input integrity not clean-certified.
+Historical audited-baseline result: formula contract proven; HubSpot input
+integrity was not clean-certified at that baseline. H1-H10d closed this blocker;
+the current status is the mandatory status and final certification gate above.
 
 ## Campaign Breakdown and Ad Comparison
 

@@ -21,6 +21,25 @@ For GA4 Overview spend-only readiness involving Google Sheets or Upload CSV, use
 
 GA4 Overview is clean-certified as production-ready for the current local GA4 Overview code scope documented in this file.
 
+### HubSpot Revenue source-family status
+
+**HubSpot Revenue is clean-certified and production-ready for the validated
+documented GA4 Overview scope.** The canonical source-specific record is
+`GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; its H10d final matrix
+supersedes the narrower historical Current Commit 4.x HubSpot status entries
+retained later in this file. The status aligns with the implemented H1-H9
+runtime contracts and the H10-H10d evidence/consistency guards for atomic
+replacement and disconnect, last-good retention, strict dates and pagination,
+mapping, Pipeline Proxy exclusion/transition, downstream financial values,
+Reports, KPI/Benchmark values, notifications, campaign isolation, and clean
+damaged-data inventory.
+
+This is not a claim about future HubSpot/API changes, unlisted configurations,
+future provider failures or deliveries, non-GA4 HubSpot contexts, or the
+separately observed GA4-native daily-table freshness boundary. Any relevant
+code change, failed validation, or contradictory runtime evidence immediately
+reopens only the affected path.
+
 That certification is limited to the current GA4 Overview implementation, local code traces, local regression coverage recorded below, and already documented Overview cleanup boundaries. It is not evidence that any other GA4 section or any future platform implementation is production-ready.
 
 The Google Sheets and Upload CSV spend component is not clean-certified by that local code-scope statement. Its current status, explicit Google OAuth hold, and blocking evidence queue are governed by `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`. Google Sheets spend remains unproven for stable deployed automatic refresh until that component queue closes.
@@ -764,6 +783,11 @@ Shopify current validation note:
 
 For the current Google Sheets and Upload CSV spend certification status, `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` is authoritative: Google Sheets work is on hold for later completion, the bounded dated-CSV claim is closed, and broader optional CSV/source inventories are deferred for later.
 
+Historical-ledger note: the HubSpot row below preserves the incremental Current
+Commit 4.x evidence record. Its narrower status and then-pending items are
+superseded by the H10d source-family status at the top of this file and by
+`GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`.
+
 | Source family | Overview paths affected | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Current status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Google Sheets revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for deployed campaign/source add/import of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after endpoint plus UI evidence (`$30,300`) | Closed for deployed campaign/source edit/update of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after endpoint plus UI evidence (`$54,200`) | Closed for deployed campaign/source run-now reprocess of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after endpoint plus UI evidence (`$84,500`) | Closed for deployed disposable source `32661325-d2a5-404f-a898-2c84e4275809` after fixed-response endpoint evidence plus UI parity (`$31,000` removed, `$600` CSV source preserved) | Closed only for the validated deployed Google Sheets revenue campaign/source lifecycle: add/import, edit/update, run-now refresh/reprocess, and delete/deactivate. Does not certify other campaigns/properties or source families. |
@@ -791,6 +815,11 @@ Execution order for the next validation step:
 8. If any action changes an unrelated source ID, duplicates an active source, loses provenance, changes totals unexpectedly, broadens source scope, or still shows a false failed response after a successful delete, stop Current Commit 2 and add the exact runtime fix as the next Current Commit.
 
 What remains unproven externally:
+
+This is a historical whole-Overview external-boundary ledger. Any narrower
+HubSpot 4.x wording below does not reopen the H10d certified scope; only the
+future/excluded HubSpot boundaries in the canonical source-specific document
+remain non-certified.
 
 - Google Sheets revenue delete/deactivate is closed only for the validated deployed campaign/source path recorded above. Current Commit 2c deployed latency timing is user-confirmed closed without a numeric SLA. Google Sheets spend lifecycle and startup-fired scheduler execution are closed only for the validated deployed campaign/source paths recorded above.
 - Normal wall-clock daily scheduler execution remains unproven if required beyond the startup-fired scheduler packet. The GA4 daily stale-row freshness fix is deployed-validated for stale detection/warning, post-reauthorization backfill, and UI Trends parity on the affected campaign/property; future GA4 provider availability, other campaign/property pairs, and normal wall-clock scheduled-hour execution remain external. The `/ga4-timeseries` reconnect response guard is regression-covered locally and deployed operational auth is healthy after reconnect, but the deployed broken-token negative branch was not re-triggered. The GA4 Connected Platforms reconnect-required badge is locally regression-covered, pushed/deployed in commit `3b253ef2`, and deployed operational auth returned `/ga4-metrics` HTTP `200` with `requiresReauthorization: false`; the deployed negative reconnect UI state remains unproven because no real auth failure is currently present. Current Commit 2f second-campaign Google Sheets spend add/import is closed only for visible UI/source-modal financial parity at `$507.70` and endpoint recheck; Current Commit 2f.1 is closed for deployed native GA4 no-completed-window endpoint behavior; second-campaign edit/update endpoint evidence is closed for `$706.45`; second-campaign refresh/reprocess totals, source identity, and edit-preview freshness are closed for `$807.70` after Current Commit 2f.2 deployed validation; second-campaign delete/deactivate is closed for source `62772549-88dc-4cc5-bfe6-2e991d518ef5` after endpoint plus UI evidence (`$807.70` removed). Current Commit 2g.0 validation-runner deployment, Current Commit 2i deployed automated Overview endpoint pack, and Current Commit 2h deployed report API/snapshot/PDF endpoint smoke are closed for their recorded scopes. Current Commit 2g mapping-variant automation is deployed and closed for the configured Google Sheets spend fixture at `$678.95`; unlisted Google Sheets tabs/mappings remain unproven until their own configured `googleSheetsVariantPack(...)` output and UI parity are captured. Production source-damage inventory for campaigns/scopes outside the recorded Current Commit 3 target campaign, future scheduled/test email deliveries outside the recorded GA4 Overview Report packet, untested report variants, and other source families remain unproven until their own evidence packets are captured.

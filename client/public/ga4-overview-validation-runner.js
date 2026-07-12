@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-12.5";
+  var VERSION = "2026-07-12.6";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -3494,9 +3494,171 @@
     return summary;
   }
 
+  function hubspotH10cLatestTimestamp(values) {
+    return values.filter(Boolean).sort().slice(-1)[0] || null;
+  }
+
+  async function hubspotH10cLifecycleSchedulerPack(config) {
+    config = config || {};
+    var deploymentCommit = requireValue(config.deploymentCommit, "deploymentCommit");
+    var deploymentId = requireValue(config.deploymentId, "deploymentId");
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = requireValue(config.propertyId, "propertyId");
+    var h10a = await hubspotH10CollectEvidence(config);
+    var artifacts = Object.assign({}, h10a.artifacts);
+    var provenance = artifacts.provenance || {};
+    var activeSources = Array.isArray(provenance.activeSources) ? provenance.activeSources : [];
+
+    if (!artifacts.mapping && activeSources.length > 0) {
+      var variants = activeSources.map(function (source, index) {
+        var mapping = source && source.mapping || {};
+        return {
+          label: "active-source-" + String(index + 1),
+          campaignId: campaignId,
+          propertyId: propertyId,
+          expectedSourceId: source.sourceId,
+          expectedCampaignProperty: mapping.campaignProperty,
+          expectedSelectedValues: mapping.selectedValues || [],
+          expectedRevenueProperty: mapping.revenueProperty,
+          expectedDateField: mapping.dateField,
+          expectedDailyMaterialization: mapping.dailyMaterialization,
+          expectedHubspotRevenue: source.revenueTotal,
+          expectedRecordCount: source.recordCount
+        };
+      });
+      artifacts.mapping = await hubspotAlternateMappingMatrixPack({ variants: variants })
+        .catch(function (error) { return hubspotH10CollectionFailure("mapping", error); });
+    }
+
+    if (!artifacts.pipeline) {
+      var pipelineSource = activeSources.find(function (source) {
+        return source && source.mapping && source.mapping.pipelineEnabled === true && Number(source.mapping.pipelineTotalToDate || 0) > 0;
+      });
+      var overviewRevenue = artifacts.overview && artifacts.overview.financial && artifacts.overview.financial.revenueBreakdownTotal;
+      if (pipelineSource && overviewRevenue !== undefined && overviewRevenue !== null) {
+        artifacts.pipeline = await hubspotPipelineProxy({
+          campaignId: campaignId,
+          propertyId: propertyId,
+          sourceId: pipelineSource.sourceId,
+          expectedConfirmedRevenueTotal: overviewRevenue,
+          expectedPipelineTotalToDate: pipelineSource.mapping.pipelineTotalToDate,
+          expectedSelectedValues: pipelineSource.mapping.selectedValues || []
+        }).catch(function (error) { return hubspotH10CollectionFailure("pipeline", error); });
+      }
+    }
+
+    var gateConfig = { deploymentCommit: deploymentCommit, deploymentId: deploymentId };
+    var evidence = hubspotH10BuildCollectedEvidence(gateConfig, artifacts);
+    var gate = hubspotCleanCertificationGate({
+      deploymentCommit: deploymentCommit,
+      deploymentId: deploymentId,
+      evidence: evidence
+    });
+    var sourceSyncTimestamps = activeSources.map(function (source) {
+      return source && source.mapping && source.mapping.lastSyncedAt || null;
+    }).filter(Boolean);
+    var inventoryPass = artifacts.inventory && artifacts.inventory.overallPass === true;
+    var provenancePass = provenance.overallPass === true;
+    var currentStatePass = inventoryPass && provenancePass;
+    var freshness = artifacts.overview && artifacts.overview.ga4 || {};
+    var mappingPass = artifacts.mapping && artifacts.mapping.overallPass === true;
+    var pipelineConfiguredCount = activeSources.filter(function (source) {
+      return source && source.mapping && source.mapping.pipelineEnabled === true;
+    }).length;
+    var pipelinePositiveCount = activeSources.filter(function (source) {
+      return source && source.mapping && source.mapping.pipelineEnabled === true && Number(source.mapping.pipelineTotalToDate || 0) > 0;
+    }).length;
+    var coverage = {
+      lifecycle: {
+        currentStatePass: currentStatePass,
+        localRegressionFiles: ["server/hubspot-revenue-transaction.test.ts", "server/hubspot-ga4-disconnect-transaction.test.ts"],
+        deployedAddEditDeleteDisconnectEventProven: false,
+        status: "local-contract-and-deployed-current-state-only"
+      },
+      failureRetention: {
+        lastGoodCurrentStatePass: currentStatePass,
+        localRegressionFiles: ["server/hubspot-revenue-transaction.test.ts", "server/hubspot-pagination.test.ts", "server/hubspot-ga4-disconnect-transaction.test.ts"],
+        deployedForcedFailureEventProven: false,
+        status: "local-contract-and-deployed-current-state-only"
+      },
+      schedulerReprocessing: {
+        activeSourceCount: activeSources.length,
+        sourceSyncTimestampCount: sourceSyncTimestamps.length,
+        allActiveSourcesHaveSyncTimestamp: activeSources.length > 0 && sourceSyncTimestamps.length === activeSources.length,
+        latestSourceSyncedAt: hubspotH10cLatestTimestamp(sourceSyncTimestamps),
+        ga4DailyFresh: freshness.refreshIsStale === false,
+        dataThroughDate: freshness.dataThroughDate || null,
+        dailyLatestDate: freshness.dailyLatestDate || null,
+        persistedSchedulerEventAuditAvailable: false,
+        deployedSchedulerEventProven: false,
+        status: "current-state-only-no-persisted-event-audit"
+      },
+      mapping: {
+        activeSourceCount: activeSources.length,
+        derivedVariantCount: artifacts.mapping && Number(artifacts.mapping.variantCount || 0),
+        deployedConsistencyPacketPass: mappingPass
+      },
+      pipelineProxy: {
+        configuredSourceCount: pipelineConfiguredCount,
+        positiveProxySourceCount: pipelinePositiveCount,
+        deployedPositivePacketPass: artifacts.pipeline ? artifacts.pipeline.overallPass === true : false,
+        transitionEventProven: false
+      },
+      downstreamIsolation: {
+        reportPacketPass: artifacts.report && artifacts.report.overallPass === true,
+        kpiBenchmarkPacketPass: artifacts.kpiBenchmark && artifacts.kpiBenchmark.overallPass === true,
+        multiCampaignPacketPass: artifacts.portability && artifacts.portability.overallPass === true,
+        adComparisonDeployedProven: false,
+        campaignDeepDiveDeployedProven: false
+      },
+      staleDaily: {
+        pass: freshness.refreshIsStale === false,
+        dataThroughDate: freshness.dataThroughDate || null,
+        dailyLatestDate: freshness.dailyLatestDate || null
+      }
+    };
+    var remainingActions = [
+      "Retain one controlled deployed lifecycle before/after artifact for add/edit/delete/disconnect.",
+      "Retain one controlled scheduler/provider before/after artifact; no persisted scheduler event audit currently exists.",
+      "Retain forced-failure evidence outside production fault injection and verify last-good state with this read-only pack.",
+      "Retain positive Pipeline Proxy transition evidence when a positive proxy fixture is available.",
+      "Retain Ad Comparison, Campaign DeepDive, multi-campaign, notification, OAuth, and email-delivery evidence."
+    ];
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: "hubspot-h10c-lifecycle-scheduler-evidence",
+      deploymentCommit: deploymentCommit,
+      deploymentId: deploymentId,
+      readonly: true,
+      coverage: coverage,
+      artifactResults: Object.keys(artifacts).reduce(function (map, name) {
+        map[name] = { overallPass: artifacts[name] && artifacts[name].overallPass === true, error: artifacts[name] && artifacts[name].error || null };
+        return map;
+      }, {}),
+      evidence: evidence,
+      certificationGate: gate,
+      remainingActions: remainingActions,
+      caveats: [
+        "This one-run pack is read-only and does not create/edit/delete/disconnect sources, call HubSpot, trigger scheduler, inject failures, send email, or mutate notifications.",
+        "Lifecycle and failure-retention contracts have local regression evidence, but deployed events remain open until retained controlled artifacts exist.",
+        "Source lastSyncedAt proves persisted current state, not which scheduler invocation produced it; no persisted HubSpot scheduler event audit exists."
+      ]
+    };
+    summary.overallPass = gate.overallPass === true;
+    console.log({
+      runnerVersion: summary.runnerVersion,
+      overallPass: summary.overallPass,
+      coverage: summary.coverage,
+      openCategories: gate.openCategories,
+      remainingActions: remainingActions
+    });
+    return summary;
+  }
+
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.5')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.6')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
@@ -3516,6 +3678,7 @@
       "await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({ variants: [{ label: 'dealname-amount-closedate', campaignId: 'CAMPAIGN_ID', propertyId: 'PROPERTY_ID', expectedSourceId: 'SOURCE_ID', expectedCampaignProperty: 'dealname', expectedSelectedValues: ['CRM_VALUE'], expectedRevenueProperty: 'amount', expectedDateField: 'closedate', expectedDailyMaterialization: 'selected_date_field_v1', expectedHubspotRevenue: 8000, expectedRecordCount: 2 }] })",
       "GA4OverviewValidation.hubspotCleanCertificationGate({ deploymentCommit: 'DEPLOYED_COMMIT', deploymentId: 'PRODUCTION_DEPLOYMENT_ID', evidence: h10Evidence })",
       "await GA4OverviewValidation.hubspotH10CollectEvidence({ deploymentCommit: 'DEPLOYED_COMMIT', deploymentId: 'PRODUCTION_DEPLOYMENT_ID', campaignId, propertyId, report: { targetCampaignName: 'GA4_CAMPAIGN_ROW' }, pipeline: { expectedConfirmedRevenueTotal: 7600, expectedPipelineTotalToDate: 5000 }, variants: mappingVariants, campaigns: campaignVariants })",
+      "await GA4OverviewValidation.hubspotH10cLifecycleSchedulerPack({ deploymentCommit: 'DEPLOYED_COMMIT', deploymentId: 'PRODUCTION_DEPLOYMENT_ID', campaignId, propertyId })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -3555,6 +3718,7 @@
     hubspotCleanCertificationGate: hubspotCleanCertificationGate,
     hubspotH10BuildCollectedEvidence: hubspotH10BuildCollectedEvidence,
     hubspotH10CollectEvidence: hubspotH10CollectEvidence,
+    hubspotH10cLifecycleSchedulerPack: hubspotH10cLifecycleSchedulerPack,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

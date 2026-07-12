@@ -1591,6 +1591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })).filter((item: any) => item.campaignValue)
           : [],
         dailyMaterialization: mapping?.dailyMaterialization ? String(mapping.dailyMaterialization) : null,
+        lastSyncedAt: mapping?.lastSyncedAt ? String(mapping.lastSyncedAt) : null,
+        lastTotalRevenue: Number.isFinite(Number(mapping?.lastTotalRevenue)) ? Math.round(Number(mapping.lastTotalRevenue) * 100) / 100 : null,
       });
       const hubspotSourceRevenueTotal = (sourceId: string) => {
         let aggregate = 0;

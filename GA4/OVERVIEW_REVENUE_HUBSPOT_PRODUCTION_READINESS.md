@@ -1042,6 +1042,23 @@ provider, scheduler, record, revenue calculation, cleanup, or UI path changed.
 The GA4 freshness finding and all other open H10 deployed categories remain
 open pending fresh evidence.
 
+Deployed H10b runner `2026-07-12.5` rerun evidence: inventory, provenance,
+report/PDF, and configured KPI/Benchmark artifacts all passed without failed
+checks or endpoint errors. Overview failed only `dailyNotStale`. This closes the
+multi-source inventory/provenance false-positive finding for the recorded
+campaign and confirms the current persisted HubSpot state is clean within the
+H9 inventory scope; it does not certify uncollected lifecycle/event categories.
+
+Local H10c status on `2026-07-12`: runner `2026-07-12.6` consolidates H10a,
+derived active-source mapping consistency, optional positive Pipeline Proxy,
+downstream packet status, source sync timestamps, and GA4 freshness into one
+read-only result. Root cause of the remaining scheduler-evidence gap is
+observability: HubSpot mappings persist `lastSyncedAt`, but the scheduler has no
+dedicated persisted run/failure audit event. H10c does not add production fault
+injection, schema changes, or scheduler/runtime writes; it marks deployed
+lifecycle/failure/scheduler events unproven until retained controlled evidence
+exists. No revenue value or runtime calculation changed.
+
 ## Validation performed for this audit
 
 This first audit is a documentation and root-cause baseline. It included:

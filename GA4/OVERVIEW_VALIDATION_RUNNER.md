@@ -184,6 +184,42 @@ active-source count unless the caller supplies an exact expectation and
 validates only configured Revenue/ROAS/ROI/CPA KPI/Benchmark rows. These are
 validation-only changes; a fresh deployed H10a rerun is required.
 
+Recorded deployed H10b rerun evidence with runner `2026-07-12.5`: inventory,
+provenance, report/PDF, and configured KPI/Benchmark artifacts returned
+`overallPass: true` with no failed checks or endpoint errors. The strict HubSpot
+damage/provenance false positives are closed for that campaign packet. Overview
+returned only `dailyNotStale: false`; ten H10 categories remained open because
+the minimum H10a command did not collect their required event/external evidence,
+not because ten runtime defects were observed.
+
+### Current Commit H10c consolidated lifecycle/scheduler evidence
+
+Runner `2026-07-12.6` adds one read-only command:
+
+```js
+const h10c = await GA4OverviewValidation.hubspotH10cLifecycleSchedulerPack({
+  deploymentCommit: 'DEPLOYED_COMMIT',
+  deploymentId: 'PRODUCTION_DEPLOYMENT_ID',
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID'
+});
+```
+
+The pack runs H10a, derives an exact persisted mapping-consistency matrix for
+all active sources, validates a positive configured Pipeline Proxy when one is
+currently available, consolidates report/KPI/Benchmark/multi-campaign results,
+and reports source `lastSyncedAt` plus GA4 daily freshness in one result. It is
+GET/PDF-only and performs no lifecycle mutation, provider call, scheduler run,
+failure injection, report send, or notification action.
+
+H10c explicitly reports local contract coverage separately from deployed event
+proof. The codebase has no persisted HubSpot scheduler-run/failure audit row, so
+`lastSyncedAt` proves current persisted state but not which scheduler invocation
+produced it. Lifecycle, forced-failure, scheduler-event, positive transition,
+Ad Comparison, Campaign DeepDive, notification, OAuth, and delivery checks stay
+open until retained controlled evidence exists. H10c does not convert their
+absence into a pass.
+
 ## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
 
 Use one disposable source named `csv10-revenue.csv` and this exact fixture:

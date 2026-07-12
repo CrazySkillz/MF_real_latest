@@ -162,6 +162,7 @@ export interface IStorage {
   updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined>;
   deleteRevenueSource(sourceId: string): Promise<boolean>;
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
+  deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
@@ -1287,6 +1288,30 @@ export class DatabaseStorage implements IStorage {
       .delete(revenueRecords)
       .where(eq(revenueRecords.revenueSourceId, sourceId));
     return (result.rowCount || 0) >= 0;
+  }
+
+  async deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean> {
+    return await db.transaction(async (tx: any) => {
+      const contextCondition = platformContext === "ga4"
+        ? or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext))
+        : eq(revenueSources.platformContext, platformContext as any);
+      const [deletedSource] = await tx
+        .update(revenueSources)
+        .set({ isActive: false } as any)
+        .where(and(
+          sql`${revenueSources.id}::text = ${sourceId}`,
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.isActive, true),
+          contextCondition,
+        ))
+        .returning({ id: revenueSources.id });
+      if (!deletedSource) return false;
+      await tx.delete(revenueRecords).where(and(
+        eq(revenueRecords.revenueSourceId, sourceId),
+        eq(revenueRecords.campaignId, campaignId),
+      ));
+      return true;
+    });
   }
 
   async createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]> {

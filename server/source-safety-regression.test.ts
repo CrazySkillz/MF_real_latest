@@ -220,8 +220,7 @@ describe("source safety regression guards", () => {
     expect(route).toContain("storage.getRevenueSource(campaignId, sourceId)");
     expect(route).toContain("const requestedPlatformContextRaw = (req.query as any)?.platformContext;");
     expect(route).toContain("sourcePlatformContext.toLowerCase() !== requestedPlatformContext");
-    expect(route.indexOf("storage.deleteRevenueSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getRevenueSource(campaignId, sourceId)"));
-    expect(route.indexOf("storage.deleteRevenueRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getRevenueSource(campaignId, sourceId)"));
+    expect(route.indexOf("storage.deleteRevenueSourceWithRecords(campaignId, sourceId, sourcePlatformContext")).toBeGreaterThan(route.indexOf("storage.getRevenueSource(campaignId, sourceId)"));
     expect(route).toContain("Revenue source not found");
 
     const storageSource = readStorageSource();
@@ -231,6 +230,15 @@ describe("source safety regression guards", () => {
 
     expect(method).toContain("eq(revenueSources.campaignId, campaignId)");
     expect(method).toContain("eq(revenueSources.isActive, true)");
+
+    const deleteMethodStart = storageSource.indexOf("async deleteRevenueSourceWithRecords(");
+    const deleteMethodEnd = storageSource.indexOf("async createRevenueRecords", deleteMethodStart);
+    const deleteMethod = storageSource.slice(deleteMethodStart, deleteMethodEnd);
+    expect(deleteMethod).toContain("return await db.transaction(async (tx: any) => {");
+    expect(deleteMethod).toContain("eq(revenueSources.campaignId, campaignId)");
+    expect(deleteMethod).toContain("eq(revenueSources.isActive, true)");
+    expect(deleteMethod).toContain('or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext))');
+    expect(deleteMethod).toContain("eq(revenueRecords.campaignId, campaignId)");
   });
 
   it("individual spend source delete proves campaign ownership before deleting source records", () => {

@@ -2957,8 +2957,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sourceType = String((source as any)?.sourceType || "").toLowerCase();
       let sourceCfg: any = {};
       try { sourceCfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : {}; } catch { sourceCfg = {}; }
-      await storage.deleteRevenueSource(sourceId);
-      await storage.deleteRevenueRecordsBySource(sourceId);
+      const deleted = await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, sourcePlatformContext as RevenueReadPlatformContext);
+      if (!deleted) return res.status(404).json({ success: false, error: "Revenue source not found" });
 
       if ((sourceType === 'hubspot' || sourceType === 'salesforce') && sourceCfg?.pipelineEnabled === true) {
         const contexts: RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom_integration'];

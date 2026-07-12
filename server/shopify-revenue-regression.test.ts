@@ -68,10 +68,7 @@ describe("Shopify revenue regression guard", () => {
     expect(deleteRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(deleteRoute).toContain("const source = await storage.getRevenueSource(campaignId, sourceId);");
     expect(deleteRoute).toContain("sourcePlatformContext.toLowerCase() !== requestedPlatformContext");
-    expect(deleteRoute.indexOf("await storage.deleteRevenueSource(sourceId);")).toBeGreaterThan(
-      deleteRoute.indexOf("const source = await storage.getRevenueSource(campaignId, sourceId);")
-    );
-    expect(deleteRoute.indexOf("await storage.deleteRevenueRecordsBySource(sourceId);")).toBeGreaterThan(
+    expect(deleteRoute.indexOf("await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, sourcePlatformContext")).toBeGreaterThan(
       deleteRoute.indexOf("const source = await storage.getRevenueSource(campaignId, sourceId);")
     );
     expect(deleteRoute).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });");

@@ -172,8 +172,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(deleteRoute).toContain("const source = await storage.getRevenueSource(campaignId, sourceId);");
     expect(deleteRoute).toContain("if (!source) return res.status(404).json({ success: false, error: \"Revenue source not found\" });");
     expect(deleteRoute).toContain("if (requestedPlatformContext && sourcePlatformContext.toLowerCase() !== requestedPlatformContext) {");
-    expect(deleteRoute).toContain("await storage.deleteRevenueSource(sourceId);");
-    expect(deleteRoute).toContain("await storage.deleteRevenueRecordsBySource(sourceId);");
+    expect(deleteRoute).toContain("await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, sourcePlatformContext");
   });
 
   it("keeps GA4 revenue reads active-source-only and platform-context scoped", () => {

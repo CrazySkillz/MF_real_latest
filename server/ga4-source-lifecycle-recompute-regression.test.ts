@@ -77,7 +77,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
       'app.delete("/api/campaigns/:id/revenue-sources/:sourceId", async',
       '// Individual spend source delete',
     );
-    expect(singleDeleteRoute.indexOf("await storage.deleteRevenueRecordsBySource(sourceId);")).toBeLessThan(
+    expect(singleDeleteRoute.indexOf("await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, sourcePlatformContext")).toBeLessThan(
       singleDeleteRoute.indexOf("await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });"),
     );
   });

@@ -165,8 +165,10 @@ High-level rule:
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
 - the v1 new-source Spend chooser offers `Google Ads`, `Google Sheets`, and `Upload CSV`; `LinkedIn Ads` and `Meta / Facebook` are hidden for new setup while existing stored sources remain available through continuity/edit paths
+- deployed UI confirmation on `2026-07-12` verified those three chooser options and the absence of LinkedIn/Meta; existing-source continuity remains local evidence only
 - active Google Sheets spend sources must be repulled automatically after mapped sheet values change; the default near-real-time target is a provider pull within 1 minute, and the open Overview spend queries refetch persisted values within 15 additional seconds
 - this Google Sheets spend contract is bounded polling rather than an instantaneous provider push; failed pulls must retain the last successful stored spend instead of clearing or replacing it with guessed values
+- Google Sheets OAuth/durability and automatic-update certification work is on hold and will be completed later; optional broader CSV variants and production inventories are also deferred and do not expand the current bounded dated-CSV claim
 - profit and efficiency metrics are derived outputs, not manually stored totals
 
 Pipeline Proxy rule:

@@ -534,6 +534,7 @@ Production direction note:
 - existing stored manual spend sources are still supported for continuity until the user edits or removes them
 - `LinkedIn Ads` and `Meta / Facebook` are removed from the new-source Spend chooser for v1
 - existing stored LinkedIn/Meta spend sources and their edit/backend continuity paths remain supported; this chooser change does not delete records, disconnect providers, or certify those source families
+- deployed UI confirmation on `2026-07-12` verified that the chooser shows Google Ads, Google Sheets, and Upload CSV only; existing LinkedIn/Meta edit continuity remains local evidence
 
 Important meaning:
 
@@ -679,6 +680,7 @@ Important current-state note:
 - deployed Google Sheets spend refresh code does not by itself prove durable OAuth credentials; recurring disconnects were traced to the Google OAuth app being `External + Testing`
 - Publishing status is now `In production`, but public `mumus.app` pages/domain ownership, Google branding/data-access verification, final post-publish Google Sheets and GA4 reconnects, automatic token renewal, and more-than-seven-day durability proof are explicitly on hold
 - until the hold closes, Google Sheets spend must not be clean-certified as a stable production connection; the exact blocking queue is in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
+- this Google Sheets hold will be completed later when the user resumes the OAuth and deployed automatic-update validation work
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
 ## Spend Source 3: CSV Journey
@@ -721,6 +723,7 @@ Important meaning:
 - CSV spend preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 - CSV spend process/edit must verify that any provided existing `sourceId` is an active CSV spend source for the requested campaign before updating records
 - deleting a CSV spend source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized spend records tied to that verified source ID
+- optional no-date snapshot UI validation, unusual/unlisted CSV formats, deployed forged-request checks, and additional campaign/source inventories are deferred for later and do not block the existing bounded dated-CSV claim
 
 ## Continuity Reference: Existing Stored Manual Spend
 

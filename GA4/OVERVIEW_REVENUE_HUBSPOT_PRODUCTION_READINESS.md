@@ -1001,6 +1001,15 @@ After H1-H9 pass locally, capture exact deployed packets for:
 Only after this matrix has no broken, partial, or unproven in-scope value path
 may HubSpot Revenue be considered for strict clean certification.
 
+Local H10 evidence-engineering status on `2026-07-12`: runner
+`2026-07-12.3` adds `hubspotCleanCertificationGate`, a pure fail-closed
+consolidation guard for eleven required deployed-evidence categories. It
+requires unique artifact IDs, one deployment commit/environment, valid capture
+times, passing attached artifacts, and every named category check. It performs
+no network or mutation work. Focused and adjacent runner tests pass 36/36.
+This closes only the fragmented-evidence aggregation defect; it does not create
+the deployed artifacts and does not close H10 certification.
+
 ## Validation performed for this audit
 
 This first audit is a documentation and root-cause baseline. It included:
@@ -1494,9 +1503,10 @@ Not proven by local H9:
 
 ## Certification gate
 
-At committed H7 baseline `56f57c773f185dbd2efc322de9d5315d560a6004`
-plus the local H8 and H9 working-tree changes, GA4 Overview HubSpot Revenue is
-**not clean-certified**. H1-H9 have local evidence within their documented
-bounds, but deployed inventory and lifecycle evidence remain pending. Current
-Commit H10 is the next certification phase; it must not certify HubSpot until
-the complete deployed matrix is closed.
+At committed H9 baseline `fcf2da1b044f638e2fe06b2250142954ea06b0a5`
+plus the local H10 gate change, GA4 Overview HubSpot Revenue is **not
+clean-certified**. H1-H9 have local evidence within their documented bounds,
+and the H10 consolidation guard is locally regression-covered, but deployed
+inventory and lifecycle evidence remain pending. H10 must not certify HubSpot
+until the complete deployed matrix is populated, retained, independently
+reviewed, and passes the gate.

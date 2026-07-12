@@ -296,7 +296,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueExportBlock).not.toContain("Pipeline Proxy");
     expect(revenueSourcesDialog).toContain("isPipelineOnlyRevenueSource");
     expect(revenueSourcesDialog).toContain("Pipeline Proxy only");
-    expect(mappedCampaignLabelHelper).toContain('String(source?.sourceType || "").trim().toLowerCase() !== "hubspot"');
+    expect(mappedCampaignLabelHelper).toContain('const sourceType = String(source?.sourceType || "").trim().toLowerCase()');
+    expect(mappedCampaignLabelHelper).toContain('sourceType !== "hubspot" && sourceType !== "shopify"');
     expect(mappedCampaignLabelHelper).toContain("cfg?.campaignMappings");
     expect(mappedCampaignLabelHelper).toContain("mapping?.linkedinCampaignName");
     expect(revenueSourcesDialog).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
@@ -333,7 +334,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -451,7 +452,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -484,7 +485,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -511,7 +512,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function parseStoredGa4CampaignFilterForRunner(raw)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
     expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
     expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
@@ -538,7 +539,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownBefore(config)");
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownAfter(config)");
     expect(campaignBreakdownRunner).toContain('"ga4Breakdown"');
@@ -687,7 +688,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(reportRunner).toContain('"reports"');
     expect(reportRunner).toContain('"snapshots"');
     expect(reportRunner).toContain('"snapshotPdf"');
@@ -820,7 +821,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "async function hubspotReportValuePack(config)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(kpiBenchmarkRunner).toContain('"kpis"');
     expect(kpiBenchmarkRunner).toContain('"benchmarks"');
     expect(kpiBenchmarkRunner).toContain('"hubspotSourceDamageInventory"');
@@ -848,7 +849,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(portabilityRunner).toContain("hubspotPortabilityCampaignPoint");
     expect(portabilityRunner).toContain('"campaign"');
     expect(portabilityRunner).toContain('"ga4ToDate"');
@@ -876,7 +877,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-05.2";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(mappingRunner).toContain("hubspotAlternateMappingVariantPoint");
     expect(mappingRunner).toContain("hubspotAlternateMappingMatrixPack");
     expect(mappingRunner).toContain('"campaign"');

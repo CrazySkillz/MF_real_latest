@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-12.2";
+  var VERSION = "2026-07-12.3";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -3240,9 +3240,84 @@
     return summary;
   }
 
+  var HUBSPOT_H10_REQUIREMENTS = {
+    authenticationAndOwnership: ["oauthConnectPass", "tokenRefreshPass", "unauthorizedCampaignRejected"],
+    lifecycle: ["addPass", "editPass", "deletePass", "disconnectPass"],
+    failureRetention: ["providerFailureRetainsLastGood", "writeFailureRetainsLastGood", "paginationFailureRetainsLastGood", "disconnectFailureRetainsLastGood"],
+    dateMappingAndPipelineVariants: ["supportedDateVariantsPass", "mappingVariantsPass", "pipelineVariantsPass"],
+    schedulerAndReprocessing: ["normalRefreshPass", "sameSourceReprocessPass", "timeoutRetryPass", "lastGoodRetentionPass"],
+    proxyContract: ["transitionPass", "overviewExclusionPass", "reportExclusionPass"],
+    downstreamValues: ["overviewPass", "campaignBreakdownPass", "adComparisonPass", "campaignDeepDivePass", "kpiPass", "benchmarkPass"],
+    reportsAndDelivery: ["reportPass", "snapshotPass", "pdfPass", "emailAcceptedPass", "emailDeliveryConfirmed"],
+    notifications: ["notificationValuePass", "alertValuePass", "campaignIsolationPass"],
+    multiCampaignIsolation: ["twoCampaignsPass", "sourceIdsIsolated", "valuesIsolated", "concurrentRefreshIsolated"],
+    damagedDataInventory: ["readOnlyInventoryPass", "noUnexpectedDamage", "automaticCleanupBlocked"]
+  };
+
+  function hubspotH10EvidenceEntry(name, entry, deploymentCommit, deploymentId) {
+    var requiredChecks = HUBSPOT_H10_REQUIREMENTS[name];
+    var checks = entry && entry.checks && typeof entry.checks === "object" ? entry.checks : {};
+    var capturedAt = entry && entry.capturedAt ? String(entry.capturedAt) : "";
+    var artifact = entry && entry.artifact && typeof entry.artifact === "object" ? entry.artifact : null;
+    var validation = {
+      evidencePresent: !!entry,
+      evidenceIdPresent: !!(entry && entry.evidenceId),
+      deploymentCommitMatches: !!(entry && entry.deploymentCommit === deploymentCommit),
+      deploymentIdMatches: !!(entry && entry.deploymentId === deploymentId),
+      capturedAtValid: !!capturedAt && !Number.isNaN(Date.parse(capturedAt)),
+      artifactPasses: !!artifact && artifact.overallPass === true,
+      requiredChecksPass: requiredChecks.every(function (check) { return checks[check] === true; })
+    };
+    return {
+      category: name,
+      evidenceId: entry && entry.evidenceId || null,
+      capturedAt: capturedAt || null,
+      requiredChecks: requiredChecks,
+      missingOrFailedChecks: requiredChecks.filter(function (check) { return checks[check] !== true; }),
+      validation: validation,
+      overallPass: Object.keys(validation).every(function (check) { return validation[check] === true; })
+    };
+  }
+
+  function hubspotCleanCertificationGate(config) {
+    config = config || {};
+    var deploymentCommit = requireValue(config.deploymentCommit, "deploymentCommit");
+    var deploymentId = requireValue(config.deploymentId, "deploymentId");
+    var evidence = config.evidence && typeof config.evidence === "object" ? config.evidence : {};
+    var categories = Object.keys(HUBSPOT_H10_REQUIREMENTS).map(function (name) {
+      return hubspotH10EvidenceEntry(name, evidence[name], deploymentCommit, deploymentId);
+    });
+    var evidenceIds = categories.map(function (category) { return category.evidenceId; }).filter(Boolean);
+    var checks = {
+      allRequiredCategoriesPresent: categories.every(function (category) { return category.validation.evidencePresent; }),
+      allEvidenceIdsUnique: evidenceIds.length === categories.length && new Set(evidenceIds).size === evidenceIds.length,
+      allCategoryPacketsPass: categories.every(function (category) { return category.overallPass === true; })
+    };
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: new Date().toISOString(),
+      stage: "hubspot-h10-clean-certification-gate",
+      deploymentCommit: deploymentCommit,
+      deploymentId: deploymentId,
+      categoryCount: categories.length,
+      passedCategoryCount: categories.filter(function (category) { return category.overallPass; }).length,
+      categories: categories,
+      openCategories: categories.filter(function (category) { return !category.overallPass; }).map(function (category) { return category.category; }),
+      caveats: [
+        "This gate is pure and read-only: it performs no fetches, provider calls, source mutations, refreshes, recomputes, cleanup, report sends, or notification actions.",
+        "It validates the completeness and consistency of supplied deployed evidence metadata; it does not independently reproduce or authenticate the underlying artifacts.",
+        "A pass is eligible for strict review only when every attached artifact is retained and independently verified under PRODUCTION_READINESS.md."
+      ],
+      checks: checks
+    };
+    summary.overallPass = Object.keys(checks).every(function (name) { return checks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
+
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.1')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.3')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
@@ -3260,6 +3335,7 @@
       "await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({ campaignId, propertyId, requiredKpiMetrics: ['Revenue', 'ROAS', 'ROI', 'CPA'], requiredBenchmarkMetrics: ['revenue', 'roas', 'roi', 'cpa'] })",
       "await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({ campaigns: [{ campaignId: 'CAMPAIGN_A', propertyId: 'PROPERTY_A', expectedHubspotRevenueForFinancials: 1000, expectedSelectedValues: ['CRM_VALUE_A'] }, { campaignId: 'CAMPAIGN_B', propertyId: 'PROPERTY_B', expectedHubspotRevenueForFinancials: 2000, expectedSelectedValues: ['CRM_VALUE_B'] }] })",
       "await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({ variants: [{ label: 'dealname-amount-closedate', campaignId: 'CAMPAIGN_ID', propertyId: 'PROPERTY_ID', expectedSourceId: 'SOURCE_ID', expectedCampaignProperty: 'dealname', expectedSelectedValues: ['CRM_VALUE'], expectedRevenueProperty: 'amount', expectedDateField: 'closedate', expectedDailyMaterialization: 'selected_date_field_v1', expectedHubspotRevenue: 8000, expectedRecordCount: 2 }] })",
+      "GA4OverviewValidation.hubspotCleanCertificationGate({ deploymentCommit: 'DEPLOYED_COMMIT', deploymentId: 'PRODUCTION_DEPLOYMENT_ID', evidence: h10Evidence })",
       "await GA4OverviewValidation.hubspotPropagationBefore({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation' })",
       "await GA4OverviewValidation.hubspotPropagationAfter({ campaignId, propertyId, label: '4.8-hubspot-provider-propagation', expectedHubspotRevenueDelta: 1000 })",
       "await GA4OverviewValidation.googleSheetsVariantPack({ campaignId, propertyId, variants: [{ family: 'spend', sourceId, expectedAmount: 123.45, expectedDateColumn: true }] })",
@@ -3296,6 +3372,7 @@
     hubspotKpiBenchmarkValuePack: hubspotKpiBenchmarkValuePack,
     hubspotOtherCampaignPortabilityPack: hubspotOtherCampaignPortabilityPack,
     hubspotAlternateMappingMatrixPack: hubspotAlternateMappingMatrixPack,
+    hubspotCleanCertificationGate: hubspotCleanCertificationGate,
     hubspotPropagationBefore: hubspotPropagationBefore,
     hubspotPropagationAfter: hubspotPropagationAfter,
     googleSheetsVariantPack: googleSheetsVariantPack,

@@ -106,6 +106,35 @@ metadata only. `cleanupAssessment.automaticCleanupAllowed` must remain `false`.
 A pass applies only to that campaign at `checkedAt`; it does not authorize
 cleanup or certify provider lifecycle behavior.
 
+## Current Commit H10 HubSpot Clean-Certification Gate
+
+Runner `2026-07-12.3` adds a pure fail-closed evidence gate. It does not fetch,
+refresh, mutate, recompute, clean, send, or call HubSpot. First call it with an
+empty evidence object to print the exact open categories and required checks:
+
+```js
+GA4OverviewValidation.hubspotCleanCertificationGate({
+  deploymentCommit: 'DEPLOYED_COMMIT',
+  deploymentId: 'PRODUCTION_DEPLOYMENT_ID',
+  evidence: {}
+});
+```
+
+Each category entry must contain a unique `evidenceId`, the same
+`deploymentCommit` and `deploymentId`, a valid `capturedAt`, an attached
+artifact with `overallPass: true`, and every category-specific check set to
+`true`. The eleven required categories are authentication/ownership,
+lifecycle, failure retention, date/mapping/pipeline variants,
+scheduler/reprocessing, Pipeline Proxy, downstream values,
+reports/delivery, notifications, multi-campaign isolation, and damaged-data
+inventory.
+
+The gate rejects missing categories, duplicate evidence IDs, false or absent
+checks, failed artifacts, invalid timestamps, and mixed deployments. It only
+validates supplied evidence metadata; retained artifacts must still be
+independently reviewed. A local synthetic gate pass is regression evidence for
+the gate only and must never be recorded as deployed HubSpot evidence.
+
 ## Current Commit 10 CSV Revenue Deployed Lifecycle Packet
 
 Use one disposable source named `csv10-revenue.csv` and this exact fixture:

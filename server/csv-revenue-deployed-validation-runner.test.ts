@@ -6,7 +6,7 @@ const runner = readFileSync(join(process.cwd(), "client", "public", "ga4-overvie
 
 describe("CSV Revenue deployed validation runner", () => {
   it("captures exact target-source lifecycle and revenue endpoint parity without mutating data", () => {
-    expect(runner).toContain('var VERSION = "2026-07-12.1";');
+    expect(runner).toContain('var VERSION = "2026-07-12.3";');
     expect(runner).toContain("async function csvRevenueBefore(label, config)");
     expect(runner).toContain("async function csvRevenueAfter(label, config)");
     expect(runner).toContain("targetRevenueSourceStateBeforeMatches");

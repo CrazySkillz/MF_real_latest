@@ -1,3 +1,5 @@
+import { normalizeReportingTimeZone } from './reporting-timezone';
+
 export type ShopifyConfirmedRevenueAmounts = {
   shopAmount: number;
   shopCurrency: string | null;
@@ -35,6 +37,68 @@ export const getShopifyDiscountCodes = (order: any): string[] => {
   return order.discount_codes
     .map((discount: any) => String(discount?.code || '').trim())
     .filter(Boolean);
+};
+
+const parseShopifyUpdatedAt = (order: any): number | null => {
+  const raw = String(order?.updated_at || '').trim();
+  if (!raw) return null;
+  const timestamp = Date.parse(raw);
+  if (!Number.isFinite(timestamp)) throw new Error('Shopify order has invalid updated_at');
+  return timestamp;
+};
+
+export const deduplicateShopifyOrders = (orders: any[]): any[] => {
+  const byId = new Map<string, any>();
+  for (const order of orders) {
+    const orderId = String(order?.id ?? '').trim();
+    if (!orderId) throw new Error('Shopify order is missing id');
+    const existing = byId.get(orderId);
+    if (!existing) {
+      byId.set(orderId, order);
+      continue;
+    }
+
+    const existingUpdatedAt = parseShopifyUpdatedAt(existing);
+    const nextUpdatedAt = parseShopifyUpdatedAt(order);
+    if (existingUpdatedAt === null || nextUpdatedAt === null) {
+      if (JSON.stringify(existing) !== JSON.stringify(order)) {
+        throw new Error(`Shopify returned conflicting duplicate order ${orderId} without updated_at`);
+      }
+      continue;
+    }
+    if (nextUpdatedAt > existingUpdatedAt) byId.set(orderId, order);
+    if (nextUpdatedAt === existingUpdatedAt && JSON.stringify(existing) !== JSON.stringify(order)) {
+      throw new Error(`Shopify returned conflicting duplicate order ${orderId}`);
+    }
+  }
+  return Array.from(byId.values());
+};
+
+export const getShopifyOrderReportingDate = (order: any, reportingTimeZone: any): string => {
+  const raw = String(order?.created_at || '').trim();
+  const timestamp = Date.parse(raw);
+  if (!raw || !Number.isFinite(timestamp)) throw new Error('Shopify order has invalid created_at');
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: normalizeReportingTimeZone(reportingTimeZone),
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(timestamp));
+  const byType = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${byType.year}-${byType.month}-${byType.day}`;
+};
+
+export const getShopifyOrderReportingDateWithinWindow = (
+  order: any,
+  reportingTimeZone: any,
+  startDate: string,
+  endDate: string,
+): string => {
+  const orderDate = getShopifyOrderReportingDate(order, reportingTimeZone);
+  if (orderDate < startDate || orderDate > endDate) {
+    throw new Error(`Shopify order ${String(order?.id ?? '')} date is outside the campaign reporting window`);
+  }
+  return orderDate;
 };
 
 export const getShopifyConfirmedRevenueAmounts = (order: any): ShopifyConfirmedRevenueAmounts | null => {

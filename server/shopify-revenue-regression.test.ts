@@ -27,6 +27,23 @@ function routeSection(content: string, start: string, end: string): string {
 }
 
 describe("Shopify revenue regression guard", () => {
+  it("deduplicates and materializes GA4 Shopify revenue by order identity and reporting date", () => {
+    const routes = read(ROUTES_FILE);
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    expect(routes).toContain('order=created_at%20asc&created_at_min=');
+    expect(routes).toContain('return deduplicateShopifyOrders(orders);');
+    expect(saveRoute).toContain('getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone, ga4StartDate, ga4EndDate)');
+    expect(saveRoute).toContain('const campaignWindowStartAt = hasValidCampaignStart ? campaignStartAt! : campaignCreatedAt;');
+    expect(saveRoute).toContain('externalId: String(order.id)');
+    expect(saveRoute).toContain("materializationGranularity: 'order'");
+    expect(saveRoute).toContain("orderDateBasis: 'created_at_campaign_reporting_timezone'");
+  });
+
   it("applies the confirmed-revenue policy to selection, save, and recalculation", () => {
     const routes = read(ROUTES_FILE);
     const wizard = read(SHOPIFY_WIZARD_FILE);
@@ -252,10 +269,10 @@ describe("Shopify revenue regression guard", () => {
     expect(saveRoute).toContain('await storage.replaceGa4ShopifyRevenueSourceWithRecords(');
     expect(saveRoute).toContain('await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));');
     expect(saveRoute).toContain('revenueSourceId: String(nonGa4Source.id),');
-    expect(saveRoute).toContain("const orderCrmValue = getFieldValue(o).trim();");
+    expect(saveRoute).toContain("const orderCrmValue = matchedCampaignValueByOrderId.get(String(o.id)) || getFieldValue(o).trim();");
     expect(saveRoute).toContain("const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds);");
     expect(saveRoute).toContain("const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);");
-    expect(saveRoute).toContain("subCampaignUrn: urn,");
+    expect(saveRoute).toContain("subCampaignUrn: urn });");
     expect(saveRoute).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });");
   });
 

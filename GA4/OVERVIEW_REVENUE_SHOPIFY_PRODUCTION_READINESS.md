@@ -97,19 +97,19 @@ All Shopify order-reading paths call `shopifyFetchAllOrders` in `server/routes-o
 
 The initial request is:
 
-`GET /admin/api/${SHOPIFY_API_VERSION || "2024-01"}/orders.json?status=any&limit=250&created_at_min=<ISO timestamp>`
+`GET /admin/api/${SHOPIFY_API_VERSION || "2024-01"}/orders.json?status=any&limit=250&order=created_at%20asc&created_at_min=<campaign-window ISO timestamp>`
 
 The implementation then:
 
 - follows the Shopify REST `Link` header's `rel=next` URL
-- stores every returned order in one in-memory array
+- stores returned orders in memory and deduplicates them by required Shopify order ID
 - stops at 1,000 pages and returns an error if another page remains
 - detects a repeated next URL and fails rather than returning that loop as complete
-- does not set an explicit sort key or direction
+- requests ascending `created_at` ordering to align the range filter with Shopify pagination guidance
 - does not request a constrained field list
-- does not deduplicate by Shopify order ID
-- does not persist or compare an order ID/version key
-- does not query `updated_at_min`
+- retains the newest `updated_at` state when the same order ID appears more than once and fails on ambiguous conflicting duplicates
+- persists one GA4 revenue row per order using the existing `externalId` field
+- does not query `updated_at_min`; GA4 refresh deliberately re-fetches the complete campaign creation window before transactional replacement
 - does not retry HTTP `429` using `Retry-After`
 - does not inspect `X-Shopify-Shop-Api-Call-Limit`
 - does not record `X-Shopify-API-Version` or detect silent API-version fall-forward
@@ -121,9 +121,9 @@ The implementation then:
 | Cursor pagination is followed | Partially proven | Static local coverage proves the loop exists; no real >250 matching-order packet proves provider completeness. |
 | Page-limit failure | Proven locally by code shape | A remaining next link after 1,000 pages returns failure. |
 | Rate-limit recovery | Unproven / missing | A `429` fails the import/refresh immediately; no bounded retry or provider evidence exists. |
-| Stable ordering | Unproven | No explicit ordering is requested or tested. |
-| Duplicate-order protection | Broken | No order-ID deduplication is performed, and `revenue_records.externalId` is not populated. |
-| Order-change capture | Broken/incomplete | The rolling query is based on `created_at_min`, so an older order changed or refunded after it falls outside the lookback is not fetched. |
+| Stable ordering | Proven locally by code shape | Initial range requests specify `order=created_at asc`; real multi-page evidence remains deferred. |
+| Duplicate-order protection | Proven locally | Executable tests cover newest-state selection, missing IDs, and ambiguous duplicates; GA4 rows retain `externalId`. |
+| Order-change capture | Partially proven | Each refresh re-fetches the full campaign-start/creation window and therefore sees current state for orders created in that window. Real refund/order mutation convergence remains not locally verifiable. |
 | API version pin | Broken operational boundary | `2024-01` is retired. Shopify can silently fall forward to the oldest supported version, while the app neither records nor rejects the effective version. |
 | REST longevity | Partially proven only | Shopify documents REST Admin as legacy; no migration or compatibility gate exists. |
 
@@ -132,6 +132,7 @@ Official Shopify references used to validate provider semantics:
 - [API versioning](https://shopify.dev/docs/api/usage/versioning): stable versions are time-bounded, inaccessible versions fall forward, and responses expose the effective version.
 - [REST rate limits](https://shopify.dev/docs/api/admin-rest/usage/rate-limits): `429` responses carry `Retry-After`, and REST Admin is legacy.
 - [Order resource](https://shopify.dev/docs/api/admin-rest/latest/resources/order): `status=any` includes all statuses; financial statuses include pending, authorized, partially paid, paid, partially refunded, refunded, and voided; `updated_at_min` is available.
+- [REST cursor pagination](https://shopify.dev/docs/api/admin-rest/usage/pagination): Link URLs must be followed unchanged, and Shopify recommends ordering a created-time range query by `created_at`.
 - [OAuth authorization-code grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant): callback validation includes nonce/session binding, valid HMAC, a validated `*.myshopify.com` hostname, and confirmation that required scopes were granted.
 
 ## Authentication And Connection Boundaries
@@ -239,12 +240,12 @@ Official basis: Shopify documents the REST order financial-status meanings and i
 ### Refunds, cancellations, and order changes
 
 - Refunds are not modeled as separate financial events.
-- A later refund can restate the original order's created-date revenue only if that order is fetched again.
+- A later refund is intentionally restated on the original order's campaign-reporting-timezone `created_at` date when the full campaign-window snapshot is fetched again.
 - Fully refunded and cancelled orders are excluded; partially refunded orders use their current total.
-- Orders older than the 3,650-day rolling lookback are not lifetime revenue.
-- Updates to an order outside the `created_at_min` window are never seen because there is no `updated_at_min` or webhook/incremental change path.
+- GA4 fetches from campaign `startDate`, falling back to campaign `createdAt`; pre-campaign orders are intentionally outside the source window.
+- The route does not merge an incremental `updated_at_min` result into a full snapshot. That would make replacement incomplete unless every unchanged order were also retained.
 
-Status: eligibility and current-amount policy are proven locally; change capture, refund-date treatment, deduplication, and date/window behavior remain incomplete for production revenue accounting.
+Status: eligibility, current amount, order-ID deduplication, original-date restatement, reporting-timezone conversion, and fail-closed window behavior are proven locally. Real provider order/refund mutation convergence remains not locally verifiable.
 
 ### Currency
 
@@ -264,20 +265,20 @@ The path must either require exact campaign/source currency parity or perform a 
 
 ### Current materialization
 
-- matched orders are grouped by the date portion of `created_at`
-- one aggregate `revenue_records` row is written per date
+- each GA4 matched order creates one aggregate `revenue_records` row
+- `externalId` stores the Shopify order ID
+- the row date is `created_at` converted to the campaign reporting timezone
 - platform campaign rows can be added for non-GA4 contexts
-- records do not store Shopify order IDs in `externalId`
 - refresh deletes all records for the source, then creates the replacement rows
 
 ### Date findings
 
-- The date is taken from the provider timestamp's literal `YYYY-MM-DD` portion, which reflects the provider timestamp offset, while the materialization bounds and Overview upper bound use UTC dates.
-- Reporting timezone/store timezone semantics are not documented or tested.
-- If no valid dated orders remain, the code materializes the entire total on the current/end date.
-- If every order date is outside the computed range, the same fallback re-dates the total instead of failing closed.
+- GA4 uses campaign reporting timezone for both order dates and the source window.
+- Campaign `startDate` is authoritative; campaign `createdAt` is the fallback when no start date exists.
+- Invalid, future, pre-window, and otherwise out-of-window matched order dates fail before replacement.
+- A complete result with no matched eligible orders writes one zero row on the campaign-timezone current date; no positive revenue is re-dated.
 
-Status: partially proven for normal in-range order dates; broken for invalid/future/out-of-range fallback semantics.
+Status: proven locally by executable timezone/invalid/window tests and static route guards; deployed timezone/provider evidence remains deferred.
 
 ### Atomicity and last-good preservation
 
@@ -482,6 +483,10 @@ This first audit creates the canonical correction without editing those already-
 - confirmed-revenue eligibility and current-total amount policy through executable unit tests
 - malformed successful order-payload and repeated-cursor fail-closed route guards
 - all-discount-code attribution helper behavior
+- Shopify order-ID deduplication with newest-state selection and ambiguous-duplicate failure
+- GA4 per-order `externalId` persistence through the transactional replacement test
+- campaign-reporting-timezone order-date conversion and fail-closed window validation
+- original-order-date refund restatement policy for full campaign-window snapshots
 - exact tag matching and current supported attribution-field wiring
 - REST Link pagination loop and page-limit failure
 - stable source ID passed by the scheduler
@@ -503,9 +508,8 @@ This first audit creates the canonical correction without editing those already-
 ### Unproven or broken
 
 - transaction-level confirmation beyond Shopify financial status and real-provider policy behavior
-- duplicate orders, older order changes, and refund-date restatement
+- real-provider older order/refund mutation convergence
 - currency parity/conversion
-- order-date/reporting-timezone semantics
 - atomic connect/reconnect/disconnect beyond the now-transactional GA4 materialization replacement
 - OAuth security/completeness/provider behavior
 - valid Shopify host enforcement
@@ -529,7 +533,7 @@ This first audit creates the canonical correction without editing those already-
 
 ## Isolated Current Commit Queue
 
-Current Commits 1 and 2 are implemented in the working tree. Shopify remains uncertified because the remaining queue is unresolved.
+Current Commits 1 through 3 are implemented in the working tree. Shopify remains uncertified because the remaining queue is unresolved.
 
 ### Current Commit 1 — Transactional Shopify replacement and last-good retention
 
@@ -567,20 +571,23 @@ Completion evidence: focused executable policy tests cover every locally classif
 
 ### Remaining queue after Current Commit 2
 
-### Current Commit 3 - Order identity, changes, dates, and deduplication
+### Current Commit 3 - Order identity, changes, dates, and deduplication — implemented locally
 
 Objective: make repeated imports and later Shopify order changes deterministic and auditable.
 
-Smallest safe scope:
+Implemented scope:
 
-- deduplicate by Shopify order ID across pages
-- retain enough order identity for audit and safe reprocessing
-- cover `updated_at` changes to older orders
-- define refund-date versus original-order-date restatement
-- remove the fallback that re-dates invalid, future, or out-of-window revenue
-- define and test the reporting-timezone boundary
+- deduplicated all fetched orders by required Shopify ID and retained the newest unambiguous `updated_at` state
+- persisted one GA4 revenue row per order using the existing `externalId` field
+- re-fetched a complete campaign-start/creation window so changed orders in scope replace their previous state safely
+- defined refunds as current-value restatements on the original order date
+- removed positive-revenue re-dating for GA4 and failed closed on invalid, future, or out-of-window dates
+- converted GA4 order dates and source bounds using campaign reporting timezone
+- preserved the established non-GA4 daily materialization branch
 
-Completion evidence: pagination-duplicate, changed-order, refund-restatement, invalid-date, future-date, window-boundary, and timezone regression tests.
+Completion evidence: executable duplicate/newest-state/identity/timezone/invalid-date/window tests, transactional `externalId` retention, and static full-route guards. Real provider mutation convergence remains deferred to Current Commit 8.
+
+### Remaining queue after Current Commit 3
 
 ### Current Commit 4 - Currency correctness and propagation
 
@@ -650,7 +657,7 @@ Smallest safe scope:
 
 Completion evidence: a complete evidence matrix with no in-scope value path left partially proven, unproven, or contradicted before any clean-certification claim.
 
-Estimated remaining work: **6 engineering/evidence steps** after Current Commit 2. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
+Estimated remaining work: **5 engineering/evidence steps** after Current Commit 3. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
 
 ## Certification Gate
 

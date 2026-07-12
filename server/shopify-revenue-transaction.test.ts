@@ -78,7 +78,7 @@ const replace = () => new DatabaseStorage().replaceGa4ShopifyRevenueSourceWithRe
     mappingConfig: 'updated',
     isActive: true,
   } as any,
-  [{ campaignId: 'campaign-1', date: '2026-07-02', revenue: '250.00', currency: 'USD', sourceType: 'shopify' }] as any,
+  [{ campaignId: 'campaign-1', date: '2026-07-02', revenue: '250.00', currency: 'USD', externalId: 'order-42', sourceType: 'shopify' }] as any,
 );
 
 describe('GA4 Shopify revenue transaction', () => {
@@ -117,6 +117,7 @@ describe('GA4 Shopify revenue transaction', () => {
       campaignId: 'campaign-1',
       revenueSourceId: 'source-1',
       revenue: '250.00',
+      externalId: 'order-42',
       sourceType: 'shopify',
     })]);
   });

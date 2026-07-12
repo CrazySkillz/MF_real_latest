@@ -8,7 +8,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
-import { getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes } from './utils/shopify-revenue';
+import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow } from './utils/shopify-revenue';
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
@@ -32101,7 +32101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     const orders: any[] = [];
     const seenUrls = new Set<string>();
-    let nextUrl: string | null = `${base}/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`;
+    let nextUrl: string | null = `${base}/admin/api/${apiVersion}/orders.json?status=any&limit=250&order=created_at%20asc&created_at_min=${encodeURIComponent(createdAtMin)}`;
 
     for (let page = 0; nextUrl && page < maxPages; page++) {
       if (seenUrls.has(nextUrl)) throw new Error('Shopify orders pagination repeated a cursor URL');
@@ -32142,7 +32142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw new Error(`Shopify orders pagination limit exceeded (${maxPages} pages). Narrow the date window and try again.`);
     }
 
-    return orders;
+    return deduplicateShopifyOrders(orders);
   };
 
   const shopifyRequiresMerchantApproval = (err: any): boolean => {
@@ -32741,9 +32741,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      const camp = await storage.getCampaign(campaignId);
+      if (!camp) throw new Error('Campaign not found');
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
-      const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
+      const fallbackCreatedAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
+      const campaignStartAt = (camp as any)?.startDate ? new Date((camp as any).startDate) : null;
+      const campaignCreatedAt = new Date((camp as any)?.createdAt);
+      const hasValidCampaignStart = Boolean(campaignStartAt && Number.isFinite(campaignStartAt.getTime()));
+      const campaignWindowStartAt = hasValidCampaignStart ? campaignStartAt! : campaignCreatedAt;
+      if (platformCtx === 'ga4' && !Number.isFinite(campaignWindowStartAt.getTime())) {
+        throw new Error('Campaign has no valid Shopify reporting-window start');
+      }
+      const createdAtMin = platformCtx === 'ga4'
+        ? campaignWindowStartAt.toISOString()
+        : fallbackCreatedAtMin.toISOString();
       const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
@@ -32765,6 +32777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let totalRevenue = 0;
       const matchedOrders: any[] = [];
+      const matchedCampaignValueByOrderId = new Map<string, string>();
       const matchedCurrencies = new Set<string>();
       let presentmentTotal = 0;
       const presentmentCurrencies = new Set<string>();
@@ -32782,6 +32795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const amt = getShopifyConfirmedRevenueAmounts(o);
         if (!amt) continue;
         matchedOrders.push(o);
+        matchedCampaignValueByOrderId.set(String(o.id), v);
         if (amt.shopCurrency) matchedCurrencies.add(amt.shopCurrency);
         totalRevenue += amt.shopAmount;
         campaignValueRevenueTotals.set(v, (campaignValueRevenueTotals.get(v) || 0) + amt.shopAmount);
@@ -32793,6 +32807,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const matchedCurrency = matchedCurrencies.size === 1 ? Array.from(matchedCurrencies)[0] : null;
       const presentmentCurrency = presentmentCurrencies.size === 1 ? Array.from(presentmentCurrencies)[0] : null;
+      let ga4ReportingTimeZone: string | null = null;
+      let ga4StartDate: string | null = null;
+      let ga4EndDate: string | null = null;
+      if (platformCtx === 'ga4') {
+        ga4ReportingTimeZone = normalizeReportingTimeZone((camp as any)?.reportingTimeZone);
+        ga4EndDate = getShopifyOrderReportingDate({ created_at: new Date().toISOString() }, ga4ReportingTimeZone);
+        ga4StartDate = getShopifyOrderReportingDate({ created_at: campaignWindowStartAt.toISOString() }, ga4ReportingTimeZone);
+        if (ga4StartDate > ga4EndDate) throw new Error('Campaign start date is after the Shopify reporting window');
+        for (const order of matchedOrders) {
+          getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone, ga4StartDate, ga4EndDate);
+        }
+      }
 
       // Revenue-only; conversion value is not computed/persisted from Shopify in this wizard.
       // Calculate conversion value as average order value if there are matched orders
@@ -32874,6 +32900,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueMetric: metric,
           days: rangeDays,
+          ...(platformCtx === 'ga4' ? {
+            orderIdentityField: 'id',
+            orderDateBasis: 'created_at_campaign_reporting_timezone',
+            orderWindowStart: ga4StartDate,
+            materializationGranularity: 'order',
+          } : {}),
           shopDomain: conn.shopDomain,
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
@@ -32890,7 +32922,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Materialize revenue into revenue_sources/revenue_records so the correct platform context can use it.
       try {
-        const camp = await storage.getCampaign(campaignId);
         const cur = matchedCurrency || (camp as any)?.currency || "USD";
 
         // Back-compat cleanup: remove legacy Shopify sources that were created without platformContext.
@@ -32923,6 +32954,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueMetric: metric,
           days: rangeDays,
+          ...(platformCtx === 'ga4' ? {
+            orderIdentityField: 'id',
+            orderDateBasis: 'created_at_campaign_reporting_timezone',
+            orderWindowStart: ga4StartDate,
+            materializationGranularity: 'order',
+          } : {}),
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
@@ -32955,85 +32992,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));
         }
 
-        // Use yesterday (UTC) as the materialized end date when creating LinkedIn-scoped
-        // Shopify revenue so it lines up with the LinkedIn 30-day window (which uses yesterdayUTC).
         const now = new Date();
-        const endDateObj = platformCtx === "linkedin"
-          ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
-          : now;
-        const endDate = endDateObj.toISOString().slice(0, 10);
-
-        // Group matched orders by date to create revenue records
-        const revenueByDate = new Map<string, number>();
-        // Per-platform-campaign revenue tracking: key is "date:campaign id/urn"
-        const revenueByDateAndCampaign = new Map<string, number>();
-        for (const o of matchedOrders) {
-          const orderDate = String(o?.created_at || "").split("T")[0];
-          if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
-            const amt = getShopifyConfirmedRevenueAmounts(o);
-            if (!amt) continue;
-            const current = revenueByDate.get(orderDate) || 0;
-            revenueByDate.set(orderDate, current + amt.shopAmount);
-
-            const orderCrmValue = getFieldValue(o).trim();
-            const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds);
-            if (googleAdsCampaignId) {
-              const key = `${orderDate}:${googleAdsCampaignId}`;
-              revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + amt.shopAmount);
-            } else if (platformCtx === "linkedin" && campaignMappings.length > 0) {
-              const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);
-              if (mapping) {
-                const key = `${orderDate}:${mapping.linkedinCampaignUrn}`;
+        let records: any[] = [];
+        if (platformCtx === 'ga4') {
+          records = matchedOrders.length === 0
+            ? [{ campaignId, date: ga4EndDate!, revenue: 0 as any, currency: cur, sourceType: 'shopify' }]
+            : matchedOrders.map((order: any) => {
+              const orderDate = getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone!, ga4StartDate!, ga4EndDate!);
+              const amounts = getShopifyConfirmedRevenueAmounts(order);
+              if (!amounts) throw new Error(`Shopify order ${String(order.id)} lost confirmed-revenue eligibility`);
+              return {
+                campaignId,
+                date: orderDate,
+                revenue: Number(amounts.shopAmount.toFixed(2)) as any,
+                currency: cur,
+                externalId: String(order.id),
+                sourceType: 'shopify',
+              };
+            });
+        } else {
+          // Preserve established non-GA4 materialization behavior.
+          const endDateObj = platformCtx === "linkedin"
+            ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
+            : now;
+          const endDate = endDateObj.toISOString().slice(0, 10);
+          const revenueByDate = new Map<string, number>();
+          const revenueByDateAndCampaign = new Map<string, number>();
+          for (const o of matchedOrders) {
+            const orderDate = String(o?.created_at || "").split("T")[0];
+            if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
+              const amt = getShopifyConfirmedRevenueAmounts(o);
+              if (!amt) continue;
+              revenueByDate.set(orderDate, (revenueByDate.get(orderDate) || 0) + amt.shopAmount);
+              const orderCrmValue = matchedCampaignValueByOrderId.get(String(o.id)) || getFieldValue(o).trim();
+              const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds);
+              if (googleAdsCampaignId) {
+                const key = `${orderDate}:${googleAdsCampaignId}`;
                 revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + amt.shopAmount);
+              } else if (platformCtx === "linkedin" && campaignMappings.length > 0) {
+                const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);
+                if (mapping) {
+                  const key = `${orderDate}:${mapping.linkedinCampaignUrn}`;
+                  revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + amt.shopAmount);
+                }
               }
             }
           }
-        }
-
-        // If no matched orders have dates, or all dates are in the future, put revenue on today or endDate
-        let recordDates = Array.from(revenueByDate.keys()).sort();
-        if (recordDates.length === 0) {
-          recordDates = [endDate];
-          revenueByDate.set(endDate, totalRevenue);
-        }
-
-        // Ensure all revenue dates are within the requested window
-        const startObj = new Date(endDateObj.getTime());
-        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
-        const startDate = startObj.toISOString().slice(0, 10);
-
-        // Filter out dates outside the range
-        recordDates = recordDates.filter(d => d >= startDate && d <= endDate);
-
-        // If all dates are filtered out, use end date
-        if (recordDates.length === 0) {
-          recordDates = [endDate];
-          revenueByDate.clear();
-          revenueByDate.set(endDate, totalRevenue);
-        }
-
-        const records = recordDates.map(d => ({
-          campaignId,
-          date: d,
-          revenue: Number((revenueByDate.get(d) || 0).toFixed(2)) as any,
-          currency: cur,
-          sourceType: 'shopify',
-        } as any));
-
-        // Add exact platform-campaign revenue records when available.
-        if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram" || platformCtx === "tiktok") && revenueByDateAndCampaign.size > 0) {
+          let recordDates = Array.from(revenueByDate.keys()).sort();
+          if (recordDates.length === 0) {
+            recordDates = [endDate];
+            revenueByDate.set(endDate, totalRevenue);
+          }
+          const startObj = new Date(endDateObj.getTime());
+          startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
+          const startDate = startObj.toISOString().slice(0, 10);
+          recordDates = recordDates.filter(d => d >= startDate && d <= endDate);
+          if (recordDates.length === 0) {
+            recordDates = [endDate];
+            revenueByDate.clear();
+            revenueByDate.set(endDate, totalRevenue);
+          }
+          records = recordDates.map(d => ({
+            campaignId, date: d, revenue: Number((revenueByDate.get(d) || 0).toFixed(2)) as any, currency: cur, sourceType: 'shopify',
+          }));
           for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
             const [date, ...urnParts] = key.split(":");
             const urn = urnParts.join(":");
             if (date && urn && recordDates.includes(date)) {
-              records.push({
-                campaignId,
-                date,
-                revenue: Number(rev.toFixed(2)) as any,
-                currency: cur,
-                sourceType: 'shopify',
-                subCampaignUrn: urn,
-              } as any);
+              records.push({ campaignId, date, revenue: Number(rev.toFixed(2)) as any, currency: cur, sourceType: 'shopify', subCampaignUrn: urn });
             }
           }
         }

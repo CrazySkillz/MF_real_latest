@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes } from './utils/shopify-revenue';
+import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow } from './utils/shopify-revenue';
 
 const order = (overrides: Record<string, unknown> = {}) => ({
   test: false,
@@ -61,5 +61,42 @@ describe('Shopify confirmed-revenue policy', () => {
       { code: ' SECOND ' },
       { code: '' },
     ] })).toEqual(['FIRST', 'SECOND']);
+  });
+
+  it('deduplicates by order ID and retains the newest provider state', () => {
+    const older = { id: 42, updated_at: '2026-07-01T10:00:00Z', current_total_price: '100.00' };
+    const newer = { id: 42, updated_at: '2026-07-02T10:00:00Z', current_total_price: '75.00' };
+    expect(deduplicateShopifyOrders([older, newer, { id: 43 }])).toEqual([newer, { id: 43 }]);
+  });
+
+  it('fails closed for missing identity and ambiguous duplicate state', () => {
+    expect(() => deduplicateShopifyOrders([{}])).toThrow('missing id');
+    expect(() => deduplicateShopifyOrders([
+      { id: 42, current_total_price: '100.00' },
+      { id: 42, current_total_price: '75.00' },
+    ])).toThrow('conflicting duplicate order 42 without updated_at');
+    expect(() => deduplicateShopifyOrders([
+      { id: 42, updated_at: '2026-07-01T10:00:00Z', current_total_price: '100.00' },
+      { id: 42, updated_at: '2026-07-01T10:00:00Z', current_total_price: '75.00' },
+    ])).toThrow('conflicting duplicate order 42');
+  });
+
+  it('converts created_at into the campaign reporting timezone', () => {
+    const source = { created_at: '2026-07-01T23:30:00-04:00' };
+    expect(getShopifyOrderReportingDate(source, 'America/New_York')).toBe('2026-07-01');
+    expect(getShopifyOrderReportingDate(source, 'Europe/Amsterdam')).toBe('2026-07-02');
+    expect(() => getShopifyOrderReportingDate({ created_at: 'not-a-date' }, 'UTC')).toThrow('invalid created_at');
+  });
+
+  it('fails closed instead of re-dating future or out-of-window orders', () => {
+    expect(getShopifyOrderReportingDateWithinWindow(
+      { id: 42, created_at: '2026-07-02T12:00:00Z' }, 'UTC', '2026-07-01', '2026-07-03',
+    )).toBe('2026-07-02');
+    expect(() => getShopifyOrderReportingDateWithinWindow(
+      { id: 42, created_at: '2026-07-04T12:00:00Z' }, 'UTC', '2026-07-01', '2026-07-03',
+    )).toThrow('outside the campaign reporting window');
+    expect(() => getShopifyOrderReportingDateWithinWindow(
+      { id: 42, created_at: '2026-06-30T12:00:00Z' }, 'UTC', '2026-07-01', '2026-07-03',
+    )).toThrow('outside the campaign reporting window');
   });
 });

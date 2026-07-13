@@ -3,7 +3,7 @@ import { type InstagramConnection, type InsertInstagramConnection, type Instagra
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
-import { buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
+import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -217,6 +217,7 @@ export interface IStorage {
   getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]>;
   getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined>;
   createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
+  replaceShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
   updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined>;
   deleteShopifyConnection(connectionId: string): Promise<boolean>;
 
@@ -2486,6 +2487,7 @@ export class DatabaseStorage implements IStorage {
 
   // Shopify Connection methods
   async getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]> {
+    assertProductionTokenEncryptionConfigured();
     const rows = await db
       .select()
       .from(shopifyConnections)
@@ -2511,6 +2513,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined> {
+    assertProductionTokenEncryptionConfigured();
     const [latest] = await db
       .select()
       .from(shopifyConnections)
@@ -2536,6 +2539,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
+    assertProductionTokenEncryptionConfigured();
     const enc = buildEncryptedTokens({ accessToken: (connection as any).accessToken });
     const connectionData: any = {
       ...connection,
@@ -2549,7 +2553,29 @@ export class DatabaseStorage implements IStorage {
     return hydrateDecryptedTokens(created) as any;
   }
 
+  async replaceShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
+    assertProductionTokenEncryptionConfigured();
+    const enc = buildEncryptedTokens({ accessToken: (connection as any).accessToken });
+    const connectionData: any = {
+      ...connection,
+      isActive: true,
+      shopName: connection.shopName || null,
+      accessToken: null,
+      encryptedTokens: enc as any,
+      mappingConfig: connection.mappingConfig || null,
+    };
+    return await db.transaction(async (tx: any) => {
+      await tx
+        .update(shopifyConnections)
+        .set({ isActive: false } as any)
+        .where(and(eq(shopifyConnections.campaignId, connection.campaignId), eq(shopifyConnections.isActive, true)));
+      const [created] = await tx.insert(shopifyConnections).values(connectionData).returning();
+      return hydrateDecryptedTokens(created) as any;
+    });
+  }
+
   async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined> {
+    assertProductionTokenEncryptionConfigured();
     const [existing] = await db.select().from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
     if (!existing) return undefined;
 

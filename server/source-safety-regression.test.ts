@@ -116,7 +116,9 @@ describe("source safety regression guards", () => {
     expect(routeEnd).toBeGreaterThan(routeStart);
     const accessGuard = "const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);";
     expect(route).toContain(accessGuard);
-    expect(route.indexOf(accessGuard)).toBeGreaterThan(route.indexOf('if (!shop) return res.status(400).json({ message: "Shop domain is required" });'));
+    expect(route.indexOf(accessGuard)).toBeGreaterThan(route.indexOf('if (!shop) return res.status(400).json({ message: "A valid *.myshopify.com shop domain is required" });'));
+    expect(route).toContain('const sessionId = getSessionId(req);');
+    expect(route).toContain('requireShopifyRevenueScopes(scope.split(\',\'));');
     expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("const clientId = process.env.SHOPIFY_CLIENT_ID"));
     expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("getShopifyRedirectUri()"));
     expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("shopifyOauthStore.set"));
@@ -134,10 +136,11 @@ describe("source safety regression guards", () => {
     const accessGuard = "const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);";
     expect(route).toContain(accessGuard);
     expect(route.indexOf(accessGuard)).toBeGreaterThan(route.indexOf('if (!token) return res.status(400).json({ error: "accessToken is required" });'));
-    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("shopifyApiFetch({"));
-    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.getShopifyConnections(campaignIdStr)"));
-    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.updateShopifyConnection"));
-    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.createShopifyConnection"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("assertProductionTokenEncryptionConfigured()"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("shopifyAdminFetch({"));
+    expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("storage.replaceShopifyConnection"));
+    expect(route).not.toContain("storage.updateShopifyConnection");
+    expect(route).not.toContain("storage.createShopifyConnection");
   });
 
   it("CSV revenue process refuses to update non-CSV revenue sources", () => {

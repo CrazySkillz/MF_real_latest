@@ -53,6 +53,12 @@ function getKey(): Buffer {
   return deriveKeyFromSecret(trimmed);
 }
 
+export function assertProductionTokenEncryptionConfigured(): void {
+  if (String(process.env.NODE_ENV || '').toLowerCase() !== 'production') return;
+  const configured = String(process.env.TOKEN_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || '').trim();
+  if (!configured) throw new Error('Production token encryption key is not configured');
+}
+
 export function encryptString(plain: string): EncryptedBlobV1 {
   const key = getKey();
   const iv = randomBytes(12); // recommended for GCM

@@ -9,6 +9,8 @@ import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency } from './utils/shopify-revenue';
+import { getShopifyApiVersion, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
 import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
@@ -2484,6 +2486,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return auth?.userId || "";
     } catch {
       return "";
+    }
+  };
+
+  const getSessionId = (req: any): string => {
+    try {
+      const auth = getAuth(req);
+      return auth?.sessionId || '';
+    } catch {
+      return '';
     }
   };
 
@@ -5772,7 +5783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Shopify OAuth support
   // We store an OAuth nonce briefly (10 min) keyed by state.
   // ---------------------------------------------------------------------------
-  const shopifyOauthStore = new Map<string, { campaignId: string; shopDomain: string; createdAt: number }>();
+  const shopifyOauthStore = new Map<string, ShopifyOauthState>();
   const SHOPIFY_OAUTH_TTL_MS = 10 * 60 * 1000;
 
   const base64Url = (buf: Buffer) =>
@@ -9743,19 +9754,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, shopDomain } = req.body || {};
       const campaignIdStr = String(campaignId || "").trim();
-      const shop = String(shopDomain || "")
-        .trim()
-        .replace(/^https?:\/\//i, "")
-        .split("/")[0]
-        .toLowerCase();
+      const shop = normalizeShopifyDomain(shopDomain);
 
       if (!campaignIdStr) return res.status(400).json({ message: "Campaign ID is required" });
-      if (!shop) return res.status(400).json({ message: "Shop domain is required" });
+      if (!shop) return res.status(400).json({ message: "A valid *.myshopify.com shop domain is required" });
       const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);
       if (!ok) return;
+      const sessionId = getSessionId(req);
+      if (!sessionId) return res.status(401).json({ message: "Your session expired. Please refresh and try again." });
+      assertProductionTokenEncryptionConfigured();
 
       const clientId = process.env.SHOPIFY_CLIENT_ID || "";
-      const scopeRaw = String(process.env.SHOPIFY_SCOPES || "read_orders,read_customers");
+      const scopeRaw = String(process.env.SHOPIFY_SCOPES || "read_orders,read_all_orders");
       const scope = scopeRaw.trim();
       if (!clientId) {
         return res.status(500).json({ message: "Shopify OAuth is not configured (missing SHOPIFY_CLIENT_ID)" });
@@ -9765,9 +9775,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!scope) {
         return res.status(500).json({
           message:
-            "Shopify OAuth is misconfigured: SHOPIFY_SCOPES is empty. Set SHOPIFY_SCOPES to e.g. 'read_orders,read_customers' and redeploy, then reconnect.",
+            "Shopify OAuth is misconfigured: SHOPIFY_SCOPES is empty. Set SHOPIFY_SCOPES to 'read_orders,read_all_orders' and redeploy, then reconnect.",
         });
       }
+      requireShopifyRevenueScopes(scope.split(','));
 
       const redirectUri = getShopifyRedirectUri();
       if (!redirectUri) {
@@ -9783,7 +9794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       cleanupShopifyOauth();
       const nonce = base64Url(randomBytes(16));
       const state = `${campaignIdStr}.${nonce}`;
-      shopifyOauthStore.set(nonce, { campaignId: campaignIdStr, shopDomain: shop, createdAt: Date.now() });
+      shopifyOauthStore.set(nonce, { campaignId: campaignIdStr, shopDomain: shop, sessionId, createdAt: Date.now() });
 
       const authUrl =
         `https://${shop}/admin/oauth/authorize?` +
@@ -10048,11 +10059,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const q: any = req.query || {};
       const code = q.code ? String(q.code) : "";
-      const shop = q.shop ? String(q.shop).toLowerCase() : "";
+      const shop = normalizeShopifyDomain(q.shop);
       const state = q.state ? String(q.state) : "";
       const hmac = q.hmac ? String(q.hmac) : "";
 
       if (q.error) {
+        cleanupShopifyOauth();
+        const errorStateDot = state.lastIndexOf('.');
+        const errorNonce = errorStateDot > 0 ? state.slice(errorStateDot + 1) : '';
+        if (errorNonce) shopifyOauthStore.delete(errorNonce);
         const err = String(q.error);
         const desc = q.error_description ? String(q.error_description) : "";
         return sendPopup({
@@ -10078,8 +10093,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lastDot = state.lastIndexOf(".");
       const campaignId = lastDot > 0 ? state.slice(0, lastDot) : "";
       const nonce = lastDot > 0 ? state.slice(lastDot + 1) : "";
+      cleanupShopifyOauth();
       const stored = nonce ? shopifyOauthStore.get(nonce) : null;
-      if (!stored || stored.campaignId !== campaignId) {
+      if (nonce) shopifyOauthStore.delete(nonce);
+      try {
+        validateShopifyOauthState(stored, { campaignId, shopDomain: shop, sessionId: getSessionId(req) }, Date.now(), SHOPIFY_OAUTH_TTL_MS);
+      } catch {
         return sendPopup({
           ok: false,
           type: "shopify_auth_error",
@@ -10088,16 +10107,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: "Invalid or expired state. Please try connecting again.",
         });
       }
-      if (stored.shopDomain !== shop) {
-        return sendPopup({
-          ok: false,
-          type: "shopify_auth_error",
-          payload: { error: "Shop mismatch" },
-          title: "Authentication Error",
-          body: "Shop mismatch. Please try connecting again.",
-        });
-      }
-
       // Verify HMAC per Shopify docs
       const secret = process.env.SHOPIFY_CLIENT_SECRET || "";
       if (!secret) {
@@ -10109,6 +10118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: "Missing SHOPIFY_CLIENT_SECRET.",
         });
       }
+      assertProductionTokenEncryptionConfigured();
 
       const params = new URLSearchParams();
       Object.keys(q)
@@ -10141,8 +10151,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientId = process.env.SHOPIFY_CLIENT_ID || "";
       const tokenResp = await fetch(`https://${shop}/admin/oauth/access_token`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client_id: clientId, client_secret: secret, code }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+        body: new URLSearchParams({ client_id: clientId, client_secret: secret, code }),
       });
       const tokenJson: any = await tokenResp.json().catch(() => ({}));
       if (!tokenResp.ok || !tokenJson?.access_token) {
@@ -10159,37 +10169,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Shopify returns the granted scopes as a comma-separated string in the token exchange response.
       // Store this so we can debug scope issues even when /oauth/access_scopes.json is not supported.
       const grantedScopesRaw = tokenJson?.scope ? String(tokenJson.scope) : "";
+      const grantedScopesList = grantedScopesRaw.split(',').map((scope: string) => scope.trim()).filter(Boolean);
+      requireShopifyRevenueScopes(grantedScopesList);
 
       // Fetch shop name
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
-      let shopName: string | null = null;
-      try {
-        const shopResp = await fetch(`https://${shop}/admin/api/${apiVersion}/shop.json`, {
-          headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
-        });
-        const shopJson: any = await shopResp.json().catch(() => ({}));
-        if (shopResp.ok && shopJson?.shop?.name) shopName = String(shopJson.shop.name);
-      } catch {
-        shopName = null;
-      }
+      const apiVersion = getShopifyApiVersion();
+      const shopResp = await shopifyAdminFetch({ shopDomain: shop, accessToken, endpoint: `/admin/api/${apiVersion}/shop.json` });
+      const shopJson: any = await shopResp.json().catch(() => ({}));
+      if (!shopResp.ok) throw new Error(shopJson?.errors || `Shopify API error (HTTP ${shopResp.status})`);
+      const shopName = shopJson?.shop?.name ? String(shopJson.shop.name) : null;
+      const effectiveApiVersion = String(shopResp.headers.get('X-Shopify-API-Version'));
 
-      // Deactivate existing connections for campaign and create new one
-      const existing = await storage.getShopifyConnections(campaignId);
-      for (const c of existing || []) {
-        if ((c as any)?.id) await storage.updateShopifyConnection((c as any).id, { isActive: false } as any);
-      }
       const mappingConfig = JSON.stringify({
         authType: "oauth",
         grantedScopes: grantedScopesRaw,
-        grantedScopesList: grantedScopesRaw
-          ? grantedScopesRaw
-            .split(",")
-            .map((s: any) => String(s).trim())
-            .filter(Boolean)
-          : [],
+        grantedScopesList,
+        requestedApiVersion: apiVersion,
+        effectiveApiVersion,
         connectedAt: new Date().toISOString(),
       });
-      const created = await storage.createShopifyConnection({
+      const created = await storage.replaceShopifyConnection({
         campaignId,
         shopDomain: shop,
         shopName,
@@ -10197,9 +10196,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         mappingConfig,
       } as any);
-
-      // One-time use state
-      shopifyOauthStore.delete(nonce);
 
       return sendPopup({
         ok: true,
@@ -32046,24 +32042,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users generate a token via a Shopify custom app and paste it into MetricMind.
   // ---------------------------------------------------------------------------
 
-  const normalizeShopDomain = (input: string) => {
-    const raw = String(input || "").trim();
-    if (!raw) return "";
-    const withoutProto = raw.replace(/^https?:\/\//i, "");
-    const host = withoutProto.split("/")[0].trim();
-    return host.toLowerCase();
-  };
-
   const shopifyApiFetch = async (args: { shopDomain: string; accessToken: string; path: string }) => {
     const { shopDomain, accessToken, path } = args;
-    const base = `https://${shopDomain}`;
-    const url = `${base}${path.startsWith("/") ? "" : "/"}${path}`;
-    const resp = await fetch(url, {
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-    });
+    const endpoint = path.startsWith('/') ? path : `/${path}`;
+    const resp = await shopifyAdminFetch({ shopDomain, accessToken, endpoint });
     const text = await resp.text().catch(() => "");
     let json: any = {};
     try {
@@ -32095,18 +32077,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }) => {
     const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000 } = args;
     const base = `https://${shopDomain}`;
-    const headers = {
-      "X-Shopify-Access-Token": accessToken,
-      "Content-Type": "application/json",
-    };
     const orders: any[] = [];
     const seenUrls = new Set<string>();
     let nextUrl: string | null = `${base}/admin/api/${apiVersion}/orders.json?status=any&limit=250&order=created_at%20asc&created_at_min=${encodeURIComponent(createdAtMin)}`;
 
+    const orderWindowStart = Date.parse(createdAtMin);
+    if (!Number.isFinite(orderWindowStart)) throw new Error('Invalid Shopify order window start');
+    if (Date.now() - orderWindowStart > 60 * 24 * 60 * 60 * 1000) {
+      const scopes = await shopifyApiFetch({ shopDomain, accessToken, path: '/admin/oauth/access_scopes.json' });
+      if (!Array.isArray(scopes?.access_scopes)) throw new Error('Shopify access-scope response is incomplete');
+      requireShopifyOrderWindowScopes(
+        scopes.access_scopes.map((scope: any) => String(scope?.handle || '')).filter(Boolean),
+        createdAtMin,
+      );
+    }
+
     for (let page = 0; nextUrl && page < maxPages; page++) {
       if (seenUrls.has(nextUrl)) throw new Error('Shopify orders pagination repeated a cursor URL');
       seenUrls.add(nextUrl);
-      const resp: Response = await fetch(nextUrl, { headers });
+      const resp: Response = await shopifyAdminFetch({ shopDomain, accessToken, endpoint: nextUrl });
       const text: string = await resp.text().catch(() => "");
       let json: any = {};
       try {
@@ -32260,7 +32249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch orders from Shopify
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const apiVersion = getShopifyApiVersion();
       const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
       const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
@@ -32338,38 +32327,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, shopDomain, accessToken } = req.body || {};
       const campaignIdStr = String(campaignId || "").trim();
-      const shop = normalizeShopDomain(shopDomain);
+      const shop = normalizeShopifyDomain(shopDomain);
       const token = String(accessToken || "").trim();
       if (!campaignIdStr) return res.status(400).json({ error: "campaignId is required" });
-      if (!shop) return res.status(400).json({ error: "shopDomain is required" });
+      if (!shop) return res.status(400).json({ error: "A valid *.myshopify.com shopDomain is required" });
       if (!token) return res.status(400).json({ error: "accessToken is required" });
       const ok = await ensureCampaignAccess(req as any, res as any, campaignIdStr);
       if (!ok) return;
+      assertProductionTokenEncryptionConfigured();
 
       // Validate token by fetching shop info
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
-      const shopResp = await shopifyApiFetch({
-        shopDomain: shop,
-        accessToken: token,
-        path: `/admin/api/${apiVersion}/shop.json`,
-      });
+      const apiVersion = getShopifyApiVersion();
+      const shopHttpResponse = await shopifyAdminFetch({ shopDomain: shop, accessToken: token, endpoint: `/admin/api/${apiVersion}/shop.json` });
+      const shopResp: any = await shopHttpResponse.json().catch(() => ({}));
+      if (!shopHttpResponse.ok) throw new Error(shopResp?.errors || `Shopify API error (HTTP ${shopHttpResponse.status})`);
       const shopName = shopResp?.shop?.name ? String(shopResp.shop.name) : null;
+      const effectiveApiVersion = String(shopHttpResponse.headers.get('X-Shopify-API-Version'));
 
-      // Deactivate existing connections for campaign (single active connection)
-      const existing = await storage.getShopifyConnections(campaignIdStr);
-      for (const c of existing || []) {
-        if ((c as any)?.id) {
-          await storage.updateShopifyConnection((c as any).id, { isActive: false } as any);
-        }
+      const scopesResponse = await shopifyAdminFetch({ shopDomain: shop, accessToken: token, endpoint: '/admin/oauth/access_scopes.json' });
+      const scopesJson: any = await scopesResponse.json().catch(() => ({}));
+      if (!scopesResponse.ok || !Array.isArray(scopesJson?.access_scopes)) {
+        throw new Error(scopesJson?.errors || 'Shopify access-scope response is incomplete');
       }
+      const grantedScopesList = scopesJson.access_scopes.map((scope: any) => String(scope?.handle || '')).filter(Boolean);
+      requireShopifyRevenueScopes(grantedScopesList);
 
-      const created = await storage.createShopifyConnection({
+      const created = await storage.replaceShopifyConnection({
         campaignId: campaignIdStr,
         shopDomain: shop,
         shopName: shopName,
         accessToken: token,
         isActive: true,
-        mappingConfig: JSON.stringify({ authType: "token", connectedAt: new Date().toISOString() }),
+        mappingConfig: JSON.stringify({ authType: "token", grantedScopesList, requestedApiVersion: apiVersion, effectiveApiVersion, connectedAt: new Date().toISOString() }),
       } as any);
 
       res.json({
@@ -32401,11 +32390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (connected && !authType) {
         try {
-          const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
           await shopifyApiFetch({
             shopDomain: conn.shopDomain,
             accessToken: conn.accessToken,
-            path: `/admin/api/${apiVersion}/oauth/access_scopes.json`,
+            path: '/admin/oauth/access_scopes.json',
           });
           authType = "oauth";
         } catch (error: any) {
@@ -32437,7 +32425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const conn = await getShopifyConnectionForCampaign(campaignId);
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const apiVersion = getShopifyApiVersion();
 
       // Stored config from connect flow (best-effort).
       let storedGrantedScopes: string | null = null;
@@ -32471,7 +32459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const scopesJson = await shopifyApiFetch({
           shopDomain: conn.shopDomain,
           accessToken: conn.accessToken,
-          path: `/admin/api/${apiVersion}/oauth/access_scopes.json`,
+          path: '/admin/oauth/access_scopes.json',
         });
         scopes = Array.isArray(scopesJson?.access_scopes)
           ? scopesJson.access_scopes.map((s: any) => String(s?.handle || "")).filter(Boolean)
@@ -32537,7 +32525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const columns = columnsParam ? columnsParam.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const apiVersion = getShopifyApiVersion();
 
       // Default: last 90 days
       const createdAtMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
@@ -32613,7 +32601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || "300"), 10) || 300, 1), 500);
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const apiVersion = getShopifyApiVersion();
       const createdAtMin = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
       const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
@@ -32744,7 +32732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const camp = await storage.getCampaign(campaignId);
       if (!camp) throw new Error('Campaign not found');
       const conn = await getShopifyConnectionForCampaign(campaignId);
-      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const apiVersion = getShopifyApiVersion();
       const fallbackCreatedAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
       const campaignStartAt = (camp as any)?.startDate ? new Date((camp as any).startDate) : null;
       const campaignCreatedAt = new Date((camp as any)?.createdAt);

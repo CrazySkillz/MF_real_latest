@@ -4,9 +4,9 @@
 
 **Not production-ready. Not clean-certified.**
 
-This is the canonical Shopify Revenue readiness document as of 2026-07-12 for the current repository state at `e87c78ad`.
+This is the canonical Shopify Revenue readiness document as of 2026-07-12 for `58e604fb` plus the local Current Commit 5 changes documented below.
 
-The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. They are retained as historical leads and bounded evidence packets only. Current code contains correctness, atomicity, authentication, currency, freshness, and evidence gaps that those claims did not cover.
+The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. They are retained as historical leads and bounded evidence packets only. Current Commits 1-5 close specific local correctness, atomicity, currency, authentication, and provider guards, but freshness, disconnect/store parity, deployed-data health, real-provider, and downstream evidence gaps still block certification.
 
 The current honest answer is:
 
@@ -19,7 +19,7 @@ The current honest answer is:
 
 This audit was performed fresh. Previous production-ready statements, test results, HubSpot evidence, Google Sheets evidence, CSV evidence, and other source-family evidence were not accepted as Shopify proof.
 
-No runtime code was changed during this first audit. Unrelated dirty worktree changes were preserved.
+No runtime code was changed during the first audit. Current Commits 1-5 were implemented only after that root-cause baseline; unrelated dirty worktree changes remain preserved.
 
 ### Required references reviewed
 
@@ -60,9 +60,12 @@ The functional and readiness docs for Reports, KPI, Benchmark, notifications, sc
 - `server/report-scheduler.ts`
 - `server/utils/performance-summary-aggregate.ts`
 - `server/utils/tokenVault.ts`
+- `server/utils/shopify-provider.ts`
 - `shared/schema.ts`
 - `server/shopify-revenue-regression.test.ts`
 - `server/shopify-downstream-content-regression.test.ts`
+- `server/shopify-provider-hardening.test.ts`
+- `server/shopify-connection-transaction.test.ts`
 - the focused GA4 financial, outcome-total, notification, and report regression files used in validation
 
 ## Scope
@@ -97,7 +100,7 @@ All Shopify order-reading paths call `shopifyFetchAllOrders` in `server/routes-o
 
 The initial request is:
 
-`GET /admin/api/${SHOPIFY_API_VERSION || "2024-01"}/orders.json?status=any&limit=250&order=created_at%20asc&created_at_min=<campaign-window ISO timestamp>`
+`GET /admin/api/<allowlisted supported SHOPIFY_API_VERSION, default 2026-07>/orders.json?status=any&limit=250&order=created_at%20asc&created_at_min=<campaign-window ISO timestamp>`
 
 The implementation then:
 
@@ -110,9 +113,10 @@ The implementation then:
 - retains the newest `updated_at` state when the same order ID appears more than once and fails on ambiguous conflicting duplicates
 - persists one GA4 revenue row per order using the existing `externalId` field
 - does not query `updated_at_min`; GA4 refresh deliberately re-fetches the complete campaign creation window before transactional replacement
-- does not retry HTTP `429` using `Retry-After`
+- retries HTTP `429` at most twice, uses `Retry-After` exactly when it is finite and no greater than 30 seconds, defaults a missing header to one second, and then returns the terminal response to the existing fail-closed caller
 - does not inspect `X-Shopify-Shop-Api-Call-Limit`
-- does not record `X-Shopify-API-Version` or detect silent API-version fall-forward
+- requests an allowlisted supported stable API version, records requested/effective versions at connection time, and rejects successful versioned responses whose `X-Shopify-API-Version` is missing or different
+- checks `read_all_orders` before any requested order window older than Shopify's default 60-day order-access window
 
 ### Current provider boundary findings
 
@@ -120,11 +124,11 @@ The implementation then:
 |---|---|---|
 | Cursor pagination is followed | Partially proven | Static local coverage proves the loop exists; no real >250 matching-order packet proves provider completeness. |
 | Page-limit failure | Proven locally by code shape | A remaining next link after 1,000 pages returns failure. |
-| Rate-limit recovery | Unproven / missing | A `429` fails the import/refresh immediately; no bounded retry or provider evidence exists. |
+| Rate-limit recovery | Proven locally; provider behavior unverified | Executable tests prove exact `Retry-After` waits, a two-retry bound, unsafe-delay rejection, and success after throttling. No real throttled-provider packet exists. |
 | Stable ordering | Proven locally by code shape | Initial range requests specify `order=created_at asc`; real multi-page evidence remains deferred. |
 | Duplicate-order protection | Proven locally | Executable tests cover newest-state selection, missing IDs, and ambiguous duplicates; GA4 rows retain `externalId`. |
 | Order-change capture | Partially proven | Each refresh re-fetches the full campaign-start/creation window and therefore sees current state for orders created in that window. Real refund/order mutation convergence remains not locally verifiable. |
-| API version pin | Broken operational boundary | `2024-01` is retired. Shopify can silently fall forward to the oldest supported version, while the app neither records nor rejects the effective version. |
+| API version pin | Proven locally; deployment/provider value unverified | The default is `2026-07`; current supported overrides are allowlisted, successful responses must report the requested effective version, and connection provenance records both values. Deployment configuration and a real header packet remain unverified. |
 | REST longevity | Partially proven only | Shopify documents REST Admin as legacy; no migration or compatibility gate exists. |
 
 Official Shopify references used to validate provider semantics:
@@ -142,16 +146,16 @@ Official Shopify references used to validate provider semantics:
 Current behavior:
 
 - `/api/shopify/connect` requires campaign access before persistence.
-- It verifies the token with a Shopify shop-information request.
+- It validates the canonical `*.myshopify.com` boundary, verifies shop information and granted scopes, and requires both order-read capability and `read_all_orders` before persistence because the visible selector requests historical windows beyond 60 days.
 - Storage writes the token into encrypted token JSON and clears the legacy plaintext column.
 - The UI masks the token input.
-- The route deactivates all current campaign Shopify connections, then creates the new connection.
+- Storage deactivates the campaign's active connection and inserts the replacement in one transaction.
 
 Findings:
 
-- **Confirmed blocker: shop host validation/SSRF.** The server accepts an arbitrary normalized hostname. It does not require a valid `*.myshopify.com` host before making server-side requests with the supplied access token.
-- **Confirmed blocker: connection replacement is not atomic.** Existing active connections are deactivated before the new connection row is created. A database failure can leave the campaign without its previous working connection.
-- **Not locally verifiable: encryption key quality.** `tokenVault.ts` can fall back to a hard-coded development key when deployment secrets are absent. Production configuration is not locally provable and the code does not fail closed in production.
+- Host/SSRF rejection and same-shop pagination URL enforcement are proven locally by executable negative tests; a real provider connection remains unverified.
+- Connection replacement rollback is proven locally by a forced insertion failure; the old active connection is retained.
+- Shopify connection reads and writes now fail closed in production unless `TOKEN_ENCRYPTION_KEY` or `ENCRYPTION_KEY` is explicitly configured. Deployment key presence and quality remain not locally verifiable.
 - The active revenue source is not automatically deactivated when the connection is replaced. Until a new mapping save succeeds, old Shopify revenue can remain active while the active connection points to another store.
 
 ### OAuth
@@ -159,20 +163,18 @@ Findings:
 Current behavior:
 
 - OAuth start checks campaign access.
-- An in-memory nonce maps campaign ID and shop domain.
-- The callback compares state, shop, and Shopify HMAC before exchanging the code.
+- An in-memory nonce maps campaign ID, shop domain, initiating Clerk session ID, and creation time.
+- The callback consumes the nonce once and verifies campaign, canonical shop, initiating session, ten-minute TTL, and Shopify HMAC before exchanging the code.
+- Token exchange is form-encoded and the returned scope list must include `read_orders` or implied `write_orders` access plus `read_all_orders`.
 - The resulting token is stored through the same encrypted connection storage.
 
 Findings:
 
 - **Unproven provider path:** no current real OAuth connection/save packet exists.
-- **Confirmed blocker:** the callback does not enforce the stored 10-minute timestamp. Cleanup occurs only when another OAuth start request runs.
-- **Confirmed blocker:** the nonce is not bound to the initiating browser with a signed cookie/session check as required by Shopify's manual flow.
-- **Confirmed blocker:** the shop hostname is not validated as a legal `*.myshopify.com` hostname.
-- **Confirmed blocker:** granted scopes are stored but required `read_orders` access is not confirmed before the connection becomes active.
+- Session, TTL, shop, campaign, scope, and one-time state wiring are proven locally by pure negative tests plus static route guards. Multi-instance routing and a real browser/provider callback remain unverified.
 - **Partially proven:** HMAC comparison is timing-safe, but exact encoding parity with Shopify is not covered by a callback fixture test.
-- **Unproven:** the JSON token-exchange body is not covered by provider evidence; the current Shopify guide shows form-encoded exchange.
-- Connection replacement is non-transactional here as well.
+- **Partially proven:** token exchange now matches Shopify's documented form encoding, but no real exchange packet exists.
+- OAuth uses the same transactional connection replacement and rollback boundary as Admin-token connect.
 
 ### Campaign ownership and isolation
 
@@ -303,13 +305,13 @@ A structurally valid, completely paginated empty result is treated as authoritat
 
 | Lifecycle path | Current evidence | Status |
 |---|---|---|
-| Admin token connect | Campaign guard, token verification, encrypted storage; historical one-store packet | Partially proven; host validation, atomic replacement, key configuration unproven/broken |
-| OAuth connect | Local route trace only | Unproven and blocked by callback/session/host/scope findings |
+| Admin token connect | Campaign guard; canonical-host, scope, version, encryption-config and rollback tests; historical one-store packet | Partially proven; local boundaries pass, while current deployment key/provider behavior remains unverified |
+| OAuth connect | Session/TTL/host/scope validators and current route trace | Partially proven locally; real browser/provider callback, HMAC fixture, and multi-instance behavior remain unverified |
 | Add/import | Historical `$99.99` packet; executable order-policy tests; current static route tests | Partially proven; local eligibility policy is covered but real-provider and remaining date/currency cases are not |
 | Edit/update | Explicit stable `sourceId`; transactional replacement and order-policy tests; historical `$99.99 -> $199.98` packet | Partially proven; source retention and eligibility are proven locally, while changed-order/date semantics remain incomplete |
 | Delete/deactivate | Campaign/context-scoped transactional source+record delete | Proven locally for the source delete boundary; deployed packet was one campaign only |
 | Disconnect | UI deletes matching active sources one by one, then deletes connection | Not atomic across multiple sources and connection; partial disconnect is possible |
-| Reconnect/change store | Single active connection replacement | Not atomic; old source/new connection mismatch can exist |
+| Reconnect/change store | Transactional single-active-connection replacement with rollback test | Connection replacement is proven locally; old source/new connection mismatch can still exist until a new mapping save succeeds |
 | Scheduler refresh | Stable source ID, mapping reuse, bounded internal request timeout, stale-ID skip; same transactional GA4 save route | Partially proven; no revenue-changing Shopify provider packet and no event audit |
 | Manual reprocess | No user-facing route by design | Not implemented; scheduler only |
 | Source freshness | `lastSyncedAt` saved after success | Partially persisted, not surfaced or propagated adequately |
@@ -373,10 +375,12 @@ This blocks strict source-freshness, Executive Summary risk, and scheduler certi
 Fresh local validation on 2026-07-12:
 
 ```text
-npm test -- server/shopify-revenue-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/report-email-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts
+npx vitest run server/shopify-provider-hardening.test.ts server/shopify-connection-transaction.test.ts server/shopify-revenue-policy.test.ts server/shopify-revenue-transaction.test.ts server/shopify-revenue-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/report-email-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts
+npx vitest run server/source-safety-regression.test.ts -t Shopify
+npm run check
 ```
 
-Result: **6 files passed, 61 tests passed**.
+Result: **10 files/95 tests passed**, **4 Shopify source-safety tests passed** with the other 83 tests filtered out, and TypeScript compilation passed. The unfiltered source-safety file still has seven unrelated Instagram static-test failures in the preserved dirty worktree; those failures are not counted as Shopify evidence or silently represented as green.
 
 What this proves:
 
@@ -384,6 +388,14 @@ What this proves:
 - campaign/context guards exist in the traced routes
 - source deletion uses the scoped route
 - all current Shopify order endpoints call the paginated reader
+- canonical store-host and same-store Link boundaries reject negative cases
+- OAuth state validation binds campaign, store, Clerk session, and TTL
+- order-read and `read_all_orders` scopes are required at connection time, with a second window-level `read_all_orders` guard before historical reads
+- production encryption configuration fails closed when an explicit key is absent
+- connection replacement rolls back to the old active connection on forced insertion failure
+- supported/effective version mismatches and missing headers fail closed
+- `429` recovery obeys safe `Retry-After` values and stops after two retries
+- order eligibility, identity, dates, deduplication, currency, and transactional revenue replacement pass executable negative tests
 - the scheduler passes stable source ID and platform context
 - current GA4 financial formulas consume active imported revenue
 - one mocked Shopify revenue amount propagates to scheduled PDF, KPI, Benchmark, and notification metadata
@@ -391,13 +403,11 @@ What this proves:
 
 What it does not prove:
 
-- paid/pending/refunded/cancelled/voided/test-order behavior
-- multiple discount codes
-- provider duplicate order IDs or order edits
-- rate-limit recovery or real pagination completeness
-- currency parity/conversion
-- atomic replacement or last-good rollback
-- OAuth callback/session/hostname/scope behavior
+- real-provider paid/refund/cancellation/test-order mutation behavior
+- real-provider duplicate IDs or later order edits
+- real rate-limit behavior or real pagination completeness; local bounded retry behavior is executable-tested
+- deployed currency/store behavior; no currency conversion is implemented or claimed
+- real OAuth callback/provider behavior; local session/TTL/hostname/scope validation is covered
 - deployed scheduler mutation and failure retention
 - Shopify-specific damaged-data health
 - full Campaign Breakdown, Ad Comparison, Campaign DeepDive, report variant, snapshot, alert-email, and notification lifecycle matrix
@@ -445,9 +455,9 @@ Therefore the historical `inventory clean` packets do not establish Shopify data
 
 | Existing claim/evidence | Fresh result |
 |---|---|
-| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Contradicted.** Eligibility, identity/date, and currency ingress are now locally guarded, but connection-lifecycle atomicity, API version, freshness, deployed evidence, and damaged-data scope remain unresolved. |
-| Admin token ownership guard | **Proven locally**, but arbitrary shop-host SSRF/token-forwarding remains a blocker. |
-| Paginated reads prevent truncation | **Partially proven.** Cursor loop, stable initial ordering, deduplication, and page-limit failure exist; real >250 evidence and rate-limit recovery remain absent. |
+| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Contradicted.** Eligibility, identity/date, currency, connection replacement, and API-version ingress are now locally guarded, but disconnect atomicity/store parity, freshness, deployed evidence, and damaged-data scope remain unresolved. |
+| Admin token ownership guard | **Proven locally**, including canonical Shopify-host enforcement before token forwarding; real provider behavior remains unverified. |
+| Paginated reads prevent truncation | **Partially proven.** Cursor loop, stable initial ordering, same-shop Link enforcement, deduplication, page-limit failure, older-window scope enforcement, and bounded 429 retry exist; real >250 evidence remains absent. |
 | Materialization fails closed | **Now proven locally for traced GA4 Shopify boundaries.** Durable replacement rolls back on tested persistence failures; malformed successful payloads, repeated cursors, and unclassifiable matched orders fail before writes. Complete empty results intentionally replace revenue with zero. Post-commit recompute failure remains separate. |
 | Stable source identity on edit | **Proven locally** for explicit edit `sourceId`. Add mode still selects the first active Shopify source rather than creating a clearly separate source. |
 | Delete/deactivate exact boundary | **Proven locally** for individual source+record deletion. Full disconnect is multi-step and non-atomic. |
@@ -456,7 +466,7 @@ Therefore the historical `inventory clean` packets do not establish Shopify data
 | Delivered report email closes report path | **One packet only.** It does not prove other variants/sends, snapshots, scheduler failure behavior, or current code after later shared-file changes. |
 | Second-campaign portability proves isolation | **Partial.** Distinct source IDs were observed, but overlapping Shopify order attribution and store/source domain parity were not checked. |
 | Clean source-damage inventory | **Insufficient.** The route has no Shopify-specific order/status/currency/connection/atomicity checks. |
-| OAuth can remain excluded | **Not for whole visible-source readiness.** OAuth is displayed as recommended and has confirmed local security/completeness gaps plus no provider validation. |
+| OAuth can remain excluded | **Not for whole visible-source readiness.** OAuth is displayed as recommended. Its confirmed host/session/TTL/scope/transaction gaps are fixed locally, but callback/HMAC/provider evidence remains incomplete. |
 | Normal wall-clock scheduling is optional | **Scheduler timing alone can remain external**, but source freshness, persisted run/failure identity, provider mutation, and last-good behavior are not optional for strict readiness. |
 
 ### Stale documents requiring later reconciliation
@@ -478,6 +488,13 @@ This first audit creates the canonical correction without editing those already-
 
 - campaign access guards on current Shopify user/API routes
 - encrypted-token storage mechanism and masked token UI
+- production Shopify connection access fails closed without an explicit encryption key
+- canonical `*.myshopify.com` validation and same-store pagination-Link enforcement
+- OAuth campaign/shop/session/TTL/scope validators and one-time callback state consumption by current route trace
+- required order-read plus `read_all_orders` scopes at connect and again before historical reads
+- transactional connection replacement with forced-insert rollback retention
+- supported requested/effective API-version enforcement on successful versioned responses
+- bounded two-attempt `429` retry with exact safe `Retry-After` handling
 - explicit source-ID edit boundary and platform-context check
 - scoped transactional individual source+record deletion
 - transactional GA4 Shopify materialization replacement and last-good retention on tested delete/insert failures
@@ -500,6 +517,7 @@ This first audit creates the canonical correction without editing those already-
 ### Partially proven
 
 - Admin token add/edit/delete happy path
+- OAuth HMAC/callback/token-exchange behavior pending real provider and callback-fixture evidence
 - source modal and mapped-campaign provenance
 - Campaign Breakdown and Ad Comparison exact mapping
 - scheduler refresh/no-duplicate behavior
@@ -512,11 +530,9 @@ This first audit creates the canonical correction without editing those already-
 
 - transaction-level confirmation beyond Shopify financial status and real-provider policy behavior
 - real-provider older order/refund mutation convergence
-- atomic connect/reconnect/disconnect beyond the now-transactional GA4 materialization replacement
-- OAuth security/completeness/provider behavior
-- valid Shopify host enforcement
-- supported/effective API-version enforcement
-- rate-limit retry and real pagination completeness
+- atomic disconnect across sources and connection; old-source/new-store parity after reconnect
+- real OAuth/provider behavior and exact HMAC callback-fixture parity
+- real rate-limit and pagination completeness
 - Shopify freshness/risk propagation and scheduler auditability
 - multi-store/source parity and overlapping cross-campaign order attribution
 - Shopify-specific production-data inventory and cleanup boundary
@@ -605,23 +621,23 @@ Implemented scope:
 
 Completion evidence: executable same/mixed/missing/mismatch/invalid/zero currency tests, static pre-mutation route ordering guards, and the existing Shopify downstream financial suite. Bounded deployed evidence remains deferred to Current Commit 8.
 
-### Remaining queue after Current Commit 4
-
-### Current Commit 5 - Authentication, provider, and connection hardening
+### Current Commit 5 - Authentication, provider, and connection hardening — implemented locally
 
 Objective: close Shopify request-boundary and provider-completeness risks without changing the connection architecture.
 
-Smallest safe scope:
+Implemented scope:
 
 - validate the canonical `*.myshopify.com` host boundary
 - bind OAuth nonce to the initiating session with a TTL
-- verify required scopes
+- require order-read plus `read_all_orders` at connect, with a second guard before historical reads
 - make connection replacement atomic
 - fail closed when the production encryption key is absent
 - use and record a supported effective Shopify API version
 - implement bounded `429` retry that honors provider guidance
 
-Completion evidence: host, OAuth-state, scope, encryption-key, connection-rollback, API-version, and rate-limit negative tests plus real provider validation where local code cannot prove behavior.
+Local completion evidence: executable host, OAuth-state/session/TTL, scope/window, encryption-key, connection-rollback, API-version, same-store URL, and bounded rate-limit negative tests; Shopify-specific static route guards; and TypeScript compilation. Real OAuth, effective-version, scope, throttling, and pagination packets remain deferred to Current Commit 8 and are not claimed locally.
+
+### Remaining queue after Current Commit 5
 
 ### Current Commit 6 - Refresh freshness, scheduler audit, and failure visibility
 
@@ -662,7 +678,7 @@ Smallest safe scope:
 
 Completion evidence: a complete evidence matrix with no in-scope value path left partially proven, unproven, or contradicted before any clean-certification claim.
 
-Estimated remaining work: **4 engineering/evidence steps** after Current Commit 4. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
+Estimated remaining work: **3 engineering/evidence steps** after Current Commit 5. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
 
 ## Certification Gate
 

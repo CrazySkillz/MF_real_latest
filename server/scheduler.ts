@@ -4,6 +4,7 @@ import { buildTrendAnalysisAggregate } from './utils/trend-analysis-aggregate';
 import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-sheets-aggregate-source';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
+import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -341,11 +342,21 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     for (const source of sources as any[]) {
       const match = (breakdown as any[]).find((row: any) => String(row?.sourceId) === String(source?.id));
       const lastTotalRevenue = parseNum(match?.revenue);
+      let sourceMapping: any = null;
+      try {
+        sourceMapping = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
+      } catch {
+        sourceMapping = null;
+      }
+      const freshness = String(source?.sourceType || '').toLowerCase() === 'shopify'
+        ? getShopifyRevenueRefreshFreshness(sourceMapping)
+        : undefined;
       revenueSources.push({
         type: String(source?.sourceType || "source"),
         connected: true,
         lastTotalRevenue,
         platformContext: (source as any)?.platformContext || "ga4",
+        ...(freshness ? { freshness } : {}),
       });
       offsiteRevenueTotal += lastTotalRevenue;
     }

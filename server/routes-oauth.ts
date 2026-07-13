@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -15,10 +15,11 @@ import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
+import { inspectGa4ShopifyRevenueDamage } from "./utils/shopify-revenue-damage-inventory";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
-import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
+import { randomBytes, randomUUID, createHash, createHmac, timingSafeEqual } from "crypto";
 import { snapshotScheduler } from "./scheduler";
 import { detectColumnTypes, type DetectedColumn } from "./utils/column-detection";
 import { discoverSchema } from "./utils/schema-discovery";
@@ -43,6 +44,7 @@ import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTi
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign, resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
+import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -473,6 +475,19 @@ function buildCampaignPerformanceSummaryAggregate(input: any) {
       ? platformSources
       : buildMainPlatformSourcesForAggregate(mainPlatformSources),
   });
+}
+
+function getShopifyRevenueSourceFreshness(source: any): Record<string, any> | undefined {
+  if (String(source?.sourceType || "").trim().toLowerCase() !== "shopify") return undefined;
+  let mapping: any = source?.mappingConfig;
+  if (typeof mapping === "string") {
+    try {
+      mapping = JSON.parse(mapping);
+    } catch {
+      mapping = null;
+    }
+  }
+  return getShopifyRevenueRefreshFreshness(mapping);
 }
 
 function calculateConfidence(values: any[], detectedType: string): number {
@@ -1406,7 +1421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
-      const [campaign, allHubspotConnections, allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
+      const [campaign, allHubspotConnections, allShopifyConnections, allRevenueSources, allRevenueRecords, allSpendSources, allSpendRecords] = await Promise.all([
         storage.getCampaign(campaignId).catch(() => null as any),
         db.select({
           id: hubspotConnectionsTable.id,
@@ -1417,6 +1432,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connectedAt: hubspotConnectionsTable.connectedAt,
           createdAt: hubspotConnectionsTable.createdAt,
         }).from(hubspotConnectionsTable).where(eq(hubspotConnectionsTable.campaignId, campaignId)),
+        db.select({
+          id: shopifyConnectionsTable.id,
+          campaignId: shopifyConnectionsTable.campaignId,
+          shopDomain: shopifyConnectionsTable.shopDomain,
+          shopName: shopifyConnectionsTable.shopName,
+          isActive: shopifyConnectionsTable.isActive,
+          mappingConfig: shopifyConnectionsTable.mappingConfig,
+          connectedAt: shopifyConnectionsTable.connectedAt,
+          createdAt: shopifyConnectionsTable.createdAt,
+        }).from(shopifyConnectionsTable).where(eq(shopifyConnectionsTable.campaignId, campaignId)),
         db.select().from(revenueSourcesTable).where(eq(revenueSourcesTable.campaignId, campaignId)),
         db.select().from(revenueRecordsTable).where(eq(revenueRecordsTable.campaignId, campaignId)),
         db.select().from(spendSourcesTable).where(eq(spendSourcesTable.campaignId, campaignId)),
@@ -1481,6 +1506,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allRevenueRecords as any[],
         referencedRevenueSources as any[],
       );
+      const shopifyInventory = inspectGa4ShopifyRevenueDamage({
+        campaign,
+        connections: allShopifyConnections as any[],
+        allSources: allRevenueSources as any[],
+        allRecords: allRevenueRecords as any[],
+        referencedSources: referencedRevenueSources as any[],
+      });
       const duplicateActiveCsvSourceGroups = findings.duplicateActiveRevenueSourceGroups.filter((group: any) =>
         String(group?.signature?.sourceType || "").toLowerCase() === "csv"
         && normalizeOverviewInventoryPlatformContext(group?.signature?.platformContext) === "ga4"
@@ -1696,6 +1728,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? "No GA4 CSV Revenue damage candidates were found for this campaign."
             : "Review the exact CSV source and record IDs before proposing a separate transactional cleanup; this inventory does not mutate data.",
         },
+        shopifyLocalPersistencePass: shopifyInventory.pass,
+        shopifyInventoryScopeComplete: shopifyInventory.scopeComplete,
+        shopifyInventoryEntities: shopifyInventory.inventory,
+        shopifySummary: shopifyInventory.summary,
+        shopifyFindings: shopifyInventory.findings,
+        shopifyObservations: shopifyInventory.observations,
+        shopifyNotLocallyVerifiable: shopifyInventory.notLocallyVerifiable,
+        shopifyCleanupAssessment: {
+          candidateReviewRequired: !shopifyInventory.pass,
+          automaticCleanupAllowed: false,
+          cleanupProposalGenerated: false,
+          reason: shopifyInventory.pass
+            ? "No locally detectable GA4 Shopify Revenue persistence candidates were found for this campaign; provider-only and cross-campaign boundaries remain unverified."
+            : "Review the exact Shopify campaign, connection, source, record IDs and reason codes before proposing a separate transactional cleanup; this inventory does not mutate data.",
+        },
+        shopifyCertificationImpact: shopifyInventory.pass
+          ? "The locally inspectable Shopify persistence invariants passed for this campaign, but the inventory scope is incomplete because provider order state, historical completeness, and cross-campaign overlap are not locally verifiable."
+          : "Shopify database health is not clean for this campaign inventory; retain and review the returned exact IDs before any cleanup proposal.",
         hubspotInventoryPass,
         hubspotSummary: {
           ga4HubspotSourceCount: hubspotIntegrityInventory.summary.ga4HubspotSourceCount,
@@ -1746,6 +1796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "This route is read-only and campaign-access guarded; it does not prove other campaigns unless run for them.",
           "CSV findings recompute only from retained normalized CSV rows; incomplete legacy mappings are reported for review rather than guessed or repaired.",
           "HubSpot-specific inventory is reported separately in hubspotInventoryPass/hubspotFindings; it does not clean data or prove provider lifecycle behavior.",
+          "Shopify-specific inventory is reported separately in shopifyLocalPersistencePass/shopifyFindings; a local persistence pass is not a complete or clean-certified result because shopifyInventoryScopeComplete remains false.",
           "HubSpot provenance output is non-secret endpoint evidence for the connected account, saved mapping, and source-modal expected values; it does not inspect rendered pixels.",
           "Duplicate detection uses source type, platform context, currency, and a sanitized mapping-config hash; suspicious groups still require human review before cleanup.",
           "Null revenue platform context is normalized as ga4 for legacy GA4 revenue-source compatibility.",
@@ -2812,6 +2863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? hasMaterializedRevenue ? Number(recordTotal.toFixed(2)) : null
             : Number((recordTotal || cfgTotal || 0).toFixed(2)),
           ...(isGa4Hubspot ? { materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable" } : {}),
+          ...(getShopifyRevenueSourceFreshness(source) ? { freshness: getShopifyRevenueSourceFreshness(source) } : {}),
         };
       });
       res.json({ success: true, sources: sourcesWithTotals });
@@ -2846,7 +2898,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...instagramRev.map((s: any) => ({ ...s, platformContext: 'instagram' })),
         ...tiktokRev.map((s: any) => ({ ...s, platformContext: 'tiktok' })),
         ...googleSheetsRev.map((s: any) => ({ ...s, platformContext: 'google_sheets' })),
-      ];
+      ].map((source: any) => {
+        const freshness = getShopifyRevenueSourceFreshness(source);
+        return freshness ? { ...source, freshness } : source;
+      });
 
       // Fetch spend sources
       const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
@@ -13207,6 +13262,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const revenueStartDate = "1900-01-01";
         const revenueEndDate = new Date().toISOString().slice(0, 10);
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
+        const revenueSourceDefinitions = await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]);
+        const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
         for (const source of revenueBreakdown) {
           materializedRevenueSourceTypes.add(String(source?.sourceType || "").trim().toLowerCase());
         }
@@ -13229,6 +13286,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastTotalRevenue: parseNum(source?.revenue),
             offsite: true,
             platformContext: "ga4",
+            ...(getShopifyRevenueSourceFreshness(revenueSourceDefinitionsById.get(String(source?.sourceId || "")))
+              ? { freshness: getShopifyRevenueSourceFreshness(revenueSourceDefinitionsById.get(String(source?.sourceId || ""))) }
+              : {}),
           }));
       } catch {
         // Keep mapped-source fallback if revenue records cannot be resolved.
@@ -13475,6 +13535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const lastTotalRevenue = isHubspot ? hubspotMaterialized ? 0 : null : parseNum(cfg.lastTotalRevenue);
             const offsite = revenueClassification === "offsite_not_in_ga4";
             const platformContext = String(cfg.platformContext || "").trim() || null;
+            const freshness = s.type === "shopify" ? getShopifyRevenueRefreshFreshness(cfg) : undefined;
             revenueSources.push({
               type: s.type,
               connected: true,
@@ -13482,6 +13543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastTotalRevenue,
               offsite,
               platformContext,
+              ...(freshness ? { freshness } : {}),
               ...(isHubspot ? { materializedRevenueStatus: hubspotMaterialized ? "available" : "unavailable" } : {}),
             });
             if (!isHubspot && offsite && Number(lastTotalRevenue) > 0) offsiteRevenueTotal += Number(lastTotalRevenue);
@@ -29695,6 +29757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let performanceSummarySpendTotals: any = null;
       let importedRevenueToDateTotal = 0;
       let executiveRevenueSources: any[] = [];
+      let executiveShopifyRevenueFreshness: any[] = [];
       try {
         const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
         canonicalSpend = spendResult.totalSpend || 0;
@@ -29713,6 +29776,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const revenueResult = await storage.getRevenueTotalForRange(id, startDate, endDate);
         canonicalRevenue = revenueResult.totalRevenue || 0;
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, "1900-01-01", endDate, "ga4").catch(() => []);
+        const revenueSourceDefinitions = await storage.getRevenueSources(id, "ga4").catch(() => [] as any[]);
+        const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
+        executiveShopifyRevenueFreshness = (revenueSourceDefinitions as any[])
+          .map((source: any) => getShopifyRevenueSourceFreshness(source))
+          .filter(Boolean);
         importedRevenueToDateTotal = Number((Array.isArray(revenueBreakdown) ? revenueBreakdown : []).reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));
         executiveRevenueSources = (Array.isArray(revenueBreakdown) ? revenueBreakdown : [])
           .filter((source: any) => parseNum(source?.revenue) > 0)
@@ -29722,6 +29790,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             revenueClassification: "imported_revenue",
             lastTotalRevenue: parseNum(source?.revenue),
             platformContext: "ga4",
+            ...(getShopifyRevenueSourceFreshness(revenueSourceDefinitionsById.get(String(source?.sourceId || "")))
+              ? { freshness: getShopifyRevenueSourceFreshness(revenueSourceDefinitionsById.get(String(source?.sourceId || ""))) }
+              : {}),
           }));
       } catch (err) {
         console.log('No canonical spend/revenue data found');
@@ -29773,6 +29844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         revenueSources: executiveRevenueSources,
       });
+      const shopifyRevenueFreshness = executiveShopifyRevenueFreshness;
       const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
       const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
       const aggregateMetricValue = (metricName: string): number => {
@@ -29926,6 +29998,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       checkFreshness(googleAdsLastUpdate, 'Google Ads');
       checkFreshness(instagramLastUpdate, 'Instagram Ads');
       checkFreshness(tiktokLastUpdate, 'TikTok Ads');
+      for (const freshness of shopifyRevenueFreshness) {
+        if (freshness?.refreshStatus === "failed") {
+          dataFreshnessWarnings.push({
+            source: "Shopify Revenue",
+            severity: "high",
+            message: "Shopify Revenue refresh failed; retained last-good revenue may be stale",
+          });
+        } else if (!freshness?.lastGoodAt && !freshness?.lastRefreshSuccessAt) {
+          dataFreshnessWarnings.push({
+            source: "Shopify Revenue",
+            severity: "high",
+            message: "Shopify Revenue freshness is unavailable; current revenue cannot be dated",
+          });
+        } else {
+          checkFreshness(freshness?.lastGoodAt || freshness?.lastRefreshSuccessAt || null, "Shopify Revenue");
+        }
+      }
 
       // Aggregate totals across connected sources
       const totalImpressions = aggregateMetricValue("impressions");
@@ -30138,6 +30227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metaLastUpdate,
           ga4LastUpdate,
           customIntegrationLastUpdate,
+          shopifyRevenue: shopifyRevenueFreshness,
           warnings: dataFreshnessWarnings,
           overallStatus: dataFreshnessWarnings.length === 0 ? 'current' :
             dataFreshnessWarnings.some((w: any) => w.severity === 'high') ? 'stale' : 'aging',
@@ -32675,6 +32765,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/campaigns/:id/shopify/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
+    let refreshAudit: { campaignId: string; sourceId: string; mapping: Record<string, any>; event: ShopifyRevenueRefreshEvent } | null = null;
+    let refreshCommitted = false;
+    const persistRefreshFailure = async (error: any) => {
+      if (!refreshAudit || refreshCommitted) return;
+      try {
+        const failureEvent = { ...refreshAudit.event, at: new Date().toISOString() };
+        const failedMapping = markShopifyRevenueRefreshFailure(refreshAudit.mapping, failureEvent, error);
+        const failedSource = await storage.updateGa4ShopifyRevenueSourceRefreshState(
+          refreshAudit.campaignId,
+          refreshAudit.sourceId,
+          JSON.stringify(failedMapping),
+          refreshAudit.event.runId,
+        );
+        if (failedSource) refreshAudit.mapping = failedMapping;
+      } catch (auditError: any) {
+        console.error("[Shopify Save Mappings] Failed to persist refresh failure state:", auditError?.message || auditError);
+      }
+    };
     try {
       const campaignId = req.params.id;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
@@ -32689,6 +32797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days: zNumberLike.optional(),
           platformContext: zShopifyRevenuePlatformContext.optional(),
           dryRun: z.boolean().optional(),
+          refreshRunId: z.string().trim().max(128).optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),
             linkedinCampaignUrn: z.string(),
@@ -32709,6 +32818,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // because Shopify orders do not contain a native conversion value field.
       const effectiveValueSource: "revenue" = "revenue";
       const isDryRun = Boolean(body.data.dryRun);
+      const internalAutoRefresh = isInternalAutoRefreshRequest(req);
+      const refreshAttemptAt = new Date().toISOString();
+      const refreshEvent: ShopifyRevenueRefreshEvent = {
+        attemptAt: refreshAttemptAt,
+        at: refreshAttemptAt,
+        runId: internalAutoRefresh && body.data.refreshRunId ? body.data.refreshRunId : randomUUID(),
+        trigger: internalAutoRefresh ? "scheduler" : "manual",
+      };
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
@@ -32726,6 +32843,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
         if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "shopify" || existingCtx !== String(platformCtx || "ga4").trim().toLowerCase()) {
           return res.status(404).json({ error: "Shopify revenue source not found" });
+        }
+        if (platformCtx === "ga4" && !isDryRun) {
+          let existingMapping: Record<string, any> = {};
+          try {
+            existingMapping = existingSource.mappingConfig ? JSON.parse(String(existingSource.mappingConfig)) : {};
+          } catch {
+            existingMapping = {};
+          }
+          const attemptedMapping = markShopifyRevenueRefreshAttempt(existingMapping, refreshEvent);
+          const auditedSource = await storage.updateGa4ShopifyRevenueSourceRefreshState(campaignId, requestedSourceId, JSON.stringify(attemptedMapping));
+          if (!auditedSource) throw new Error("Shopify revenue source not found");
+          refreshAudit = { campaignId, sourceId: requestedSourceId, mapping: attemptedMapping, event: refreshEvent };
         }
       }
 
@@ -32864,6 +32993,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (requestedSourceId && !existingShopify) {
         return res.status(404).json({ error: "Shopify revenue source not found" });
       }
+      let existingSourceMapping: Record<string, any> = {};
+      try {
+        existingSourceMapping = existingShopify?.mappingConfig ? JSON.parse(String(existingShopify.mappingConfig)) : {};
+      } catch {
+        existingSourceMapping = {};
+      }
+      const refreshSuccessEvent = { ...refreshEvent, at: new Date().toISOString() };
 
       // Persist GA4 connection metadata with its revenue replacement transaction below.
       let shopifyConnectionId: string | null = null;
@@ -32876,7 +33012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {
           existingConnConfig = {};
         }
-        const mappingConfig = {
+        const mappingConfig = markShopifyRevenueRefreshSuccess({
           ...(existingConnConfig?.authType ? { authType: String(existingConnConfig.authType) } : {}),
           ...(Object.prototype.hasOwnProperty.call(existingConnConfig || {}, "grantedScopes")
             ? { grantedScopes: existingConnConfig.grantedScopes }
@@ -32907,7 +33043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
-        };
+        }, existingConnConfig, refreshSuccessEvent);
         shopifyConnectionId = String(shopifyConn.id);
         shopifyConnectionMappingConfig = JSON.stringify(mappingConfig);
         if (platformCtx !== 'ga4') {
@@ -32939,7 +33075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.
 
-        const mappingCfg = JSON.stringify({
+        const mappingCfg = JSON.stringify(markShopifyRevenueRefreshSuccess({
           provider: "shopify",
           platformContext: platformCtx,
           mode: "revenue_to_date",
@@ -32960,7 +33096,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
-          lastSyncedAt: new Date().toISOString(),
           currency: resolvedRevenueCurrency,
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
             campaignValue,
@@ -32968,7 +33103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
           allocationMethod: "ga4_campaign_exact_match_v1",
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
-        });
+        }, existingSourceMapping, refreshSuccessEvent));
 
         const sourceValues = {
           campaignId,
@@ -33072,6 +33207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sourceValues,
             records,
           );
+          refreshCommitted = true;
         } else {
           await storage.createRevenueRecords(records.map(record => ({
             ...record,
@@ -33110,6 +33246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (e: any) {
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
+        await persistRefreshFailure(e);
         return res.status(500).json({
           success: false,
           error: e?.message || "Failed to materialize Shopify revenue records",
@@ -33138,6 +33275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("[Shopify Save Mappings] Error:", error);
+      await persistRefreshFailure(error);
       res.status(500).json({ error: error.message || "Failed to process Shopify revenue metrics" });
     }
   });

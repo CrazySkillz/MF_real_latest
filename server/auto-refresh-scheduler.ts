@@ -21,6 +21,7 @@ import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows } from "./utils/csv";
+import { randomUUID } from "crypto";
 
 type AnyRecord = Record<string, any>;
 type ReprocessResult = { success: boolean; status?: number; error?: string };
@@ -207,6 +208,7 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
     days: mappingConfig.days,
     platformContext: mappingConfig.platformContext,
     valueSource: mappingConfig.valueSource,
+    ...(mappingConfig.refreshRunId ? { refreshRunId: mappingConfig.refreshRunId } : {}),
     ...(sourceId ? { sourceId } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
@@ -218,9 +220,10 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
       console.warn(`[Auto Refresh] Skipping stale Shopify revenue source for campaign ${campaignId}`);
       return false;
     }
-    console.error(`[Auto Refresh] Shopify reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
+    console.error(`[Auto Refresh] Shopify reprocess failed for campaign ${campaignId} (run ${String(mappingConfig.refreshRunId || "unknown")}):`, result.status, result.json?.error || result.text);
     return false;
   }
+  console.log(`[Auto Refresh] Shopify reprocess complete for campaign ${campaignId} (run ${String(mappingConfig.refreshRunId || "unknown")})`);
   return true;
 }
 
@@ -641,8 +644,10 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   const startedAt = Date.now();
+  const refreshRunId = randomUUID();
   console.log("\n=== DAILY AUTO-REFRESH + AUTO-PROCESS RUNNING ===");
   console.log(`Timestamp: ${new Date().toISOString()}`);
+  console.log(`Run ID: ${refreshRunId}`);
 
   try {
     // 1) Refresh LinkedIn first (ensures latest conversions are available in latest import session).
@@ -715,6 +720,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             shopifyRevenueCount++;
             const shopCfgRaw = safeJsonParse(shopifySource?.mappingConfig);
             const shopCfg = shopCfgRaw ? { ...shopCfgRaw, platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx } : null;
+            if (shopCfg) shopCfg.refreshRunId = refreshRunId;
             if (shopCfg?.selectedValues?.length) {
               attempted++;
               if (await reprocessShopify(campaignId, shopCfg, String(shopifySource.id))) { succeeded++; anyUpdated = true; }
@@ -893,6 +899,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     console.log(`   Provider jobs attempted: ${attempted}`);
     console.log(`   Provider jobs succeeded: ${succeeded}`);
     console.log(`   Provider jobs skipped (no mapping/disabled): ${skipped}`);
+    console.log(`   Run ID: ${refreshRunId}`);
   } finally {
     (global as any).__autoRefreshInProgress = false;
     const elapsedMs = Date.now() - startedAt;

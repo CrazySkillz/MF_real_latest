@@ -187,6 +187,7 @@ export interface IStorage {
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
   ): Promise<RevenueSource>;
+  updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string): Promise<RevenueSource | undefined>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
   getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
@@ -1556,6 +1557,21 @@ export class DatabaseStorage implements IStorage {
       if (!savedConnection) throw new Error('Shopify connection not found');
       return savedSource;
     });
+  }
+
+  async updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string): Promise<RevenueSource | undefined> {
+    const [source] = await db.update(revenueSources)
+      .set({ mappingConfig } as any)
+      .where(and(
+        sql`${revenueSources.id}::text = ${sourceId}`,
+        eq(revenueSources.campaignId, campaignId),
+        eq(revenueSources.sourceType, 'shopify'),
+        eq(revenueSources.isActive, true),
+        or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+        expectedRunId ? sql`${revenueSources.mappingConfig}::jsonb ->> 'lastRefreshRunId' = ${expectedRunId}` : undefined,
+      ))
+      .returning();
+    return source || undefined;
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {

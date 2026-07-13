@@ -6217,6 +6217,12 @@ export default function GA4Metrics() {
                         )}
                         {revenueDisplaySources.map((s: any) => {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
+                          const isShopify = String(s.sourceType || "").toLowerCase() === "shopify";
+                          const shopifyLastGoodAt = cfg?.lastGoodAt || cfg?.lastRefreshSuccessAt || cfg?.lastSyncedAt;
+                          const shopifyFreshnessText = !isShopify ? ""
+                            : cfg?.refreshStatus === "failed"
+                              ? `Refresh failed${shopifyLastGoodAt ? ` · Last good ${formatConnectionTimestamp(shopifyLastGoodAt)}` : ""}`
+                              : shopifyLastGoodAt ? `Last refreshed ${formatConnectionTimestamp(shopifyLastGoodAt)}` : "Refresh status unavailable";
                           const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.sourceType === "hubspot" && s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
@@ -6234,6 +6240,7 @@ export default function GA4Metrics() {
                                   {revenueSourceDisplayLabel(s)}{dateLabel}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
+                                {shopifyFreshnessText ? <p className="text-xs text-muted-foreground/70">{shopifyFreshnessText}</p> : null}
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium tabular-nums text-foreground">

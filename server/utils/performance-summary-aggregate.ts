@@ -290,7 +290,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
       metrics: {
         revenue: parseNum(source.lastTotalRevenue),
       },
-      freshness: source.platformContext ? { platformContext: source.platformContext } : undefined,
+      freshness: source.freshness && typeof source.freshness === "object"
+        ? { ...source.freshness, ...(source.platformContext ? { platformContext: source.platformContext } : {}) }
+        : source.platformContext ? { platformContext: source.platformContext } : undefined,
     });
   }
 

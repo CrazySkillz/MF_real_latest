@@ -851,8 +851,8 @@ Checkpoint after Journey 8:
 - [ ] Confirm Shopify `Review Settings` revenue breakdown rows show campaign/value label and amount without order-count text such as `(1 order)`
 - [ ] After Shopify edit/re-import, verify revenue, KPI, Benchmark, Reports, and Notifications requests refetch; the recorded Current Commit 6 deployed packet closed this cache/refetch check only, not report PDF contents, KPI/Benchmark row-value parity, notification row values, or email delivery
 - [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, or future provider changes
-- [x] Current Commit 8 portability/provider-boundary validation is recorded closed for the user-validated second Shopify Admin API token campaign/mapping packet; real >250 matching-order provider evidence remains excluded until a Shopify store/window with more than 250 matching orders exists
-- [x] Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified for the validated v1 source-family scope. Explicit exclusions remain Shopify OAuth, real >250 matching-order provider pagination, future Shopify/API/provider changes, future untested report/email variants or sends, revenue-changing scheduler provider mutation proof, optional strict normal wall-clock scheduler timing, and any non-Shopify source family.
+- [x] The historical second-campaign portability packet is retained as bounded evidence only; it is not the canonical Current Commit 8 certification result
+- [ ] Shopify Revenue is not production-ready or clean-certified. Use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` for the current exact blockers; historical checked packets above remain bounded evidence only.
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts
@@ -1238,7 +1238,7 @@ Deferred for v1. Do not use the Salesforce checklist as current release validati
 - [ ] If a new order comes in → verify revenue updates after scheduler
 - [ ] For Current Commit 6 downstream cache/refetch validation, use the browser watcher around Shopify edit/re-import and confirm `overallPass: true`, revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, one Shopify source is present, and Shopify breakdown revenue matches the imported amount; do not treat this as email/PDF/value-level proof
 - [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path: report/PDF values, KPI/Benchmark row values, notification row values, and actual delivered report email were user-confirmed. Repeat this validation for future report/email sends, other report variants, OAuth, or future provider changes
-- [x] Current Commit 8 deployed portability evidence is recorded closed for the user-validated second Shopify Admin API token campaign/mapping packet: Shopify source/revenue totals were present, inventory was clean, source IDs did not overlap with the original campaign, and unrelated spend/revenue totals were unchanged. Real >250 matching-order provider evidence remains excluded without a matching Shopify fixture
+- [x] Historical second-campaign portability evidence is retained as bounded evidence only; current Shopify readiness and remaining provider/isolation blockers are canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
 
 ### GA4 (real connection)
 - [ ] Connect a real GA4 property (not yesop mock)

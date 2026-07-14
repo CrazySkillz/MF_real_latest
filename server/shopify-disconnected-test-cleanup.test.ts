@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const original = {
-    connections: [] as any[],
+    connections: [{ id: 'connection-active', isActive: true }] as any[],
     sources: [
       { id: 'shop-active', sourceType: 'shopify', platformContext: 'ga4', isActive: true },
       { id: 'shop-inactive', sourceType: 'shopify', platformContext: 'ga4', isActive: false },
@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => {
     notifications: [] as any[],
     selectCall: 0,
     updateCall: 0,
-    failureStage: null as 'source' | 'records' | 'notification' | null,
+    failureStage: null as 'source' | 'records' | 'connection' | 'notification' | null,
   };
   const tx = {
     select: vi.fn(() => {
@@ -53,6 +53,16 @@ const mocks = vi.hoisted(() => {
                   if (state.failureStage === 'source') throw new Error('forced source cleanup failure');
                   const active = state.sources.filter((source) => source.id === 'shop-active' && source.isActive);
                   state.sources = state.sources.map((source) => source.id === 'shop-active' ? { ...source, ...values } : source);
+                  return active.map(({ id }) => ({ id }));
+                }),
+              };
+            }
+            if (updateCall === 2) {
+              return {
+                returning: vi.fn(async () => {
+                  if (state.failureStage === 'connection') throw new Error('forced connection cleanup failure');
+                  const active = state.connections.filter((connection) => connection.id === 'connection-active' && connection.isActive);
+                  state.connections = state.connections.map((connection) => connection.id === 'connection-active' ? { ...connection, ...values } : connection);
                   return active.map(({ id }) => ({ id }));
                 }),
               };
@@ -109,10 +119,11 @@ describe('disconnected GA4 Shopify test-data cleanup', () => {
     });
   });
 
-  const cleanup = (expectedActiveSourceIds = ['shop-active']) =>
+  const cleanup = (expectedActiveSourceIds = ['shop-active'], expectedActiveConnectionIds = ['connection-active']) =>
     new DatabaseStorage().cleanupDisconnectedGa4ShopifyRevenue([{
       campaignId: 'campaign-1',
       expectedActiveSourceIds,
+      expectedActiveConnectionIds,
     }]);
 
   it('deactivates exact GA4 Shopify sources, removes only Shopify artifacts, and resolves their alert', async () => {
@@ -120,10 +131,12 @@ describe('disconnected GA4 Shopify test-data cleanup', () => {
     expect(result).toEqual([{
       campaignId: 'campaign-1',
       deactivatedSourceIds: ['shop-active'],
+      deactivatedConnectionIds: ['connection-active'],
       deletedRecordIds: ['active-row', 'inactive-row', 'mislinked-row'],
       resolvedNotificationIds: ['failure'],
     }]);
     expect(mocks.state.sources.find((source) => source.id === 'shop-active')?.isActive).toBe(false);
+    expect(mocks.state.connections.find((connection) => connection.id === 'connection-active')?.isActive).toBe(false);
     expect(mocks.state.sources.find((source) => source.id === 'csv-source')?.isActive).toBe(true);
     expect(mocks.state.records).toEqual([{ id: 'csv-row', revenueSourceId: 'csv-source', sourceType: 'csv' }]);
     expect(JSON.parse(mocks.state.notifications.find((row) => row.id === 'failure')!.metadata)).toMatchObject({
@@ -135,18 +148,20 @@ describe('disconnected GA4 Shopify test-data cleanup', () => {
   it.each([
     ['source', 'forced source cleanup failure'],
     ['records', 'forced record cleanup failure'],
+    ['connection', 'forced connection cleanup failure'],
     ['notification', 'forced notification cleanup failure'],
   ] as const)('rolls back all cleanup mutations when %s fails', async (stage, message) => {
     mocks.state.failureStage = stage;
     await expect(cleanup()).rejects.toThrow(message);
+    expect(mocks.state.connections).toEqual(mocks.original.connections);
     expect(mocks.state.sources).toEqual(mocks.original.sources);
     expect(mocks.state.records).toEqual(mocks.original.records);
     expect(mocks.state.notifications).toEqual(mocks.original.notifications);
   });
 
-  it('fails before mutation when a Shopify connection is active', async () => {
-    mocks.state.connections = [{ id: 'connection-1' }];
-    await expect(cleanup()).rejects.toMatchObject({ code: 'SHOPIFY_CONNECTION_ACTIVE' });
+  it('fails before mutation when the reviewed active connection boundary changed', async () => {
+    mocks.state.connections = [{ id: 'different-connection', isActive: true }];
+    await expect(cleanup()).rejects.toMatchObject({ code: 'SHOPIFY_CLEANUP_CONNECTION_MISMATCH' });
     expect(mocks.tx.update).not.toHaveBeenCalled();
     expect(mocks.tx.delete).not.toHaveBeenCalled();
   });
@@ -173,9 +188,11 @@ describe('disconnected GA4 Shopify test-data cleanup', () => {
     expect(route).toContain('REMOVE_DISCONNECTED_SHOPIFY_TEST_DATA');
     expect(route).toContain('5317190c-d536-45d4-85c0-9d941cfba9f4');
     expect(route).toContain('7376d0e0-fa56-4864-80cd-9dbc8a972068');
+    expect(route).toContain('e61f6a80-7b8f-46b9-ad37-09200f03b685');
+    expect(route).toContain('39c74a67-23a6-4f81-ad94-581066227345');
     expect(route).toContain('Cleanup is limited to the exact reviewed disconnected Shopify test-data batch');
     expect(route).toContain('String(campaign?.ownerId || "").trim() === actorId');
-    expect(route).toContain('cleanupDisconnectedGa4ShopifyRevenue(requests)');
+    expect(route).toContain('cleanupDisconnectedGa4ShopifyRevenue(cleanupRequests)');
     expect(route).toContain('recomputeCampaignDerivedValues');
     expect(route).toContain('postCleanupInventoryRequired: true');
   });

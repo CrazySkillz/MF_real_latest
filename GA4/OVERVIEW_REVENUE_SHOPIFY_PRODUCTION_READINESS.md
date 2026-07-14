@@ -2,19 +2,19 @@
 
 ## Status
 
-**Deployed code candidate with confirmed disconnected test-data damage. Cleanup candidate implemented locally; not yet clean-certified.**
+**Deployed code candidate with confirmed test-data damage. Exact source-and-connection cleanup candidate implemented locally; not yet clean-certified.**
 
-This is the canonical Shopify Revenue readiness document as of 2026-07-14 for deployed Current Commit 9 (`a5bf3b8c`), the completed exact-source repair, the Current Commit 8 reconciliation, the owner-scoped production inventory, and the Current Commit 9.1 cleanup candidate documented below.
+This is the canonical Shopify Revenue readiness document as of 2026-07-14 for deployed Current Commit 9.1 (`85df2840`), the completed exact-source repair, the Current Commit 8 reconciliation, the owner-scoped production inventory, the failed-safe 9.1 cleanup attempt, and the Current Commit 9.2 cleanup candidate documented below.
 
-The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. Current Commit 8 replaces those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commit 9 closed the remaining code-owned lifecycle/evidence blockers and its deployed owner-scoped inventory then correctly failed closed on three disconnected campaigns. The user confirmed all three are test campaigns. Current Commit 9.1 is therefore limited to their exact reviewed Shopify artifacts; certification remains pending its deployment, one confirmed cleanup call, and one all-pass owner-scoped inventory.
+The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. Current Commit 8 replaces those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commit 9 closed the remaining code-owned lifecycle/evidence blockers and its deployed owner-scoped inventory then correctly failed closed on three campaigns. The user confirmed all three are test campaigns. Current Commit 9.1 was limited to their exact sources and correctly made no changes when all three were later observed with active connection rows. Current Commit 9.2 adds those exact reviewed connection IDs to the same transactional boundary; certification remains pending its deployment, one confirmed cleanup call, and one all-pass owner-scoped inventory.
 
 The current honest answer is:
 
 - Shopify Revenue's complete documented local lifecycle and downstream matrix is implemented and locally regression-covered.
 - The Admin API token path has bounded deployed evidence, including an exact-source provider-authoritative zero-match repair.
-- The source family must not be called production-ready or clean-certified while the three confirmed test-data findings and their open refresh-failure alerts remain.
+- The source family must not be called production-ready or clean-certified while the three confirmed test-data findings, their current connection/source artifacts, and their open refresh-failure alerts remain.
 - The inspected production source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` was inconsistent before repair. Shopify then returned zero current matches for the unchanged `utm_campaign = brand_search_q1` mapping, the user confirmed the scoped transactional repair, and the automatic post-repair inventory returned `shopifyLocalPersistencePass: true`. The exact expanded post-repair entity/finding packet was not retained in this audit record, so no broader production-data-health claim is made.
-- Deployed Current Commit 9 inventory returned `crossCampaignPass: true` but `localPass: false` with exactly three failed campaigns and three open scheduler failures. Logs proved all three refresh failures were caused by no active Shopify connection; this is cleanup-required disconnected test data, not evidence of a connected-provider failure.
+- Deployed Current Commit 9 inventory returned `crossCampaignPass: true` but `localPass: false` with exactly three failed campaigns and three open scheduler failures. Scheduler logs showed no active Shopify connection at failure time. The pre-cleanup read later showed one active connection row on each test campaign; the cause of that state transition is not reconstructed or guessed.
 
 ## Audit Contract
 
@@ -441,7 +441,7 @@ Most assertions in `server/shopify-revenue-regression.test.ts` are static source
 
 ### Could existing production data be damaged?
 
-**Yes.** The known contradictory connected source was provider-rematerialized and its automatic campaign-local inventory reported `shopifyLocalPersistencePass: true`. The deployed owner-scoped inventory subsequently proved three disconnected test campaigns retain invalid Shopify artifacts and matching open refresh-failure alerts. No connected campaign overlap was found (`crossCampaignPass: true`). Historical provider state before retained audits remains not locally verifiable.
+**Yes.** The known contradictory connected source was provider-rematerialized and its automatic campaign-local inventory reported `shopifyLocalPersistencePass: true`. The deployed owner-scoped inventory subsequently proved three test campaigns retain invalid Shopify artifacts and matching open refresh-failure alerts. The pre-cleanup read also proved one current active connection row on each test campaign. No cross-campaign overlap was found (`crossCampaignPass: true`). Historical provider state before retained audits remains not locally verifiable.
 
 Potential damage classes:
 
@@ -466,11 +466,11 @@ It intentionally does not claim another tenant's campaigns, reconstruct provider
 
 Confirmed cleanup boundary (user identified all three campaigns as tests):
 
-| Campaign | Expected active GA4 Shopify source | Deployed finding boundary |
-|---|---|---|
-| `5317190c-d536-45d4-85c0-9d941cfba9f4` | `048794ce-ed9a-45dd-8f2e-22341908138e` | incomplete mapping/order identity plus no active connection |
-| `de0af7f4-1dfd-4935-b5b3-1eafbb674e5c` | `7376d0e0-fa56-4864-80cd-9dbc8a972068` | Shopify-typed records linked to a non-Shopify source plus no active connection |
-| `d68cd1d1-fa5c-4d22-810c-aca601dcfd04` | `8db3f5d5-8eeb-4096-958f-d95bf2154203` | Shopify-typed records linked to a non-Shopify source plus no active connection |
+| Campaign | Expected active GA4 Shopify source | Expected active connection | Deployed finding boundary |
+|---|---|---|---|
+| `5317190c-d536-45d4-85c0-9d941cfba9f4` | `048794ce-ed9a-45dd-8f2e-22341908138e` | `e61f6a80-7b8f-46b9-ad37-09200f03b685` | incomplete mapping/order identity |
+| `de0af7f4-1dfd-4935-b5b3-1eafbb674e5c` | `7376d0e0-fa56-4864-80cd-9dbc8a972068` | `a3bc9531-4844-4329-9ece-960421db6c60` | Shopify-typed records linked to a non-Shopify source |
+| `d68cd1d1-fa5c-4d22-810c-aca601dcfd04` | `8db3f5d5-8eeb-4096-958f-d95bf2154203` | `39c74a67-23a6-4f81-ad94-581066227345` | Shopify-typed records linked to a non-Shopify source |
 
 No campaign deletion, connected-store cleanup, unrelated source cleanup, or provider rewrite is authorized.
 
@@ -488,7 +488,7 @@ No campaign deletion, connected-store cleanup, unrelated source cleanup, or prov
 | Downstream Reports/KPI/Benchmark/notification values are proven | **Propagation proven locally.** The exact shared Shopify financial row feeds Overview formulas, downstream content, reports/PDF/email payloads, KPI/Benchmark current values, outcome totals, and alerts; provider correctness is reconciled by the same source audit rather than a second value path. |
 | Delivered report email closes report path | **One packet only.** It does not prove other variants/sends, snapshots, scheduler failure behavior, or current code after later shared-file changes. |
 | Second-campaign portability proves isolation | **Proven locally by the owner-scoped batch boundary.** Cross-campaign overlap uses store plus order identity, and equal IDs from different stores remain isolated. |
-| Clean source-damage inventory | **Failed closed as designed.** The deployed owner-scoped response returned `localPass: false`, `crossCampaignPass: true`, and three exact disconnected test-campaign failures. Current Commit 9.1 performs only that confirmed cleanup; a post-cleanup all-pass response is still required. |
+| Clean source-damage inventory | **Failed closed as designed.** The deployed owner-scoped response returned `localPass: false`, `crossCampaignPass: true`, and three exact test-campaign failures. Current Commit 9.1 then rejected the changed active-connection state without mutation. Current Commit 9.2 covers the exact reviewed source-and-connection boundary; a post-cleanup all-pass response is still required. |
 | OAuth can remain excluded | **Yes while unavailable.** The wizard suppresses OAuth unless the complete server configuration and required scopes are present. Enabling it later reopens its external callback gate. |
 | Normal wall-clock scheduling is optional | **Scheduler timing alone can remain external**, but source freshness, persisted run/failure identity, provider mutation, and last-good behavior are not optional for strict readiness. |
 
@@ -547,13 +547,13 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 
 ### Partially proven
 
-- production data health until Current Commit 9.1 removes the exact confirmed disconnected test artifacts and the owner-scoped batch is rerun
+- production data health until Current Commit 9.2 removes the exact confirmed test artifacts and the owner-scoped batch is rerun
 - OAuth HMAC/callback/token-exchange behavior only if OAuth is configured and becomes visible
 
 ### Unproven or broken
 
-- three confirmed disconnected test campaigns currently fail local persistence inventory and retain three open scheduler-failure alerts
-- production certification remains unproven until Current Commit 9.1 is deployed, its guarded cleanup succeeds, and the final owner-scoped inventory passes
+- three confirmed test campaigns currently fail local persistence inventory and retain three open scheduler-failure alerts
+- production certification remains unproven until Current Commit 9.2 is deployed, its guarded cleanup succeeds, and the final owner-scoped inventory passes
 
 ### Not locally verifiable
 
@@ -567,7 +567,7 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 
 ## Isolated Current Commit Queue
 
-Current Commits 1 through 9 are implemented and deployed. The known connected contradictory source is repaired, the connected refresh completed, and cross-campaign overlap passed. Current Commit 9's production inventory exposed three disconnected test campaigns. Current Commit 9.1 is the only remaining runtime commit and is strictly limited to their exact reviewed artifacts.
+Current Commits 1 through 9.1 are implemented and deployed. The known connected contradictory source is repaired, the connected refresh completed, and cross-campaign overlap passed. Current Commit 9's production inventory exposed three test campaigns. Current Commit 9.1 safely rejected their later active-connection state without mutation. Current Commit 9.2 is the only remaining runtime commit and is strictly limited to the exact reviewed source-and-connection artifacts.
 
 ### Current Commit 1 — Transactional Shopify replacement and last-good retention
 
@@ -859,7 +859,7 @@ Safety boundaries:
 
 Local validation for the final candidate: TypeScript passes; the final 16-file Shopify/downstream gate passes all 140 tests; and the whitespace gate reports no errors.
 
-The deployed gate ran on 2026-07-14. It passed cross-campaign overlap and the connected refresh, but failed local persistence because of the three disconnected test campaigns documented above.
+The deployed gate ran on 2026-07-14. It passed cross-campaign overlap and the connected refresh, but failed local persistence because of the three test campaigns documented above.
 
 ### Current Commit 9.1 - Transactional disconnected Shopify test-data cleanup
 
@@ -879,18 +879,38 @@ Smallest safe implementation:
 
 Local validation: focused transaction/route coverage passes 8 tests, including forced rollback at source, record, and notification writes; active-connection, source-drift, ownership, confirmation, and other-platform-use guards are covered. TypeScript passes, and the complete 17-file Shopify/downstream gate passes all 148 tests.
 
-Estimated remaining work after Current Commit 9.1 is deployed: **2 actions, no Shopify UI workflow**:
+Deployed outcome: the cleanup returned HTTP 409 with `cleanupApplied: false` because every reviewed campaign had one active Shopify connection row. The single transaction made no changes. A fresh read-only batch retained the exact three connection IDs documented above. Current Commit 9.1 therefore proved its fail-closed boundary but cannot clean the current state.
 
-1. invoke the exact guarded cleanup once for the three documented campaign/source pairs
+### Current Commit 9.2 - Exact active-connection convergence
+
+Root cause:
+
+- Current Commit 9.1 used the scheduler-time no-connection evidence as a mutation precondition
+- before mutation, the current inventory showed one active connection on each confirmed test campaign, so the precondition was correctly rejected
+- the cause and timing of that state transition are not retained and are not guessed
+
+Smallest safe implementation:
+
+- hard-code the three newly reviewed active connection IDs alongside the already reviewed campaign/source pairs
+- require the database's complete current active source and connection sets to equal those IDs before any mutation
+- deactivate the exact sources and exact connections, remove only the exact linked/orphan/mislinked Shopify record boundary, and resolve only matching open alerts in the same all-campaign transaction
+- roll back every source, record, connection, and notification change if any campaign or write differs
+- preserve all campaigns, unrelated records/sources/connections/notifications, connected production campaign data, and other-platform Shopify use
+
+Local validation: TypeScript and all 9 focused tests pass, including forced source, record, connection, and notification rollback plus source/connection drift, ownership, confirmation, and other-platform-use guards. The complete 17-file Shopify/downstream gate passes all 149 tests.
+
+Estimated remaining work after Current Commit 9.2 is deployed: **2 actions, no Shopify UI workflow**:
+
+1. invoke the exact guarded cleanup once for the three documented campaign/source/connection sets
 2. rerun `GET /api/ga4-overview/shopify/source-damage-inventory` and retain the compact all-pass result
 
 ## Certification Gate
 
-Current Commit 9's local implementation and connected deployed-refresh gates pass. Certification is pending Current Commit 9.1 deployment, its exact cleanup result, and the final read-only all-pass inventory.
+Current Commit 9's local implementation and connected deployed-refresh gates pass. Current Commit 9.1's failed-safe deployed result is retained. Certification is pending Current Commit 9.2 deployment, its exact cleanup result, and the final read-only all-pass inventory.
 
 Shopify Revenue must not be called clean-certified or production-ready until:
 
-- Current Commit 9.1 is deployed and its response confirms cleanup of only the three documented campaign/source pairs
+- Current Commit 9.2 is deployed and its response confirms cleanup of only the three documented campaign/source/connection sets
 - the one-call owner-scoped batch returns `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` as `true`, `openRefreshFailureCount` as `0`, and every returned campaign as `pass: true`
 
 No campaign deletion, Shopify UI workflow, forced provider failure, fabricated greater-than-250-order fixture, OAuth setup, or repetitive UI validation is required for the currently visible Admin API token scope unless either post-deploy response returns a specific reason-coded failure.

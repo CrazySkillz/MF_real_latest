@@ -1932,14 +1932,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (new Set(requests.map((request: any) => request.campaignId)).size !== requests.length) {
         return res.status(400).json({ success: false, error: "Duplicate cleanup campaign" });
       }
-      const reviewedSourceIdsByCampaignId = new Map([
-        ["5317190c-d536-45d4-85c0-9d941cfba9f4", "048794ce-ed9a-45dd-8f2e-22341908138e"],
-        ["de0af7f4-1dfd-4935-b5b3-1eafbb674e5c", "7376d0e0-fa56-4864-80cd-9dbc8a972068"],
-        ["d68cd1d1-fa5c-4d22-810c-aca601dcfd04", "8db3f5d5-8eeb-4096-958f-d95bf2154203"],
+      const reviewedEntitiesByCampaignId = new Map([
+        ["5317190c-d536-45d4-85c0-9d941cfba9f4", { sourceId: "048794ce-ed9a-45dd-8f2e-22341908138e", connectionId: "e61f6a80-7b8f-46b9-ad37-09200f03b685" }],
+        ["de0af7f4-1dfd-4935-b5b3-1eafbb674e5c", { sourceId: "7376d0e0-fa56-4864-80cd-9dbc8a972068", connectionId: "a3bc9531-4844-4329-9ece-960421db6c60" }],
+        ["d68cd1d1-fa5c-4d22-810c-aca601dcfd04", { sourceId: "8db3f5d5-8eeb-4096-958f-d95bf2154203", connectionId: "39c74a67-23a6-4f81-ad94-581066227345" }],
       ]);
-      if (requests.length !== reviewedSourceIdsByCampaignId.size || requests.some((request: any) =>
+      if (requests.length !== reviewedEntitiesByCampaignId.size || requests.some((request: any) =>
         request.expectedActiveSourceIds.length !== 1
-        || reviewedSourceIdsByCampaignId.get(request.campaignId) !== request.expectedActiveSourceIds[0])) {
+        || reviewedEntitiesByCampaignId.get(request.campaignId)?.sourceId !== request.expectedActiveSourceIds[0])) {
         return res.status(400).json({ success: false, error: "Cleanup is limited to the exact reviewed disconnected Shopify test-data batch" });
       }
       const ownedCampaignIds = new Set((await storage.getCampaigns())
@@ -1949,7 +1949,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ success: false, error: "Campaign access denied" });
       }
 
-      const cleanup = await storage.cleanupDisconnectedGa4ShopifyRevenue(requests);
+      const cleanupRequests = requests.map((request: any) => ({
+        ...request,
+        expectedActiveConnectionIds: [reviewedEntitiesByCampaignId.get(request.campaignId)!.connectionId],
+      }));
+      const cleanup = await storage.cleanupDisconnectedGa4ShopifyRevenue(cleanupRequests);
       const recomputeFailures: Array<{ campaignId: string; error: string }> = [];
       for (const result of cleanup) {
         try {
@@ -1967,7 +1971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       const conflictCodes = new Set([
-        "SHOPIFY_CONNECTION_ACTIVE",
+        "SHOPIFY_CLEANUP_CONNECTION_MISMATCH",
         "SHOPIFY_SOURCE_IN_USE",
         "SHOPIFY_CLEANUP_SOURCE_MISMATCH",
       ]);

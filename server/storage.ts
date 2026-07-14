@@ -166,8 +166,8 @@ export interface IStorage {
   disconnectGa4HubspotRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
   disconnectGa4ShopifyRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
   cleanupDisconnectedGa4ShopifyRevenue(
-    requests: Array<{ campaignId: string; expectedActiveSourceIds: string[] }>,
-  ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>>;
+    requests: Array<{ campaignId: string; expectedActiveSourceIds: string[]; expectedActiveConnectionIds: string[] }>,
+  ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deactivatedConnectionIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
@@ -1453,8 +1453,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async cleanupDisconnectedGa4ShopifyRevenue(
-    requests: Array<{ campaignId: string; expectedActiveSourceIds: string[] }>,
-  ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>> {
+    requests: Array<{ campaignId: string; expectedActiveSourceIds: string[]; expectedActiveConnectionIds: string[] }>,
+  ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deactivatedConnectionIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>> {
     if (requests.length === 0) throw new Error('At least one Shopify cleanup campaign is required');
     if (new Set(requests.map((request) => request.campaignId)).size !== requests.length) {
       throw new Error('Duplicate Shopify cleanup campaign');
@@ -1466,8 +1466,10 @@ export class DatabaseStorage implements IStorage {
           .select({ id: shopifyConnections.id })
           .from(shopifyConnections)
           .where(and(eq(shopifyConnections.campaignId, request.campaignId), eq(shopifyConnections.isActive, true)));
-        if (activeConnections.length > 0) {
-          throw Object.assign(new Error('Connected Shopify campaign cannot use disconnected-source cleanup'), { code: 'SHOPIFY_CONNECTION_ACTIVE' });
+        const activeConnectionIds = activeConnections.map((connection: any) => String(connection.id)).sort();
+        const expectedConnectionIds = Array.from(new Set(request.expectedActiveConnectionIds.map(String))).sort();
+        if (JSON.stringify(activeConnectionIds) !== JSON.stringify(expectedConnectionIds)) {
+          throw Object.assign(new Error('Active Shopify connections changed since cleanup review'), { code: 'SHOPIFY_CLEANUP_CONNECTION_MISMATCH' });
         }
 
         const campaignSources = await tx
@@ -1530,6 +1532,17 @@ export class DatabaseStorage implements IStorage {
             inArray(revenueRecords.id, deletedRecordIds),
           ));
         }
+        if (activeConnectionIds.length > 0) {
+          const deactivatedConnections = await tx.update(shopifyConnections)
+            .set({ isActive: false })
+            .where(and(
+              eq(shopifyConnections.campaignId, request.campaignId),
+              eq(shopifyConnections.isActive, true),
+              inArray(shopifyConnections.id, activeConnectionIds),
+            ))
+            .returning({ id: shopifyConnections.id });
+          if (deactivatedConnections.length !== activeConnectionIds.length) throw new Error('Shopify cleanup connection deactivation changed');
+        }
 
         const campaignNotifications = await tx.select().from(notifications).where(eq(notifications.campaignId, request.campaignId));
         const resolvedNotificationIds: string[] = [];
@@ -1553,6 +1566,7 @@ export class DatabaseStorage implements IStorage {
         results.push({
           campaignId: request.campaignId,
           deactivatedSourceIds: activeSourceIds,
+          deactivatedConnectionIds: activeConnectionIds,
           deletedRecordIds,
           resolvedNotificationIds,
         });

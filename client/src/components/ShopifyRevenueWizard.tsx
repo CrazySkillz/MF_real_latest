@@ -87,6 +87,7 @@ export function ShopifyRevenueWizard(props: {
 
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
+  const [valuesLoadedField, setValuesLoadedField] = useState("");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [campaignDisplayName, setCampaignDisplayName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -121,6 +122,13 @@ export function ShopifyRevenueWizard(props: {
 
   const editSourceId = mode === "edit" ? String(sourceId || initialMappingConfig?.sourceId || "").trim() : "";
   const isRepair = mode === "edit" && !hasEditChanges;
+  const unavailableSavedValues = useMemo(() => {
+    if (mode !== "edit" || !initialMappingConfig || valuesLoadedField !== campaignField) return [];
+    if (String(initialMappingConfig.campaignField || "utm_campaign") !== campaignField) return [];
+    const available = new Set(uniqueValues.map((value) => String(value.value)));
+    const saved = new Set(Array.isArray(initialMappingConfig.selectedValues) ? initialMappingConfig.selectedValues.map(String) : []);
+    return selectedValues.filter((value) => saved.has(value) && !available.has(value));
+  }, [campaignField, initialMappingConfig, mode, selectedValues, uniqueValues, valuesLoadedField]);
 
   const campaignFieldLabel = useMemo(() => {
     if (campaignField === "utm_campaign") return "UTM Campaign (recommended)";
@@ -429,9 +437,14 @@ export function ShopifyRevenueWizard(props: {
       }
       const vals = Array.isArray(json?.values) ? json.values : [];
       setUniqueValues(vals);
+      setValuesLoadedField(campaignField);
       loadedValuesFieldRef.current = campaignField;
       const allowed = new Set(vals.map((v: any) => String(v.value)));
-      setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
+      const savedField = String(initialMappingConfig?.campaignField || "utm_campaign");
+      const savedValues = new Set(Array.isArray(initialMappingConfig?.selectedValues) ? initialMappingConfig.selectedValues.map(String) : []);
+      setSelectedValues((prev) => prev.filter((v) => allowed.has(v) || (
+        mode === "edit" && campaignField === savedField && savedValues.has(v)
+      )));
     } finally {
       setValuesLoading(false);
     }
@@ -885,6 +898,11 @@ export function ShopifyRevenueWizard(props: {
                   </div>
                 )}
               </div>
+              {unavailableSavedValues.length > 0 && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                  Saved value {unavailableSavedValues.map((value) => `“${value}”`).join(", ")} is not present in the current Shopify orders. Continue to Review to confirm the zero-match provider preview. Nothing changes until you confirm Repair from Shopify.
+                </div>
+              )}
               {renderPlatformCampaignMappings()}
             </div>
           )}

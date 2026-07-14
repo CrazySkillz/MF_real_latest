@@ -798,6 +798,21 @@ Required deployed completion evidence:
 
 Current Commit 7.1 is locally implemented but not complete. Completion still requires the bounded deployed before/preview/confirmed-repair/after packet above. The damaged source therefore remains unresolved and Shopify Revenue remains not production-ready. No manual database cleanup is part of this commit.
 
+### Current Commit 7.2 - Zero-match saved-value repair reachability — implemented locally; deployment pending
+
+Deployed Current Commit 7.1 evidence on 2026-07-14 proved that the reconnected Admin API token fetched 10 orders across the configured 3650-day window, but none exposed a non-empty `utm_campaign`. The only provider-visible tag values were `prospecting_q1` and `shop_test`; `brand_search_q1` was absent. A separate 90-day read-only preview returned three orders and likewise no UTM campaign. This disproves the stored source's current one-order/`99.99` provider match and means no non-zero repair is authorized.
+
+Root cause: the edit wizard filtered every saved selection against the current unique-value response. When the saved value correctly had zero current provider matches, it silently removed that value and disabled Continue, making the safe zero-match dry-run and transactional repair unreachable.
+
+Smallest safe fix:
+
+- retain only an original saved edit value when the attribution field is unchanged; connect mode, newly entered values, and changed attribution fields keep the existing provider-value filter
+- show an explicit warning that the saved value is absent and that Review will confirm a zero-match provider preview
+- keep the existing preview fingerprint, explicit Repair confirmation, exact-source transaction, zero-placeholder handling, post-repair inventory, and last-good rollback behavior unchanged
+- do not substitute `prospecting_q1`, invent attribution, delete rows directly, or mutate production during diagnosis
+
+Current Commit 7.2 is complete only after focused automation passes, the deployed Review screen returns zero revenue and zero matched orders for the unchanged `brand_search_q1` mapping, the user explicitly confirms the repair, and the automatic post-repair inventory packet is retained. Until then, the existing source remains unresolved.
+
 ### Current Commit 8 - Downstream evidence and final certification reconciliation
 
 Objective: close the complete Shopify propagation matrix and rerun the strict certification gate.

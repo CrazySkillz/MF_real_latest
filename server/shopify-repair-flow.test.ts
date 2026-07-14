@@ -83,4 +83,11 @@ describe('controlled Shopify repair', () => {
     expect(wizard).toContain('/ga4-overview/source-damage-inventory');
     expect(wizard).toContain('shopifyLocalPersistencePass === true');
   });
+
+  it('retains only the original saved edit value when Shopify currently returns no match', () => {
+    const wizard = readFileSync(join(__dirname, '..', 'client', 'src', 'components', 'ShopifyRevenueWizard.tsx'), 'utf8');
+    expect(wizard).toContain('mode === "edit" && campaignField === savedField && savedValues.has(v)');
+    expect(wizard).toContain('const unavailableSavedValues = useMemo');
+    expect(wizard).toContain('Continue to Review to confirm the zero-match provider preview.');
+  });
 });

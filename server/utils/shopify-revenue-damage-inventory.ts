@@ -127,11 +127,14 @@ export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInvent
   const recordsBySource = new Map<string, any[]>();
   for (const record of input.allRecords) {
     const id = clean(record?.revenueSourceId);
+    const referencedSource = referencedById.get(id);
+    if (referencedSource && lower(referencedSource?.sourceType) === 'shopify' && !isGa4ShopifySource(referencedSource)) continue;
     if (!recordsBySource.has(id)) recordsBySource.set(id, []);
     recordsBySource.get(id)!.push(record);
   }
 
-  const activeConnections = input.connections.filter((connection) => connection?.isActive !== false);
+  const scopedConnections = sources.length > 0 ? input.connections : [];
+  const activeConnections = scopedConnections.filter((connection) => connection?.isActive !== false);
   const activeConnectionIds = activeConnections.map((connection) => clean(connection?.id)).filter(Boolean);
   const latestActiveConnection = activeConnections.slice().sort((a, b) =>
     new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime()
@@ -460,7 +463,7 @@ export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInvent
     scopeComplete: false,
     inventory: {
       campaignId,
-      connections: input.connections.map((connection) => ({
+      connections: scopedConnections.map((connection) => ({
         campaignId,
         connectionId: clean(connection?.id),
         shopDomain: lower(connection?.shopDomain) || null,
@@ -489,7 +492,7 @@ export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInvent
       ga4ShopifySourceCount: sources.length,
       activeGa4ShopifySourceCount: activeSources.length,
       ga4ShopifyRecordCount: sources.reduce((sum, source) => sum + (recordsBySource.get(sourceId(source)) || []).length, 0),
-      shopifyConnectionCount: input.connections.length,
+      shopifyConnectionCount: scopedConnections.length,
       activeShopifyConnectionCount: activeConnections.length,
       findingCount,
     },

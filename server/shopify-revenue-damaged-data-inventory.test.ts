@@ -130,6 +130,31 @@ describe('Shopify Revenue damaged-data inventory', () => {
     expect(result.findings.invalidRevenueRecordGroups).toEqual([]);
   });
 
+  it('excludes Shopify records and connections owned by a non-GA4 platform source', () => {
+    const result = inspectGa4ShopifyRevenueDamage({
+      campaign: { id: 'c1', currency: 'USD' },
+      connections: [{ id: 'conn-1', campaignId: 'c1', isActive: true }],
+      allSources: [{
+        id: 'linkedin-source', campaignId: 'c1', sourceType: 'shopify',
+        platformContext: 'linkedin', isActive: true,
+      }],
+      allRecords: [{
+        id: 'linkedin-record', campaignId: 'c1', revenueSourceId: 'linkedin-source',
+        sourceType: 'shopify', currency: 'USD', date: '2026-07-01', revenue: '100',
+      }],
+    });
+
+    expect(result.pass).toBe(true);
+    expect(result.summary).toMatchObject({
+      ga4ShopifySourceCount: 0,
+      ga4ShopifyRecordCount: 0,
+      shopifyConnectionCount: 0,
+      findingCount: 0,
+    });
+    expect(result.inventory.connections).toEqual([]);
+    expect(result.inventory.shopifyTypedRecordGroups).toEqual([]);
+  });
+
   it('returns exact persisted-data candidates with reason codes and no provider overclaim', () => {
     const currentSources = [
       {
@@ -268,6 +293,9 @@ describe('Shopify Revenue damaged-data inventory', () => {
     expect(end).toBeGreaterThan(start);
     expect(route).toContain('String(campaign?.ownerId || "").trim() === actorId');
     expect(route).toContain('inspectGa4ShopifyCrossCampaignOverlap(inputs)');
+    expect(route).toContain('ownedGa4ShopifySourceIds');
+    expect(route).toContain('isGa4RelevantShopifyRecord');
+    expect(route).toContain('if (notificationSource && !ownedGa4ShopifySourceIds.has(String(metadata.sourceId || ""))) return []');
     expect(route).toContain('SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND');
     expect(route).toContain('shopifyReadinessCandidatePass: localPass && openRefreshFailureNotifications.length === 0');
     expect(route).toContain('openRefreshFailureNotifications');

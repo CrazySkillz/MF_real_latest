@@ -1843,10 +1843,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         db.select().from(revenueRecordsTable).where(inArray(revenueRecordsTable.campaignId, campaignIds)),
         storage.getNotifications(),
       ]);
-      const ownedShopifySourceIds = new Set((sources as any[])
-        .filter((source) => String(source?.sourceType || "").toLowerCase() === "shopify")
+      const ownedGa4ShopifySourceIds = new Set((sources as any[])
+        .filter((source) =>
+          String(source?.sourceType || "").toLowerCase() === "shopify"
+          && normalizeOverviewInventoryPlatformContext(source?.platformContext) === "ga4")
         .map((source) => String(source?.id || ""))
         .filter(Boolean));
+      const sourceById = new Map((sources as any[]).map((source) => [String(source?.id || ""), source]));
+      const isGa4RelevantShopifyRecord = (record: any) => {
+        const linkedSource: any = sourceById.get(String(record?.revenueSourceId || ""));
+        if (linkedSource && String(linkedSource?.sourceType || "").toLowerCase() === "shopify") {
+          return ownedGa4ShopifySourceIds.has(String(linkedSource.id || ""));
+        }
+        return String(record?.sourceType || "").toLowerCase() === "shopify";
+      };
       const inputs = ownedCampaigns.map((campaign: any) => ({
         campaign,
         connections: (connections as any[]).filter((row) => String(row?.campaignId || "") === String(campaign.id)),
@@ -1854,12 +1864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allRecords: (records as any[]).filter((row) => String(row?.campaignId || "") === String(campaign.id)),
         referencedSources: sources as any[],
       })).filter((input) =>
-        input.connections.length > 0
-        || input.allSources.some((source) => String(source?.sourceType || "").toLowerCase() === "shopify")
-        || input.allRecords.some((record) =>
-          String(record?.sourceType || "").toLowerCase() === "shopify"
-          || ownedShopifySourceIds.has(String(record?.revenueSourceId || ""))
-        )
+        input.allSources.some((source) => ownedGa4ShopifySourceIds.has(String(source?.id || "")))
+        || input.allRecords.some(isGa4RelevantShopifyRecord)
       );
       const campaignInventories = inputs.map((input) => ({
         campaignId: String(input.campaign.id),
@@ -1872,6 +1878,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!campaignIds.includes(String(notification?.campaignId || ""))) return [];
         const metadata = parseShopifyRefreshNotificationMetadata(notification?.metadata);
         if (metadata.kind !== SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND || metadata.resolvedAt || metadata.dismissedAt) return [];
+        const notificationSource = sourceById.get(String(metadata.sourceId || ""));
+        if (notificationSource && !ownedGa4ShopifySourceIds.has(String(metadata.sourceId || ""))) return [];
         return [{
           notificationId: String(notification?.id || ""),
           campaignId: String(notification?.campaignId || ""),
@@ -1934,8 +1942,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const reviewedEntitiesByCampaignId = new Map([
         ["5317190c-d536-45d4-85c0-9d941cfba9f4", { sourceId: "048794ce-ed9a-45dd-8f2e-22341908138e", connectionId: "e61f6a80-7b8f-46b9-ad37-09200f03b685" }],
-        ["de0af7f4-1dfd-4935-b5b3-1eafbb674e5c", { sourceId: "7376d0e0-fa56-4864-80cd-9dbc8a972068", connectionId: "a3bc9531-4844-4329-9ece-960421db6c60" }],
-        ["d68cd1d1-fa5c-4d22-810c-aca601dcfd04", { sourceId: "8db3f5d5-8eeb-4096-958f-d95bf2154203", connectionId: "39c74a67-23a6-4f81-ad94-581066227345" }],
       ]);
       if (requests.length !== reviewedEntitiesByCampaignId.size || requests.some((request: any) =>
         request.expectedActiveSourceIds.length !== 1

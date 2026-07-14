@@ -187,9 +187,9 @@ describe('disconnected GA4 Shopify test-data cleanup', () => {
     expect(start).toBeGreaterThan(-1);
     expect(route).toContain('REMOVE_DISCONNECTED_SHOPIFY_TEST_DATA');
     expect(route).toContain('5317190c-d536-45d4-85c0-9d941cfba9f4');
-    expect(route).toContain('7376d0e0-fa56-4864-80cd-9dbc8a972068');
     expect(route).toContain('e61f6a80-7b8f-46b9-ad37-09200f03b685');
-    expect(route).toContain('39c74a67-23a6-4f81-ad94-581066227345');
+    expect(route).not.toContain('7376d0e0-fa56-4864-80cd-9dbc8a972068');
+    expect(route).not.toContain('39c74a67-23a6-4f81-ad94-581066227345');
     expect(route).toContain('Cleanup is limited to the exact reviewed disconnected Shopify test-data batch');
     expect(route).toContain('String(campaign?.ownerId || "").trim() === actorId');
     expect(route).toContain('cleanupDisconnectedGa4ShopifyRevenue(cleanupRequests)');

@@ -165,6 +165,9 @@ export interface IStorage {
   deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean>;
   disconnectGa4HubspotRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
   disconnectGa4ShopifyRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
+  cleanupDisconnectedGa4ShopifyRevenue(
+    requests: Array<{ campaignId: string; expectedActiveSourceIds: string[] }>,
+  ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
@@ -1446,6 +1449,115 @@ export class DatabaseStorage implements IStorage {
         .returning({ id: shopifyConnections.id });
       if (!disabledConnection) throw new Error('Shopify connection changed during disconnect');
       return { sourceIds, connectionId: String(disabledConnection.id) };
+    });
+  }
+
+  async cleanupDisconnectedGa4ShopifyRevenue(
+    requests: Array<{ campaignId: string; expectedActiveSourceIds: string[] }>,
+  ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>> {
+    if (requests.length === 0) throw new Error('At least one Shopify cleanup campaign is required');
+    if (new Set(requests.map((request) => request.campaignId)).size !== requests.length) {
+      throw new Error('Duplicate Shopify cleanup campaign');
+    }
+    return await db.transaction(async (tx: any) => {
+      const results = [];
+      for (const request of requests) {
+        const activeConnections = await tx
+          .select({ id: shopifyConnections.id })
+          .from(shopifyConnections)
+          .where(and(eq(shopifyConnections.campaignId, request.campaignId), eq(shopifyConnections.isActive, true)));
+        if (activeConnections.length > 0) {
+          throw Object.assign(new Error('Connected Shopify campaign cannot use disconnected-source cleanup'), { code: 'SHOPIFY_CONNECTION_ACTIVE' });
+        }
+
+        const campaignSources = await tx
+          .select({
+            id: revenueSources.id,
+            sourceType: revenueSources.sourceType,
+            platformContext: revenueSources.platformContext,
+            isActive: revenueSources.isActive,
+          })
+          .from(revenueSources)
+          .where(eq(revenueSources.campaignId, request.campaignId));
+        const shopifySources = campaignSources.filter((source: any) => String(source.sourceType || '').toLowerCase() === 'shopify');
+        if (shopifySources.some((source: any) => source.isActive !== false && String(source.platformContext || 'ga4').toLowerCase() !== 'ga4')) {
+          throw Object.assign(new Error('Shopify source is still used by another platform'), { code: 'SHOPIFY_SOURCE_IN_USE' });
+        }
+        const ga4ShopifySources = shopifySources.filter((source: any) => String(source.platformContext || 'ga4').toLowerCase() === 'ga4');
+        const activeSourceIds = ga4ShopifySources
+          .filter((source: any) => source.isActive !== false)
+          .map((source: any) => String(source.id))
+          .sort();
+        const expectedSourceIds = Array.from(new Set(request.expectedActiveSourceIds.map(String))).sort();
+        if (JSON.stringify(activeSourceIds) !== JSON.stringify(expectedSourceIds)) {
+          throw Object.assign(new Error('Active Shopify sources changed since cleanup review'), { code: 'SHOPIFY_CLEANUP_SOURCE_MISMATCH' });
+        }
+
+        const campaignRecords = await tx
+          .select({
+            id: revenueRecords.id,
+            revenueSourceId: revenueRecords.revenueSourceId,
+            sourceType: revenueRecords.sourceType,
+          })
+          .from(revenueRecords)
+          .where(eq(revenueRecords.campaignId, request.campaignId));
+        const sourceById = new Map(campaignSources.map((source: any) => [String(source.id), source]));
+        const ga4ShopifySourceIds = new Set(ga4ShopifySources.map((source: any) => String(source.id)));
+        const deletedRecordIds = campaignRecords.filter((record: any) => {
+          const linkedSourceId = String(record.revenueSourceId || '');
+          if (ga4ShopifySourceIds.has(linkedSourceId)) return true;
+          if (String(record.sourceType || '').toLowerCase() !== 'shopify') return false;
+          const linkedSource: any = sourceById.get(linkedSourceId);
+          return !linkedSource || String(linkedSource.sourceType || '').toLowerCase() !== 'shopify';
+        }).map((record: any) => String(record.id));
+
+        if (activeSourceIds.length > 0) {
+          const deactivated = await tx.update(revenueSources)
+            .set({ isActive: false } as any)
+            .where(and(
+              eq(revenueSources.campaignId, request.campaignId),
+              eq(revenueSources.sourceType, 'shopify'),
+              eq(revenueSources.isActive, true),
+              or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+              inArray(revenueSources.id, activeSourceIds),
+            ))
+            .returning({ id: revenueSources.id });
+          if (deactivated.length !== activeSourceIds.length) throw new Error('Shopify cleanup source deactivation changed');
+        }
+        if (deletedRecordIds.length > 0) {
+          await tx.delete(revenueRecords).where(and(
+            eq(revenueRecords.campaignId, request.campaignId),
+            inArray(revenueRecords.id, deletedRecordIds),
+          ));
+        }
+
+        const campaignNotifications = await tx.select().from(notifications).where(eq(notifications.campaignId, request.campaignId));
+        const resolvedNotificationIds: string[] = [];
+        for (const notification of campaignNotifications) {
+          let metadata: any = {};
+          try { metadata = notification.metadata ? JSON.parse(String(notification.metadata)) : {}; } catch { metadata = {}; }
+          if (metadata?.kind !== 'shopify_revenue_refresh_failure'
+            || !activeSourceIds.includes(String(metadata?.sourceId || ''))
+            || metadata?.resolvedAt
+            || metadata?.dismissedAt) continue;
+          await tx.update(notifications).set({
+            read: true,
+            metadata: JSON.stringify({
+              ...metadata,
+              resolvedAt: new Date().toISOString(),
+              resolutionReason: 'disconnected_shopify_test_data_removed',
+            }),
+          } as any).where(and(eq(notifications.id, String(notification.id)), eq(notifications.campaignId, request.campaignId)));
+          resolvedNotificationIds.push(String(notification.id));
+        }
+        results.push({
+          campaignId: request.campaignId,
+          deactivatedSourceIds: activeSourceIds,
+          deletedRecordIds,
+          resolvedNotificationIds,
+        });
+      }
+      return results;
     });
   }
 

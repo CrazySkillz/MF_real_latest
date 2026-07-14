@@ -1907,6 +1907,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ success: false, error: e?.message || "Failed to run Shopify batch inventory" });
     }
   });
+  app.post("/api/ga4-overview/shopify/disconnected-test-data/cleanup", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+      if (String(req.body?.confirm || "") !== "REMOVE_DISCONNECTED_SHOPIFY_TEST_DATA") {
+        return res.status(400).json({ success: false, error: "Exact disconnected Shopify test-data confirmation is required" });
+      }
+      const requestedCampaigns = Array.isArray(req.body?.campaigns) ? req.body.campaigns : [];
+      if (requestedCampaigns.length === 0 || requestedCampaigns.length > 10) {
+        return res.status(400).json({ success: false, error: "Provide between one and ten cleanup campaigns" });
+      }
+      const requests = requestedCampaigns.map((entry: any) => ({
+        campaignId: String(entry?.campaignId || "").trim(),
+        expectedActiveSourceIds: Array.isArray(entry?.expectedActiveSourceIds)
+          ? entry.expectedActiveSourceIds.map((id: any) => String(id || "").trim()).filter(Boolean)
+          : [],
+      }));
+      if (requests.some((request: any) => !request.campaignId || request.expectedActiveSourceIds.length === 0)) {
+        return res.status(400).json({ success: false, error: "Every cleanup campaign requires its exact active Shopify source IDs" });
+      }
+      if (new Set(requests.map((request: any) => request.campaignId)).size !== requests.length) {
+        return res.status(400).json({ success: false, error: "Duplicate cleanup campaign" });
+      }
+      const reviewedSourceIdsByCampaignId = new Map([
+        ["5317190c-d536-45d4-85c0-9d941cfba9f4", "048794ce-ed9a-45dd-8f2e-22341908138e"],
+        ["de0af7f4-1dfd-4935-b5b3-1eafbb674e5c", "7376d0e0-fa56-4864-80cd-9dbc8a972068"],
+        ["d68cd1d1-fa5c-4d22-810c-aca601dcfd04", "8db3f5d5-8eeb-4096-958f-d95bf2154203"],
+      ]);
+      if (requests.length !== reviewedSourceIdsByCampaignId.size || requests.some((request: any) =>
+        request.expectedActiveSourceIds.length !== 1
+        || reviewedSourceIdsByCampaignId.get(request.campaignId) !== request.expectedActiveSourceIds[0])) {
+        return res.status(400).json({ success: false, error: "Cleanup is limited to the exact reviewed disconnected Shopify test-data batch" });
+      }
+      const ownedCampaignIds = new Set((await storage.getCampaigns())
+        .filter((campaign: any) => String(campaign?.ownerId || "").trim() === actorId)
+        .map((campaign: any) => String(campaign.id)));
+      if (requests.some((request: any) => !ownedCampaignIds.has(request.campaignId))) {
+        return res.status(403).json({ success: false, error: "Campaign access denied" });
+      }
+
+      const cleanup = await storage.cleanupDisconnectedGa4ShopifyRevenue(requests);
+      const recomputeFailures: Array<{ campaignId: string; error: string }> = [];
+      for (const result of cleanup) {
+        try {
+          await recomputeCampaignDerivedValues(result.campaignId, { platformContext: "ga4" });
+        } catch (error: any) {
+          recomputeFailures.push({ campaignId: result.campaignId, error: String(error?.message || "Derived-value recompute failed") });
+        }
+      }
+      return res.status(recomputeFailures.length > 0 ? 500 : 200).json({
+        success: recomputeFailures.length === 0,
+        cleanupApplied: true,
+        cleanup,
+        recomputeFailures,
+        postCleanupInventoryRequired: true,
+      });
+    } catch (error: any) {
+      const conflictCodes = new Set([
+        "SHOPIFY_CONNECTION_ACTIVE",
+        "SHOPIFY_SOURCE_IN_USE",
+        "SHOPIFY_CLEANUP_SOURCE_MISMATCH",
+      ]);
+      const status = conflictCodes.has(String(error?.code || "")) ? 409 : 500;
+      return res.status(status).json({ success: false, cleanupApplied: false, error: error?.message || "Failed to clean disconnected Shopify test data" });
+    }
+  });
   app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;

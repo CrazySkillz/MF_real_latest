@@ -513,6 +513,29 @@ export function AddRevenueWizardModal(props: {
     const label = platform.charAt(0).toUpperCase() + platform.slice(1);
     setCrmDisconnecting(platform);
     try {
+      if (platform === 'shopify' && platformContext === 'ga4') {
+        const response = await apiRequest('DELETE', '/api/campaigns/' + campaignId + '/ga4/shopify/disconnect');
+        const body = await response.json().catch(() => ({}));
+        const removedIds = Array.isArray(body?.removedSourceIds) ? body.removedSourceIds.map(String) : [];
+        setCrmOAuth(prev => ({ ...prev, shopify: false }));
+        setCrmStatus(prev => ({ ...prev, shopify: false }));
+        setCrmHasSource(prev => ({ ...prev, shopify: false }));
+        if (removedIds.length > 0) {
+          const removed = new Set(removedIds);
+          queryClient.setQueryData(['/api/campaigns/' + campaignId + '/revenue-sources?platformContext=ga4'], (old: any) => {
+            if (!old || !Array.isArray(old.sources)) return old;
+            return { ...old, sources: old.sources.filter((source: any) => !removed.has(String(source?.id || source?.sourceId || ''))) };
+          });
+          queryClient.setQueryData(['/api/campaigns/' + campaignId + '/all-data-sources'], (old: any) => {
+            if (!old || !Array.isArray(old.revenueSources)) return old;
+            return { ...old, revenueSources: old.revenueSources.filter((source: any) => !removed.has(String(source?.id || source?.sourceId || ''))) };
+          });
+        }
+        invalidateAfterRevenueChange();
+        onSuccess?.();
+        toast({ title: label + ' disconnected', description: 'Revenue source and connection removed.' });
+        return;
+      }
       if (platform === 'hubspot' && platformContext === 'ga4') {
         const response = await apiRequest('DELETE', `/api/campaigns/${campaignId}/ga4/hubspot/disconnect`);
         const body = await response.json().catch(() => ({}));

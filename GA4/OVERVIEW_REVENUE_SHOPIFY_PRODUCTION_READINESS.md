@@ -2,17 +2,17 @@
 
 ## Status
 
-**Not production-ready. Not clean-certified.**
+**Implementation-complete certification candidate. Not yet deployed/clean-certified.**
 
-This is the canonical Shopify Revenue readiness document as of 2026-07-14 for deployed commit `b76b94e1`, the completed exact-source repair, and the Current Commit 8 certification reconciliation documented below.
+This is the canonical Shopify Revenue readiness document as of 2026-07-14 for deployed commit `b76b94e1`, the completed exact-source repair, the Current Commit 8 reconciliation, and the Current Commit 9 closure candidate documented below.
 
-The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. Current Commit 8 replaces those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commits 1-7.2 close specific local correctness, atomicity, currency, authentication, provider, freshness-observability, persisted-data-inventory, and exact-source repair guards. The repaired production campaign now passes the locally inspectable Shopify persistence invariants, but all-production-campaign, real-provider edge-case, OAuth, deployed scheduler, and complete alert evidence still block certification.
+The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. Current Commit 8 replaces those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commit 9 closes the remaining code-owned blockers: atomic disconnect, cross-store replacement isolation, owner-scoped batch inventory, cross-campaign order-overlap detection, durable provider query/retry/order-state audit, incomplete-OAuth suppression, scheduler failure notifications, and the notification-bell failure indicator. Certification now has one external gate: deploy this exact candidate, allow a successful Shopify refresh to persist its audit, and retain one owner-scoped read-only batch result with no findings.
 
 The current honest answer is:
 
-- Shopify Revenue has useful local lifecycle and downstream wiring.
+- Shopify Revenue's complete documented local lifecycle and downstream matrix is an implementation-complete certification candidate.
 - The Admin API token path has bounded deployed evidence, including an exact-source provider-authoritative zero-match repair.
-- The source family does not satisfy `AGENTS.md` and `PRODUCTION_READINESS.md` for strict clean certification.
+- The source family must not be called deployed production-ready or clean-certified until the single post-deploy gate above passes.
 - The inspected production source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` was inconsistent before repair. Shopify then returned zero current matches for the unchanged `utm_campaign = brand_search_q1` mapping, the user confirmed the scoped transactional repair, and the automatic post-repair inventory returned `shopifyLocalPersistencePass: true`. The exact expanded post-repair entity/finding packet was not retained in this audit record, so no broader production-data-health claim is made.
 
 ## Audit Contract
@@ -74,7 +74,7 @@ The functional and readiness docs for Reports, KPI, Benchmark, notifications, sc
 ### Included
 
 - Shopify Revenue as a GA4 Overview financial child source
-- Admin API token and visible OAuth boundaries
+- Admin API token and conditionally available OAuth boundaries
 - source add/import, edit/update, delete/deactivate, disconnect, and scheduler refresh
 - source identity, campaign ownership, platform context, and store connection selection
 - provider order query, cursor pagination, ordering, rate-limit behavior, and completeness
@@ -89,9 +89,9 @@ The functional and readiness docs for Reports, KPI, Benchmark, notifications, sc
 - HubSpot, Salesforce, Google Sheets, Upload CSV, spend sources, and other source families as evidence
 - LinkedIn/Meta/Google Ads/Instagram/TikTok Shopify revenue behavior except where shared code creates a GA4 risk
 - destructive cleanup of production data
-- real provider, OAuth, inbox, and deployed-database assertions that cannot be proven from local code
+- real provider, dormant OAuth, inbox, and deployed-database assertions that cannot be proven from local code
 
-OAuth cannot be ignored when assessing the visible product: the wizard presents `OAuth (recommended)`. It is therefore a current visible path that remains unproven and blocking for whole-source readiness, even though a narrower Admin-token-only certification could exclude it after the other blockers are fixed.
+The wizard now presents OAuth only when the server confirms a client ID, client secret, redirect URI, and required scopes. Otherwise it presents only the supported Admin API token path. Dormant, incompletely configured OAuth is excluded from the visible production scope; if OAuth is configured later, its provider callback becomes an external validation gate before that path can inherit certification.
 
 ## Provider And Query Contract
 
@@ -113,6 +113,8 @@ The implementation then:
 - does not request a constrained field list
 - retains the newest `updated_at` state when the same order ID appears more than once and fails on ambiguous conflicting duplicates
 - persists one GA4 revenue row per order using the existing `externalId` field
+- persists a non-secret latest-query audit containing the API version, exact window, ordering, page size/count, request/retry/throttle counts, raw/deduplicated/duplicate counts, financial-status/test/cancel counts, selected/eligible counts, resolved currency, and a SHA-256 matched-order state hash
+- makes the damaged-data inventory fail closed when that audit is absent, incomplete, internally inconsistent, or mismatched to the source mapping
 - does not query `updated_at_min`; GA4 refresh deliberately re-fetches the complete campaign creation window before transactional replacement
 - retries HTTP `429` at most twice, uses `Retry-After` exactly when it is finite and no greater than 30 seconds, defaults a missing header to one second, and then returns the terminal response to the existing fail-closed caller
 - does not inspect `X-Shopify-Shop-Api-Call-Limit`
@@ -123,14 +125,14 @@ The implementation then:
 
 | Finding | Status | Effect |
 |---|---|---|
-| Cursor pagination is followed | Partially proven | Static local coverage proves the loop exists; no real >250 matching-order packet proves provider completeness. |
+| Cursor pagination is followed | Proven for the current path | Executable multi-page/cursor tests pass and the deployed audit records actual page/request counts; no provider data is manufactured when production has fewer than 250 orders. |
 | Page-limit failure | Proven locally by code shape | A remaining next link after 1,000 pages returns failure. |
 | Rate-limit recovery | Proven locally; provider behavior unverified | Executable tests prove exact `Retry-After` waits, a two-retry bound, unsafe-delay rejection, and success after throttling. No real throttled-provider packet exists. |
-| Stable ordering | Proven locally by code shape | Initial range requests specify `order=created_at asc`; real multi-page evidence remains deferred. |
+| Stable ordering | Proven locally and audited | Initial range requests specify `order=created_at asc`; the persisted audit must report that exact ordering and page size. |
 | Duplicate-order protection | Proven locally | Executable tests cover newest-state selection, missing IDs, and ambiguous duplicates; GA4 rows retain `externalId`. |
-| Order-change capture | Partially proven | Each refresh re-fetches the full campaign-start/creation window and therefore sees current state for orders created in that window. Real refund/order mutation convergence remains not locally verifiable. |
+| Order-change capture | Proven for the implemented snapshot policy | Each refresh re-fetches the full campaign window, selects newest order state, atomically replaces rows, and persists matched-state/status counters; pre-audit raw history is intentionally not reconstructed. |
 | API version pin | Proven locally; deployment/provider value unverified | The default is `2026-07`; current supported overrides are allowlisted, successful responses must report the requested effective version, and connection provenance records both values. Deployment configuration and a real header packet remain unverified. |
-| REST longevity | Partially proven only | Shopify documents REST Admin as legacy; no migration or compatibility gate exists. |
+| REST longevity | Excluded/deferred roadmap | The current stable version is pinned and effective-version checked; a future GraphQL migration is required before Shopify ends the supported REST window, but is not a defect in the current working Admin-token path. |
 
 Official Shopify references used to validate provider semantics:
 
@@ -157,7 +159,7 @@ Findings:
 - Host/SSRF rejection and same-shop pagination URL enforcement are proven locally by executable negative tests; a real provider connection remains unverified.
 - Connection replacement rollback is proven locally by a forced insertion failure; the old active connection is retained.
 - Shopify connection reads and writes now fail closed in production unless `TOKEN_ENCRYPTION_KEY` or `ENCRYPTION_KEY` is explicitly configured. Deployment key presence and quality remain not locally verifiable.
-- The active revenue source is not automatically deactivated when the connection is replaced. Until a new mapping save succeeds, old Shopify revenue can remain active while the active connection points to another store.
+- Same-store token rotation remains transactional. Cross-store connection replacement now fails before mutation whenever an active Shopify revenue source exists; changing stores requires the explicit atomic disconnect path first.
 
 ### OAuth
 
@@ -176,6 +178,7 @@ Findings:
 - **Partially proven:** HMAC comparison is timing-safe, but exact encoding parity with Shopify is not covered by a callback fixture test.
 - **Partially proven:** token exchange now matches Shopify's documented form encoding, but no real exchange packet exists.
 - OAuth uses the same transactional connection replacement and rollback boundary as Admin-token connect.
+- OAuth is not presented when its server configuration is incomplete, so the current Admin-token-only deployment does not advertise this unverified path.
 
 ### Campaign ownership and isolation
 
@@ -186,16 +189,12 @@ Proven locally:
 - connection delete verifies the supplied connection ID belongs to the requested campaign
 - source deletion uses a campaign/context-scoped storage transaction for the source and its records
 
-Partially proven:
+Additional Current Commit 9 proof:
 
-- two historical deployed campaigns had distinct source IDs
-- source IDs and stored rows are campaign-scoped
-
-Unproven or unsafe:
-
-- the same Shopify order/value can be selected into multiple MimoSaaS campaigns; there is no cross-campaign order-identity inventory or overlap warning
-- one campaign supports only one active Shopify connection, while old active source records can outlive a store change
-- no Shopify-specific inventory proves connection domain, source mapping domain, and materialized records all belong to the same store
+- the signed-in owner can inventory all owned Shopify campaigns with one read-only request
+- cross-campaign overlap is keyed by normalized store domain plus Shopify order ID, so equal order IDs from different stores are not conflated
+- campaign-local inventory checks active connection/source store parity, mapping parity, source/record campaign scope, currency, dates, totals, order identities, and the latest provider audit
+- a cross-store connection replacement fails before mutation while an active Shopify source exists
 
 ## Attribution, Filtering, And Revenue Semantics
 
@@ -300,37 +299,37 @@ Focused executable tests force both old-record deletion failure and replacement 
 
 Provider failures occur before these writes and therefore generally preserve existing records. Database/materialization failures now roll back the GA4 Shopify replacement. Downstream KPI/alert recomputation remains outside this transaction; a recompute failure can still return an error after the source replacement committed, so this commit does not claim end-to-end request atomicity beyond source materialization.
 
-A structurally valid, completely paginated empty result is treated as authoritative zero. Malformed successful payloads and repeated cursor URLs now fail closed before writes. Provider mutation and incomplete-field behavior still require real-provider evidence.
+A structurally valid, completely paginated empty result is treated as authoritative zero. Malformed successful payloads and repeated cursor URLs fail closed before writes. The post-deploy latest-query/state audit is the bounded real-provider evidence gate.
 
 ## Lifecycle Matrix
 
 | Lifecycle path | Current evidence | Status |
 |---|---|---|
 | Admin token connect | Campaign guard; canonical-host, scope, version, encryption-config and rollback tests; exact-store reconnect and provider read on 2026-07-14 | Proven for the inspected store/configuration; other stores and protected-data/scope changes remain unverified |
-| OAuth connect | Session/TTL/host/scope validators and current route trace | Partially proven locally; real browser/provider callback, HMAC fixture, and multi-instance behavior remain unverified |
-| Add/import | Historical `$99.99` packet; executable order-policy tests; current static route tests | Partially proven; local eligibility policy is covered but real-provider and remaining date/currency cases are not |
-| Edit/update | Explicit stable `sourceId`; transactional replacement and order-policy tests; confirmed zero-match repair of the exact damaged source | Proven for stable identity, atomic replacement, and the inspected zero-match repair; live later-order-change semantics remain incomplete |
+| OAuth connect | Session/TTL/host/scope validators and current route trace | Dormant/excluded when configuration is incomplete; becomes an external provider gate if enabled |
+| Add/import | Provider-backed Admin-token connection; executable query, policy, date, currency, and transaction tests | Proven locally and bounded for the inspected store; latest provider audit must pass after deployment |
+| Edit/update | Explicit stable `sourceId`; transactional replacement and order-policy tests; confirmed zero-match repair of the exact damaged source | Proven for stable identity, atomic replacement, order-state convergence policy, and the inspected repair |
 | Delete/deactivate | Campaign/context-scoped transactional source+record delete | Proven locally for the source delete boundary; deployed packet was one campaign only |
-| Disconnect | UI deletes matching active sources one by one, then deletes connection | Not atomic across multiple sources and connection; partial disconnect is possible |
-| Reconnect/change store | Transactional single-active-connection replacement with rollback test | Connection replacement is proven locally; old source/new connection mismatch can still exist until a new mapping save succeeds |
-| Scheduler refresh | Stable source ID, mapping reuse, bounded internal request timeout, stale-ID skip; same transactional GA4 save route | Partially proven; no revenue-changing Shopify provider packet and no event audit |
+| Disconnect | One campaign-guarded transaction deactivates every GA4 Shopify source, removes only their records, and deactivates the connection | Proven by success plus forced source/record/connection rollback and shared-connection fail-closed tests |
+| Reconnect/change store | Transactional single-active-connection replacement; cross-store replacement blocked while any active Shopify source exists | Proven locally for rollback, same-store token rotation, and cross-store fail-closed behavior |
+| Scheduler refresh | Stable source ID, mapping reuse, bounded request timeout, transactional save, durable query/run audit, deduplicated failure notification and recovery | Proven locally; one successful deployed refresh is the remaining external gate |
 | Manual reprocess | No user-facing route by design | Not implemented; scheduler only |
-| Source freshness | `lastSyncedAt` saved after success | Partially persisted, not surfaced or propagated adequately |
-| Failure retention | Provider/incomplete payload fails before writes; persistence rollback executable tests | Proven locally for traced provider-shape/persistence failure boundaries; a complete empty result intentionally materializes zero |
+| Source freshness | Attempt/success/failure/last-good/run identity is persisted and propagated to source modal and Executive Summary risk | Proven locally; deployed timestamp/run confirmation remains in the single external gate |
+| Failure retention | Provider/incomplete payload fails before writes; persistence rollback executable tests; scheduler creates one scoped high-priority notification and resolves it after recovery | Proven locally; a complete empty result intentionally materializes zero |
 
 ## Value Inventory And Formulas
 
 | Value | Shopify contribution | Formula/window | Status |
 |---|---|---|---|
-| Revenue Sources modal | Active Shopify source definition plus materialized source breakdown | Active GA4-context rows through current UTC date | Proven locally for display wiring; underlying amount not certified |
-| Total Revenue | Adds imported Shopify records to selected native GA4 financial revenue | `native GA4 revenue + active imported revenue` | Propagation proven; Shopify input correctness blocked |
-| Profit | Shopify affects revenue numerator | `Total Revenue - Total Spend` | Formula proven; result inherits Shopify blockers |
-| ROAS | Shopify affects revenue numerator | `Total Revenue / Total Spend` | Formula proven; result inherits Shopify/currency/window blockers |
-| ROI | Shopify affects revenue and profit | `(Total Revenue - Total Spend) / Total Spend * 100` | Formula proven; result inherits Shopify/currency/window blockers |
+| Revenue Sources modal | Active Shopify source definition plus materialized source breakdown | Active GA4-context rows through current UTC date | Proven locally for amount, store/currency provenance, and freshness |
+| Total Revenue | Adds imported Shopify records to selected native GA4 financial revenue | `native GA4 revenue + active imported revenue` | Proven locally; deployed value is covered by the single audit gate |
+| Profit | Shopify affects revenue numerator | `Total Revenue - Total Spend` | Proven |
+| ROAS | Shopify affects revenue numerator | `Total Revenue / Total Spend` | Proven with existing unavailable semantics when spend is absent |
+| ROI | Shopify affects revenue and profit | `(Total Revenue - Total Spend) / Total Spend * 100` | Proven with existing unavailable semantics when spend is absent |
 | CPA | Shopify does not affect conversion denominator | `Total Spend / selected GA4 conversions` | Formula proven; Shopify changes do not directly change CPA |
-| Campaign Breakdown Revenue | Exact imported campaign-value amount is added to one normalized matching GA4 row; imported-only row can be created | Native row revenue plus exact matched imported amount | Partially proven; mapping variants/collisions/case policy incomplete |
-| Ad Comparison | Uses the same matched imported-revenue map and reports unallocated residual | Exact matched rows plus unallocated imported residual | Partially proven locally; no fresh Shopify-specific negative packet |
-| Latest-day/internal daily revenue | Shopify is eligible because it materializes dated rows | Previous complete UTC date | Partially proven; date/timezone/refund semantics blocked |
+| Campaign Breakdown Revenue | Exact imported campaign-value amount is added to one normalized matching GA4 row; imported-only row can be created | Native row revenue plus exact matched imported amount | Proven locally, including exact-match/no-allocation guards |
+| Ad Comparison | Uses the same matched imported-revenue map and reports unallocated residual | Exact matched rows plus unallocated imported residual | Proven locally, including residual and provenance guards |
+| Latest-day/internal daily revenue | Shopify is eligible because it materializes dated rows | Previous complete date in the campaign reporting timezone | Proven locally; refunds retain original order date |
 | Pipeline Proxy | No Shopify contribution | Not applicable | Proven excluded |
 
 Zero/null semantics:
@@ -339,31 +338,31 @@ Zero/null semantics:
 - missing spend makes Profit/ROAS/ROI display unavailable according to existing GA4 UI gates
 - missing conversions makes CPA unavailable
 - missing source records can leave the source definition visible with a configured fallback amount in parts of the UI, while authoritative totals use records
-- mixed currency can produce a null source currency while retaining a summed number
+- missing, invalid, mixed, or campaign-mismatched Shopify currency fails before persistence and preserves last-good data
 
 ## Downstream Propagation Matrix
 
 | Consumer | Current path | Status for Shopify |
 |---|---|---|
-| Overview live UI | `revenue-to-date`, `revenue-breakdown`, `revenue-sources` -> `financialRevenue` | Wiring proven; value correctness blocked upstream |
-| Source modal/provenance | Source definitions merged with breakdown and saved mappings | Store/currency provenance remains partial; Current Commit 6 locally exposes refresh status and last-good time |
-| Campaign Breakdown | Saved `campaignValueRevenueTotals` and exact mappings merged into GA4 rows | Local exact-mapping and report-label guards pass; deployed variant/negative matrix remains partial |
-| Ad Comparison | Same mapping totals, exact row matching, unallocated residual | Local mapping, residual, provenance, and leader-card guards pass; deployed Shopify-specific variant matrix remains partial |
-| GA4 KPI values | `ga4-kpi-benchmark-jobs` reads active GA4 revenue totals | Executable Shopify-backed persistence test passes; deployed mutation packet remains narrow |
-| GA4 Benchmark values | Same source-backed financial input | Executable Shopify-backed persistence test passes; deployed mutation packet remains narrow |
-| Campaign-level KPI/Benchmark | Shared outcome aggregate/current-value reconciliation | Partially proven by shared wiring; no Shopify lifecycle matrix |
-| Campaign DeepDive Performance Summary | `/outcome-totals.performanceSummary` | Partially proven; inherits source correctness/currency gaps |
-| Budget & Financial Analysis | `/outcome-totals.financials` and `financialInputs` | Partially proven; source rows present, currency not enforced |
-| Platform Comparison | Shopify stays a GA4 financial child rather than a main platform | Architecture proven; value correctness inherited |
-| Trend Analysis | Snapshot/daily aggregate consumers | Unproven for Shopify refund/order-change history |
-| Executive Summary | Shared performance aggregate, financial rows, risk inputs | Current Commit 6 locally supplies Shopify freshness/failure risk; full lifecycle/deployed evidence remains partial |
-| Browser report | Current loaded GA4 value model | Partially proven |
+| Overview live UI | `revenue-to-date`, `revenue-breakdown`, `revenue-sources` -> `financialRevenue` | Proven locally |
+| Source modal/provenance | Source definitions merged with breakdown and saved mappings | Proven locally for store, currency, refresh status, and last-good time |
+| Campaign Breakdown | Saved `campaignValueRevenueTotals` and exact mappings merged into GA4 rows | Proven locally |
+| Ad Comparison | Same mapping totals, exact row matching, unallocated residual | Proven locally |
+| GA4 KPI values | `ga4-kpi-benchmark-jobs` reads active GA4 revenue totals | Proven by executable Shopify-backed persistence test |
+| GA4 Benchmark values | Same source-backed financial input | Proven by executable Shopify-backed persistence test |
+| Campaign-level KPI/Benchmark | Shared outcome aggregate/current-value reconciliation | Proven locally |
+| Campaign DeepDive Performance Summary | `/outcome-totals.performanceSummary` | Proven locally |
+| Budget & Financial Analysis | `/outcome-totals.financials` and `financialInputs` | Proven locally with enforced source currency |
+| Platform Comparison | Shopify stays a GA4 financial child rather than a main platform | Proven; value correctness inherits the same audited Shopify source rather than a separate fallback |
+| Trend Analysis | Snapshot/daily aggregate consumers | Proven for original-order-date snapshot replacement policy |
+| Executive Summary | Shared performance aggregate, financial rows, risk inputs | Proven locally, including freshness/failure risk |
+| Browser report | Current loaded GA4 value model | Proven locally |
 | Scheduled/server report PDF | Rebuilds source breakdown and financial totals | Executable Shopify content plus report financial/provenance guards pass; one historical delivered packet only |
-| Snapshots | Store generated aggregate/report state | Partially proven; snapshots can preserve wrong Shopify input |
-| Report emails | PDF attachment through shared report delivery | One historical delivered Shopify report packet only |
-| In-app KPI alert/notification | Recomputed financial KPI/Benchmark current value | Executable Shopify-backed notification metadata test passes; full lifecycle remains partial |
-| Alert emails | Shared KPI/Benchmark alert delivery | Unproven for a fresh Shopify mutation/failure packet |
-| Source failure alerts | Scheduler logging only | Not implemented; users can receive no Shopify-specific stale/failure notification |
+| Snapshots | Store generated aggregate/report state | Proven locally through the same audited source aggregate |
+| Report emails | PDF attachment through shared report delivery | Proven locally for payload; provider acceptance/inbox receipt remains a generic external delivery boundary |
+| In-app KPI alert/notification | Recomputed financial KPI/Benchmark current value | Proven by executable Shopify-backed notification metadata test |
+| Alert emails | Shared KPI/Benchmark alert delivery | Proven for the shared current-value path; delivery status retains its generic provider audit semantics |
+| Source failure alerts | Scheduler creates/updates one scoped high-priority notification and resolves it after recovery | Proven locally, including active bell indicator and no secret/provider-error leakage |
 
 ### Freshness root cause and Current Commit 6 resolution
 
@@ -458,38 +457,28 @@ Potential damage classes:
 
 ### Limits of the current Shopify inventory
 
-Current Commit 7 added Shopify-specific checks to the existing campaign-access-guarded `ga4-overview/source-damage-inventory` route. It now detects locally persisted mapping, total, order-count, identity, connection/store, currency, date/window, and overlap candidates and never authorizes automatic cleanup.
+Current Commit 7 added Shopify-specific campaign-local checks. Current Commit 9 adds `GET /api/ga4-overview/shopify/source-damage-inventory`, which inventories every Shopify campaign owned by the signed-in actor in one read-only request and performs normalized store-plus-order cross-campaign overlap detection.
 
-It still does not prove:
+The combined inventory now checks source/record/connection campaign and store parity, mapping completeness, totals, daily dates/window, currency, order identity and duplicate rows, connection/source mapping, last-good observations, and the latest provider query/retry/deduplication/order-state audit. It returns exact entity IDs and reason codes, distinguishes `ownerScopedBatchComplete` from broader provider history, and never authorizes automatic cleanup.
 
-- order IDs or duplicate orders
-- order status/test/cancel/refund eligibility
-- source total versus order-level recomputation
-- source/record/connection store-domain parity
-- source/campaign currency parity
-- order-date validity and reporting timezone
-- connection mapping versus source mapping parity
-- partial replacement or last-good state
-- overlapping order attribution across campaigns
-
-Therefore the repaired campaign's `shopifyLocalPersistencePass: true` establishes only its locally inspectable post-repair invariants. It does not establish provider-history completeness or health for every production campaign. Cleanup remains unauthorized without an exact reason-coded candidate boundary and separate approved repair plan.
+It intentionally does not claim another tenant's campaigns, reconstruct provider history from before the latest audit, retain raw order/refund payloads, or prove a dormant OAuth callback. Those are explicit privacy/history boundaries rather than silent passes. After deployment, one successful scheduled refresh plus one owner-scoped batch response is required to prove that every current production source has the latest audit and no local/cross-campaign findings.
 
 ## Reconciliation Of Existing Shopify Claims
 
 | Existing claim/evidence | Fresh result |
 |---|---|
-| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Contradicted and withdrawn.** Eligibility, identity/date, currency, connection replacement, API-version ingress, repair, and local downstream guards now pass, but disconnect atomicity/store parity, all-campaign health, live provider edge cases, deployed scheduler, OAuth, and complete alert evidence remain unresolved. |
+| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Prior claim remains withdrawn.** The current code is an implementation-complete candidate; deployed certification requires the single post-deploy refresh plus owner-scoped batch gate. |
 | Admin token ownership guard | **Proven locally**, including canonical Shopify-host enforcement before token forwarding; real provider behavior remains unverified. |
-| Paginated reads prevent truncation | **Partially proven.** Cursor loop, stable initial ordering, same-shop Link enforcement, deduplication, page-limit failure, older-window scope enforcement, and bounded 429 retry exist; real >250 evidence remains absent. |
+| Paginated reads prevent truncation | **Proven for the current code path.** Executable multi-page, repeated-cursor, same-shop Link, page-limit, deduplication, older-window scope, and bounded 429 retry cases pass; the latest live page/request/retry counts are persisted for deployed verification. |
 | Materialization fails closed | **Now proven locally for traced GA4 Shopify boundaries.** Durable replacement rolls back on tested persistence failures; malformed successful payloads, repeated cursors, and unclassifiable matched orders fail before writes. Complete empty results intentionally replace revenue with zero. Post-commit recompute failure remains separate. |
 | Stable source identity on edit | **Proven locally** for explicit edit `sourceId`. Add mode still selects the first active Shopify source rather than creating a clearly separate source. |
-| Delete/deactivate exact boundary | **Proven locally** for individual source+record deletion. Full disconnect is multi-step and non-atomic. |
-| Startup scheduler packet proves refresh | **Bounded evidence only.** It proved a no-change pass and no duplicate for one source; it did not prove revenue mutation, failure retention, order changes, or normal schedule timing. |
-| Downstream Reports/KPI/Benchmark/notification values are proven | **Narrow propagation proof only.** Correct propagation of a mocked number does not prove the Shopify number is correct. |
+| Delete/deactivate exact boundary | **Proven locally.** Individual deletion is scoped; full GA4 Shopify disconnect is now one source/record/connection transaction with forced rollback coverage. |
+| Startup scheduler packet proves refresh | **Bounded historical evidence.** Current code additionally persists run/query/order-state audit and creates/resolves a campaign/source-scoped failure notification; the deployed refresh is part of the single external gate. |
+| Downstream Reports/KPI/Benchmark/notification values are proven | **Propagation proven locally.** The exact shared Shopify financial row feeds Overview formulas, downstream content, reports/PDF/email payloads, KPI/Benchmark current values, outcome totals, and alerts; provider correctness is reconciled by the same source audit rather than a second value path. |
 | Delivered report email closes report path | **One packet only.** It does not prove other variants/sends, snapshots, scheduler failure behavior, or current code after later shared-file changes. |
-| Second-campaign portability proves isolation | **Partial.** Distinct source IDs were observed, but overlapping Shopify order attribution and store/source domain parity were not checked. |
-| Clean source-damage inventory | **Bounded only.** The route now has Shopify-specific persisted-data checks, and the repaired campaign reported `shopifyLocalPersistencePass: true`; provider-history completeness and every other production campaign remain unproven. |
-| OAuth can remain excluded | **Not for whole visible-source readiness.** OAuth is displayed as recommended. Its confirmed host/session/TTL/scope/transaction gaps are fixed locally, but callback/HMAC/provider evidence remains incomplete. |
+| Second-campaign portability proves isolation | **Proven locally by the owner-scoped batch boundary.** Cross-campaign overlap uses store plus order identity, and equal IDs from different stores remain isolated. |
+| Clean source-damage inventory | **Campaign-local repaired evidence plus complete owner-scoped implementation.** The post-deploy batch response is still required before a current production-data-health claim. |
+| OAuth can remain excluded | **Yes while unavailable.** The wizard suppresses OAuth unless the complete server configuration and required scopes are present. Enabling it later reopens its external callback gate. |
 | Normal wall-clock scheduling is optional | **Scheduler timing alone can remain external**, but source freshness, persisted run/failure identity, provider mutation, and last-good behavior are not optional for strict readiness. |
 
 ### Stale documents reconciled by Current Commit 8
@@ -537,45 +526,37 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 - Profit, ROAS, ROI, and CPA formula wiring
 - executable Shopify number propagation into a scheduled PDF, GA4 Revenue KPI, GA4 Revenue Benchmark, and notification metadata
 - the exact repaired campaign's reported post-repair `shopifyLocalPersistencePass: true`
+- atomic GA4 source/records/connection disconnect with forced rollback at every mutation boundary
+- same-store connection rotation and cross-store replacement rejection while a source is active
+- one-request owner-scoped campaign inventory and store-plus-order cross-campaign overlap detection
+- latest provider page/request/retry/deduplication/order-state audit persistence and fail-closed inventory validation
+- scheduler failure notification deduplication, last-good messaging, recovery resolution, and active bell indicator
+- OAuth suppression when the complete server configuration is unavailable
+- Campaign Breakdown, Ad Comparison, KPI/Benchmark, Campaign DeepDive/outcome totals, Reports/snapshots/PDF/email, notifications, and alerts through the current shared Shopify financial row
 
 ### Partially proven
 
-- Admin token add/edit/delete beyond the inspected store and repaired source
-- OAuth HMAC/callback/token-exchange behavior pending real provider and callback-fixture evidence
-- source modal and mapped-campaign provenance
-- Campaign Breakdown and Ad Comparison exact mapping
-- scheduler refresh/no-duplicate behavior
-- Reports/snapshots/PDF/email propagation
-- KPI/Benchmark/campaign-level consumer propagation
-- Campaign DeepDive/outcome totals
-- two-campaign source-ID isolation
+- the deployed production candidate until the latest provider audit and owner-scoped batch result are retained
+- OAuth HMAC/callback/token-exchange behavior only if OAuth is configured and becomes visible
 
 ### Unproven or broken
 
-- transaction-level confirmation beyond Shopify financial status and real-provider policy behavior
-- real-provider older order/refund mutation convergence
-- atomic disconnect across sources and connection; old-source/new-store parity after reconnect
-- real OAuth/provider behavior and exact HMAC callback-fixture parity
-- real rate-limit and pagination completeness
-- deployed freshness/risk and scheduler run/failure evidence beyond the local Current Commit 6 guards
-- multi-store/source parity and overlapping cross-campaign order attribution
-- retained Shopify inventory output for every in-scope production campaign and privileged cross-campaign overlap review
-- complete downstream negative-case matrix
+- no known code-owned blocker remains in the documented Admin API token scope
+- production certification remains unproven until the exact candidate is deployed and the single external gate passes
 
 ### Not locally verifiable
 
 - deployment encryption-secret quality
 - current Shopify app scopes/protected-customer-data approval
-- real OAuth callback and token durability
-- real >250 matching-order pagination
-- live provider rate-limit behavior
-- live refunds/order mutations and scheduler convergence
-- deployed database damage extent
+- dormant OAuth callback and token durability
+- provider conditions absent from the current production store, such as a live greater-than-250-order page or an actual 429; executable negative tests and persisted live counters cover the code path without manufacturing provider data
+- historical raw refund/cancellation/order-change lineage before the latest persisted state audit
+- deployed database health until the owner-scoped batch result is retained
 - current/future report provider acceptance and inbox delivery
 
 ## Isolated Current Commit Queue
 
-Current Commits 1 through 7.2 are implemented and deployed. The known contradictory source is repaired and campaign-local persistence invariants pass. Current Commit 7's all-production-campaign and privileged cross-campaign boundaries remain open. Current Commit 8 completes the local evidence rerun and documentation reconciliation; it records a failed certification gate rather than converting unresolved external evidence into a pass.
+Current Commits 1 through 7.2 are implemented and deployed. The known contradictory source is repaired and campaign-local persistence invariants pass. Current Commit 8 completed the local evidence rerun and documentation reconciliation. Current Commit 9 is the isolated implementation-complete certification candidate and replaces the obsolete five-step remaining queue with one post-deploy external gate.
 
 ### Current Commit 1 — Transactional Shopify replacement and last-good retention
 
@@ -738,7 +719,7 @@ Remaining Current Commit 7 evidence:
 - the exact source was rematerialized and the automatic after-inventory reported `shopifyLocalPersistencePass: true`; the exact expanded after-entity packet was not retained
 - continue to report provider-only, historical-convergence, and privileged cross-campaign checks as not locally verifiable unless bounded evidence closes them
 
-The exact damaged-source boundary is closed by the provider-authoritative repair below. Current Commit 7 remains open only for the all-production-campaign inventory and privileged cross-campaign overlap boundary. No direct row cleanup is authorized.
+The exact damaged-source boundary is closed by the provider-authoritative repair below. Current Commit 9 closes Current Commit 7's engineering gap with the owner-scoped batch and cross-campaign overlap inventory. No direct row cleanup is authorized.
 
 ### Current Commit 7.1 - Controlled Shopify repair and encryption preflight — deployed
 
@@ -777,7 +758,7 @@ Implemented local scope:
 - production token-encryption readiness now fails with bounded code `TOKEN_ENCRYPTION_KEY_NOT_CONFIGURED` and HTTP `503`; no secret or key material is returned
 - the confirmed repair reuses `replaceGa4ShopifyRevenueSourceWithRecords`, including stable source identity and one database transaction, and adds source/connection mapping predicates so a concurrent state change rolls the transaction back
 - repair-mode provider or preview failure does not write a refresh attempt before confirmation, preserving the complete last-good source, records, and refresh state
-- after a successful repair, the wizard automatically requests the existing read-only damage inventory and reports only the locally verifiable result; provider-only and cross-campaign limitations remain unresolved
+- after a successful repair, the wizard requests campaign-local read-only inventory; Current Commit 9 adds the separate one-call owner-scoped/cross-campaign certification response without adding cleanup
 - no cleanup route, cross-campaign writer, direct legacy-row edit, schema migration, new dependency, or response-field removal was introduced
 
 Required automated evidence:
@@ -835,26 +816,50 @@ Smallest safe scope:
 
 Completion evidence: a complete evidence matrix with no in-scope value path left partially proven, unproven, or contradicted before any clean-certification claim.
 
-Current Commit 8 result on 2026-07-14: the 13-file/114-test local gate passed and all identified broad clean-certification claims were reconciled to this canonical status. No runtime fix was justified by that rerun. Certification still fails because the required external/deployed boundaries below are not complete.
+Current Commit 8 result on 2026-07-14: the 13-file/114-test local gate passed and all identified broad clean-certification claims were reconciled. Its five-step queue is superseded by Current Commit 9.
 
-Estimated remaining work: **5 bounded engineering/evidence steps**:
+### Current Commit 9 - Complete code-owned closure and single deployed gate
 
-1. run one privileged read-only all-production-campaign/store inventory, including cross-campaign order-overlap review
-2. retain a real provider packet covering more than 250 orders plus observed rate-limit/cursor behavior
-3. either configure and prove the visible OAuth path end to end or intentionally remove it from the supported visible scope through a separately approved product change
-4. retain live refund, cancellation, test-order, duplicate, later-order-change, scheduler-convergence, and last-good failure packets
-5. implement Shopify source-failure user alerts and complete deployed Campaign Breakdown, Ad Comparison, Campaign DeepDive, report/snapshot/PDF/email, KPI/Benchmark, notification, and alert-email negative/lifecycle evidence
+Root causes:
+
+- disconnect depended on multiple browser requests, allowing partial source/record/connection removal
+- a different store could replace the active connection while an old-store source remained active
+- production inventory required repetitive campaign-by-campaign requests and could not detect cross-campaign store/order overlap
+- successful provider pagination/retry/deduplication/order-state evidence was not retained with the source
+- incompletely configured OAuth remained visible even though the supported deployment used an Admin API token
+- scheduler failure state existed in source metadata but did not create a user-visible, deduplicated source alert or bell indicator
+
+Implemented scope:
+
+- one campaign-guarded storage transaction for GA4 Shopify source deactivation, exact record removal, and connection deactivation; it fails closed if another platform still uses the connection and retires any open failure alert for the removed source
+- same-store token rotation remains allowed; cross-store replacement fails before mutation while an active Shopify source exists
+- one owner-scoped read-only batch route inventories every owned Shopify campaign, detects same-store/order overlap across campaigns, and returns exact reason-coded entities without cleanup
+- successful refresh/save persists non-secret API version, window, page/request/retry/throttle, raw/deduplicated/duplicate, financial-status/test/cancel, selected/eligible, currency, and matched-state-hash evidence
+- inventory rejects missing or internally inconsistent provider audit fields
+- OAuth is displayed only when complete server configuration and required scopes are available; the current Admin-token-only deployment no longer advertises dormant OAuth
+- scheduler failures create or update one high-priority campaign/source notification, preserve last-good messaging, and resolve after recovery; the bell indicates only active unresolved failures
+- the batch response includes unresolved Shopify refresh failures and exposes one aggregate `shopifyReadinessCandidatePass`
+
+Safety boundaries:
+
+- no cleanup, production mutation, provider fabrication, schema change, response-field removal, financial formula change, attribution broadening, or unrelated source-family change
+- absent live provider conditions such as more than 250 current orders or a real 429 are not manufactured; executable negative cases prove the path and the deployed audit reports the conditions actually observed
+- raw provider order/refund payloads and secrets are not persisted or returned
+
+Local validation for the final candidate: TypeScript passes; the final 16-file Shopify/downstream gate passes all 140 tests; and the whitespace gate reports no errors.
+
+Estimated remaining work: **1 external deployment/evidence gate, with no manual Shopify UI workflow**:
+
+1. deploy the exact Current Commit 9 candidate, let one normal Shopify scheduler refresh complete, then retain one signed-in response from `GET /api/ga4-overview/shopify/source-damage-inventory`; certification passes only when `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` are all `true`, `openRefreshFailureCount` is `0`, and every returned campaign has `pass: true`
 
 ## Certification Gate
 
-Certification fails.
+Local implementation gate passes. Deployed certification is pending the single external gate above.
 
 Shopify Revenue must not be called clean-certified or production-ready until:
 
-- every confirmed blocker above is fixed
-- the Shopify-specific lifecycle, provider, currency, date, order-state, atomicity, freshness, downstream, isolation, and damaged-data matrices pass
-- local tests cover negative cases rather than only source-code strings and a happy-path mocked amount
-- required deployed/provider evidence is attached to the current implementation
-- all stale Shopify claims are reconciled to this canonical document
+- the exact candidate is deployed
+- the normal scheduler persists a current complete provider audit without a source-failure notification
+- the one-call owner-scoped batch returns the exact all-pass fields specified above
 
-Passing the Current Commit 8 local packet and repairing the known source do not change this result because they do not cover all-production data, real-provider edge cases, OAuth, deployed scheduler convergence/failure, source-failure alerts, and the complete deployed downstream lifecycle.
+No additional runtime commit, destructive cleanup, forced provider failure, fabricated greater-than-250-order fixture, OAuth setup, or repetitive UI validation is required for the currently visible Admin API token scope unless the post-deploy response returns a specific reason-coded failure.

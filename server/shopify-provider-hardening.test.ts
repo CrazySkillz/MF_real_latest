@@ -72,12 +72,18 @@ describe('Shopify provider hardening', () => {
       .mockResolvedValueOnce(new Response('{}', { status: 429, headers: { 'Retry-After': '0.5' } }))
       .mockResolvedValueOnce(new Response('{"shop":{}}', { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } }));
     const sleep = vi.fn(async () => undefined);
+    const onResponse = vi.fn();
 
     await expect(shopifyAdminFetch({
-      shopDomain: 'store.myshopify.com', accessToken: 'secret', endpoint: '/admin/api/2026-07/shop.json', fetchImpl, sleep,
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', endpoint: '/admin/api/2026-07/shop.json', fetchImpl, sleep, onResponse,
     })).resolves.toMatchObject({ status: 200 });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(sleep.mock.calls).toEqual([[2000], [500]]);
+    expect(onResponse.mock.calls.map(([event]) => event)).toEqual([
+      { attempt: 0, status: 429, retryAfterSeconds: 2 },
+      { attempt: 1, status: 429, retryAfterSeconds: 0.5 },
+      { attempt: 2, status: 200, retryAfterSeconds: null },
+    ]);
   });
 
   it('stops after two 429 retries', async () => {

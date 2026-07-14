@@ -15,7 +15,8 @@ import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
-import { inspectGa4ShopifyRevenueDamage } from "./utils/shopify-revenue-damage-inventory";
+import { inspectGa4ShopifyCrossCampaignOverlap, inspectGa4ShopifyRevenueDamage } from "./utils/shopify-revenue-damage-inventory";
+import { findOpenShopifyRefreshFailureNotification, parseShopifyRefreshNotificationMetadata, resolveShopifyRefreshFailureNotification, SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND } from "./utils/shopify-refresh-notification";
 import type { ParsedMetrics } from "./services/pdf-parser";
 import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
@@ -1806,6 +1807,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ success: false, error: e?.message || "Failed to run GA4 Overview source-damage inventory" });
     }
   });
+  app.get("/api/ga4-overview/shopify/source-damage-inventory", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+      const ownedCampaigns = (await storage.getCampaigns()).filter((campaign: any) =>
+        String(campaign?.ownerId || "").trim() === actorId
+      );
+      const campaignIds = ownedCampaigns.map((campaign: any) => String(campaign.id)).filter(Boolean);
+      if (campaignIds.length === 0) {
+        return res.json({
+          success: true, readonly: true, checkedAt: new Date().toISOString(),
+          ownedCampaignCount: 0, shopifyCampaignCount: 0,
+          shopifyLocalPersistencePass: true, crossCampaignOrderOverlapPass: true,
+          shopifyReadinessCandidatePass: true, openRefreshFailureCount: 0,
+          openRefreshFailureNotifications: [],
+          ownerScopedBatchComplete: true, campaigns: [], crossCampaignFindings: [],
+          automaticCleanupAllowed: false, shopifyInventoryScopeComplete: false,
+        });
+      }
+      const [connections, sources, records, notifications] = await Promise.all([
+        db.select({
+          id: shopifyConnectionsTable.id,
+          campaignId: shopifyConnectionsTable.campaignId,
+          shopDomain: shopifyConnectionsTable.shopDomain,
+          shopName: shopifyConnectionsTable.shopName,
+          isActive: shopifyConnectionsTable.isActive,
+          mappingConfig: shopifyConnectionsTable.mappingConfig,
+          connectedAt: shopifyConnectionsTable.connectedAt,
+          createdAt: shopifyConnectionsTable.createdAt,
+        }).from(shopifyConnectionsTable).where(inArray(shopifyConnectionsTable.campaignId, campaignIds)),
+        db.select().from(revenueSourcesTable).where(inArray(revenueSourcesTable.campaignId, campaignIds)),
+        db.select().from(revenueRecordsTable).where(inArray(revenueRecordsTable.campaignId, campaignIds)),
+        storage.getNotifications(),
+      ]);
+      const ownedShopifySourceIds = new Set((sources as any[])
+        .filter((source) => String(source?.sourceType || "").toLowerCase() === "shopify")
+        .map((source) => String(source?.id || ""))
+        .filter(Boolean));
+      const inputs = ownedCampaigns.map((campaign: any) => ({
+        campaign,
+        connections: (connections as any[]).filter((row) => String(row?.campaignId || "") === String(campaign.id)),
+        allSources: (sources as any[]).filter((row) => String(row?.campaignId || "") === String(campaign.id)),
+        allRecords: (records as any[]).filter((row) => String(row?.campaignId || "") === String(campaign.id)),
+        referencedSources: sources as any[],
+      })).filter((input) =>
+        input.connections.length > 0
+        || input.allSources.some((source) => String(source?.sourceType || "").toLowerCase() === "shopify")
+        || input.allRecords.some((record) =>
+          String(record?.sourceType || "").toLowerCase() === "shopify"
+          || ownedShopifySourceIds.has(String(record?.revenueSourceId || ""))
+        )
+      );
+      const campaignInventories = inputs.map((input) => ({
+        campaignId: String(input.campaign.id),
+        campaignName: input.campaign.name || null,
+        ...inspectGa4ShopifyRevenueDamage(input),
+      }));
+      const crossCampaign = inspectGa4ShopifyCrossCampaignOverlap(inputs);
+      const localPass = campaignInventories.every((inventory) => inventory.pass) && crossCampaign.pass;
+      const openRefreshFailureNotifications = (notifications as any[]).flatMap((notification) => {
+        if (!campaignIds.includes(String(notification?.campaignId || ""))) return [];
+        const metadata = parseShopifyRefreshNotificationMetadata(notification?.metadata);
+        if (metadata.kind !== SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND || metadata.resolvedAt || metadata.dismissedAt) return [];
+        return [{
+          notificationId: String(notification?.id || ""),
+          campaignId: String(notification?.campaignId || ""),
+          sourceId: String(metadata.sourceId || ""),
+          refreshRunId: metadata.refreshRunId ? String(metadata.refreshRunId) : null,
+          failureCode: metadata.failureCode ? String(metadata.failureCode) : null,
+          failedAt: metadata.failedAt ? String(metadata.failedAt) : null,
+        }];
+      });
+      return res.json({
+        success: true,
+        readonly: true,
+        checkedAt: new Date().toISOString(),
+        ownedCampaignCount: ownedCampaigns.length,
+        shopifyCampaignCount: campaignInventories.length,
+        shopifyLocalPersistencePass: localPass,
+        crossCampaignOrderOverlapPass: crossCampaign.pass,
+        shopifyReadinessCandidatePass: localPass && openRefreshFailureNotifications.length === 0,
+        openRefreshFailureCount: openRefreshFailureNotifications.length,
+        openRefreshFailureNotifications,
+        ownerScopedBatchComplete: true,
+        campaigns: campaignInventories,
+        crossCampaignFindings: crossCampaign.findings,
+        automaticCleanupAllowed: false,
+        shopifyInventoryScopeComplete: false,
+        caveats: [
+          "This batch is restricted to campaigns owned by the signed-in user and never claims another tenant's campaigns.",
+          "It is read-only and does not call Shopify, refresh sources, repair records, or generate cleanup instructions.",
+          "Provider order-state, historical completeness, OAuth, and live mutation evidence remain separate from local persistence health.",
+        ],
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message || "Failed to run Shopify batch inventory" });
+    }
+  });
   app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -3080,6 +3181,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: error.message });
       }
       res.status(500).json({ success: false, error: error?.message || 'Failed to disconnect HubSpot' });
+    }
+  });
+
+  // Atomic GA4 Shopify source + connection disconnect
+  app.delete('/api/campaigns/:id/ga4/shopify/disconnect', async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || '');
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      const result = await storage.disconnectGa4ShopifyRevenue(campaignId);
+      try {
+        await recomputeCampaignDerivedValues(campaignId, { platformContext: 'ga4' });
+      } catch (error) {
+        console.error('[Shopify] Post-disconnect GA4 recompute failed:', error);
+      }
+      try {
+        const notificationRows = await storage.getNotifications();
+        for (const sourceId of result.sourceIds) {
+          const openFailure = findOpenShopifyRefreshFailureNotification(notificationRows, campaignId, sourceId);
+          if (openFailure) {
+            await storage.updateNotification(String(openFailure.id), resolveShopifyRefreshFailureNotification(openFailure, new Date().toISOString()));
+          }
+        }
+      } catch (error) {
+        console.error('[Shopify] Post-disconnect notification resolution failed:', error);
+      }
+      res.json({ success: true, removedSourceIds: result.sourceIds });
+    } catch (error: any) {
+      if (error?.code === 'SHOPIFY_CONNECTION_IN_USE') {
+        return res.status(409).json({ success: false, error: error.message });
+      }
+      if (error?.code === 'SHOPIFY_CONNECTION_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: error.message });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to disconnect Shopify' });
     }
   });
 
@@ -5886,6 +6022,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);
     return shopifyBase ? `${shopifyBase.replace(/\/+$/, "")}/api/auth/shopify/callback` : null;
+  };
+  const isShopifyOauthAvailable = (): boolean => {
+    const clientId = String(process.env.SHOPIFY_CLIENT_ID || "").trim();
+    const clientSecret = String(process.env.SHOPIFY_CLIENT_SECRET || "").trim();
+    const scopes = String(process.env.SHOPIFY_SCOPES || "read_orders,read_all_orders").split(',');
+    if (!clientId || !clientSecret || !getShopifyRedirectUri()) return false;
+    try {
+      requireShopifyRevenueScopes(scopes);
+      return true;
+    } catch {
+      return false;
+    }
   };
   // Build a Sheets A1 range prefix for a tab name.
   // Sheet/tab names with spaces or special characters must be quoted in A1 notation.
@@ -32164,11 +32312,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     apiVersion: string;
     createdAtMin: string;
     maxPages?: number;
+    audit?: Record<string, any>;
   }) => {
-    const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000 } = args;
+    const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000, audit } = args;
     const base = `https://${shopDomain}`;
     const orders: any[] = [];
     const seenUrls = new Set<string>();
+    let pageCount = 0;
+    let requestCount = 0;
+    let throttledResponseCount = 0;
+    let maxRetryAttempt = 0;
     let nextUrl: string | null = `${base}/admin/api/${apiVersion}/orders.json?status=any&limit=250&order=created_at%20asc&created_at_min=${encodeURIComponent(createdAtMin)}`;
 
     const orderWindowStart = Date.parse(createdAtMin);
@@ -32185,7 +32338,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     for (let page = 0; nextUrl && page < maxPages; page++) {
       if (seenUrls.has(nextUrl)) throw new Error('Shopify orders pagination repeated a cursor URL');
       seenUrls.add(nextUrl);
-      const resp: Response = await shopifyAdminFetch({ shopDomain, accessToken, endpoint: nextUrl });
+      const resp: Response = await shopifyAdminFetch({
+        shopDomain,
+        accessToken,
+        endpoint: nextUrl,
+        onResponse: (event) => {
+          requestCount++;
+          if (event.status === 429) throttledResponseCount++;
+          maxRetryAttempt = Math.max(maxRetryAttempt, event.attempt);
+        },
+      });
       const text: string = await resp.text().catch(() => "");
       let json: any = {};
       try {
@@ -32211,6 +32373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const pageOrders = json.orders;
       orders.push(...pageOrders);
+      pageCount++;
 
       const linkHeader: string = resp.headers.get("link") || resp.headers.get("Link") || "";
       const nextMatch: RegExpMatchArray | null = linkHeader.match(/<([^>]+)>;\s*rel="?next"?/i);
@@ -32221,7 +32384,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw new Error(`Shopify orders pagination limit exceeded (${maxPages} pages). Narrow the date window and try again.`);
     }
 
-    return deduplicateShopifyOrders(orders);
+    const deduplicatedOrders = deduplicateShopifyOrders(orders);
+    if (audit) Object.assign(audit, {
+      queryComplete: true,
+      apiVersion,
+      orderWindowStart: createdAtMin,
+      pageCount,
+      requestCount,
+      throttledResponseCount,
+      maxRetryAttempt,
+      rawOrderCount: orders.length,
+      deduplicatedOrderCount: deduplicatedOrders.length,
+      duplicateOrderCount: orders.length - deduplicatedOrders.length,
+      ordering: 'created_at asc',
+      pageSize: 250,
+    });
+    return deduplicatedOrders;
   };
 
   const shopifyRequiresMerchantApproval = (err: any): boolean => {
@@ -32460,6 +32638,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("[Shopify Connect] Error:", error);
+      if (error?.code === 'SHOPIFY_ACTIVE_SOURCE_STORE_CHANGE') {
+        return res.status(409).json({ error: error.message, code: error.code });
+      }
       res.status(500).json({ error: error.message || "Failed to connect Shopify" });
     }
   });
@@ -32496,6 +32677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shopDomain: connected ? conn.shopDomain : null,
         shopName: connected ? conn.shopName : null,
         authType: connected ? authType : null,
+        oauthAvailable: isShopifyOauthAvailable(),
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to check Shopify connection" });
@@ -32887,11 +33069,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdAtMin = platformCtx === 'ga4'
         ? campaignWindowStartAt.toISOString()
         : fallbackCreatedAtMin.toISOString();
+      const providerQueryAudit: Record<string, any> = {};
       const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
         apiVersion,
         createdAtMin,
+        audit: providerQueryAudit,
       });
 
       const getFieldValue = (o: any): string => {
@@ -32914,6 +33098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let presentmentTotal = 0;
       const presentmentCurrencies = new Set<string>();
       const selectedSet = new Set(selected);
+      let selectedCandidateOrderCount = 0;
       const campaignValueRevenueTotals = new Map<string, number>();
       const campaignValueOrderCounts = new Map<string, number>();
       for (const o of orders) {
@@ -32924,6 +33109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : [getFieldValue(o).trim()].filter(Boolean);
         const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
+        selectedCandidateOrderCount++;
         const amt = getShopifyConfirmedRevenueAmounts(o);
         if (!amt) continue;
         matchedOrders.push(o);
@@ -32943,6 +33129,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resolvedRevenueCurrency = platformCtx === 'ga4'
         ? resolveShopifyGa4RevenueCurrency(matchedAmounts, (camp as any)?.currency)
         : matchedCurrency;
+      const financialStatusCounts = orders.reduce((counts: Record<string, number>, order: any) => {
+        const status = String(order?.financial_status || 'missing').trim().toLowerCase() || 'missing';
+        counts[status] = (counts[status] || 0) + 1;
+        return counts;
+      }, {});
+      Object.assign(providerQueryAudit, {
+        queriedAt: new Date().toISOString(),
+        financialStatusCounts,
+        testOrderCount: orders.filter((order: any) => order?.test === true).length,
+        cancelledOrderCount: orders.filter((order: any) => Boolean(order?.cancelled_at)).length,
+        selectedCandidateOrderCount,
+        excludedSelectedOrderCount: selectedCandidateOrderCount - matchedOrders.length,
+        matchedOrderCount: matchedOrders.length,
+        matchedOrderStateHash: createHash('sha256').update(JSON.stringify(matchedOrders.map((order: any) => ({
+          id: String(order?.id || ''),
+          updatedAt: String(order?.updated_at || ''),
+          financialStatus: String(order?.financial_status || ''),
+          cancelledAt: String(order?.cancelled_at || ''),
+          test: order?.test === true,
+          amount: getShopifyConfirmedRevenueAmounts(order)?.shopAmount ?? null,
+        })).sort((a: any, b: any) => a.id.localeCompare(b.id)))).digest('hex'),
+        resolvedRevenueCurrency,
+      });
       let ga4ReportingTimeZone: string | null = null;
       let ga4StartDate: string | null = null;
       let ga4EndDate: string | null = null;
@@ -33040,6 +33249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
           presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
           presentmentCurrency,
+          providerQueryAudit,
           ...(currentRepairConfirmation ? { repairConfirmation: currentRepairConfirmation } : {}),
         });
       }
@@ -33105,6 +33315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
+          providerQueryAudit,
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         }, existingConnConfig, refreshSuccessEvent);
         shopifyConnectionId = String(shopifyConn.id);
@@ -33159,6 +33370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
+          providerQueryAudit,
           currency: resolvedRevenueCurrency,
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
             campaignValue,

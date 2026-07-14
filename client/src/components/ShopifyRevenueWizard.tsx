@@ -82,7 +82,8 @@ export function ShopifyRevenueWizard(props: {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
-  const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("oauth");
+  const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("token");
+  const [oauthAvailable, setOauthAvailable] = useState(false);
   const [adminToken, setAdminToken] = useState<string>("");
 
   const [valuesLoading, setValuesLoading] = useState(false);
@@ -241,16 +242,19 @@ export function ShopifyRevenueWizard(props: {
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Shopify connection");
     const isConnected = !!json?.connected;
+    const canUseOauth = json?.oauthAvailable === true;
+    setOauthAvailable(canUseOauth);
     if (!applyExistingConnection && isConnected) {
       setConnected(false);
       setShopName(null);
-      setConnectMethod("oauth");
+      setConnectMethod(canUseOauth ? "oauth" : "token");
       setShopDomain("");
       return false;
     }
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
-    if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "token" ? "token" : "oauth");
+    if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "oauth" && canUseOauth ? "oauth" : "token");
+    else setConnectMethod(canUseOauth ? "oauth" : "token");
     const serverDomain = isConnected ? String(json?.shopDomain || "") : "";
     setShopDomain((prev) => prev || serverDomain);
     if (serverDomain) {
@@ -735,11 +739,13 @@ export function ShopifyRevenueWizard(props: {
                     Connect your Shopify store to import orders and map revenue to this campaign.
                   </div>
                   <div>
-                    If Shopify blocks OAuth (protected customer data), use an Admin API token.
+                    {oauthAvailable
+                      ? "Use OAuth or an Admin API token with order-reading access."
+                      : "Connect with an Admin API token that has order-reading access."}
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {oauthAvailable ? <div className="space-y-2">
                   <Label>Connection method</Label>
                   <RadioGroup value={connectMethod} onValueChange={(v: any) => setConnectMethod(v)} className="space-y-2">
                     <div className="flex items-start gap-2">
@@ -751,11 +757,16 @@ export function ShopifyRevenueWizard(props: {
                     <div className="flex items-start gap-2">
                       <RadioGroupItem id="shopify-method-token" value="token" />
                       <label htmlFor="shopify-method-token" className="text-sm font-medium leading-none cursor-pointer">
-                        Admin API token (fallback)
+                        Admin API token
                       </label>
                     </div>
                   </RadioGroup>
-                </div>
+                </div> : (
+                  <div className="space-y-1">
+                    <Label>Connection method</Label>
+                    <div className="text-sm font-medium">Admin API token</div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div className="space-y-1">
@@ -772,7 +783,7 @@ export function ShopifyRevenueWizard(props: {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => void (connectMethod === "token" ? connectWithToken() : openOAuthWindow())}
+                      onClick={() => void (oauthAvailable && connectMethod === "oauth" ? openOAuthWindow() : connectWithToken())}
                       disabled={isConnecting}
                     >
                       {isConnecting ? "Connecting…" : (connected ? "Reconnect / Change store" : "Connect Shopify")}
@@ -780,7 +791,7 @@ export function ShopifyRevenueWizard(props: {
                   </div>
                 </div>
 
-                {connectMethod === "token" && (
+                {(!oauthAvailable || connectMethod === "token") && (
                   <div className="space-y-1">
                     <Label>Admin API token</Label>
                     <Input

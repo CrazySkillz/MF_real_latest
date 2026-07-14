@@ -73,6 +73,50 @@ export interface ShopifyRevenueDamageInventoryInput {
   referencedSources?: any[];
 }
 
+export function inspectGa4ShopifyCrossCampaignOverlap(inputs: ShopifyRevenueDamageInventoryInput[]) {
+  const locations = new Map<string, Array<{ campaignId: string; sourceId: string; recordIds: string[] }>>();
+  for (const input of inputs) {
+    const campaignId = clean(input.campaign?.id);
+    const recordsBySource = new Map<string, any[]>();
+    for (const record of input.allRecords) {
+      const id = clean(record?.revenueSourceId);
+      if (!recordsBySource.has(id)) recordsBySource.set(id, []);
+      recordsBySource.get(id)!.push(record);
+    }
+    for (const source of input.allSources.filter((row) => isGa4ShopifySource(row) && row?.isActive !== false)) {
+      const domain = mappedShopDomain(source);
+      if (!campaignId || !domain) continue;
+      for (const record of recordsBySource.get(sourceId(source)) || []) {
+        const orderId = clean(record?.externalId);
+        if (!orderId) continue;
+        const key = `${domain}\n${orderId}`;
+        if (!locations.has(key)) locations.set(key, []);
+        locations.get(key)!.push({
+          campaignId,
+          sourceId: sourceId(source),
+          recordIds: [clean(record?.id)].filter(Boolean),
+        });
+      }
+    }
+  }
+
+  const findings = Array.from(locations.entries()).flatMap(([key, rows]) => {
+    const campaignIds = Array.from(new Set(rows.map((row) => row.campaignId)));
+    if (campaignIds.length < 2) return [];
+    const [shopDomain, orderId] = key.split('\n');
+    return [{
+      reasonCode: 'same_store_order_identity_across_campaigns',
+      shopDomain,
+      orderId,
+      campaignIds,
+      sourceIds: Array.from(new Set(rows.map((row) => row.sourceId))),
+      recordIds: Array.from(new Set(rows.flatMap((row) => row.recordIds))),
+    }];
+  });
+
+  return { pass: findings.length === 0, findings };
+}
+
 export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInventoryInput) {
   const campaignId = clean(input.campaign?.id);
   const campaignCurrency = upper(input.campaign?.currency);
@@ -116,6 +160,7 @@ export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInvent
     invalidRevenueRecordGroups: [],
     activeConnectionBoundaryFindings: [],
     connectionSourceMappingMismatches: [],
+    providerQueryAuditSources: [],
   };
 
   for (const source of sources) {
@@ -157,6 +202,43 @@ export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInvent
         reasonCode: 'incomplete_shopify_source_mapping',
         connectionIds: activeConnectionIds,
         issueCodes: mappingIssueCodes,
+      }));
+    }
+
+    const providerAudit = mapping?.providerQueryAudit;
+    const providerAuditIssueCodes: string[] = [];
+    if (!providerAudit || typeof providerAudit !== 'object') providerAuditIssueCodes.push('missing_provider_query_audit');
+    else {
+      if (providerAudit.queryComplete !== true) providerAuditIssueCodes.push('provider_query_not_complete');
+      if (!/^\d{4}-\d{2}$/.test(clean(providerAudit.apiVersion))) providerAuditIssueCodes.push('invalid_provider_api_version');
+      if (!Number.isFinite(Date.parse(clean(providerAudit.queriedAt)))) providerAuditIssueCodes.push('invalid_provider_query_time');
+      if (!Number.isInteger(providerAudit.pageCount) || providerAudit.pageCount < 1) providerAuditIssueCodes.push('invalid_provider_page_count');
+      if (!Number.isInteger(providerAudit.requestCount) || providerAudit.requestCount < providerAudit.pageCount) providerAuditIssueCodes.push('invalid_provider_request_count');
+      if (!Number.isInteger(providerAudit.throttledResponseCount) || providerAudit.throttledResponseCount < 0
+        || providerAudit.throttledResponseCount > providerAudit.requestCount) providerAuditIssueCodes.push('invalid_provider_throttle_count');
+      if (!Number.isInteger(providerAudit.maxRetryAttempt) || providerAudit.maxRetryAttempt < 0) providerAuditIssueCodes.push('invalid_provider_retry_count');
+      if (!Number.isInteger(providerAudit.rawOrderCount) || providerAudit.rawOrderCount < 0) providerAuditIssueCodes.push('invalid_provider_raw_order_count');
+      if (!Number.isInteger(providerAudit.deduplicatedOrderCount) || providerAudit.deduplicatedOrderCount < 0
+        || providerAudit.deduplicatedOrderCount > providerAudit.rawOrderCount) providerAuditIssueCodes.push('invalid_provider_deduplicated_order_count');
+      if (!Number.isInteger(providerAudit.duplicateOrderCount)
+        || providerAudit.duplicateOrderCount !== providerAudit.rawOrderCount - providerAudit.deduplicatedOrderCount) providerAuditIssueCodes.push('invalid_provider_duplicate_order_count');
+      if (providerAudit.ordering !== 'created_at asc' || providerAudit.pageSize !== 250) providerAuditIssueCodes.push('invalid_provider_query_shape');
+      if (!clean(providerAudit.orderWindowStart).startsWith(clean(mapping?.orderWindowStart))) providerAuditIssueCodes.push('provider_window_mismatch');
+      if (!Number.isInteger(providerAudit.matchedOrderCount) || providerAudit.matchedOrderCount !== Number(mapping?.lastMatchedOrderCount)) providerAuditIssueCodes.push('provider_matched_order_count_mismatch');
+      if (!Number.isInteger(providerAudit.selectedCandidateOrderCount) || providerAudit.selectedCandidateOrderCount < providerAudit.matchedOrderCount
+        || !Number.isInteger(providerAudit.excludedSelectedOrderCount)
+        || providerAudit.excludedSelectedOrderCount !== providerAudit.selectedCandidateOrderCount - providerAudit.matchedOrderCount) providerAuditIssueCodes.push('invalid_provider_eligibility_counts');
+      if (!Number.isInteger(providerAudit.testOrderCount) || providerAudit.testOrderCount < 0
+        || !Number.isInteger(providerAudit.cancelledOrderCount) || providerAudit.cancelledOrderCount < 0
+        || !providerAudit.financialStatusCounts || typeof providerAudit.financialStatusCounts !== 'object') providerAuditIssueCodes.push('invalid_provider_order_state_counts');
+      if (!/^[a-f0-9]{64}$/.test(clean(providerAudit.matchedOrderStateHash))) providerAuditIssueCodes.push('invalid_provider_state_hash');
+      if (upper(providerAudit.resolvedRevenueCurrency) !== upper(mapping?.currency)) providerAuditIssueCodes.push('provider_currency_mismatch');
+    }
+    if (providerAuditIssueCodes.length > 0) {
+      findings.providerQueryAuditSources.push(summarizeRecords(campaignId, source, records, {
+        reasonCode: 'incomplete_shopify_provider_query_audit',
+        connectionIds: activeConnectionIds,
+        issueCodes: providerAuditIssueCodes,
       }));
     }
 
@@ -414,9 +496,9 @@ export function inspectGa4ShopifyRevenueDamage(input: ShopifyRevenueDamageInvent
     findings,
     observations: { retainedLastGoodAfterFailureSources },
     notLocallyVerifiable: [
-      { reasonCode: 'provider_order_state_not_persisted', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
+      { reasonCode: 'provider_order_state_lineage_not_persisted', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
       { reasonCode: 'provider_refund_and_cancellation_lineage_not_persisted', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
-      { reasonCode: 'historical_provider_query_completeness_not_persisted', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
+      { reasonCode: 'provider_query_history_before_latest_audit_not_reconstructable', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
       { reasonCode: 'cross_campaign_order_overlap_requires_privileged_multi_campaign_inventory', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
       { reasonCode: 'historical_order_change_convergence_not_persisted', campaignId, connectionIds: activeConnectionIds, sourceIds: activeSources.map(sourceId), recordIds: [] },
     ],

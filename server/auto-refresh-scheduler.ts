@@ -21,6 +21,7 @@ import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows } from "./utils/csv";
+import { buildShopifyRefreshFailureNotification, findOpenShopifyRefreshFailureNotification, resolveShopifyRefreshFailureNotification } from "./utils/shopify-refresh-notification";
 import { randomUUID } from "crypto";
 
 type AnyRecord = Record<string, any>;
@@ -199,6 +200,36 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   return true;
 }
 
+async function syncShopifyRefreshFailureNotification(args: {
+  campaignId: string;
+  sourceId: string;
+  refreshRunId?: string;
+  failureCode?: string;
+  failed: boolean;
+}) {
+  try {
+    const rows = await storage.getNotifications();
+    const existing = findOpenShopifyRefreshFailureNotification(rows, args.campaignId, args.sourceId);
+    if (!args.failed) {
+      if (existing) await storage.updateNotification(String(existing.id), resolveShopifyRefreshFailureNotification(existing, new Date().toISOString()));
+      return;
+    }
+    const campaign = await storage.getCampaign(args.campaignId);
+    const notification = buildShopifyRefreshFailureNotification({
+      campaignId: args.campaignId,
+      campaignName: campaign?.name || null,
+      sourceId: args.sourceId,
+      refreshRunId: args.refreshRunId || null,
+      failureCode: args.failureCode || null,
+      failedAt: new Date().toISOString(),
+    });
+    if (existing) await storage.updateNotification(String(existing.id), notification);
+    else await storage.createNotification(notification as any);
+  } catch (error: any) {
+    console.error(`[Auto Refresh] Failed to synchronize Shopify refresh notification for campaign ${args.campaignId}:`, error?.message || error);
+  }
+}
+
 async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
   const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
@@ -218,11 +249,22 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
   if (!result.ok) {
     if (isStaleRevenueSourceReprocess(result)) {
       console.warn(`[Auto Refresh] Skipping stale Shopify revenue source for campaign ${campaignId}`);
+      if (sourceId) await syncShopifyRefreshFailureNotification({ campaignId, sourceId, failed: false });
       return false;
     }
     console.error(`[Auto Refresh] Shopify reprocess failed for campaign ${campaignId} (run ${String(mappingConfig.refreshRunId || "unknown")}):`, result.status, result.json?.error || result.text);
+    if (sourceId) {
+      await syncShopifyRefreshFailureNotification({
+        campaignId,
+        sourceId,
+        refreshRunId: String(mappingConfig.refreshRunId || ""),
+        failureCode: String(result.json?.code || `HTTP_${result.status || 500}`),
+        failed: true,
+      });
+    }
     return false;
   }
+  if (sourceId) await syncShopifyRefreshFailureNotification({ campaignId, sourceId, failed: false });
   console.log(`[Auto Refresh] Shopify reprocess complete for campaign ${campaignId} (run ${String(mappingConfig.refreshRunId || "unknown")})`);
   return true;
 }

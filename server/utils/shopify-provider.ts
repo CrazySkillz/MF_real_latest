@@ -76,6 +76,7 @@ export async function shopifyAdminFetch(args: {
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   max429Retries?: number;
+  onResponse?: (event: { attempt: number; status: number; retryAfterSeconds: number | null }) => void;
 }): Promise<Response> {
   const shopDomain = normalizeShopifyDomain(args.shopDomain);
   if (!shopDomain) throw new Error('Invalid Shopify shop domain');
@@ -102,14 +103,20 @@ export async function shopifyAdminFetch(args: {
         'Content-Type': 'application/json',
       },
     });
+    const retryAfterRaw = response.headers.get('Retry-After');
+    const retryAfterSeconds = retryAfterRaw === null ? null : Number(retryAfterRaw);
+    args.onResponse?.({
+      attempt,
+      status: response.status,
+      retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null,
+    });
     if (response.status === 429 && attempt < max429Retries) {
-      const retryAfterRaw = response.headers.get('Retry-After');
-      const retryAfterSeconds = retryAfterRaw === null ? 1 : Number(retryAfterRaw);
-      if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds < 0 || retryAfterSeconds > 30) {
+      const retryDelaySeconds = retryAfterSeconds === null ? 1 : retryAfterSeconds;
+      if (!Number.isFinite(retryDelaySeconds) || retryDelaySeconds < 0 || retryDelaySeconds > 30) {
         throw new Error('Shopify returned an invalid or unsafe Retry-After value');
       }
       await response.body?.cancel().catch(() => undefined);
-      await sleep(retryAfterSeconds * 1000);
+      await sleep(retryDelaySeconds * 1000);
       continue;
     }
     if (requestedVersion && response.ok) {

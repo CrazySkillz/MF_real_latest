@@ -9,7 +9,7 @@ export default function Navigation() {
   const [location, setLocation] = useLocation();
   const isNotificationsPage = location === "/notifications" || location.startsWith("/notifications?");
 
-  // Fetch visible notifications to show active KPI/Benchmark breach state.
+  // Fetch visible notifications to show active KPI/Benchmark or source-failure state.
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     staleTime: 0,
@@ -34,6 +34,18 @@ export default function Navigation() {
     const itemType = String(metadata?.itemType || "").toLowerCase();
     return itemType === "kpi" || itemType === "benchmark" || Boolean(metadata?.kpiId || metadata?.benchmarkId);
   });
+  const hasActiveShopifyRefreshFailure = notifications.some((notification) => {
+    let metadata: any = notification.metadata;
+    if (typeof metadata === "string") {
+      try {
+        metadata = metadata ? JSON.parse(metadata) : {};
+      } catch {
+        metadata = {};
+      }
+    }
+    return metadata?.kind === "shopify_revenue_refresh_failure" && !metadata?.resolvedAt && !metadata?.dismissedAt;
+  });
+  const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach || hasActiveShopifyRefreshFailure;
 
   return (
     <nav className="bg-card border-b border-border/40 px-6 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
@@ -65,13 +77,13 @@ export default function Navigation() {
             onClick={() => setLocation("/notifications")}
             disabled={isNotificationsPage}
             aria-current={isNotificationsPage ? "page" : undefined}
-            aria-label={hasActiveKpiBenchmarkBreach ? "Open Notifications, active KPI or Benchmark breach" : "Open Notifications"}
+            aria-label={hasActiveNotificationAttention ? "Open Notifications, active alert" : "Open Notifications"}
             title="Open Notifications"
             data-testid="button-notifications"
           >
             <span className="relative inline-flex">
               <Bell className="w-4 h-4" />
-              {hasActiveKpiBenchmarkBreach && (
+              {hasActiveNotificationAttention && (
                 <span
                   className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-background"
                   aria-hidden="true"

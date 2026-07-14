@@ -2,8 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const original = { id: 'old-connection', campaignId: 'campaign-1', shopDomain: 'old.myshopify.com', isActive: true };
-  const state = { connections: [{ ...original }] as any[], failInsert: true };
+  const state = { connections: [{ ...original }] as any[], activeSources: [] as any[], failInsert: true, selectCall: 0 };
   const tx = {
+    select: vi.fn(() => {
+      state.selectCall++;
+      const rows = state.selectCall === 1
+        ? state.activeSources.map(({ id }) => ({ id }))
+        : state.connections.filter((connection) => connection.isActive).map(({ shopDomain }) => ({ shopDomain }));
+      return { from: vi.fn(() => ({ where: vi.fn(async () => rows) })) };
+    }),
     update: vi.fn(() => ({
       set: vi.fn((values: any) => ({
         where: vi.fn(async () => {
@@ -25,6 +32,7 @@ const mocks = vi.hoisted(() => {
   };
   const transaction = vi.fn(async (callback: (tx: any) => Promise<any>) => {
     const before = state.connections.map(connection => ({ ...connection }));
+    state.selectCall = 0;
     try {
       return await callback(tx);
     } catch (error) {
@@ -32,16 +40,16 @@ const mocks = vi.hoisted(() => {
       throw error;
     }
   });
-  return { original, state, db: { transaction } };
+  return { original, state, tx, db: { transaction } };
 });
 
 vi.mock('./db', () => ({ db: mocks.db, pool: null }));
 
 import { DatabaseStorage } from './storage';
 
-const replace = () => new DatabaseStorage().replaceShopifyConnection({
+const replace = (shopDomain = 'new.myshopify.com') => new DatabaseStorage().replaceShopifyConnection({
   campaignId: 'campaign-1',
-  shopDomain: 'new.myshopify.com',
+  shopDomain,
   shopName: 'New store',
   accessToken: 'new-token',
   isActive: true,
@@ -52,6 +60,7 @@ describe('Shopify connection replacement transaction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.state.connections = [{ ...mocks.original }];
+    mocks.state.activeSources = [];
     mocks.state.failInsert = true;
   });
 
@@ -69,5 +78,20 @@ describe('Shopify connection replacement transaction', () => {
     expect(mocks.state.connections[0]).toMatchObject({ id: 'old-connection', isActive: false });
     expect(mocks.state.connections[1]).toMatchObject({ id: 'new-connection', accessToken: null, isActive: true });
     expect(mocks.state.connections[1].encryptedTokens).toBeTruthy();
+  });
+
+  it('rejects a cross-store replacement while an active Shopify source exists', async () => {
+    mocks.state.activeSources = [{ id: 'source-1' }];
+    await expect(replace()).rejects.toMatchObject({ code: 'SHOPIFY_ACTIVE_SOURCE_STORE_CHANGE' });
+    expect(mocks.state.connections).toEqual([mocks.original]);
+    expect(mocks.tx.update).not.toHaveBeenCalled();
+  });
+
+  it('allows same-store token rotation while an active Shopify source exists', async () => {
+    mocks.state.activeSources = [{ id: 'source-1' }];
+    mocks.state.failInsert = false;
+    await expect(replace('OLD.MYSHOPIFY.COM')).resolves.toMatchObject({ id: 'new-connection' });
+    expect(mocks.state.connections[0].isActive).toBe(false);
+    expect(mocks.state.connections[1].isActive).toBe(true);
   });
 });

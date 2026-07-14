@@ -164,6 +164,7 @@ export interface IStorage {
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
   deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean>;
   disconnectGa4HubspotRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
+  disconnectGa4ShopifyRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
@@ -1391,6 +1392,63 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async disconnectGa4ShopifyRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }> {
+    return await db.transaction(async (tx: any) => {
+      const activeSources = await tx
+        .select({ id: revenueSources.id, platformContext: revenueSources.platformContext })
+        .from(revenueSources)
+        .where(and(
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, 'shopify'),
+          eq(revenueSources.isActive, true),
+        ));
+      if (activeSources.some((source: any) => String(source.platformContext || 'ga4').toLowerCase() !== 'ga4')) {
+        throw Object.assign(new Error('Shopify is still used by another platform in this campaign'), { code: 'SHOPIFY_CONNECTION_IN_USE' });
+      }
+      const [connection] = await tx
+        .select({ id: shopifyConnections.id })
+        .from(shopifyConnections)
+        .where(and(eq(shopifyConnections.campaignId, campaignId), eq(shopifyConnections.isActive, true)))
+        .orderBy(desc(shopifyConnections.connectedAt))
+        .limit(1);
+      if (!connection) {
+        throw Object.assign(new Error('No active Shopify connection found'), { code: 'SHOPIFY_CONNECTION_NOT_FOUND' });
+      }
+
+      const sourceIds = activeSources.map((source: any) => String(source.id));
+      if (sourceIds.length > 0) {
+        const disabledSources = await tx
+          .update(revenueSources)
+          .set({ isActive: false } as any)
+          .where(and(
+            eq(revenueSources.campaignId, campaignId),
+            eq(revenueSources.sourceType, 'shopify'),
+            eq(revenueSources.isActive, true),
+            or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+            inArray(revenueSources.id, sourceIds),
+          ))
+          .returning({ id: revenueSources.id });
+        if (disabledSources.length !== sourceIds.length) throw new Error('Shopify revenue sources changed during disconnect');
+        await tx.delete(revenueRecords).where(and(
+          eq(revenueRecords.campaignId, campaignId),
+          inArray(revenueRecords.revenueSourceId, sourceIds),
+        ));
+      }
+
+      const [disabledConnection] = await tx
+        .update(shopifyConnections)
+        .set({ isActive: false })
+        .where(and(
+          eq(shopifyConnections.id, String(connection.id)),
+          eq(shopifyConnections.campaignId, campaignId),
+          eq(shopifyConnections.isActive, true),
+        ))
+        .returning({ id: shopifyConnections.id });
+      if (!disabledConnection) throw new Error('Shopify connection changed during disconnect');
+      return { sourceIds, connectionId: String(disabledConnection.id) };
+    });
+  }
+
   async createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]> {
     if (!records.length) return [];
 
@@ -2584,6 +2642,33 @@ export class DatabaseStorage implements IStorage {
       mappingConfig: connection.mappingConfig || null,
     };
     return await db.transaction(async (tx: any) => {
+      const activeSources = await tx
+        .select({ id: revenueSources.id })
+        .from(revenueSources)
+        .where(and(
+          eq(revenueSources.campaignId, connection.campaignId),
+          eq(revenueSources.sourceType, 'shopify'),
+          eq(revenueSources.isActive, true),
+        ));
+      if (activeSources.length > 0) {
+        const activeConnections = await tx
+          .select({ shopDomain: shopifyConnections.shopDomain })
+          .from(shopifyConnections)
+          .where(and(
+            eq(shopifyConnections.campaignId, connection.campaignId),
+            eq(shopifyConnections.isActive, true),
+          ));
+        const currentDomain = activeConnections.length === 1
+          ? String(activeConnections[0]?.shopDomain || '').trim().toLowerCase()
+          : '';
+        const replacementDomain = String(connection.shopDomain || '').trim().toLowerCase();
+        if (!currentDomain || currentDomain !== replacementDomain) {
+          throw Object.assign(
+            new Error('Disconnect the active Shopify revenue source before changing stores'),
+            { code: 'SHOPIFY_ACTIVE_SOURCE_STORE_CHANGE' },
+          );
+        }
+      }
       await tx
         .update(shopifyConnections)
         .set({ isActive: false } as any)

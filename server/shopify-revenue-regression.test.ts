@@ -54,7 +54,8 @@ describe("Shopify revenue regression guard", () => {
     );
 
     expect(routes).toContain('order=created_at%20asc&created_at_min=');
-    expect(routes).toContain('return deduplicateShopifyOrders(orders);');
+    expect(routes).toContain('const deduplicatedOrders = deduplicateShopifyOrders(orders);');
+    expect(routes).toContain('return deduplicatedOrders;');
     expect(saveRoute).toContain('getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone, ga4StartDate, ga4EndDate)');
     expect(saveRoute).toContain('const campaignWindowStartAt = hasValidCampaignStart ? campaignStartAt! : campaignCreatedAt;');
     expect(saveRoute).toContain('externalId: String(order.id)');
@@ -220,7 +221,7 @@ describe("Shopify revenue regression guard", () => {
   it("does not silently truncate Shopify order pagination", () => {
     const routes = read(ROUTES_FILE);
 
-    expect(routes).toContain("const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000 } = args;");
+    expect(routes).toContain("const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000, audit } = args;");
     expect(routes).toContain("const seenUrls = new Set<string>();");
     expect(routes).toContain("if (nextUrl) {");
     expect(routes).toContain("Shopify orders pagination limit exceeded");
@@ -237,6 +238,9 @@ describe("Shopify revenue regression guard", () => {
     expect(saveRoute).toContain("const orders = await shopifyFetchAllOrders({");
     expect(saveRoute).toContain("apiVersion,");
     expect(saveRoute).toContain("createdAtMin,");
+    expect(saveRoute).toContain("audit: providerQueryAudit,");
+    expect(saveRoute).toContain("providerQueryAudit,");
+    expect(saveRoute).toContain("matchedOrderStateHash: createHash('sha256')");
     expect(saveRoute).not.toContain("const ordersResp = await shopifyApiFetch({");
     expect(saveRoute).not.toContain("const orders: any[] = Array.isArray(ordersResp?.orders)");
   });
@@ -333,17 +337,23 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('authType = "token";');
   });
 
-  it("starts new Shopify revenue connections from a clean OAuth-first state", () => {
+  it("shows OAuth only when the server confirms a complete OAuth configuration", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
+    const routes = read(ROUTES_FILE);
 
     expect(wizard).toContain('if (mode !== "edit") return "";');
     expect(wizard).toContain("const fetchStatus = async (applyExistingConnection = true) =>");
     expect(wizard).toContain('await fetchStatus(mode === "edit");');
-    expect(wizard).toContain('setConnectMethod("oauth");');
+    expect(wizard).toContain('const [oauthAvailable, setOauthAvailable] = useState(false);');
+    expect(wizard).toContain('setConnectMethod(canUseOauth ? "oauth" : "token");');
+    expect(wizard).toContain('{oauthAvailable ? <div className="space-y-2">');
+    expect(wizard).toContain('oauthAvailable && connectMethod === "oauth" ? openOAuthWindow() : connectWithToken()');
+    expect(routes).toContain('const isShopifyOauthAvailable = (): boolean =>');
+    expect(routes).toContain('oauthAvailable: isShopifyOauthAvailable()');
     expect(wizard).not.toContain("Shopify doesn’t store LinkedIn campaign ids directly by default");
   });
 
-  it("keeps users in OAuth when Shopify OAuth redirect is not configured", () => {
+  it("keeps the configured OAuth error path fail-closed", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
 
     expect(wizard).toContain('json?.code === "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED"');

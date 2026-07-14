@@ -1,24 +1,30 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { inspectGa4ShopifyRevenueDamage } from './utils/shopify-revenue-damage-inventory';
+import { inspectGa4ShopifyCrossCampaignOverlap, inspectGa4ShopifyRevenueDamage } from './utils/shopify-revenue-damage-inventory';
 
-const sourceMapping = (overrides: Record<string, any> = {}) => JSON.stringify({
-  provider: 'shopify',
-  platformContext: 'ga4',
-  campaignField: 'utm_campaign',
-  selectedValues: ['Alpha'],
-  revenueMetric: 'current_total_price',
-  currencyBasis: 'shop_money_campaign_parity',
-  orderIdentityField: 'id',
-  orderDateBasis: 'created_at_campaign_reporting_timezone',
-  orderWindowStart: '2026-07-01',
-  materializationGranularity: 'order',
-  currency: 'USD',
-  lastTotalRevenue: 150,
-  lastMatchedOrderCount: 2,
-  campaignValueRevenueTotals: [{ campaignValue: 'Alpha', revenue: 150 }],
-  ...overrides,
-});
+const sourceMapping = (overrides: Record<string, any> = {}) => {
+  const mapping = {
+    provider: 'shopify', platformContext: 'ga4', campaignField: 'utm_campaign', selectedValues: ['Alpha'],
+    revenueMetric: 'current_total_price', currencyBasis: 'shop_money_campaign_parity', orderIdentityField: 'id',
+    orderDateBasis: 'created_at_campaign_reporting_timezone', orderWindowStart: '2026-07-01',
+    materializationGranularity: 'order', currency: 'USD', lastTotalRevenue: 150, lastMatchedOrderCount: 2,
+    campaignValueRevenueTotals: [{ campaignValue: 'Alpha', revenue: 150 }],
+    ...overrides,
+  } as Record<string, any>;
+  const orderCount = Math.max(0, Number(mapping.lastMatchedOrderCount) || 0);
+  if (!Object.prototype.hasOwnProperty.call(overrides, 'providerQueryAudit')) {
+    mapping.providerQueryAudit = {
+      queryComplete: true, apiVersion: '2026-07', queriedAt: '2026-07-14T00:00:00.000Z', orderWindowStart: '2026-07-01T00:00:00.000Z',
+      pageCount: 1, requestCount: 1, throttledResponseCount: 0, maxRetryAttempt: 0,
+      rawOrderCount: orderCount, deduplicatedOrderCount: orderCount, duplicateOrderCount: 0,
+      ordering: 'created_at asc', pageSize: 250, matchedOrderCount: orderCount,
+      selectedCandidateOrderCount: orderCount, excludedSelectedOrderCount: 0,
+      financialStatusCounts: { paid: orderCount }, testOrderCount: 0, cancelledOrderCount: 0,
+      matchedOrderStateHash: 'a'.repeat(64), resolvedRevenueCurrency: mapping.currency,
+    };
+  }
+  return JSON.stringify(mapping);
+};
 
 const connectionMapping = (overrides: Record<string, any> = {}) => JSON.stringify({
   platformContext: 'ga4',
@@ -66,8 +72,36 @@ describe('Shopify Revenue damaged-data inventory', () => {
       sources: [{ campaignId: 'c1', sourceId: 'source-1', connectionIds: ['conn-1'], recordIds: ['r1', 'r2'] }],
       shopifyTypedRecordGroups: [{ campaignId: 'c1', sourceId: 'source-1', recordIds: ['r1', 'r2'] }],
     });
-    expect(result.notLocallyVerifiable.map((row) => row.reasonCode)).toContain('provider_order_state_not_persisted');
+    expect(result.notLocallyVerifiable.map((row) => row.reasonCode)).toContain('provider_order_state_lineage_not_persisted');
     expect(result.notLocallyVerifiable.map((row) => row.reasonCode)).toContain('cross_campaign_order_overlap_requires_privileged_multi_campaign_inventory');
+  });
+
+  it('fails closed when the latest provider query audit is missing', () => {
+    const result = inspectGa4ShopifyRevenueDamage({
+      campaign: { id: 'c1', currency: 'USD' },
+      connections: [{
+        id: 'conn-1', campaignId: 'c1', shopDomain: 'alpha.myshopify.com', isActive: true,
+        mappingConfig: connectionMapping(), connectedAt: '2026-07-01T00:00:00.000Z',
+      }],
+      allSources: [{
+        id: 'source-1', campaignId: 'c1', sourceType: 'shopify', platformContext: 'ga4',
+        displayName: 'Shopify (alpha.myshopify.com)', currency: 'USD', isActive: true,
+        mappingConfig: sourceMapping({ providerQueryAudit: null }),
+      }],
+      allRecords: [
+        { id: 'r1', campaignId: 'c1', revenueSourceId: 'source-1', sourceType: 'shopify', currency: 'USD', date: '2026-07-01', revenue: '100', externalId: 'order-1' },
+        { id: 'r2', campaignId: 'c1', revenueSourceId: 'source-1', sourceType: 'shopify', currency: 'USD', date: '2026-07-02', revenue: '50', externalId: 'order-2' },
+      ],
+    });
+
+    expect(result.pass).toBe(false);
+    expect(result.findings.providerQueryAuditSources).toEqual([
+      expect.objectContaining({
+        reasonCode: 'incomplete_shopify_provider_query_audit',
+        sourceId: 'source-1',
+        issueCodes: expect.arrayContaining(['missing_provider_query_audit']),
+      }),
+    ]);
   });
 
   it('allows the intentional zero placeholder without inventing an order identity finding', () => {
@@ -193,10 +227,59 @@ describe('Shopify Revenue damaged-data inventory', () => {
     expect(result.findings.sameStoreOrderIdentityOverlapGroups).toEqual([]);
   });
 
+  it('detects the same store order identity across owned campaigns without conflating stores', () => {
+    const input = (campaignId: string, sourceId: string, domain: string, recordId: string) => ({
+      campaign: { id: campaignId, currency: 'USD' },
+      connections: [],
+      allSources: [{
+        id: sourceId, campaignId, sourceType: 'shopify', platformContext: 'ga4',
+        displayName: `Shopify (${domain})`, currency: 'USD', isActive: true,
+        mappingConfig: sourceMapping(),
+      }],
+      allRecords: [{
+        id: recordId, campaignId, revenueSourceId: sourceId, sourceType: 'shopify',
+        currency: 'USD', date: '2026-07-02', revenue: '10', externalId: 'order-1',
+      }],
+    });
+    const overlap = inspectGa4ShopifyCrossCampaignOverlap([
+      input('c1', 's1', 'alpha.myshopify.com', 'r1'),
+      input('c2', 's2', 'alpha.myshopify.com', 'r2'),
+      input('c3', 's3', 'beta.myshopify.com', 'r3'),
+    ]);
+
+    expect(overlap.pass).toBe(false);
+    expect(overlap.findings).toEqual([{
+      reasonCode: 'same_store_order_identity_across_campaigns',
+      shopDomain: 'alpha.myshopify.com',
+      orderId: 'order-1',
+      campaignIds: ['c1', 'c2'],
+      sourceIds: ['s1', 's2'],
+      recordIds: ['r1', 'r2'],
+    }]);
+  });
+
+  it('keeps the owner-scoped batch inventory read-only and cross-campaign aware', () => {
+    const routes = readFileSync('server/routes-oauth.ts', 'utf8');
+    const start = routes.indexOf('app.get("/api/ga4-overview/shopify/source-damage-inventory"');
+    const end = routes.indexOf('app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"', start);
+    const route = routes.slice(start, end);
+
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(route).toContain('String(campaign?.ownerId || "").trim() === actorId');
+    expect(route).toContain('inspectGa4ShopifyCrossCampaignOverlap(inputs)');
+    expect(route).toContain('SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND');
+    expect(route).toContain('shopifyReadinessCandidatePass: localPass && openRefreshFailureNotifications.length === 0');
+    expect(route).toContain('openRefreshFailureNotifications');
+    expect(route).toContain('automaticCleanupAllowed: false');
+    expect(route).not.toMatch(/[.](insert|update|delete)[(]/);
+    expect(route).not.toContain('shopifyFetchAllOrders');
+  });
+
   it('keeps the campaign-guarded endpoint GET-only and forbids cleanup generation', () => {
     const routes = readFileSync('server/routes-oauth.ts', 'utf8');
     const start = routes.indexOf('app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory"');
-    const end = routes.indexOf('app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"', start);
+    const end = routes.indexOf('app.get("/api/ga4-overview/shopify/source-damage-inventory"', start);
     const route = routes.slice(start, end);
 
     expect(start).toBeGreaterThan(-1);

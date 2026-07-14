@@ -8,7 +8,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
-import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency } from './utils/shopify-revenue';
+import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches } from './utils/shopify-revenue';
 import { getShopifyApiVersion, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
 import multer from "multer";
@@ -32797,6 +32797,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days: zNumberLike.optional(),
           platformContext: zShopifyRevenuePlatformContext.optional(),
           dryRun: z.boolean().optional(),
+          repairConfirmation: z.object({
+            version: z.literal(1),
+            sourceId: z.string().trim().min(1),
+            sourceFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+            connectionFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+            requestFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+            providerFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+          }).optional(),
           refreshRunId: z.string().trim().max(128).optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),
@@ -32818,6 +32826,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // because Shopify orders do not contain a native conversion value field.
       const effectiveValueSource: "revenue" = "revenue";
       const isDryRun = Boolean(body.data.dryRun);
+      const repairConfirmation = body.data.repairConfirmation;
+      if (repairConfirmation && (isDryRun || platformCtx !== "ga4" || !body.data.sourceId)) {
+        return res.status(400).json({ error: "Shopify repair confirmation requires a GA4 edit source" });
+      }
+      assertProductionTokenEncryptionConfigured();
       const internalAutoRefresh = isInternalAutoRefreshRequest(req);
       const refreshAttemptAt = new Date().toISOString();
       const refreshEvent: ShopifyRevenueRefreshEvent = {
@@ -32838,16 +32851,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? await getActiveTikTokCampaignIdSet(campaignId)
             : new Set<string>();
       const requestedSourceId = String(body.data.sourceId || "").trim();
+      let requestedSource: any = null;
       if (requestedSourceId) {
-        const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
-        const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
-        if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "shopify" || existingCtx !== String(platformCtx || "ga4").trim().toLowerCase()) {
+        requestedSource = await storage.getRevenueSource(campaignId, requestedSourceId);
+        const existingCtx = String(requestedSource?.platformContext || "ga4").trim().toLowerCase();
+        if (!requestedSource || requestedSource.isActive === false || String(requestedSource.sourceType || "").toLowerCase() !== "shopify" || existingCtx !== String(platformCtx || "ga4").trim().toLowerCase()) {
           return res.status(404).json({ error: "Shopify revenue source not found" });
         }
-        if (platformCtx === "ga4" && !isDryRun) {
+        if (platformCtx === "ga4" && !isDryRun && !repairConfirmation) {
           let existingMapping: Record<string, any> = {};
           try {
-            existingMapping = existingSource.mappingConfig ? JSON.parse(String(existingSource.mappingConfig)) : {};
+            existingMapping = requestedSource.mappingConfig ? JSON.parse(String(requestedSource.mappingConfig)) : {};
           } catch {
             existingMapping = {};
           }
@@ -32942,6 +32956,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      const currentRepairConfirmation = requestedSource && platformCtx === 'ga4'
+        ? buildShopifyRepairConfirmation({
+            source: {
+              id: requestedSource.id,
+              campaignId: requestedSource.campaignId,
+              sourceType: requestedSource.sourceType,
+              platformContext: requestedSource.platformContext || 'ga4',
+              displayName: requestedSource.displayName,
+              currency: requestedSource.currency,
+              mappingConfig: requestedSource.mappingConfig,
+              isActive: requestedSource.isActive,
+            },
+            connection: {
+              id: conn.id,
+              campaignId: conn.campaignId,
+              shopDomain: conn.shopDomain,
+              mappingConfig: conn.mappingConfig,
+              isActive: conn.isActive,
+            },
+            request: {
+              campaignField: field,
+              selectedValues: selected,
+              revenueMetric: metric,
+              days: rangeDays,
+              platformContext: platformCtx,
+              campaignDisplayName,
+              campaignMappings,
+            },
+            providerOrders: matchedOrders.map((order: any) => {
+              const amounts = getShopifyConfirmedRevenueAmounts(order)!;
+              return {
+                id: order.id,
+                updatedAt: order.updated_at,
+                createdAt: order.created_at,
+                campaignValue: matchedCampaignValueByOrderId.get(String(order.id)) || '',
+                shopAmount: amounts.shopAmount,
+                shopCurrency: amounts.shopCurrency,
+              };
+            }),
+          })
+        : null;
+      if (repairConfirmation && (!currentRepairConfirmation || !shopifyRepairConfirmationMatches(repairConfirmation, currentRepairConfirmation))) {
+        return res.status(409).json({
+          code: 'SHOPIFY_REPAIR_PREVIEW_CHANGED',
+          error: 'Shopify source, connection, mapping, or orders changed since preview. Review the refreshed preview before repairing.',
+        });
+      }
+
       // Revenue-only; conversion value is not computed/persisted from Shopify in this wizard.
       // Calculate conversion value as average order value if there are matched orders
       let calculatedConversionValue: number | null = null;
@@ -32978,6 +33040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
           presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
           presentmentCurrency,
+          ...(currentRepairConfirmation ? { repairConfirmation: currentRepairConfirmation } : {}),
         });
       }
 
@@ -33004,7 +33067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist GA4 connection metadata with its revenue replacement transaction below.
       let shopifyConnectionId: string | null = null;
       let shopifyConnectionMappingConfig: string | null = null;
-      const shopifyConn: any = await storage.getShopifyConnection(campaignId);
+      const shopifyConn: any = repairConfirmation ? conn : await storage.getShopifyConnection(campaignId);
       if (shopifyConn) {
         let existingConnConfig: any = {};
         try {
@@ -33206,6 +33269,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             shopifyConnectionMappingConfig,
             sourceValues,
             records,
+            repairConfirmation ? {
+              sourceMappingConfig: requestedSource.mappingConfig == null ? null : String(requestedSource.mappingConfig),
+              connectionMappingConfig: conn.mappingConfig == null ? null : String(conn.mappingConfig),
+            } : undefined,
           );
           refreshCommitted = true;
         } else {
@@ -33246,6 +33313,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (e: any) {
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
+        if (repairConfirmation && String(e?.message || '').includes('changed since preview')) {
+          return res.status(409).json({ code: 'SHOPIFY_REPAIR_PREVIEW_CHANGED', error: e.message });
+        }
         await persistRefreshFailure(e);
         return res.status(500).json({
           success: false,
@@ -33276,7 +33346,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("[Shopify Save Mappings] Error:", error);
       await persistRefreshFailure(error);
-      res.status(500).json({ error: error.message || "Failed to process Shopify revenue metrics" });
+      const encryptionNotConfigured = error?.code === 'TOKEN_ENCRYPTION_KEY_NOT_CONFIGURED';
+      res.status(encryptionNotConfigured ? 503 : 500).json({
+        ...(error?.code ? { code: String(error.code) } : {}),
+        error: error.message || "Failed to process Shopify revenue metrics",
+      });
     }
   });
 

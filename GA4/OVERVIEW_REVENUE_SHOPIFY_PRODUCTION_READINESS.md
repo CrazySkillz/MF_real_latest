@@ -4,16 +4,16 @@
 
 **Not production-ready. Not clean-certified.**
 
-This is the canonical Shopify Revenue readiness document as of 2026-07-13 for `cfe8acae` plus the local Current Commit 7 changes documented below.
+This is the canonical Shopify Revenue readiness document as of 2026-07-13 for `e4289882`, the deployed Current Commit 7 evidence, and the uncommitted local Current Commit 7.1 implementation documented below.
 
-The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. They are retained as historical leads and bounded evidence packets only. Current Commits 1-7 close specific local correctness, atomicity, currency, authentication, provider, freshness-observability, and persisted-data-inventory guards, but deployed-data health, real-provider, and downstream evidence gaps still block certification.
+The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. They are retained as historical leads and bounded evidence packets only. Current Commits 1-7 close specific local correctness, atomicity, currency, authentication, provider, freshness-observability, and persisted-data-inventory guards. The deployed Current Commit 7 inventory found a contradictory active Shopify source, and the provider-backed dry run then exposed a production encryption-configuration blocker. Deployed-data health, real-provider, and downstream evidence gaps therefore still block certification.
 
 The current honest answer is:
 
 - Shopify Revenue has useful local lifecycle and downstream wiring.
 - The Admin API token happy path has bounded historical deployed evidence.
 - The source family does not satisfy `AGENTS.md` and `PRODUCTION_READINESS.md` for strict clean certification.
-- Existing production Shopify revenue may be overstated, mislabeled by currency, silently stale, or partially damaged. A Shopify-specific read-only inventory is required before any cleanup.
+- The inspected production source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` is demonstrably inconsistent: two retained rows total `199.98` while its configured total is `99.99`, both rows lack Shopify order identity, and the configured matched-order count is `1` while the identity-bearing materialized count is `0`. The provider has not yet confirmed which retained amount is authoritative, so no cleanup or correction is safe yet.
 
 ## Audit Contract
 
@@ -566,7 +566,7 @@ This first audit creates the canonical correction without editing those already-
 
 ## Isolated Current Commit Queue
 
-Current Commits 1 through 6 are implemented in the working tree. Current Commit 7 is implemented locally but remains open until every in-scope production campaign has a retained, reviewed read-only packet. Shopify remains uncertified because deployed/provider and downstream evidence remains unresolved.
+Current Commits 1 through 6 are implemented in the working tree. Current Commit 7 is implemented locally but remains open until every in-scope production campaign has a retained, reviewed read-only packet. Current Commit 7.1 is implemented and locally validated but remains open until the bounded deployed repair packet passes. Shopify remains uncertified because deployed/provider and downstream evidence remains unresolved.
 
 ### Current Commit 1 — Transactional Shopify replacement and last-good retention
 
@@ -671,7 +671,7 @@ Local completion evidence: executable manual failure and scheduler success state
 
 ### Remaining queue after Current Commit 6
 
-### Current Commit 7 - Shopify damaged-data inventory and cleanup boundary — implemented locally; deployed inventory pending
+### Current Commit 7 - Shopify damaged-data inventory and cleanup boundary — implemented; deployed inventory found damage
 
 Objective: determine whether historical Shopify bugs damaged production data without mutating it.
 
@@ -705,30 +705,98 @@ npm run check
 
 Result: **3 files/14 tests passed** and TypeScript compilation passed. Tests execute clean, zero-placeholder, exact damaged-candidate, same-order-ID/different-store, and shared-route no-mutation boundaries. Existing CSV and HubSpot inventory behavior remained green.
 
-No cleanup, deletion, deactivation, refresh, provider call, rematerialization, recomputation, or production write was performed.
+No cleanup, deletion, deactivation, refresh, provider call, rematerialization, recomputation, or production write was performed by the inventory.
+
+Deployed read-only evidence retained on 2026-07-13:
+
+- campaign: `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`
+- active connection: `5db7099d-e97c-44bb-a3bc-d0a057416571`
+- active source: `3a68fcce-fffd-4dbf-ab03-7a63e46c5372`
+- affected records: `fb994886-f1b3-4b10-91a9-a5206506328f` and `01bb6d2a-19ce-47c4-b6fc-4aeb72d24a17`
+- inventory summary: two GA4 Shopify sources, one active source, two records, four Shopify connections, one active connection, and five reason-coded findings
+- incomplete mapping issues: invalid revenue metric, missing currency basis, missing order identity field, missing order date basis, missing or invalid order-window start, and invalid materialization granularity
+- configured/materialized total mismatch: `99.99` versus `199.98`
+- configured/materialized identity-bearing order-count mismatch: `1` versus `0`
+- both retained records lack Shopify order identity
+- the active connection mapping matches no active Shopify source under the inventory's strict normalized mapping rules
+- `shopifyLocalPersistencePass` is `false`, `shopifyInventoryScopeComplete` is `false`, candidate review is required, automatic cleanup is forbidden, and no cleanup proposal was generated
+
+This proves a persisted contradiction for this exact source. It does **not** prove that `99.99` is the correct replacement amount: the legacy records lack provider order identity and the provider-backed dry run has not succeeded. The current records may overstate revenue by `99.99`, but that amount remains a candidate discrepancy rather than a safe cleanup instruction.
 
 Remaining Current Commit 7 evidence:
 
-- deploy the read-only inventory code
-- run the GET inventory for every explicitly identified in-scope production Shopify campaign in one automated batch
-- retain each complete response, including `shopifyInventoryEntities`, `shopifyFindings`, `shopifyNotLocallyVerifiable`, and `shopifyCleanupAssessment`
-- review exact candidate boundaries; create a separate cleanup proposal only if returned persisted-data findings are proven safe to mutate
-- if no local candidates are returned, record only that the locally inspectable persisted invariants passed; do not call provider-only or cross-campaign boundaries clean
+- identify whether any other production campaigns use Shopify Revenue and retain the same read-only inventory packet for each; the retained packet above proves only the named campaign
+- after Current Commit 7.1 safely rematerializes the exact damaged source, rerun the read-only inventory and retain the before/after entity and finding boundaries
+- continue to report provider-only, historical-convergence, and privileged cross-campaign checks as not locally verifiable unless bounded evidence closes them
 
-The deployed collection does not require repetitive UI work. From one authenticated production browser session, substitute the reviewed in-scope IDs and run one read-only batch:
+Current Commit 7 remains open until the all-campaign inventory boundary is established and the exact damaged source is either safely repaired from Shopify authority or explicitly retained as unresolved. No direct row cleanup is authorized.
 
-```js
-const campaignIds = ["SHOPIFY_CAMPAIGN_ID_1", "SHOPIFY_CAMPAIGN_ID_2"];
-const shopifyInventoryPackets = await Promise.all(campaignIds.map(async (campaignId) => {
-  const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-overview/source-damage-inventory`);
-  return { campaignId, httpStatus: response.status, body: await response.json() };
-}));
-console.log(JSON.stringify(shopifyInventoryPackets, null, 2));
-```
+### Current Commit 7.1 - Controlled Shopify repair and encryption preflight — implemented locally; deployed repair pending
 
-This command performs GET requests only. A packet is incomplete if any intended campaign is omitted, any request is not HTTP 200, `readonly` is not true, the exact entity index is not retained, or the provider/cross-campaign limitations are omitted from review.
+Objective: repair the exact damaged active source from Shopify authority without repetitive console work, guessed row cleanup, cross-source mutation, or loss of last-good data.
 
-Current Commit 7 is not closed by local tests alone. Completion evidence remains retained all-campaign production inventory output, reviewed candidate boundaries, and explicit confirmation that no cleanup occurred during inventory.
+Root cause and blocking evidence:
+
+- the deployed inventory proves that source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` has incomplete legacy mapping, missing order identities, total drift, order-count drift, and active connection/source mapping drift
+- those legacy rows cannot be safely deduplicated or corrected from the database alone because they do not retain the provider order identities needed to establish the authoritative order set
+- a provider-backed dry run for the exact source, `utm_campaign`, and selected value `brand_search_q1` failed with HTTP `500` and `Production token encryption key is not configured`
+- the failure occurred at the production token-encryption preflight, before Shopify provider retrieval and before any source or revenue-record mutation; therefore it supplies no provider-total evidence and authorizes no cleanup
+- the existing edit wizard is not an adequate repair path when the saved configuration is unchanged because its review action remains disabled until the user changes a setting; forcing a fake configuration change would create avoidable risk
+
+External configuration prerequisite:
+
+- production must have an explicit `TOKEN_ENCRYPTION_KEY` or `ENCRYPTION_KEY`
+- the configured key must remain compatible with existing ciphertext; if the historical fallback key cannot be established, reconnect only the exact Shopify store under the new key while preserving the retained revenue rows until provider validation succeeds
+- no encryption secret value may be committed, logged, returned by an API, or stored in this evidence document
+
+Smallest safe runtime scope:
+
+- add a campaign-access-guarded, source-scoped repair entry point for the exact active GA4 Shopify source; do not add a global or cross-campaign repair
+- perform a non-secret encryption/configuration preflight and fail closed before provider work when the explicit production key is unavailable
+- run the existing provider-backed dry-run behavior with the source's saved campaign field and selected values, and show the provider total, order count, currency/mapping basis, and persisted contradiction
+- require explicit confirmation after a successful preview and immediately before mutation
+- reuse the existing stable-source-identity transactional rematerialization path; do not directly delete, edit, merge, or infer individual legacy rows
+- replace only the confirmed source's records atomically, retain last-good records and refresh state on provider or persistence failure, and leave every other source, connection, campaign, and store unchanged
+- automatically rerun the read-only Shopify inventory after success and return/retain the bounded post-repair packet
+- fail closed on campaign/source/connection/store/context mismatch, inactive or stale source state, provider incompleteness, currency ambiguity, changed preview inputs, or provider failure
+- keep `automaticCleanupAllowed: false`; this commit is provider-authoritative rematerialization of one confirmed source, not general damaged-data cleanup
+
+Implemented local scope:
+
+- the existing source edit wizard now exposes `Repair from Shopify` only when an unchanged saved GA4 Shopify source has a successful provider preview; ordinary add and changed-edit behavior retains the existing path
+- preview and confirmation are bound by non-secret SHA-256 fingerprints of the exact source state, connection state, requested mapping/filter state, and matched provider order state; a changed preview returns `409 SHOPIFY_REPAIR_PREVIEW_CHANGED` before replacement
+- production token-encryption readiness now fails with bounded code `TOKEN_ENCRYPTION_KEY_NOT_CONFIGURED` and HTTP `503`; no secret or key material is returned
+- the confirmed repair reuses `replaceGa4ShopifyRevenueSourceWithRecords`, including stable source identity and one database transaction, and adds source/connection mapping predicates so a concurrent state change rolls the transaction back
+- repair-mode provider or preview failure does not write a refresh attempt before confirmation, preserving the complete last-good source, records, and refresh state
+- after a successful repair, the wizard automatically requests the existing read-only damage inventory and reports only the locally verifiable result; provider-only and cross-campaign limitations remain unresolved
+- no cleanup route, cross-campaign writer, direct legacy-row edit, schema migration, new dependency, or response-field removal was introduced
+
+Required automated evidence:
+
+- missing-key preflight returns a bounded non-secret error and performs no provider or persistence mutation
+- provider-preview failure, cancelled confirmation, changed/stale source state, and campaign/store/context mismatch perform no mutation
+- successful repair preserves the source ID, writes identity-bearing daily records whose totals and order counts match the confirmed provider preview, and updates the existing refresh audit fields
+- forced delete/insert failure rolls back and preserves the complete last-good source and record set
+- unrelated sources, connections, campaigns, and stores remain byte-for-byte unchanged in the tested persistence boundary
+- the automatic post-repair inventory no longer reports the locally detectable mapping, total, order-count, identity, or connection/source findings for the repaired source
+
+Local validation completed on 2026-07-13:
+
+- `npx vitest run server/shopify-repair-flow.test.ts server/shopify-revenue-transaction.test.ts server/shopify-revenue-regression.test.ts server/shopify-refresh-readiness.test.ts server/shopify-revenue-damaged-data-inventory.test.ts --reporter=verbose` passed: 5 files, 51 tests
+- `npm run check` passed
+- `git diff --check` passed for the Current Commit 7.1 files; only existing Windows line-ending warnings were emitted
+- focused evidence covers fingerprint invalidation, missing-key error classification, no pre-provider repair mutation, stale source/connection rollback, full last-good retention on forced transactional failure, existing Shopify route regressions, refresh safeguards, inventory safeguards, and client repair/inventory wiring
+- local automation cannot prove the production encryption key, ciphertext compatibility, live Shopify response, authoritative production order set, or deployed post-repair database state; no production provider call, rematerialization, or cleanup was performed by this local implementation
+
+Required deployed completion evidence:
+
+- explicit production-key presence is proven without exposing its value, and existing token decryptability or exact-store reconnection is proven
+- the retained provider preview identifies the exact campaign, connection, stable source ID, selected campaign filter, currency basis, authoritative total, and matched-order count
+- a separately confirmed repair succeeds for only that source, followed by a retained post-repair inventory packet
+- before/after source and record IDs, totals, order counts, finding codes, and unchanged neighboring entity boundaries are reviewed
+- provider-only and cross-campaign limitations remain explicitly separated from locally proven persistence health
+
+Current Commit 7.1 is locally implemented but not complete. Completion still requires the bounded deployed before/preview/confirmed-repair/after packet above. The damaged source therefore remains unresolved and Shopify Revenue remains not production-ready. No manual database cleanup is part of this commit.
 
 ### Current Commit 8 - Downstream evidence and final certification reconciliation
 
@@ -743,7 +811,7 @@ Smallest safe scope:
 
 Completion evidence: a complete evidence matrix with no in-scope value path left partially proven, unproven, or contradicted before any clean-certification claim.
 
-Estimated remaining work: **2 evidence/engineering steps** after the local Current Commit 7 implementation: (1) close Current Commit 7 with retained all-campaign deployed inventory and candidate review, then (2) complete Current Commit 8 downstream/provider evidence and certification reconciliation. Some steps can contain multiple focused commits if a root cause cannot be safely combined.
+Estimated remaining work: **2 high-level evidence/engineering steps**: (1) deploy and prove Current Commit 7.1, rerun the exact-source inventory, and close the all-campaign Current Commit 7 boundary; then (2) complete Current Commit 8 downstream/provider evidence and certification reconciliation. Each high-level step can require multiple narrowly scoped code or deployed-evidence actions; it must not be collapsed into one unsafe change.
 
 ## Certification Gate
 

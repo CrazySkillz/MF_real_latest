@@ -186,6 +186,7 @@ export interface IStorage {
     connectionMappingConfig: string,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
+    expectedState?: { sourceMappingConfig: string | null; connectionMappingConfig: string | null },
   ): Promise<RevenueSource>;
   updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string): Promise<RevenueSource | undefined>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
@@ -1518,7 +1519,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async replaceGa4ShopifyRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource> {
+  async replaceGa4ShopifyRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedState?: { sourceMappingConfig: string | null; connectionMappingConfig: string | null }): Promise<RevenueSource> {
     if (!records.length) throw new Error('No Shopify revenue records to save');
     return await db.transaction(async (tx: any) => {
       const sourceValues = { ...source, campaignId, sourceType: 'shopify', platformContext: 'ga4', isActive: true } as any;
@@ -1530,8 +1531,9 @@ export class DatabaseStorage implements IStorage {
           eq(revenueSources.sourceType, 'shopify'),
           eq(revenueSources.isActive, true),
           or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+          expectedState ? (expectedState.sourceMappingConfig === null ? isNull(revenueSources.mappingConfig) : eq(revenueSources.mappingConfig, expectedState.sourceMappingConfig)) : undefined,
         )).returning();
-        if (!savedSource) throw new Error('Shopify revenue source not found');
+        if (!savedSource) throw new Error(expectedState ? 'Shopify revenue source changed since preview' : 'Shopify revenue source not found');
       } else {
         [savedSource] = await tx.insert(revenueSources).values(sourceValues).returning();
       }
@@ -1552,9 +1554,10 @@ export class DatabaseStorage implements IStorage {
           eq(shopifyConnections.id, connectionId),
           eq(shopifyConnections.campaignId, campaignId),
           eq(shopifyConnections.isActive, true),
+          expectedState ? (expectedState.connectionMappingConfig === null ? isNull(shopifyConnections.mappingConfig) : eq(shopifyConnections.mappingConfig, expectedState.connectionMappingConfig)) : undefined,
         ))
         .returning({ id: shopifyConnections.id });
-      if (!savedConnection) throw new Error('Shopify connection not found');
+      if (!savedConnection) throw new Error(expectedState ? 'Shopify connection changed since preview' : 'Shopify connection not found');
       return savedSource;
     });
   }

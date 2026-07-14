@@ -56,7 +56,11 @@ function getKey(): Buffer {
 export function assertProductionTokenEncryptionConfigured(): void {
   if (String(process.env.NODE_ENV || '').toLowerCase() !== 'production') return;
   const configured = String(process.env.TOKEN_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || '').trim();
-  if (!configured) throw new Error('Production token encryption key is not configured');
+  if (!configured) {
+    const error = new Error('Production token encryption key is not configured') as Error & { code: string };
+    error.code = 'TOKEN_ENCRYPTION_KEY_NOT_CONFIGURED';
+    throw error;
+  }
 }
 
 export function encryptString(plain: string): EncryptedBlobV1 {

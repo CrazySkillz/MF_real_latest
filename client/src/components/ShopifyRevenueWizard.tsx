@@ -67,6 +67,7 @@ export function ShopifyRevenueWizard(props: {
   const revenueMetric = "current_total_price";
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // OAuth / connection
   const [shopName, setShopName] = useState<string | null>(null);
@@ -119,6 +120,7 @@ export function ShopifyRevenueWizard(props: {
   }, [campaignDisplayName, campaignField, campaignMappings, initialMappingConfig, mode, revenueMetric, selectedValues]);
 
   const editSourceId = mode === "edit" ? String(sourceId || initialMappingConfig?.sourceId || "").trim() : "";
+  const isRepair = mode === "edit" && !hasEditChanges;
 
   const campaignFieldLabel = useMemo(() => {
     if (campaignField === "utm_campaign") return "UTM Campaign (recommended)";
@@ -513,6 +515,7 @@ export function ShopifyRevenueWizard(props: {
       return;
     }
     if (step === "review") {
+      if (isRepair && !preview?.repairConfirmation) return;
       setIsSaving(true);
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
@@ -530,16 +533,38 @@ export function ShopifyRevenueWizard(props: {
             valueSource: "revenue",
             revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
             ...((isGA4 || isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok) && selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
+            ...(isRepair ? { repairConfirmation: preview.repairConfirmation } : {}),
           }),
         });
         const json = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(json?.error || "Failed to import revenue");
-        toast({
+        if (!resp.ok) {
+          if (json?.code === "SHOPIFY_REPAIR_PREVIEW_CHANGED") await fetchPreview();
+          throw new Error(json?.error || "Failed to import revenue");
+        }
+        let repairInventory: any = null;
+        if (isRepair) {
+          try {
+            const inventoryResp = await fetch(`/api/campaigns/${campaignId}/ga4-overview/source-damage-inventory`, {
+              credentials: "include",
+              cache: "no-store",
+            });
+            repairInventory = await inventoryResp.json().catch(() => null);
+          } catch {
+            repairInventory = null;
+          }
+        }
+        const repairPass = repairInventory?.shopifyLocalPersistencePass === true;
+        toast(isRepair ? {
+          title: repairPass ? "Shopify revenue repaired" : "Shopify revenue refreshed",
+          description: repairPass
+            ? "The locally verifiable Shopify integrity checks now pass. Provider-only limitations remain."
+            : "Revenue was replaced from Shopify, but the post-repair integrity check still needs review.",
+          ...(!repairPass ? { variant: "destructive" as const } : {}),
+        } : {
           title: "Revenue imported",
-          description:
-          `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+          description: `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
         });
-        onSuccess?.(json);
+        onSuccess?.({ ...json, ...(isRepair ? { repairInventory } : {}) });
         setStep("complete");
       } catch (err: any) {
         toast({
@@ -555,6 +580,7 @@ export function ShopifyRevenueWizard(props: {
 
   const fetchPreview = async () => {
     setPreviewLoading(true);
+    setPreviewError(null);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
         method: "POST", credentials: "include",
@@ -568,12 +594,17 @@ export function ShopifyRevenueWizard(props: {
             platformContext,
             valueSource: "revenue",
             revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
+            campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null,
+            ...((isGA4 || isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok) && selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
             dryRun: true,
           }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
       setPreview(json);
+    } catch (error: any) {
+      setPreview(null);
+      setPreviewError(error?.message || "Failed to load Shopify preview");
     } finally {
       setPreviewLoading(false);
     }
@@ -584,7 +615,7 @@ export function ShopifyRevenueWizard(props: {
     if (step !== "review") return;
     void fetchPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, campaignField, revenueMetric, days, platformContext, editSourceId, selectedValues.join("|")]);
+  }, [step, campaignField, revenueMetric, days, platformContext, editSourceId, selectedValues.join("|"), campaignDisplayName, selectedCampaignMappings]);
 
   return (
     <div className="space-y-6">
@@ -886,6 +917,8 @@ export function ShopifyRevenueWizard(props: {
                 <div className="mt-2 text-sm">
                   {previewLoading ? (
                     <div className="text-muted-foreground">Computing…</div>
+                  ) : previewError ? (
+                    <div className="text-destructive">{previewError}</div>
                   ) : (
                     <>
                       <div>
@@ -900,6 +933,9 @@ export function ShopifyRevenueWizard(props: {
                             return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
                           }
                         })()}
+                      </div>
+                      <div className="mt-1">
+                        <strong>Matched orders:</strong> {Number(preview?.totalConversions || 0)}
                       </div>
                       {(() => {
                         const rows = Array.isArray(preview?.campaignValueRevenueTotals)
@@ -958,6 +994,11 @@ export function ShopifyRevenueWizard(props: {
                   )}
                 </div>
               </div>
+              {isRepair && preview?.repairConfirmation && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
+                  Confirm the Shopify preview above. Repair from Shopify atomically replaces only this source's records and preserves the last-good records if replacement fails.
+                </div>
+              )}
             </div>
           )}
 
@@ -978,9 +1019,9 @@ export function ShopifyRevenueWizard(props: {
               <Button onClick={() => void handleNext()} disabled={
                 valuesLoading || isSaving ||
                 (step === "crosswalk" && selectedValues.length === 0) ||
-                (step === "review" && mode === "edit" && !hasEditChanges)
+                (step === "review" && isRepair && (previewLoading || !!previewError || !preview?.repairConfirmation))
               }>
-                {step === "review" ? (isSaving ? "Processing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
+                {step === "review" ? (isSaving ? "Processing..." : isRepair ? "Repair from Shopify" : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

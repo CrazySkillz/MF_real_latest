@@ -281,7 +281,7 @@ describe("Shopify revenue regression guard", () => {
     expect(saveRoute).toContain("const campaignId = req.params.id;");
     expect(saveRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(saveRoute).toContain("const conn = await getShopifyConnectionForCampaign(campaignId);");
-    expect(saveRoute).toContain("const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);");
+    expect(saveRoute).toContain("requestedSource = await storage.getRevenueSource(campaignId, requestedSourceId);");
     expect(saveRoute).toContain("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);");
     expect(saveRoute).toContain("const sourceValues = {\n          campaignId,\n          sourceType: 'shopify',\n          platformContext: platformCtx,");
     expect(saveRoute).toContain('await storage.replaceGa4ShopifyRevenueSourceWithRecords(');

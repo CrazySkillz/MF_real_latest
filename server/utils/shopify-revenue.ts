@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { normalizeReportingTimeZone } from './reporting-timezone';
 
 export type ShopifyConfirmedRevenueAmounts = {
@@ -6,6 +7,40 @@ export type ShopifyConfirmedRevenueAmounts = {
   presentmentAmount: number | null;
   presentmentCurrency: string | null;
 };
+
+export type ShopifyRepairConfirmation = {
+  version: 1;
+  sourceId: string;
+  sourceFingerprint: string;
+  connectionFingerprint: string;
+  requestFingerprint: string;
+  providerFingerprint: string;
+};
+
+const fingerprint = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+
+export const buildShopifyRepairConfirmation = (input: {
+  source: { id: unknown; campaignId: unknown; sourceType: unknown; platformContext: unknown; displayName: unknown; currency: unknown; mappingConfig: unknown; isActive: unknown };
+  connection: { id: unknown; campaignId: unknown; shopDomain: unknown; mappingConfig: unknown; isActive: unknown };
+  request: { campaignField: unknown; selectedValues: unknown[]; revenueMetric: unknown; days: unknown; platformContext: unknown; campaignDisplayName: unknown; campaignMappings: unknown[] };
+  providerOrders: Array<{ id: unknown; updatedAt: unknown; createdAt: unknown; campaignValue: unknown; shopAmount: unknown; shopCurrency: unknown }>;
+}): ShopifyRepairConfirmation => ({
+  version: 1,
+  sourceId: String(input.source.id || ''),
+  sourceFingerprint: fingerprint(input.source),
+  connectionFingerprint: fingerprint(input.connection),
+  requestFingerprint: fingerprint({
+    ...input.request,
+    selectedValues: input.request.selectedValues.map(String).sort(),
+    campaignMappings: [...input.request.campaignMappings].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+  }),
+  providerFingerprint: fingerprint([...input.providerOrders].sort((a, b) => String(a.id).localeCompare(String(b.id)))),
+});
+
+export const shopifyRepairConfirmationMatches = (
+  expected: ShopifyRepairConfirmation,
+  current: ShopifyRepairConfirmation,
+): boolean => Object.keys(expected).every((key) => expected[key as keyof ShopifyRepairConfirmation] === current[key as keyof ShopifyRepairConfirmation]);
 
 const normalizeCurrencyCode = (value: unknown, label: string): string => {
   const currency = String(value || '').trim().toUpperCase();

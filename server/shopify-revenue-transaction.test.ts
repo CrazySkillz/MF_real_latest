@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => {
     connection: { ...originalConnection },
     source: { ...originalSource },
     records: originalRecords.map(record => ({ ...record })),
-    failureStage: 'records' as 'delete' | 'records' | null,
+    failureStage: 'records' as 'delete' | 'records' | 'source_changed' | 'connection_changed' | null,
   };
   const tx = {
     update: vi.fn(() => ({
@@ -16,9 +16,11 @@ const mocks = vi.hoisted(() => {
         where: vi.fn(() => ({
           returning: vi.fn(async () => {
             if (Object.prototype.hasOwnProperty.call(values, 'displayName')) {
+              if (state.failureStage === 'source_changed') return [];
               state.source = { ...state.source, ...values };
               return [{ ...state.source }];
             }
+            if (state.failureStage === 'connection_changed') return [];
             state.connection = { ...state.connection, ...values };
             return [{ id: state.connection.id }];
           }),
@@ -65,7 +67,7 @@ vi.mock('./db', () => ({ db: mocks.db, pool: null }));
 
 import { DatabaseStorage } from './storage';
 
-const replace = () => new DatabaseStorage().replaceGa4ShopifyRevenueSourceWithRecords(
+const replace = (expectedState?: { sourceMappingConfig: string | null; connectionMappingConfig: string | null }) => new DatabaseStorage().replaceGa4ShopifyRevenueSourceWithRecords(
   'campaign-1',
   'source-1',
   'connection-1',
@@ -79,6 +81,7 @@ const replace = () => new DatabaseStorage().replaceGa4ShopifyRevenueSourceWithRe
     isActive: true,
   } as any,
   [{ campaignId: 'campaign-1', date: '2026-07-02', revenue: '250.00', currency: 'USD', externalId: 'order-42', sourceType: 'shopify' }] as any,
+  expectedState,
 );
 
 describe('GA4 Shopify revenue transaction', () => {
@@ -120,5 +123,17 @@ describe('GA4 Shopify revenue transaction', () => {
       externalId: 'order-42',
       sourceType: 'shopify',
     })]);
+  });
+
+  it.each([
+    ['source_changed', 'Shopify revenue source changed since preview'],
+    ['connection_changed', 'Shopify connection changed since preview'],
+  ] as const)('rolls back when confirmed %s state is stale', async (failureStage, message) => {
+    mocks.state.failureStage = failureStage;
+    await expect(replace({ sourceMappingConfig: 'original', connectionMappingConfig: 'original' })).rejects.toThrow(message);
+
+    expect(mocks.state.connection).toEqual(mocks.originalConnection);
+    expect(mocks.state.source).toEqual(mocks.originalSource);
+    expect(mocks.state.records).toEqual(mocks.originalRecords);
   });
 });

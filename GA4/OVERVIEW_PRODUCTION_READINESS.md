@@ -1,2001 +1,500 @@
 # GA4 Overview Production Readiness
 
-
 ## Mandatory Anti-Overclaim Rule
 
-Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
+This file is the canonical production-readiness record for the complete GA4 `Overview` section.
 
-## Purpose
+A previous readiness statement, passing test suite, or source-family certification is not proof for the complete Overview. A clean certification requires current evidence for every included visible value, fallback, source lifecycle, negative case, production-data boundary, and downstream consumer.
 
-This file is the canonical production-readiness source of truth for the GA4 `Overview` tab.
+## Fresh Audit Identity
 
-Use `GA4/OVERVIEW.md` to understand what the tab is, what the cards and tables mean, and how the user-facing GA4 Overview should behave.
+- Audit date: `2026-07-15`
+- Branch: `main`
+- Audited baseline commit: `d5d143ea` (`Document GA4 Shopify production readiness`)
+- Audit type: fresh strict no-overclaim production-readiness audit
+- Runtime changes in this audit: none
+- Test changes in this audit: none
+- Data mutations in this audit: none
+- Documentation changed by this audit: this file only
+- Worktree rule: unrelated pre-existing modifications and untracked files were preserved and are not audit output
 
-Use this file to answer whether GA4 Overview is production-ready, what has been proven, what remains unproven, what fixes are required, and how the Overview pattern should be replicated for Meta, Google Ads, LinkedIn, or another platform source.
-
-This file supersedes scattered Overview status notes in broader GA4 trackers when the question is specifically about GA4 Overview readiness.
-
-For GA4 Overview spend-only readiness involving Google Sheets or Upload CSV, use `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` as the component file. It is the scoped evidence file for those two spend paths and must not be used as proof for Google Ads or other source families.
+Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_USER_JOURNEY.md`, `PRODUCTION_READINESS.md`, `GA4/README.md`, `GA4_DEVELOPMENT_WORKFLOW.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/REFRESH_AND_PROCESSING.md`, the GA4 Overview revenue/spend source-family readiness files, GA4 KPI/Benchmark/alert/Ad Comparison/Reports/timezone readiness files, Overview validation-runner documentation, and the Campaign DeepDive readiness trackers.
 
 ## Current Status
 
-GA4 Overview is clean-certified as production-ready for the current local GA4 Overview code scope documented in this file.
+**GA4 Overview is not production-ready and is not clean-certified at commit `d5d143ea`.**
 
-### HubSpot Revenue source-family status
+The earlier clean-certified answer is retracted. Current code and target-database evidence contain confirmed correctness defects, enabled-but-unproven source paths, stale or misleading failure/zero behavior, incomplete downstream proof, production-data damage, and a red source-family regression run.
 
-**HubSpot Revenue is clean-certified and production-ready for the validated
-documented GA4 Overview scope.** The canonical source-specific record is
-`GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; its H10d final matrix
-supersedes the narrower historical Current Commit 4.x HubSpot status entries
-retained later in this file. The status aligns with the implemented H1-H9
-runtime contracts and the H10-H10d evidence/consistency guards for atomic
-replacement and disconnect, last-good retention, strict dates and pagination,
-mapping, Pipeline Proxy exclusion/transition, downstream financial values,
-Reports, KPI/Benchmark values, notifications, campaign isolation, and clean
-damaged-data inventory.
+This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-This is not a claim about future HubSpot/API changes, unlisted configurations,
-future provider failures or deliveries, non-GA4 HubSpot contexts, or the
-separately observed GA4-native daily-table freshness boundary. Any relevant
-code change, failed validation, or contradictory runtime evidence immediately
-reopens only the affected path.
+The durable answer is:
 
-That certification is limited to the current GA4 Overview implementation, local code traces, local regression coverage recorded below, and already documented Overview cleanup boundaries. It is not evidence that any other GA4 section or any future platform implementation is production-ready.
+`No. GA4 Overview is not production-ready or clean-certified at commit d5d143ea. The fresh July 15 audit found incompatible windows, zero/failure ambiguity, unscoped and stale spend fallbacks, visible on-hold source paths, production-data damage, incomplete downstream evidence, and three failing source-family regression guards. No runtime fix or cleanup was performed during the audit.`
 
-The Google Sheets and Upload CSV spend component is not clean-certified by that local code-scope statement. Its current status, explicit Google OAuth hold, and blocking evidence queue are governed by `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`. Google Sheets spend remains unproven for stable deployed automatic refresh until that component queue closes.
+## Scope
 
-The certification rests on these currently traced facts:
+### Included
 
-- GA4 Overview Summary cards intentionally keep one coherent selected-campaign source hierarchy: persisted daily rows, then GA4 to-date totals, then breakdown fallback.
-- GA4 Overview financial cards use one selected scoped GA4 native financial source for native revenue and conversions, choosing the most complete native revenue total across to-date, daily, and breakdown totals.
-- Imported revenue and spend are source-backed, campaign-scoped, active-source-only values.
-- `ga4RevenueForFinancials` does not read directly from the Summary-card `breakdownTotals.revenue` value.
-- `financialConversions` does not read directly from the Summary-card `breakdownTotals.conversions` value.
-- Campaign Breakdown, Landing Pages, and Conversion Events table fallbacks do not allocate campaign-level conversions or imported revenue into rows.
-- Pipeline Proxy remains separate from confirmed revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, and Reports unless the product contract changes explicitly.
+This audit includes the complete GA4 Overview value and lifecycle surface:
 
-Use this durable answer only when the current request is limited to the traced local GA4 Overview code scope:
-
-`GA4 Overview is production-ready for the current local GA4 Overview code scope, with explicit external caveats for live GA4 API behavior, normal clock-time deployed scheduler execution beyond the recorded startup-fired Google Sheets spend scheduler evidence, deployed provider/source refreshes, provider-backed source-family lifecycle validation, future scheduled/test email deliveries outside the recorded GA4 Overview Report email packet, unvalidated report variants, and production database inventory outside the recorded Current Commit 3 target-campaign packet.`
-
-Do not use a shorter production-ready answer unless the current request's complete value inventory, end-to-end trace matrix, fallback branches, negative cases, downstream propagation matrix, and validation evidence are all covered by this file.
-
-External caveats remain and must be stated:
-
-- live GA4 API processing latency and provider-side data freshness are not locally provable
-- normal wall-clock deployed scheduler execution beyond the recorded startup-fired Google Sheets spend packet must be verified in the deployed environment; the recorded Google Sheets spend startup-fired scheduler packet proves only that narrow scheduler execution path
-- deployed provider/source refreshes must be verified with provider-backed data
-- real source-family add/edit/delete/refresh validation remains an external validation gate
-- production database health outside the recorded Current Commit 3 target-campaign inventory remains unproven unless the bounded read-only inventory is run for that additional campaign/scope
-- the recorded GA4 Overview Report email delivery packet is user-confirmed, but future scheduled/test email deliveries outside that packet remain Reports/runtime evidence rather than Overview local-code proof
-
-These external caveats do not block the current local GA4 Overview code-scope certification. They do block any blanket claim that deployed provider behavior, production database health, future scheduled email delivery outside the recorded packet, unvalidated report variants, or a different platform's Overview is fully production-ready.
-
-That answer must be lowered to unproven for any affected value path if one of these changes:
-
-- relevant Overview, financial-source, scheduler, report, KPI, Benchmark, or shared aggregate code changes
-- validation fails
-- source requirements change
-- deployed evidence contradicts this document
-- a new platform/source is being assessed instead of the existing GA4 implementation
-- production data inventory proves damaged source records outside the already documented cleanup boundary
-
-## How To Use This File In A New Chat
-
-Read in this order:
-
-1. `Current Status`
-2. `Current Scope`
-3. `Clean Certification Matrices`
-4. `Current Commit Queue`
-5. `Section Production-Readiness Map`
-6. `Validation Evidence`
-7. `Future Platform Template`
-8. `Stable Response For Future Chats`
-
-For a spend-only question about Google Sheets or Upload CSV, read `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` before using any broader Overview evidence. Keep Google Ads and other source-family evidence out of that spend-only certification unless a packet explicitly traces downstream propagation from Google Sheets or CSV spend.
-
-Do not reopen GA4 KPIs, GA4 Benchmarks, GA4 Ad Comparison, or GA4 Reports unless an Overview code path directly depends on a narrow value from those sections.
-
-When applying this to another platform source, do not copy GA4 implementation details blindly. Copy the gates and contracts, then prove the new platform satisfies each gate with its own source model, account/property/customer scoping, date-window model, financial-source model, refresh model, and report-output path. For future-platform work, use `Future Platform Template` and `Future Platform Readiness Checklist` as the reusable acceptance checklist.
-
-## Current Scope
-
-This readiness file applies to the current GA4 Overview tab for:
-
-- live UI rendering in `client/src/pages/ga4-metrics.tsx`
-- GA4 campaign/property/source scoping
-- Summary cards
-- Total Revenue, Pipeline Proxy, Total Spend, Profit, ROAS, ROI, and CPA
+- campaign, client, owner, selected GA4 property, and saved GA4 campaign-filter scope
+- Summary cards: Sessions, Users, Conversions, Engagement Rate, and Conversion Rate
+- Revenue & Financial cards: Total Revenue, Pipeline Proxy, Total Spend, Profit, ROAS, ROI, and CPA
+- GA4 native revenue and all imported revenue that can enter GA4 Total Revenue
+- all active spend sources that can enter GA4 Total Spend, even when their separate provider readiness is excluded
+- Revenue Sources, Spend Sources, and Pipeline Proxy source modals
 - Campaign Breakdown
 - Landing Pages
 - Conversion Events
-- source-provenance modals launched from Total Revenue, Pipeline Proxy, and Total Spend
-- Overview values consumed by KPIs, Benchmarks, Ad Comparison, Insights, and browser-generated report output
-- GA4 daily refresh behavior only where it feeds Overview values
-- source-backed revenue/spend refresh behavior only where it feeds Overview values
+- add, edit, delete/deactivate, refresh/reprocess, scheduler, display, totals, and existing-data boundaries
+- loading, empty, error, stale, missing, valid-zero, and unavailable states
+- browser-generated GA4 report values and scheduled/server GA4 report values
+- Overview-originated propagation into KPIs, Benchmarks, alerts/notifications, Ad Comparison, Insights, Reports, and Campaign DeepDive
 
-This readiness file does not automatically certify:
+### Excluded Source-Family Audits
 
-- Meta Overview
-- Google Ads Overview
-- LinkedIn Overview
-- custom-upload Overview
-- whole GA4 Reports readiness
-- whole GA4 Insights readiness
-- whole GA4 Ad Comparison readiness
-- whole GA4 KPI or Benchmark readiness
-- provider-side delivery of scheduled emails
-- live GA4 API behavior outside what local code and local tests can prove
-- production database health outside the specific data boundaries that have been inventoried
+The user explicitly excluded these as standalone provider/component certification projects:
 
-## Clean Certification Matrices
+- Google Ads spend provider readiness
+- the previously scoped standalone Google Sheets/CSV spend component readiness project
+- unrelated non-GA4 platform sections except where their persisted rows can contaminate GA4 Overview or an included downstream value
 
-These matrices define the current certification boundary. `Proven locally` means the value path has been traced through the current code and is covered by recorded local regression evidence where applicable. `External caveat` means the path needs deployed, provider, or production-data evidence that cannot be proven from local code alone. KPI and Benchmark readiness evidence is not used as proof for Overview; only the narrow Overview value propagation into those consumers is listed.
+These exclusions do **not** exclude their effect on GA4 Total Spend, Profit, ROAS, ROI, CPA, source provenance, KPIs, Benchmarks, Insights, Reports, or Campaign DeepDive. If an excluded provider can feed an included value, its boundary, failure behavior, and contamination risk remain in scope.
 
-### Complete GA4 Overview Value Inventory
+### Valid Safe Exclusions
 
-| Overview value path | Contract | Scope and window | Local evidence | Certification status |
-| --- | --- | --- | --- | --- |
-| Campaign/client/property/source scope | Every Overview query stays inside the selected campaign, selected client access boundary, selected GA4 property, and selected GA4 campaign/source filter. | Campaign route context, saved GA4 connection, selected property, selected GA4 campaign filter, and selected Overview date window where the endpoint supports it. | UI query keys in `client/src/pages/ga4-metrics.tsx`; `ensureCampaignAccess` and selected-property resolution in GA4 routes; campaign filters in `server/analytics.ts`. | Proven locally for current code; live provider data freshness remains external. |
-| Summary Sessions | Render from the coherent Summary source hierarchy, not from per-metric maxima. | Persisted daily rows first, then GA4 to-date totals, then breakdown fallback. | `dailySummedTotals`, `ga4ToDateOverviewTotals`, `ga4BreakdownTotals`, `overviewTotalsSource`, and `breakdownTotals` trace in `ga4-metrics.tsx`; scheduled report parity trace in `server/ga4-scheduled-report-pdf.ts`. | Proven locally. |
-| Summary Users | Render from the same Summary source object as Sessions. Users are non-additive where provider rows report that caveat. | Same Summary source hierarchy; GA4 provider user semantics preserved. | Same trace as Summary Sessions; landing-page metadata preserves `usersAreNonAdditive`. | Proven locally for source selection; provider non-additive semantics remain provider-defined. |
-| Summary Conversions | Render from Summary conversions, not financial conversions. | Same Summary source hierarchy. | `breakdownTotals.conversions` trace and recorded UI regression coverage that Summary Conversions is guarded against `financialConversions`. | Proven locally. |
-| Summary Engagement Rate | Render from Summary source where available; no financial-source substitution. | Same Summary source hierarchy. | `breakdownTotals.engagementRate` and Summary card render trace. | Proven locally. |
-| Summary Conversion Rate | Compute from Summary conversions and Summary sessions. | Same Summary source hierarchy. | Summary render and regression coverage for coherent Summary source behavior. | Proven locally. |
-| GA4 native financial revenue | Use one selected scoped native GA4 financial source and do not read directly from Summary `breakdownTotals.revenue`. | Best scoped native revenue source among GA4 to-date totals, daily totals, and breakdown totals. | `ga4FinancialTotalsSource` and `ga4RevenueForFinancials` trace; `server/ga4-ui-regression.test.ts` and `server/revenue-additivity.test.ts` recorded validation. | Proven locally. |
-| Financial conversions for CPA | Use conversions from the same selected scoped GA4 financial source as native financial revenue. | Same selected native financial source as GA4 native financial revenue. | `financialConversions` trace; CPA propagation tests recorded in UI/report regressions. | Proven locally. |
-| Imported revenue | Add source-backed imported revenue to GA4 native financial revenue; do not allocate imported revenue into Landing Pages or Conversion Events rows. | Campaign-scoped active revenue sources for GA4 platform context, to-date read window. | `/revenue-to-date`, `/revenue-breakdown`, `/revenue-sources`, `getRevenueTotalForRange`, active-source joins in `storage.ts`; revenue additivity tests. | Proven locally for current code; production source data inventory remains external. |
-| Total Revenue | `selected scoped GA4 native financial revenue + imported revenue-to-date`. | Native GA4 financial source plus active imported revenue sources in campaign/platform context. | `financialRevenue` trace and recorded revenue additivity/financial rules validation. | Proven locally. |
-| Total Spend | Explicit source-backed spend only; GA4 native source does not invent spend. | Campaign-scoped active spend sources, to-date read window. | `/spend-to-date`, `/spend-breakdown`, `/spend-sources`, `getSpendTotalForRange`, active-source joins in `storage.ts`; spend-source additivity evidence. | Proven locally for current code; provider-backed source lifecycle remains external. |
-| Profit | `Total Revenue - Total Spend`; shown only when revenue and spend prerequisites exist. | Same financial revenue and spend inputs. | `financialProfit` render trace. | Proven locally. |
-| ROAS | `Total Revenue / Total Spend`; gated when spend is unavailable or zero. | Same financial revenue and spend inputs. | `financialROAS` render trace and financial rules evidence. | Proven locally. |
-| ROI | `(Total Revenue - Total Spend) / Total Spend`; gated when spend is unavailable or zero. | Same financial revenue and spend inputs. | `financialROI` render trace and financial rules evidence. | Proven locally. |
-| CPA | `Total Spend / financialConversions`; gated when spend or selected financial conversions are unavailable. | Same financial spend and financial conversion source. | `financialCPA` trace; UI, Insights, KPI/Benchmark propagation, and report parity regression evidence. | Proven locally for the Overview-originated value path. |
-| Pipeline Proxy | Early-signal CRM/ecommerce pipeline estimate; excluded from confirmed revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, and Reports. | Active pipeline-capable source configs scoped to the selected GA4 campaign where possible. | Pipeline Proxy trace in `ga4-metrics.tsx` and source modal contract. | Proven locally for exclusion; provider-backed source freshness remains external. |
-| Campaign Breakdown rows | Display GA4 row sessions/users/conversions/revenue plus exact campaign-matched imported revenue only; no row allocation. | Selected Overview date range, selected GA4 property, selected campaign/source filter. | `/ga4-breakdown`, `getAcquisitionBreakdown`, row render trace; exact imported campaign matching documented in `OVERVIEW.md`. | Proven locally; live GA4 row availability remains external. |
-| Landing Pages rows | Display landing page/source/medium/sessions/users/conversions/revenue from GA4; no imported revenue allocation. | Selected Overview date range, selected GA4 property, selected campaign/source filter. | `/ga4-landing-pages`, `getLandingPagesReport`, exact-key `pageLocation` supplement trace; `ga4-filter` and UI regression evidence. | Proven locally; live GA4 API latency remains external. |
-| Conversion Events rows | Display event-name/user/conversion/event-count/revenue values from GA4; no imported revenue allocation. | Selected Overview date range, selected GA4 property, selected campaign/source filter. | `/ga4-conversion-events`, `getConversionEventsReport`, exact-event supplement trace; `ga4-filter` and UI regression evidence. | Proven locally; live GA4 API latency remains external. |
-| Revenue/Spend/Pipeline source modals | Show source provenance for the total card without replacing the Overview totals contract. | Campaign-scoped active sources and selected platform context; Pipeline Proxy read-only provenance. | Source modal render, source list endpoints, active-source joins, and delete route guards. | Proven locally for current code; full provider-family lifecycle remains external. |
-| Browser-generated GA4 report output | Reuse Overview values and preserve Summary vs financial source split. | Same campaign/property/source scope as the loaded Overview page. | Report output trace in `ga4-metrics.tsx`; recorded UI/report regression evidence. | Proven locally for Overview value propagation; report delivery is Reports scope. |
-| Scheduled/server GA4 report output | Rebuild Summary and financial values with the same Overview source model. | Scheduled report campaign/platform scope and GA4 source inputs. | `server/ga4-scheduled-report-pdf.ts` trace; recorded report-email regression evidence for selected scoped financial source. | Proven locally for payload values; deployed scheduler/send execution remains external. |
-
-### End-To-End Trace Matrix
-
-| Path | Traced boundary | Proven behavior | Status |
-| --- | --- | --- | --- |
-| UI entry to GA4 Overview queries | `client/src/pages/ga4-metrics.tsx` campaign context, selected GA4 property, selected campaign filter, query keys. | Overview queries are campaign/property/source scoped and do not use a post-setup scope picker. | Proven locally. |
-| Access control to API endpoints | `server/routes-oauth.ts` GA4 and financial endpoints. | Campaign routes call `ensureCampaignAccess` or equivalent campaign access helpers before returning campaign data. | Proven locally for traced Overview endpoints. |
-| Daily metrics path | `/api/campaigns/:id/ga4-daily` to persisted daily rows and optional scoped backfill. | Daily rows feed Summary fallback hierarchy without mirroring GA4 native revenue into imported revenue records; stale-but-nonempty persisted rows are now freshness-flagged and trigger due missing-day backfill attempts. | Proven locally; deployed stale-warning and post-reauthorization provider backfill validated for the affected campaign/property. |
-| To-date totals path | `/api/campaigns/:id/ga4-to-date` to `getTotalsWithRevenue`. | Native totals use selected property/campaign filter and totalRevenue to purchaseRevenue fallback. | Proven locally; provider latency is external. |
-| Breakdown path | `/api/campaigns/:id/ga4-breakdown` to `getAcquisitionBreakdown`. | Campaign Breakdown values stay row-level GA4 values with selected campaign/property/date scope. | Proven locally. |
-| Landing Pages path | `/api/campaigns/:id/ga4-landing-pages` to `getLandingPagesReport`. | Primary rows are supplemented only with same-scope exact-key fallback rows when conversions/revenue are missing. | Proven locally. |
-| Conversion Events path | `/api/campaigns/:id/ga4-conversion-events` to `getConversionEventsReport`. | Primary rows are supplemented only by exact event-name fallback rows; unmatched fallback rows are not added. | Proven locally. |
-| Imported revenue path | Source setup/import/refresh to `revenue_sources` and `revenue_records`, then `/revenue-to-date`, `/revenue-breakdown`, and `/revenue-sources`. | Active source rows in the campaign/platform context feed Total Revenue and provenance modals. | Proven locally for code path; production-data inventory remains external. |
-| Spend path | Source setup/import/refresh to `spend_sources` and `spend_records`, then `/spend-to-date`, `/spend-breakdown`, and `/spend-sources`. | Active source rows in the campaign feed Total Spend and provenance modals. | Proven locally for code path; provider-family lifecycle remains external. |
-| Source delete path | Revenue/spend source delete routes to storage soft-delete and recompute calls. | Route-level campaign/source membership is checked before source rows are deactivated. | Proven locally for traced route shape; provider-family user validation remains external. |
-| Browser report path | Loaded Overview values to browser-generated report sections. | Report output preserves Summary vs financial source split and CPA source choice. | Proven locally. |
-| Scheduled report path | Scheduled report payload builder to Overview summary/financial reconstruction. | Scheduled/server GA4 PDF payload preserves Overview source model. | Proven locally for payload construction; deployed send/snapshot behavior remains Reports/external. |
-
-### Downstream Propagation Matrix
-
-| Downstream consumer | Direct Overview dependency | Evidence used | Status |
-| --- | --- | --- | --- |
-| Overview cards and tables | Direct render of all Summary, financial, source modal, Campaign Breakdown, Landing Pages, and Conversion Events values. | Current frontend/API/storage/service trace and recorded local tests. | Proven locally. |
-| Revenue/Spend/Pipeline source modals | Provenance display for the financial cards and Pipeline Proxy card. | Source endpoint and modal trace. | Proven locally for code; real provider-family lifecycle remains external. |
-| GA4 KPIs | Narrow dependency on Overview-originated current values and CPA conversion source. | Overview UI regression coverage only for value propagation. KPI readiness evidence is not reused as Overview proof. | Proven locally for the narrow Overview value path; whole KPI readiness is separate. |
-| GA4 Benchmarks | Narrow dependency on Overview-originated current values and CPA source choice. | Overview UI regression coverage only for value propagation. Benchmark readiness evidence is not reused as Overview proof. | Proven locally for the narrow Overview value path; whole Benchmark readiness is separate. |
-| GA4 Ad Comparison | Uses Overview-selected financial/source values where wired in the GA4 page. | Frontend prop trace and recorded Overview UI regression coverage. | Proven locally for narrow value propagation; whole Ad Comparison readiness is separate. |
-| GA4 Insights | Uses Overview-originated financial CPA and source availability flags. | Frontend trace and recorded regression coverage for Insights CPA propagation. | Proven locally for narrow Overview value propagation; whole Insights readiness is separate. |
-| Browser-generated GA4 reports | Uses the loaded Overview value model. | Frontend report trace and recorded regression coverage. | Proven locally for Overview values; report UX/readiness is separate. |
-| Scheduled/server GA4 reports | Rebuilds Overview Summary and financial values on the server. | `server/ga4-scheduled-report-pdf.ts` trace and recorded report regression evidence. | Proven locally for values; scheduler execution and email delivery remain external/Reports scope. |
-| Campaign DeepDive | Separate aggregate path that previously needed parity with Overview financial semantics. | Existing Overview-related hardening history only for the direct aggregate parity boundary. | Proven only for the documented parity boundary; whole DeepDive readiness is separate. |
-| Alerts and notifications | No direct Overview alert emission; affected only through KPI/Benchmark current-value paths. | Narrow KPI/Benchmark propagation trace. | No direct Overview path to certify. |
-| Future platform Overviews | GA4 Overview docs provide process and structure only. | No target-platform evidence. | Unproven for every future platform until its own inventory, trace, tests, and deployed caveats are completed. |
-
-### Lifecycle And Source-Safety Matrix
-
-| Lifecycle path | Overview requirement | Current evidence | Status |
-| --- | --- | --- | --- |
-| GA4 source connect/select | Saved GA4 property and campaign/source filter define Overview scope. | Architecture and GA4 docs, UI/API trace. | Proven locally. |
-| GA4 refresh/backfill | Refresh selected campaign/property data without changing source meaning or imported revenue records. | `/ga4-daily`, scheduler docs, and daily-row trace. | Proven locally for code; deployed scheduler run is external. |
-| Revenue source add/import | New source rows must affect Total Revenue and provenance only inside the campaign/platform context. | Source endpoint/storage trace. | Proven locally for code; provider-family validation remains external. |
-| Revenue source edit/refresh | Existing source identity should be updated or replaced without duplicate totals. | Storage/source contract and historical hardening docs. | Partially proven locally; real provider-family lifecycle validation remains Current Commit work. |
-| Revenue source delete/deactivate | Remove only the verified source contribution from Total Revenue and provenance. | Route membership guard and storage soft-delete trace. | Proven locally for route shape; provider-family user validation remains external. |
-| Spend source add/import | New spend rows must affect Total Spend and derived financial metrics only inside the campaign. | Source endpoint/storage trace. | Proven locally for code; provider-family validation remains external. |
-| Spend source edit/refresh | Existing spend source identity should update without duplicate totals. | Storage/source contract and historical hardening docs. | Partially proven locally; real provider-family lifecycle validation remains Current Commit work. |
-| Spend source delete/deactivate | Remove only the verified source contribution from Total Spend and derived metrics. | Route membership guard and storage soft-delete trace. | Proven locally for route shape; provider-family user validation remains external. |
-| Existing damaged data cleanup | Known synthetic GA4 revenue record damage was cleaned within the documented boundary. | Completed hardening history and current docs. | Proven only for that boundary; broader production source damage inventory remains external Current Commit work. |
-
-### Negative-Case Matrix
-
-| Negative case | Expected behavior | Evidence | Status |
-| --- | --- | --- | --- |
-| User lacks campaign access | Overview endpoints fail closed instead of returning another campaign's data. | `ensureCampaignAccess` and campaign access helper trace. | Proven locally for traced endpoints. |
-| Missing GA4 property or token | GA4 endpoints return guarded empty/error states instead of broadening scope. | Route/service trace. | Proven locally. |
-| Numeric live property without explicit mock | Numeric property is treated as live, not automatically mocked. | GA4 route/service docs and tests recorded in broader validation. | Proven locally. |
-| Primary GA4 rows empty | Use documented same-scope fallback where implemented; otherwise render empty stable state. | `getTotalsWithRevenue`, `getLandingPagesReport`, `getConversionEventsReport`, `getAcquisitionBreakdown` trace. | Proven locally. |
-| Primary rows have traffic but missing conversions/revenue | Supplement only matching rows from same-scope fallback; do not add unmatched rows. | Landing Pages exact-key and Conversion Events exact-event trace/tests. | Proven locally. |
-| Imported revenue exists | Add only to Total Revenue and exact Campaign Breakdown matches; do not allocate to Landing Pages or Conversion Events. | Frontend render trace and `OVERVIEW.md` contract. | Proven locally. |
-| Spend missing or zero | ROAS, ROI, and CPA show gated unavailable states instead of invented values. | Financial render trace and financial rules evidence. | Proven locally. |
-| Pipeline Proxy exists | Keep separate from confirmed revenue and downstream derived financial metrics. | Pipeline Proxy trace and exclusion contract. | Proven locally. |
-| Inactive or deleted source rows | Exclude inactive sources from revenue/spend totals and provenance. | Active-source joins in storage and source endpoint trace. | Proven locally for code; production orphan inventory remains external. |
-| Duplicate or orphan production records | Do not assume clean data; perform bounded read-only inventory before cleanup. | Current Commit Queue. | Unproven externally until inventory is run. |
-
-### Test And Validation Coverage Matrix
-
-| Evidence area | Recorded validation | What it proves | Limit |
-| --- | --- | --- | --- |
-| Financial source selection and revenue additivity | `npm test -- server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts`; broader 9-file suite; `npm run check`. | Summary and financial source split, native plus imported revenue, CPA conversion source, no response-shape changes. | Recorded evidence, not rerun during this doc-only certification update. |
-| Overview propagation hardening | `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`; broader 11-file suite; `npm run check`; `git diff --check` for changed files. | Summary conversions, Insights CPA propagation, KPI create fallback source choice, scheduled/server Summary parity, Conversion Events fallback. | Recorded evidence, not whole KPI/Benchmark/Insights certification. |
-| Landing Pages and Conversion Events fallback | `server/ga4-filter.test.ts` and `server/ga4-ui-regression.test.ts` recorded passes. | Exact-key/exact-event fallback supplement behavior and no unmatched fallback-row allocation. | Live GA4 provider latency remains external. |
-| Report payload values | `server/report-email-regression.test.ts` and scheduled PDF trace. | Selected scoped financial source survives scheduled/server report value generation. | Provider delivery, inbox receipt, scheduler run, and snapshot delivery semantics remain Reports/external scope. |
-| Source safety/additivity | `server/latest-day-revenue-regression.test.ts`, `server/latest-day-spend-regression.test.ts`, `server/source-safety-regression.test.ts`, `server/spend-source-additivity.test.ts` recorded in validation suites. | Active-source and provenance boundaries that feed Overview totals. | Real provider-family lifecycle validation remains external. |
-| Current Commit 1 harness and documentation update | PowerShell syntax check for `scripts/ga4_overview_current_commit_1_validation.ps1`; `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md scripts/ga4_overview_current_commit_1_validation.ps1`. | The validation harness parses and the doc/script diff has no whitespace errors. | Deployed endpoint evidence has since been recorded for one campaign/property; scheduled/server report payload evidence remains external. |
-| Current Commit 2 source lifecycle harness and documentation update | PowerShell syntax check for `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1`; trailing-whitespace scan for the script; `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md`. | The source lifecycle snapshot harness parses, is GET-only, and the doc diff has no whitespace errors. | Does not prove provider-family add/edit/refresh/delete behavior until before/after snapshots are captured around real provider actions. |
-| GA4 Overview browser validation runner | `node --check client/public/ga4-overview-validation-runner.js`; `git diff --check -- client/public/ga4-overview-validation-runner.js GA4/OVERVIEW_VALIDATION_RUNNER.md GA4/OVERVIEW_AUTOMATED_VALIDATION.md GA4/OVERVIEW_PRODUCTION_READINESS.md`. | Adds a static browser-loaded validation helper for logged-in deployed sessions. `snapshot`, `before`, `after`, `overviewPack`, `sourceDamageInventory`, `hubspotInventory`, `hubspotProvenance`, and `googleSheetsVariantPack` are GET-only/read-only evidence functions; `refreshSpend` and `refreshRevenue` are explicit source-scoped POST helpers for already-existing run-now validation routes. The helper summarizes totals, endpoint status, source counts, target-source presence, configured Google Sheets fixture mapping checks, and pass/fail without printing full endpoint rows. | Evidence tooling only. It does not change analytics behavior, production calculations, source persistence, scheduler behavior, report behavior, ownership checks, or readiness status by itself. |
-| Current Commit 2a Google Sheets revenue refresh validation trigger | `npm test -- server/ga4-auto-refresh-regression.test.ts`; `npm run check`. | The route is campaign/source-scoped, requires campaign access, reuses the scheduler Google Sheets revenue reprocess function, and avoids a full daily scheduler run. | Does not prove the deployed route until the pushed commit is deployed and run against the changed Sheet with before/after endpoint and UI evidence. |
-| Current Commit 2b revenue source delete false-failure guard | `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts`; `npm run check`; deployed DELETE evidence captured on `2026-07-01T18:28:32.608Z`; UI parity confirmed by user on `2026-07-01`. | GA4 revenue source mutation routes keep source deletion/update response semantics stable even if downstream GA4 KPI/Benchmark recompute fails after the source mutation; deployed evidence proves the fixed response for disposable source `32661325-d2a5-404f-a898-2c84e4275809`. | Closed for this deployed Google Sheets revenue delete/deactivate path only; does not certify other campaigns/properties/source families. |
-| Current Commit 2c revenue import/update response latency guard | `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts`; `npm run check`; deployed latency timing user-confirmed on `2026-07-01`. | GA4 revenue source process routes no longer block the user-facing success response on the heavyweight GA4 KPI/Benchmark daily/history/alert job after source records are durable; source-backed campaign current values still refresh synchronously before the response. | Closed for the user-confirmed deployed timing check only; no exact elapsed-time packet or numeric SLA is recorded in this file. |
-| Current Commit 2d Google Sheets spend refresh validation trigger | `npm test -- server/ga4-auto-refresh-regression.test.ts`; `npm run check`; deployed run-now evidence captured on `2026-07-01T19:52:43.021Z`; UI parity confirmed by user on `2026-07-01`. | The route is campaign/source-scoped, requires campaign access, reuses the scheduler Google Sheets spend reprocess function, and avoids a full daily scheduler run; deployed evidence proves the route refreshed source `8f67b03f-a00b-434f-b81f-db1b2b951595` to `$198.75` without creating a duplicate source or changing imported revenue. | Closed for this deployed Google Sheets spend run-now refresh/reprocess path only; does not certify daily scheduler timer execution, delete/deactivate, other campaigns/properties/source families, report/email propagation, or GA4 native provider stability. |
-| Current Commit 2e Google Sheets spend startup-fired scheduler evidence | Deployed scheduler evidence captured on `2026-07-01T21:15:15.453Z`; user UI validation confirmed and startup flag removal confirmed on `2026-07-01`. | The deployed scheduler path refreshed active Google Sheets spend source `618e5e12-0f3f-44a2-837a-d2677ad95f64` from baseline `$180.20` to `$678.95`, kept the same source ID, created no duplicate Google Sheets spend source, kept imported revenue unchanged at `$600`, and all checked endpoints returned HTTP `200`. | Closed for this deployed startup-fired Google Sheets spend scheduler path only; normal wall-clock daily timer execution remains external if strict scheduled-hour proof is required, and this does not certify other campaigns/properties/source families, report/email propagation, or GA4 native provider stability. |
-| GA4 daily stale-row freshness guard | `npm test -- server/ga4-reporting-day-cutoff-regression.test.ts`; `npm run check`; deployed diagnostic packet from `2026-07-03T07:48:10.650Z` identified stale persisted rows through `2026-06-30` while `dataThroughDate` was `2026-07-02`; deployed recheck on `2026-07-03T08:44:38.952Z` returned `refreshIsStale: true` and the UI displayed the stale daily-history warning; after GA4 reauthorization, deployed daily diagnostic on `2026-07-03T09:47:21.991Z` returned `dailyEndpointPasses: true`, `authStillOk: true`, `hasRowsAfterJune30: true`, `latestReachedDataThroughDate: true`, and `staleCleared: true` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`; user confirmed the GA4/Insights Trends UI shows dates after `2026-06-30` on `2026-07-03`. | The `/ga4-daily` route now treats stale-but-nonempty persisted rows as stale when due completed dates are missing, attempts a provider backfill for due missing daily rows, preserves existing stored rows with `providerRefreshWarning` if provider refresh fails, and backfilled fresh daily rows once the GA4 connection was reauthorized. | Closed for deployed stale detection/warning, post-reauthorization daily backfill, and GA4/Insights Trends UI parity on the affected campaign/property. This does not prove future GA4 provider availability, other campaign/property pairs, or normal wall-clock scheduled-hour execution. |
-| GA4 timeseries reconnect response guard | `npm test -- server/ga4-reporting-day-cutoff-regression.test.ts`; `npm run check`; deployed console packet on `2026-07-03` showed `/ga4-timeseries` returned HTTP `500` with `error: AUTO_REFRESH_NEEDED` and no reconnect flag; after reconnect, deployed provider-auth check returned HTTP `200`, `ok: true`, `success: true`, and no `requiresReauthorization` flag. | The `/ga4-timeseries` route now maps `AUTO_REFRESH_NEEDED` and `TOKEN_EXPIRED` to HTTP `401` with `requiresReauthorization: true` and a reconnect message, matching the GA4 daily route's auth-error semantics. | Local negative-branch fix is covered by regression tests; deployed operational auth is healthy after reconnect. The deployed broken-token negative branch is no longer reproducible without deliberately invalidating GA4 auth and remains not separately rechecked. |
-| GA4 Connected Platforms reconnect-required badge | `npm test -- server/ga4-ui-regression.test.ts`; `npm run check`; commit `3b253ef2` Render deploy user-confirmed; deployed console packet returned `/ga4-metrics` HTTP `200`, `ok: true`, `requiresReauthorization: false`, and no error/message for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`. | Campaign Detail now maps `/ga4-metrics` HTTP `401` responses with `requiresReauthorization` into a GA4 card state that shows `Reconnect Required`, renders an inline reconnect warning, and expands to the existing GA4 OAuth flow instead of continuing to show only `Connected`; deployed operational auth is currently healthy. | Local UI guard and deployed healthy-provider state are covered; the deployed negative reconnect UI state remains unproven because no real auth failure is currently present and production GA4 should not be deliberately broken. Does not change GA4 calculations, source totals, scheduler behavior, storage, API ownership, or provider token semantics. |
-| Current Commit 2f Google Sheets spend second-campaign add/import evidence | Deployed second-campaign cleanup snapshot captured on `2026-07-03T11:30:06.922Z`; after-add snapshot captured on `2026-07-03T11:42:32.717Z`; endpoint status packet captured on `2026-07-03T11:45:16.366Z`; user UI validation confirmed `$507.70` on `2026-07-03`; post-fix endpoint recheck captured on `2026-07-03T12:17:39.484Z`; post-deploy UI reconfirmation passed on `2026-07-03`. | Campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418` was cleaned to zero Google Sheets spend sources, then one Google Sheets spend source was imported with expected spend `$507.70`; `exactlyOneGoogleSheetsSpendSourceAdded`, `spendIncreasedByExpected`, and `revenueUnchanged` passed; revenue/spend endpoints returned HTTP `200`; the visible GA4 Overview spend card/source modal matched `$507.70`; post-fix endpoint recheck returned `overallPass: true`, spend breakdown `$507.70`, one Google Sheets spend source, and native `ga4ToDate` HTTP `200`. | Closed only for this second-campaign Google Sheets spend add/import UI/source-modal financial path, the post-fix endpoint recheck, and post-deploy UI reconfirmation after commit `3b25a01a`. The compact after packet still showed `spendToDate: 0` while spend breakdown/UI showed `$507.70`; refresh/reprocess and delete/deactivate were later closed in separate 2f packets. |
-| Current Commit 2f Google Sheets spend second-campaign edit/update evidence | Deployed after-edit packet captured on `2026-07-03T12:34:20.583Z`. | Existing second-campaign Google Sheets spend source changed from `$507.70` to `$706.45` with expected delta `$198.75`; all checked endpoints passed; native `ga4ToDate` stayed healthy; exactly one Google Sheets spend source remained; spend breakdown matched `$706.45`; revenue source count stayed `0`; no duplicate spend source was created. | Closed only for this second-campaign Google Sheets spend edit/update endpoint path. Refresh/reprocess and delete/deactivate were later closed in separate 2f packets. |
-| Current Commit 2f Google Sheets spend second-campaign refresh/reprocess endpoint evidence | Deployed run-now packet captured on `2026-07-03T12:46:42.256Z`; deployed 2f.2 self-heal packet captured on `2026-07-03T13:14:11.596Z` for source `62772549-88dc-4cc5-bfe6-2e991d518ef5`; user UI edit-mode validation confirmed. | The first run-now trigger returned HTTP `200` and `successField: true`; endpoints passed; the same source ID remained; exactly one Google Sheets spend source remained; native `ga4ToDate` stayed healthy; spend changed from `$706.45` to `$807.70`; revenue source count stayed `0`. User clarified `$807.70` is the correct mapped total for both campaigns after changing one sheet campaign amount from `$198.75` to `$300`. After 2f.2 deploy, rerunning the same source refresh returned HTTP `200`, `success: true`, `overallPass: true`, `spendStillCorrect: true`, `sameSourceStillPresent: true`, and edit mode showed updated sheet data instead of stale `$198.75`. | Closed only for this second-campaign Google Sheets spend refresh/reprocess totals, source identity, and edit-preview metadata path. It does not certify other tabs/mappings, other campaigns/properties, normal wall-clock scheduler execution, reports/emails, or other source families. |
-| Current Commit 2f Google Sheets spend second-campaign delete/deactivate evidence | Before snapshot captured on `2026-07-03T13:26:16.247Z`; after-delete packet captured on `2026-07-03T13:27:43.736Z`; user UI validation confirmed. | Source `62772549-88dc-4cc5-bfe6-2e991d518ef5` was removed from spend sources and spend breakdown; spend dropped by expected `$807.70` to `$0`; revenue breakdown stayed `$0`; revenue source count stayed `0`; all six checked revenue/spend endpoints passed; spend card/source modal no longer showed the Google Sheets spend source. | Closed only for this second-campaign Google Sheets spend delete/deactivate source/totals/UI path. It does not certify other tabs/mappings, other campaigns/properties, normal wall-clock scheduler execution, reports/emails, or other source families. |
-| Current Commit 2f.1 GA4 to-date no-completed-window guard | `npm test -- server/ga4-reporting-day-cutoff-regression.test.ts`; `npm run check`; deployed endpoint packet captured on `2026-07-03T12:17:39.484Z`. | `/api/campaigns/:id/ga4-to-date` now returns scoped zero native GA4 totals with `noCompletedWindow: true` when the selected campaign's start/created date is later than the latest completed GA4 reporting day, instead of calling GA4 Data API with an inverted date window. Deployed packet for campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418` returned HTTP `200`, `successField: true`, `noCompletedWindow: true`, and `checks.ga4ToDateFixed: true`. | Closed for this deployed second-campaign native GA4 no-completed-window endpoint path. It does not certify future GA4 provider availability, a later valid completed-day provider window, or the remaining Current Commit 2f source lifecycle actions. |
-| Current Commit 2f.2 Google Sheets spend refresh edit-preview metadata guard | `npm test -- server/ga4-auto-refresh-regression.test.ts`; `npm run check`; deployed self-heal packet captured on `2026-07-03T13:14:11.596Z`; user UI edit-mode validation confirmed. | `/api/campaigns/:id/spend/sheets/process` now persists fresh `sheetHeaders`, `sheetSampleRows`, and `sheetRowCount` from the sheet rows fetched during process/reprocess. Deployed validation for source `62772549-88dc-4cc5-bfe6-2e991d518ef5` returned HTTP `200`, `success: true`, `overallPass: true`, `spendStillCorrect: true`, and `sameSourceStillPresent: true`; edit mode showed updated sheet data instead of stale `$198.75`. | Closed only for this deployed source refresh/edit-preview metadata path. It does not certify other Google Sheets spend sources, other tabs/mappings, other campaigns/properties, delete/deactivate, reports/emails, or normal wall-clock scheduler execution. |
-| Google Sheets spend add/import deployed evidence | Deployed browser-console after-snapshot captured on `2026-07-01T19:00:36.141Z`; user UI validation confirmed on `2026-07-01`. | One Google Sheets spend source was visible after import for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: source `8f67b03f-a00b-434f-b81f-db1b2b951595`, spend to-date `$240`, spend breakdown `$240`, and all checked endpoints HTTP `200`. | Closed only for this deployed Google Sheets spend add/import source/totals/UI path; the simplified packet did not archive a full before JSON or prove edit, refresh, delete, other campaigns, other tabs/mappings, daily scheduler timer execution, report/email propagation, or GA4 native provider stability. |
-| Google Sheets spend edit/update deployed evidence | Deployed browser-console after-snapshot captured on `2026-07-01T19:15:03.362Z`; user UI validation confirmed on `2026-07-01`. | Source `8f67b03f-a00b-434f-b81f-db1b2b951595` persisted as the only active Google Sheets spend source; spend to-date, spend breakdown, and target breakdown amount all reconciled to `$420.20`; imported revenue stayed `$600`; all checked endpoints HTTP `200`. | Closed only for this deployed Google Sheets spend edit/update source/totals/UI path; the simplified packet did not archive a full before JSON or prove refresh, delete, other campaigns, other tabs/mappings, daily scheduler timer execution, report/email propagation, or GA4 native provider stability. |
-| Google Sheets spend delete/deactivate deployed evidence | Deployed before/after browser-console snapshot captured on `2026-07-01T20:00:40.616Z`; user UI validation confirmed on `2026-07-01`. | Source `8f67b03f-a00b-434f-b81f-db1b2b951595` was removed from spend sources and spend breakdown; spend dropped from `$198.75` to `$0`; imported revenue stayed `$600`; all checked endpoints HTTP `200`. | Closed only for this deployed Google Sheets spend delete/deactivate source/totals/UI path; does not certify other campaigns, other tabs/mappings, daily scheduler timer execution, report/email propagation, or other source families. |
-| Current Commit 2j spend import/update response latency guard | `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts`; `npm run check`; `git diff --check -- server/routes-oauth.ts server/ga4-source-lifecycle-recompute-regression.test.ts GA4/OVERVIEW_PRODUCTION_READINESS.md`. | Spend source process routes now return after source rows and spend records are durable and `campaign.spend` is recalculated; the heavier GA4 KPI/Benchmark recompute is scheduled after the response for manual, LinkedIn Ads, CSV, and Google Sheets spend add/import or edit/update routes. | Local code/regression evidence plus user-confirmed deployed timing/UI responsiveness after commit `29c67820` deployed on `2026-07-03`. No exact elapsed-time packet or numeric SLA is recorded. |
-
-### Documentation Alignment Matrix
-
-| Source document | How it was used | Status |
+| Exclusion | Why it is safe to exclude from this certification | Boundary still included |
 | --- | --- | --- |
-| `AGENTS.md` | Operating contract, anti-overclaim standard, architecture preservation, validation and output rules. | Applied. |
-| `ARCHITECTURE_USER_JOURNEY.md` | User journey, platform/campaign split, campaign Overview role, downstream action surfaces. | Applied. |
-| `PRODUCTION_READINESS.md` | Required certification standard, value inventory, trace/downstream/lifecycle/negative-case/test matrices. | Applied. |
-| `GA4/README.md` | GA4 platform entry point and current claims treated as claims to verify, not evidence by themselves. | Applied without overclaiming. |
-| `GA4_DEVELOPMENT_WORKFLOW.md` | GA4 trace-before-edit workflow and source checklist. | Applied. |
-| `GA4/OVERVIEW.md` | Intended Overview behavior and value contracts. | Applied as the behavior contract. |
-| `GA4/FINANCIAL_SOURCES.md` | Revenue/spend/Pipeline Proxy source contracts and lifecycle constraints. | Applied for narrow Overview financial paths. |
-| `GA4/REFRESH_AND_PROCESSING.md` | Refresh and scheduler contracts that feed Overview. | Applied for narrow Overview refresh paths. |
-| `GA4/KPIS_PRODUCTION_READINESS.md` | Structure/process template only. | Not used as Overview proof. |
-| `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | Structure/process template only. | Not used as Overview proof. |
-
-## Current Commit Queue
-
-This queue is the clean-certification queue for GA4 Overview. The detailed historical fix queue below preserves earlier implementation labels, but this table is the current source of truth for outstanding Overview work.
-
-For the scoped Google Sheets and Upload CSV GA4 Overview spend queue, use `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`.
-
-| Current Commit | Status | Scope | Smallest safe action | Blocks current local Overview certification? |
-| --- | --- | --- | --- | --- |
-| Current Commit 0: Strict clean certification documentation update | Completed in this documentation pass. | Update this file with explicit value inventory, trace, downstream, lifecycle, negative-case, validation, and documentation matrices. | Documentation-only update to `GA4/OVERVIEW_PRODUCTION_READINESS.md`; no runtime code changes. | No. |
-| Current Commit 1: Provider/deployed Overview validation pack | Deployed Overview endpoint evidence captured for the listed campaign/property; scheduled/server report payload evidence remains external, not a confirmed code bug. | Real GA4 provider/deployed validation for Summary, financial cards, Campaign Breakdown, Landing Pages, Conversion Events, source totals, and scheduled/server payload values. | Endpoint packet passed on `2026-07-01T12:21:31.789Z`; capture scheduled/server payload evidence separately through the report validation path before making a blanket report-output claim. | No for local code-scope certification; endpoint portion no for deployed Overview endpoint certification; report payload remains external for blanket scheduled/server certification. |
-| Current Commit 2: Real source-family lifecycle validation | Local source-lifecycle snapshot/compare harness implemented; provider-family lifecycle evidence remains external, not a confirmed code bug. | Revenue and spend source families that can feed Overview totals and modals. | Use `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` before and after exactly one source-family add/import, edit, refresh, or delete action, then record the before/after source IDs, totals, and provenance reconciliation. | No for local code-scope certification; yes for provider-family lifecycle certification until each source family is validated. |
-| Current Commit 2a: Google Sheets revenue refresh validation trigger | Implemented, deployed, and validated for the recorded run-now source path. | One active Google Sheets revenue source in one authorized campaign. | Add a campaign/source-scoped validation route that reuses the scheduler Google Sheets revenue reprocess function for `/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now`; do not run the full daily scheduler, unrelated providers, reports, emails, alerts, or unrelated campaigns. | No for local code-scope certification; no for the recorded Google Sheets revenue run-now refresh/reprocess path; yes for daily scheduler timer execution and unvalidated source families. |
-| Current Commit 2b: Revenue source delete false-failure response guard | Completed for the recorded deployed Google Sheets revenue delete/deactivate path. | Google Sheets revenue delete/deactivate false-failure observed during Current Commit 2. | Guard GA4 KPI/Benchmark recompute inside `recomputeCampaignDerivedValues`; deployed evidence proved HTTP `200`/`success: true`, source removal, expected revenue decrease, and visible UI parity. | No for local code-scope certification; no for the recorded Google Sheets revenue delete/deactivate path; yes for unvalidated campaigns/properties/source families. |
-| Current Commit 2c: Revenue import/update response latency guard | User-confirmed deployed latency timing validation complete. | GA4 revenue source add/import and edit/update paths for source-backed revenue. | Keep source writes and source-backed campaign current-value refresh synchronous, then schedule the heavier GA4 KPI/Benchmark daily/history/alert reconciliation after the response so imports/updates are not blocked by live GA4/Data API or global alert work. | No for local code-scope certification; no for the user-confirmed deployed latency check; no exact elapsed-time SLA is certified. |
-| Current Commit 2d: Google Sheets spend refresh validation trigger | Implemented, deployed, and validated for the recorded run-now source path. | One active Google Sheets spend source in one authorized campaign. | Add a campaign/source-scoped validation route that reuses the scheduler Google Sheets spend reprocess function for `/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now`; do not run the full daily scheduler, unrelated providers, reports, emails, alerts, or unrelated campaigns. | No for local code-scope certification; no for the recorded Google Sheets spend run-now refresh/reprocess path; yes for daily scheduler timer execution. |
-| Current Commit 2e: Google Sheets spend daily scheduler timer execution | Completed for the recorded startup-fired deployed scheduler path; normal wall-clock daily timer proof remains external if strict scheduled-hour evidence is required. | Daily external-value auto-refresh scheduler for Google Sheets spend in the validated campaign/source path. | Temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true`, redeployed/restarted once, captured before/after endpoint evidence and UI parity for source `618e5e12-0f3f-44a2-837a-d2677ad95f64`, then removed the startup flag. | No for local code-scope certification; no for the recorded startup-fired scheduler path; yes only if the requested certification requires proof of the normal scheduled clock-time run. |
-| Current Commit 2e.4 / spend Current Commit 8b: Near-real-time Google Sheets spend polling | Committed, pushed, and deployed in `e4c3de5a`; automatic timer mutation evidence pending. | Automatic Google Sheets spend propagation without increasing CSV or any other source-family cadence. | Poll active Google Sheets spend sources every 1 minute by stable source ID, refetch open Overview spend state every 15 seconds, preserve last good values on provider failure, and retain daily-job priority/overlap guards. The repaired manual run reached the UI, but it does not prove the timer. | Yes for deployed near-real-time propagation until one real no-click sheet mutation proves exact same-source and downstream value convergence within the approximately 75-second normal target. |
-| Current Commit 2e.5 / spend Current Commit 8c: Production Google OAuth publishing and verification | Partially completed and explicitly on hold. | Stable Google Sheets and GA4 credentials beyond the confirmed External/Testing seven-day token-expiry boundary. | Publishing status was changed to `In production`. Remaining work is deferred: public `mumus.app` homepage/Privacy/Terms pages, domain ownership, Google branding/data-access verification, final post-publish Google Sheets and GA4 reconnects, automatic token renewal, and more-than-seven-day durability proof. | Yes for stable-connection and Google Sheets spend clean certification. |
-| Current Commit 2e.1: GA4 daily stale-row freshness guard | Completed for deployed stale detection/warning, post-reauthorization daily backfill, and UI Trends parity on the affected campaign/property. | `/api/campaigns/:id/ga4-daily` persisted daily rows that feed Overview/Insights trends. | Treat due missing completed dates as stale even when older stored rows exist; attempt a provider backfill for due missing dates; if provider refresh fails, return existing rows with explicit `providerRefreshWarning` and `refreshIsStale: true` instead of silently claiming freshness. | No for local code-scope certification; no for the deployed affected-campaign stale-warning/backfill path; yes for other campaign/property pairs and normal wall-clock scheduled-hour proof if those are requested. |
-| Current Commit 2e.2: GA4 timeseries reconnect response guard | Implemented and regression-covered; deployed operational provider-auth check is healthy after reconnect, but the deployed broken-token negative branch was not re-triggered. | `/api/campaigns/:id/ga4-timeseries` live provider path used for diagnosing/backfilling GA4 daily freshness. | Return HTTP `401`, `requiresReauthorization: true`, and a reconnect message for `AUTO_REFRESH_NEEDED` and `TOKEN_EXPIRED` instead of a generic HTTP `500`. | No for local code-scope certification after tests; no for restored deployed GA4 provider access; yes only for deployed negative-branch proof unless a future token-expired state naturally occurs. |
-| Current Commit 2e.3: GA4 Connected Platforms reconnect-required badge | Implemented, pushed in commit `3b253ef2`, Render deploy user-confirmed, and deployed operational `/ga4-metrics` auth health validated; deployed negative reconnect UI state remains not reproducible without a real token failure. | Campaign Detail `Connected Platforms` GA4 card. | Map the existing `/ga4-metrics` provider-auth failure into `requiresReauthorization`, render `Reconnect Required`, and expose the existing GA4 OAuth flow from the card without adding new provider calls or changing GA4 metrics/source/scheduler behavior. | No for local code-scope certification after tests; no for deployed healthy-provider operation; yes only for deployed negative reconnect UI proof until a real or controlled non-production reconnect-required state is available. |
-| Current Commit 2f: Google Sheets spend campaign/property portability | Completed for the validated second-campaign Google Sheets spend lifecycle: add/import, edit/update, refresh/reprocess including 2f.2 edit-preview self-heal, and delete/deactivate. | Campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418` / source `62772549-88dc-4cc5-bfe6-2e991d518ef5`. | Evidence proves the source lifecycle in this second campaign/property only. Do not repeat basic Google Sheets spend lifecycle validation unless a new bug or source shape is being tested. | No for local code-scope certification; no for this deployed second-campaign Google Sheets spend lifecycle; yes for other tabs/mappings if tab/mapping breadth certification is required, other campaigns/properties, normal wall-clock scheduler execution, reports/emails, and other source families. |
-| Current Commit 2f.1: GA4 to-date no-completed-window guard | Completed for deployed second-campaign endpoint validation. | `/api/campaigns/:id/ga4-to-date` for a selected campaign/property when the campaign start/created date is later than the latest completed GA4 reporting day. | Return scoped zero native GA4 totals with `noCompletedWindow: true` before calling the provider when `startDateUsed > endDateUsed`; preserve auth, campaign access, property scoping, imported revenue/spend endpoints, scheduler behavior, and source behavior. Deployed packet on `2026-07-03T12:17:39.484Z` passed for campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418`. | No for local code-scope certification; no for the deployed no-completed-window endpoint path; yes for future valid completed-day provider data and the remaining Current Commit 2f lifecycle evidence. |
-| Current Commit 2f.2: Google Sheets spend refresh edit-preview metadata guard | Completed for deployed source `62772549-88dc-4cc5-bfe6-2e991d518ef5`. | Google Sheets spend refresh/reprocess source metadata used by edit mode after `/spend/sheets/process`. | Persist fresh sheet preview metadata from the fetched rows during process/reprocess so edit mode no longer shows stale `mappingConfig.sheetSampleRows` after a successful refresh. Local tests passed; deployed self-heal packet on `2026-07-03T13:14:11.596Z` passed; user confirmed edit mode showed updated sheet data instead of stale `$198.75`. | No for local code-scope certification; no for this deployed second-campaign source refresh/edit-mode path; yes for other sources, other tabs/mappings, delete/deactivate, reports/emails, and normal wall-clock scheduler execution. |
-| Current Commit 2g.0: GA4 Overview validation runner | Implemented, committed, pushed, deployed, and browser-load validated by the user. | Repeated GA4 Overview endpoint evidence capture for source lifecycle actions. | Load `/ga4-overview-validation-runner.js` in a logged-in deployed browser session, then use `GA4OverviewValidation.before(...)`, one UI/provider action, and `GA4OverviewValidation.after(...)`. Use explicit `refreshSpend`/`refreshRevenue` only for run-now refresh validation. | Does not change or certify Overview behavior. It only reduces one-off console snippets and keeps future evidence packets consistent. |
-| Current Commit 2i: GA4 Overview automated validation pack | Implemented, pushed in commit `4cf7d0b8`, deployed, and user-validated in a logged-in deployed browser session on `2026-07-03T19:10:12.204Z`. | Repeatable GA4 Overview endpoint health, native GA4 daily/to-date/breakdown/table endpoints, source-backed revenue/spend endpoints, stale daily-row status, and optional saved-report snapshot/PDF smoke validation. | `GA4OverviewValidation.overviewPack(...)` returned `overallPass: true` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`: all 14 checked endpoints passed, no reauthorization was required, native GA4 to-date and breakdown endpoints passed, financial endpoints passed, daily history was not stale, landing pages and conversion events endpoints passed, and `failedEndpoints` was empty. | Closed for deployed automated Overview endpoint/freshness/source-total smoke evidence only. Does not mutate analytics data, source records, scheduler state, or calculations. Still does not prove UI pixel parity, PDF text/value parity, inbox delivery, untested source families, or future provider behavior by itself. |
-| Current Commit 2g: Google Sheets mapping variant automated pack | Closed for the configured deployed Google Sheets spend fixture on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`; unlisted mapping shapes remain unproven. | Configured Google Sheets revenue/spend tab and mapping-shape evidence for already-created fixture sources; not another basic lifecycle retest. | Deployed `GA4OverviewValidation.googleSheetsVariantPack(...)` on `2026-07-03T21:09:01.553Z` returned `overallPass: true`, `allVariantsPass: true`, no duplicate active Google Sheets revenue/spend signatures, spend breakdown `$678.95`, one spend source, and user-confirmed UI Total Spend/source modal parity at `$678.95`. | No for local code-scope certification; no for this configured Google Sheets spend fixture. Yes remains for unlisted Google Sheets mapping shapes and other source families. |
-| Current Commit 2h: Overview financial report/email propagation for source-backed spend | Closed for the recorded deployed report API/snapshot/PDF endpoint path, user-confirmed PDF value parity, and user-confirmed deployed report email delivery for the same GA4 Overview Report path. | Browser/downloaded report values, scheduled/server report values, and email delivery after source-backed spend changes. | Deployed `GA4OverviewValidation.reportPack({ createSnapshot: true })` returned `overallPass: true` on `2026-07-03T19:24:20.738Z` for report `c5a9ea60-3c0f-4809-98bf-7a5a0b118f9f` (`GA4 Overview Report`) and snapshot `5b8ea82b-628b-47a6-a354-afa49ceb68d7`; user inspected/downloaded the generated PDF and confirmed the visible values matched Overview; user then confirmed deployed report email delivery validation passed. | No for local Overview code-scope certification; no for this recorded deployed report snapshot/PDF/email path. Yes remains for future scheduled/test email deliveries outside this packet and for untested report variants. |
-| Current Commit 2j: Spend import/update response latency guard | Implemented, pushed in commit `29c67820`, deployed, and user-confirmed for timing/UI responsiveness. | Manual, LinkedIn Ads, CSV, and Google Sheets spend process routes that back Overview Total Spend and spend source provenance. | Keep spend source writes, spend records, and `campaign.spend` recalculation synchronous; move only the downstream GA4 KPI/Benchmark recompute to post-response background work for spend add/import and edit/update routes. | No for local code-scope certification after tests; no for the user-confirmed deployed timing/UI responsiveness gate. No exact elapsed-time SLA is certified. |
-| Current Commit 3: Production source-damage inventory | Closed for deployed target campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`; read-only inventory returned `overallPass: true`. | Production/staging inventory for orphan, duplicate, inactive, or platform-context-drifted revenue/spend records outside the already documented synthetic-GA4-revenue cleanup boundary. | Deployed `GA4OverviewValidation.sourceDamageInventory({ campaignId })` on `2026-07-03T20:10:30.499Z` returned HTTP `200`, `readonly: true`, `inventoryPass: true`, `overallPass: true`, and no orphan, inactive-source-record, duplicate-active-source, or unexpected-platform-context candidates for the target campaign. | No for local code-scope certification; no for this target-campaign production inventory. Yes remains for other campaigns/scopes not inventoried. |
-
-If any Current Commit discovers an actual Overview bug, lower the affected path to unproven, add the exact smallest runtime fix as the next Current Commit, and do not call that path production-ready until root cause, tests, docs, and any bounded cleanup are complete.
-
-### Current Commit 1 Root Cause And Smallest Safe Fix
-
-User-reported task:
-
-- proceed with Current Commit 1 by doing root cause analysis and implementing the smallest safe fix with no Overview side effects.
-
-Confirmed root cause:
-
-- Current Commit 1 was not a confirmed GA4 Overview calculation, scoping, scheduler, source, report, or UI bug.
-- The blocker was an evidence-capture gap: local code traces and regression tests covered the Overview model, but there was no repeatable provider/deployed validation packet for the same Overview value paths.
-- The existing `/api/campaigns/:id/ga4-diagnostics` endpoint was useful but narrow; it exposed breakdown provenance and warnings, not a complete Current Commit 1 packet across Summary inputs, financial inputs, Campaign Breakdown, Landing Pages, Conversion Events, source totals, and optional scheduler evidence.
-- Because the GA4 Overview page already calls diagnostics, broadening that runtime endpoint would add provider/API work to normal UI loads and increase regression risk.
-
-Smallest safe fix implemented:
-
-- Added `scripts/ga4_overview_current_commit_1_validation.ps1` as an opt-in evidence-capture harness.
-- The script defaults to GET-only requests against the existing deployed Overview endpoints and writes one JSON validation packet for review.
-- It does not change server routes, UI queries, calculations, source persistence, scheduler behavior, report generation, KPI/Benchmark behavior, alerts, notifications, or response contracts.
-- It has an explicit `-IncludeSchedulerRun` switch for the campaign-scoped scheduler validation POST route; that switch is off by default and must be treated as an intentional validation side effect if used.
-
-Validation performed for the fix:
-
-- PowerShell syntax check: `$null = [scriptblock]::Create((Get-Content -Path scripts/ga4_overview_current_commit_1_validation.ps1 -Raw))`
-- Whitespace check: `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md scripts/ga4_overview_current_commit_1_validation.ps1`
-
-Deployed endpoint evidence captured:
-
-- Commit deployed for validation: `dd81b14a Add GA4 Overview deployed validation harness`.
-- First unauthenticated validation attempt against `https://marketforensics.onrender.com` returned `401 Unauthorized` for every endpoint, proving the route boundary failed closed without a logged-in session.
-- Authenticated browser-console validation passed on `2026-07-01T12:21:31.789Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`.
-- `__overall.pass` was `true`; all checked endpoints returned HTTP `200` with no endpoint error: campaign, `ga4-daily`, `ga4-to-date`, `ga4-breakdown`, `ga4-landing-pages`, `ga4-conversion-events`, `ga4-diagnostics`, `revenue-to-date`, `revenue-breakdown`, `revenue-sources`, `spend-to-date`, `spend-breakdown`, and `spend-sources`.
-- Returned deployed endpoint facts included: daily row count `10`; to-date totals `666` sessions, `664` users, `84` conversions, `$14,069.58` GA4 revenue; breakdown totals `138` sessions, `138` users, `138` conversions, `$23,616.16` GA4 revenue; landing pages row count `6`; conversion events row count `1`; imported revenue `$600`; spend breakdown total `$0`.
-- Diagnostics returned `warningsCount: 1`. This does not prove a code failure, but it remains a provider/configuration data-quality caveat because the deployed breakdown had conversions equal to users.
-
-Current Commit 2i automated deployed Overview pack captured on `2026-07-03T19:10:12.204Z`:
-
-- Runner version `2026-07-03.2`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- Checks passed: endpoint availability, no reauthorization required, GA4 to-date endpoint, GA4 breakdown endpoint, financial endpoints, nonnegative source counts, GA4 daily endpoint, daily freshness (`refreshIsStale: false`), landing pages endpoint, and conversion events endpoint.
-- Financial summary: imported revenue to-date `$600`, revenue breakdown total `$600`, revenue source count `1`, spend to-date `$0`, spend breakdown total `$678.95`, spend source count `1`.
-- GA4 summary: no completed-window guard not active (`noCompletedWindow: false`), to-date GA4 revenue `$18,617.57`, breakdown GA4 revenue `$28,164.15`, daily row count `12`, latest daily row `2026-07-02`, data-through date `2026-07-02`, landing page row count `6`, conversion event row count `1`, and `failedEndpoints: []`.
-- Certification boundary: this is deployed automated endpoint/freshness/source-total smoke evidence only. It does not prove UI pixel parity, PDF text/value parity, inbox delivery, untested source families, or future provider behavior.
-
-Current Commit 2h deployed report snapshot/PDF smoke pack captured on `2026-07-03T19:24:20.738Z`:
-
-- Runner version `2026-07-03.2`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, platform `google_analytics`, report `c5a9ea60-3c0f-4809-98bf-7a5a0b118f9f`, report name `GA4 Overview Report`, report type `overview`, snapshot `5b8ea82b-628b-47a6-a354-afa49ceb68d7`, `sendTest: false`, `overallPass: true`.
-- Checks passed: reports endpoint, report resolution, snapshot creation, snapshots endpoint, PDF endpoint, and the runner's PDF content-type/byte smoke check as implied by `overallPass: true` for the effective check set.
-- User-confirmed PDF validation: the generated/downloaded PDF was inspected and its visible values matched Overview for this report snapshot.
-- User-confirmed email delivery validation: after the PDF parity packet, the user confirmed deployed report email delivery validation passed for the GA4 Overview Report path. This is inbox/report-delivery evidence for the recorded packet, not provider-event proof for every future send.
-
-Current Commit 3 deployed read-only source-damage inventory captured on `2026-07-03T20:10:30.499Z`:
-
-- Runner version `2026-07-03.3`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, stage `ga4-overview-source-damage-inventory`, endpoint HTTP `200`, `readonly: true`, `inventoryPass: true`, `overallPass: true`.
-- Certification impact returned by the deployed route: no orphan, inactive-source-record, duplicate-active-source, or unexpected-platform-context candidates were found for this campaign inventory.
-- Finding groups were empty for orphan revenue records, orphan spend records, inactive revenue-source records, inactive spend-source records, duplicate active revenue sources, duplicate active spend sources, unexpected revenue platform contexts, and unexpected spend platform contexts.
-- Visible summary fields in the pasted packet: `revenueSourceCount: 4`, `activeRevenueSourceCount: 1`, `inactiveRevenueSourceCount: 3`, `revenueRecordCount: 2`, and `spendSourceCount: 4`. The collapsed browser object was not expanded for every remaining summary count, so do not invent omitted counts in future answers.
-- Certification boundary: this closes Current Commit 3 only for the recorded target-campaign inventory. The route is campaign-access guarded and read-only; it does not prove other campaigns unless run for them, and it did not perform cleanup, deactivate sources, refresh providers, recompute metrics, or send reports/emails.
-
-Current Commit 2g deployed Google Sheets mapping variant pack captured on `2026-07-03T21:09:01.553Z`:
-
-- Commit deployed for validation: `4281bf78 Add GA4 Overview Google Sheets variant pack`.
-- Runner version `2026-07-03.4`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, stage `ga4-overview-google-sheets-variant-pack`, date range `30days`, `overallPass: true`.
-- Checks passed: endpoints passed, variants configured, all configured variants passed, no duplicate active Google Sheets revenue signatures, and no duplicate active Google Sheets spend signatures.
-- Fixture financial state: revenue breakdown total `$600`, revenue source count `1`, Google Sheets revenue source count `0`, spend breakdown total `$678.95`, and spend source count `1`.
-- User-confirmed UI parity: Total Spend card and Spend Sources modal showed `$678.95`.
-- Certification boundary: this closes Current Commit 2g only for the configured deployed Google Sheets spend fixture. It does not prove every possible Google Sheets tab/mapping shape, live Google Sheets cell-by-cell contents, refresh/delete behavior, UI pixels beyond the user-confirmed card/modal parity, or any other source family.
-What remains unproven externally:
-
-- Visible UI screenshot parity was not separately recorded in this file; the authenticated evidence came from the browser console using the deployed app session.
-- Deployed report API/snapshot/PDF endpoint smoke evidence, user-confirmed PDF value parity, and user-confirmed report email delivery are recorded for Current Commit 2h on the listed `GA4 Overview Report` path. This does not prove other report types, future report snapshots, or future scheduled/test email deliveries.
-- Future scheduled/test email deliveries outside the recorded GA4 Overview Report packet remain unproven until paired with provider delivery events or actual inbox receipt plus attachment review.
-- Deployed scheduler timer execution remains separate from endpoint availability; the validation did not use `-IncludeSchedulerRun`.
-- If later deployed validation shows a value mismatch, lower only the affected Overview path to unproven and add the exact runtime fix as the next Current Commit.
-
-### Current Commit 2 Root Cause And Smallest Safe Fix
-
-User-reported task:
-
-- proceed with Current Commit 2 by doing root cause analysis and implementing the smallest safe fix with no Overview side effects.
-
-Confirmed root cause:
-
-- Current Commit 2 was not a confirmed GA4 Overview source lifecycle code bug.
-- The blocker was an evidence-capture gap: local traces show guarded source endpoints, active-source joins, source ownership checks, and source-modal refetch paths, but there was no repeatable before/after snapshot for real provider-backed source-family lifecycle validation.
-- Current Commit 1's deployed endpoint packet proved the current source endpoints are reachable for one campaign/property, but it did not prove add/import, edit, refresh, or delete lifecycle behavior for each revenue/spend source family.
-- Automating provider add/edit/delete/refresh from the repo would be higher risk because those actions are intentionally mutative and provider-specific.
-
-Smallest safe fix implemented:
-
-- Added `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` as an opt-in source lifecycle evidence harness.
-- The script is GET-only and captures sanitized source IDs, source types, source counts, revenue/spend totals, breakdown totals, source-modal provenance inputs, and optional before/after comparison deltas.
-- It does not create, edit, refresh, delete, recompute, or mutate campaign, source, report, KPI, Benchmark, alert, notification, scheduler, or provider state.
-- Lifecycle actions must still be performed manually through the intended deployed app/provider flow; the script only captures the evidence before and after one action.
-
-Validation performed for the fix:
-
-- PowerShell syntax check: `$null = [scriptblock]::Create((Get-Content -Path scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1 -Raw))`
-- Trailing whitespace scan: `Select-String -Path scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1 -Pattern '[ \t]+$'`
-- Whitespace check: `git diff --check -- GA4/OVERVIEW_PRODUCTION_READINESS.md`
-- Unauthenticated deployed smoke run: `scripts/ga4_overview_current_commit_2_source_lifecycle_snapshot.ps1` wrote `C:\tmp\ga4-overview-cc2-source-lifecycle-unauthenticated.json` and captured `401 Unauthorized` for each checked endpoint, proving the harness executes and the deployed route boundary fails closed without a logged-in session.
-
-Authenticated baseline capture attempt received on `2026-07-01T13:04:07.433Z`:
-
-- The pasted attachment was exactly `5000` bytes and ended mid-`mappingKeys` array, so it is not a complete parseable evidence packet and cannot close the Current Commit 2 baseline gate.
-- Visible facts from the partial packet: campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, date range `30days`, `overallPass: true`, and HTTP `200` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Visible revenue facts from the partial packet: `totalToDate` `$600`, `breakdownTotal` `$600`, one active `csv` revenue source with displayed ID prefix `d4421cb9-829`.
-- Spend source details, full source identity, and any after-action comparison were missing from the truncated packet; do not treat this as provider-family lifecycle proof.
-- Follow-up harness adjustment: mapping config output is now bounded to `mappingKeyCount`, `mappingKeySample`, and `mappingKeysTruncated` so future evidence packets can remain compact.
-
-Complete authenticated baseline captured on `2026-07-01T13:09:35.415Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Revenue baseline: `totalToDate` `$600`, `breakdownTotal` `$600`, one active CSV revenue source, source ID `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, source amount `$600`.
-- CSV revenue mapping baseline: `hasMappingConfig: true`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`; captured sample keys included `allocationMethod`, `campaignColumn`, `campaignDisplayName`, `campaignMappings`, `campaignValue`, `campaignValueRevenueTotals`, `campaignValues`, `conversionValueColumn`, `csvHeaders`, `csvRowCount`, `csvSampleRows`, and `csvStoredRevenueRows`.
-- Spend baseline: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
-- Certification boundary: this closes the Current Commit 2 baseline snapshot for this campaign only. It does not close CSV revenue add/import, edit/update, refresh/reprocess, delete/deactivate, source-modal visual parity, downstream card parity, scheduler/report propagation, or any non-CSV source family lifecycle action.
-
-CSV revenue add/import after-snapshot captured on `2026-07-01T13:36:15.567Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Revenue after-add snapshot: `totalToDate` `$1,200`, `breakdownTotal` `$1,200`, `sourceCount: 2`, both active CSV revenue sources.
-- Persisted baseline source remained active: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, amount `$600`.
-- New source appeared: `8ba9a131-526c-4e59-a751-c91b92d78b8b`, amount `$600`.
-- Spend remained unchanged: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
-- Endpoint-level source identity/additivity result: pass for CSV revenue add/import on this campaign if the imported test CSV was intentionally expected to contribute `$600`; otherwise amount-mapping correctness remains unproven and the CSV import should be investigated before closing the action.
-- User-reported UI validation passed after the add/import: GA4 Overview showed `Total Revenue` `$1,200`, the Revenue Sources modal/list showed two CSV sources, both sources showed `$600`, and `Total Spend` remained `$0` or empty/no spend.
-- UI validation boundary: this closes visible Total Revenue, revenue source-modal/list, and Total Spend parity for CSV revenue add/import on this campaign by user report. Screenshot evidence was not captured in this file.
-- User-reported derived-card observation after the add/import: Profit, ROAS, ROI, and CPA had no displayed value because no spend source was imported for this campaign.
-- Derived-card validation boundary: this is not evidence of a CSV revenue add/import failure, but the spend-dependent derived card behavior is not certified from this revenue-only action. Validate those cards during a separate spend-source add/import action or a controlled campaign state with known revenue and spend.
-
-CSV revenue source identity check captured after add/import:
-
-- Source count remained `2`.
-- Row 1 was source ID `8ba9a131-526c-4e59-a751-c91b92d78b8b`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
-- Row 2 was source ID `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
-- Safety caveat: both CSV revenue sources have the same visible display name and amount, so UI-only row selection is ambiguous unless the source modal order is verified immediately before clicking edit. Do not edit/delete until the intended source row is clearly identified.
-
-CSV revenue edit/update partial source-list evidence captured:
-
-- Source count remained `2` after editing the intended disposable CSV source.
-- Edited source ID persisted: `8ba9a131-526c-4e59-a751-c91b92d78b8b`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$1,200`.
-- Original source remained active and unchanged in the source list: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, type `csv`, active `true`, amount `$600`.
-- Certification boundary: this is partial source-list evidence only. It does not include endpoint status, revenue total, revenue breakdown total, spend unchanged status, source-modal UI parity, or the expected edited CSV amount. If `$1,200` was not the intended edited amount, CSV edit/update amount correctness is unproven and must be investigated before closing this lifecycle action.
-
-CSV revenue edit/update complete endpoint after-snapshot captured on `2026-07-01T14:09:12.691Z`:
-
-- User confirmed the edited disposable CSV source was intended to become `$1,200`.
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Revenue after-edit snapshot: `totalToDate` `$1,800`, `breakdownTotal` `$1,800`, `sourceCount: 2`, both active CSV revenue sources.
-- Edited source ID persisted and updated in place: `8ba9a131-526c-4e59-a751-c91b92d78b8b`, display name `Test_rev_spend.csv`, amount `$1,200`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`.
-- Original baseline source remained active and unchanged: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, amount `$600`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`.
-- Spend remained unchanged: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
-- Endpoint-level edit/update result: pass for CSV revenue edit/update source identity, no duplicate source creation, intended source amount replacement, total/breakdown reconciliation, and unrelated source preservation on this campaign.
-- Remaining gate for this CSV revenue edit/update action: source-modal/list UI parity after the edit is not captured in this endpoint packet.
-
-CSV revenue edit/update UI screenshot evidence received after edit:
-
-- User-provided screenshots showed the GA4 Overview Revenue card displaying `Total Revenue` `$25,416.16` with `Sources (3)`.
-- User-provided Revenue Sources modal screenshot showed native `GA4 Revenue` `$23,616.16`, edited CSV source `Test_rev_spend.csv` `$1,200.00`, and original CSV source `Test_rev_spend.csv` `$600.00`.
-- UI reconciliation: `$23,616.16` native GA4 revenue + `$1,200.00` edited CSV revenue + `$600.00` original CSV revenue = `$25,416.16` displayed Total Revenue.
-- User stated the UI looked correct.
-- UI parity result: pass for CSV revenue edit/update visible Total Revenue, Revenue Sources modal/list, native GA4 plus imported CSV additivity, edited source amount, and original source preservation on this campaign.
-- Certification boundary: this closes CSV revenue edit/update for the traced endpoint and visible Overview UI paths on this campaign. It does not close CSV revenue refresh/reprocess, delete/deactivate, spend-dependent derived cards, scheduler/report propagation, or any non-CSV source-family lifecycle action.
-
-CSV revenue delete/deactivate endpoint after-snapshot captured on `2026-07-01T14:18:22.136Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Revenue after-delete snapshot: `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`.
-- Deleted disposable source no longer appeared in the source list: `8ba9a131-526c-4e59-a751-c91b92d78b8b`.
-- Original baseline source remained active and unchanged: `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, display name `Test_rev_spend.csv`, amount `$600`, `mappingKeyCount: 22`, `mappingKeysTruncated: true`.
-- Spend remained unchanged: `totalToDate: null`, `breakdownTotal` `$0`, `sourceCount: 0`, no spend sources.
-- Endpoint-level delete/deactivate result: pass for CSV revenue delete/deactivate source removal, total/breakdown recalculation, original source preservation, and spend non-interference on this campaign.
-- User-reported UI validation passed after delete/deactivate: GA4 Overview showed `Total Revenue` `$24,216.16`, `Sources (2)`, Revenue Sources modal/list showed native `GA4 Revenue` `$23,616.16` and the remaining CSV source `$600.00`, the deleted `$1,200.00` CSV source was absent, and `Total Spend` remained `$0` or empty/no spend.
-- UI reconciliation after delete/deactivate: `$23,616.16` native GA4 revenue + `$600.00` remaining CSV revenue = `$24,216.16` displayed Total Revenue.
-- UI parity result: pass for CSV revenue delete/deactivate visible Total Revenue, Revenue Sources modal/list, source removal, original source preservation, and spend non-interference on this campaign by user report.
-- Certification boundary: this closes CSV revenue delete/deactivate for the traced endpoint and visible Overview UI paths on this campaign. It does not close CSV revenue refresh/reprocess, spend-dependent derived cards, scheduler/report propagation, or any non-CSV source-family lifecycle action.
-
-CSV revenue refresh/reprocess narrow trace conclusion:
-
-- UI trace in `client/src/components/AddRevenueWizardModal.tsx` shows CSV revenue is intentionally not auto-refreshed: the wizard states `CSV data won't auto-update` and `Requires manual re-upload to update`.
-- Edit-mode UI trace shows the CSV update path is manual re-upload/reprocess through the existing edit wizard: `To edit a CSV import, please re-upload the same (or updated) file. We'll re-process revenue using your updated mappings after preview.`
-- Route trace in `server/routes-oauth.ts` found CSV revenue preview/process routes only: `/api/campaigns/:id/revenue/csv/preview` and `/api/campaigns/:id/revenue/csv/process`.
-- Targeted search found no distinct CSV revenue `refresh` or `reprocess` endpoint or Overview UI refresh button for CSV revenue sources.
-- Server edit/reprocess behavior for CSV revenue is handled by `/api/campaigns/:id/revenue/csv/process` when `mapping.sourceId` is provided: it validates campaign/source/platform ownership, updates the existing source, deletes old records for that source, and recreates records from the uploaded or stored CSV rows.
-- Certification conclusion for this campaign/source family: CSV revenue refresh/reprocess is not a separate product lifecycle action. The applicable refresh/reprocess behavior is manual edit/re-upload, which was covered by the CSV revenue edit/update evidence above.
-- Certification boundary: this conclusion applies only to CSV revenue in GA4 Overview. It does not mark Google Sheets, Shopify, HubSpot, Salesforce, ad-platform spend, CSV spend, or scheduler/provider refresh paths as not applicable.
-
-CSV spend add/import endpoint after-snapshot captured on `2026-07-01T14:45:46.610Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Revenue stayed unchanged from the post-delete baseline: imported revenue `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`, remaining active CSV revenue source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` amount `$600`.
-- Spend after-add snapshot: `spendBreakdownTotal` `$2,020`, `sourceCount: 1`, active CSV spend source `c3611c0f-4bbf-47b9-8615-93e4b140385e`, display name `Test_rev_spend.csv`, `mappingKeyCount: 17`, `mappingKeysTruncated: true`.
-- Spend response-shape caveat: the validation packet showed `spend.totalToDate: null` and source `amount: null`; local UI trace shows GA4 Overview financial spend intentionally prefers `spendBreakdownResp.totalSpend` over `spendToDateResp.spendToDate` because `spend-to-date` can read stale/zero campaign metadata. This is not by itself proof of a spend add/import failure.
-- Endpoint-level add/import result: pass for CSV spend source creation, spend breakdown materialization, revenue non-interference, and endpoint availability on this campaign if the imported test CSV was intentionally expected to contribute `$2,020`; otherwise amount-mapping correctness remains unproven and the CSV spend import should be investigated before closing this lifecycle action.
-- User-reported UI validation passed after CSV spend add/import: visible Overview Total Spend, Spend Sources modal/list, revenue non-interference, and spend-dependent card availability matched the requested checklist.
-- UI validation boundary: this closes visible Total Spend, Spend Sources modal/list, and revenue non-interference for CSV spend add/import on this campaign by user report. Exact Profit, ROAS, ROI, and CPA displayed values were not pasted in this file.
-- Certification boundary: CSV spend add/import remains closed for endpoint source creation, spend breakdown materialization, visible spend/source UI, and revenue non-interference on this campaign if `$2,020` was the intended imported spend total. If `$2,020` was not the intended spend amount, amount-mapping correctness must be lowered to unproven and investigated.
-
-CSV spend edit/update endpoint after-snapshot captured on `2026-07-01T15:04:12.170Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Revenue remained unchanged: imported revenue `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`, remaining active CSV revenue source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` amount `$600`.
-- Spend after-edit snapshot: `spendBreakdownTotal` `$3,120`, `sourceCount: 1`, active CSV spend source ID persisted `c3611c0f-4bbf-47b9-8615-93e4b140385e`, display name `Test_rev_spend.csv`, `mappingKeyCount: 17`, `mappingKeysTruncated: true`.
-- Spend response-shape caveat persisted: `spend.totalToDate: null` and source `amount: null`; GA4 Overview financial spend uses `spendBreakdownResp.totalSpend` for this path.
-- Endpoint-level edit/update result: pass for CSV spend source identity preservation, no duplicate source creation, spend breakdown recalculation, revenue non-interference, and endpoint availability on this campaign if the edited CSV was intentionally expected to contribute `$3,120`; otherwise amount-mapping correctness remains unproven and the CSV spend edit should be investigated before closing this lifecycle action.
-- UI validation passed on `2026-07-01`: user confirmed the Overview UI was correct after the CSV spend edit/update, including the expected `$3,120` spend state and visible parity for the affected Overview financial display.
-- Certification boundary: CSV spend edit/update is closed only for this deployed campaign/source path after endpoint evidence plus user UI validation. This does not certify CSV spend refresh/reprocess, CSV spend delete/deactivate, other source families, other campaigns/properties, or provider-backed deployed behavior.
-
-CSV spend refresh/reprocess narrow trace conclusion:
-
-- Product-doc trace: `GA4/FINANCIAL_SOURCES.md` states CSV spend does not auto-refresh on a schedule; `GA4/REFRESH_AND_PROCESSING.md` states `Upload CSV` sources do not participate in scheduled daily source refresh and update only when the user imports or edits the CSV source.
-- UI trace: `client/src/components/AddSpendWizardModal.tsx` shows `Upload CSV` spend as manual re-upload to update, edit mode says to re-upload the same or updated file to re-process spend, and the GA4 Overview Spend Sources modal in `client/src/pages/ga4-metrics.tsx` exposes edit and remove actions but no separate refresh action.
-- API trace: `server/routes-oauth.ts` exposes CSV spend preview/process routes only (`/api/campaigns/:id/spend/csv/preview` and `/api/campaigns/:id/spend/csv/process`) plus the shared spend-source delete route. No distinct CSV spend refresh endpoint was found.
-- Server edit/reprocess behavior: `/api/campaigns/:id/spend/csv/process` handles CSV spend reprocessing when `mapping.sourceId` is provided; it validates the active CSV spend source for the campaign/platform context, updates that source, deletes old spend records for that source, materializes replacement spend records from uploaded or stored rows, recalculates campaign spend, and triggers GA4 KPI/Benchmark recompute.
-- Scheduler trace: `server/auto-refresh-scheduler.ts` reprocesses Google Sheets spend, LinkedIn spend, and `ad_platforms` spend, but the traced scheduler filters spend sources by `google_sheets`, `linkedin_api`, and `ad_platforms`; no CSV spend scheduler branch was found.
-- Certification conclusion for this campaign/source family: CSV spend refresh/reprocess is not a separate product lifecycle action. The applicable user-initiated reprocess behavior is manual CSV edit/re-upload, or stored-row recalculation when only eligible mapping selections change, through the CSV spend edit/update flow already validated above.
-- Certification boundary: this conclusion applies only to CSV spend in GA4 Overview. It does not certify CSV spend delete/deactivate, Google Sheets spend refresh, ad-platform spend refresh, provider-backed refresh behavior, other source families, other campaigns/properties, scheduler timer execution, or report/email propagation.
-
-CSV spend delete/deactivate endpoint after-snapshot captured on `2026-07-01T15:25:26.753Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, target CSV spend source `c3611c0f-4bbf-47b9-8615-93e4b140385e`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Before delete: `spendBreakdownTotal` `$3,120`, `spendSourceCount: 1`, imported revenue `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`.
-- After delete: `spendToDate` `$0`, `spendBreakdownTotal` `$0`, `spendSourceCount: 0`, target source absent from spend sources and spend breakdown.
-- Revenue non-interference: imported revenue remained `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`; GA4 revenue remained `ga4ToDateRevenue` `$14,069.58` and `ga4BreakdownRevenue` `$23,616.16`.
-- Automated checks all passed: baseline found, endpoints pass, target removed from spend sources, target removed from breakdown, spend dropped by expected `$3,120`, spend source count decremented, revenue unchanged, and GA4 revenue unchanged.
-- Endpoint-level delete/deactivate result: pass for target source removal, spend record removal from Overview totals/provenance, revenue non-interference, GA4 native revenue non-interference, and endpoint availability on this campaign.
-- UI validation passed on `2026-07-01`: user confirmed the Overview UI was correct after delete, including removed CSV spend source visibility, spend dropping to `$0`/unavailable, revenue staying correct, and spend-dependent derived cards returning to blank/unavailable because spend is gone.
-- Certification boundary: CSV spend delete/deactivate is closed only for this deployed campaign/source path after endpoint evidence plus user UI validation. This does not certify other source families, other campaigns/properties, provider-backed refresh/delete behavior, scheduler timer execution, or report/email propagation.
-
-Google Sheets revenue add/import endpoint after-snapshot captured on `2026-07-01T15:52:25.333Z`:
-
-- RCA: this was a validation-expectation error, not a confirmed Google Sheets revenue import bug. The browser check was configured with `expectedAddedRevenue: 700`, but the user confirmed `$30,300` was the correct imported amount for the selected Google Sheets tab/column. The server path sums every positive value in the selected revenue column for the fetched tab range, optionally filtered by campaign mapping; that behavior matches the traced add/import route.
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, date range `30days`, stage `after-google-sheets-revenue-add`.
-- Baseline before add: imported revenue `totalToDate` `$600`, `breakdownTotal` `$600`, `sourceCount: 1`, existing CSV revenue source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, no Google Sheets revenue source IDs, spend `$0`, GA4 to-date revenue `$14,069.58`, GA4 breakdown revenue `$23,616.16`.
-- After add: imported revenue `revenueToDate` `$30,900`, `revenueBreakdownTotal` `$30,900`, `revenueSourceCount: 2`, one added source ID `dd5dc470-814d-42b9-af19-4b53ac7d08f8`, added source type `google_sheets`, added amount `$30,300`.
-- Non-target values stayed stable: spend stayed `$0` with `spendSourceCount: 0`; GA4 to-date revenue stayed `$14,069.58`; GA4 breakdown revenue stayed `$23,616.16`.
-- Endpoint-level checks that passed independent of the original wrong expected amount: baseline found, endpoints pass, exactly one revenue source added, added source is Google Sheets, spend unchanged, and GA4 revenue unchanged.
-- Amount correction: with the user-confirmed expected amount of `$30,300`, the added source amount and imported revenue delta reconcile: `$600` baseline imported revenue + `$30,300` Google Sheets revenue = `$30,900` after-add imported revenue.
-- Endpoint-level add/import result: pass for Google Sheets revenue source creation, additive imported revenue, total/breakdown reconciliation, spend non-interference, GA4 native revenue non-interference, and endpoint availability on this campaign/source path.
-- UI validation passed on `2026-07-01`: user confirmed the Overview UI was correct after Google Sheets revenue add/import, including Total Revenue, Revenue Sources modal/list display of the `$30,300` Google Sheets source, and preservation of the existing CSV revenue source.
-- Certification boundary: Google Sheets revenue add/import is closed only for this deployed campaign/source path after endpoint evidence plus user UI validation. This does not certify Google Sheets revenue edit/update, refresh/reprocess, delete/deactivate, other campaigns/properties, other Google Sheets tabs/mappings, scheduler timer execution, or report/email propagation.
-
-Google Sheets revenue edit/update endpoint after-snapshot captured on `2026-07-01T16:13:53.064Z`:
-
-- RCA: this was a validation-expectation error, not a confirmed Google Sheets revenue edit/update bug. The browser check was configured with `expectedUpdatedRevenue: 31300`, but the user confirmed `$54,200` was the correct updated amount for the selected Google Sheets tab/column.
-- Target source `dd5dc470-814d-42b9-af19-4b53ac7d08f8`, stage `after-google-sheets-revenue-edit`.
-- Baseline before edit: imported revenue `totalToDate` `$30,900`, `breakdownTotal` `$30,900`, `sourceCount: 2`, source IDs `dd5dc470-814d-42b9-af19-4b53ac7d08f8` and `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`, target Google Sheets amount `$30,300`, spend `$0`.
-- After edit: imported revenue `revenueToDate` `$54,800`, `revenueBreakdownTotal` `$54,800`, `sourceCount: 2`, same source IDs persisted, target source still present, target source type `google_sheets`, target amount `$54,200`, spend stayed `$0`.
-- Endpoint-level checks that passed independent of the original wrong expected amount: baseline found, endpoints pass, same source ID persisted, target is Google Sheets, no source count change, no duplicate source IDs, and spend unchanged.
-- Amount correction: with the user-confirmed expected amount of `$54,200`, the target source amount and imported revenue total reconcile: `$54,200` updated Google Sheets revenue + `$600` existing CSV revenue = `$54,800` after-edit imported revenue.
-- Endpoint-level edit/update result: pass for stable Google Sheets source identity, in-place update without duplicate source creation, total/breakdown reconciliation, CSV source preservation, spend non-interference, and endpoint availability on this campaign/source path.
-- UI validation passed on `2026-07-01`: user-provided Overview screenshots showed Total Revenue `$78,416.16` and Revenue Sources modal rows `GA4 Revenue` `$23,616.16`, `Google Sheets revenue` `$54,200.00`, and `Test_rev_spend.csv` `$600.00`; these reconcile exactly to the displayed Total Revenue and prove no duplicate Google Sheets source appeared in the visible modal.
-- Certification boundary: Google Sheets revenue edit/update is closed only for this deployed campaign/source path after endpoint evidence plus user UI validation. This does not certify Google Sheets revenue refresh/reprocess, delete/deactivate, other campaigns/properties, other Google Sheets tabs/mappings, scheduler timer execution, or report/email propagation.
-
-Google Sheets revenue refresh/reprocess validation helper added in Current Commit 2a:
-
-- RCA: this was an evidence-speed and blast-radius problem, not a confirmed Google Sheets revenue calculation bug. The normal deployed daily auto-refresh scheduler is the production refresh/reprocess path, but waiting for the timer blocks the current evidence packet; the existing `/api/campaigns/:id/google-sheets-refresh` route refreshes raw cached Google Sheets rows and is not proof that GA4 Overview revenue records were reprocessed.
-- Smallest safe fix implemented: added `/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now`, guarded by campaign access and Google Sheets rate limiting, which calls only the scheduler Google Sheets revenue source reprocess helper for the requested active `google_sheets` revenue source ID.
-- Side-effect boundary: the validation route does not run the full daily auto-refresh cycle, unrelated providers, alerts, emails, reports, or unrelated campaigns. It mutates only the target source's materialized revenue records and `lastSyncedAt` metadata through the same source identity path used by the scheduler helper.
-- Deployed run-now endpoint evidence captured on `2026-07-01T17:10:02.050Z`: trigger returned HTTP `200` with `success: true` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, source `dd5dc470-814d-42b9-af19-4b53ac7d08f8`, and platform context `ga4`.
-- Corrected source reconciliation evidence captured on `2026-07-01T17:12:49.833Z`: all checked endpoints returned HTTP `200`; imported revenue `totalToDate` `$85,100`; revenue breakdown total `$85,100`; source count `2`; Google Sheets source count `1`; target source still present; target source amount `$84,500`; target breakdown amount `$84,500`; CSV revenue remained `$600`; spend breakdown remained `$0`.
-- Endpoint-level refresh/reprocess result: pass for run-now trigger availability, stable Google Sheets source identity, no duplicate Google Sheets revenue source, refreshed source amount matching expected `$84,500`, imported revenue reconciliation (`$84,500` Google Sheets + `$600` CSV = `$85,100`), and spend non-interference on this campaign/source path.
-- UI validation passed on `2026-07-01`: user confirmed visible Overview UI parity after refresh/reprocess, including the refreshed `$84,500` Google Sheets revenue source, no duplicate Google Sheets revenue source, preserved `$600` CSV revenue source, and Total Revenue/Revenue Sources reconciliation.
-- Certification boundary: Google Sheets revenue refresh/reprocess is closed only for this deployed campaign/source run-now path after endpoint evidence plus user UI validation. This deployed run-now evidence does not prove the daily timer fired by itself, and it does not certify Google Sheets revenue delete/deactivate, other campaigns/properties, other Google Sheets tabs/mappings, scheduler timer execution, or report/email propagation.
-
-Google Sheets revenue delete/deactivate false-failure finding in Current Commit 2b:
-
-- RCA: the user observed a `Delete failed` UI response for Google Sheets revenue source `dd5dc470-814d-42b9-af19-4b53ac7d08f8`, then later observed that the source was actually deleted. Local route trace shows the delete route removes the revenue source and records before awaiting `recomputeCampaignDerivedValues`; inside that helper ordinary KPI recompute and alert checks were guarded, but GA4 KPI/Benchmark recompute was unguarded. A downstream GA4 recompute exception could therefore convert a completed destructive source mutation into a failed DELETE response.
-- Smallest safe fix implemented: guard `recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update")` inside `recomputeCampaignDerivedValues`, log the warning, and continue the source endpoint response. This preserves source mutation semantics and does not change revenue calculations, spend calculations, campaign/property/source scoping, response shape, scheduler behavior, email/report behavior, or API ownership rules.
-- Evidence boundary: this fixes the false-failure response class locally and is covered by `server/ga4-source-lifecycle-recompute-regression.test.ts`. It does not prove the deployed fixed route until Render deploys the commit and a delete action returns success while after-delete endpoint/UI evidence confirms the intended source removal and non-target source preservation.
-- Current source boundary: the already-attempted source may now be removed in the deployed database, but that eventual removal is not proof that the first DELETE response was correct. If the original source is already gone, capture read-only after-delete state for that source and use one additional disposable Google Sheets revenue source to prove the corrected deployed delete response path.
-- Deployed fixed-response endpoint evidence captured on `2026-07-01T18:28:32.608Z` for disposable Google Sheets revenue source `32661325-d2a5-404f-a898-2c84e4275809`: DELETE response returned HTTP `200`, `success: true`, elapsed `2845ms`, and no error. Before delete, imported revenue `revenueToDate` and `revenueBreakdownTotal` were `$31,600`, source count `2`, Google Sheets source count `1`, and target amount `$31,000`. After delete, imported revenue `revenueToDate` and `revenueBreakdownTotal` were `$600`, source count `1`, Google Sheets source count `0`, target was absent from sources and breakdown, and all endpoint checks passed.
-- Certification boundary after this evidence: Google Sheets revenue delete/deactivate is closed only for this deployed campaign/source path after fixed-response endpoint evidence plus user UI validation. This does not certify other campaigns/properties, other Google Sheets tabs/mappings, scheduler timer execution, report/email propagation, or other source families.
-- UI validation passed on `2026-07-01`: user-provided screenshots showed Total Revenue `$24,216.16` and Revenue Sources modal rows `GA4 Revenue` `$23,616.16` plus `Test_rev_spend.csv` `$600.00`; these reconcile exactly and prove the deleted Google Sheets row is no longer visible.
-
-Revenue import/update response latency finding in Current Commit 2c:
-
-- RCA: GA4 revenue source process routes for manual/CSV/Google Sheets/CRM/ecommerce sources saved the source definition and materialized records, then awaited `recomputeCampaignDerivedValues` before returning success. For GA4 platform context that helper synchronously awaited the heavyweight GA4 KPI/Benchmark daily/history job and alert reconciliation. That job may fetch or backfill GA4 daily data, read GA4 to-date totals, update KPI and Benchmark history/current values, and run alert checks. Therefore the user could wait on downstream analytics work after the revenue source records were already durable.
-- Smallest safe fix implemented: for GA4 revenue source saves, `recomputeCampaignDerivedValues` now refreshes source-backed campaign current values synchronously with `refreshCampaignCurrentValuesForCampaign(campaignId)`, then schedules the heavier GA4 KPI/Benchmark and alert reconciliation through `setImmediate`. Non-GA4 revenue contexts keep the existing synchronous `refreshKPIsForCampaign` plus alert behavior.
-- Side-effect boundary: the fix does not change revenue calculations, spend calculations, source materialization, source identity, campaign/property/source scoping, response shape, scheduler behavior, email/report behavior, or API ownership checks. Overview Total Revenue and source modal paths still read the committed revenue records immediately after the process response.
-- Certification boundary: local code and tests prove the response no longer awaits the heavyweight GA4 job. Deployed latency timing was user-confirmed as validated on `2026-07-01`, but no exact elapsed-time packet was pasted into this file, so this evidence closes the practical deployed timing gate without certifying a numeric SLA. A short delay can still exist before downstream GA4 KPI/Benchmark history and alerts finish reconciling; that is explicit background work rather than a blocking import/update step.
-- User-confirmed validation boundary: Current Commit 2c is closed for the deployed latency behavior observed by the user. It does not prove future provider latency, other source families, or every possible sheet/tab/mapping size.
-
-Google Sheets spend add/import endpoint after-snapshot captured on `2026-07-01T19:00:36.141Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, stage `after-google-sheets-spend-add`, expected added spend `$240`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, `spendSources`, `ga4ToDate`, and `ga4Breakdown`.
-- Spend after add/import: `spendToDate` `$240`, `spendBreakdownTotal` `$240`, `spendSourceCount: 1`, `googleSheetsSpendSourceCount: 1`, active Google Sheets spend source `8f67b03f-a00b-434f-b81f-db1b2b951595`, display name `Google Sheets`.
-- Revenue non-target after-state: imported revenue remained `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`.
-- GA4 provider caveat: the simplified after packet reported `ga4ToDateRevenue` `$0` and `ga4BreakdownRevenue` `$0`; this packet is not used as proof that native GA4 provider revenue was unchanged. It proves checked endpoint availability and the Google Sheets spend source/totals state for this action only.
-- UI validation passed on `2026-07-01`: user confirmed GA4 Overview Total Spend, Spend Sources, Total Revenue, and spend-dependent derived cards looked correct after import.
-- Certification boundary: Google Sheets spend add/import is closed only for this deployed campaign/source path after endpoint after-state evidence plus user UI validation. The baseline script was run in the browser before import, but its JSON was not pasted into this file; therefore this evidence should not be reused as a complete archived before/after proof for other campaigns. It does not certify Google Sheets spend edit/update, refresh/reprocess, delete/deactivate, other campaigns/properties, other Google Sheets tabs/mappings, scheduler timer execution, report/email propagation, or GA4 native provider stability.
-
-Google Sheets spend edit/update endpoint after-snapshot captured on `2026-07-01T19:15:03.362Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, target Google Sheets spend source `8f67b03f-a00b-434f-b81f-db1b2b951595`, stage `after-google-sheets-spend-edit`, expected updated spend `$420.20`, `overallPass: true`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, and `spendSources`.
-- Spend after edit/update: `spendToDate` `$420.20`, `spendBreakdownTotal` `$420.20`, `spendSourceCount: 1`, `googleSheetsSpendSourceCount: 1`, target source still present, target source type `google_sheets`, target breakdown amount `$420.20`.
-- Source identity and duplicate checks passed: same source ID present, target is Google Sheets, and no duplicate Google Sheets spend source was created.
-- Revenue non-interference checks passed: imported revenue remained `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`.
-- UI validation passed on `2026-07-01`: user confirmed GA4 Overview Total Spend, Spend Sources, Revenue, and Profit/ROAS/ROI/CPA reflected the updated spend correctly.
-- Certification boundary: Google Sheets spend edit/update is closed only for this deployed campaign/source path after endpoint after-state evidence plus user UI validation. The prior recorded add/import state was `$240`, but this edit packet did not paste a full before JSON and did not include GA4 native endpoint checks; therefore it should not be reused as complete archived before/after proof for other campaigns. It does not certify Google Sheets spend refresh/reprocess, delete/deactivate, other campaigns/properties, other Google Sheets tabs/mappings, scheduler timer execution, report/email propagation, or GA4 native provider stability.
-
-Google Sheets spend refresh/reprocess validation helper added in Current Commit 2d:
-
-- RCA: Google Sheets spend already had a scheduler reprocess helper that calls `/api/campaigns/:id/spend/sheets/process` with the stable spend `sourceId`, but there was no deployed campaign/source-scoped run-now route for one Google Sheets spend source. The existing `/api/campaigns/:id/google-sheets-refresh` route refreshes only raw cached Google Sheets rows for main/general connections and is not proof that the materialized `spend_sources` and `spend_records` refresh path ran.
-- Smallest safe fix implemented: added `runGoogleSheetsSpendSourceRefreshForValidation(campaignId, sourceId)` beside the revenue validation helper and added `/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now`. The helper finds only an active `google_sheets` spend source by the requested campaign/source ID, requires saved `connectionId` and `spendColumn`, and reuses the scheduler `reprocessGoogleSheetsSpend` path.
-- Side-effect boundary: the validation route requires campaign access, keeps the existing Google Sheets rate limiter, does not run the full daily auto-refresh cycle, does not touch unrelated providers, alerts, emails, reports, or unrelated campaigns, and does not change spend calculations, revenue calculations, source materialization, source identity, campaign/property/source scoping, response shape, scheduler timer behavior, email/report behavior, or API ownership rules.
-- Local validation: `npm test -- server/ga4-auto-refresh-regression.test.ts` passed and `npm run check` passed after the helper/route/test update.
-- Local implementation boundary: Current Commit 2d proved the source-scoped validation trigger shape and route wiring locally before deploy; it did not by itself prove provider/deployed refresh behavior.
-- Deployed run-now endpoint evidence captured on `2026-07-01T19:52:43.021Z` for Google Sheets spend source `8f67b03f-a00b-434f-b81f-db1b2b951595`: trigger returned HTTP `200`, `success: true`, and result source ID/campaign ID matched the requested campaign/source.
-- After refresh/reprocess: `spendToDate` `$198.75`, `spendBreakdownTotal` `$198.75`, `spendSourceCount: 1`, `googleSheetsSpendSourceCount: 1`, target source still present, target source type `google_sheets`, target breakdown amount `$198.75`.
-- Endpoint-level checks all passed: trigger passed, all checked endpoints returned HTTP `200`, same source ID persisted, no duplicate Google Sheets spend source was created, spend to-date/breakdown/target amount matched expected `$198.75`, and imported revenue remained `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`.
-- UI validation passed on `2026-07-01`: user confirmed GA4 Overview Total Spend, Spend Sources, Revenue, and Profit/ROAS/ROI/CPA reflected the refreshed spend correctly.
-- Certification boundary after deployed evidence: Google Sheets spend refresh/reprocess is closed only for this deployed campaign/source run-now path after endpoint evidence plus UI validation. This deployed run-now evidence does not prove the daily timer fired by itself, and it does not certify Google Sheets spend delete/deactivate, other campaigns/properties, other Google Sheets tabs/mappings, report/email propagation, or GA4 native provider stability.
-
-Google Sheets spend delete/deactivate endpoint after-snapshot captured on `2026-07-01T20:00:40.616Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, target Google Sheets spend source `8f67b03f-a00b-434f-b81f-db1b2b951595`, expected removed spend `$198.75`, `overallPass: true`.
-- Baseline before delete captured on `2026-07-01T19:58:54.311Z`: imported revenue `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`, `spendToDate` `$198.75`, `spendBreakdownTotal` `$198.75`, `spendSourceCount: 1`, target present, target breakdown amount `$198.75`.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, and `spendSources`.
-- After delete/deactivate: `spendToDate` `$0`, `spendBreakdownTotal` `$0`, `spendSourceCount: 0`, target absent from spend sources and spend breakdown.
-- Revenue non-interference checks passed: imported revenue remained `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`.
-- Endpoint-level checks all passed: baseline found, baseline target present, endpoints pass, target removed from spend sources, target removed from breakdown, spend dropped by expected `$198.75`, spend source count decremented, and revenue unchanged.
-- UI validation passed on `2026-07-01`: user confirmed Total Spend returned to `$0`/unavailable, the Google Sheets spend source disappeared from Spend Sources, Revenue stayed unchanged, and Profit/ROAS/ROI/CPA returned to blank/unavailable because spend is gone.
-- Certification boundary: Google Sheets spend delete/deactivate is closed only for this deployed campaign/source path after endpoint before/after evidence plus user UI validation. It does not certify other campaigns/properties, other Google Sheets tabs/mappings, daily scheduler timer execution, report/email propagation, other source families, or GA4 native provider stability.
-
-Google Sheets spend startup-fired scheduler endpoint after-snapshot captured on `2026-07-01T21:15:15.453Z`:
-
-- Campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, target Google Sheets spend source `618e5e12-0f3f-44a2-837a-d2677ad95f64`, expected scheduler spend `$678.95`, `overallPass: true`.
-- Baseline before scheduler captured on `2026-07-01T20:50:09.431Z`: imported revenue `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`, `spendToDate` `$180.20`, `spendBreakdownTotal` `$180.20`, `spendSourceCount: 1`, `googleSheetsSpendSourceCount: 1`, active source ID `618e5e12-0f3f-44a2-837a-d2677ad95f64`.
-- Scheduler trigger boundary: the deployed Render startup path with `AUTO_REFRESH_RUN_ON_STARTUP=true` was used to run the daily auto-refresh/auto-process scheduler immediately; the source-scoped run-now validation route was not used for this packet. User confirmed the startup flag was removed after validation.
-- HTTP `200` with pass `true` for `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, and `spendSources` after the scheduler run.
-- After scheduler execution: `spendToDate` `$678.95`, `spendBreakdownTotal` `$678.95`, `spendSourceCount: 1`, `googleSheetsSpendSourceCount: 1`, target source still present, target breakdown amount `$678.95`.
-- Source identity and duplicate checks passed: same Google Sheets spend source ID persisted, no duplicate Google Sheets spend source was created, and the target breakdown amount matched the expected scheduler amount.
-- Revenue non-interference checks passed: imported revenue remained `revenueToDate` `$600`, `revenueBreakdownTotal` `$600`, `revenueSourceCount: 1`.
-- UI validation passed on `2026-07-01`: user confirmed GA4 Overview Total Spend, Spend Sources, Revenue, and derived spend-dependent cards reflected the scheduler-refreshed spend correctly.
-- Certification boundary: Current Commit 2e is closed for this deployed startup-fired Google Sheets spend scheduler path only. It proves the deployed scheduler execution path can update a stable Google Sheets spend source without creating a duplicate source under the startup trigger; it does not prove a normal wall-clock scheduled-hour run if that distinct proof is required, other campaigns/properties, other Google Sheets tabs/mappings, report/email propagation, other source families, or GA4 native provider stability.
-
-Current Commit 2f second campaign/property Google Sheets spend add/import evidence captured on `2026-07-03`:
-
-- Scope: deployed URL `https://marketforensics.onrender.com/`, campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6`, GA4 property `498536418`, Google Sheets spend add/import only.
-- Cleanup before retry captured on `2026-07-03T11:30:06.922Z`: endpoint pass `true`, `spendToDate` `$0`, `spendBreakdownTotal` `$0`, `spendSourceCount: 0`, `googleSheetsSpendSourceCount: 0`, and `readyForBaseline: true`.
-- Baseline was then captured on `2026-07-03T11:32:15.550Z` before the add/import action. The compact pasted after packet confirms `baselineWasAvailable: true`, but the baseline endpoint pass was already `false` because the native GA4 `ga4ToDate` provider path was unhealthy; this baseline is not used as proof that every Overview endpoint was healthy.
-- After add/import snapshot captured on `2026-07-03T11:42:32.717Z`: expected added spend `$507.70`, exactly one Google Sheets spend source was added, spend increased by expected amount, and imported revenue stayed unchanged at `$0`.
-- Endpoint status packet captured on `2026-07-03T11:45:16.366Z`: `revenueToDate`, `revenueBreakdown`, `revenueSources`, `spendToDate`, `spendBreakdown`, and `spendSources` returned HTTP `200` with no reauthorization requirement; `ga4ToDate` returned HTTP `500` with GA4 `INVALID_ARGUMENT` and `requiresReauthorization: false`.
-- UI validation passed on `2026-07-03`: user confirmed the Overview spend card and source modal look correct for `$507.70`.
-- Certification boundary: this closes only the visible second-campaign Google Sheets spend add/import UI/source-modal financial path. It does not close second-campaign native GA4 future valid completed-day provider data, spend-to-date exact-value parity from the compact packet, run-now refresh/reprocess, delete/deactivate, alternate tabs/mappings, report/email propagation, normal scheduler proof, or other source families.
-
-Current Commit 2f.1 native GA4 to-date no-completed-window finding:
-
-- RCA: the second campaign/property failed only on native `ga4ToDate`; all checked revenue/spend source endpoints returned HTTP `200`. The route derived `startDateUsed` from the campaign start/created date while `endDateUsed` is the latest completed GA4 reporting day. For a newly created campaign whose start/created date is after the latest completed day, `startDateUsed > endDateUsed`; GA4 Data API rejects that impossible date window with `400 INVALID_ARGUMENT`, which surfaced as HTTP `500` from `/ga4-to-date`.
-- Smallest safe fix implemented: `/api/campaigns/:id/ga4-to-date` now checks `startDateUsed > endDateUsed` after campaign access, selected-property, and token validation but before the provider call. In that no-completed-window case it returns `success: true`, selected `propertyId`, the computed dates, `noCompletedWindow: true`, and zero native GA4 totals instead of calling the provider with an invalid range.
-- Side-effect boundary: the fix is route-local and does not change GA4 calculations for valid completed windows, imported revenue/spend behavior, campaign/property/source scoping, source add/edit/refresh/delete behavior, scheduler behavior, email/report behavior, API ownership checks, or provider token semantics. It intentionally does not broaden the date window or invent provider metrics for a campaign with no completed GA4 day.
-- Local validation: `npm test -- server/ga4-reporting-day-cutoff-regression.test.ts` passed with `9` tests; `npm run check` passed.
-- Deployed endpoint validation captured on `2026-07-03T12:17:39.484Z`: `overallPass: true`, all checked endpoints passed, `/ga4-to-date` returned HTTP `200`, `successField: true`, `noCompletedWindow: true`, `checks.ga4ToDateFixed: true`, spend breakdown stayed `$507.70`, and one Google Sheets spend source was present. Post-deploy UI reconfirmation after commit `3b25a01a` passed; user confirmed the refreshed UI still showed `$507.70` in the spend card/source modal.
-Current Commit 2f.2 Google Sheets spend refresh edit-preview metadata finding:
-
-- RCA: the second-campaign run-now refresh correctly materialized spend records and Overview totals from the current sheet, changing source `62772549-88dc-4cc5-bfe6-2e991d518ef5` from `$706.45` to `$807.70` with the same source ID and no duplicate. However, edit mode hydrated its preview table from `spend_sources.mapping_config.sheetSampleRows`, and the scheduler/run-now refresh posted the old mapping config back through `/spend/sheets/process`. The process route fetched fresh sheet rows for calculations but saved the old preview metadata back to `mappingConfig`, so edit mode could still show the stale `$198.75` row even after the materialized spend total was correct.
-- Smallest safe fix implemented: `/api/campaigns/:id/spend/sheets/process` now overwrites `sheetHeaders`, `sheetSampleRows`, and `sheetRowCount` in the stored mapping config from the fresh sheet rows already fetched during that process call. The fix is local to Google Sheets spend process metadata.
-- Side-effect boundary: this does not change spend parsing, spend totals, spend record dates, source identity, campaign/property/source scoping, scheduler timing, revenue behavior, report/email behavior, API ownership checks, or the run-now route shape. It updates only saved edit-preview metadata so edit mode reflects the same fetched sheet used for refreshed totals.
-- Local validation: `npm test -- server/ga4-auto-refresh-regression.test.ts` passed with `8` tests; `npm run check` passed.
-- Existing-data boundary: existing stale `mappingConfig.sheetSampleRows` for source `62772549-88dc-4cc5-bfe6-2e991d518ef5` was bounded to the affected source metadata and self-healed by rerunning that source's Google Sheets spend run-now refresh after deploy. The deployed self-heal packet on `2026-07-03T13:14:11.596Z` returned `overallPass: true`, `spendStillCorrect: true`, and `sameSourceStillPresent: true`; user confirmed edit mode showed updated sheet data instead of stale `$198.75`. No direct database cleanup is required for this source.
-
-Current Commit 2j spend import/update response latency finding:
-
-- RCA: manual, LinkedIn Ads, CSV, and Google Sheets spend process routes wrote the source/spend records and recalculated `campaign.spend`, then still awaited `recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update")` before returning success. That recompute runs the heavier GA4 KPI/Benchmark daily/history path and can make the user-facing `Import/update spend` click wait after the Overview spend source data is already durable.
-- Smallest safe fix implemented: added `scheduleGA4SpendPostResponseRecompute(campaignId)` and changed only the spend add/import/edit process routes to call it after awaited `recalcCampaignSpend(campaignId)`. The source write, spend record write, and `campaign.spend` recalculation still complete before the response; only downstream GA4 KPI/Benchmark recompute moves post-response.
-- Side-effect boundary: this does not change spend parsing, spend totals, spend record dates, source identity, campaign/property/source scoping, revenue behavior, scheduler behavior, report/email behavior, API ownership checks, or delete/cleanup recompute behavior. Spend delete and cleanup paths still await their existing recompute after durable spend changes.
-- Local validation: `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts` passed with `4` tests; `npm run check` passed; `git diff --check -- server/routes-oauth.ts server/ga4-source-lifecycle-recompute-regression.test.ts GA4/OVERVIEW_PRODUCTION_READINESS.md` passed.
-- Deployed boundary: user confirmed deployed timing/UI responsiveness after commit `29c67820` deployed on `2026-07-03`; no exact elapsed-time packet or numeric SLA is recorded. This closes the practical deployed timing gate for the validated spend import/update click, while future source families or a formal SLA would need their own timing evidence.
-
-Required provider-family validation pattern:
-
-1. Run a baseline snapshot before the source-family action.
-2. Perform exactly one add/import, edit, refresh, or delete/deactivate action through the deployed app/provider flow.
-3. Run an after snapshot with `-CompareToPath` pointing at the baseline output.
-4. Confirm only the intended source IDs and totals changed.
-5. Confirm source modal provenance reconciles to the relevant revenue or spend total.
-6. For refresh, confirm the intended source ID persisted instead of creating a duplicate active source.
-7. For delete, confirm the intended source ID was removed/deactivated and unrelated source IDs persisted.
-
-Full Current Commit 2 source-family lifecycle plan:
-
-- A source family is closed only for the exact lifecycle action that has before/after evidence; one source family or one action cannot certify another family or action.
-- Each evidence packet must record the deployed URL, campaign ID, actor/session boundary, timestamp, source family, lifecycle action, before/after source IDs, before/after totals, source-modal provenance, and whether downstream Overview financial cards changed only as expected.
-- A lifecycle action can be marked `not applicable` only after the UI/API route trace proves the product has no such action for that source family. Until then it remains `unproven`, not passed.
-- HubSpot and Salesforce validation must distinguish confirmed revenue-source behavior from Pipeline Proxy early-signal behavior; Pipeline Proxy evidence is not proof that confirmed `Total Revenue` is correct.
-
-Current Commit queue for the HubSpot revenue certification track:
-
-1. Current Commit 4.0: test-hygiene unblock only. Root cause: `server/source-safety-regression.test.ts` mixes many source families and its Google Sheets Reports assertion still expected the pre-GA4 source-backed report platform list, while `server/report-scheduler.ts` and `server/routes-oauth.ts` now intentionally include `google_analytics`. Smallest safe fix: update only the stale exact-string assertions so the mixed file can run again. Local validation: `npm test -- server/source-safety-regression.test.ts`. This is not HubSpot production-readiness evidence.
-2. Current Commit 4.1: HubSpot OAuth ownership hardening. Root cause confirmed locally: HubSpot connect created an auth URL without `ensureCampaignAccess`, and callback trusted raw `state` as `campaignId` before writing `hubspot_connections`. Smallest safe local fix: require campaign access before auth URL generation and verify HMAC/TTL-signed HubSpot state in callback before using the campaign ID. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts server/endpoint-auth-audit.test.ts` and `npm run check`. Provider callback behavior remains unproven until deployed validation.
-3. Current Commit 4.2: HubSpot GA4 materialization fail-closed behavior. Root cause confirmed locally: the HubSpot save route caught `revenue_sources`/`revenue_records` materialization failures, logged `Failed to materialize revenue records`, then continued to recompute and return `success: true`. Smallest safe local fix: for `platformCtx === "ga4"`, return HTTP `500` from that catch before recompute/success response; non-GA4 HubSpot contexts keep existing behavior in this commit to avoid adjacent side effects. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts server/latest-day-revenue-regression.test.ts server/ga4-auto-refresh-regression.test.ts` and `npm run check`. Provider/deployed behavior and any pre-existing partial materialization damage remain unproven.
-4. Current Commit 4.3: GA4 Pipeline Proxy platform scoping. Root cause confirmed locally: the GA4 Overview page fetched HubSpot Pipeline Proxy without `platformContext=ga4`, while the HubSpot endpoint defaults unscoped requests across `ga4`, `linkedin`, and `meta`, allowing a newer non-GA4 HubSpot proxy source to be selected. Smallest safe local fix: add `?platformContext=ga4` only to the GA4 page HubSpot Pipeline Proxy fetch; query keys, server selection logic, Salesforce fetch behavior, confirmed revenue math, scheduler behavior, and storage contracts are unchanged. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts` and `npm run check`. Deployed/provider values and Salesforce Pipeline Proxy scoping remain outside this HubSpot commit unless separately validated.
-5. Current Commit 4.4: focused HubSpot GA4 Overview automated lifecycle guards. Root cause confirmed locally: after fixing the three runtime blockers, HubSpot still had no focused automated guard proving the GA4 Overview route/storage/scheduler lifecycle invariants in one HubSpot-only test file; relying on mixed source-family tests or provider evidence would overclaim. Smallest safe local fix: expand `server/hubspot-revenue-ga4-overview-regression.test.ts` only, covering signed OAuth state/access, stable source identity on save/edit, GA4 daily materialization markers, fail-closed materialization, delete source/record scoping, active/platform-scoped storage reads, scheduler `sourceId`/`platformContext`, and GA4 Pipeline Proxy context. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`. This remains source-level automated evidence, not deployed/provider or production-data proof.
-6. Current Commit 4.5: deployed HubSpot provider lifecycle validation. Partial deployed evidence captured for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` using `Total Revenue only (no Pipeline card)`, so Pipeline Proxy is not part of this evidence. Add/import passed endpoint and inventory checks on `2026-07-04T08:42:58.869Z`: `inventoryPass: true`, active HubSpot GA4 source count `1`, HubSpot revenue record count `2`, source-backed revenue `$10,600`, endpoint pass `true`, no HubSpot findings, and source IDs `73067acd-06d9-4bf4-925a-cc8a0cfad7c9` plus preserved non-HubSpot source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5`. Edit/update passed on `2026-07-04T08:45:44.181Z`: still one active HubSpot GA4 source, HubSpot record count `4`, source-backed revenue `$16,600`, endpoint pass `true`, and no HubSpot findings. Delete/deactivate passed on `2026-07-04T08:59:09.919Z`: active HubSpot source count `0`, HubSpot record count `0`, source-backed revenue returned to `$600`, only source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` remained active, endpoint pass `true`, and no HubSpot findings. Refresh/reprocess was not separately validated because no deployed UI refresh/sync/reprocess button was found during the tested flow. Required provenance gaps remain: HubSpot account identity, selected HubSpot deal fields/date field, selected campaign values, and source-modal provenance were not recorded in this packet. Therefore this is deployed endpoint/data-health evidence for add/edit/delete only, not full HubSpot clean certification.
-7. Current Commit 4.6: production HubSpot data-health inventory runner. Root cause confirmed locally: the HubSpot certification track had deployed provider lifecycle validation queued, but no HubSpot-specific, repeatable, read-only production-data inventory runner to bracket that validation without using other source-family evidence. Smallest safe local fix: extend the existing campaign-access-guarded GET source-damage inventory endpoint with separate `hubspotInventoryPass`, `hubspotSummary`, and `hubspotFindings`, and expose `GA4OverviewValidation.hubspotInventory({ campaignId })` for before/after runs. The existing broad `overallPass` source-damage semantics are unchanged. Local validation: `node --check client/public/ga4-overview-validation-runner.js`, `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts server/spend-source-additivity.test.ts`, and `npm run check`. Deployed before inventory on `2026-07-04T08:18:27.469Z` passed with `inventoryPass: true`, `overallPass: true`, no existing HubSpot revenue sources/records, and no HubSpot findings. Deployed after inventory on `2026-07-04T09:02:41.076Z` passed with `inventoryPass: true`, `overallPass: true`, `hubspotRevenueSourceCount: 1`, `activeHubspotRevenueSourceCount: 0`, `hubspotRevenueRecordCount: 0`, `scopedGa4CampaignValueCount: 3`, `hubspotFindingCount: 0`, and all HubSpot finding arrays empty. Cleanup is not indicated by this evidence; any future cleanup must be a separate Current Commit with exact affected IDs.
-8. Current Commit 4.7a: HubSpot provenance automation. Root cause confirmed locally: Current Commit 4.5/4.6 endpoint evidence proved add/edit/delete data health, but did not record the non-secret HubSpot account identity, saved mapping fields, selected campaign values, date/revenue fields, Pipeline Proxy setting, or source-modal expected provenance needed for clean certification. Smallest safe local fix: extend the existing campaign-access-guarded, read-only source-damage inventory endpoint with separate `hubspotProvenancePass`/`hubspotProvenance` fields and expose `GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })`. The route uses a direct column-limited HubSpot connection `db.select` and must not call token-hydrating storage helpers, refresh providers, mutate records, recompute metrics, or expose OAuth tokens/secrets. Local validation: `node --check client/public/ga4-overview-validation-runner.js`, `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts server/spend-source-additivity.test.ts`, and `npm run check`. Deployed provenance capture remains pending until the runner is run after a HubSpot add/import or edit/update while the active source still exists.
-9. Current Commit 4.7b: deployed HubSpot provenance capture. Deployed provenance evidence captured on `2026-07-04T09:38:07.410Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` after re-adding a HubSpot Total Revenue-only source. `provenancePass: true`, `overallPass: true`, `accountPresent: true`, and all checks passed (`endpointPass`, `readonly`, `serverProvenancePass`, `activeSourceCountPass`, `pipelineExpectationPass`). Non-secret account evidence: connection `902d0a19-1dbf-4d02-b475-2043e756322b`, portal ID `147492723`, active since `2026-07-04T08:33:02.584Z`, no portal name recorded. Active source evidence: source `65867434-cbed-4792-9496-8072f63a9c82`, display `HubSpot (Deals)`, `platformContext: ga4`, record count `2`, source revenue `$14,000`, active since `2026-07-04T09:35:47.703Z`. Mapping evidence: `campaignProperty: dealname`, `selectedValues: [LI_B2B_SaaS_US_Q1 - Deal 3]`, `revenueProperty: amount`, `dateField: closedate`, `pipelineEnabled: false`, `pipelineStageId: null`, source `dailyMaterialization: selected_date_field_v1`. Source-modal expected evidence: display `HubSpot (Deals)`, type label `HubSpot`, date label `Close Date`, revenue `$14,000`. Findings were empty: no missing account, no missing mapping provenance, and no connection/source mapping mismatch. No tokens or secrets were included. This closes deployed provenance capture for this exact active HubSpot source only.
-10. Current Commit 4.7c: HubSpot refresh/reprocess applicability trace. Root cause/applicability confirmed locally: GA4 Overview mounts `AddRevenueWizardModal` for add/edit/save and the Revenue Sources dialog exposes edit/delete controls, but no HubSpot refresh/sync/reprocess control; server source-scoped run-now routes exist only for Google Sheets revenue/spend, while HubSpot reprocess is scheduler-only through `auto-refresh-scheduler.ts` calling `/api/campaigns/:id/hubspot/save-mappings` with stable `sourceId` and `platformContext`. Smallest safe local fix: add a static regression guard proving the UI/API boundary and scheduler-only distinction without changing runtime behavior. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts` and `npm run check`. Deployed user validation already observed no refresh button in the HubSpot revenue source edit flow. Result: HubSpot GA4 revenue refresh/reprocess is not applicable as a deployed user-facing source action; background scheduler/provider propagation remains a separate optional proof, not evidence of a UI refresh button.
-11. Current Commit 4.7d: final HubSpot clean-certification documentation update. Root cause confirmed locally: after 4.7c was committed/pushed, the readiness document still carried a pending HubSpot certification state even though the remaining user-facing refresh/reprocess gate had been closed as not applicable. Smallest safe fix: documentation-only status update, with no runtime, calculation, scheduler, route, storage, or API contract changes. Result: HubSpot is clean-certified only for the exact proven interactive GA4 Overview `Total Revenue only (no Pipeline card)` scope on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: add/import, edit/update, delete/deactivate, before/after inventory, provenance, and no deployed user-facing refresh/reprocess applicability. Pipeline Proxy, other campaigns, alternate mappings, background scheduler/provider propagation, Reports, KPI/Benchmark propagation, emails, and provider mutation propagation remain unproven unless separately validated.
-12. Current Commit 4.8a: HubSpot scheduler/provider propagation automation. Root cause confirmed locally: HubSpot clean-certification excludes background scheduler/provider propagation because the existing runner could capture generic before/after snapshots, inventory, and provenance separately, but it did not enforce a single HubSpot provider-change packet with same active source ID, no duplicate source, HubSpot revenue delta matching total revenue delta, spend unchanged, and clear HubSpot findings. Smallest safe local fix: add read-only `hubspotPropagationBefore(...)` and `hubspotPropagationAfter(...)` runner helpers plus a static regression guard. These helpers must not trigger the scheduler, call HubSpot, post to `save-mappings`, create/edit/delete sources, recompute metrics, send reports, or mutate provider/source data. Deployed provider evidence remains pending until 4.8b.
-13. Current Commit 4.8a.1: HubSpot propagation provenance/modal parity fix. Root cause confirmed from deployed 4.8b attempt: the visible Revenue Sources modal and `/revenue-breakdown` showed the correct HubSpot source delta (`$7,000` to `$7,100`, total revenue `$7,600` to `$7,700`), but the read-only provenance endpoint reported `$14,000` to `$14,200` because it summed aggregate and sub-campaign HubSpot records together. Smallest safe fix: change only the source-damage inventory HubSpot provenance `revenueTotal`/`sourceModalExpected.revenue` calculation to mirror `getRevenueBreakdownBySource` (`aggregate > 0 ? aggregate : subCampaign`) and add a static guard. This does not change source records, Overview calculations, scheduler behavior, provider behavior, UI rendering, or report/KPI/Benchmark paths. Deployed 4.8b remains pending until the after-packet is rerun against this fixed endpoint.
-14. Current Commit 4.8b: deployed HubSpot scheduler/provider propagation proof. Deployed evidence captured on `2026-07-04T11:19:09.927Z` with runner `2026-07-04.3` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` after a controlled HubSpot provider value change using label `4.8b-after-provenance-fix`. The after packet returned `overallPass: true`, `expectedPipelineEnabled: false`, active HubSpot source count `1`, before revenue breakdown `$7,700`, after revenue breakdown `$7,600`, HubSpot source revenue delta `-$100`, total revenue delta `-$100`, spend delta `$0`, HubSpot record-count delta `0`, and all encoded checks passed, including same active HubSpot source IDs, same revenue/spend source IDs, clear inventory/provenance, and no Pipeline Proxy inclusion. This closes scheduler/provider propagation only for this exact controlled Total Revenue-only packet; it does not certify Pipeline Proxy, other campaigns, alternate mappings, Reports, KPI/Benchmark propagation, emails, sandbox provider mutation automation, or future provider changes.
-15. Current Commit 4.9: HubSpot Pipeline Proxy automation and deployed evidence. Root cause confirmed locally: after 4.8b, HubSpot `Total Revenue only` had deployed provider propagation proof, but `Total Revenue + Pipeline (Proxy)` still had no repeatable deployed packet for saved selected values, selected stage, `platformContext=ga4`, source-modal provenance, or exclusion from confirmed revenue. Smallest safe local fix: extend only the existing campaign-access-guarded read-only source-damage inventory payload with HubSpot Pipeline Proxy provenance fields, expose `GA4OverviewValidation.hubspotPipelineProxy(...)`, make that helper select the active pipeline-enabled HubSpot source by default, and add static guards proving the live HubSpot proxy endpoint uses saved selected values plus selected stage while the GA4 page keeps Pipeline Proxy separate from confirmed financial revenue. The runner intentionally does not call HubSpot, call the live `/pipeline-proxy` route, trigger scheduler, recompute, create/edit/delete sources, or mutate records. Local validation: `node --check client/public/ga4-overview-validation-runner.js` and `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`. Deployed 4.9 evidence was later captured in Current Commit 4.9b after the selected-source runner was deployed and rerun. This does not certify `Total Revenue only` again, Salesforce, other campaigns, alternate mappings, Reports, KPI/Benchmark propagation, emails, sandbox provider mutation automation, or future provider changes.
-16. Current Commit 4.9a: HubSpot Pipeline Proxy selected-source provenance and UI clarity. Root cause confirmed from deployed runner `2026-07-04.5` on `2026-07-04T12:22:41.535Z`: the selected active pipeline-enabled HubSpot source passed the important 4.9 checks (`pipelineEnabled`, `platformContext=ga4`, selected value `yesop_brand_search`, stage `Contract Sent`, proxy total `$5,000`, confirmed revenue stayed `$7,600`, and proxy was not added to confirmed revenue), but the packet still failed because global HubSpot inventory/provenance treated every active HubSpot source as one certification unit and the Pipeline Proxy scope check ignored explicit `campaignMappings`. The visible `$0.00` HubSpot row was the pipeline-enabled source-management row with `$0` confirmed revenue and `$5,000` proxy value, not proof that import failed. The older `$7,000` HubSpot source does not need to be deleted unless the user intentionally wants to remove that additive confirmed revenue source. Smallest safe fix: include saved CRM-to-platform `campaignMappings` in the read-only HubSpot Pipeline Proxy scope inventory, make the 4.9 browser helper block only on selected pipeline-source provenance instead of global server provenance, keep global server provenance informational in output, and label zero-confirmed CRM rows as `Pipeline Proxy only` in the Revenue Sources modal. This does not change revenue records, source persistence, confirmed revenue totals, Pipeline Proxy totals, GA4 calculations, scheduler behavior, report/email behavior, KPI/Benchmark behavior, delete behavior, API ownership, or provider calls. Local validation required: `node --check client/public/ga4-overview-validation-runner.js`, `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`, and `npm run check`. Deployed 4.9 was rerun and closed for the selected Pipeline Proxy source in Current Commit 4.9b.
-17. Current Commit 4.9b: deployed HubSpot Pipeline Proxy selected-source evidence. Deployed evidence captured on `2026-07-04T12:52:07.447Z` with runner `2026-07-04.6` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`. The packet returned `overallPass: true`, `inventoryPass: true`, endpoint checks passed, read-only boundary held, selected-source provenance was present, active pipeline-enabled HubSpot source count was `1`, selected source `d4ad51ef-85fe-4b67-bbd5-854900be3dee` was active in `platformContext: ga4`, Pipeline Proxy was enabled, stage was `contractsent` / `Contract Sent`, selected value was `yesop_brand_search`, persisted/effective proxy total was `$5,000`, and HubSpot findings were empty including `hubspotPipelineProxyScopeMismatches: []`. Confirmed source-backed revenue stayed `$7,600`; the runner computed that adding Pipeline Proxy would have made `$12,600`, proving the proxy amount was not included in confirmed revenue. `serverProvenancePass: false` remained informational because global provenance can include another active HubSpot source; it is not a blocker for this selected-source 4.9 packet. This closes deployed Pipeline Proxy validation only for this configured campaign/source/stage/value packet. It does not certify other campaigns, other mappings beyond this recorded `yesop_brand_search` mapping-aware packet, Reports, KPI/Benchmark propagation, emails, sandbox provider mutation automation, future provider changes, Salesforce, or other HubSpot configurations.
-18. Current Commit 4.10: HubSpot proxy-to-confirmed stage-transition automation. Root cause confirmed locally: Current Commit 4.9b proved static Pipeline Proxy provenance and confirmed-revenue exclusion, but it did not prove the lifecycle handoff where the same controlled HubSpot deal leaves the proxy stage and becomes confirmed revenue after the scheduler/provider path. Smallest safe local fix: add read-only `hubspotProxyTransitionBefore(...)` and `hubspotProxyTransitionAfter(...)` runner helpers plus a static guard. These helpers compare the selected pipeline source, proxy delta, confirmed source-backed revenue delta, combined proxy-plus-confirmed conservation, spend unchanged state, selected source revenue delta, source IDs, and HubSpot inventory findings. They must not trigger scheduler, call HubSpot, post `save-mappings`, create/edit/delete sources, recompute, send reports, mutate records, or change GA4 calculations. Deployed transition evidence was later captured in Current Commit 4.10b.
-19. Current Commit 4.10b: deployed HubSpot proxy-to-confirmed stage-transition evidence. Deployed runner `2026-07-04.7` output was user-captured for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` / source `d4ad51ef-85fe-4b67-bbd5-854900be3dee` after one controlled `$5,000` HubSpot deal moved from `Contract Sent` to closed/won and the existing scheduler/provider path completed. The packet returned `overallPass: true`: proxy total moved `$5,000 -> $0`, confirmed source-backed revenue moved `$7,600 -> $12,600`, active selected-source revenue moved `$0 -> $5,000`, combined proxy-plus-confirmed delta stayed `$0`, spend stayed `$498.75`, source IDs stayed scoped, selected value stayed `yesop_brand_search`, stage stayed `Contract Sent`, and HubSpot findings were clear. This proves only that configured proxy-to-confirmed transition packet; Campaign Breakdown, Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, sandbox provider mutation automation, future provider changes, and other HubSpot configurations remain unproven.
-20. Current Commit 4.10c: HubSpot Review Settings campaign-mapping visibility. Root cause confirmed locally: Crosswalk mappings were preserved in `selectedCampaignMappings` and already included in preview/save payloads, but the HubSpot `Review Settings` JSX rendered selected deal values without rendering the mapped GA4/platform campaign, making the mapping appear missing before save. Smallest safe fix: render the selected CRM value to mapped platform campaign pair from `selectedCampaignMappings` in the Review Settings card and add a static guard. This is display-only and does not change API payloads, storage, source records, scheduler behavior, Pipeline Proxy totals, confirmed revenue math, Campaign Breakdown, reports, KPI/Benchmark, emails, or ownership/scoping rules. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts` and `npm run check`. Deployed UI confirmation remains pending.
-21. Current Commit 4.10d: HubSpot source/review display parity. Root cause confirmed locally: the GA4 Revenue Sources modal parsed each source `mappingConfig` but still rendered the generic `HubSpot` type label under `HubSpot (Deals)`, and HubSpot edit-mode `Review Settings` rendered the Pipeline Proxy summary whenever `pipelineEnabled` was true even after the controlled source's effective proxy amount was `$0.00` because the deal had become confirmed revenue. Smallest safe fix: use saved HubSpot `campaignMappings` to render the mapped platform campaign name in the Revenue Sources modal subtitle, with fallback to the existing type label, and hide the Pipeline Proxy summary only in unchanged edit-mode review when the effective proxy amount is known and zero. This is display-only and does not change source persistence, API payloads, source records, Pipeline Proxy totals, confirmed revenue math, scheduler/provider behavior, Campaign Breakdown, reports, KPI/Benchmark, emails, or ownership/scoping rules. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`, `npm run check`, and `git diff --check`. Deployed UI confirmation remains pending.
-22. Current Commit 4.11: HubSpot Campaign Breakdown exact mapped revenue transition. Root cause confirmed locally: the user had UI evidence that a HubSpot proxy-to-confirmed/provider amount change reached Campaign Breakdown, but clean certification should not rely only on screenshots. Smallest safe local fix: add read-only `GA4OverviewValidation.hubspotCampaignBreakdownBefore(...)` and `hubspotCampaignBreakdownAfter(...)` helpers that fetch only campaign-access-guarded GET endpoints and mirror the GA4 Overview Campaign Breakdown merge (`ga4-breakdown` row revenue plus exact mapped imported revenue from `campaignValueRevenueTotals` and saved `campaignMappings`). The helper compares the exact mapped target row, target HubSpot contribution, target native GA4 row stability by default, and named unrelated rows. It does not call HubSpot, trigger scheduler, create/edit/delete sources, recompute metrics, send reports, mutate records, or certify other tabs. Local validation: `node --check client/public/ga4-overview-validation-runner.js` and `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`. Deployed 4.11 evidence captured with runner `2026-07-04.8` on `2026-07-04T17:10:58.316Z` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127`: `overallPass: true`, endpoint checks passed, read-only boundary held, inventory passed, HubSpot findings were empty, target row `yesop_retargeting` changed by displayed revenue `+$100`, HubSpot row contribution `+$100`, native GA4 row revenue `$0` delta, and named unchanged row `yesop_email_nurture` stayed unchanged. This closes only the configured 30-day deployed Campaign Breakdown mapped-row packet for `yesop_retargeting`; Reports, KPI/Benchmark, emails, other campaigns, alternate mappings, other Campaign Breakdown rows, and future provider mutations remain unproven.
-23. Current Commit 4.12: HubSpot Reports value propagation. Root cause confirmed locally: after 4.11, HubSpot mapped revenue was proven in GA4 Overview Campaign Breakdown, but Reports still had only generic report API/snapshot/PDF smoke evidence; the existing `reportPack(...)` proved endpoint/PDF availability, not that HubSpot-backed Overview values were the values entering report totals, Revenue Sources, and report Campaign Breakdown rows. Smallest safe local fix: add a read-only `GA4OverviewValidation.hubspotReportValuePack(...)` helper and static report guards. The helper fetches campaign-access-guarded GET endpoints only, mirrors the scheduled/server GA4 report formula for `financialRevenue`, `revenueDisplaySources`, and mapped Campaign Breakdown external revenue, checks HubSpot source inventory findings, resolves an existing GA4 report, and can GET an existing snapshot/PDF when present or required. It does not create snapshots, send emails, trigger scheduler, call HubSpot, mutate sources, recompute provider data, or certify KPI/Benchmark/email paths. Local validation passed: `node --check client/public/ga4-overview-validation-runner.js`, `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`, and `npm run check`. Deployed 4.12 evidence was user-captured with runner `2026-07-04.9` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` / report `c5a9ea60-3c0f-4809-98bf-7a5a0b118f9f` (`GA4 Overview Report`): `overallPass: true`, endpoints passed, report resolved as `google_analytics` overview, overview revenue and Campaign Breakdown sections were included, inventory passed, HubSpot findings were clear, snapshot/PDF checks passed, PDF looked like a PDF, report financial revenue was `$44,864.15`, imported revenue was `$16,700`, HubSpot revenue contribution was `$16,100`, pipeline proxy total was `$0`, target row `yesop_retargeting` had HubSpot revenue `$16,100`, native revenue `$11,946.16`, and displayed revenue `$28,046.16`. This closes only that configured GA4 Overview report value packet; KPI/Benchmark, emails, other campaigns, alternate mappings, other report variants, PDF text/pixel inspection, scheduler delivery, and future provider mutations remain unproven.
-24. Current Commit 4.13: HubSpot KPI/Benchmark value propagation. Root cause/gap confirmed locally: 4.12 proved the configured GA4 Overview Report packet, but HubSpot-specific KPI/Benchmark propagation still had no source-family evidence tying HubSpot imported revenue to the Overview-originated Revenue, ROAS, ROI, and CPA values used by live KPI/Benchmark rows and server persisted/current-value jobs. Smallest safe local automation: add read-only `GA4OverviewValidation.hubspotKpiBenchmarkValuePack(...)` plus static regression guards for the UI live formulas, KPI creation prefill/fallback call site, Benchmark live formulas, server GA4 KPI/Benchmark job formulas, and campaign current-value resolver. Deployed runner RCA then showed two separate 4.13 validation issues. First, the helper matched too narrow a row key and parsed only raw numeric current values; runner version `2026-07-04.11` fixed only that validation comparison boundary. Second, the `2026-07-04.11` deployed packet showed a confirmed runtime mismatch: the required KPI and Benchmark Revenue rows returned stored `currentValue` `$35,317.57`, while the Overview financial value was `$44,864.15`. The mismatch equals GA4 to-date native revenue `$18,617.57` plus imported revenue `$16,700`, proving the persisted GA4 KPI/Benchmark recompute job used the to-date native GA4 source instead of the Overview financial-source selector, where breakdown native revenue `$28,164.15` was the selected GA4 financial source. Smallest safe runtime fix: update only `server/ga4-kpi-benchmark-jobs.ts` so persisted GA4 KPI/Benchmark financial metrics (`Revenue`, `Total Revenue`, `ROAS`, `ROI`, `CPA`) use the same highest-native-revenue candidate model as Overview by considering to-date/daily inputs plus a best-effort acquisition-breakdown candidate; non-financial metrics continue using the existing GA4 input set. This does not change HubSpot source persistence, imported revenue records, Pipeline Proxy exclusion, source scoping, reports, emails, alerts, ownership/scoping, or API response contracts. Local validation passed: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts` and `npm run check`. Deployed 4.13 evidence captured after commit `acdc251c` deployed and the campaign-scoped GA4 recompute ran: `overallPass: true`; endpoint, read-only, KPI endpoint, Benchmark endpoint, inventory, clear HubSpot findings, HubSpot revenue presence, imported-revenue inclusion, KPI row match, Benchmark row match, financial revenue match, and HubSpot revenue match checks all passed. This closes only the configured HubSpot GA4 Overview Revenue KPI/Benchmark packet for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` with expected financial revenue `$44,864.15` and HubSpot revenue `$16,100`; whole KPI and Benchmark readiness, emails, other campaigns, alternate mappings, other KPI/Benchmark metrics, and future provider mutations remain separate evidence.
-25. Current Commit 4.14: HubSpot email attachment and deployed email/PDF evidence. Root cause/gap confirmed locally: 4.12 proved the configured GA4 Overview Report value packet and 4.13 proved the configured KPI/Benchmark packet, but HubSpot-specific email evidence still did not prove that scheduled/test report emails attach the GA4 PDF generated from the same HubSpot-aware report payload rather than a generic PDF or stale report body. Smallest safe local fix: add a HubSpot-specific regression guard in `server/hubspot-revenue-ga4-overview-regression.test.ts` proving the scheduled-send and test-send paths both call `buildPdfAttachmentForReport`, the GA4 branch routes into `buildGA4ScheduledPdfAttachment` and refuses generic fallback, the email call attaches that PDF as `application/pdf`, and the PDF payload includes selected GA4 native revenue plus imported HubSpot revenue, saved `campaignMappings`, `campaignValueRevenueTotals`, mapped Campaign Breakdown external revenue, and source revenue breakdowns while excluding Pipeline Proxy from confirmed revenue. This is test-only and does not change report generation, email sending, scheduler behavior, source records, GA4 calculations, report snapshots, API ownership/scoping, or provider delivery semantics. Local validation: `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`. Deployed 4.14 email/PDF evidence was user-confirmed on 2026-07-05 for the configured GA4 Overview Report packet: the PDF was attached/openable and matched the HubSpot-aware GA4 report values. Exact provider delivery-event IDs are not recorded in this repo. This closes only that configured HubSpot report email packet; future scheduled/test sends, other reports, other campaigns, alternate mappings, and future provider mutations remain separate evidence.
-26. Current Commit 4.15: HubSpot other-campaign portability pack. Root cause/gap confirmed locally: all prior HubSpot clean-certification evidence was for the configured campaign/property packet, so it did not prove that the same HubSpot GA4 Overview revenue path stays campaign-scoped for another campaign. Smallest safe local fix: add read-only `GA4OverviewValidation.hubspotOtherCampaignPortabilityPack(...)` in runner version `2026-07-05.1` plus a static regression guard. The helper accepts multiple `{ campaignId, propertyId, expectedHubspotRevenueForFinancials, expectedSelectedValues }` entries, fetches only campaign-access-guarded GET endpoints, computes HubSpot revenue from HubSpot-classified revenue rows only, verifies expected selected values/totals, checks inventory/provenance findings, checks active HubSpot record presence when expected revenue is positive, and compares active/revenue HubSpot source IDs across supplied campaigns for overlap. It does not create/edit/delete sources, refresh providers, call HubSpot, trigger scheduler, recompute metrics, send reports/emails, inspect raw database rows, or certify unlisted campaigns. Local validation passed: `node --check client/public/ga4-overview-validation-runner.js`, `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`, and `npm run check`. Deployed 4.15 evidence was user-captured with runner `2026-07-05.1` on `2026-07-05T06:25:02.762Z`: `overallPass: true`, `campaignCount: 2`, `allCampaignPacketsPass: true`, no duplicate active HubSpot source IDs across campaigns, and no duplicate HubSpot revenue source IDs across campaigns. The original campaign packet was campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` with expected HubSpot revenue `$16,100`, selected values `yesop_brand_search`, `LI_B2B_SaaS_US_Q1 - Deal 3`, and `LI_Enterprise_ABN_Q2`, and source IDs `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c`, `65867434-cbed-4792-9496-8072f63a9c82`, and `d4ad51ef-85fe-4b67-bbd5-854900be3dee`. The additional campaign packet was campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418` with expected HubSpot revenue `$8,000`, selected value `LI_DemandGen_EU_Q1 - Deal 4`, active HubSpot record count `2`, and source ID `6013de5c-bb59-43df-9ba6-607bb28fffaf`. This closes only the supplied two-campaign portability packet; alternate mappings, unlisted campaigns, Reports, KPI/Benchmark, emails, raw database rows, provider objects, and future provider mutations remain separate evidence.
-27. Current Commit 4.16: HubSpot alternate mapping matrix. Root cause/gap confirmed locally: prior HubSpot evidence proved specific selected mappings and the supplied two-campaign packet, but did not provide repeatable proof for alternate HubSpot mapping shapes such as campaign property, selected-value count, revenue property, date field, daily materialization, source-ID stability after edit, and mapped HubSpot totals. Smallest safe local fix: add read-only `GA4OverviewValidation.hubspotAlternateMappingMatrixPack(...)` in runner version `2026-07-05.2` plus a static regression guard. The helper accepts configured variants with expected source ID, campaign property, selected values/count, revenue property, date field, daily materialization, HubSpot revenue, record count, and optional Pipeline Proxy state; it fetches only campaign-access-guarded GET endpoints (`campaign`, `revenue-sources`, `revenue-breakdown`, and `ga4-overview/source-damage-inventory`) and compares persisted HubSpot provenance, daily materialization metadata, and source-backed revenue totals; it does not inspect raw daily row dates. It does not create/edit/delete sources, refresh providers, call HubSpot, trigger scheduler, recompute metrics, send reports/emails, inspect raw provider objects, or mutate records. Local validation passed: `node --check client/public/ga4-overview-validation-runner.js` and `npm test -- server/hubspot-revenue-ga4-overview-regression.test.ts`. Deployed 4.16 variant evidence is still pending; no alternate mapping variant is clean-certified until its own packet returns `overallPass: true` with the expected fields.
-
-Next active HubSpot step: capture deployed Current Commit 4.16 HubSpot alternate-mapping matrix packets for configured variants. Current Commit 4.15 is closed only for the supplied two-campaign portability packet, and Current Commit 4.16 is local automation only until deployed variant packets pass.
-
-## Historical Shopify Revenue Certification Packet — Superseded
-
-Current status (2026-07-15): **production-ready and clean-certified for the currently enabled GA4 Overview Shopify Revenue Admin API token scope**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is canonical and supersedes the conclusion in this historical packet. Dormant OAuth and non-GA4 Shopify sources remain excluded; the items below are retained as bounded historical evidence only.
-
-Validated scope included:
-
-- Admin API token connection ownership guard for inaccessible/fake campaigns
-- add/import save materialization into GA4 Overview revenue records
-- paginated Shopify order reads and fail-closed materialization guard in local regression coverage
-- edit/update source identity and rematerialization with stable Shopify source ID
-- delete/deactivate exact source boundary through the GA4 Overview Revenue Sources modal
-- source modal display/provenance, including the mapped-campaign subtitle under `Shopify`
-- Total Revenue/source/breakdown reconciliation and campaign-scoped recompute behavior
-- startup-fired daily auto-refresh scheduler reprocess path with stable source identity and no duplicate Shopify source
-- downstream propagation into Reports, KPI, Benchmark, notifications, report/PDF content, and delivered report email for the validated packet
-- second Shopify Admin API token campaign/mapping portability packet with clean inventory and no cross-campaign Shopify source-ID overlap
-
-Explicit exclusions that must not be overclaimed:
-
-- Shopify OAuth provider/UI validation is deferred until OAuth is configured and separately validated
-- real >250 matching-order provider pagination remains excluded until a matching Shopify fixture/window exists; local pagination guards are present but are not the same as provider evidence
-- future Shopify/API/provider behavior changes require fresh validation
-- future report/email variants or future scheduled/test sends require their own evidence if separately questioned
-- a revenue-changing provider mutation during scheduler refresh was not separately proven
-- normal wall-clock daily scheduler timing is optional operational proof beyond the already validated startup-fired scheduler path unless the user explicitly requires strict scheduled-hour evidence
-- this superseded historical Shopify packet does not certify any other source family
-
-Stable future answer: the canonical Shopify readiness document's complete gate passed on 2026-07-15. Describe Shopify Revenue as production-ready and clean-certified only for its currently enabled GA4 Overview Admin API token scope, and use the canonical document rather than this historical packet as evidence. Reopen only a specifically affected path if later code changes or contradictory deployed evidence invalidate it.
-Shopify revenue Current Commit queue:
-
-1. Current Commit 1: Shopify connection ownership guards. Closed for the route guards added in commit `d604f58c`: Admin API token connect and OAuth-start both fail closed for an inaccessible/fake campaign before connection mutation or OAuth state creation. Shopify OAuth provider setup remains deferred and unproven.
-2. Current Commit 2: Shopify save pagination and materialization fail-closed. Closed only for deployed Admin API token normal add/import save materialization on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` with UI validation plus the read-only endpoint packet recorded below. The >250 matching-order provider boundary remains local-test-only because the validated store does not have more than 250 matching orders.
-3. Current Commit 3: Shopify edit/update source identity and rematerialization. Local root cause confirmed: GA4 Overview exposes Shopify edit through the Revenue Sources modal, but Shopify edit identity was less explicit than HubSpot/Salesforce because the selected source ID was carried only through `initialMappingConfig`, and the save route could still fall back instead of failing closed if a requested source was not resolved before mutation. Smallest safe local fix: pass the selected Shopify `sourceId` as an explicit wizard prop, use that stable edit source ID in both preview and save payloads, and make the save route return `404` instead of updating/creating another Shopify source when `requestedSourceId` is present but no active Shopify source is resolved before Shopify connection/source mutation. Local validation: `npm test -- server/shopify-revenue-regression.test.ts`, `npm test -- server/endpoint-auth-audit.test.ts server/revenue-additivity.test.ts`, and `npm run check`. Deployed UI edit evidence is closed only for the validated Admin API token campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: the browser packet captured after edit on `2026-07-05T10:10:51.441Z` returned `overallPass: true`, kept one Shopify source with the same ID, rematerialized Shopify revenue from `$99.99` to `$199.98`, and kept Shopify source/breakdown totals aligned. The shortened packet did not separately archive every unrelated source row, so broader unrelated-source immutability remains unproven beyond local regression coverage.
-4. Current Commit 4: Shopify delete/deactivate exact source boundary. Local root cause/gap confirmed: GA4 Overview exposes Shopify source deletion through the shared Revenue Sources modal, and the shared server route already resolves the active campaign-owned source before mutation, but the GA4 Overview caller relied on the route's implicit GA4 default instead of passing the platform-context guard explicitly. Smallest safe local fix: keep the existing shared delete endpoint and add `platformContext=ga4` to the GA4 Overview delete request so stale non-GA4 source IDs fail closed before deletion. Local validation: `npm test -- server/shopify-revenue-regression.test.ts`, `npx vitest run --pool forks server/source-safety-regression.test.ts -t "individual revenue source delete"`, `npm run check`, and `git diff --check`. Deployed delete/deactivate evidence is closed only for the validated Admin API token campaign after the user-supplied browser packet on `2026-07-05`: `overallPass: true`, one Shopify source removed, Shopify revenue `$199.98` to `$0`, Total Revenue `$16,899.98` to `$16,700`, expected revenue after `$16,700`, spend unchanged at `$498.75`, non-Shopify revenue source totals unchanged, and inventory clean.
-5. Current Commit 5: Shopify refresh/reprocess applicability trace. Local trace complete: GA4 Overview does not expose a Shopify user-facing run-now refresh/reprocess route or UI action. The only reachable Shopify refresh/reprocess path found is the daily auto-refresh scheduler, which iterates active Shopify revenue sources, uses each source mapping as source of truth, carries `platformContext`, and self-calls `/api/campaigns/:id/shopify/save-mappings` with the stable `sourceId`; stale source `404 revenue source not found` responses are skipped rather than recreated. Smallest safe local action: test/documentation only, with no runtime change. Local validation: `npm test -- server/shopify-revenue-regression.test.ts` plus existing `server/ga4-auto-refresh-regression.test.ts` coverage for stable Shopify scheduler source IDs. Deployed startup-fired scheduler evidence is closed only for the validated Admin API token campaign after the user re-added an active Shopify source, captured a before snapshot, confirmed Render auto-refresh startup logs between snapshots, and captured an after snapshot: `overallPass: true`, same Shopify source ID, no duplicate Shopify source, Shopify revenue `$99.99`, Total Revenue `$16,799.99`, spend `$498.75`, zero deltas, and clean inventory. This proves the startup scheduler cycle executed against the active Shopify source without source duplication or unintended total changes; it does not prove a revenue-changing provider mutation, normal wall-clock scheduler timing, OAuth, the >250-order provider boundary, other campaigns/mappings, or downstream Reports/KPI/Benchmark/email propagation.
-6. Current Commit 6: Shopify downstream propagation. Local root cause confirmed: downstream server consumers already use source-backed GA4 imported revenue, but GA4 client success paths after revenue source add/edit/delete did not invalidate GA4 Benchmark, Reports, or notification queries, so those visible downstream surfaces could remain stale until a separate refresh/navigation. Smallest safe local fix: add only the missing GA4 query invalidations/refetches to the existing revenue-source success paths and add a Shopify regression guard proving GA4 scheduled/server report PDF output, GA4 KPI/Benchmark jobs, and `/api/notifications` consume the shared source-backed financial model. This does not change Shopify materialization, GA4 calculations, scheduler behavior, report/email generation, storage, API response contracts, ownership/scoping, or existing revenue/spend behavior. Local validation passed: `npm test -- server/shopify-revenue-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/report-email-regression.test.ts server/notification-visibility-regression.test.ts` (`77` tests), `npm run check`, and `git diff --check` for the touched files. Deployed cache-refresh validation is closed only for the validated Admin API token Shopify edit/re-import packet captured after commit `3a2323da` deployed: `overallPass: true`, `endpointsOk: true`, `shopifySourcePresent: true`, `shopifyBreakdownPresent: true`, observed revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, `47` watched calls were captured, `revenueToDate` was `$16,899.98`, Shopify breakdown revenue was `$199.98`, and endpoint counts were `7` KPIs, `2` Benchmarks, `3` Reports, and `5` Notifications. The packet closes deployed downstream cache/refetch behavior only; it does not prove report snapshot/PDF content, KPI/Benchmark row-value parity, notification row value content, email provider acceptance, delivered-email/inbox receipt, OAuth, other campaigns/mappings, or future provider changes. The script-reported `shopifySourceTotal: 0` was a source-row amount parser limitation and is not used as source-total proof.
-7. Current Commit 6a: Shopify downstream value/content validation. Local root cause/evidence gap confirmed: Current Commit 6 proved downstream cache/refetch behavior and source-backed consumer wiring, but it did not inspect actual downstream value/content rows. Smallest safe fix: add Shopify-specific local regression coverage in `server/shopify-downstream-content-regression.test.ts`; no runtime behavior changed. The regression proves scheduled GA4 PDF text includes Shopify source revenue `$199.98` and Total Revenue `$299.98` from GA4 native `$100.00` plus Shopify imported `$199.98`, GA4 KPI and Benchmark current rows persist `$299.98` from the Shopify imported revenue total, and `/api/notifications` returns Shopify-backed GA4 Revenue KPI alert metadata with `currentValue: "299.98"` and `thresholdValue: "350"`. Local validation passed: `npm test -- server/shopify-downstream-content-regression.test.ts` (`3` tests). Deployed Current Commit 6a is closed only for the validated Admin API token campaign/report/email packet after commit `ae72bbd4` deployed: the value/content browser validation was user-confirmed complete, the GA4 report PDF was opened/downloaded and showed Shopify revenue plus the same Total Revenue as the endpoint packet, and the report email was actually delivered with the report attached. This closes deployed report/PDF content inspection, deployed KPI/Benchmark row-value parity, deployed notification row value content, and delivered report-email evidence only for that exact packet. OAuth, other campaigns/mappings, future provider changes, >250-order provider pagination, revenue-changing provider mutation, normal wall-clock scheduler timing, future report/email sends, and other report variants remain unproven. Do not use HubSpot, Google Sheets, CSV, KPI, Benchmark, Reports, or other source-family evidence as proof for Shopify; use Shopify-specific deployed packets and local regression guards only.
-8. Current Commit 7: Shopify OAuth provider validation. Deferred until Shopify OAuth is configured. Admin API token validation must not be treated as OAuth validation.
-9. Historical Current Commit 8 portability packet: the second Admin API token campaign/mapping packet remains bounded portability evidence only. It does not close current certification or prove OAuth, real >250-order pagination, provider mutations, all-production-campaign health, deployed scheduler/failure behavior, or complete downstream/alert lifecycles. See the canonical Shopify readiness document.
-10. Post-certification UI display fix: the GA4 Revenue Sources modal now shows the saved mapped campaign name under Shopify rows when `campaignMappings` exist, instead of repeating generic `Shopify` under `Shopify`. This is display-only and does not change Shopify source persistence, revenue records, GA4 calculations, report/KPI/Benchmark/email behavior, scheduler behavior, ownership/scoping, or provider calls. Local regression coverage is in `server/shopify-revenue-regression.test.ts`.
-
-Shopify current validation note:
-
-- Shopify OAuth is intentionally not configured yet. OAuth provider/UI validation is deferred and remains unproven until Shopify app callback/environment setup is completed and a real OAuth connect/save is validated.
-- `Admin API token (fallback)` is the current deployed provider-validation path for Shopify revenue. It can validate campaign ownership guard behavior for the token route and normal save/materialization into GA4 Overview revenue records, but it does not validate Shopify OAuth.
-- Current Commit 2 is locally regression-covered for paginated order reads and fail-closed materialization. Deployed provider validation for normal Admin API token save/materialization is closed only for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` after UI validation plus read-only endpoint snapshot on `2026-07-05T09:31:41.568Z`: `overallPass: true`, Shopify source total `$99.99`, Shopify breakdown total `$99.99`, revenue-to-date total `$16,799.99`, revenue-breakdown total `$16,799.99`, and clean read-only inventory findings. If the store has fewer than 250 matching orders, the >250-order pagination boundary remains local-test only.
-- Current Commit 3 deployed same-source edit/rematerialization validation is closed only for the Admin API token UI edit packet captured on `2026-07-05T10:10:51.441Z`: one Shopify source stayed present with the same ID, the Shopify amount changed from `$99.99` to `$199.98`, source/breakdown totals matched, and the read-only inventory check passed. The shortened packet did not separately archive every unrelated source row.
-- Current Commit 4 deployed Shopify delete/deactivate validation is closed only for the Admin API token UI delete packet supplied on `2026-07-05`: one Shopify source was removed, Shopify revenue dropped `$199.98`, Total Revenue dropped to the expected `$16,700`, spend stayed `$498.75`, non-Shopify revenue source totals stayed unchanged, and inventory stayed clean.
-- Current Commit 5 deployed Shopify startup-fired scheduler validation is closed only for the Admin API token path on the same campaign after the user re-added Shopify revenue and confirmed the Render auto-refresh startup log lines occurred between the before and after browser snapshots. The browser packet returned `overallPass: true`, kept the same single Shopify source ID, created no duplicate Shopify source, kept Shopify revenue at `$99.99`, kept Total Revenue at `$16,799.99`, kept spend at `$498.75`, and kept inventory clean. This is not OAuth evidence, not >250-order provider evidence, not a revenue-changing provider-mutation packet, and not normal wall-clock scheduler timing evidence.
-- Current Commit 6 deployed cache-refresh validation is closed only for the Admin API token Shopify edit/re-import packet with `overallPass: true`, endpoint/refetch checks passing, one active Shopify source present, Shopify breakdown `$199.98`, Total Revenue `$16,899.98`, `7` KPIs, `2` Benchmarks, `3` Reports, and `5` Notifications. The local trace still provides the server-consumer proof that source-backed imported GA4 revenue feeds scheduled/server report PDF totals, GA4 KPI/Benchmark financial jobs, and GA4 notification enrichment. This does not prove report snapshot/PDF content, KPI/Benchmark row-value parity, notification row value content, email provider acceptance, or delivered-email/inbox receipt for Shopify.
-- Current Commit 6a is locally regression-covered and deployed-closed only for the validated Admin API token campaign/report/email packet: scheduled GA4 PDF text, GA4 KPI/Benchmark current rows, `/api/notifications` alert metadata, deployed report/PDF inspection, deployed KPI/Benchmark row packet, deployed notification UI row packet, and actual delivered report email now have Shopify-specific evidence. Future report/email sends, other report variants, OAuth, other campaigns/mappings, provider-boundary variants, and future provider changes remain unproven.
-- Current Commit 8 is deployed-validated for the second Shopify Admin API token campaign/mapping packet supplied by the user: Shopify revenue appeared in GA4 Overview, Total Revenue included Shopify revenue, Revenue Sources and Revenue Breakdown matched, inventory stayed clean, Shopify source IDs did not overlap with the first campaign, and unrelated spend/revenue stayed unchanged. The real >250 matching-order provider fixture remains excluded until such a store/window is available.
-
-For the current Google Sheets and Upload CSV spend certification status, `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` is authoritative: Google Sheets work is on hold for later completion, the bounded dated-CSV claim is closed, and broader optional CSV/source inventories are deferred for later.
-
-Historical-ledger note: the HubSpot row below preserves the incremental Current
-Commit 4.x evidence record. Its narrower status and then-pending items are
-superseded by the H10d source-family status at the top of this file and by
-`GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`.
-
-| Source family | Overview paths affected | Add/import | Edit/update | Refresh/reprocess | Delete/deactivate | Current status |
-| --- | --- | --- | --- | --- | --- | --- |
-| Google Sheets revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for deployed campaign/source add/import of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after endpoint plus UI evidence (`$30,300`) | Closed for deployed campaign/source edit/update of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after endpoint plus UI evidence (`$54,200`) | Closed for deployed campaign/source run-now reprocess of `dd5dc470-814d-42b9-af19-4b53ac7d08f8` after endpoint plus UI evidence (`$84,500`) | Closed for deployed disposable source `32661325-d2a5-404f-a898-2c84e4275809` after fixed-response endpoint evidence plus UI parity (`$31,000` removed, `$600` CSV source preserved) | Closed only for the validated deployed Google Sheets revenue campaign/source lifecycle: add/import, edit/update, run-now refresh/reprocess, and delete/deactivate. Does not certify other campaigns/properties or source families. |
-| CSV revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for validated deployed campaign/source add/import after endpoint plus UI evidence (`$600`) | Closed for validated deployed campaign/source edit/update after endpoint plus UI evidence (`$1,200` edited source, `$1,800` imported total) | Not applicable as a separate CSV revenue action after UI/API trace; manual edit/re-upload is the reprocess path already covered by edit/update evidence | Closed for validated deployed campaign/source delete/deactivate after endpoint plus UI evidence (`$1,200` removed, `$600` source preserved) | Closed only for the validated CSV revenue campaign/source lifecycle: add/import, edit/update, no separate refresh/reprocess, and delete/deactivate. Does not certify other campaigns/properties or other source families. |
-| Manual/legacy revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required if manual add is exposed | Required | Prove not applicable or validate if a refresh/reprocess route exists | Required | Unproven until deployed before/after evidence is recorded. |
-| Shopify revenue | `Total Revenue`, revenue sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for deployed Admin API token normal save/materialization on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` after UI validation plus read-only endpoint packet: Shopify `$99.99` and total revenue `$16,799.99` matched source/breakdown endpoints with clean inventory | Closed for deployed Admin API token UI edit/rematerialization on the same campaign after browser packet `overallPass: true`: one Shopify source kept the same ID, Shopify revenue changed from `$99.99` to `$199.98`, source/breakdown totals matched, and inventory stayed clean | No user-facing Shopify run-now route/UI action found; startup-fired daily auto-refresh scheduler path is closed for the validated Admin API token campaign after Render startup logs and before/after browser packet proved same source ID, no duplicate, Shopify `$99.99`, Total Revenue `$16,799.99`, spend `$498.75`, zero deltas, and clean inventory | Closed for deployed Admin API token UI delete on the validated campaign after browser packet `overallPass: true`: Shopify source count `1 -> 0`, Shopify revenue `$199.98 -> $0`, Total Revenue `$16,899.98 -> $16,700`, spend unchanged at `$498.75`, non-Shopify revenue source totals unchanged, and inventory clean | **Production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope as of 2026-07-15.** Use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` as the canonical complete evidence record; dormant OAuth and non-GA4 Shopify sources are excluded. |
-| HubSpot revenue or Pipeline Proxy | Confirmed HubSpot Total Revenue path only for the tested `Total Revenue only (no Pipeline card)` flow; Pipeline Proxy deployed 4.9b evidence is closed only for the recorded selected-source packet | Endpoint/data-health evidence captured for add/import on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: active HubSpot source `1`, records `2`, revenue `$10,600`, no findings | Endpoint/data-health evidence captured for edit/update: active HubSpot source stayed `1`, records `4`, revenue `$16,600`, no findings | No deployed user-facing action: UI exposes add/edit/save/delete only and source-scoped run-now routes are Google Sheets-only. Scheduler/provider propagation is closed only for the controlled 4.8b Total Revenue-only packet (`-$100` HubSpot source delta, `-$100` total revenue delta, spend unchanged, `overallPass: true`). Pipeline Proxy deployed evidence is closed for the recorded 4.9b runner `2026-07-04.6` packet only. | Endpoint/data-health evidence captured for delete/deactivate: active HubSpot source `0`, records `0`, revenue returned to `$600`, no findings | Clean-certified for this campaign's confirmed GA4 Overview `Total Revenue only` interactive revenue path and the exact controlled 4.8b scheduler/provider propagation packet. Pipeline Proxy is closed only for the recorded selected-source 4.9b packet with `yesop_brand_search`, `Contract Sent`, `$5,000` proxy, mapping-aware scope, and confirmed-revenue exclusion. The proxy-to-confirmed stage transition is closed only for the recorded 4.10b packet where proxy decreased `$5,000`, confirmed source-backed revenue increased `$5,000`, combined proxy-plus-confirmed stayed flat, and spend stayed flat. HubSpot Review Settings campaign-mapping visibility is locally regression-covered in 4.10c, HubSpot Revenue Sources mapped-campaign subtitles plus zero-proxy edit Review Settings display are locally regression-covered in 4.10d, and the read-only 4.11 Campaign Breakdown exact mapped-row checker is locally implemented/regression-covered with deployed evidence closed only for target row `yesop_retargeting` changing by `+$100` while named row `yesop_email_nurture` stayed unchanged; deployed UI confirmation for the display-only paths remains pending; Reports are closed only for the configured 4.12 GA4 Overview Report packet; KPI/Benchmark propagation is closed only for the configured 4.13 Revenue KPI/Benchmark packet after deployed recompute returned `overallPass: true`; HubSpot report email/PDF evidence is closed only for the user-confirmed configured 4.14 GA4 Overview Report packet; Current Commit 4.15 deployed other-campaign portability evidence is closed only for the supplied two-campaign packet; Current Commit 4.16 local alternate-mapping automation is implemented/regression-covered but deployed variant packets are pending; alternate mappings, other Campaign Breakdown rows, other KPI/Benchmark metrics, future sends/report variants, future provider changes, and other HubSpot configurations remain unproven. |
-| Salesforce revenue or Pipeline Proxy | Deferred/non-v1; confirmed revenue paths only if Salesforce is re-enabled and writes revenue sources; Pipeline Proxy remains early-signal only | Hidden from the v1 Add revenue source chooser | Deferred | Deferred | Deferred/disconnect only if explicitly exposed later | Deferred for v1 and unproven. Retained code/docs are not v1 production-certification evidence. |
-| Google Sheets spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for deployed campaign/source add/import of `8f67b03f-a00b-434f-b81f-db1b2b951595` after endpoint plus UI evidence (`$240`); second-campaign/property add/import UI/source-modal path user-confirmed for `$507.70` on campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418`, with native `ga4ToDate` unblocked by deployed Current Commit 2f.1 endpoint evidence | Closed for deployed campaign/source edit/update of `8f67b03f-a00b-434f-b81f-db1b2b951595` after endpoint plus UI evidence (`$420.20`); second-campaign/property edit/update endpoint path closed for `$706.45` on campaign `61bf28cb-74b0-4beb-9afe-fd02f2f285c6` / property `498536418` | Closed for deployed campaign/source run-now reprocess of `8f67b03f-a00b-434f-b81f-db1b2b951595` after endpoint plus UI evidence (`$198.75`); startup-fired scheduler execution closed separately for source `618e5e12-0f3f-44a2-837a-d2677ad95f64` after endpoint plus UI evidence (`$678.95`); second-campaign refresh/reprocess closed for totals, source identity, and edit-preview freshness at `$807.70` after 2f.2 deployed self-heal evidence | Closed for deployed campaign/source delete/deactivate of `8f67b03f-a00b-434f-b81f-db1b2b951595` after endpoint plus UI evidence (`$198.75` removed); second-campaign/property delete/deactivate closed for source `62772549-88dc-4cc5-bfe6-2e991d518ef5` after endpoint plus UI evidence (`$807.70` removed) | Closed only for the validated deployed Google Sheets spend campaign/source lifecycle, the recorded startup-fired scheduler execution path, the second-campaign add/import, edit/update, refresh/reprocess, and delete/deactivate evidence, and the configured Current Commit 2g mapping fixture at `$678.95`. Does not certify future valid completed-day native GA4 provider data, unlisted tabs/mappings, normal wall-clock scheduled-hour execution if separately required, reports/emails, or other source families. |
-| CSV spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Closed for deployed campaign/source add/import after endpoint plus UI evidence (`$2,020`) | Closed for deployed campaign/source edit/update after endpoint plus UI evidence (`$3,120`) | Not applicable as a separate CSV spend action after UI/API/scheduler trace; manual edit/re-upload or stored-row recalculation is the reprocess path already covered by edit/update evidence | Closed for deployed campaign/source delete of `c3611c0f-4bbf-47b9-8615-93e4b140385e` after endpoint plus UI evidence (`$3,120` removed) | Closed only for the validated CSV spend campaign/source lifecycle: add/import, edit/update, no separate refresh/reprocess, and delete/deactivate. Does not certify other campaigns/properties or other source families. |
-| Manual/legacy spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Required if manual add is exposed | Required | Prove not applicable or validate if a refresh/reprocess route exists | Required | Unproven until deployed before/after evidence is recorded. |
-| Google Ads spend | `Total Spend`, spend sources modal, Profit, ROAS, ROI, CPA, report payload values after the change | Current Commit 1-3 local guards are implemented: production-only spend path, OAuth/customer-selection/provider refresh wiring with mocked provider, GA4-scoped import/source lifecycle, downstream financial value wiring, and selected-campaign-ID persistence. Deployed UI/provider add/import remains required. | Edit/update is locally guarded through manual spend route source ID, context, source type, and display-name checks; deployed UI edit before/after remains required. | Production OAuth spend-only refresh is locally mocked; scheduler now fails closed when selected IDs are missing and filters Google Ads rows to saved IDs. Live provider/scheduler evidence remains required. | Delete/deactivate route/source/record/recompute boundary is locally guarded; deployed UI delete/disconnect evidence remains required if exposed. | Not clean-certified yet. Current Commit 1-3 are implemented and locally validated; live Google Ads OAuth popup, real customer selection, real provider metrics, deployed UI/source-modal parity, production database inventory, and deployed scheduler/report/email evidence remain unproven. |
-| Meta Ads spend | Existing stored source continuity only for v1 | Hidden from the v1 new-source Spend chooser | Retained continuity path remains locally guarded | Deferred | Deferred/disconnect only if an existing source is exposed | Deferred/non-v1 and unproven. Current Commit 12 deployed UI confirmation proves only that Meta is absent from new-source setup. |
-| LinkedIn Ads spend | Existing stored source continuity only for v1 | Hidden from the v1 new-source Spend chooser | Retained continuity path remains locally guarded | Deferred | Deferred/disconnect only if an existing source is exposed | Deferred/non-v1 and unproven. Current Commit 12 deployed UI confirmation proves only that LinkedIn is absent from new-source setup. |
-
-Execution order for the next validation step:
-
-1. Google Sheets spend add/import, edit/update, run-now refresh/reprocess, and delete/deactivate are closed only for source `8f67b03f-a00b-434f-b81f-db1b2b951595` in the validated deployed campaign/source path.
-2. Current Commit 2e startup-fired scheduler execution is closed only for source `618e5e12-0f3f-44a2-837a-d2677ad95f64` in the validated deployed campaign/source path.
-3. Current Commit 2f second-campaign add/import is closed only for the visible Google Sheets spend UI/source-modal financial path at `$507.70` and the post-fix endpoint recheck; Current Commit 2f.1 is closed for deployed no-completed-window endpoint behavior; second-campaign edit/update endpoint evidence is closed for `$706.45`; second-campaign refresh/reprocess totals, source identity, and edit-preview freshness are closed for `$807.70` after Current Commit 2f.2 deployed self-heal validation; second-campaign delete/deactivate is closed for source `62772549-88dc-4cc5-bfe6-2e991d518ef5` after endpoint plus UI evidence (`$807.70` removed). Current Commit 2g.0 adds a reusable validation runner to reduce console-snippet churn, and Current Commit 2g deployed variant evidence is closed for the configured Google Sheets spend fixture at `$678.95`; it does not create, refresh, delete, or certify unlisted Google Sheets shapes. If strict normal wall-clock scheduled-hour proof is required, capture that natural timer run separately rather than mixing it into 2f.
-4. Current Commit 2i automates repeatable Overview endpoint and report-smoke evidence so future validation should start with `GA4OverviewValidation.overviewPack(...)` instead of new one-off console snippets.
-5. Current Commit 2h report API/snapshot/PDF validation, user-confirmed PDF value parity, and user-confirmed report email delivery are closed for the recorded `GA4 Overview Report` packet only; do not treat it as proof for future scheduled/test sends or untested report variants.
-6. Current Commit 3 production source-damage inventory is closed for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`; rerun `GA4OverviewValidation.sourceDamageInventory({ campaignId })` for any other campaign/scope before making cleanup or database-health claims there.
-7. Keep evidence packets separate: do not combine Google Sheets spend with revenue latency validation, another source family, Reports evidence, scheduler evidence, or damaged-data inventory.
-8. If any action changes an unrelated source ID, duplicates an active source, loses provenance, changes totals unexpectedly, broadens source scope, or still shows a false failed response after a successful delete, stop Current Commit 2 and add the exact runtime fix as the next Current Commit.
-
-What remains unproven externally:
-
-This is a historical whole-Overview external-boundary ledger. Any narrower
-HubSpot 4.x wording below does not reopen the H10d certified scope; only the
-future/excluded HubSpot boundaries in the canonical source-specific document
-remain non-certified.
-
-- Google Sheets revenue delete/deactivate is closed only for the validated deployed campaign/source path recorded above. Current Commit 2c deployed latency timing is user-confirmed closed without a numeric SLA. Google Sheets spend lifecycle and startup-fired scheduler execution are closed only for the validated deployed campaign/source paths recorded above.
-- Normal wall-clock daily scheduler execution remains unproven if required beyond the startup-fired scheduler packet. The GA4 daily stale-row freshness fix is deployed-validated for stale detection/warning, post-reauthorization backfill, and UI Trends parity on the affected campaign/property; future GA4 provider availability, other campaign/property pairs, and normal wall-clock scheduled-hour execution remain external. The `/ga4-timeseries` reconnect response guard is regression-covered locally and deployed operational auth is healthy after reconnect, but the deployed broken-token negative branch was not re-triggered. The GA4 Connected Platforms reconnect-required badge is locally regression-covered, pushed/deployed in commit `3b253ef2`, and deployed operational auth returned `/ga4-metrics` HTTP `200` with `requiresReauthorization: false`; the deployed negative reconnect UI state remains unproven because no real auth failure is currently present. Current Commit 2f second-campaign Google Sheets spend add/import is closed only for visible UI/source-modal financial parity at `$507.70` and endpoint recheck; Current Commit 2f.1 is closed for deployed native GA4 no-completed-window endpoint behavior; second-campaign edit/update endpoint evidence is closed for `$706.45`; second-campaign refresh/reprocess totals, source identity, and edit-preview freshness are closed for `$807.70` after Current Commit 2f.2 deployed validation; second-campaign delete/deactivate is closed for source `62772549-88dc-4cc5-bfe6-2e991d518ef5` after endpoint plus UI evidence (`$807.70` removed). Current Commit 2g.0 validation-runner deployment, Current Commit 2i deployed automated Overview endpoint pack, and Current Commit 2h deployed report API/snapshot/PDF endpoint smoke are closed for their recorded scopes. Current Commit 2g mapping-variant automation is deployed and closed for the configured Google Sheets spend fixture at `$678.95`; unlisted Google Sheets tabs/mappings remain unproven until their own configured `googleSheetsVariantPack(...)` output and UI parity are captured. Production source-damage inventory for campaigns/scopes outside the recorded Current Commit 3 target campaign, future scheduled/test email deliveries outside the recorded GA4 Overview Report packet, untested report variants, and other source families remain unproven until their own evidence packets are captured.
-- Shopify Revenue is production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope as of 2026-07-15; `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is the canonical current status and dormant OAuth/non-GA4 Shopify sources are excluded. Salesforce revenue is deferred for v1 and hidden from the Add revenue source chooser; legacy Manual revenue, LinkedIn Ads, Meta Ads, and legacy Manual spend remain provider/user validation work until each relevant family has before/after evidence. Google Ads spend has local Current Commit 1-3 guards for test-mode removal, production OAuth/customer-selection/provider-refresh wiring with mocked-provider coverage, GA4-scoped lifecycle/downstream behavior, and scheduler fail-closed selected-campaign-ID handling; it still remains externally unproven until live Google Ads OAuth/customer/provider and deployed UI/provider before/after evidence is recorded. HubSpot is clean-certified only for the exact proven GA4 Overview `Total Revenue only` scope on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, including the controlled 4.8b scheduler/provider propagation packet. HubSpot Pipeline Proxy is closed only for the recorded deployed 4.9b selected-source packet and the recorded deployed 4.10b proxy-to-confirmed transition packet on campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / source `d4ad51ef-85fe-4b67-bbd5-854900be3dee`; HubSpot Review Settings campaign-mapping visibility is locally regression-covered in 4.10c, HubSpot Revenue Sources mapped-campaign subtitles plus zero-proxy edit Review Settings display are locally regression-covered in 4.10d, and the read-only 4.11 Campaign Breakdown exact mapped-row checker is locally implemented/regression-covered with deployed evidence closed only for target row `yesop_retargeting` changing by `+$100` while named row `yesop_email_nurture` stayed unchanged; deployed UI confirmation for the display-only paths remains pending; Reports are closed only for the configured 4.12 packet, KPI/Benchmark propagation is closed only for the configured 4.13 Revenue KPI/Benchmark packet, and HubSpot report email/PDF evidence is closed only for the user-confirmed configured 4.14 GA4 Overview Report packet; Current Commit 4.15 deployed other-campaign portability evidence is closed only for the supplied two-campaign packet; Current Commit 4.16 local alternate-mapping automation is implemented/regression-covered but deployed variant packets are pending; alternate mappings beyond the recorded `yesop_brand_search` and `yesop_retargeting` packets, other Campaign Breakdown rows, other KPI/Benchmark metrics, future sends/report variants, future provider changes, and other HubSpot configurations remain unproven.
-- CSV revenue and CSV spend are closed only for the validated deployed campaign/source paths recorded above; they do not prove other campaigns/properties, other uploaded files/mappings, scheduler/report propagation, or future-platform behavior.
-- If a before/after snapshot shows a duplicate source, missing source, wrong total, wrong source modal provenance, or unintended unrelated source change, lower only that source-family path to unproven and add the exact runtime fix as the next Current Commit.
-
-## Root Cause Of Prior Confusion
-
-Earlier Overview readiness statements were too broad for the evidence available at the time.
-
-This was a process failure, not just an implementation failure. Future Overview readiness answers must not repeat the current status answer unless the exact value path being questioned is covered by this file's evidence. If a new Overview bug is found, the affected path must immediately be treated as unproven until the root cause, missing test coverage, and documentation are fixed.
-
-The main mismatch was scope:
-
-- prior work proved important Overview-adjacent fixes, including GA4 campaign discovery, live `pageLocation` UTM fallback, removal of synthetic imported GA4 revenue writes, and Campaign DeepDive aggregate parity
-- prior tracker language said GA4 Overview financial cards used GA4 to-date native totals
-- the later frontend trace proved `ga4RevenueForFinancials` and `financialConversions` were still reading from `breakdownTotals`, the Summary-card source object
-- Commit 1 fixed that boundary by keeping Summary cards on their coherent source hierarchy while moving financial revenue and CPA conversions to one selected scoped financial source
-- Summary cards and financial cards have different intended window rules, so this file now records both contracts separately
-
-This file fixes the documentation problem by keeping one Overview-specific source of truth:
-
-- `OVERVIEW.md` describes intended tab behavior
-- `OVERVIEW_PRODUCTION_READINESS.md` states whether the current implementation satisfies that behavior
-- confirmed blockers are listed as commits
-- validation gaps are separated from code defects
-
-## Non-Negotiable Accuracy Rules
-
-GA4 Overview must preserve:
-
-- client scoping
-- campaign scoping
-- selected GA4 property scoping
-- selected GA4 campaign/source scoping
-- date-window semantics
-- GA4 native metric meaning
-- financial source provenance
-- active-source-only revenue and spend totals
-- Pipeline Proxy separation from confirmed revenue
-- downstream KPI, Benchmark, Ad Comparison, Insights, and report meaning
-- scheduler behavior and fail-closed ownership checks
-
-Do not change calculations, attribution, source ownership, scheduler behavior, alert behavior, notification behavior, report behavior, or response shapes unless a traced root cause proves a bug in that exact path.
-
-Before saying an Overview value is correct, prove the query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match rules, negative cases, and downstream consumers for that value. The Landing Pages conversion issue proved that an exact-match merge test was not enough when the fallback query could fail to retrieve conversion-bearing rows.
-Do not use wider refactors for future Overview fixes. The completed financial-source fix was intentionally limited to a narrow frontend source-selection correction plus regression coverage.
-
-## Data Path Summary
-
-Primary live UI path:
-
-`GA4 source connection -> saved campaign GA4 scope -> Overview API queries -> frontend Overview model -> visible cards and tables`
-
-Native GA4 daily path:
-
-`GA4 Data API time-series fetch -> ga4_daily_metrics rows -> /ga4-daily -> Summary cards and trend-adjacent context`
-
-Native GA4 to-date path:
-
-`GA4 Data API to-date totals -> /ga4-to-date -> candidate financial GA4 revenue/conversions source`
-
-Financial source path:
-
-`source setup/import/refresh -> revenue_records or spend_records joined to active source definitions -> /revenue-to-date, /revenue-breakdown, /spend-to-date, /spend-breakdown -> financial cards and source modals`
-
-Report/output path:
-
-`same Overview value model -> browser-generated GA4 report sections and downstream consumers`
-
-Important meaning:
-
-- Summary cards and financial cards may use different GA4 source windows by design.
-- Summary cards need a coherent visible selected-campaign source and must avoid per-metric maximums.
-- Financial cards need one selected scoped native GA4 financial source because imported revenue-to-date and spend-to-date are source-backed values, but native GA4 Revenue must not understate larger visible selected-campaign GA4 rows.
-- Pipeline Proxy is an early-signal value and must not enter confirmed revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports unless the product contract changes explicitly.
-
-## Historical Fix Queue And Validation Detail
-
-Use these historical commit labels for completed Overview fixes and detailed remaining validation gates. The `Current Commit Queue` above is the current clean-certification queue; this section preserves the implementation and validation detail behind it.
-
-### Commit 1: Align Overview financial GA4 source with scoped totals
-
-Status: completed and validated.
-
-Fix scope:
-
-Correct only the frontend financial-source selection in `client/src/pages/ga4-metrics.tsx`.
-
-Confirmed root cause:
-
-- `overviewTotalsSource` selects the Summary-card source from daily rows, then GA4 to-date totals, then breakdown totals.
-- `breakdownTotals` is built from `overviewTotalsSource`.
-- `ga4RevenueForFinancials` previously read `Number(breakdownTotals.revenue || 0)`.
-- `financialConversions` previously read `Number(breakdownTotals.conversions || 0)`.
-- This coupled financial calculations to the Summary-card source hierarchy.
-- When persisted daily rows existed for the default lookback window, financial cards could use that daily-window native revenue/conversion value instead of the intended selected financial source.
-- A follow-up mismatch was then proven where Total Revenue showed `$6,718.74` while visible Campaign Breakdown GA4-native rows summed to `$16,265.32`, because `/ga4-to-date` was treated as unconditional financial source even when the visible selected-campaign daily/breakdown source had recovered a larger scoped native GA4 total.
-
-Implementation completed:
-
-1. Summary-card logic stayed unchanged.
-2. Added a separate `ga4FinancialTotalsSource` near the existing financial calculations.
-3. `ga4FinancialTotalsSource` selects one source object across `ga4ToDateOverviewTotals`, `dailySummedTotals`, and `ga4BreakdownTotals` by the largest scoped native GA4 revenue total.
-4. `ga4FinancialTotalsSource` keeps revenue and conversions on that same selected source object instead of using per-metric maxima.
-5. `ga4RevenueForFinancials` now reads from `ga4FinancialTotalsSource.revenue`.
-6. `financialConversions` now reads from `ga4FinancialTotalsSource.conversions`.
-7. Imported revenue, spend, Pipeline Proxy, Campaign Breakdown, Landing Pages, Conversion Events, KPI/Benchmark wiring, report wiring, API routes, scheduler behavior, alerts, and notifications were not changed.
-
-Files changed:
-
-- `client/src/pages/ga4-metrics.tsx`
-- `server/ga4-ui-regression.test.ts`
-- `server/revenue-additivity.test.ts`
-
-Regression coverage completed:
-
-- Summary cards still use the coherent selected-campaign hierarchy of daily rows, then to-date totals, then breakdown totals.
-- `ga4RevenueForFinancials` no longer reads directly from `breakdownTotals.revenue`.
-- `financialConversions` no longer reads directly from `breakdownTotals.conversions`.
-- financial GA4 revenue uses the most complete scoped native GA4 source across `/ga4-to-date`, daily totals, and breakdown totals.
-- CPA uses the same financial conversion source as the selected financial revenue source.
-- stale test expectations that forced an unconditional to-date-first rule were updated to prevent GA4 Revenue from understating larger visible native GA4 totals.
-
-Validation completed:
-
-- `npm test -- server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts`
-  - result: passed, 2 files, 42 tests
-- `npm test -- server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-filter.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/source-safety-regression.test.ts server/spend-source-additivity.test.ts`
-  - result: passed, 9 files, 178 tests
-- `npm run check`
-  - result: passed
-
-Pass criteria:
-
-- Total Revenue is `selected scoped GA4 native financial revenue + imported revenue-to-date`.
-- CPA is `spend-to-date / conversions from the same selected GA4 financial source`.
-- Summary cards keep their existing coherent source behavior.
-- Pipeline Proxy remains excluded.
-- no response shape changes.
-- no source lifecycle behavior changes.
-
-Production-like numeric parity:
-
-- not rerun in this local Commit 1 pass.
-- prior production-like Campaign DeepDive parity remains documented in broader GA4 readiness history.
-- future deployed parity checks are validation gates, not known local code blockers.
-
-### Commit 2: Document and validate the fixed Overview status
-
-Status: completed in this documentation update.
-
-Fix scope:
-
-Update only this file after Commit 1 passed validation.
-
-Implementation completed:
-
-1. Moved Commit 1 from required to completed.
-2. Recorded files changed.
-3. Recorded exact tests run.
-4. Recorded that production-like numeric parity was not rerun in this local pass.
-5. Changed `Current Status` to the post-fix local code-scope certification answer and kept external caveats explicit.
-6. Kept external caveats separate from code readiness.
-
-Files changed:
-
-- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-
-Pass criteria:
-
-- future chats can answer Overview readiness by reading this file without reopening unrelated GA4 sections.
-- the answer separates proven local readiness from deployed/provider validation.
-
-### Follow-up: Align remaining Overview metric propagation paths
-
-Status: completed and validated locally.
-
-Fix scope:
-
-Correct only proven Overview-originated value propagation gaps found during the post-Landing-Pages review.
-
-Confirmed root cause:
-
-- prior readiness checks proved the financial-source selection fix and the Landing Pages exact-key fix, but they did not line-by-line compare every visible Overview formula and downstream consumer formula against the intended source model.
-- the Summary `Conversions` card could render `financialConversions`, even though Summary `Sessions`, `Users`, and `Conv. Rate` use the coherent Summary source hierarchy.
-- Insights live Data Summary and browser-generated Insights report CPA could divide `financialSpend` by `breakdownTotals.conversions` instead of using the Overview `financialCPA` value derived from the selected financial conversion source.
-- `Conversion Events` used same-scope `pageLocation` fallback only when the primary event query was empty, not when primary event rows existed with event counts/users but missing conversions/revenue.
-- scheduled/server GA4 PDF payload generation rebuilt Overview Summary totals with per-metric daily/to-date maxima, so scheduled report output could diverge from the Overview coherent source hierarchy.
-- KPI creation fallback recalculated the initial stored value with `financialConversions` for every template; CPA needs financial conversions, but `Total Conversions` and `Conversion Rate` must use the Summary conversion source.
-
-Implementation completed:
-
-1. Summary `Conversions` now renders `breakdownTotals.conversions || ga4Metrics?.conversions`, matching Summary `Conv. Rate` and KPI `Total Conversions` live values.
-2. Insights live Data Summary and browser-generated report CPA now render `financialCPA` and gate on `financialConversions` plus spend availability.
-3. `getConversionEventsReport` now supplements missing conversion/revenue fields from same-scope `pageLocation` UTM rows only by exact `eventName` match; unmatched fallback rows are not added.
-4. scheduled/server GA4 PDF Summary totals now use the same coherent source order as the Overview UI: daily rows, then GA4 to-date totals, then breakdown totals.
-5. KPI create fallback now uses financial conversions only for CPA; `Total Conversions` and `Conversion Rate` use the Summary conversion source.
-
-Files changed:
-
-- `client/src/pages/ga4-metrics.tsx`
-- `server/analytics.ts`
-- `server/ga4-scheduled-report-pdf.ts`
-- `server/ga4-filter.test.ts`
-- `server/ga4-ui-regression.test.ts`
-- `GA4/OVERVIEW.md`
-- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-- `GA4/README.md`
-- `GA4_PRODUCTION_READY_TRACKER.md`
-
-Regression coverage completed:
-
-- Summary `Conversions` is guarded against using `financialConversions`.
-- Insights CPA is guarded against `financialSpend / breakdownTotals.conversions` drift.
-- KPI create fallback is guarded so only CPA uses `financialConversions`.
-- scheduled/server GA4 PDF Summary totals are guarded against per-metric `Math.max` drift.
-- Conversion Events exact-key supplementation is covered with same-scope `pageLocation` fallback rows and unmatched fallback rows that must not be added.
-
-Validation completed:
-
-- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
-  - result: passed, 2 files, 44 tests
-- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/source-safety-regression.test.ts server/spend-source-additivity.test.ts`
-  - result: passed, 11 files, 204 tests
-- `npm run check`
-  - result: passed
-- `git diff --check -- client/src/pages/ga4-metrics.tsx server/analytics.ts server/ga4-scheduled-report-pdf.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts GA4/OVERVIEW.md GA4/OVERVIEW_PRODUCTION_READINESS.md GA4/README.md GA4_PRODUCTION_READY_TRACKER.md`
-  - result: passed
-
-Pass criteria:
-
-- Overview Summary values use one coherent source hierarchy.
-- Overview financial values use one selected scoped financial source.
-- CPA uses the financial conversion source consistently in Overview, Insights, KPI/Benchmark financial paths, and report output.
-- `Total Conversions` and `Conversion Rate` use Summary conversions, not CPA conversions.
-- table row supplements require exact row-level matches and never allocate campaign-level conversions or imported revenue.
-- browser-generated and scheduled/server GA4 report output do not diverge from the relevant Overview value model.
-
-### Commit 3: Real source-family lifecycle validation
-
-Status: validation gate, not a confirmed code bug.
-
-Fix scope:
-
-Validate each real source family only when deployed/provider credentials and test data are available.
-
-Revenue source families:
-
-- Shopify
-- HubSpot
-- Salesforce
-- Google Sheets
-- CSV
-- legacy Manual revenue, if present
-
-Spend source families:
-
-- LinkedIn Ads (deferred/non-v1; existing-source continuity only)
-- Meta Ads (deferred/non-v1; existing-source continuity only)
-- Google Ads
-- Google Sheets
-- CSV
-- legacy Manual spend, if present
-
-Validation strategy for each source family:
-
-1. Add or import the source with known test data.
-2. Confirm it appears in `Total Revenue -> Sources` or `Total Spend -> Sources`.
-3. Confirm the total card equals active source rows plus native GA4 revenue where applicable.
-4. Confirm downstream values update: Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Insights, and reports generated after the change.
-5. Edit the source.
-6. Confirm the old amount is replaced, not duplicated.
-7. Confirm the source count stays correct.
-8. Delete the source.
-9. Confirm only that source contribution is removed.
-10. Confirm unrelated source rows and totals remain unchanged.
-11. For refreshable sources, run or wait for scheduler refresh.
-12. Confirm refresh updates the same source ID instead of creating a duplicate.
-
-Pass criteria:
-
-- add, edit, delete, source modal display, totals, and downstream recompute work for the source family
-- source modal provenance reconciles to the relevant total card
-- edit and scheduler paths preserve stable source identity
-- delete affects only the verified source ID
-- refreshable sources update in place and do not append duplicates
-
-### Commit 4: Production data inventory for source damage
-
-Status: validation gate, not a confirmed code bug.
-
-Fix scope:
-
-Perform read-only production or staging inventory before writing any cleanup.
-
-Validation strategy:
-
-1. Query for `revenue_records` rows whose `revenue_source_id` has no matching active `revenue_sources.id`.
-2. Query for `spend_records` rows whose `spend_source_id` has no matching active `spend_sources.id`.
-3. Group results by campaign, source type, platform context, and source ID.
-4. Check for duplicate active source definitions with identical campaign/source/platform/mapping signatures.
-5. For suspicious rows, inspect exact IDs and source metadata before deciding whether they are valid legacy data or damaged data.
-6. Do not delete or rewrite anything during inventory.
-
-Pass criteria:
-
-- either no orphan or duplicate source records are found, or exact affected IDs are documented
-- any cleanup plan has a proven source/campaign/record boundary before a migration is written
-- CRM, ecommerce, CSV, Google Sheets, Manual, and ad-platform rows are not touched unless individually proven damaged
-
-### Commit 5: Landing Pages exact-key conversion supplement
-
-Status: completed and locally validated.
-
-Fix scope:
-
-Correct only the GA4 Landing Pages service response in `server/analytics.ts` for the case where primary landing-page rows have traffic but no conversion/revenue values while the same selected campaign scope has compatible `pageLocation` UTM rows with row-level conversion values.
-
-Confirmed root cause:
-
-- `/api/campaigns/:id/ga4-landing-pages` calls `getLandingPagesReport`.
-- The service queried `landingPagePlusQueryString + sessionSource + sessionMedium` first.
-- The existing `pageLocation` UTM fallback ran only when the primary result was empty.
-- For fresh or Measurement Protocol-style GA4 data, the primary result can contain landing-page traffic rows while conversions are exposed only through same-scope `pageLocation` UTM rows.
-- The service returned the traffic rows as-is, so visible `Conversions` and `Conv. rate` could show zero even when a row-level `pageLocation` match existed.
-
-Implementation completed:
-
-1. Primary landing-page traffic rows remain the base table.
-2. If those rows already contain conversion/revenue values, behavior is unchanged.
-3. If primary rows contain traffic but no conversion/revenue values, the service queries the existing same-scope `pageLocation` UTM fallback.
-4. Fallback conversion/revenue values are merged only when `Landing page + Source + Medium` match exactly.
-5. Unmatched fallback rows are not added to the table and campaign-level conversions are not allocated into page rows.
-6. Frontend table rendering, imported revenue behavior, Summary cards, Campaign Breakdown, Conversion Events, KPI/Benchmark wiring, reports, scheduler behavior, alerts, and notifications were not changed.
-
-Validation completed:
-
-- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
-  - result: passed, 2 files, 41 tests
-- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts`
-  - result: passed, 5 files, 77 tests
-- `npm run check`
-  - result: passed
-
-Pass criteria:
-
-- Landing Pages can recover exact row-level conversions when GA4 exposes them through same-scope `pageLocation` UTM rows.
-- Landing Pages still leaves row conversions at zero when no exact row-level match exists.
-- no campaign-level conversion allocation is introduced.
-- no response shape changes.
-- no source lifecycle, scheduler, alert, notification, KPI, Benchmark, Ad Comparison, Insights, or Reports behavior changes.
-
-### Follow-up: Landing Pages pageLocation traffic fallback conversion supplement
-
-Status: completed and locally validated.
-
-Fix scope:
-
-Correct only the GA4 Landing Pages service response in `server/analytics.ts` for the case where the primary `landingPagePlusQueryString + sessionSource + sessionMedium` query returns no rows, the same-scope `pageLocation` UTM traffic fallback returns landing-page rows, and conversion/revenue values are available only through a conversion-prioritized same-scope `pageLocation` query.
-
-Confirmed root cause:
-
-- temporary deployed diagnostics for `/api/campaigns/:id/ga4-landing-pages?diagnostics=1` showed `primaryLandingPages` returned `rowCount: 0` for the saved `sessionCampaignName` filter.
-- the API response still returned six Landing Pages rows because the service fell back to same-scope `pageLocation` traffic rows ordered by `sessions`.
-- that primary-empty branch returned the traffic fallback rows directly and did not run the conversion-prioritized `pageLocation` supplement against those fallback rows.
-- the previous regression coverage covered primary landing-page rows with missing conversions, but not the primary-empty plus `pageLocation` traffic-fallback branch.
-
-Implementation completed:
-
-1. Kept the existing primary query and `pageLocation` traffic fallback behavior.
-2. Added a shared conversion-supplement step that runs only when the current base rows have traffic/users but missing conversion/revenue values.
-3. Applied that step to both primary landing-page rows and `pageLocation` traffic-fallback rows.
-4. Kept exact `Landing page + Source + Medium` matching.
-5. Kept unmatched fallback rows out of the table and did not allocate campaign-level conversions.
-6. Kept frontend rendering, response shape, Summary cards, Campaign Breakdown, Conversion Events, KPI/Benchmark wiring, reports, scheduler behavior, alerts, and notifications unchanged.
-
-Files changed:
-
-- `server/analytics.ts`
-- `server/ga4-filter.test.ts`
-- `GA4/OVERVIEW.md`
-- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-- `GA4/README.md`
-
-Validation completed:
-
-- `npm test -- server/ga4-filter.test.ts`
-  - result: passed, 1 file, 16 tests
-- `npm test -- server/ga4-ui-regression.test.ts`
-  - result: passed, 1 file, 30 tests
-- `npm run check`
-  - result: passed
-
-Pass criteria:
-
-- Landing Pages can recover exact row-level conversions when the base rows came from the same-scope `pageLocation` traffic fallback.
-- Landing Pages still leaves row conversions at zero when no exact row-level conversion match exists.
-- no campaign-level conversion allocation is introduced.
-- no response shape changes.
-- no source lifecycle, scheduler, alert, notification, KPI, Benchmark, Ad Comparison, Insights, or Reports behavior changes.
-
-### Follow-up: Remove temporary Landing Pages diagnostics
+| Dormant Shopify OAuth | The current GA4 chooser exposes the certified Admin API token flow; OAuth is shown only when server OAuth configuration is complete. | Shopify Admin API values and shared totals remain included. |
+| Non-GA4 revenue contexts | Revenue reads explicitly filter `platform_context = ga4` and treat legacy null as GA4; LinkedIn and other explicit contexts are excluded from GA4 revenue totals. | Null-context legacy rows remain included because code treats them as GA4. |
+| Provider delivery for future unrequested emails | Provider/inbox behavior cannot be inferred for future sends. | Any recorded or specifically claimed Overview report value remains included. |
+| Future platforms not registered in the current product | They cannot feed current values. | Existing retained rows from hidden/deferred source types are not future platforms and are not safely excluded. |
+
+### Unsafe Would-Be Exclusions
+
+The following cannot be deferred out of complete Overview certification because they are visible, enabled, retained, or currently contribute to included values:
+
+- Google Sheets Revenue and Google Sheets Spend
+- Upload CSV Spend with the optional no-date mode
+- active legacy Manual spend/revenue sources
+- active legacy Salesforce revenue and Pipeline Proxy sources
+- retained Meta/LinkedIn/custom spend sources because spend storage reads have no GA4 platform-context filter
+- Google Ads spend values once configured, even though Google Ads provider readiness is excluded
+- any source with no materialized rows when Overview falls back to cached `campaign.spend`
+- Campaign DeepDive scheduled report visibility/delivery when a complete downstream readiness claim is requested
+
+## Dynamic Visible-Value Inventory
+
+This inventory was derived from current render code, query code, API routes, storage joins, shared formulas, scheduled/server report code, and downstream aggregate consumers. Static documentation alone was not used as proof.
+
+| Visible value or state | Current source and transform | Window/scope | Current status |
+| --- | --- | --- | --- |
+| Sessions | `overviewTotalsSource.sessions` with fallback render to latest daily row | persisted daily lookback first; then campaign-lifetime to-date; then hard-coded 90-day breakdown | Blocked by incompatible fallback windows and unlabeled source/window changes. |
+| Users | Same source hierarchy as Sessions, but daily users are summed across days | same mixed hierarchy | Formula is traced; UI tooltip incorrectly says `Unique GA4 users` even when daily users are additive and not cross-day deduplicated. |
+| Conversions | Same coherent Summary source object | same mixed hierarchy | Locally covered, but inherits window/freshness and error-state blockers. |
+| Engagement Rate | Daily rate only when greater than zero; otherwise to-date rate, then engaged sessions/sessions, then latest daily metric | can switch away from the chosen Summary source | Confirmed source-coherence and valid-zero defect. |
+| Conversion Rate | Summary conversions divided by Summary sessions | source chosen by Summary hierarchy | Formula is correct when inputs are valid; inherits mixed-window/freshness/error blockers. |
+| GA4 native financial revenue | `selectGA4FinancialTotalsSource` selects the candidate with the highest revenue from to-date, daily, and breakdown totals | campaign lifetime, configured daily lookback, and 90-day breakdown are compared | Confirmed incompatible-window maximum; not safely labeled to the user. |
+| Financial conversions | Taken from the same object selected for native financial revenue | same selected incompatible candidate | Source pairing is locally correct; selection contract is not production-safe. |
+| Imported revenue | Active GA4/null-context `revenue_records` joined to active sources, aggregated to date | `1900-01-01` through today | Platform scoping is traced; source-family lifecycle and target-data completeness are not complete. |
+| Total Revenue | selected GA4 native revenue + imported revenue | mixes selected native window with imported lifetime | Additivity is tested; window meaning and active source safety block certification. |
+| Revenue source count | imported source rows plus GA4 native only when native revenue is greater than zero | current loaded values | A configured native revenue metric with a valid zero is omitted from source count/provenance. |
+| Pipeline Proxy | Combined successful HubSpot/Salesforce proxy responses | current-stage cached/on-demand provider data | Correctly excluded from confirmed revenue, but Salesforce request omits `platformContext=ga4` and server may fall back across GA4/LinkedIn/Meta candidates. |
+| Total Spend | spend breakdown total when truthy, else cached `campaign.spend`, but only when a source definition is visible | all active campaign spend sources; no GA4 platform filter | Confirmed platform-boundary and stale-cache defects. |
+| Profit | Total Revenue - Total Spend | same financial inputs | Hidden unless both numeric values are greater than zero, which incorrectly hides valid loss/zero-revenue cases. |
+| ROAS | Total Revenue / Total Spend | same financial inputs | Shows unavailable when revenue is valid zero; incorrectly says it needs revenue. |
+| ROI | (Total Revenue - Total Spend) / Total Spend | same financial inputs | Shows unavailable instead of `-100%` when spend is positive and revenue is valid zero. |
+| CPA | Total Spend / financial conversions | spend plus conversions from selected native financial candidate | Formula is covered; source window, spend boundary, failure, and zero-state blockers remain. |
+| Revenue Sources modal | merged source definitions and revenue breakdown rows | active GA4/null-context revenue sources | Shopify freshness is shown; Google Sheets/CSV/HubSpot freshness is not consistently shown. Errors silently become an empty list. |
+| Spend Sources modal | merged unscoped active source definitions and spend breakdown rows | all active campaign spend sources | Can show and total retained source types from other platform contexts. Errors silently become an empty list. |
+| Pipeline Proxy modal | successful HubSpot/Salesforce source entries | selected source configs | Salesforce cross-context fallback remains unsafe. |
+| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property, saved campaign filter, hard-coded 90 days | Row allocation protections are locally covered; live provider completeness and total-window parity remain unproven. |
+| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter, hard-coded 90 days, API limit 50, UI renders 20 | Exact-key behavior is locally covered; request failure is rendered as `No ... available`, not error. |
+| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter, hard-coded 90 days, API limit 50, UI renders 25 | Exact-match behavior is locally covered; request failure is rendered as empty/unavailable. |
+| Overview GA4 error banner | only the `ga4-daily` query error | daily query | Breakdown, to-date, landing-page, conversion-event, revenue, and spend failures are not represented by this banner. |
+| Freshness | daily endpoint returns `refreshIsStale`, dates, warning, and expected refresh | persisted daily path | Used in Insights/Trends, not presented beside Overview Summary/financial values. |
+| Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Inherits every live Overview source, zero, failure, and freshness defect. |
+| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Narrow formula tests pass; current production data and complete provider/deployed parity are not proven. |
+| Direct Overview comparisons/deltas | none rendered in Overview | not applicable | No direct comparison value exists to certify. Trends/deltas appear only in downstream Insights/Campaign DeepDive and are audited there. |
+
+## Dynamic Source-Family Inventory
+
+### Current chooser exposure
+
+| Family | New GA4 setup exposure | Readiness consequence |
+| --- | --- | --- |
+| Shopify Revenue | visible | Narrow Admin API token certification exists; shared Overview remains blocked. |
+| HubSpot Revenue | visible | Narrow certification history exists; current broad regression guard is red and shared Overview remains blocked. |
+| Google Sheets Revenue | visible | On hold, nontransactional replacement/failure-retention and automatic refresh evidence incomplete; cannot be excluded. |
+| CSV Revenue | visible | Bounded dated-import certification exists; does not certify all Overview paths. |
+| Salesforce Revenue | hidden for new v1 setup | Existing active rows remain readable and can feed totals/proxy; production inventory contains one active null-context source. |
+| Manual Revenue | hidden | Existing sources remain supported by storage; must be inventoried before safe exclusion. |
+| Google Ads Spend | visible | Standalone provider audit excluded, but values feed included Total Spend and derived values. |
+| Google Sheets Spend | visible | On hold and lacks durable OAuth/polling/failure evidence; cannot be excluded. |
+| CSV Spend | visible | Dated path has evidence; optional no-date mode remains enabled and unproven. |
+| Manual Spend | hidden | Existing active rows remain included in GA4 totals. |
+| LinkedIn/Meta Spend | hidden for new GA4 setup | Retained rows are not filtered by GA4 platform context and therefore are a contamination risk. |
+
+### Target-database active source snapshot
+
+Read-only aggregate queries were run against the configured target database on `2026-07-15`. No tokens, source identifiers, campaign identifiers, mappings, or secrets were printed or changed.
+
+The target contained 65 campaigns, 35 campaigns with an active GA4 connection, and 35 active GA4 connections.
+
+Active revenue sources on those GA4-connected campaigns:
+
+| Platform context | Source type | Active sources | Linked records | Stored total |
+| --- | ---: | ---: | ---: | ---: |
+| GA4 | CSV | 2 | 4 | 1,500.00 |
+| GA4 | Google Sheets | 2 | 4 | 45,500.00 |
+| GA4 | HubSpot | 11 | 15 | 93,200.00 |
+| GA4 | Shopify | 1 | 1 | 0.00 |
+| legacy null, treated as GA4 | Salesforce | 1 | 180 | 6,000.00 |
+| LinkedIn, excluded by revenue context filter | HubSpot | 2 | 2 | 20,000.00 |
+
+Active spend sources on those GA4-connected campaigns:
+
+| Stored platform context | Source type | Active sources | Linked records | Stored total |
+| --- | ---: | ---: | ---: | ---: |
+| legacy null | ad_platforms | 1 | 90 | 14,129.73 |
+| legacy null | CSV | 3 | 6 | 2,000.00 |
+| legacy null | Google Sheets | 3 | 4 | 1,197.50 |
+| legacy null | Manual | 3 | 8 | 520.00 |
+
+All three active CSV spend sources have a populated date-column mapping in the inspected configuration. That proves only the current active production rows; the enabled no-date product path remains unproven.
+
+All two active Google Sheets revenue sources and all three active Google Sheets spend sources lacked a recorded success/freshness timestamp in the inspected mapping fields. None recorded `refreshStatus=failed`; absence of failure status is not proof of freshness.
+
+## End-to-End Trace
 
-Status: completed after deployed validation.
+| Path | Current trace | Result |
+| --- | --- | --- |
+| UI scope | `ga4-metrics.tsx` -> campaign query -> selected property -> saved campaign filter | Campaign/property intent is explicit. |
+| GA4 daily | `/ga4-daily` -> reporting-timezone window -> stored rows -> due-day provider backfill -> upsert -> response freshness | Access and selected property are guarded; production freshness is not established. |
+| GA4 to-date | `/ga4-to-date` -> selected connection -> campaign start/created date through prior UTC day -> live provider | Campaign lifetime does not match hard-coded 90-day Overview table window or every connection lookback. |
+| Breakdown | `/ga4-breakdown` -> `getAcquisitionBreakdown` -> client aggregation/render | Selected property/filter and 90-day window are explicit. |
+| Landing Pages | `/ga4-landing-pages` -> provider report -> exact-key supplement -> client first 20 rows | Exact-match safety covered; failure visibility is not. |
+| Conversion Events | `/ga4-conversion-events` -> provider report -> exact-event supplement -> client first 25 rows | Exact-match safety covered; failure visibility is not. |
+| Revenue | setup/refresh -> `revenue_sources`/`revenue_records` -> active GA4-context joins -> totals/breakdown/modal | Platform context is guarded; all family lifecycles and damaged-data boundaries are not. |
+| Spend | setup/refresh -> `spend_sources`/`spend_records` -> unscoped active joins -> totals/breakdown/modal | No GA4 context filter; cached campaign fallback can replace missing records. |
+| Delete | UI source modal -> campaign/source delete route -> deactivate/delete rows -> invalidation/recompute | Route ownership checks are locally present; every active source family has not been revalidated end to end. |
+| Browser report | loaded Overview values -> client PDF composition | Directly inherits loaded-value defects. |
+| Scheduled report | report scheduler/test/manual snapshot -> server GA4 PDF builder -> source reads/formulas | Narrow guards pass; complete live parity remains unproven. |
 
-Cleanup scope:
+## Downstream Propagation Matrix
 
-Remove the temporary `diagnostics=1` support from `/api/campaigns/:id/ga4-landing-pages` after it proved the deployed live-test behavior. Keep the production GA4 query path, exact-key fallback supplement, and regression coverage.
+| Consumer | Overview-originated dependency | Current evidence | Status |
+| --- | --- | --- | --- |
+| Overview cards/tables | direct | current code trace plus focused tests | Blocked by confirmed defects. |
+| Source modals | revenue/spend/proxy provenance and lifecycle | code trace; partial family evidence | Not complete. |
+| KPIs | Revenue, Sessions, Users, Conversions, Engagement Rate, Conversion Rate, ROAS, ROI, CPA | current client formulas plus separate KPI readiness history | Narrow tests pass, but unsafe Overview inputs can propagate; not certified as part of this audit. |
+| Benchmarks | same financial and GA4 current values | current client/server paths plus separate Benchmark readiness history | Narrow tests pass, but unsafe inputs can propagate. |
+| Alerts/notifications | persisted KPI/Benchmark breaches and source refresh failures | separate lifecycle docs/tests | Current Overview source mixes and failures have not all been proven. |
+| Ad Comparison | Total Revenue, GA4 native revenue, source provenance | client props and server report path | Prior readiness has deferred scheduled/server PDF evidence and does not cover current shared source defects. |
+| Insights | Summary, financial values, availability, CPA, freshness | current page formulas and focused parity tests | Inherits unsafe source/window/error semantics; current Insights worktree is also independently modified and excluded from this audit output. |
+| GA4 Reports | browser and server values, KPIs, Benchmarks, source provenance | report tests and prior deployed packets | Named Campaign DeepDive visibility defer and future variant evidence remain; unsafe Overview inputs block complete parity. |
+| Campaign DeepDive Performance Summary | source-aware aggregate and fallback values | tracker says revenue/spend/scheduler paths are partially reviewed | Not complete. |
+| Campaign DeepDive Budget & Financial | aggregate revenue/spend/ROI/ROAS/CPA | local and limited deployed evidence | Live source-refresh validation remains outstanding. |
+| Campaign DeepDive Platform Comparison | GA4 parent revenue and aggregate financial totals | GA4-only evidence exists | Live multi-source validation remains outstanding. |
+| Campaign DeepDive Trend Analysis | daily aggregate, snapshots, deltas | local code/tests | Final live historical validation remains outstanding. |
+| Campaign DeepDive Executive Summary | aggregate financial and health values | local/deployed history | Inherits current aggregate/source defects and future source gates. |
+| Campaign DeepDive Custom Report | aggregate, KPI, Benchmark, Trend and report sections | local rendering tests | Deployed scheduled email/attachment value evidence remains outstanding. |
 
-Deployed validation result:
+## Lifecycle Matrix
 
-- property `542352127` is a live GA4 test property, not the deterministic `yesop` simulator.
-- the deployed diagnostic run showed `primaryLandingPages` returned zero rows, `pageLocationTrafficFallback` returned six rows, and `pageLocationConversionFallback` returned six rows.
-- the conversion fallback rows for that live test property had `Conversions = 0` and `Revenue = 0` for the exact landing-page/source/medium keys.
-- therefore visible Landing Pages `Conversions = 0` and `Conv. rate = 0.0%` are correct for that live test property data.
-- production properties with real conversion-bearing GA4 rows should populate from the same live GA4 Data API path; the app must not allocate campaign-level conversions into Landing Pages rows when GA4 does not return exact row-level conversion values.
+| Lifecycle | Proven | Unproven or failed |
+| --- | --- | --- |
+| GA4 connect/select | campaign access, selected property, one primary in current target snapshot | future token/provider behavior; three 30-day connections conflict with 90-day table window |
+| GA4 refresh/on-demand backfill | route and scheduler logic, refresh-token material present | no current provider call was made; all stored daily campaign maxima are older than yesterday |
+| Revenue add | guarded routes and active GA4-context joins | Google Sheets complete failure/rollback path; hidden legacy paths |
+| Revenue edit/refresh | HubSpot/Shopify/CSV have bounded evidence | Google Sheets is on hold; current HubSpot broad guard is red |
+| Revenue delete/deactivate | ownership and active-source exclusion tests | complete active-family browser/provider rerun not current |
+| Spend add | CSV/Google Sheets/Google Ads routes exist | Google Sheets and excluded provider correctness cannot be inferred; no-date CSV enabled |
+| Spend edit/refresh | some stable-source tests exist | no complete GA4 platform filter; Google Sheets automatic mutation evidence incomplete |
+| Spend delete/deactivate | ownership guard and active join behavior | cached `campaign.spend` can remain a misleading fallback when records are absent |
+| Scheduler/reprocess | local paths and selected deployed packets exist | every active source family, normal timer execution, and exact downstream parity are not currently proven |
+| Existing-data cleanup | narrower Shopify/CSV/KPI cleanups have documented boundaries | current orphan spend and spend-cache drift have no reviewed cleanup boundary |
 
-Implementation completed:
+## Confirmed Blockers
 
-1. Removed the endpoint query flag and service response diagnostics payload.
-2. Removed the diagnostic-only regression test.
-3. Kept the production fallback conversion supplement and its regression test.
-4. Kept the normal `meta: { usersAreNonAdditive: true }` response shape for Landing Pages.
+### B1. Incompatible Summary, table, and financial windows
 
-Files changed:
+`dateRange` is hard-coded to 90 days, while `GA4_DAILY_LOOKBACK_DAYS` comes from the active connection and is 30 or 90. The target database has 3 active 30-day connections and 32 active 90-day connections. Summary can therefore use 30-day daily totals while Campaign Breakdown, Landing Pages, and Conversion Events use 90 days. The to-date route uses campaign lifetime. Financial native revenue then selects the highest-revenue candidate across these incompatible windows. Overview does not clearly label this mixed-window/max contract.
 
-- `server/analytics.ts`
-- `server/routes-oauth.ts`
-- `server/ga4-filter.test.ts`
-- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
+### B2. Engagement Rate can leave the chosen Summary source
 
-Validation completed:
+The Summary source may be daily, but a valid daily engagement rate of zero is treated as missing. Code then falls through to to-date or latest-day values. This violates the documented coherent Summary-source rule and conflates zero with absence.
 
-- `npm test -- server/ga4-filter.test.ts`
-  - result: passed, 1 file, 16 tests
-- `npm test -- server/ga4-ui-regression.test.ts`
-  - result: passed, 1 file, 30 tests
-- `npm run check`
-  - result: passed
+### B3. Users provenance is misleading
 
-Pass criteria:
+When daily facts win, Users is the sum of daily user rows and is not a cross-day deduplicated unique-user count. The visible tooltip says `Unique GA4 users for the selected campaign scope.`
 
-- production Landing Pages no longer exposes temporary raw diagnostics.
-- live GA4 Data API values remain the source of truth for numeric properties.
-- exact row-level conversion supplementation remains covered.
-- zero row-level conversions remain valid when GA4 returns zero for the exact Landing page + Source + Medium grain.
+### B4. Failures become zero or empty data
 
-## Section Production-Readiness Map
+Spend-to-date, imported revenue, source lists, revenue/spend breakdowns, diagnostics, Landing Pages, Conversion Events, and Pipeline Proxy often return client fallback zero, empty array, or null on HTTP/JSON failure. Only the daily query drives the Overview GA4 error banner. Executives can therefore see `$0`, no sources, or `No ... available` when the real state is a request/provider failure.
 
-### 1. Campaign, Client, Property, And Source Scope
+### B5. Valid zero financial results are shown as unavailable
 
-Status: production-ready locally for current code scope.
+With positive spend and valid zero revenue, Profit should be negative spend, ROAS should be `0x`, and ROI should be `-100%`. Current rendering hides Profit and shows ROAS/ROI as unavailable with `needs revenue`. A configured GA4 revenue metric at zero can also disappear from source count/provenance.
 
-User-facing role:
+### B6. Spend is not GA4 platform scoped and can use stale cache
 
-- ensure Overview represents one app campaign's selected GA4 source scope, not a client-wide or property-wide rollup
+`getSpendSources`, `getSpendTotalForRange`, and `getSpendBreakdownBySource` filter campaign and active state but not GA4 `platform_context`. GA4 Overview therefore consumes every active campaign spend source. If breakdown total is zero, client code falls back to `campaign.spend`.
 
-Inputs:
+Target evidence:
 
-- authenticated user
-- selected client/campaign
-- campaign's saved GA4 property ID
-- campaign's saved GA4 campaign filter
-- selected Overview date range where applicable
+- 6 GA4-connected campaigns have active spend sources.
+- 5 of 6 have cached `campaign.spend` different from the materialized active-record total.
+- aggregate absolute drift is 21,571.73 in stored campaign currencies.
+- 2 active sources have zero materialized records but nonzero cached spend: 507.70 and 120.00.
 
-Current logic:
+### B7. Visible Google Sheets paths are on hold but feed included totals
 
-- Overview routes verify campaign access before returning campaign data.
-- GA4 API calls use the selected GA4 property.
-- GA4 campaign filters are applied to campaign dimensions first.
-- `pageLocation` `utm_campaign` fallback is used only when primary scoped results are empty.
-- setup stores GA4 scope; Overview renders from current query-backed values for that scope.
+Google Sheets Revenue and Spend are visible in the GA4 source choosers. Their canonical component docs retain incomplete transactional replacement/failure retention, durable OAuth, automatic polling, and deployed mutation evidence. Current target rows also lack recorded success/freshness timestamps. A visible active source cannot be treated as a harmless deferred exclusion.
 
-Proven locally:
+### B8. Hidden/legacy sources still affect current values
 
-- `/ga4-daily`, `/ga4-to-date`, `/ga4-breakdown`, `/ga4-landing-pages`, and `/ga4-conversion-events` are campaign-access guarded
-- live GA4 fallback remains selected-campaign scoped
-- numeric live GA4 properties are not treated as deterministic Yesop simulation paths
-- current regression coverage guards the selected Overview date range for Landing Pages and Conversion Events
+Salesforce and Manual setup cards are hidden, but retained active records remain readable. The target includes one active legacy null-context Salesforce revenue source with 180 records totaling 6,000.00 and three active legacy Manual spend sources totaling 520.00. Hidden creation UI does not make retained data safe or certified.
 
-Partially reviewed:
+### B9. Salesforce Pipeline Proxy can cross platform context
 
-- post-setup GA4 campaign rescope is intentionally not a current UI workflow
+The client does not pass `platformContext=ga4` to the Salesforce proxy endpoint. The endpoint searches GA4, LinkedIn, and Meta candidates when context is absent and can fall back to the newest candidate when no exact GA4-scope match is found. The client can then associate endpoint data with an eligible GA4 source definition.
 
-Not locally verifiable:
+### B10. Daily freshness is not proven for the current target
 
-- real OAuth token health
-- live GA4 property permissions
-- live GA4 Data API consistency for a deployed account
+The target snapshot has 35 active access-token connections. All have refresh-token material and expired `expires_at` metadata, so provider refresh may be possible but was not invoked during this read-only audit. Only 9 campaigns have persisted daily rows, 26 have none, and every stored campaign's latest date is older than yesterday (`2026-01-03` through `2026-07-12`). On-demand backfill may repair this, but no live provider call or deployed browser proof was run. Overview does not display the returned stale warning beside its Summary/financial cards.
 
-Future-platform template rule:
+### B11. Baseline source-family regression suite was red; resolved by Current Commit 1
 
-- every platform Overview must prove the exact account/property/customer/source scope before rendering metrics
-- fallback discovery may broaden dimensions only inside the same selected platform source and campaign scope
-- no platform Overview may silently roll up unrelated account or property data
+The broad rerun produced 3 failures and 49 passes across the three isolated files:
 
-### 2. Summary Cards
+- HubSpot inventory guard uses an over-wide route slice and now includes a later Shopify cleanup mutation.
+- HubSpot source-modal guard rejects the substring `Sync`, which is present in the `lastSyncedAt` freshness field, not as a user refresh action.
+- Shopify tags guard expects a one-line expression that current code implements across multiple lines; the visible chooser and runtime tag handling are present.
 
-Status: production-ready locally for current code scope.
+These were stale/brittle tests rather than runtime defects. Root-cause tracing also found a second copy of the same over-wide inventory slice in `server/hubspot-revenue-damaged-data-inventory.test.ts`; it was outside the original three-file packet but failed for the same reason.
 
-User-facing role:
+Current Commit 1 bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed; B1 through B10 and B12 remain open.
 
-- show selected-campaign GA4-native traffic, user, conversion, engagement, and conversion-rate values
+### B12. Complete downstream proof is absent
 
-Inputs:
+Separate readiness files contain historical certifications, local-only claims, or named deferred validations. Current Campaign DeepDive trackers still identify partial revenue/spend/scheduler review, live source-refresh gaps, live multi-source gaps, live historical Trend validation, and deployed scheduled Custom Report evidence. Those cannot be converted into complete Overview downstream proof by reference.
 
-- `/ga4-daily`
-- `/ga4-to-date`
-- `/ga4-breakdown`
-- selected GA4 property
-- saved GA4 campaign filter
+## Production Data Condition
 
-Current logic:
+Production data may already mislead Overview and is partly damaged.
 
-- Summary cards use one coherent selected-campaign source.
-- Persisted selected-campaign daily facts are preferred when present.
-- If daily facts are unavailable, Summary cards fall back to selected-campaign to-date totals.
-- If to-date totals are unavailable, Summary cards fall back to selected-campaign breakdown totals.
-- The cards avoid taking per-metric maximum values across incompatible sources.
-- A stable skeleton is shown while breakdown-backed fallback totals are still loading.
+### Confirmed damage or misleading state
 
-Proven locally:
+- 568,233 orphan spend rows belong to GA4-connected campaigns and have no matching `spend_sources` row:
+  - 376,251 `linkedin_api` rows across 5 campaigns, totaling 46,025,813.63
+  - 191,982 `meta_api` rows across 2 campaigns, totaling 70,014,594.50
+- These orphan rows are currently excluded from Overview totals by the inner join to active source definitions, but they are damaged/unbounded persisted history and have no reviewed cleanup boundary.
+- Across the whole target database, orphan spend row count is 4,044,066.
+- 414 revenue records and 906 spend records on GA4-connected campaigns belong to inactive sources. Current active joins exclude them; no cleanup is implied.
+- 2 active spend sources have no records while Overview can use nonzero cached campaign spend.
+- 5 of 6 campaigns with active spend sources have materialized-vs-cached drift.
 
-- regression coverage guards coherent Summary source selection
-- regression coverage guards the live `pageLocation` fallback path
-- regression coverage guards that Landing Pages and Conversion Events use selected Overview date range
+### Clean checks in this snapshot
 
-Partially reviewed:
+- orphan revenue records: 0
+- revenue record/source campaign mismatches: 0
+- spend record/source campaign mismatches: 0
+- duplicate GA4 daily campaign/property/date keys: 0
+- daily rows without a matching active property: 0
+- campaigns with no primary or multiple primary GA4 connections: 0
+- invalid/future revenue or spend dates in the inspected GA4-connected set: 0
+- mixed active-source currencies per inspected campaign: 0
+- active revenue sources with zero records: 0
 
-- exact real-property numeric parity depends on live GA4 processing and tagging quality
+Coarse grouping found same-campaign/source-type/display-name clusters for Google Sheets and HubSpot revenue, but no active sources had byte-identical complete mapping configurations. These are review candidates, not proven duplicates, and must not be deleted automatically.
 
-Not locally verifiable:
+### Cleanup rule
 
-- GA4 delayed processing behavior after Measurement Protocol or newly tagged traffic
-- whether a user's real GA4 conversion events are configured as expected
+No cleanup was run. The forward read/display defects must be fixed first. A future cleanup must be dry-run-first, owner/campaign/source scoped, and must prove why each orphan or drifted row is safe to change. The 568,233 GA4-campaign orphan rows must not be generalized to the 4,044,066 whole-database rows without separate platform/tenant evidence.
 
-Future-platform template rule:
+## Negative-Case Matrix
 
-- each platform must define its own Summary-card source hierarchy
-- do not combine incompatible date windows by taking maximum values
-- if a fallback is needed for fresh attribution gaps, it must remain inside the selected platform account/source/campaign scope
-
-### 3. Financial Cards
-
-Status: production-ready locally for current GA4 code scope.
-
-User-facing role:
-
-- show confirmed financial performance for the selected GA4 campaign
-
-Inputs:
-
-- selected scoped GA4 native financial revenue
-- imported revenue-to-date from active revenue sources
-- spend-to-date from active spend sources
-- conversions from the same selected GA4 financial source for CPA
-
-Current logic:
-
-- `Total Revenue = selected scoped GA4 native financial revenue + imported campaign revenue-to-date`
-- `Total Spend = active campaign spend-source total`
-- `Profit = Total Revenue - Total Spend`
-- `ROAS = Total Revenue / Total Spend`
-- `ROI = (Total Revenue - Total Spend) / Total Spend`
-- `CPA = Total Spend / conversions from the same selected GA4 financial source`
-- Pipeline Proxy is excluded
-
-Fixed defect:
-
-- `ga4RevenueForFinancials` now reads from `ga4FinancialTotalsSource.revenue`, not directly from `breakdownTotals.revenue`.
-- `financialConversions` now reads from `ga4FinancialTotalsSource.conversions`, not directly from `breakdownTotals.conversions`.
-- `ga4FinancialTotalsSource` selects one source object across `ga4ToDateOverviewTotals`, `dailySummedTotals`, and `ga4BreakdownTotals` by largest scoped native GA4 revenue.
-- `breakdownTotals` remains the Summary-card source object and is no longer the direct financial source of truth.
-
-Proven locally:
-
-- imported revenue is additive with GA4 native revenue
-- Pipeline Proxy is excluded from confirmed revenue calculations
-- spend comes from active spend sources
-- source-backed totals use active source joins in storage
-- financial GA4 native revenue and CPA conversions use the same selected scoped financial source
-- Summary-card source behavior remains unchanged
-
-Partially reviewed:
-
-- individual provider add/edit/delete/refresh lifecycles are not fully certified source family by source family
-
-Not locally verifiable:
-
-- real provider refresh values
-- deployed scheduler refresh timing
-- production duplicate or orphan source record inventory beyond previously documented GA4 synthetic rows
-
-Future-platform template rule:
-
-- financial totals must name their source set
-- every platform must define whether native platform revenue exists, whether spend is native or imported, and which conversions are valid for CPA
-- financial cards must not reuse Summary-card values unless the Summary and financial windows are proven identical
-### 4. Pipeline Proxy
-
-Status: production-ready locally for current code scope.
-
-User-facing role:
-
-- show CRM open-pipeline early-signal value separately from confirmed revenue
-
-Inputs:
-
-- active HubSpot or Salesforce revenue source configuration
-- saved provider campaign-value mapping
-- selected pipeline stage
-- live or saved proxy amount metadata
-
-Current logic:
-
-- Pipeline Proxy appears from active CRM source configuration, not only from endpoint success.
-- Salesforce and HubSpot proxy values can aggregate when both are configured for the same GA4 campaign.
-- only positive provider contributions count as contributing sources.
-- the card is display-only.
-- source management remains under Total Revenue.
-- deleting or deactivating the associated CRM source removes the Pipeline Proxy card.
-- Pipeline Proxy does not feed confirmed revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports.
-
-Proven locally:
-
-- the card is derived separately from `financialRevenue`
-- source modal behavior is read-only for Pipeline Proxy provenance
-
-Partially reviewed:
-
-- provider-specific live refresh depends on CRM APIs and saved source metadata
-
-Not locally verifiable:
-
-- live HubSpot or Salesforce API values without deployed/provider credentials
-
-Future-platform template rule:
-
-- early-signal pipeline or lead values must be visually and computationally separate from confirmed revenue
-- no platform may include pipeline proxy values in confirmed financial metrics without an explicit product redesign
-
-### 5. Campaign Breakdown
-
-Status: production-ready locally for current code scope.
-
-User-facing role:
-
-- show selected GA4 campaign-scope performance grouped by UTM campaign
-
-Inputs:
-
-- `/ga4-breakdown`
-- selected GA4 property
-- saved GA4 campaign filter
-- exact campaign-matched imported revenue mappings where present
-
-Current logic:
-
-- rows are scoped to the selected GA4 campaign values.
-- row `Sessions`, `Users`, `Conversions`, and GA4-native `Revenue` preserve the raw GA4 breakdown row values returned for the selected property and saved campaign scope; they are not scaled to Summary card totals.
-- the visible revenue column label is `Revenue`, not `GA4 Revenue`, because exact campaign-matched imported revenue may be included.
-- imported revenue is added only when source campaign mappings match GA4 campaign rows exactly.
-- imported revenue is not proportionally allocated.
-- users in row-level breakdowns are directional and are not expected to sum exactly to the top Users card.
-
-Proven locally:
-
-- exact campaign-matched imported revenue behavior is regression-covered
-- selected campaign filters are parsed and applied
-- regression coverage guards against rescaling Campaign Breakdown row values to Summary card totals
-- report label work confirms `Revenue` is the correct executive-facing label when the value can include imported revenue
-
-Partially reviewed:
-
-- visual parity of all report renderers is covered by Reports readiness, not this file
-
-Not locally verifiable:
-
-- live GA4 row availability for every real property/tagging pattern
-
-Future-platform template rule:
-
-- a platform breakdown may include external revenue only when exact row-level matching keys exist
-- never allocate campaign-level imported revenue into row-level breakdowns by proportion unless the product explicitly defines and labels allocation
-
-### 6. Landing Pages
-
-Status: production-ready locally for current code scope.
-
-User-facing role:
-
-- show landing-page traffic and conversion context for the selected GA4 campaign scope
-
-Inputs:
-
-- `/ga4-landing-pages`
-- selected GA4 property
-- saved GA4 campaign filter
-- selected Overview date range
-
-Current logic:
-
-- rows use the selected Overview date range.
-- rows are fetched through the live `/ga4-landing-pages` GA4 Data API path for numeric property IDs, not reconstructed from scheduler-populated `ga4_daily_metrics`.
-- revenue is intentionally not shown.
-- imported campaign revenue is not allocated into landing-page rows.
-- source/medium can be derived from tagged `pageLocation` fallback rows when attribution dimensions are empty.
-- when primary landing-page rows or same-scope `pageLocation` traffic-fallback rows have traffic but missing conversion/revenue values, conversion-prioritized same-scope `pageLocation` UTM rows may supplement conversions only by exact `Landing page + Source + Medium` match.
-- unmatched fallback rows are not added and campaign-level conversions are not allocated into landing-page rows.
-- zero row-level conversions are valid only when GA4 returns zero for the exact landing-page/source/medium grain.
-- row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
-
-Proven locally:
-
-- regression coverage guards selected date-range query usage
-- regression coverage guards absence of revenue columns
-- regression coverage guards exact-key `pageLocation` conversion supplementation without campaign-level allocation
-- regression coverage guards conversion-prioritized Landing Pages fallback queries for both primary landing-page rows and `pageLocation` traffic-fallback rows, so conversion-bearing rows are not hidden by session ordering or UI table limits
-- GA4 service code keeps fallback scoped to selected campaign values
-
-Partially reviewed:
-
-- live row quality depends on tagging and GA4 processing
-
-Not locally verifiable:
-
-- exact live landing-page values without real GA4 property validation
-
-Future-platform template rule:
-
-- landing-page or destination-page tables must not receive campaign-level imported revenue unless exact page-level matching identifiers exist
-
-### 7. Conversion Events
-
-Status: production-ready locally for current code scope.
-
-User-facing role:
-
-- show event-level conversion volume context for the selected GA4 campaign scope
-
-Inputs:
-
-- `/ga4-conversion-events`
-- selected GA4 property
-- saved GA4 campaign filter
-- selected Overview date range
-
-Current logic:
-
-- rows use the selected Overview date range.
-- rows are fetched through the live `/ga4-conversion-events` GA4 Data API path for numeric property IDs, not reconstructed from scheduler-populated `ga4_daily_metrics`.
-- revenue is intentionally not shown.
-- imported campaign revenue is not allocated into event rows.
-- when primary event rows have event counts/users but missing conversion/revenue values, conversion-prioritized same-scope `pageLocation` UTM rows may supplement conversions only by exact `Event` name match.
-- rows that already have conversions/revenue are not overwritten by fallback rows.
-- unmatched fallback rows are not added and campaign-level conversions are not allocated into event rows.
-- zero row-level conversions are valid only when GA4 returns zero for the exact event grain.
-- row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
-
-Proven locally:
-
-- regression coverage guards selected date-range query usage
-- regression coverage guards absence of revenue columns
-- regression coverage guards exact-key `pageLocation` conversion supplementation without campaign-level allocation
-- regression coverage guards row-level Conversion Events supplementation when only some primary rows are missing conversions/revenue
-- regression coverage guards conversion-prioritized Conversion Events fallback queries so conversion-bearing event rows are not hidden by UI table limits
-- GA4 service code keeps fallback scoped to selected campaign values
-
-Partially reviewed:
-
-- live row quality depends on event naming and GA4 key-event configuration
-
-Not locally verifiable:
-
-- exact live event values without real GA4 property validation
-
-Future-platform template rule:
-
-- event/action tables must define whether values are event counts, conversions, users, revenue, or attribution outputs
-- do not attach financial values to event rows without exact event-level financial identifiers
-
-### 8. Source Modals And Source Lifecycle
-
-Status: production-ready locally for current Overview source-modal code scope; provider/source-family lifecycle checks remain external validation gates.
-
-User-facing role:
-
-- show financial provenance and allow users to manage active revenue/spend sources
-
-Inputs:
-
-- `/revenue-sources`
-- `/revenue-breakdown`
-- `/spend-sources`
-- `/spend-breakdown`
-- source edit/delete handlers
-
-Current logic:
-
-- Total Revenue and Total Spend cards open source-provenance modals.
-- source modals are scrollable.
-- source delete handlers invalidate and refetch relevant totals and breakdowns.
-- backend delete routes verify campaign access and source ownership before mutation.
-- storage totals join records to active source definitions.
-
-Proven locally:
-
-- source modals have vertical scrolling behavior
-- source delete routes verify campaign/source ownership
-- active-source joins protect totals from inactive/orphan source definitions
-- no synthetic GA4 native revenue records should be written into imported revenue records by `/ga4-daily`
-
-Provider/deployed validation gates:
-
-- full add/edit/delete/display/totals/scheduler lifecycle should still be validated for every source family with real provider data
-- source modal fallback behavior when breakdown rows are absent is locally understood; source-family certification remains a provider validation gate
-
-Not locally verifiable:
-
-- provider refresh behavior without credentials
-- production duplicate/orphan source inventory
-
-Future-platform template rule:
-
-- every source family copied to a new platform needs lifecycle validation: add, edit, delete, refresh, display, totals, downstream recompute, and cleanup boundary
-
-### 9. Refresh And Scheduler Paths
-
-Status: production-ready locally for current Overview refresh code scope; deployed startup-fired Google Sheets spend scheduler execution is recorded for one campaign/source; deployed one-minute Google Sheets spend timer mutation evidence and broader provider checks remain external validation gates.
-
-Google Sheets spend requirement: mapped value edits must automatically propagate through the same stable source into Overview and downstream financial consumers. The implementation target is a Google Sheets-spend-only provider poll every 1 minute plus an open Overview spend refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions. Literal zero-latency delivery is not guaranteed, and it remains unproven in production until a deployed mutation packet captures the timer firing and exact value propagation.
-
-User-facing role:
-
-- keep Overview values fresh without silently broadening scope or writing misleading values
-
-Inputs:
-
-- GA4 daily scheduler
-- external source auto-refresh scheduler
-- `/ga4-daily` on-demand backfill
-- frontend query refetch intervals
-
-Current logic:
-
-- `/ga4-daily` can read persisted rows and backfill native GA4 daily facts when needed.
-- daily refresh uses saved GA4 campaign filters.
-- external source refresh can trigger downstream KPI/Benchmark and alert checks after source updates.
-- Overview page queries refetch while the page is open.
-
-Proven locally:
-
-- scheduler code uses saved GA4 campaign filter parsing
-- `/ga4-daily` no longer writes synthetic imported revenue records in current regression coverage
-- focused regression tests cover daily fallback and no synthetic revenue write
-
-Provider/deployed validation gates:
-
-- scheduler behavior is traced at code level, with one deployed startup-fired Google Sheets spend scheduler packet recorded for source `618e5e12-0f3f-44a2-837a-d2677ad95f64`
-- normal wall-clock scheduled-hour execution and source-family refresh identity should still be certified for each real provider when that broader proof is requested
-
-Not locally verifiable:
-
-- normal wall-clock deployed scheduler execution beyond the recorded startup-fired Google Sheets spend packet
-- provider API availability
-- real GA4 delayed processing
-
-Future-platform template rule:
-
-- schedulers must fail closed when campaign/source ownership cannot be verified
-- refreshes must update stable source IDs and must not append duplicate source definitions or records
-
-### 10. Downstream Consumers
-
-Status: production-ready locally for current Overview-originated values, with one recorded deployed GA4 Overview Report email-delivery packet and future report/email variants still requiring their own evidence.
-
-User-facing role:
-
-- keep values consistent when Overview financial and GA4 metrics feed other GA4 sections
-
-Consumers:
-
-- KPIs
-- Benchmarks
-- Ad Comparison
-- Insights
-- browser-generated report output
-- scheduled/server GA4 report PDF output where it renders GA4 Overview-originated Total Revenue
-
-Current logic:
-
-- Summary `Conversions`, KPI `Total Conversions`, and Conversion Rate paths use the coherent Summary source hierarchy.
-- CPA paths use `financialConversions` and `financialCPA`, which are derived from the selected GA4 financial source used by Total Revenue.
-- many downstream UI paths consume `financialRevenue`, `financialConversions`, `financialCPA`, or `ga4RevenueForFinancials`.
-- revenue-availability gates for KPIs, Benchmarks, and Insights use `ga4HasRevenueMetric`, which is derived from the same selected GA4 financial source used by Total Revenue.
-- browser-generated and scheduled/server GA4 report output use the relevant Overview source model for Summary values, Total Revenue, and CPA conversions.
-- Commit 1 and the follow-up propagation hardening corrected those Overview-originated values without reopening independent KPI, Benchmark, Ad Comparison, Insights, or Reports readiness beyond this value-propagation path.
-
-Proven locally:
-
-- KPIs read `financialRevenue` for Revenue, ROAS, and ROI live values; KPI creation prefill/fallback uses Summary conversions for `Total Conversions` and `Conversion Rate`, and financial conversions only for CPA.
-- Benchmarks read `financialRevenue`/`financialCPA` for revenue/financial current values; the availability gate now follows `ga4HasRevenueMetric`.
-- Ad Comparison receives `totalRevenue={financialRevenue}` and `ga4RevenueTotal={ga4RevenueForFinancials}`; its browser and scheduled report output use those same totals for all-source revenue and source provenance.
-- Insights executive cards, data summary, and financial integrity checks read `financialRevenue`; Insights CPA uses `financialCPA`, not `financialSpend / breakdownTotals.conversions`.
-- Browser-generated and scheduled/server GA4 Reports read the selected scoped GA4 financial source for Total Revenue and CPA conversions, and scheduled/server GA4 report Summary totals use the same coherent source hierarchy as the Overview UI.
-- Campaign DeepDive aggregate/report parity remains a separate aggregate route concern and was not broadened by this Overview propagation fix.
-- Reports readiness separately covers scheduled/server report output labels and delivery caveats
-- KPI and Benchmark readiness is separate and should not be reopened unless the corrected Overview financial value changes their input contract
-
-Partially reviewed:
-
-- deployed/manual visual parity can be checked separately when needed
-
-Not locally verifiable:
-
-- deployed scheduled PDF/email values without deployed report validation
-
-Future-platform template rule:
-
-- downstream consumers must read the same authoritative platform Overview values or explicitly document a different window/source
-- no platform may let live UI and report output diverge in executive-facing financial meaning
-
-## Completed Overview-Related Hardening History
-
-The following Overview-related work is already complete and should not be reopened unless relevant code changes or validation fails:
-
-1. Removed synthetic imported GA4 revenue writes from `/api/campaigns/:id/ga4-daily` while preserving native `ga4_daily_metrics` facts.
-2. Cleaned up the proven orphan `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'`.
-3. Fixed real-property GA4 campaign picker discovery through manual UTM campaign dimensions and `pageLocation` `utm_campaign`.
-4. Fixed live real-property Overview zero-metric paths by using selected-campaign `pageLocation` fallback only when primary scoped results are empty.
-5. Kept Summary cards on a coherent selected-campaign source instead of per-metric maximum values.
-6. Kept Landing Pages and Conversion Events on the selected Overview date range.
-7. Kept imported revenue out of Landing Pages and Conversion Events.
-8. Corrected Campaign Breakdown revenue labeling where exact campaign-matched imported revenue can be included.
-9. Kept Pipeline Proxy separate from confirmed revenue and performance calculations.
-10. Added exact-key Landing Pages conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into page rows.
-11. Prioritized conversion-bearing same-scope `pageLocation` rows when supplementing Landing Pages from primary rows and `pageLocation` traffic-fallback rows, so conversion rows are not missed by session ordering or UI table limits.
-12. Added exact-key Conversion Events conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into event rows.
-13. Aligned Summary `Conversions`, Insights CPA, KPI creation fallback, and scheduled/server report Summary values to the relevant Overview source model.
-14. Stopped Campaign Breakdown UI and scheduled/server PDF output from scaling GA4 row values to Summary card totals; row metrics now preserve the selected-property GA4 breakdown response.
-15. Made Conversion Events supplementation row-level and conversion-prioritized so rows missing conversions can be filled by exact event match without overwriting rows that already have GA4 conversions/revenue.
+| Case | Required behavior | Current result |
+| --- | --- | --- |
+| Campaign access denied | fail closed | Proven on traced endpoints. |
+| Missing property/connection | explicit unavailable/reconnect state | Mostly guarded; several secondary queries silently return null/empty. |
+| Provider/token failure | retain stable data with explicit stale/error provenance | Daily path can retain rows with warning; Overview does not surface warning, and other paths often show zero/empty. |
+| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Engagement and financial render paths conflate zero with missing. |
+| Incompatible windows | reject, normalize, or clearly label | Current code selects/falls back across 30/90/lifetime windows. |
+| Source with no materialized records | unavailable/fail closed | Spend can use cached campaign value. |
+| Inactive source | exclude from total | Proven by active joins. |
+| Orphan record | exclude and inventory | Excluded by inner join; large damaged inventory remains. |
+| Foreign spend context | exclude from GA4 | Not implemented in shared spend reads. |
+| Hidden legacy source | either migrate, explicitly support, or fail closed | Retained rows still contribute. |
+| Table request failure | explicit error, not empty truth | Landing Pages and Conversion Events render empty-state copy. |
+| Pipeline source context mismatch | fail closed | Salesforce can fall back across contexts. |
 
 ## Validation Evidence
 
-Latest local validation run for the completed Campaign Breakdown and Conversion Events source-path hardening:
-
-- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
-- result: passed, 2 files, 45 tests
-- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/ga4-financial-rules.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-insights-report-parity-regression.test.ts`
-- result: passed, 6 files, 74 tests
-- command: `npm run check`
-- result: passed
+### Passed during this audit
 
-What the validation proves:
+- `npm run check`
+  - result: passed
+- focused Overview/downstream regression run:
+  - 15 test files passed
+  - 146 tests passed
+  - included GA4 UI/filter, revenue additivity, financial rules/source parity, spend additivity, latest-day spend, source lifecycle recompute, Insights/report parity, outcome totals, Performance Summary, Trend Analysis, and report email guards
+- `server/shopify-ga4-disconnect-transaction.test.ts`
+  - 7 tests passed in the isolated source-family run
+- read-only target-database aggregate inventory
+  - completed without data mutation or secret output
 
-- Campaign Breakdown live UI aggregation no longer rescales row Sessions, Users, Conversions, or GA4-native Revenue to Summary card totals.
-- scheduled/server GA4 PDF Campaign Breakdown aggregation no longer rescales row GA4-native Revenue to Summary card totals.
-- Conversion Events supplementation is row-level: rows that already have conversions/revenue are preserved, rows missing conversions can be filled by exact event-name match, unmatched fallback rows are not added, and the fallback query uses a widened conversion-prioritized limit.
+### Failed during this audit
 
-Latest local validation run for the completed Landing Pages conversion-prioritized supplement:
+- `server/hubspot-revenue-ga4-overview-regression.test.ts`
+  - 24 passed, 2 failed
+- `server/latest-day-revenue-regression.test.ts`
+  - 18 passed, 1 failed
+- combined with `server/shopify-ga4-disconnect-transaction.test.ts`
+  - 1 file passed, 2 files failed; 49 tests passed, 3 failed
 
-- command: `npm test -- server/ga4-filter.test.ts`
-- result: passed, 1 file, 16 tests
-- command: `npm test -- server/ga4-ui-regression.test.ts`
-- result: passed, 1 file, 30 tests
+### Passed after Current Commit 1
 
-What the validation proves:
+- original three-file source-family packet
+  - 3 files passed; 52 tests passed
+- expanded packet including the duplicate HubSpot damaged-data inventory guard
+  - 3 files passed; 50 tests passed
+- focused Overview/downstream regression run
+  - 15 files passed; 146 tests passed
+- `npm run check`
+  - passed
+- code/data boundary
+  - test assertions and this readiness record changed; no runtime, schema, API, scheduler, or data mutation path changed
 
-- Landing Pages conversion supplementation uses a conversion-prioritized same-scope `pageLocation` fallback query when primary landing-page traffic rows or same-scope `pageLocation` traffic-fallback rows have missing conversions.
-- exact landing-page/source/medium matching is still required.
-- unmatched fallback rows are not added and campaign-level conversions are not allocated into page rows.
+### What passing tests do not prove
 
-Latest local validation run for the completed Overview metric propagation hardening:
+- current live GA4 values for all 35 connections
+- provider refresh/token behavior for current expired metadata
+- correctness of the mixed 30/90/lifetime window contract
+- correct failure/valid-zero UI behavior identified above
+- exact completeness of every active revenue/spend source lifecycle
+- safe cleanup boundaries for orphan or drifted production rows
+- current deployed browser pixel/text behavior
+- all scheduled report/provider/inbox variants
+- complete downstream parity across every configured source mix
 
-- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
-- result: passed, 2 files, 44 tests
-- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/source-safety-regression.test.ts server/spend-source-additivity.test.ts`
-- result: passed, 11 files, 204 tests
-- command: `npm run check`
-- result: passed
-- command: `git diff --check -- client/src/pages/ga4-metrics.tsx server/analytics.ts server/ga4-scheduled-report-pdf.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts GA4/OVERVIEW.md GA4/OVERVIEW_PRODUCTION_READINESS.md GA4/README.md GA4_PRODUCTION_READY_TRACKER.md`
-- result: passed
+## Current Commit Queue
 
-What the validation proves:
+Current Commit 0 is this documentation-only baseline. It lowers the status, records the dynamic inventories, and makes no runtime or data change.
 
-- Summary `Conversions` uses the Summary source hierarchy, not `financialConversions`.
-- Conversion Events exact-key supplementation works without adding unmatched fallback rows.
-- KPI creation fallback uses financial conversions only for CPA.
-- Insights CPA uses `financialCPA` instead of recomputing from Summary conversions.
-- scheduled/server GA4 report Summary totals use the same coherent source hierarchy as the Overview UI.
-Latest local validation run for the completed Landing Pages exact-key conversion supplement:
+### Current Commit 1 — Repair stale source-family regression guards — complete
 
-- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
-- result: passed, 2 files, 41 tests
-- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts`
-- result: passed, 5 files, 77 tests
-- command: `npm run check`
-- result: passed
+Completed on `2026-07-15` as a test-only correction.
 
-What the validation proves:
+- bound the HubSpot inventory test to the actual read-only handler instead of a later route marker that now includes Shopify cleanup code
+- replace the broad `Sync` substring prohibition with action-specific refresh/reprocess assertions
+- update the Shopify tags guard to accept the current multiline exact logic
+- rerun the 3-file source-family packet, the 15-file focused packet, and TypeScript
 
-- Landing Pages uses exact `Landing page + Source + Medium` matching when supplementing missing conversions from same-scope `pageLocation` UTM rows
-- Landing Pages does not add unmatched fallback rows or allocate campaign-level conversions into page rows
-- existing Overview UI regression guards still pass
+This commit closes B11 only. It does not make Overview production-ready.
 
-Latest local validation run for the completed Overview financial-source fix:
+### Current Commit 2 — Define one explicit Overview window/source contract — next
 
-- command: `npm test -- server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts`
-- result: passed, 2 files, 42 tests
-- command: `npm test -- server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-filter.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/source-safety-regression.test.ts server/spend-source-additivity.test.ts`
-- result: passed, 9 files, 178 tests
-- command: `npm run check`
-- result: passed
+This is the smallest safe next runtime commit.
 
-What the validation proves:
+- resolve 30-day connection lookback versus hard-coded 90-day table queries
+- stop selecting maximum revenue across incompatible lifetime/daily/breakdown windows unless that behavior becomes an explicitly labeled product contract
+- keep Summary metrics coherent, including Engagement Rate and valid zero
+- correct Users provenance copy
+- cover 30-day and 90-day connections, zero values, negative adjustments, and provider-empty fallbacks
 
-- the confirmed financial source defect is fixed at the local code/regression level
-- Summary cards still use the coherent selected-campaign source hierarchy
-- financial GA4 revenue and CPA conversions now use the same selected scoped financial source
-- additive native GA4 revenue plus imported revenue behavior remains covered
-- current TypeScript compiles
-- campaign/property scoping guards and existing source-safety guards remain intact
-- no synthetic GA4 imported revenue write is expected from `/ga4-daily`
+### Current Commit 3 — Fail closed on request errors and preserve valid zeros
 
-What the validation does not prove:
+- distinguish loading, unavailable, stale, error, and valid zero for every Overview query
+- do not turn failed revenue/spend requests into `$0`
+- do not turn failed Landing Pages/Conversion Events requests into legitimate empty data
+- render valid zero Profit/ROAS/ROI semantics correctly
+- keep stable cached content visible during background refresh where available
 
-- real GA4 provider values match a deployed property
-- normal wall-clock deployed scheduler execution beyond the recorded startup-fired Google Sheets spend packet works
-- every provider source-family lifecycle is production-ready
-- production data has no duplicate or orphan source records outside previously inventoried rows
-- future deployed scheduled/test email delivery evidence outside the recorded GA4 Overview Report packet, which remains Reports readiness/runtime scope unless the Overview values inside a report are wrong
+### Current Commit 4 — Scope GA4 spend and remove stale cached fallback
 
-## Future Platform Template
+- add an explicit GA4 spend context contract through UI, routes, storage, schedulers, reports, and aggregates
+- define the bounded treatment of legacy null-context sources before filtering or migration
+- stop substituting `campaign.spend` when an active source has no materialized rows
+- add cross-platform contamination, source-without-records, delete, and recompute tests
 
-GA4 Overview readiness documentation is a structure, process, and certification-quality template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source. It is never proof that the target platform is production-ready. Each target platform must produce its own value inventory, trace matrix, downstream matrix, lifecycle matrix, negative-case matrix, tests, deployed/provider caveats, and existing-data inventory where applicable.
+### Current Commit 5 — Resolve visible on-hold source paths
 
-### Platform Identity Gate
+Choose and document one safe product decision for each on-hold path:
 
-Before a new platform Overview can be called production-ready, document:
+- complete Google Sheets transactional replacement, last-good failure retention, durable OAuth, automatic polling, freshness, and deployed mutation proof; or
+- hide/disable the path and fail closed so it cannot feed totals until certified
 
-- client boundary
-- campaign boundary
-- platform account/property/customer boundary
-- selected platform campaign/ad group/source boundary
-- whether post-setup rescope exists
-- which API routes enforce the boundary
-- which storage calls enforce the boundary
-- which scheduler jobs enforce the boundary
+Apply the same rule to optional no-date CSV Spend. Leaving an enabled path on hold is not acceptable for complete certification.
 
-Required answer:
+### Current Commit 6 — Reconcile retained legacy sources
 
-`This platform's Overview data is scoped by [client], [campaign], [platform source/account/property/customer], and [selected source campaign/ad group/etc]. It does not include unrelated platform data.`
+- inventory every active null-context Manual, Salesforce, ad-platform, and other retained source
+- prove source identity and intended GA4 ownership
+- migrate, explicitly support, or deactivate only within an exact reviewed boundary
+- pass Salesforce Pipeline Proxy context explicitly and fail closed on mismatch
 
-### Summary Metric Gate
+### Current Commit 7 — Complete source-family lifecycle evidence
 
-Before copying GA4 Summary-card behavior, document:
+For every enabled family that can feed Overview, cover add, edit, delete, refresh/reprocess, scheduler, modal display, totals, downstream recompute, failure retention, and damaged-data boundary. Reuse narrow HubSpot/Shopify/CSV evidence only after current tests and shared inputs pass.
 
-- source endpoint for each Summary metric
-- date window for each metric
-- fallback order
-- whether fallbacks stay inside selected platform scope
-- whether values are native, imported, or derived
-- whether users/people metrics are deduplicated or row-summed
+### Current Commit 8 — Production freshness/provider evidence
 
-Required answer:
+- run bounded deployed validation for representative 30-day and 90-day GA4 connections
+- prove token refresh, on-demand backfill, scheduled refresh, stale warning, reconnect, provider-empty, and delayed-processing behavior
+- surface Overview freshness without implying provider completeness
+- record exact campaign/property/window evidence without secrets
 
-`Summary cards use [source hierarchy] for [window]. They do not combine incompatible source windows by maxing values across endpoints.`
+### Current Commit 9 — Production inventory and bounded cleanup
 
-### Financial Gate
+- rerun owner/campaign/source-scoped inventory after forward fixes
+- classify all orphan, inactive, duplicate-candidate, no-record, and cache-drift rows
+- apply only reviewed exact candidates
+- rerun post-apply inventory and record counts/skips
 
-Before copying GA4 Financial-card behavior, document:
+### Current Commit 10 — Complete downstream propagation and deployed UI evidence
 
-- native platform revenue source, if any
-- imported revenue sources
-- spend sources
-- conversion source for CPA
-- date window for every financial input
-- whether early-signal/pipeline values exist
-- whether early-signal values are excluded from confirmed financials
-- source modal provenance and source lifecycle behavior
+- automate and manually verify the complete propagation matrix across KPIs, Benchmarks, alerts/notifications, Ad Comparison, Insights, Reports, and every named Campaign DeepDive subsection
+- verify browser and scheduled/server artifacts use the same source/window/failure semantics
+- complete named deployed report/Trend/multi-source evidence relevant to the claimed scope
+- rerun all matrices and update this file only after evidence is current
 
-Required answer:
+Estimated remaining work: a minimum of 9 bounded engineering/evidence commits or packets (`Current Commit 2` through `10`). The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
 
-`Spend comes from [source]. Revenue comes from [source set]. Profit, ROAS, ROI, and CPA derive from those same values. The UI names those sources and does not imply unavailable sources are connected.`
+## UI Validation Requirement
 
-### Table Gate
+UI validation is still necessary before final certification, but it is not the next step. Current defects are already proven from code and production data, so browser validation now would only confirm known unsafe behavior.
 
-Before copying GA4 table behavior, document:
+After the forward fixes and automated tests pass, UI validation must cover:
 
-- row grain
-- row scope
-- date range
-- whether revenue appears
-- whether imported financial values can be exactly matched to row keys
-- whether row totals are expected to reconcile to top cards
+- 30-day and 90-day connection windows and visible labels
+- valid zero and negative financial outcomes
+- provider/query failures without false zeros or false empty tables
+- stale daily data and reconnect behavior
+- each enabled source add/edit/delete/refresh path
+- legacy-source migration/deactivation effects
+- source modal counts, labels, freshness, and totals
+- browser report values
+- scheduled/server report attachment values and delivery state
+- all included downstream surfaces for the same controlled campaign/source mix
 
-Required answer:
+## Final Certification Gate
 
-`Rows represent [grain] inside [scope] for [window]. Imported revenue is [excluded / included only by exact row-level match]. Row totals [are / are not] expected to reconcile to top cards because [reason].`
+GA4 Overview may be called clean-certified only when all of the following are true at the same current commit and target-data state:
 
-### Refresh Gate
+- every row in the dynamic value inventory is proven or explicitly unavailable/fail-closed
+- one compatible, labeled window/source contract is used for each visible metric
+- valid zero, missing, stale, loading, and failure states are distinct
+- every enabled/retained source that can feed an included total has complete lifecycle proof
+- GA4 spend is platform scoped and no stale cache can substitute for missing materialized records
+- all confirmed blockers are fixed and regression-covered
+- focused and broad source-family tests are green
+- production inventory is rerun and every mutation has an exact reviewed boundary
+- deployed provider/freshness/browser evidence is current
+- the full downstream propagation matrix is current and passes
+- no named downstream validation relevant to the claimed scope remains open
+- this canonical file is updated with exact evidence and no contradictory clean-ready statement remains
 
-Before copying GA4 refresh behavior, document:
-
-- on-demand fetch path
-- persisted daily/history path
-- scheduler path
-- external source refresh path
-- stable source ID behavior
-- duplicate prevention
-- failure behavior when campaign/source ownership cannot be verified
-
-Required answer:
-
-`Refresh updates the same scoped source/history records and fails closed when ownership cannot be proven. It does not create duplicate active sources or broaden scope.`
-
-### Downstream Consumer Gate
-
-Before copying GA4 downstream behavior, document:
-
-- which Overview values feed KPIs
-- which Overview values feed Benchmarks
-- which Overview values feed Ad Comparison
-- which Overview values feed Insights
-- which Overview values feed Reports
-- whether each consumer uses the same source/window or intentionally different source/window
-
-Required answer:
-
-`Downstream consumers read [authoritative value set]. Any intentional difference in window/source is documented and labeled.`
-
-### Validation Gate
-
-Before calling a new platform Overview production-ready, confirm:
-
-- focused unit/static regression coverage passes
-- TypeScript check passes
-- local code trace proves ownership and source scoping
-- at least one production-like or deployed validation proves real provider values when provider access is required
-- source-family lifecycle is validated where financial sources exist
-- existing-data inventory is complete if prior bugs may have persisted damaged data
-
-## Future Platform Readiness Checklist
-
-A future platform Overview is not production-ready until every item below is answered with platform-specific evidence:
-
-- platform identity and scoping are proven
-- Summary-card source hierarchy is documented and regression-covered
-- financial source set is documented and regression-covered
-- early-signal values are separated from confirmed financials
-- source modals reconcile to card totals
-- source add/edit/delete/refresh lifecycle is validated per source family
-- scheduler and refresh paths fail closed on missing ownership
-- row-level tables do not allocate financial values without exact row keys
-- downstream consumers preserve the same executive-facing meaning
-- report output uses the same labeled values as live UI
-- validation commands and results are recorded
-- deployed/provider caveats are separated from local code readiness
-
-## Stable Response For Future Chats
-
-Answer only when the request is limited to the current traced local GA4 Overview code scope:
-
-`GA4 Overview is production-ready for the current local GA4 Overview code scope. The canonical reference is GA4/OVERVIEW_PRODUCTION_READINESS.md. External caveats remain for live GA4 API behavior, deployed scheduler execution, deployed provider/source refreshes, provider-backed source-family lifecycle validation, future scheduled/test email deliveries outside the recorded GA4 Overview Report packet, unvalidated report variants, and production database inventory outside the recorded Current Commit 3 target-campaign packet.`
-
-If the user asks for deployed/provider, production database health outside the recorded Current Commit 3 target campaign, future scheduled email delivery outside the recorded GA4 Overview Report packet, unvalidated report variants, or another platform's readiness, do not reuse the local GA4 Overview certification as proof. State the relevant unproven external gate and use the Current Commit Queue or Future Platform Template.
-
-This answer should stay the same only while all of these remain true:
-
-- relevant Overview, financial-source, scheduler, report, KPI, Benchmark, and shared aggregate code has not changed in a way that affects Overview values
-- validation evidence still passes for the traced paths
-- source requirements have not changed
-- deployed evidence has not contradicted this document
-- the user is assessing the existing GA4 implementation, not Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
-- production data inventory has not proven damaged source records outside the already documented cleanup boundary
-
-Do not answer future Overview readiness questions by reopening unrelated GA4 KPIs, Benchmarks, Ad Comparison, Reports, or Insights unless the Overview code path directly depends on a narrow value from those sections.
+Until then, the required answer is **not production-ready**.

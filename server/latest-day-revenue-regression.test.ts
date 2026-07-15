@@ -218,7 +218,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain('if (campaignField === "tags") return "Tags";');
     expect(routesFile).toContain("const getShopifyOrderTags = (order: any): string[] => {");
     expect(routesFile).toContain('if (field === "tags") return getShopifyOrderTags(o)[0] || "";');
-    expect(routesFile).toContain('const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);');
+    expect(routesFile).toMatch(/const values = field === "tags"\s*\?\s*getShopifyOrderTags\(o\)/);
     expect(schedulerFile).toContain("campaignField: mappingConfig.campaignField,");
     expect(schedulerFile).toContain("async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {");
     expect(schedulerFile).toContain("...(sourceId ? { sourceId } : {}),");

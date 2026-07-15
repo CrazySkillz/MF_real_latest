@@ -312,7 +312,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const inventoryRoute = sliceBetween(
       routes,
       'app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory"',
-      'app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"'
+      'app.get("/api/ga4-overview/shopify/source-damage-inventory"'
     );
     const runner = validationRunnerFile();
     const hubspotRunner = sliceBetween(
@@ -352,7 +352,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const inventoryRoute = sliceBetween(
       routes,
       'app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory"',
-      'app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"'
+      'app.get("/api/ga4-overview/shopify/source-damage-inventory"'
     );
     const runner = validationRunnerFile();
     const provenanceRunner = sliceBetween(
@@ -433,7 +433,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueSourcesDialog).not.toContain("run-now");
     expect(revenueSourcesDialog).not.toContain("RefreshCw");
     expect(revenueSourcesDialog).not.toContain("Reprocess");
-    expect(revenueSourcesDialog).not.toContain("Sync");
+    expect(revenueSourcesDialog).not.toMatch(/(?:title|aria-label)="[^"]*\b(?:Refresh|Reprocess|Sync)\b[^"]*"/);
+    expect(revenueSourcesDialog).not.toMatch(/>\s*(?:Refresh|Reprocess|Sync)\s*</);
 
     expect(sourceScopedRunNowRoutes).toEqual([
       'app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"',

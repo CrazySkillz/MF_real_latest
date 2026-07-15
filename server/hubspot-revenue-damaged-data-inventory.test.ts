@@ -97,7 +97,7 @@ describe('HubSpot Revenue damaged-data inventory', () => {
   it('keeps the campaign-guarded endpoint read-only and forbids automatic cleanup', () => {
     const routes = readFileSync('server/routes-oauth.ts', 'utf8');
     const start = routes.indexOf('app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory"');
-    const end = routes.indexOf('app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"', start);
+    const end = routes.indexOf('app.get("/api/ga4-overview/shopify/source-damage-inventory"', start);
     const route = routes.slice(start, end);
 
     expect(start).toBeGreaterThan(-1);

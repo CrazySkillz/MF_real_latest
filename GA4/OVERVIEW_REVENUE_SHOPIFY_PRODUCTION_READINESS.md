@@ -503,6 +503,8 @@ The following broad ledgers now identify this file as canonical and no longer us
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_VALIDATION_RUNNER.md`
 - `GA4-MANUAL-TEST-PLAN.md`
+- `GA4/REFRESH_AND_PROCESSING.md`
+- `GA4_PRODUCTION_READY_TRACKER.md`
 
 Historical packet detail remains in those ledgers for traceability, but it cannot override this document's current status or exclusions.
 

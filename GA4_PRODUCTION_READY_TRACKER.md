@@ -17,6 +17,8 @@ Rule: do not add new items here unless the root cause is confirmed in code or pr
 
 Campaign-level KPI/Benchmark production-readiness is tracked separately in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` because those rules apply to every connected platform, not only GA4.
 
+Shopify Revenue current status (2026-07-15): **production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is the canonical complete evidence record. Dormant OAuth and non-GA4 Shopify sources are excluded from that certification.
+
 ## May 2026 GA4 Report-Template Scope
 
 - [x] Update the stale report regression test so it covers the current scheduler behavior for already-skipped scheduled reports with `Campaign not found` or `No recipients configured`.
@@ -305,7 +307,7 @@ No local GA4 Overview follow-up commit is currently needed. GA4 Overview is prod
 
 The following are deployed/provider or production-data validation gates for broader GA4 confidence. They do not reopen GA4 Overview local code readiness unless they produce a specific code or data defect:
 
-- full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 revenue source family: Shopify, HubSpot, Salesforce, Google Sheets, CSV, and legacy Manual
+- full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each remaining uncertified GA4 revenue source family: Salesforce, Google Sheets, and legacy Manual; Shopify's enabled Admin API token scope is complete in its canonical readiness document, while HubSpot and CSV have their own separately bounded certifications
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 spend source family: Google Sheets, CSV, LinkedIn Ads, Meta, Google Ads, and legacy Manual
 - real GA4 property validation for Ad Comparison, reports, OAuth/token refresh, and longer Insights trend windows after enough live daily history exists
 - deployed scheduled email receipt and provider-event delivery status
@@ -356,7 +358,7 @@ Validate each source family separately.
 
 Revenue source families:
 
-- Shopify
+- Shopify — production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope; use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
 - HubSpot
 - Salesforce
 - Google Sheets

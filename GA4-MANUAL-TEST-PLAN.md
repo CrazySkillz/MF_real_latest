@@ -852,7 +852,7 @@ Checkpoint after Journey 8:
 - [ ] After Shopify edit/re-import, verify revenue, KPI, Benchmark, Reports, and Notifications requests refetch; the recorded Current Commit 6 deployed packet closed this cache/refetch check only, not report PDF contents, KPI/Benchmark row-value parity, notification row values, or email delivery
 - [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, or future provider changes
 - [x] The historical second-campaign portability packet is retained as bounded evidence only; it is not the canonical Current Commit 8 certification result
-- [ ] Shopify Revenue is not production-ready or clean-certified. Use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` for the current exact blockers; historical checked packets above remain bounded evidence only.
+- [x] Shopify Revenue is production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope as of 2026-07-15. Use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` for the canonical complete evidence and exclusions; dormant OAuth and non-GA4 Shopify sources are not included.
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts
@@ -1238,7 +1238,7 @@ Deferred for v1. Do not use the Salesforce checklist as current release validati
 - [ ] If a new order comes in → verify revenue updates after scheduler
 - [ ] For Current Commit 6 downstream cache/refetch validation, use the browser watcher around Shopify edit/re-import and confirm `overallPass: true`, revenue/KPI/Benchmark/Reports/Notifications refetch checks passed, one Shopify source is present, and Shopify breakdown revenue matches the imported amount; do not treat this as email/PDF/value-level proof
 - [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path: report/PDF values, KPI/Benchmark row values, notification row values, and actual delivered report email were user-confirmed. Repeat this validation for future report/email sends, other report variants, OAuth, or future provider changes
-- [x] Historical second-campaign portability evidence is retained as bounded evidence only; current Shopify readiness and remaining provider/isolation blockers are canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
+- [x] Historical second-campaign portability evidence is retained as bounded evidence only; current Shopify production-ready/clean-certified status, completed provider/isolation gates, and explicit exclusions are canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
 
 ### GA4 (real connection)
 - [ ] Connect a real GA4 property (not yesop mock)

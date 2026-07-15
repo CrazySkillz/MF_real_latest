@@ -2,19 +2,20 @@
 
 ## Status
 
-**Deployed code candidate with one confirmed GA4 test-data boundary. Cross-platform isolation and exact cleanup candidate implemented locally; not yet clean-certified.**
+**Production-ready and clean-certified for the currently enabled GA4 Overview Shopify Revenue Admin API token scope as of 2026-07-15. Dormant OAuth remains excluded while unavailable.**
 
-This is the canonical Shopify Revenue readiness document as of 2026-07-14 for deployed Current Commit 9.2 (`544b2855`), the completed exact-source repair, the Current Commit 8 reconciliation, the owner-scoped production inventory, two failed-safe cleanup attempts, and the Current Commit 9.3 isolation/cleanup candidate documented below.
+This is the canonical Shopify Revenue readiness document as of 2026-07-15 for deployed Current Commit 9.3 (`a2735192`), the completed exact-source provider repair, the Current Commit 8 reconciliation, the platform-isolated owner-scoped production inventory, the exact transactional GA4 test-source cleanup, and the final all-pass certification evidence documented below.
 
-The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not valid current readiness conclusions. Current Commit 8 replaces those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commit 9's deployed owner-scoped inventory reported three campaigns, and the user confirmed all three are tests. Exact follow-up evidence proved only `5317190c-d536-45d4-85c0-9d941cfba9f4` has a GA4 Shopify source; the other two Shopify sources belong to LinkedIn and Meta. Current Commits 9.1 and 9.2 correctly made no changes when their preconditions failed. Current Commit 9.3 preserves the LinkedIn/Meta sources and limits GA4 cleanup to the one exact GA4 source/connection; certification remains pending its deployment, one confirmed cleanup call, and one all-pass owner-scoped GA4 inventory.
+The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not evidence for this conclusion. Current Commit 8 replaced those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commit 9's first deployed owner-scoped inventory reported three test campaigns. Exact follow-up evidence proved only `5317190c-d536-45d4-85c0-9d941cfba9f4` had a GA4 Shopify source; the other two Shopify sources belong to LinkedIn and Meta. Current Commits 9.1 and 9.2 correctly made no changes when their preconditions failed. Deployed Current Commit 9.3 preserved the LinkedIn/Meta sources, isolated the GA4 inventory, and limited cleanup to the one exact GA4 source/connection. The cleanup and independent post-cleanup inventory then satisfied the documented certification gate.
 
 The current honest answer is:
 
 - Shopify Revenue's complete documented local lifecycle and downstream matrix is implemented and locally regression-covered.
 - The Admin API token path has bounded deployed evidence, including an exact-source provider-authoritative zero-match repair.
-- The source family must not be called production-ready or clean-certified while the one confirmed GA4 test-data finding and its GA4 refresh-failure alert remain.
+- The currently enabled GA4 Overview Shopify Revenue Admin API token scope is production-ready and clean-certified by the fresh evidence in this document; this does not certify dormant OAuth or another platform's Shopify source.
 - The inspected production source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` was inconsistent before repair. Shopify then returned zero current matches for the unchanged `utm_campaign = brand_search_q1` mapping, the user confirmed the scoped transactional repair, and the automatic post-repair inventory returned `shopifyLocalPersistencePass: true`. The exact expanded post-repair entity/finding packet was not retained in this audit record, so no broader production-data-health claim is made.
-- Deployed Current Commit 9 inventory returned `crossCampaignPass: true` but `localPass: false` with three reported campaigns and three open scheduler failures. Exact source reads then proved two reports/alerts belonged to non-GA4 Shopify sources (`linkedin` and `meta`). Those sources are excluded from GA4 certification rather than mutated. The cause and timing of the connection-state change after the scheduler run are not reconstructed or guessed.
+- The first deployed Current Commit 9 inventory returned `crossCampaignPass: true` but `localPass: false` with three reported campaigns and three open scheduler failures. Exact source reads then proved two reports/alerts belonged to non-GA4 Shopify sources (`linkedin` and `meta`), which Current Commit 9.3 excluded without mutation. The exact GA4 test boundary was cleaned transactionally with `status: 200`, `success: true`, `cleanupApplied: true`, and `recomputeFailures: []`.
+- The independent post-cleanup owner-scoped inventory returned `ownerScopedBatchComplete: true`, `shopifyLocalPersistencePass: true`, `crossCampaignOrderOverlapPass: true`, `shopifyReadinessCandidatePass: true`, `openRefreshFailureCount: 0`, and `failedCampaigns: []`.
 
 ## Audit Contract
 
@@ -441,7 +442,7 @@ Most assertions in `server/shopify-revenue-regression.test.ts` are static source
 
 ### Could existing production data be damaged?
 
-**Yes, within one current GA4 test-source boundary.** The known contradictory connected production source was provider-rematerialized and its automatic campaign-local inventory reported `shopifyLocalPersistencePass: true`. Follow-up exact reads proved the remaining GA4 candidate is campaign `5317190c-d536-45d4-85c0-9d941cfba9f4`. The sources in the other two reported test campaigns belong to LinkedIn and Meta; they are preserved and do not prove GA4 damage. No cross-campaign overlap was found (`crossCampaignPass: true`). Historical provider state before retained audits remains not locally verifiable.
+**No current damaged-data finding remains in the completed owner-scoped GA4 Shopify inventory.** The known contradictory connected source was provider-rematerialized and its automatic campaign-local inventory reported `shopifyLocalPersistencePass: true`. The remaining exact GA4 test source/connection was removed transactionally, its derived values recomputed without failure, and the post-cleanup inventory returned all pass values with no failed campaigns or open refresh failures. The LinkedIn and Meta Shopify sources were preserved and excluded from GA4 certification. Historical provider state before retained audits remains not locally verifiable, so the audit does not claim that damaged data never existed.
 
 Potential damage classes:
 
@@ -462,13 +463,13 @@ Current Commit 7 added Shopify-specific campaign-local checks. Current Commit 9 
 
 The combined inventory now checks source/record/connection campaign and store parity, mapping completeness, totals, daily dates/window, currency, order identity and duplicate rows, connection/source mapping, last-good observations, and the latest provider query/retry/deduplication/order-state audit. It returns exact entity IDs and reason codes, distinguishes `ownerScopedBatchComplete` from broader provider history, and never authorizes automatic cleanup.
 
-It intentionally does not claim another tenant's campaigns, reconstruct provider history from before the latest audit, retain raw order/refund payloads, or prove a dormant OAuth callback. Those are explicit privacy/history boundaries rather than silent passes. The deployed batch proved the connected source refresh succeeded and cross-campaign overlap passed. Follow-up source reads narrowed the GA4 cleanup boundary below.
+It intentionally does not claim another tenant's campaigns, reconstruct provider history from before the latest audit, retain raw order/refund payloads, or prove a dormant OAuth callback. Those are explicit privacy/history boundaries rather than silent passes. The deployed batch proved the connected source refresh succeeded and cross-campaign overlap passed. Follow-up source reads narrowed the GA4 cleanup boundary below, and the final post-cleanup batch passed the complete owner-scoped GA4 boundary.
 
 Confirmed boundary (user identified all three campaigns as tests):
 
 | Campaign | Shopify source | Platform | Connection | GA4 action |
 |---|---|---|---|---|
-| `5317190c-d536-45d4-85c0-9d941cfba9f4` | `048794ce-ed9a-45dd-8f2e-22341908138e` | `ga4` | `e61f6a80-7b8f-46b9-ad37-09200f03b685` | exact transactional cleanup |
+| `5317190c-d536-45d4-85c0-9d941cfba9f4` | `048794ce-ed9a-45dd-8f2e-22341908138e` | `ga4` | `e61f6a80-7b8f-46b9-ad37-09200f03b685` | exact transactional cleanup completed |
 | `de0af7f4-1dfd-4935-b5b3-1eafbb674e5c` | `7376d0e0-fa56-4864-80cd-9dbc8a972068` | `linkedin` | `a3bc9531-4844-4329-9ece-960421db6c60` | preserve and exclude from GA4 inventory |
 | `d68cd1d1-fa5c-4d22-810c-aca601dcfd04` | `8db3f5d5-8eeb-4096-958f-d95bf2154203` | `meta` | `39c74a67-23a6-4f81-ad94-581066227345` | preserve and exclude from GA4 inventory |
 
@@ -478,7 +479,7 @@ No campaign deletion, connected-store cleanup, unrelated source cleanup, or prov
 
 | Existing claim/evidence | Fresh result |
 |---|---|
-| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Prior claim remains withdrawn.** The current code is an implementation-complete candidate; deployed certification requires the single post-deploy refresh plus owner-scoped batch gate. |
+| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Now independently established for the currently enabled documented scope.** Prior statements remain non-evidence; the conclusion rests on the fresh lifecycle trace, regression gate, deployed exact-source repair, transactional cleanup, and final owner-scoped all-pass inventory retained here. |
 | Admin token ownership guard | **Proven locally**, including canonical Shopify-host enforcement before token forwarding; real provider behavior remains unverified. |
 | Paginated reads prevent truncation | **Proven for the current code path.** Executable multi-page, repeated-cursor, same-shop Link, page-limit, deduplication, older-window scope, and bounded 429 retry cases pass; the latest live page/request/retry counts are persisted for deployed verification. |
 | Materialization fails closed | **Now proven locally for traced GA4 Shopify boundaries.** Durable replacement rolls back on tested persistence failures; malformed successful payloads, repeated cursors, and unclassifiable matched orders fail before writes. Complete empty results intentionally replace revenue with zero. Post-commit recompute failure remains separate. |
@@ -488,7 +489,7 @@ No campaign deletion, connected-store cleanup, unrelated source cleanup, or prov
 | Downstream Reports/KPI/Benchmark/notification values are proven | **Propagation proven locally.** The exact shared Shopify financial row feeds Overview formulas, downstream content, reports/PDF/email payloads, KPI/Benchmark current values, outcome totals, and alerts; provider correctness is reconciled by the same source audit rather than a second value path. |
 | Delivered report email closes report path | **One packet only.** It does not prove other variants/sends, snapshots, scheduler failure behavior, or current code after later shared-file changes. |
 | Second-campaign portability proves isolation | **Proven locally by the owner-scoped batch boundary.** Cross-campaign overlap uses store plus order identity, and equal IDs from different stores remain isolated. |
-| Clean source-damage inventory | **Failed closed, then narrowed by exact evidence.** The deployed response returned `localPass: false` and `crossCampaignPass: true`. Two reported sources are proven LinkedIn/Meta sources that the GA4 inventory incorrectly included. Current Commit 9.3 fixes that platform leak and cleans only the one GA4 test boundary; a post-cleanup all-pass response is still required. |
+| Clean source-damage inventory | **Proven for the complete owner-scoped GA4 boundary.** The first deployed response failed closed. Current Commit 9.3 excluded the proven LinkedIn/Meta sources, cleaned only the exact GA4 test boundary, and the post-cleanup response returned every required pass value, zero open refresh failures, and no failed campaigns. |
 | OAuth can remain excluded | **Yes while unavailable.** The wizard suppresses OAuth unless the complete server configuration and required scopes are present. Enabling it later reopens its external callback gate. |
 | Normal wall-clock scheduling is optional | **Scheduler timing alone can remain external**, but source freshness, persisted run/failure identity, provider mutation, and last-good behavior are not optional for strict readiness. |
 
@@ -544,16 +545,16 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 - scheduler failure notification deduplication, last-good messaging, recovery resolution, and active bell indicator
 - OAuth suppression when the complete server configuration is unavailable
 - Campaign Breakdown, Ad Comparison, KPI/Benchmark, Campaign DeepDive/outcome totals, Reports/snapshots/PDF/email, notifications, and alerts through the current shared Shopify financial row
+- deployed exact transactional cleanup of the one confirmed GA4 test source/connection with zero recompute failures
+- complete post-cleanup owner-scoped GA4 inventory: local persistence, cross-campaign overlap, aggregate readiness, refresh-failure, and per-campaign gates all pass
 
-### Partially proven
+### Partially proven or excluded
 
-- production data health until Current Commit 9.3 removes the exact confirmed GA4 test artifacts and the owner-scoped batch is rerun
 - OAuth HMAC/callback/token-exchange behavior only if OAuth is configured and becomes visible
 
-### Unproven or broken
+### Unproven or broken within the enabled documented scope
 
-- one confirmed GA4 test campaign currently fails local persistence inventory and retains one GA4 scheduler-failure alert
-- production certification remains unproven until Current Commit 9.3 is deployed, its guarded cleanup succeeds, and the final owner-scoped inventory passes
+- none identified by the completed code trace, regression gate, deployed repair/cleanup evidence, and final owner-scoped inventory
 
 ### Not locally verifiable
 
@@ -562,12 +563,11 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 - dormant OAuth callback and token durability
 - provider conditions absent from the current production store, such as a live greater-than-250-order page or an actual 429; executable negative tests and persisted live counters cover the code path without manufacturing provider data
 - historical raw refund/cancellation/order-change lineage before the latest persisted state audit
-- deployed database health until the owner-scoped batch result is retained
 - current/future report provider acceptance and inbox delivery
 
 ## Isolated Current Commit Queue
 
-Current Commits 1 through 9.2 are implemented and deployed. The known connected contradictory source is repaired, the connected refresh completed, and cross-campaign overlap passed. Current Commits 9.1 and 9.2 safely rejected changed/cross-platform state without mutation. Current Commit 9.3 is the only remaining runtime commit: preserve the proven LinkedIn/Meta Shopify sources, correct GA4 inventory scoping, and clean only the exact GA4 test source/connection.
+Current Commits 1 through 9.3 are implemented and deployed. The known connected contradictory source is repaired, the exact GA4 test boundary is cleaned, the proven LinkedIn/Meta Shopify sources are preserved, the connected refresh completed, and the final owner-scoped inventory passed. There is no remaining Shopify runtime commit in the audited Admin API token scope.
 
 ### Current Commit 1 — Transactional Shopify replacement and last-good retention
 
@@ -919,18 +919,19 @@ Smallest safe implementation:
 
 Local validation: TypeScript passes, the cleanup/platform-isolation suites pass all 18 tests, and the complete 17-file Shopify/downstream gate passes all 150 tests.
 
-Estimated remaining work after Current Commit 9.3 is deployed: **2 actions, no Shopify UI workflow**:
+Deployed completion evidence on 2026-07-15:
 
-1. invoke the exact guarded cleanup once for the one documented GA4 campaign/source/connection set
-2. rerun `GET /api/ga4-overview/shopify/source-damage-inventory` and retain the compact all-pass result
+1. the exact guarded cleanup returned `status: 200`, `success: true`, `cleanupApplied: true`, and `recomputeFailures: []`
+2. the independent read-only owner-scoped inventory returned `ownerScopedBatchComplete: true`, `shopifyLocalPersistencePass: true`, `crossCampaignOrderOverlapPass: true`, `shopifyReadinessCandidatePass: true`, `openRefreshFailureCount: 0`, and `failedCampaigns: []`
+3. no Shopify UI workflow, campaign deletion, cross-platform source mutation, or broad cleanup was performed
 
 ## Certification Gate
 
-Current Commit 9's local implementation and connected deployed-refresh gates pass. Current Commits 9.1 and 9.2 have retained failed-safe deployed results. Certification is pending Current Commit 9.3 deployment, its exact one-source cleanup result, and the final read-only all-pass GA4 inventory.
+**Satisfied on 2026-07-15 for the currently enabled GA4 Overview Shopify Revenue Admin API token scope.** Current Commit 9's local implementation and connected deployed-refresh gates pass. Current Commits 9.1 and 9.2 retain their failed-safe deployed results. Deployed Current Commit 9.3 then completed the exact one-source cleanup and the final read-only owner-scoped inventory passed.
 
-Shopify Revenue must not be called clean-certified or production-ready until:
+The required certification conditions are satisfied:
 
-- Current Commit 9.3 is deployed and its response confirms cleanup of only the one documented GA4 campaign/source/connection set
-- the one-call owner-scoped batch returns `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` as `true`, `openRefreshFailureCount` as `0`, and every returned campaign as `pass: true`
+- Current Commit 9.3 is deployed and its response confirms successful cleanup of only the one documented GA4 campaign/source/connection set, with no recompute failure
+- the one-call owner-scoped batch returned `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` as `true`, `openRefreshFailureCount` as `0`, and no failed campaigns
 
-No campaign deletion, Shopify UI workflow, forced provider failure, fabricated greater-than-250-order fixture, OAuth setup, or repetitive UI validation is required for the currently visible Admin API token scope unless either post-deploy response returns a specific reason-coded failure.
+No remaining engineering or evidence step blocks this certification. Dormant OAuth remains excluded until it is configured and separately evidenced; future operational/provider failures reopen only the affected evidence boundary rather than retroactively proving this retained certification packet false.

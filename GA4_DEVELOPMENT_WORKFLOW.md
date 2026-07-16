@@ -320,7 +320,7 @@ Anti-overclaim rule for GA4:
 
 A previous GA4 production-ready statement must not be repeated unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by documented evidence. If a bug is found after a readiness claim, treat the affected value path as unproven, update the fix queue, add regression coverage for the missed failure mode, and update the readiness docs before restoring the production-ready answer.
 
-Current Overview status: GA4 Overview is production-ready for the current GA4 code scope. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`; use its `Future Platform Template` and `Future Platform Readiness Checklist` when refining Meta, Google Ads, LinkedIn, or another source.
+Current Overview status: GA4 Overview is not production-ready or clean-certified. Current Commit 2 (`5cff21ad`) is deployed and its bounded UI smoke validation passed on `2026-07-16`; Current Commit 3 is implemented locally and requires its own validation/deployment cycle. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`; use its `Future Platform Template` and `Future Platform Readiness Checklist` when refining Meta, Google Ads, LinkedIn, or another source.
 
 ## Delete Flow Validation
 

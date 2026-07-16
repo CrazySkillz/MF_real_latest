@@ -80,6 +80,8 @@ Current standard-template output rule:
 
 - each standard template PDF should mirror the same tab substance and section order as the corresponding live GA4 tab as closely as the current PDF renderer allows
 - `Overview` should follow the live Overview order
+- browser-generated Overview output must refuse generation when a selected Overview subsection has no successful or last-good required input; a failed revenue, spend, Campaign Breakdown, Landing Pages, or Conversion Events request must not become a plausible zero/empty PDF
+- scheduled/server Overview output must apply the same subsection-aware fail-closed rule: optional unselected section failures may retain bounded fallbacks, but a failed required selected Overview input aborts PDF generation and therefore prevents send/snapshot success
 - in `Overview` report output, `Campaign Breakdown` should use the column label `Revenue` because it can include exact campaign-matched imported revenue
 - in `Overview` report output, `Landing Pages` and `Conversion Events` should omit revenue
 - `KPIs` should follow the live KPI order

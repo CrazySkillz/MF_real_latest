@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is production-ready for the current GA4 code scope. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 2 (`5cff21ad`) deployed the fixed window/source order and passed its bounded UI smoke validation; later failure-state, spend-scope, source-family, freshness, cleanup, and downstream gates remain. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 
@@ -62,7 +62,7 @@ Campaign DeepDive financial provenance rule:
 
 Where:
 
-- GA4 native revenue comes from this campaign's GA4 scope and uses the same selected scoped GA4 financial source as Overview: the most complete native revenue total across to-date, daily, and breakdown totals, with conversions kept on that same selected source for CPA
+- GA4 native revenue comes from this campaign's GA4 scope and uses the same selected scoped GA4 financial source as Overview in fixed order: campaign-to-date provider totals, persisted daily totals where available to the caller, then configured-lookback breakdown only when earlier complete candidates are absent; valid zero and negative values remain authoritative, and conversions stay on that same source for CPA
 - imported revenue comes from active GA4-context revenue sources attached to this campaign
 
 Important clarification:
@@ -164,6 +164,14 @@ The following are derived outputs:
 - `CPA = Spend / Conversions`
 
 If spend or revenue is missing, downstream metrics may be blocked or call out missing prerequisites.
+
+Failure/zero rule:
+
+- a successful source-backed zero is a value, not a failed prerequisite
+- with positive spend and valid zero revenue, Profit is negative spend, ROAS is `0.00x`, and ROI is `-100%`
+- an HTTP failure, malformed response, or `success:false` from required Overview revenue/spend inputs must render the affected value unavailable rather than `$0`
+- a failed background refresh may keep last-successful values visible with explicit stale/error context; it must not clear them to zero
+- selected browser and scheduled/server Overview report financial subsections must fail closed when required revenue/spend inputs are unavailable
 
 Pipeline Proxy rule:
 

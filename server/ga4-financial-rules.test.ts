@@ -156,6 +156,15 @@ describe("GA4 financial rules regression suite", () => {
     });
   });
 
+  it("preserves valid zero revenue as a financial result when spend is positive", () => {
+    expect(computePerformanceMetrics(0, 100, 0)).toEqual({
+      profit: -100,
+      roas: 0,
+      roi: -100,
+      cpa: 0,
+    });
+  });
+
   it("editing a source replaces that source without creating duplicates", () => {
     const sources = [
       { id: "csv-1", total: 100 },

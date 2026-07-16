@@ -241,8 +241,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const client = ga4MetricsFile();
     const hubspotQuery = sliceBetween(
       client,
-      "const { data: hubspotPipelineProxyData } = useQuery<any>({",
-      "const { data: salesforcePipelineProxyData } = useQuery<any>({"
+      "const { data: hubspotPipelineProxyData,",
+      "const { data: salesforcePipelineProxyData,"
     );
 
     expect(hubspotQuery).toContain('/pipeline-proxy?platformContext=ga4`);');

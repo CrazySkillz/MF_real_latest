@@ -60,13 +60,22 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("const [snap] = sent");
   });
 
-  it("keeps GA4 scheduled PDFs resilient to optional section query failures", () => {
+  it("keeps optional GA4 scheduled PDF fallbacks but fails closed for selected Overview sections", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
 
     expect(source).toContain("[GA4 Scheduled PDF]");
-    expect(source).toContain("using persisted fallback");
+    expect(source).toContain("checking persisted fallback");
     expect(source).toContain('return { rows: [] };');
     expect(source).toContain("return { totals: {} };");
+    expect(source).toContain("const getOverviewReportRequirements = (report: any) => {");
+    expect(source).toContain('subsections.summary === true');
+    expect(source).toContain('subsections.revenue === true || subsections.performance === true');
+    expect(source).toContain("const failedParts = new Set<string>();");
+    expect(source).toContain("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE:");
+    expect(source).toContain('failedParts.has("revenue breakdown")');
+    expect(source).toContain('failedParts.has("spend breakdown")');
+    expect(source).toContain('failedParts.has("landing pages")');
+    expect(source).toContain('failedParts.has("conversion events")');
   });
 
   it("labels GA4 scheduled Campaign Breakdown revenue by the actual mixed-source value", () => {

@@ -28,11 +28,11 @@ The earlier clean-certified answer is retracted. Current code and target-databas
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-Current Commit 2 is implemented and locally validated in the working tree on `2026-07-16`; it closes the local code defects B1-B3 but is not yet committed, deployed, or UI/provider validated. B4-B10 and B12 remain open, so the complete Overview status remains not production-ready.
+Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 is implemented and locally validated; it closes B4-B5 locally but is not yet deployed or UI failure-injection validated. B6-B10 and B12 remain open, so the complete Overview status remains not production-ready.
 
 The durable answer is:
 
-`No. GA4 Overview is not production-ready or clean-certified at commit d5d143ea. The fresh July 15 audit found incompatible windows, zero/failure ambiguity, unscoped and stale spend fallbacks, visible on-hold source paths, production-data damage, incomplete downstream evidence, and three failing source-family regression guards. No runtime fix or cleanup was performed during the audit.`
+`No. GA4 Overview is not production-ready or clean-certified. Commit 1 repaired stale regression guards, Commit 2 (5cff21ad) fixed and deployed the coherent window/source contract with bounded UI smoke validation, and Commit 3 locally fixes failure-versus-zero rendering and Overview report fail-closed behavior. Unscoped/stale spend, visible on-hold paths, retained legacy sources, freshness/provider proof, production-data cleanup, and complete downstream evidence remain open.`
 
 ## Scope
 
@@ -92,32 +92,32 @@ This inventory was derived from current render code, query code, API routes, sto
 
 | Visible value or state | Current source and transform | Window/scope | Current status |
 | --- | --- | --- | --- |
-| Sessions | configured-lookback persisted daily totals; same-window breakdown only when daily rows are absent | selected connection's 30/60/90 completed-day lookback | Current Commit 2 aligns live tables and scheduled Summary to this contract; deployed/provider validation remains open. |
-| Users | Same source hierarchy as Sessions; users are additive across daily or fallback breakdown rows | configured completed-day lookback | Tooltip now states that a user may appear on more than one day or breakdown row; deployed pixel/text validation remains open. |
-| Conversions | Same coherent Summary source object | configured completed-day lookback | Locally covered; inherits remaining freshness and error-state blockers. |
+| Sessions | configured-lookback persisted daily totals; same-window breakdown response when daily rows are absent | selected connection's 30/60/90 completed-day lookback | Commit 2 bounded deployed smoke passed for one configured window; full 30/60/90 provider evidence remains open. Commit 3 distinguishes failed fallback requests from successful zero/empty responses locally. |
+| Users | Same source hierarchy as Sessions; users are additive across daily or fallback breakdown rows | configured completed-day lookback | Commit 2 deployed tooltip smoke passed; broader provider variants remain open. |
+| Conversions | Same coherent Summary source object | configured completed-day lookback | Commit 3 locally renders unavailable instead of zero only when no successful or last-good Summary source exists. |
 | Engagement Rate | engaged sessions divided by sessions from the selected Summary source | configured completed-day lookback | Valid zero is preserved and no campaign-to-date/latest-day cross-source fallback remains. |
 | Conversion Rate | Summary conversions divided by Summary sessions | source chosen by Summary hierarchy | Formula is correct when inputs are valid; inherits mixed-window/freshness/error blockers. |
-| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, campaign-to-date persisted daily, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date section with explicitly ordered fallbacks | Maximum selection is removed; zero/negative are valid and provider-empty objects fall through. Remaining error-state behavior is Current Commit 3. |
+| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, persisted daily where available to the caller, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date section with explicitly ordered fallbacks | Maximum selection is removed; zero/negative are valid and provider-empty objects fall through. Commit 3 locally makes missing required revenue inputs unavailable instead of `$0`. |
 | Financial conversions | Taken from the same object selected for native financial revenue | same ordered financial candidate | Source pairing and selection order are locally covered. |
 | Imported revenue | Active GA4/null-context `revenue_records` joined to active sources, aggregated to date | `1900-01-01` through today | Platform scoping is traced; source-family lifecycle and target-data completeness are not complete. |
 | Total Revenue | selected GA4 native revenue + imported revenue | mixes selected native window with imported lifetime | Additivity is tested; window meaning and active source safety block certification. |
 | Revenue source count | imported source rows plus GA4 native only when native revenue is greater than zero | current loaded values | A configured native revenue metric with a valid zero is omitted from source count/provenance. |
 | Pipeline Proxy | Combined successful HubSpot/Salesforce proxy responses | current-stage cached/on-demand provider data | Correctly excluded from confirmed revenue, but Salesforce request omits `platformContext=ga4` and server may fall back across GA4/LinkedIn/Meta candidates. |
 | Total Spend | spend breakdown total when truthy, else cached `campaign.spend`, but only when a source definition is visible | all active campaign spend sources; no GA4 platform filter | Confirmed platform-boundary and stale-cache defects. |
-| Profit | Total Revenue - Total Spend | same financial inputs | Hidden unless both numeric values are greater than zero, which incorrectly hides valid loss/zero-revenue cases. |
-| ROAS | Total Revenue / Total Spend | same financial inputs | Shows unavailable when revenue is valid zero; incorrectly says it needs revenue. |
-| ROI | (Total Revenue - Total Spend) / Total Spend | same financial inputs | Shows unavailable instead of `-100%` when spend is positive and revenue is valid zero. |
+| Profit | Total Revenue - Total Spend | same financial inputs | Commit 3 locally renders the loss when revenue is valid zero and both configured inputs are available. |
+| ROAS | Total Revenue / Total Spend | same financial inputs | Commit 3 locally renders `0.00x` for positive spend and valid zero revenue; only missing/zero spend blocks the ratio. |
+| ROI | (Total Revenue - Total Spend) / Total Spend | same financial inputs | Commit 3 locally renders `-100%` for positive spend and valid zero revenue. |
 | CPA | Total Spend / financial conversions | spend plus conversions from selected native financial candidate | Formula is covered; source window, spend boundary, failure, and zero-state blockers remain. |
-| Revenue Sources modal | merged source definitions and revenue breakdown rows | active GA4/null-context revenue sources | Shopify freshness is shown; Google Sheets/CSV/HubSpot freshness is not consistently shown. Errors silently become an empty list. |
-| Spend Sources modal | merged unscoped active source definitions and spend breakdown rows | all active campaign spend sources | Can show and total retained source types from other platform contexts. Errors silently become an empty list. |
+| Revenue Sources modal | merged source definitions and revenue breakdown rows | active GA4/null-context revenue sources | Commit 3 locally distinguishes source-list failure from an empty source set and retains last-good rows during background failure. Freshness gaps remain. |
+| Spend Sources modal | merged unscoped active source definitions and spend breakdown rows | all active campaign spend sources | Commit 3 locally distinguishes source-list failure from empty; platform contamination remains B6. |
 | Pipeline Proxy modal | successful HubSpot/Salesforce source entries | selected source configs | Salesforce cross-context fallback remains unsafe. |
 | Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property/filter and configured 30/60/90 completed-day lookback | Row allocation and local window parity are covered; live provider completeness remains unproven. |
-| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 20 | Window is aligned; request failure is still rendered as `No ... available` pending Current Commit 3. |
-| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 25 | Window is aligned; request failure is still rendered as empty/unavailable pending Current Commit 3. |
-| Overview GA4 error banner | only the `ga4-daily` query error | daily query | Breakdown, to-date, landing-page, conversion-event, revenue, and spend failures are not represented by this banner. |
+| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 20 | Commit 3 locally separates initial loading, successful empty rows, last-good data after refetch failure, and unavailable error. |
+| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 25 | Commit 3 locally applies the same explicit state contract. |
+| Overview request warning | combined error state for connection, GA4, table, revenue, spend, source-list, and configured Pipeline Proxy queries | affected request set | Commit 3 locally distinguishes last-successful cached content from inputs with no usable data. |
 | Freshness | daily endpoint returns `refreshIsStale`, dates, warning, and expected refresh | persisted daily path | Used in Insights/Trends, not presented beside Overview Summary/financial values. |
-| Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Inherits every live Overview source, zero, failure, and freshness defect. |
-| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Narrow formula tests pass; current production data and complete provider/deployed parity are not proven. |
+| Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Commit 3 locally refuses an Overview PDF when a selected subsection lacks required inputs; broader downstream/deployed parity remains open. |
+| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Commit 3 locally makes selected Overview subsections fail closed on required provider/storage failures while retaining optional unselected-section fallbacks. Current production/deployed parity remains unproven. |
 | Direct Overview comparisons/deltas | none rendered in Overview | not applicable | No direct comparison value exists to certify. Trends/deltas appear only in downstream Insights/Campaign DeepDive and are audited there. |
 
 ## Dynamic Source-Family Inventory
@@ -175,7 +175,7 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 | UI scope | `ga4-metrics.tsx` -> campaign query -> selected property -> saved campaign filter | Campaign/property intent is explicit. |
 | GA4 daily | `/ga4-daily` -> reporting-timezone window -> stored rows -> due-day provider backfill -> upsert -> response freshness | Access and selected property are guarded; production freshness is not established. |
 | GA4 to-date | `/ga4-to-date` -> selected connection -> campaign start/created date through prior UTC day -> live provider | Used for the explicitly labeled campaign-to-date financial contract, not as a configured-lookback Summary fallback. |
-| Breakdown | `/ga4-breakdown` -> `getAcquisitionBreakdown` -> client aggregation/render | Selected property/filter and 90-day window are explicit. |
+| Breakdown | `/ga4-breakdown` -> `getAcquisitionBreakdown` -> client aggregation/render | Selected property/filter and configured 30/60/90-day window are explicit. |
 | Landing Pages | `/ga4-landing-pages` -> provider report -> exact-key supplement -> client first 20 rows | Exact-match safety covered; failure visibility is not. |
 | Conversion Events | `/ga4-conversion-events` -> provider report -> exact-event supplement -> client first 25 rows | Exact-match safety covered; failure visibility is not. |
 | Revenue | setup/refresh -> `revenue_sources`/`revenue_records` -> active GA4-context joins -> totals/breakdown/modal | Platform context is guarded; all family lifecycles and damaged-data boundaries are not. |
@@ -207,7 +207,7 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 
 | Lifecycle | Proven | Unproven or failed |
 | --- | --- | --- |
-| GA4 connect/select | campaign access, selected property, one primary in current target snapshot | future token/provider behavior; three 30-day connections conflict with 90-day table window |
+| GA4 connect/select | campaign access, selected property, one primary in current target snapshot; configured window parity fixed by Commit 2 | future token/provider behavior and full deployed 30/60/90 provider variants |
 | GA4 refresh/on-demand backfill | route and scheduler logic, refresh-token material present | no current provider call was made; all stored daily campaign maxima are older than yesterday |
 | Revenue add | guarded routes and active GA4-context joins | Google Sheets complete failure/rollback path; hidden legacy paths |
 | Revenue edit/refresh | HubSpot/Shopify/CSV have bounded evidence | Google Sheets is on hold; current HubSpot broad guard is red |
@@ -220,25 +220,25 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 
 ## Confirmed Blockers
 
-### B1. Incompatible Summary, table, and financial windows — resolved locally by Current Commit 2
+### B1. Incompatible Summary, table, and financial windows — resolved by Current Commit 2
 
-The root cause was a page-level hard-coded `90days` request combined with connection-specific daily lookback and a maximum-revenue selector spanning campaign-to-date, daily, and breakdown candidates. Current Commit 2 derives every Overview live-table request from the selected connection's validated 30/60/90-day setting, excludes intraday `today` from Landing Pages and Conversion Events, labels Summary/tables as completed-day lookback and financials as campaign-to-date, and replaces maximum selection with a fixed complete-source order. Browser and scheduled report builders now use the same contract. Deployed 30/60/90 provider validation remains in Current Commit 8.
+The root cause was a page-level hard-coded `90days` request combined with connection-specific daily lookback and a maximum-revenue selector spanning campaign-to-date, daily, and breakdown candidates. Current Commit 2 derives every Overview live-table request from the selected connection's validated 30/60/90-day setting, excludes intraday `today` from Landing Pages and Conversion Events, labels Summary/tables as completed-day lookback and financials as campaign-to-date, and replaces maximum selection with a fixed complete-source order. Browser and scheduled report builders now use the same contract. Commit `5cff21ad` deployed and the bounded UI smoke passed for one configured campaign/window; full 30/60/90 provider validation remains in Current Commit 8.
 
-### B2. Engagement Rate can leave the chosen Summary source — resolved locally by Current Commit 2
+### B2. Engagement Rate can leave the chosen Summary source — resolved by Current Commit 2
 
 The root cause was a positive-value availability test and a separate Engagement Rate fallback chain. Current Commit 2 uses row/response presence for source availability, adds `engagedSessions` to the same-window acquisition fallback, and derives Engagement Rate only from the selected Summary source. Zero is retained as a valid rate.
 
-### B3. Users provenance is misleading — resolved locally by Current Commit 2
+### B3. Users provenance is misleading — resolved by Current Commit 2
 
 The root cause was copy that described additive daily/breakdown totals as unique. The tooltip now says that GA4 users are summed for the selected window and that the same user may appear on more than one day or breakdown row.
 
-### B4. Failures become zero or empty data
+### B4. Failures become zero or empty data — resolved locally by Current Commit 3
 
-Spend-to-date, imported revenue, source lists, revenue/spend breakdowns, diagnostics, Landing Pages, Conversion Events, and Pipeline Proxy often return client fallback zero, empty array, or null on HTTP/JSON failure. Only the daily query drives the Overview GA4 error banner. Executives can therefore see `$0`, no sources, or `No ... available` when the real state is a request/provider failure.
+The root cause was that Overview query functions caught HTTP/JSON failures and returned successful-looking `0`, `[]`, `null`, or empty objects. React Query therefore had no error state, the renderer could not distinguish failure from valid zero/empty data, and browser/scheduled report builders could export the same false values. Current Commit 3 throws on HTTP failure, malformed JSON, and `success:false`; retains last-successful React Query data during background failure; renders explicit loading, unavailable, error, and successful-empty states; gates configured Pipeline Proxy requests to relevant saved sources; and makes selected browser/scheduled Overview report subsections fail closed when required data is unavailable. No endpoint response shape, storage method, schema, provider query, or persisted data changed.
 
-### B5. Valid zero financial results are shown as unavailable
+### B5. Valid zero financial results are shown as unavailable — resolved locally by Current Commit 3
 
-With positive spend and valid zero revenue, Profit should be negative spend, ROAS should be `0x`, and ROI should be `-100%`. Current rendering hides Profit and shows ROAS/ROI as unavailable with `needs revenue`. A configured GA4 revenue metric at zero can also disappear from source count/provenance.
+The root cause was positive-value render gating (`financialRevenue > 0`) rather than input availability. Current Commit 3 gates financial cards on successful/last-good input availability instead: with positive spend and valid zero revenue, Profit is negative spend, ROAS is `0.00x`, and ROI is `-100%`. Missing/zero spend still blocks ROAS/ROI denominators, and CPA still requires positive conversions. Commit 2 already preserved configured zero/negative native financial candidates and GA4 revenue provenance.
 
 ### B6. Spend is not GA4 platform scoped and can use stale cache
 
@@ -277,7 +277,7 @@ The broad rerun produced 3 failures and 49 passes across the three isolated file
 
 These were stale/brittle tests rather than runtime defects. Root-cause tracing also found a second copy of the same over-wide inventory slice in `server/hubspot-revenue-damaged-data-inventory.test.ts`; it was outside the original three-file packet but failed for the same reason.
 
-Current Commit 1 (`56bfdced`) bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed. Current Commit 2 later closed B1-B3 locally; B4-B10 and B12 remain open.
+Current Commit 1 (`56bfdced`) bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed. Current Commit 2 later closed B1-B3 and passed its bounded deployed UI smoke; Current Commit 3 closes B4-B5 locally. B6-B10 and B12 remain open.
 
 ### B12. Complete downstream proof is absent
 
@@ -322,15 +322,15 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 | --- | --- | --- |
 | Campaign access denied | fail closed | Proven on traced endpoints. |
 | Missing property/connection | explicit unavailable/reconnect state | Mostly guarded; several secondary queries silently return null/empty. |
-| Provider/token failure | retain stable data with explicit stale/error provenance | Daily path can retain rows with warning; Overview does not surface warning, and other paths often show zero/empty. |
-| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Summary/Engagement and financial-source selection are fixed locally; Profit/ROAS/ROI zero semantics remain in Current Commit 3. |
-| Incompatible windows | reject, normalize, or clearly label | Fixed locally: configured completed-day Summary/tables and labeled campaign-to-date financials; deployed validation remains open. |
+| Provider/token failure | retain stable data with explicit stale/error provenance | Commit 3 locally retains last-successful client data with an error warning and marks inputs unavailable when no last-good value exists; provider/token and deployed failure injection remain open. |
+| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Commit 2 preserves Summary/financial-source zero; Commit 3 locally preserves zero/empty response semantics and renders zero-revenue Profit/ROAS/ROI correctly. |
+| Incompatible windows | reject, normalize, or clearly label | Commit 2 fixed configured completed-day Summary/tables and labeled campaign-to-date financials; bounded deployed smoke passed, while full 30/60/90 provider evidence remains open. |
 | Source with no materialized records | unavailable/fail closed | Spend can use cached campaign value. |
 | Inactive source | exclude from total | Proven by active joins. |
 | Orphan record | exclude and inventory | Excluded by inner join; large damaged inventory remains. |
 | Foreign spend context | exclude from GA4 | Not implemented in shared spend reads. |
 | Hidden legacy source | either migrate, explicitly support, or fail closed | Retained rows still contribute. |
-| Table request failure | explicit error, not empty truth | Landing Pages and Conversion Events render empty-state copy. |
+| Table request failure | explicit error, not empty truth | Commit 3 locally renders explicit unavailable errors and retains last-successful table rows on background refresh failure. |
 | Pipeline source context mismatch | fail closed | Salesforce can fall back across contexts. |
 
 ## Validation Evidence
@@ -370,12 +370,28 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 - code/data boundary
   - test assertions and this readiness record changed; no runtime, schema, API, scheduler, or data mutation path changed
 
+### Passed after Current Commit 2
+
+- commit `5cff21ad` pushed to `main` and deployed through Render
+- user-confirmed bounded UI smoke passed for one configured campaign/window and downloaded Overview report
+- focused Overview/downstream packet: 15 files; 142 tests
+- focused GA4 financial/filter/UI/HubSpot/outcome packet: 5 files; 89 tests
+- `npm run check` and `npm run build` passed
+
+### Passed locally after Current Commit 3
+
+- focused Overview/downstream packet: 15 files; 144 tests
+- focused failure/source/report packet: 3 files; 60 tests
+- HubSpot Pipeline Proxy scope guard: 1 file; 26 tests
+- `npm run check` and `npm run build` passed
+- deployed UI failure/zero validation remains pending at this point in the record
+
 ### What passing tests do not prove
 
 - current live GA4 values for all 35 connections
 - provider refresh/token behavior for current expired metadata
-- deployed correctness of the configured-lookback Summary/table and campaign-to-date financial contract
-- correct failure/valid-zero UI behavior identified above
+- all live 30/60/90 provider variants beyond the one-window Commit 2 smoke
+- deployed failure/valid-zero UI behavior introduced by Current Commit 3
 - exact completeness of every active revenue/spend source lifecycle
 - safe cleanup boundaries for orphan or drifted production rows
 - current deployed browser pixel/text behavior
@@ -397,9 +413,9 @@ Implemented on `2026-07-15`, then committed and pushed to `main` on `2026-07-16`
 
 This commit closes B11 only. It does not make Overview production-ready.
 
-### Current Commit 2 — Define one explicit Overview window/source contract — implemented locally
+### Current Commit 2 — Define one explicit Overview window/source contract — complete
 
-Implemented in the working tree on `2026-07-16`; commit, push, Render deployment, and deployed UI/provider validation remain pending.
+Implemented, committed, and pushed to `main` on `2026-07-16` as `5cff21ad`, then deployed through Render.
 
 - resolve 30-day connection lookback versus hard-coded 90-day table queries
 - stop selecting maximum revenue across incompatible lifetime/daily/breakdown windows unless that behavior becomes an explicitly labeled product contract
@@ -416,15 +432,36 @@ Local validation:
 - the full repository suite was also run and remains red outside this packet; representative failures assert Google Ads fallback and scheduler-call strings that are absent from `HEAD`, while both Current Commit 2 packets pass. No globally green-suite claim is made.
 - no schema migration, dependency, persisted-data mutation, or API response field removal was introduced
 
-Current Commit 2 closes B1-B3 locally only. UI validation is required after Render deploy because this commit changes visible window labels, Users provenance copy, 30/60/90 request behavior, valid-zero rendering, and browser/scheduled-report parity. Current Commit 3 is next; Overview remains not production-ready.
+Deployed validation:
 
-### Current Commit 3 — Fail closed on request errors and preserve valid zeros — next
+- user-confirmed bounded UI smoke passed for one configured campaign/window
+- Summary, Campaign Breakdown, Landing Pages, and Conversion Events showed the same configured completed-day label
+- the Users tooltip used the additive-users provenance copy
+- Revenue & Financial was labeled campaign-to-date
+- the downloaded Overview report matched the observed screen values
+- this did not prove separate live 30/60/90 provider campaigns, failure injection, valid-zero/negative production fixtures, or scheduled/server delivery variants; those remain in later gates
 
-- distinguish loading, unavailable, stale, error, and valid zero for every Overview query
-- do not turn failed revenue/spend requests into `$0`
-- do not turn failed Landing Pages/Conversion Events requests into legitimate empty data
-- render valid zero Profit/ROAS/ROI semantics correctly
-- keep stable cached content visible during background refresh where available
+Current Commit 2 closes B1-B3. Overview remains not production-ready.
+
+### Current Commit 3 — Fail closed on request errors and preserve valid zeros — implemented locally
+
+- throw on HTTP failure, malformed JSON, and `success:false` for connection, GA4, revenue, spend, source-list, breakdown, table, and configured Pipeline Proxy queries
+- distinguish initial loading, successful zero/empty, last-successful data after background failure, and unavailable-without-cache states
+- do not turn failed revenue/spend requests into `$0` or failed Landing Pages/Conversion Events requests into legitimate empty data
+- render valid zero-revenue Profit/ROAS/ROI semantics correctly
+- query Pipeline Proxy only for configured active CRM proxy sources and preserve saved/last-good content on provider failure
+- fail closed for selected browser and scheduled/server Overview report subsections when required inputs fail
+- preserve route shapes, storage/provider formulas, selected property/campaign scope, source mutations, scheduler timing, and persisted data
+
+Local validation:
+
+- focused Overview/downstream packet: 15 files passed; 144 tests passed
+- focused failure/source/report packet: 3 files passed; 60 tests passed
+- HubSpot Pipeline Proxy scope guard: 1 file passed; 26 tests passed
+- `npm run check` and `npm run build`: passed
+- no schema migration, dependency, API response removal, provider-query change, source mutation, or persisted-data mutation was introduced
+
+Current Commit 3 closes B4-B5 locally only. Render deployment and bounded failure/zero UI validation remain pending.
 
 ### Current Commit 4 — Scope GA4 spend and remove stale cached fallback
 
@@ -474,7 +511,7 @@ For every enabled family that can feed Overview, cover add, edit, delete, refres
 - complete named deployed report/Trend/multi-source evidence relevant to the claimed scope
 - rerun all matrices and update this file only after evidence is current
 
-Estimated remaining work after the local Current Commit 2 implementation: a minimum of 8 bounded engineering/evidence commits or packets (`Current Commit 3` through `10`), plus Current Commit 2 commit/deploy/UI validation. The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
+Estimated remaining work after the local Current Commit 3 implementation: a minimum of 7 bounded engineering/evidence commits or packets (`Current Commit 4` through `10`), plus Current Commit 3 deployment/UI validation. The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
 
 ## UI Validation Requirement
 
@@ -482,7 +519,9 @@ Current Commit 1 does **not** require a separate UI validation pass. Commit `56b
 
 This narrow decision does not waive UI validation for later runtime commits or final Overview certification.
 
-Current Commit 2 **does require UI validation after commit, push, and Render deployment** because it changes rendered labels/copy, selected-connection request windows, valid-zero behavior, and report-source parity. This validation proves only Current Commit 2; it does not certify the complete Overview while later blockers remain.
+Current Commit 2's required bounded UI smoke validation passed after `5cff21ad` deployed. The evidence is limited to the configured campaign/window and downloaded report checked by the user; it does not substitute for the broader provider/freshness/source/downstream validation below.
+
+Current Commit 3 **requires UI validation after Render deployment** because it changes visible loading/error/unavailable states, valid-zero financial rendering, and browser/scheduled Overview report failure semantics. This validation proves only Current Commit 3; it does not certify the complete Overview while later blockers remain.
 
 After the forward fixes and automated tests pass, UI validation must cover:
 

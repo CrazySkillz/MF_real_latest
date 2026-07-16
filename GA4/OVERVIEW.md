@@ -6,6 +6,8 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 
 Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: GA4 Overview is not production-ready or clean-certified; use that readiness file for the current blocker inventory and commit queue.
 
+Commit 2 deployment record: commit `5cff21ad` was pushed to `main` and deployed on `2026-07-16`. The user-confirmed bounded UI smoke check passed for one configured campaign/window: the four visible configured-window labels agreed, the Users provenance tooltip was correct, Revenue & Financial was labeled campaign-to-date, and the downloaded Overview report matched the observed screen values. This does not prove all 30/60/90 live provider variants or close later Overview blockers.
+
 ## Overview Structure
 
 The platform-level GA4 `Overview` tab contains:
@@ -335,9 +337,23 @@ Important meaning:
 - these tables should populate and update accurately in production if GA4 connection, property selection, campaign scoping, and GA4 tagging are correct
 - if a table looks wrong in production, the likely problem is scoping, tagging, or upstream GA4 data quality, not that the UI is inherently test-only
 
+## Loading, Failure, Empty, And Zero States
+
+Current Commit 3 defines these states explicitly:
+
+- initial loading uses stable skeletons instead of temporary zero or empty-table copy
+- a successful response with zero metrics or an empty row array is valid data and renders as zero or the normal empty state
+- an HTTP failure, a malformed JSON response, or `success:false` is an error and must not be converted into `$0`, `[]`, `null`, `Not configured`, or a legitimate empty-table message
+- when React Query still has last successful data during a failed background refresh, that stable content remains visible and the Overview warning states that last successful values are being shown
+- when no last-good data exists, affected cards/tables/source lists render `Unavailable` or an explicit request-error message
+- with valid zero revenue and positive spend, Profit is negative spend, ROAS is `0.00x`, and ROI is `-100%`; zero revenue is not a missing prerequisite
+- browser-generated Overview reports and scheduled/server Overview reports fail closed when a selected Overview subsection lacks required inputs; they must not export a plausible zero/empty artifact from a failed request
+
+This failure-state contract does not close the later GA4 spend-context/cache, source-family lifecycle, provider freshness, cleanup, or complete downstream-certification blockers.
+
 ## Overview Tables Deployed Validation Checklist
 
-GA4 Overview production readiness is not yet certified. Use this checklist for the deployed/provider validation still required by `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+GA4 Overview production readiness is not yet certified. Commit 2's bounded deployed UI smoke check passed on `2026-07-16` for one configured campaign/window. Use this checklist for the broader deployed/provider validation still required by `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Connection and scope:
 

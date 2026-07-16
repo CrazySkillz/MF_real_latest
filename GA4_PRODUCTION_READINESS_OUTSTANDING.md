@@ -22,15 +22,16 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Remaining Production Blockers
 
-None currently listed from the production-readiness scan. Continue with the required production validation below.
+GA4 Overview has an active blocker queue in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current Commit 2 closed the window/source-contract defects and passed bounded deployed UI validation, but failure-state, spend-scope, visible on-hold source, retained legacy source, freshness, cleanup, and downstream-proof blockers remain.
 
 ## Latest Readiness Review
 
-Overview-specific update on 2026-06-28:
+Overview-specific update on 2026-07-16:
 
-- GA4 Overview is production-ready for the current GA4 code scope.
+- GA4 Overview is not production-ready or clean-certified.
 - The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
-- Remaining Overview caveats are deployed/provider validation gates, not known local code blockers.
+- Current Commit 2 (`5cff21ad`) was committed, pushed, deployed, and passed the user-confirmed bounded UI smoke check for one configured campaign/window and its downloaded Overview report.
+- Full 30/60/90 live provider evidence and later blocker commits remain open.
 
 Reviewed on 2026-05-10:
 
@@ -41,9 +42,9 @@ Reviewed on 2026-05-10:
 
 Current conclusion:
 
-- GA4 Overview is production-ready for the current GA4 code scope.
-- GA4 is ready for final real-account validation.
-- This does not replace the required deployed validation against live GA4, scheduler, revenue/spend sources, and scheduled report delivery.
+- GA4 Overview remains not production-ready while the canonical blocker queue is open.
+- Commit 2 is complete; Current Commit 3 is the active local implementation packet.
+- Separate GA4 tabs and source-family certifications keep only their own documented scope and do not certify the complete Overview.
 
 ## Required Production Validation
 

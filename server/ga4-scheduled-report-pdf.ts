@@ -126,6 +126,21 @@ const reportIncludesKPISection = (report: any): boolean => {
   return Boolean(cfg.sections?.kpis || cfg.subsections?.kpis?.items || cfg.selectedKpiIds.length > 0);
 };
 
+const getOverviewReportRequirements = (report: any) => {
+  const reportType = String(report?.reportType || "overview").toLowerCase();
+  const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
+  const includesOverview = reportType === "overview" || (reportType === "custom" && cfg.sections?.overview);
+  const subsections = cfg.subsections?.overview || {};
+  return {
+    summary: Boolean(includesOverview && (reportType !== "custom" || subsections.summary === true)),
+    revenue: Boolean(includesOverview && (reportType !== "custom" || subsections.revenue === true || subsections.performance === true)),
+    spend: Boolean(includesOverview && (reportType !== "custom" || subsections.spend === true || subsections.performance === true)),
+    campaignBreakdown: Boolean(includesOverview && (reportType !== "custom" || subsections.campaignBreakdown === true)),
+    landingPages: Boolean(includesOverview && (reportType !== "custom" || subsections.landingPages === true)),
+    conversionEvents: Boolean(includesOverview && (reportType !== "custom" || subsections.conversionEvents === true)),
+  };
+};
+
 const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
 const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
@@ -381,8 +396,10 @@ async function buildGA4ReportPayload(report: any) {
   const financialEndDate = yesterdayUTC();
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
+  const failedParts = new Set<string>();
   const logPartFailure = (label: string, error: any) => {
-    console.warn(`[GA4 Scheduled PDF] ${label} failed; using persisted fallback:`, error?.message || error);
+    failedParts.add(label);
+    console.warn(`[GA4 Scheduled PDF] ${label} failed; checking persisted fallback:`, error?.message || error);
   };
   const benchmarkStorage = storage as typeof storage & {
     getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
@@ -397,10 +414,10 @@ async function buildGA4ReportPayload(report: any) {
     ga4Service.getLandingPagesReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
     ga4Service.getConversionEventsReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
     ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
-    storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]),
-    storage.getSpendSources(campaignId).catch(() => [] as any[]),
-    storage.getRevenueBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate).catch(() => [] as any[]),
+    storage.getRevenueSources(campaignId, "ga4").catch((e) => { logPartFailure("revenue sources", e); return [] as any[]; }),
+    storage.getSpendSources(campaignId).catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
+    storage.getRevenueBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
+    storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate).catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
     loadPlatformKPIs,
     benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
   ]);
@@ -412,7 +429,10 @@ async function buildGA4ReportPayload(report: any) {
     return { totals: {} };
   });
 
-  let dailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, dailyStart, dailyEnd).catch(() => [] as any[]);
+  let dailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, dailyStart, dailyEnd).catch((e) => {
+    logPartFailure("persisted daily metrics", e);
+    return [] as any[];
+  });
   if (!dailyRows || dailyRows.length === 0) {
     dailyRows = (Array.isArray(timeSeries) ? timeSeries : []).map((row: any) => ({
       ...row,
@@ -425,6 +445,35 @@ async function buildGA4ReportPayload(report: any) {
       pageviews: Number(row?.pageviews || 0),
       engagementRate: Number(row?.engagementRate || 0),
     }));
+  }
+  const overviewRequirements = getOverviewReportRequirements(report);
+  const unavailableOverviewParts: string[] = [];
+  if (overviewRequirements.summary && dailyRows.length === 0 && failedParts.has("acquisition breakdown")) {
+    unavailableOverviewParts.push("Summary");
+  }
+  if (overviewRequirements.revenue) {
+    const nativeRevenueUnavailable =
+      failedParts.has("totals with revenue") &&
+      dailyRows.length === 0 &&
+      failedParts.has("acquisition breakdown");
+    if (nativeRevenueUnavailable || failedParts.has("revenue sources") || failedParts.has("revenue breakdown")) {
+      unavailableOverviewParts.push("Revenue");
+    }
+  }
+  if (overviewRequirements.spend && (failedParts.has("spend sources") || failedParts.has("spend breakdown"))) {
+    unavailableOverviewParts.push("Spend");
+  }
+  if (overviewRequirements.campaignBreakdown && failedParts.has("acquisition breakdown")) {
+    unavailableOverviewParts.push("Campaign Breakdown");
+  }
+  if (overviewRequirements.landingPages && failedParts.has("landing pages")) {
+    unavailableOverviewParts.push("Landing Pages");
+  }
+  if (overviewRequirements.conversionEvents && failedParts.has("conversion events")) {
+    unavailableOverviewParts.push("Conversion Events");
+  }
+  if (unavailableOverviewParts.length > 0) {
+    throw new Error(`GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: ${Array.from(new Set(unavailableOverviewParts)).join(", ")}`);
   }
   const lastDailyRefreshAt = dailyRows.length > 0
     ? dailyRows.reduce((latest: string | null, row: any) => {

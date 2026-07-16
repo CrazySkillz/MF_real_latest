@@ -165,8 +165,9 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
     expect(ga4Metrics).toContain("const hasDailyOverviewTotals = ga4DailyRows.length > 0;");
     expect(ga4Metrics).toContain("const hasBreakdownOverviewTotals =");
+    expect(ga4Metrics).toContain("const hasBreakdownOverviewResponse = ga4Breakdown !== undefined;");
     expect(ga4Metrics).toContain("const overviewTotalsSource = hasDailyOverviewTotals");
-    expect(ga4Metrics).toContain(": hasBreakdownOverviewTotals ? ga4BreakdownTotals : null;");
+    expect(ga4Metrics).toContain(": hasBreakdownOverviewResponse ? ga4BreakdownTotals : null;");
     expect(ga4Metrics).not.toContain("hasToDateOverviewTotals");
     expect(ga4Metrics).toContain("const rate = Number(overviewTotalsSource?.engagementRate ?? 0);");
     expect(ga4Metrics).toContain("sessions: Number(overviewTotalsSource?.sessions || 0)");
@@ -210,16 +211,56 @@ describe("GA4 UI regression guard", () => {
     expect(summaryStart).toBeGreaterThan(-1);
     expect(revenueStart).toBeGreaterThan(summaryStart);
     expect(ga4Metrics).toContain("const ga4SummaryTotalsInitializing =");
-    expect(ga4Metrics).toContain("!hasDailyOverviewTotals");
-    expect(ga4Metrics).toContain("!ga4Breakdown &&");
-    expect(ga4Metrics).toContain("breakdownLoading;");
+    expect(ga4Metrics).toContain("!overviewSummaryAvailable");
+    expect(ga4Metrics).toContain("(ga4Loading || breakdownLoading);");
     expect(ga4Metrics).toContain("const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing");
+    expect(ga4Metrics).toContain(': overviewSummaryAvailable ? value : "Unavailable";');
     expect(summarySection).toContain("renderSummaryValue(formatNumber(breakdownTotals.conversions || 0))");
     expect(summarySection).not.toContain("ga4Metrics?.conversions");
     expect(summarySection).toContain("Last {GA4_DAILY_LOOKBACK_DAYS} completed days");
     expect(summarySection).toContain("GA4 users summed for the selected window; the same user may appear on more than one day or breakdown row.");
     expect(summarySection).not.toContain("Unique GA4 users for the selected campaign scope.");
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
+  });
+
+  it("distinguishes failed Overview requests from valid zero and empty responses", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
+    const requestStart = ga4Metrics.indexOf("// Diagnostics (provenance + report shape checks)");
+    const requestEnd = ga4Metrics.indexOf("// Latest-day endpoints default", requestStart);
+    const requestSection = ga4Metrics.slice(requestStart, requestEnd);
+
+    expect(requestStart).toBeGreaterThan(-1);
+    expect(requestEnd).toBeGreaterThan(requestStart);
+    expect(requestSection).toContain('throw new Error(json?.message || json?.error || "Failed to fetch GA4 landing pages")');
+    expect(requestSection).toContain('throw new Error(json?.message || json?.error || "Failed to fetch GA4 conversion events")');
+    expect(requestSection).toContain('throw new Error(json?.message || json?.error || "Failed to fetch campaign revenue")');
+    expect(requestSection).toContain('throw new Error(json?.message || json?.error || "Failed to fetch campaign spend")');
+    expect(requestSection).not.toContain("return { success: false, totalRevenue: 0");
+    expect(requestSection).not.toContain("return { success: false, totalSpend: 0");
+    expect(ga4Metrics).toContain("const overviewUsingLastGoodData = Boolean(");
+    expect(ga4Metrics).toContain("Last successful values remain visible where available; unavailable values are marked.");
+    expect(ga4Metrics).toContain("Landing page data is unavailable. Refresh the page to try again.");
+    expect(ga4Metrics).toContain("Conversion event data is unavailable. Refresh the page to try again.");
+    expect(ga4Metrics).toContain("Campaign breakdown is unavailable. Refresh the page to try again.");
+    expect(ga4Metrics).toContain("const renderFinancialValue = (loading: boolean, available: boolean, value: string)");
+    expect(ga4Metrics).toContain("financialRevenueAvailable && financialSpendAvailable && revenueMetricAvailable && spendMetricAvailable");
+    expect(ga4Metrics).toContain("financialSpend > 0 ? `${financialROAS.toFixed(2)}x`");
+    expect(ga4Metrics).toContain("financialSpend > 0 ? formatPercentage(financialROI)");
+    expect(ga4Metrics).not.toContain('financialRevenue <= 0 ? " (needs revenue)"');
+    expect(ga4Metrics).toContain("Cannot generate the Overview report while these sections are unavailable:");
+    expect(ga4Metrics).toContain('overviewSubsections.summary === true');
+    expect(ga4Metrics).toContain('overviewSubsections.revenue === true || overviewSubsections.performance === true');
+
+    expect(scheduledPdf).toContain("const getOverviewReportRequirements = (report: any) => {");
+    expect(scheduledPdf).toContain('subsections.summary === true');
+    expect(scheduledPdf).toContain('subsections.revenue === true || subsections.performance === true');
+    expect(scheduledPdf).toContain("const failedParts = new Set<string>();");
+    expect(scheduledPdf).toContain("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE:");
+    expect(scheduledPdf).toContain('failedParts.has("revenue breakdown")');
+    expect(scheduledPdf).toContain('failedParts.has("spend breakdown")');
+    expect(scheduledPdf).toContain('failedParts.has("landing pages")');
+    expect(scheduledPdf).toContain('failedParts.has("conversion events")');
   });
 
   it("keeps KPI create fallback aligned to Overview conversion sources", () => {

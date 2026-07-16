@@ -238,8 +238,16 @@ describe("GA4 UI regression guard", () => {
     expect(requestSection).toContain('throw new Error(json?.message || json?.error || "Failed to fetch campaign spend")');
     expect(requestSection).not.toContain("return { success: false, totalRevenue: 0");
     expect(requestSection).not.toContain("return { success: false, totalSpend: 0");
-    expect(ga4Metrics).toContain("const overviewUsingLastGoodData = Boolean(");
+    const lastGoodStart = ga4Metrics.indexOf("const overviewVisibleDataUsingLastGoodData = Boolean(");
+    const lastGoodEnd = ga4Metrics.indexOf("const campaignBreakdownUnavailable", lastGoodStart);
+    const lastGoodBlock = ga4Metrics.slice(lastGoodStart, lastGoodEnd);
+    expect(lastGoodStart).toBeGreaterThan(-1);
+    expect(lastGoodEnd).toBeGreaterThan(lastGoodStart);
+    expect(lastGoodBlock).not.toContain("allGA4ConnectionsError");
+    expect(lastGoodBlock).not.toContain("ga4DiagnosticsError");
+    expect(ga4Metrics).toContain('activeTab === "overview" && overviewVisibleDataUsingLastGoodData');
     expect(ga4Metrics).toContain("Last successful values remain visible where available; unavailable values are marked.");
+    expect(ga4Metrics).not.toContain("Some Overview data could not load.");
     expect(ga4Metrics).toContain("Landing page data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Conversion event data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Campaign breakdown is unavailable. Refresh the page to try again.");

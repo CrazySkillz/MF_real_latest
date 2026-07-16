@@ -28,7 +28,7 @@ The earlier clean-certified answer is retracted. Current code and target-databas
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 is implemented and locally validated; it closes B4-B5 locally but is not yet deployed or UI failure-injection validated. B6-B10 and B12 remain open, so the complete Overview status remains not production-ready.
+Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`, but its first UI check failed closeout because an over-broad global error aggregator displayed a generic red warning for initial hidden/optional request failures. The smallest follow-up is implemented and still needs deployment validation. B6-B10 and B12 remain open, so the complete Overview status remains not production-ready.
 
 The durable answer is:
 
@@ -236,6 +236,8 @@ The root cause was copy that described additive daily/breakdown totals as unique
 
 The root cause was that Overview query functions caught HTTP/JSON failures and returned successful-looking `0`, `[]`, `null`, or empty objects. React Query therefore had no error state, the renderer could not distinguish failure from valid zero/empty data, and browser/scheduled report builders could export the same false values. Current Commit 3 throws on HTTP failure, malformed JSON, and `success:false`; retains last-successful React Query data during background failure; renders explicit loading, unavailable, error, and successful-empty states; gates configured Pipeline Proxy requests to relevant saved sources; and makes selected browser/scheduled Overview report subsections fail closed when required data is unavailable. No endpoint response shape, storage method, schema, provider query, or persisted data changed.
 
+The first deployed UI check found a presentation-only follow-up in the page-wide banner. `overviewDataHasError` combined every request error, including hidden Diagnostics and the duplicate connection-list request, and rendered the generic initial-load warning even though visible sections already owned their own `Unavailable` state. The bounded follow-up removes hidden/duplicate requests from banner eligibility, keeps initial failures section-local, and shows the page-wide warning only on the Overview tab when a failed visible request is retaining last-successful data. Request error detection, visible unavailable states, valid-zero behavior, and report fail-closed gates are unchanged.
+
 ### B5. Valid zero financial results are shown as unavailable — resolved locally by Current Commit 3
 
 The root cause was positive-value render gating (`financialRevenue > 0`) rather than input availability. Current Commit 3 gates financial cards on successful/last-good input availability instead: with positive spend and valid zero revenue, Profit is negative spend, ROAS is `0.00x`, and ROI is `-100%`. Missing/zero spend still blocks ROAS/ROI denominators, and CPA still requires positive conversions. Commit 2 already preserved configured zero/negative native financial candidates and GA4 revenue provenance.
@@ -384,7 +386,8 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 - focused failure/source/report packet: 3 files; 60 tests
 - HubSpot Pipeline Proxy scope guard: 1 file; 26 tests
 - `npm run check` and `npm run build` passed
-- deployed UI failure/zero validation remains pending at this point in the record
+- first deployed UI check of `7b162083` exposed the over-broad global banner and did not pass closeout
+- bounded banner follow-up reran the 15-file / 144-test packet, `npm run check`, and `npm run build` successfully; follow-up deployment validation remains pending
 
 ### What passing tests do not prove
 
@@ -443,7 +446,7 @@ Deployed validation:
 
 Current Commit 2 closes B1-B3. Overview remains not production-ready.
 
-### Current Commit 3 — Fail closed on request errors and preserve valid zeros — implemented locally
+### Current Commit 3 — Fail closed on request errors and preserve valid zeros — deployed; banner follow-up awaiting deployment
 
 - throw on HTTP failure, malformed JSON, and `success:false` for connection, GA4, revenue, spend, source-list, breakdown, table, and configured Pipeline Proxy queries
 - distinguish initial loading, successful zero/empty, last-successful data after background failure, and unavailable-without-cache states
@@ -461,7 +464,7 @@ Local validation:
 - `npm run check` and `npm run build`: passed
 - no schema migration, dependency, API response removal, provider-query change, source mutation, or persisted-data mutation was introduced
 
-Current Commit 3 closes B4-B5 locally only. Render deployment and bounded failure/zero UI validation remain pending.
+Current Commit 3 runtime behavior deployed as `7b162083`. The first UI check did not close validation because of the over-broad global banner. The bounded banner follow-up is implemented; deployment and one-refresh UI validation remain pending.
 
 ### Current Commit 4 — Scope GA4 spend and remove stale cached fallback
 
@@ -511,7 +514,7 @@ For every enabled family that can feed Overview, cover add, edit, delete, refres
 - complete named deployed report/Trend/multi-source evidence relevant to the claimed scope
 - rerun all matrices and update this file only after evidence is current
 
-Estimated remaining work after the local Current Commit 3 implementation: a minimum of 7 bounded engineering/evidence commits or packets (`Current Commit 4` through `10`), plus Current Commit 3 deployment/UI validation. The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
+Estimated remaining work after the Current Commit 3 implementation: a minimum of 7 bounded engineering/evidence commits or packets (`Current Commit 4` through `10`), plus Current Commit 3 follow-up deployment/UI validation. The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
 
 ## UI Validation Requirement
 
@@ -521,7 +524,7 @@ This narrow decision does not waive UI validation for later runtime commits or f
 
 Current Commit 2's required bounded UI smoke validation passed after `5cff21ad` deployed. The evidence is limited to the configured campaign/window and downloaded report checked by the user; it does not substitute for the broader provider/freshness/source/downstream validation below.
 
-Current Commit 3 **requires UI validation after Render deployment** because it changes visible loading/error/unavailable states, valid-zero financial rendering, and browser/scheduled Overview report failure semantics. This validation proves only Current Commit 3; it does not certify the complete Overview while later blockers remain.
+Current Commit 3's first deployed UI check exposed the over-broad global banner and therefore did not pass closeout. After the bounded follow-up deploys, validation is one normal Overview refresh: the incorrect generic initial-load banner must be absent, while any genuinely failed visible section remains `Unavailable` and valid data remains visible. This validation proves only Current Commit 3; it does not certify the complete Overview while later blockers remain.
 
 After the forward fixes and automated tests pass, UI validation must cover:
 

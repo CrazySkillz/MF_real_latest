@@ -349,6 +349,8 @@ Current Commit 3 defines these states explicitly:
 - with valid zero revenue and positive spend, Profit is negative spend, ROAS is `0.00x`, and ROI is `-100%`; zero revenue is not a missing prerequisite
 - browser-generated Overview reports and scheduled/server Overview reports fail closed when a selected Overview subsection lacks required inputs; they must not export a plausible zero/empty artifact from a failed request
 
+Deployed validation of Current Commit 3 (`7b162083`) exposed one presentation-only follow-up: the page-wide banner aggregated hidden Diagnostics and duplicate connection-list errors together with visible Overview requests, so an initial optional failure could show a generic red warning even while visible values were handled correctly. The bounded follow-up keeps initial failures local to the affected card/table and shows the page-wide warning only when visible Overview values are retained from a previous successful request.
+
 This failure-state contract does not close the later GA4 spend-context/cache, source-family lifecycle, provider freshness, cleanup, or complete downstream-certification blockers.
 
 ## Overview Tables Deployed Validation Checklist

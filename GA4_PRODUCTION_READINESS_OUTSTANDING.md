@@ -22,7 +22,7 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Remaining Production Blockers
 
-GA4 Overview has an active blocker queue in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current Commit 2 closed the window/source-contract defects and passed bounded deployed UI validation, but failure-state, spend-scope, visible on-hold source, retained legacy source, freshness, cleanup, and downstream-proof blockers remain.
+GA4 Overview has an active blocker queue in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current Commit 2 closed the window/source-contract defects and passed bounded deployed UI validation. Current Commit 3 deployed, but its first UI check exposed an over-broad global error banner; the bounded follow-up is implemented and still needs deployment validation. Spend-scope, visible on-hold source, retained legacy source, freshness, cleanup, and downstream-proof blockers remain.
 
 ## Latest Readiness Review
 
@@ -43,7 +43,7 @@ Reviewed on 2026-05-10:
 Current conclusion:
 
 - GA4 Overview remains not production-ready while the canonical blocker queue is open.
-- Commit 2 is complete; Current Commit 3 is the active local implementation packet.
+- Commit 2 is complete; Current Commit 3 needs its bounded banner follow-up deployed and validated before closeout.
 - Separate GA4 tabs and source-family certifications keep only their own documented scope and do not certify the complete Overview.
 
 ## Required Production Validation

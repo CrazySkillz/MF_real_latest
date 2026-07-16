@@ -1551,7 +1551,7 @@ export default function GA4Metrics() {
   });
 
   // Get all GA4 connections for this campaign
-  const { data: allGA4Connections, isError: allGA4ConnectionsError } = useQuery({
+  const { data: allGA4Connections } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-connections"],
     enabled: !!campaignId && !!ga4Connection?.connected,
     staleTime: 0,
@@ -1870,7 +1870,7 @@ export default function GA4Metrics() {
   }, [ga4DailyRows, ga4ReportDate, ga4DailyResp]);
 
   // Diagnostics (provenance + report shape checks)
-  const { data: ga4Diagnostics, isError: ga4DiagnosticsError } = useQuery<any>({
+  const { data: ga4Diagnostics } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
@@ -2670,29 +2670,11 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
-  const overviewDataHasError = Boolean(
-    ga4ConnectionError ||
-    allGA4ConnectionsError ||
-    ga4Error ||
-    ga4DiagnosticsError ||
-    breakdownError ||
-    landingPagesError ||
-    conversionEventsError ||
-    ga4ToDateError ||
-    importedRevenueError ||
-    revenueSourcesError ||
-    revenueBreakdownError ||
-    spendToDateError ||
-    spendSourcesError ||
-    spendBreakdownError ||
-    hubspotPipelineProxyError ||
-    salesforcePipelineProxyError
-  );
-  const overviewUsingLastGoodData = Boolean(
+  // Initial failures render at the affected card/table. Keep the page-wide warning
+  // only for visible Overview values retained from a previous successful request.
+  const overviewVisibleDataUsingLastGoodData = Boolean(
     (ga4ConnectionError && ga4Connection !== undefined) ||
-    (allGA4ConnectionsError && allGA4Connections !== undefined) ||
     (ga4Error && ga4DailyResp !== undefined) ||
-    (ga4DiagnosticsError && ga4Diagnostics !== undefined) ||
     (breakdownError && ga4Breakdown !== undefined) ||
     (landingPagesError && ga4LandingPages !== undefined) ||
     (conversionEventsError && ga4ConversionEvents !== undefined) ||
@@ -5866,14 +5848,10 @@ export default function GA4Metrics() {
                   <TabsTrigger value="connection-details">Connection details</TabsTrigger>
                 </TabsList>
 
-                {overviewDataHasError && (
+                {activeTab === "overview" && overviewVisibleDataUsingLastGoodData && (
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>
-                      {overviewUsingLastGoodData
-                        ? "Some Overview data could not refresh. Last successful values remain visible where available; unavailable values are marked."
-                        : "Some Overview data could not load. Unavailable values are marked; refresh the page to try again."}
-                    </span>
+                    <span>Some Overview data could not refresh. Last successful values remain visible where available; unavailable values are marked.</span>
                   </div>
                 )}
 

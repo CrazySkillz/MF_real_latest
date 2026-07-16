@@ -639,6 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const dateRangeToDays = (dr: string): number => {
     const v = String(dr || "").toLowerCase();
     if (v.includes("7")) return 7;
+    if (v.includes("60")) return 60;
     if (v.includes("90")) return 90;
     return 30;
   };
@@ -839,6 +840,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversions: cfg.conversions,
         revenue: Number((noRevenue ? 0 : cfg.revenue).toFixed(2)),
         pageviews: cfg.pageviews,
+        engagedSessions: timeSeries.reduce((sum, row) => sum + row.engagedSessions, 0),
+        engagementRate: cfg.engagementRate,
       };
 
       // A small, stable breakdown table (we rely on totals for the cards; rows are for the table UI)
@@ -1061,6 +1064,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversions: conversionsSum,
         revenue: Number(revenueSum.toFixed(2)),
         pageviews: pageviewsSum,
+        engagedSessions: Math.max(0, Math.round(sessionsSum * engagementRate)),
+        engagementRate,
       },
       timeSeries: series,
       breakdownRows,
@@ -8530,14 +8535,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Simulated mode: reuse mock generator when property is yesop/test.
       const debug = String(req.query.debug || "").trim() === "1";
       const mock = String(req.query.mock || "").trim() === "1";
-      const toDateRange = String(req.query.dateRange || "30days").trim();
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
       if (mock || isYesopMockProperty(pidNormalized)) {
         const pid = requestedPropertyId || "yesop";
 
         // 1) Always compute simulation baseline (represents the initial GA4 historical import)
-        const simDateRange = ["7days", "30days", "60days", "90days"].includes(toDateRange) ? toDateRange : "30days";
-        const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const simRows = (Array.isArray(sim?.timeSeries) ? sim.timeSeries : []) as any[];
         let sessions = 0, users = 0, conversions = 0, revenue = 0, pageviews = 0;
         let totalEngRate = 0, totalBounce = 0, totalDuration = 0;
@@ -9222,6 +9225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case '30days':
           ga4DateRange = '30daysAgo';
           break;
+        case '60days':
+          ga4DateRange = '60daysAgo';
+          break;
         case '90days':
           ga4DateRange = '90daysAgo';
           break;
@@ -9318,6 +9324,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         case '30days':
           ga4DateRange = '30daysAgo';
+          break;
+        case '60days':
+          ga4DateRange = '60daysAgo';
           break;
         case '90days':
           ga4DateRange = '90daysAgo';
@@ -12052,6 +12061,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             users: sim.totals.users,
             conversions: sim.totals.conversions,
             revenue: sim.totals.revenue,
+            engagedSessions: sim.totals.engagedSessions,
+            engagementRate: sim.totals.engagementRate,
           },
           rows: sim.breakdownRows.slice(0, limit),
           ...(debug ? { meta: { isSimulated: true, seedKey: `${campaignId}:${pid}:${dateRange}`, days: dateRangeToDays(dateRange) } } : {}),
@@ -12069,6 +12080,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         case '30days':
           ga4DateRange = '30daysAgo';
+          break;
+        case '60days':
+          ga4DateRange = '60daysAgo';
           break;
         case '90days':
           ga4DateRange = '90daysAgo';
@@ -13294,10 +13308,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         switch (String(dr || "").toLowerCase()) {
           case "7days":
             return "7daysAgo";
-          case "30days":
-            return "30daysAgo";
-          case "90days":
-            return "90daysAgo";
+         case "30days":
+           return "30daysAgo";
+          case "60days":
+            return "60daysAgo";
+         case "90days":
+           return "90daysAgo";
           default:
             return "30daysAgo";
         }
@@ -13707,8 +13723,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           financialGa4Totals = selectGA4FinancialTotalsSource([
-            toDateFinancialCandidate || {},
-            persistedFinancialCandidate || {},
+            toDateFinancialCandidate,
+            persistedFinancialCandidate,
             financialGa4Totals,
           ], toDateFinancialCandidate || financialGa4Totals);
           financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);

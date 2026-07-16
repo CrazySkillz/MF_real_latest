@@ -180,7 +180,7 @@ export class GoogleAnalytics4Service {
       orderMetric: 'sessions' | 'conversions' = 'sessions'
     ) => {
       const requestBody = {
-        dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+        dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
         dimensions,
         ...(scopeFilter ? scopeFilter : {}),
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
@@ -391,7 +391,7 @@ export class GoogleAnalytics4Service {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
           dimensions: [{ name: 'eventName' }],
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
@@ -1045,7 +1045,7 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter
   ): Promise<{
     rows: Array<Record<string, any>>;
-    totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number };
+    totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
     meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number; sessionsDerivedFromUsers: boolean };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
@@ -1119,6 +1119,7 @@ export class GoogleAnalytics4Service {
             { name: 'totalUsers' },
             { name: 'conversions' },
             { name: metricName },
+            { name: 'engagedSessions' },
           ],
           orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
           limit: Math.min(Math.max(limit, 1), 10000),
@@ -1158,6 +1159,7 @@ export class GoogleAnalytics4Service {
                     { name: 'totalUsers' },
                     { name: 'conversions' },
                     { name: metricName },
+                    { name: 'engagedSessions' },
                   ],
                   orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
                   limit: Math.min(Math.max(limit, 1), 10000),
@@ -1376,7 +1378,7 @@ export class GoogleAnalytics4Service {
       const currentRows = Array.isArray(data?.rows) ? data.rows : [];
       if (currentRows.length === 0) {
         try {
-          const result = await fetchWithRevenueFallback(pageLocationCore, pageLocationCampaignFilter, 'today');
+          const result = await fetchWithRevenueFallback(pageLocationCore, pageLocationCampaignFilter);
           const rowsArr = Array.isArray(result.data?.rows) ? result.data.rows : [];
           if (rowsArr.length > 0) {
             data = result.data;
@@ -1394,6 +1396,7 @@ export class GoogleAnalytics4Service {
     let totalUsers = 0;
     let totalConversions = 0;
     let totalRevenue = 0;
+    let totalEngagedSessions = 0;
 
     const fmtDate = (yyyymmdd: string) => {
       const s = String(yyyymmdd || '');
@@ -1430,6 +1433,7 @@ export class GoogleAnalytics4Service {
         users: Number.parseInt(mets[1]?.value || '0', 10) || 0,
         conversions: Number.parseInt(mets[2]?.value || '0', 10) || 0,
         revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
+        engagedSessions: Number.parseInt(mets[4]?.value || '0', 10) || 0,
       };
 
       // IMPORTANT: sessions must reflect GA4 sessions exactly.
@@ -1439,6 +1443,7 @@ export class GoogleAnalytics4Service {
       totalUsers += d.users;
       totalConversions += d.conversions;
       totalRevenue += d.revenue;
+      totalEngagedSessions += d.engagedSessions;
       rows.push(d);
     }
 
@@ -1452,6 +1457,8 @@ export class GoogleAnalytics4Service {
         users: totalUsers,
         conversions: totalConversions,
         revenue: Number(totalRevenue.toFixed(2)),
+        engagedSessions: totalEngagedSessions,
+        engagementRate: totalSessions > 0 ? totalEngagedSessions / totalSessions : 0,
       },
       meta: {
         propertyId: normalizedPropertyId,

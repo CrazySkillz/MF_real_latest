@@ -716,8 +716,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const ga4Metrics = ga4MetricsFile();
     const financialBlock = sliceBetween(
       ga4Metrics,
-      "const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource([",
-      "  const toRateRatio = (value: any) => {"
+      "const ga4FinancialCandidates = [",
+      "  // GA4 KPIs are evaluated on cumulative values"
     );
     const kpiCreateBlock = sliceBetween(
       ga4Metrics,

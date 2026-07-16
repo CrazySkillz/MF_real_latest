@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Overview` tab and the GA4-specific scope rules that feed the rest of the GA4 experience.
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: GA4 Overview is production-ready for the current GA4 code scope. Use that readiness file for the stable future answer and for the reusable Meta/Google Ads/LinkedIn/future-platform template.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: GA4 Overview is not production-ready or clean-certified; use that readiness file for the current blocker inventory and commit queue.
 
 ## Overview Structure
 
@@ -108,13 +108,13 @@ Daily records and endpoints may still exist for source validation, refresh, and 
 ### Summary Cards
 
 - `Sessions`
-  Populated from GA4 campaign-scoped totals using the merged GA4 daily and GA4 to-date path.
+  Populated from the selected connection's persisted GA4 daily facts for its configured 30/60/90-day completed-day lookback, with same-window live breakdown fallback only when daily facts are absent.
 - `Users`
-  Populated from GA4 campaign-scoped totals with preference for the deduplicated GA4 to-date user count.
+  Populated from the same configured-lookback Summary source as Sessions.
 - `Conversions`
-  Populated from GA4 campaign-scoped totals using the merged GA4 daily and GA4 to-date path.
+  Populated from the same configured-lookback Summary source as Sessions.
 - `Engagement Rate`
-  Populated from GA4 daily facts when available, with GA4 metrics fallback.
+  Computed from engaged sessions and sessions in the same configured-lookback source selected for the other Summary cards; valid zero remains zero.
 - `Conv. Rate`
   Computed from campaign-scoped `Conversions / Sessions`.
 
@@ -124,7 +124,8 @@ Important meaning:
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
 - Summary cards should keep a coherent selected-campaign GA4 source instead of taking per-metric maximum values across daily, to-date, and breakdown endpoints
-- when persisted selected-campaign daily facts exist, the Summary cards use those daily facts for `Sessions`, `Users`, `Conversions`, GA4-native `Revenue`, and derived `Conv. Rate`; if daily facts are unavailable, the cards fall back to selected-campaign to-date totals, then selected-campaign breakdown totals
+- when persisted selected-campaign daily facts exist, Summary uses those facts for the configured completed-day lookback; if they are absent, Summary may use selected-campaign breakdown totals requested for that same lookback
+- campaign-to-date totals are not a Summary fallback because they are a different window
 - selected-campaign daily facts may combine `pageLocation` UTM traffic with `campaignName` conversion/revenue supplementation only for missing conversion/revenue fields; sessions, users, pageviews, and engagement remain from the traffic query
 - when live `pageLocation` UTM fallback is needed, visible card totals may also use populated GA4 breakdown totals so the top cards do not remain zero while scoped live table rows already exist
 - on initial page load or browser refresh, Summary card values should not briefly render stale fallback totals while the selected GA4 property's campaign breakdown query is still loading; show a stable skeleton for the card values until the breakdown-backed totals are ready
@@ -133,9 +134,8 @@ Important `Users` rule:
 
 - the top `Users` card follows the same coherent selected-campaign GA4 source as the other Summary cards
 - when persisted daily facts are the selected source, `Users` is the sum of GA4 daily `totalUsers` rows for the selected campaign scope, not a cross-day deduplicated user count
-- when to-date totals are the selected source, `Users` is the GA4 to-date user count for the selected campaign scope
 - the top `Users` card may show a short clarification tooltip:
-  `GA4 users for the selected campaign scope.`
+  `GA4 users summed for the selected window; the same user may appear on more than one day or breakdown row.`
 
 ### Financial Cards
 
@@ -159,7 +159,8 @@ High-level rule:
 - GA4 report output must use the same HubSpot imported revenue and exact mapping rules as Overview; Current Commit 4.12 records local/read-only validation plus deployed evidence for the configured `GA4 Overview Report` packet only
 - GA4 KPI/Benchmark financial values must use the same HubSpot imported revenue and selected GA4 native financial source included in Overview `Total Revenue`, with Pipeline Proxy excluded. HubSpot Revenue is clean-certified and production-ready for the validated documented GA4 Overview scope after H10d; `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is canonical and supersedes the narrower historical Current Commit 4.x status. Future provider/API changes, unlisted configurations, future failures/deliveries, and non-GA4 contexts remain outside that certification.
 - Shopify imported revenue follows the same GA4 source-backed financial model. Its current readiness status (2026-07-15) is **production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope**; use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` as the canonical evidence source instead of historical Shopify packets in this file. Dormant OAuth and non-GA4 Shopify sources remain excluded.
-- GA4-native financial revenue is selected from the scoped GA4 to-date, daily, and breakdown totals by the most complete native revenue total; revenue and CPA conversions must come from that same selected GA4 source object
+- GA4-native financial revenue and CPA conversions use the first complete source in this fixed order: campaign-to-date provider totals, campaign-to-date persisted daily totals, then the configured-lookback breakdown only when both earlier sources are absent; values are never selected by maximum revenue
+- valid zero and negative campaign-to-date native values remain authoritative; a provider response without both revenue and conversions is treated as empty and falls through to the next complete candidate
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
@@ -325,7 +326,7 @@ Current code-path meaning:
 - in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
 - production table population uses the real GA4 query path, not a mock-refresh design
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
-- `Landing Pages` and `Conversion Events` now use the selected GA4 Overview date range; explicit API `startDate` remains a compatibility override for callers that intentionally request it
+- `Landing Pages` and `Conversion Events` use the selected connection's configured 30/60/90-day completed-day lookback; explicit API `startDate` remains a compatibility override for callers that intentionally request it
 - `Landing Pages` and `Conversion Events` are not reconstructed from scheduler-populated `ga4_daily_metrics`; they fetch row-level GA4 views directly and use exact-match fallback supplementation only when GA4 returns compatible row-level values
 - when attribution dimensions are empty or partial for fresh live traffic, table queries may fall back to same-scope `pageLocation` `utm_campaign`; landing page source/medium and conversion-event counts can then be supplemented only by exact row-level match
 
@@ -336,7 +337,7 @@ Important meaning:
 
 ## Overview Tables Deployed Validation Checklist
 
-GA4 Overview production-readiness is certified in `GA4/OVERVIEW_PRODUCTION_READINESS.md` for the current GA4 code scope. Use this checklist for deployed/provider validation against real GA4 properties and real source data; these checks are validation gates, not known local code blockers.
+GA4 Overview production readiness is not yet certified. Use this checklist for the deployed/provider validation still required by `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Connection and scope:
 

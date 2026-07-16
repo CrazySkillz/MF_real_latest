@@ -6,10 +6,12 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
   it("falls back to stored GA4 daily users, sessions, conversions, and revenue when live GA4 is unavailable", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
-    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
-    const route = routes.slice(routeStart, routeEnd);
+   const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
+   const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("const rows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDate, endDate);");
+    expect(route).toContain('case "60days":');
+    expect(route).toContain('return "60daysAgo";');
+   expect(route).toContain("const rows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDate, endDate);");
     expect(route).toContain("users: totals.users + parseNum(row?.users)");
     expect(route).toContain("sessions: totals.sessions + parseNum(row?.sessions)");
     expect(route).toContain("conversions: totals.conversions + parseNum(row?.conversions)");
@@ -128,8 +130,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("const financialWebAnalytics = { ...webAnalytics };");
     expect(route).toContain("ga4Service.getTotalsWithRevenue(");
     expect(route).toContain("financialGa4Totals = selectGA4FinancialTotalsSource([");
-    expect(route).toContain("toDateFinancialCandidate || {}");
-    expect(route).toContain("persistedFinancialCandidate || {}");
+    expect(route).toContain("toDateFinancialCandidate,");
+    expect(route).toContain("persistedFinancialCandidate,");
     expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
     expect(route).toContain("ga4: financialGa4Totals,");
     expect(route).toContain("webAnalytics: financialWebAnalytics,");

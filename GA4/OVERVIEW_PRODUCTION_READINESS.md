@@ -28,6 +28,8 @@ The earlier clean-certified answer is retracted. Current code and target-databas
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
+Current Commit 2 is implemented and locally validated in the working tree on `2026-07-16`; it closes the local code defects B1-B3 but is not yet committed, deployed, or UI/provider validated. B4-B10 and B12 remain open, so the complete Overview status remains not production-ready.
+
 The durable answer is:
 
 `No. GA4 Overview is not production-ready or clean-certified at commit d5d143ea. The fresh July 15 audit found incompatible windows, zero/failure ambiguity, unscoped and stale spend fallbacks, visible on-hold source paths, production-data damage, incomplete downstream evidence, and three failing source-family regression guards. No runtime fix or cleanup was performed during the audit.`
@@ -90,13 +92,13 @@ This inventory was derived from current render code, query code, API routes, sto
 
 | Visible value or state | Current source and transform | Window/scope | Current status |
 | --- | --- | --- | --- |
-| Sessions | `overviewTotalsSource.sessions` with fallback render to latest daily row | persisted daily lookback first; then campaign-lifetime to-date; then hard-coded 90-day breakdown | Blocked by incompatible fallback windows and unlabeled source/window changes. |
-| Users | Same source hierarchy as Sessions, but daily users are summed across days | same mixed hierarchy | Formula is traced; UI tooltip incorrectly says `Unique GA4 users` even when daily users are additive and not cross-day deduplicated. |
-| Conversions | Same coherent Summary source object | same mixed hierarchy | Locally covered, but inherits window/freshness and error-state blockers. |
-| Engagement Rate | Daily rate only when greater than zero; otherwise to-date rate, then engaged sessions/sessions, then latest daily metric | can switch away from the chosen Summary source | Confirmed source-coherence and valid-zero defect. |
+| Sessions | configured-lookback persisted daily totals; same-window breakdown only when daily rows are absent | selected connection's 30/60/90 completed-day lookback | Current Commit 2 aligns live tables and scheduled Summary to this contract; deployed/provider validation remains open. |
+| Users | Same source hierarchy as Sessions; users are additive across daily or fallback breakdown rows | configured completed-day lookback | Tooltip now states that a user may appear on more than one day or breakdown row; deployed pixel/text validation remains open. |
+| Conversions | Same coherent Summary source object | configured completed-day lookback | Locally covered; inherits remaining freshness and error-state blockers. |
+| Engagement Rate | engaged sessions divided by sessions from the selected Summary source | configured completed-day lookback | Valid zero is preserved and no campaign-to-date/latest-day cross-source fallback remains. |
 | Conversion Rate | Summary conversions divided by Summary sessions | source chosen by Summary hierarchy | Formula is correct when inputs are valid; inherits mixed-window/freshness/error blockers. |
-| GA4 native financial revenue | `selectGA4FinancialTotalsSource` selects the candidate with the highest revenue from to-date, daily, and breakdown totals | campaign lifetime, configured daily lookback, and 90-day breakdown are compared | Confirmed incompatible-window maximum; not safely labeled to the user. |
-| Financial conversions | Taken from the same object selected for native financial revenue | same selected incompatible candidate | Source pairing is locally correct; selection contract is not production-safe. |
+| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, campaign-to-date persisted daily, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date section with explicitly ordered fallbacks | Maximum selection is removed; zero/negative are valid and provider-empty objects fall through. Remaining error-state behavior is Current Commit 3. |
+| Financial conversions | Taken from the same object selected for native financial revenue | same ordered financial candidate | Source pairing and selection order are locally covered. |
 | Imported revenue | Active GA4/null-context `revenue_records` joined to active sources, aggregated to date | `1900-01-01` through today | Platform scoping is traced; source-family lifecycle and target-data completeness are not complete. |
 | Total Revenue | selected GA4 native revenue + imported revenue | mixes selected native window with imported lifetime | Additivity is tested; window meaning and active source safety block certification. |
 | Revenue source count | imported source rows plus GA4 native only when native revenue is greater than zero | current loaded values | A configured native revenue metric with a valid zero is omitted from source count/provenance. |
@@ -109,9 +111,9 @@ This inventory was derived from current render code, query code, API routes, sto
 | Revenue Sources modal | merged source definitions and revenue breakdown rows | active GA4/null-context revenue sources | Shopify freshness is shown; Google Sheets/CSV/HubSpot freshness is not consistently shown. Errors silently become an empty list. |
 | Spend Sources modal | merged unscoped active source definitions and spend breakdown rows | all active campaign spend sources | Can show and total retained source types from other platform contexts. Errors silently become an empty list. |
 | Pipeline Proxy modal | successful HubSpot/Salesforce source entries | selected source configs | Salesforce cross-context fallback remains unsafe. |
-| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property, saved campaign filter, hard-coded 90 days | Row allocation protections are locally covered; live provider completeness and total-window parity remain unproven. |
-| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter, hard-coded 90 days, API limit 50, UI renders 20 | Exact-key behavior is locally covered; request failure is rendered as `No ... available`, not error. |
-| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter, hard-coded 90 days, API limit 50, UI renders 25 | Exact-match behavior is locally covered; request failure is rendered as empty/unavailable. |
+| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property/filter and configured 30/60/90 completed-day lookback | Row allocation and local window parity are covered; live provider completeness remains unproven. |
+| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 20 | Window is aligned; request failure is still rendered as `No ... available` pending Current Commit 3. |
+| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 25 | Window is aligned; request failure is still rendered as empty/unavailable pending Current Commit 3. |
 | Overview GA4 error banner | only the `ga4-daily` query error | daily query | Breakdown, to-date, landing-page, conversion-event, revenue, and spend failures are not represented by this banner. |
 | Freshness | daily endpoint returns `refreshIsStale`, dates, warning, and expected refresh | persisted daily path | Used in Insights/Trends, not presented beside Overview Summary/financial values. |
 | Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Inherits every live Overview source, zero, failure, and freshness defect. |
@@ -172,7 +174,7 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 | --- | --- | --- |
 | UI scope | `ga4-metrics.tsx` -> campaign query -> selected property -> saved campaign filter | Campaign/property intent is explicit. |
 | GA4 daily | `/ga4-daily` -> reporting-timezone window -> stored rows -> due-day provider backfill -> upsert -> response freshness | Access and selected property are guarded; production freshness is not established. |
-| GA4 to-date | `/ga4-to-date` -> selected connection -> campaign start/created date through prior UTC day -> live provider | Campaign lifetime does not match hard-coded 90-day Overview table window or every connection lookback. |
+| GA4 to-date | `/ga4-to-date` -> selected connection -> campaign start/created date through prior UTC day -> live provider | Used for the explicitly labeled campaign-to-date financial contract, not as a configured-lookback Summary fallback. |
 | Breakdown | `/ga4-breakdown` -> `getAcquisitionBreakdown` -> client aggregation/render | Selected property/filter and 90-day window are explicit. |
 | Landing Pages | `/ga4-landing-pages` -> provider report -> exact-key supplement -> client first 20 rows | Exact-match safety covered; failure visibility is not. |
 | Conversion Events | `/ga4-conversion-events` -> provider report -> exact-event supplement -> client first 25 rows | Exact-match safety covered; failure visibility is not. |
@@ -218,17 +220,17 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 
 ## Confirmed Blockers
 
-### B1. Incompatible Summary, table, and financial windows
+### B1. Incompatible Summary, table, and financial windows — resolved locally by Current Commit 2
 
-`dateRange` is hard-coded to 90 days, while `GA4_DAILY_LOOKBACK_DAYS` comes from the active connection and is 30 or 90. The target database has 3 active 30-day connections and 32 active 90-day connections. Summary can therefore use 30-day daily totals while Campaign Breakdown, Landing Pages, and Conversion Events use 90 days. The to-date route uses campaign lifetime. Financial native revenue then selects the highest-revenue candidate across these incompatible windows. Overview does not clearly label this mixed-window/max contract.
+The root cause was a page-level hard-coded `90days` request combined with connection-specific daily lookback and a maximum-revenue selector spanning campaign-to-date, daily, and breakdown candidates. Current Commit 2 derives every Overview live-table request from the selected connection's validated 30/60/90-day setting, excludes intraday `today` from Landing Pages and Conversion Events, labels Summary/tables as completed-day lookback and financials as campaign-to-date, and replaces maximum selection with a fixed complete-source order. Browser and scheduled report builders now use the same contract. Deployed 30/60/90 provider validation remains in Current Commit 8.
 
-### B2. Engagement Rate can leave the chosen Summary source
+### B2. Engagement Rate can leave the chosen Summary source — resolved locally by Current Commit 2
 
-The Summary source may be daily, but a valid daily engagement rate of zero is treated as missing. Code then falls through to to-date or latest-day values. This violates the documented coherent Summary-source rule and conflates zero with absence.
+The root cause was a positive-value availability test and a separate Engagement Rate fallback chain. Current Commit 2 uses row/response presence for source availability, adds `engagedSessions` to the same-window acquisition fallback, and derives Engagement Rate only from the selected Summary source. Zero is retained as a valid rate.
 
-### B3. Users provenance is misleading
+### B3. Users provenance is misleading — resolved locally by Current Commit 2
 
-When daily facts win, Users is the sum of daily user rows and is not a cross-day deduplicated unique-user count. The visible tooltip says `Unique GA4 users for the selected campaign scope.`
+The root cause was copy that described additive daily/breakdown totals as unique. The tooltip now says that GA4 users are summed for the selected window and that the same user may appear on more than one day or breakdown row.
 
 ### B4. Failures become zero or empty data
 
@@ -275,7 +277,7 @@ The broad rerun produced 3 failures and 49 passes across the three isolated file
 
 These were stale/brittle tests rather than runtime defects. Root-cause tracing also found a second copy of the same over-wide inventory slice in `server/hubspot-revenue-damaged-data-inventory.test.ts`; it was outside the original three-file packet but failed for the same reason.
 
-Current Commit 1 bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed; B1 through B10 and B12 remain open.
+Current Commit 1 (`56bfdced`) bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed. Current Commit 2 later closed B1-B3 locally; B4-B10 and B12 remain open.
 
 ### B12. Complete downstream proof is absent
 
@@ -321,8 +323,8 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 | Campaign access denied | fail closed | Proven on traced endpoints. |
 | Missing property/connection | explicit unavailable/reconnect state | Mostly guarded; several secondary queries silently return null/empty. |
 | Provider/token failure | retain stable data with explicit stale/error provenance | Daily path can retain rows with warning; Overview does not surface warning, and other paths often show zero/empty. |
-| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Engagement and financial render paths conflate zero with missing. |
-| Incompatible windows | reject, normalize, or clearly label | Current code selects/falls back across 30/90/lifetime windows. |
+| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Summary/Engagement and financial-source selection are fixed locally; Profit/ROAS/ROI zero semantics remain in Current Commit 3. |
+| Incompatible windows | reject, normalize, or clearly label | Fixed locally: configured completed-day Summary/tables and labeled campaign-to-date financials; deployed validation remains open. |
 | Source with no materialized records | unavailable/fail closed | Spend can use cached campaign value. |
 | Inactive source | exclude from total | Proven by active joins. |
 | Orphan record | exclude and inventory | Excluded by inner join; large damaged inventory remains. |
@@ -372,7 +374,7 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 
 - current live GA4 values for all 35 connections
 - provider refresh/token behavior for current expired metadata
-- correctness of the mixed 30/90/lifetime window contract
+- deployed correctness of the configured-lookback Summary/table and campaign-to-date financial contract
 - correct failure/valid-zero UI behavior identified above
 - exact completeness of every active revenue/spend source lifecycle
 - safe cleanup boundaries for orphan or drifted production rows
@@ -386,7 +388,7 @@ Current Commit 0 is this documentation-only baseline. It lowers the status, reco
 
 ### Current Commit 1 — Repair stale source-family regression guards — complete
 
-Completed on `2026-07-15` as a test-only correction.
+Implemented on `2026-07-15`, then committed and pushed to `main` on `2026-07-16` as `56bfdced`. This was a test-and-documentation-only correction.
 
 - bound the HubSpot inventory test to the actual read-only handler instead of a later route marker that now includes Shopify cleanup code
 - replace the broad `Sync` substring prohibition with action-specific refresh/reprocess assertions
@@ -395,17 +397,28 @@ Completed on `2026-07-15` as a test-only correction.
 
 This commit closes B11 only. It does not make Overview production-ready.
 
-### Current Commit 2 — Define one explicit Overview window/source contract — next
+### Current Commit 2 — Define one explicit Overview window/source contract — implemented locally
 
-This is the smallest safe next runtime commit.
+Implemented in the working tree on `2026-07-16`; commit, push, Render deployment, and deployed UI/provider validation remain pending.
 
 - resolve 30-day connection lookback versus hard-coded 90-day table queries
 - stop selecting maximum revenue across incompatible lifetime/daily/breakdown windows unless that behavior becomes an explicitly labeled product contract
 - keep Summary metrics coherent, including Engagement Rate and valid zero
 - correct Users provenance copy
-- cover 30-day and 90-day connections, zero values, negative adjustments, and provider-empty fallbacks
+- cover 30-day, 60-day, and 90-day connections, zero values, negative adjustments, and provider-empty fallbacks
 
-### Current Commit 3 — Fail closed on request errors and preserve valid zeros
+Local validation:
+
+- focused Overview/downstream packet: 15 files passed; 142 tests passed
+- focused GA4 financial/filter/UI/HubSpot/outcome packet: 5 files passed; 89 tests passed
+- `npm run check`: passed
+- `npm run build`: passed outside the restricted sandbox after the sandboxed build could not spawn esbuild (`EPERM`)
+- the full repository suite was also run and remains red outside this packet; representative failures assert Google Ads fallback and scheduler-call strings that are absent from `HEAD`, while both Current Commit 2 packets pass. No globally green-suite claim is made.
+- no schema migration, dependency, persisted-data mutation, or API response field removal was introduced
+
+Current Commit 2 closes B1-B3 locally only. UI validation is required after Render deploy because this commit changes visible window labels, Users provenance copy, 30/60/90 request behavior, valid-zero rendering, and browser/scheduled-report parity. Current Commit 3 is next; Overview remains not production-ready.
+
+### Current Commit 3 — Fail closed on request errors and preserve valid zeros — next
 
 - distinguish loading, unavailable, stale, error, and valid zero for every Overview query
 - do not turn failed revenue/spend requests into `$0`
@@ -461,15 +474,19 @@ For every enabled family that can feed Overview, cover add, edit, delete, refres
 - complete named deployed report/Trend/multi-source evidence relevant to the claimed scope
 - rerun all matrices and update this file only after evidence is current
 
-Estimated remaining work: a minimum of 9 bounded engineering/evidence commits or packets (`Current Commit 2` through `10`). The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
+Estimated remaining work after the local Current Commit 2 implementation: a minimum of 8 bounded engineering/evidence commits or packets (`Current Commit 3` through `10`), plus Current Commit 2 commit/deploy/UI validation. The count will increase if Google Sheets is completed rather than temporarily hidden/fail-closed, or if production cleanup separates into multiple independently reviewed batches.
 
 ## UI Validation Requirement
 
-UI validation is still necessary before final certification, but it is not the next step. Current defects are already proven from code and production data, so browser validation now would only confirm known unsafe behavior.
+Current Commit 1 does **not** require a separate UI validation pass. Commit `56bfdced` changed only static regression tests and this readiness document; it did not change the client bundle, server runtime, API behavior, calculations, persistence, schedulers, or rendered UI. Its proportionate validation is the green source-family packets, the 15-file focused packet, TypeScript, and staged/committed file-boundary review recorded above. A Render deployment of this commit has no new user-visible behavior to validate.
+
+This narrow decision does not waive UI validation for later runtime commits or final Overview certification.
+
+Current Commit 2 **does require UI validation after commit, push, and Render deployment** because it changes rendered labels/copy, selected-connection request windows, valid-zero behavior, and report-source parity. This validation proves only Current Commit 2; it does not certify the complete Overview while later blockers remain.
 
 After the forward fixes and automated tests pass, UI validation must cover:
 
-- 30-day and 90-day connection windows and visible labels
+- 30-day, 60-day, and 90-day connection windows and visible labels
 - valid zero and negative financial outcomes
 - provider/query failures without false zeros or false empty tables
 - stale daily data and reconnect behavior

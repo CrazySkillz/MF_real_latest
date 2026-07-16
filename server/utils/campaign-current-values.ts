@@ -185,10 +185,13 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
         }
       }
       try {
+        const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
+          ? Number((primary as any).lookbackDays)
+          : 90;
         const breakdown = await ga4Service.getAcquisitionBreakdown(
           campaignId,
           storage,
-          "90daysAgo",
+          `${lookbackDays}daysAgo`,
           propertyId,
           2000,
           campaignFilter,
@@ -198,9 +201,9 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
         // Keep persisted and to-date candidates when breakdown totals are unavailable.
       }
       const selectedFinancialCandidate = selectGA4FinancialTotalsSource([
-        toDateCandidate || {},
-        dailyCandidate,
-        breakdownCandidate || {},
+        toDateCandidate,
+        financialRows.length > 0 ? dailyCandidate : null,
+        breakdownCandidate,
       ], toDateCandidate || dailyCandidate);
       ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
       financialConversions = parseNum(selectedFinancialCandidate?.conversions);

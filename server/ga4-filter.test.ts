@@ -362,7 +362,7 @@ describe("GA4 campaign value picker", () => {
                   { value: "20260618" },
                   { value: "https://example.com/?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" },
                 ],
-                metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "531.349929" }],
+                metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "531.349929" }, { value: "51" }],
               }]
             : [],
         }),
@@ -381,8 +381,10 @@ describe("GA4 campaign value picker", () => {
 
     const result = await ga4Service.getAcquisitionBreakdown("campaign-1", storage, "90daysAgo", "123", 200, "summer_sale");
 
-    expect(result.totals).toEqual({ sessions: 85, sessionsRaw: 85, users: 85, conversions: 3, revenue: 531.35 });
-    expect(result.rows[0]).toMatchObject({ date: "2026-06-18", source: "google", medium: "cpc", campaign: "summer_sale" });
+    expect(result.totals).toEqual({ sessions: 85, sessionsRaw: 85, users: 85, conversions: 3, revenue: 531.35, engagedSessions: 51, engagementRate: 0.6 });
+    expect(result.rows[0]).toMatchObject({ date: "2026-06-18", source: "google", medium: "cpc", campaign: "summer_sale", engagedSessions: 51 });
+    const fallbackBody = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body || "{}"));
+    expect(fallbackBody.metrics).toContainEqual({ name: "engagedSessions" });
   });
 
   it("derives landing page source and medium from UTM URLs when GA4 attribution dimensions are empty", async () => {

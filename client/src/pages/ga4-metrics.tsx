@@ -293,13 +293,6 @@ export default function GA4Metrics() {
     }
   }, []);
 
-  // GA4 UI now operates on strict daily values (persisted server-side).
-  // We keep an internal lookback window for charts/supporting reports, but there is no user-selectable date range.
-  // Need at least 60 days to compute "last 30 vs prior 30" and 14 days for WoW anomaly detection.
-  // Use 90 to be safe (and to keep mock simulation consistent with existing mock logic).
-  // dateRange MUST match the daily lookback so Summary totals equal the sum of daily rows.
-  // GA4_DAILY_LOOKBACK_DAYS is computed after allGA4Connections query loads (see below)
-  const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
   useEffect(() => {
@@ -758,9 +751,9 @@ export default function GA4Metrics() {
             revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
             conversions: useLifetimeConversions
               ? Number(financialConversions || 0)
-              : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
-            sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
-            users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
+              : Number(breakdownTotals.conversions || 0),
+            sessions: Number(breakdownTotals.sessions || 0),
+            users: Number(breakdownTotals.users || 0),
             engagementRate: overviewEngagementRate,
             spend: Number(financialSpend || 0),
           });
@@ -1583,8 +1576,10 @@ export default function GA4Metrics() {
   const GA4_DAILY_LOOKBACK_DAYS = (() => {
     const conns = ga4PropsFromAll.length > 0 ? ga4PropsFromAll : ga4PropsFromCheck;
     const active = conns.find((c: any) => String(c.propertyId) === String(selectedGA4PropertyId)) || conns[0];
-    return Number((active as any)?.lookbackDays) || 90;
+    const lookbackDays = Number((active as any)?.lookbackDays);
+    return [30, 60, 90].includes(lookbackDays) ? lookbackDays : 90;
   })();
+  const dateRange = `${GA4_DAILY_LOOKBACK_DAYS}days`;
 
   // Always scope GA4 metrics to a single selected property (default: primary).
   useEffect(() => {
@@ -1989,7 +1984,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, dateRange],
+    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1998,7 +1993,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&dateRange=${encodeURIComponent(dateRange)}`
+        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`
       );
       const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) {
@@ -2034,19 +2029,26 @@ export default function GA4Metrics() {
     const totals = (ga4Breakdown as any)?.totals || {};
     const rows = Array.isArray((ga4Breakdown as any)?.rows) ? (ga4Breakdown as any).rows : [];
     const summed = rows.reduce(
-      (acc: { sessions: number; users: number; conversions: number; revenue: number }, row: any) => ({
+      (acc: { sessions: number; users: number; conversions: number; revenue: number; engagedSessions: number }, row: any) => ({
         sessions: acc.sessions + (Number(row?.sessions || 0) || 0),
         users: acc.users + (Number(row?.users || 0) || 0),
         conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
         revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
+        engagedSessions: acc.engagedSessions + (Number(row?.engagedSessions || 0) || 0),
       }),
-      { sessions: 0, users: 0, conversions: 0, revenue: 0 }
+      { sessions: 0, users: 0, conversions: 0, revenue: 0, engagedSessions: 0 }
     );
+    const sessions = Number(totals?.sessions ?? totals?.sessionsRaw);
+    const engagedSessions = Number(totals?.engagedSessions);
+    const resolvedSessions = Number.isFinite(sessions) ? sessions : summed.sessions;
+    const resolvedEngagedSessions = Number.isFinite(engagedSessions) ? engagedSessions : summed.engagedSessions;
     return {
-      sessions: Number(totals?.sessions || totals?.sessionsRaw || 0) || summed.sessions,
-      users: Number(totals?.users || 0) || summed.users,
-      conversions: Number(totals?.conversions || 0) || summed.conversions,
-      revenue: Number((Number(totals?.revenue || 0) || summed.revenue).toFixed(2)),
+      sessions: resolvedSessions,
+      users: Number.isFinite(Number(totals?.users)) ? Number(totals.users) : summed.users,
+      conversions: Number.isFinite(Number(totals?.conversions)) ? Number(totals.conversions) : summed.conversions,
+      revenue: Number((Number.isFinite(Number(totals?.revenue)) ? Number(totals.revenue) : summed.revenue).toFixed(2)),
+      engagedSessions: resolvedEngagedSessions,
+      engagementRate: resolvedSessions > 0 ? resolvedEngagedSessions / resolvedSessions : 0,
     };
   }, [ga4Breakdown]);
 
@@ -2056,30 +2058,26 @@ export default function GA4Metrics() {
     revenue: Number((ga4ToDateResp as any)?.totals?.revenue || 0),
     users: Number((ga4ToDateResp as any)?.totals?.users || 0),
   };
-  const hasDailyOverviewTotals =
-    dailySummedTotals.sessions > 0 ||
-    dailySummedTotals.users > 0 ||
-    dailySummedTotals.conversions > 0 ||
-    dailySummedTotals.revenue > 0 ||
-    dailySummedTotals.pageviews > 0;
-  const hasToDateOverviewTotals =
-    ga4ToDateOverviewTotals.sessions > 0 ||
-    ga4ToDateOverviewTotals.users > 0 ||
-    ga4ToDateOverviewTotals.conversions > 0 ||
-    ga4ToDateOverviewTotals.revenue > 0;
+  const hasDailyOverviewTotals = ga4DailyRows.length > 0;
+  const hasBreakdownOverviewTotals = Boolean((ga4Breakdown as any)?.totals) ||
+    (Array.isArray((ga4Breakdown as any)?.rows) && (ga4Breakdown as any).rows.length > 0);
   const overviewTotalsSource = hasDailyOverviewTotals
     ? dailySummedTotals
-    : hasToDateOverviewTotals ? ga4ToDateOverviewTotals : ga4BreakdownTotals;
+    : hasBreakdownOverviewTotals ? ga4BreakdownTotals : null;
+  const overviewEngagementRate = (() => {
+    const rate = Number(overviewTotalsSource?.engagementRate ?? 0);
+    if (!Number.isFinite(rate)) return 0;
+    return Math.max(0, rate > 1 ? rate / 100 : rate);
+  })();
 
-  // Keep GA4 Overview totals on one coherent source. Do not take per-metric max
-  // values across daily, to-date, and breakdown endpoints; that can combine
-  // different date windows into one impossible Summary.
+  // Keep Summary on the configured completed-day lookback. Campaign-to-date
+  // totals belong only to the explicitly labeled financial section.
   const breakdownTotals = {
     date: ga4ReportDate,
-    sessions: Number(overviewTotalsSource.sessions || 0),
-    conversions: Number(overviewTotalsSource.conversions || 0),
-    revenue: Number(overviewTotalsSource.revenue || 0),
-    users: Number(overviewTotalsSource.users || 0),
+    sessions: Number(overviewTotalsSource?.sessions || 0),
+    conversions: Number(overviewTotalsSource?.conversions || 0),
+    revenue: Number(overviewTotalsSource?.revenue || 0),
+    users: Number(overviewTotalsSource?.users || 0),
   };
 
   const { data: importedRevenueToDateResp } = useQuery<any>({
@@ -2479,15 +2477,14 @@ export default function GA4Metrics() {
     return !!activeSpendSource || ids.length > 0;
   }, [activeSpendSource, spendToDateResp?.sourceIds]);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
-  // Keep GA4 Revenue from understating larger scoped GA4 totals used by visible rows.
-  // Revenue and conversions must come from one source object, not per-metric maxima.
-  const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource([
-    ga4ToDateOverviewTotals,
-    dailySummedTotals,
-    ga4BreakdownTotals,
-  ], ga4ToDateOverviewTotals);
+  const ga4FinancialCandidates = [
+    (ga4ToDateResp as any)?.totals,
+    ga4DailyRows.length > 0 ? dailySummedTotals : null,
+    hasBreakdownOverviewTotals ? ga4BreakdownTotals : null,
+  ];
+  const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateOverviewTotals);
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
-  const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
+  const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;
 
   const revenueMetricAvailable = useMemo(() => {
     // Revenue-dependent KPIs, Benchmarks, and Insights must follow the same GA4
@@ -2580,7 +2577,7 @@ export default function GA4Metrics() {
   );
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
-  const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
+  const revenueSourcesCount = revenueDisplaySources.length + (ga4HasRevenueMetric ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
   const hasPipelineProxy = !!pipelineProxyData?.success;
   const pipelineProxySourceEntries = (Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
@@ -2591,21 +2588,6 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
-  const toRateRatio = (value: any) => {
-    const n = Number(value || 0);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    return n > 1 ? n / 100 : n;
-  };
-  const overviewEngagementRate = (() => {
-    if (hasDailyOverviewTotals && dailySummedTotals.engagementRate > 0) return dailySummedTotals.engagementRate;
-    const toDateRate = toRateRatio((ga4ToDateResp as any)?.totals?.engagementRate);
-    if (toDateRate > 0) return toDateRate;
-    const engagedSessions = Number((ga4ToDateResp as any)?.totals?.engagedSessions || 0);
-    const sessions = Number((ga4ToDateResp as any)?.totals?.sessions || 0);
-    if (engagedSessions > 0 && sessions > 0) return engagedSessions / sessions;
-    return toRateRatio((ga4Metrics as any)?.engagementRate);
-  })();
-
   // GA4 KPIs are evaluated on cumulative values — target is the absolute goal.
   const getKpiEffectiveTarget = (kpi: any) => {
     const rawTarget = parseFloat(String(kpi?.targetValue || "0"));
@@ -2619,18 +2601,18 @@ export default function GA4Metrics() {
     // - Revenue/Conversions/Sessions/Users from GA4 breakdown totals
     // - Spend/Revenue for financial metrics from spend-to-date + revenue-to-date (no LinkedIn fallback)
     if (name === "Revenue") return Number(financialRevenue || 0).toFixed(2);
-    if (name === "Total Conversions") return String(Math.round(Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0)));
+    if (name === "Total Conversions") return String(Math.round(Number(breakdownTotals.conversions || 0)));
     if (name === "Conversion Rate") {
-      const s = Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0);
-      const c = Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0);
+      const s = Number(breakdownTotals.sessions || 0);
+      const c = Number(breakdownTotals.conversions || 0);
       return computeConversionRatePercent(c, s).toFixed(2);
     }
     if (name === "Engagement Rate") {
       const er = overviewEngagementRate;
       return normalizeRateToPercent(er).toFixed(2);
     }
-    if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
-    if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0)));
+    if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || 0)));
+    if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || 0)));
     // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
     // ROAS as ratio (48.91x) to match Overview display — NOT percentage (4,891%)
     if (name === "ROAS") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);
@@ -2645,7 +2627,7 @@ export default function GA4Metrics() {
     return resolveKpiDataSufficiency({
       metric: name,
       name: kpi?.name,
-      sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
+      sessions: Number(breakdownTotals.sessions || 0),
       conversions: Number(financialConversions || 0),
       spend: Number(financialSpend || 0),
     });
@@ -3040,7 +3022,7 @@ export default function GA4Metrics() {
       ];
       metricCards(revenueCards, Math.min(revenueCards.length, 3));
       sourceRows("Revenue", [
-        ...(ga4RevenueForFinancials > 0 ? [["GA4 Revenue", fC(ga4RevenueForFinancials)] as [string, string]] : []),
+        ...(ga4HasRevenueMetric ? [["GA4 Revenue", fC(ga4RevenueForFinancials)] as [string, string]] : []),
         ...revenueDisplaySources.map((s: any) => {
           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
           const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
@@ -5353,7 +5335,6 @@ export default function GA4Metrics() {
     !!ga4Connection?.connected &&
     !!selectedGA4PropertyId &&
     !hasDailyOverviewTotals &&
-    !hasToDateOverviewTotals &&
     !ga4Breakdown &&
     breakdownLoading;
   const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing
@@ -5737,14 +5718,14 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Summary</h3>
-                        <p className="text-sm text-muted-foreground/70">Key performance metrics for your GA4 property</p>
+                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days for this GA4 property and campaign scope</p>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Sessions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0))}
+                              {renderSummaryValue(formatNumber(breakdownTotals.sessions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5759,12 +5740,12 @@ export default function GA4Metrics() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                  Unique GA4 users for the selected campaign scope.
+                                  GA4 users summed for the selected window; the same user may appear on more than one day or breakdown row.
                                 </TooltipContent>
                               </UITooltip>
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(breakdownTotals.users || ga4Metrics?.users || 0))}
+                              {renderSummaryValue(formatNumber(breakdownTotals.users || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5772,7 +5753,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0))}
+                              {renderSummaryValue(formatNumber(breakdownTotals.conversions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5801,7 +5782,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Revenue & Financial</h3>
-                        <p className="text-sm text-muted-foreground/70">Financial performance and return on investment</p>
+                        <p className="text-sm text-muted-foreground/70">Campaign-to-date financial performance and return on investment</p>
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
                       <div className="grid gap-5 lg:grid-cols-2">
@@ -5959,7 +5940,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
-                        <p className="text-sm text-muted-foreground/70">Performance metrics aggregated by UTM campaign</p>
+                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days, aggregated by UTM campaign</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -6024,7 +6005,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">For this GA4 property&apos;s selected date range and this campaign&apos;s selected GA4 campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days for this GA4 property and campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -6095,7 +6076,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
-                        <p className="text-sm text-muted-foreground/70">For this GA4 property&apos;s selected date range and this campaign&apos;s selected GA4 campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days for this GA4 property and campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -6206,7 +6187,7 @@ export default function GA4Metrics() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
-                        {ga4RevenueForFinancials > 0 && (
+                        {ga4HasRevenueMetric && (
                           <div className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
                             <div>
                               <p className="font-medium text-foreground">GA4 Revenue</p>
@@ -8711,9 +8692,9 @@ export default function GA4Metrics() {
                             revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
                             conversions: useLifetimeConversions
                               ? Number(financialConversions || 0)
-                              : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
-                            sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
-                            users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
+                              : Number(breakdownTotals.conversions || 0),
+                            sessions: Number(breakdownTotals.sessions || 0),
+                            users: Number(breakdownTotals.users || 0),
                             engagementRate: overviewEngagementRate,
                             spend: Number(financialSpend || 0),
                           });

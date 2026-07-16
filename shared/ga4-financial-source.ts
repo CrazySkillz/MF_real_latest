@@ -1,12 +1,17 @@
+export function isGA4FinancialTotalsCandidate(candidate: unknown): boolean {
+  if (!candidate) return false;
+  return ["revenue", "conversions"].every((field) => {
+    const value = (candidate as any)?.[field];
+    return value !== null && value !== undefined && Number.isFinite(Number(value));
+  });
+}
+
 export function selectGA4FinancialTotalsSource<T>(
-  candidates: T[],
+  candidates: Array<T | null | undefined>,
   fallback: T,
 ): T {
-  return candidates.reduce((best, current) => (
-    Number((current as any)?.revenue || 0) > Number((best as any)?.revenue || 0)
-      ? current
-      : best
-  ), fallback);
+  const selected = candidates.find(isGA4FinancialTotalsCandidate);
+  return selected ?? fallback;
 }
 
 export function normalizeGA4CampaignAllocationKey(value: unknown): string {

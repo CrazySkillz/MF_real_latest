@@ -415,9 +415,9 @@ async function buildGA4ReportPayload(report: any) {
     ga4Service.getConversionEventsReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
     ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
     storage.getRevenueSources(campaignId, "ga4").catch((e) => { logPartFailure("revenue sources", e); return [] as any[]; }),
-    storage.getSpendSources(campaignId).catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
+    storage.getSpendSources(campaignId, "ga4").catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
     storage.getRevenueBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
-    storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate).catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
+    storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
     loadPlatformKPIs,
     benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
   ]);

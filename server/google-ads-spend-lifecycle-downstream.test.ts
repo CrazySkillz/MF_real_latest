@@ -60,7 +60,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(manualRoute).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(manualRoute).toContain("const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);");
     expect(manualRoute).toContain("const existingSource = await storage.getSpendSource(campaignId, existingSourceId);");
-    expect(manualRoute).toContain('String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase()');
+    expect(manualRoute).toContain("spendSourceMatchesPlatformContext(existingSource, platformContext)");
     expect(manualRoute).toContain('String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType');
     expect(manualRoute).toContain('effectiveSourceType === "ad_platforms" && overrideDisplayName');
     expect(manualRoute).toContain("source = await storage.updateSpendSource(existingSourceId,");
@@ -100,12 +100,12 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     );
     const spendStorage = sliceBetween(
       storage,
-      "async getSpendSources(campaignId: string): Promise<SpendSource[]>",
+      "async getSpendSources(campaignId: string, platformContext?: SpendPlatformContext): Promise<SpendSource[]>",
       "async getInactiveSpendSources"
     );
     const spendSourceStorage = sliceBetween(
       storage,
-      "async getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined>",
+      "async getSpendSource(campaignId: string, sourceId: string, platformContext?: SpendPlatformContext): Promise<SpendSource | undefined>",
       "async createSpendSource"
     );
     const deleteStorage = sliceBetween(
@@ -115,27 +115,27 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     );
     const spendTotalStorage = sliceBetween(
       storage,
-      "async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string)",
+      "async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext)",
       "async getSpendBreakdownBySource"
     );
     const spendBreakdownStorage = sliceBetween(
       storage,
-      "async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string)",
+      "async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext)",
       "async getRevenueSources"
     );
 
     expect(spendSourcesRoute).toContain("requireCampaignAccessParamId");
-    expect(spendSourcesRoute).toContain("const sources = await storage.getSpendSources(campaignId);");
+    expect(spendSourcesRoute).toContain("const sources = await storage.getSpendSources(campaignId, platformContext);");
     expect(spendToDateRoute).toContain("requireCampaignAccessParamId");
     expect(spendToDateRoute).toContain("const campaign = await storage.getCampaign(campaignId);");
-    expect(spendToDateRoute).toContain("const sources = await storage.getSpendSources(campaignId);");
+    expect(spendToDateRoute).toContain("const sources = await storage.getSpendSources(campaignId, platformContext);");
+    expect(spendToDateRoute).toContain('getSpendTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), platformContext)');
     expect(spendToDateRoute).toContain("sourceIds: Array.isArray(sources) ? sources.map");
     expect(spendBreakdownRoute).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(spendBreakdownRoute).toContain('const startDate = "1900-01-01";');
-    expect(spendBreakdownRoute).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate)");
+    expect(spendBreakdownRoute).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext)");
     expect(deleteRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
-    expect(deleteRoute).toContain("const existingSpendSources = await storage.getSpendSources(campaignId)");
-    expect(deleteRoute).toContain('String((deletingSource as any)?.platformContext || "ga4").trim().toLowerCase()');
+    expect(deleteRoute).toContain("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)");
     expect(deleteRoute).toContain("await storage.deleteSpendSource(sourceId);");
     expect(deleteRoute).toContain("await storage.deleteSpendRecordsBySource(sourceId);");
     expect(deleteRoute).toContain("await recalcCampaignSpend(campaignId);");
@@ -163,7 +163,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     const financials = sliceBetween(
       ga4Page,
       "const getInvalidBenchmarkConfigReason = (benchmark: any) =>",
-      "const toRateRatio = (value: any) =>"
+      "const overviewVisibleDataUsingLastGoodData = Boolean("
     );
     const cards = sliceBetween(
       ga4Page,
@@ -171,11 +171,11 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
       "Add spend to unlock ROAS / ROI / CPA"
     );
 
-    expect(spendQueries).toContain('fetch(`/api/campaigns/${campaignId}/spend-to-date`)');
-    expect(spendQueries).toContain('fetch(`/api/campaigns/${campaignId}/spend-sources`)');
-    expect(spendQueries).toContain('fetch(`/api/campaigns/${campaignId}/spend-breakdown`)');
+    expect(spendQueries).toContain('fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`)');
+    expect(spendQueries).toContain('fetch(`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`)');
+    expect(spendQueries).toContain('fetch(`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`)');
     expect(financials).toContain("const hasSpendSources = spendDisplaySources.length > 0;");
-    expect(financials).toContain("const totalSpendForFinancials = hasSpendSources ? Number(spendBreakdownResp?.totalSpend || spendToDateResp?.spendToDate || 0) : 0;");
+    expect(financials).toContain("const totalSpendForFinancials = hasSpendSources ? Number(spendBreakdownResp?.totalSpend ?? spendToDateResp?.spendToDate ?? 0) : 0;");
     expect(financials).toContain("const financialSpend = Number(totalSpendForFinancials || 0);");
     expect(financials).toContain("const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;");
     expect(financials).toContain("const financialROI = computeRoiPercent(financialRevenue, financialSpend);");

@@ -366,7 +366,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         .catch(() => ({ totalRevenue: 0 }));
       // Use actual spend records (not the denormalized campaign.spend field which can be stale).
       const spendTotalResult = await storage
-        .getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate)
+        .getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")
         .catch(() => ({ totalSpend: 0 }));
       const spendToDate = Number((spendTotalResult as any)?.totalSpend || 0) || 0;
 

@@ -43,7 +43,7 @@ describe("GA4 downstream financial-source parity", () => {
     expect(campaign).toContain("} else if (useFullFinancialCandidate) {");
     expect(campaign).toContain('useFullFinancialCandidate ? "financial" : "base"');
     expect(campaign).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
-    expect(campaign).toContain("storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate)");
+    expect(campaign).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
     expect(campaign).not.toContain("pipelineTotalToDate");
   });
 

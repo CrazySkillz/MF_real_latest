@@ -133,7 +133,7 @@ async function buildFinancialInputs(campaign: any, propertyId: string, date: str
   }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0, engagementRate: 0 });
 
   const revenue = await storage.getRevenueTotalForRange(campaignId, financialStartDate, financialEndDate, "ga4").catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] }));
-  const spend = await storage.getSpendTotalForRange(campaignId, financialStartDate, financialEndDate).catch(() => ({ totalSpend: 0, sourceIds: [] as string[] }));
+  const spend = await storage.getSpendTotalForRange(campaignId, financialStartDate, financialEndDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] }));
 
   return {
     inputs: {

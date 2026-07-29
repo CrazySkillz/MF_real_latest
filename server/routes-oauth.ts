@@ -1233,7 +1233,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/spend-sources", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const sources = await storage.getSpendSources(campaignId);
+      const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);
+      if (platformContext === null) return;
+      const sources = await storage.getSpendSources(campaignId, platformContext);
       res.json({ success: true, sources });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend sources" });
@@ -2092,14 +2094,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const platformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      if (platformContext === "google_sheets" || platformContext === "custom_integration") {
+      const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);
+      if (platformContext === null) return;
+      if (platformContext) {
         const [sources, breakdown] = await Promise.all([
-          storage.getSpendSources(campaignId),
-          storage.getSpendBreakdownBySource(campaignId, startDate, endDate),
+          storage.getSpendSources(campaignId, platformContext),
+          storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext),
         ]);
         const eligibleSources = (Array.isArray(sources) ? sources : [])
-          .filter((source: any) => source && source.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === platformContext);
+          .filter((source: any) => source && source.isActive !== false);
         const eligibleSourceMap = new Map(eligibleSources.map((source: any) => [String(source.id || ""), source]));
         const eligibleSourceIds = new Set(Array.from(eligibleSourceMap.keys()).filter(Boolean));
         const scopedBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
@@ -2144,12 +2147,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
+      const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);
+      if (platformContext === null) return;
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
-      const sources = await storage.getSpendSources(campaignId);
-      const spendToDate = parseNum((campaign as any)?.spend);
-      const currency = String((campaign as any)?.currency || (sources as any[])?.[0]?.currency || "USD");
+      const sources = await storage.getSpendSources(campaignId, platformContext);
+      const scopedTotals = platformContext
+        ? await storage.getSpendTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), platformContext)
+        : null;
+      const spendToDate = scopedTotals ? Number(scopedTotals.totalSpend || 0) : parseNum((campaign as any)?.spend);
+      const currency = String(scopedTotals?.currency || (campaign as any)?.currency || (sources as any[])?.[0]?.currency || "USD");
 
       res.json({
         success: true,
@@ -2641,6 +2649,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return parsed.data;
   };
 
+  const parseOptionalSpendPlatformContext = (
+    raw: any,
+    res: any
+  ): PlatformContext | undefined | null => {
+    if (raw === null || typeof raw === "undefined" || String(raw).trim() === "") return undefined;
+    return parsePlatformContext(raw, "ga4", res);
+  };
+
   const parseCsvRevenuePlatformContext = (
     raw: any,
     fallback: CsvRevenuePlatformContext,
@@ -2933,6 +2949,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
+      const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);
+      if (platformContext === null) return;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
@@ -2940,7 +2958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10); // include today's records
 
-      const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
+      const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext);
       const totalSpend = sources.reduce((sum: number, s: any) => sum + s.spend, 0);
 
       res.json({ success: true, totalSpend: Number(totalSpend.toFixed(2)), sources, startDate, endDate });
@@ -2954,13 +2972,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
+      const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);
+      if (platformContext === null) return;
       const date = String(req.query.date || "").trim() || yesterdayUTC();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
       const [sources, breakdown] = await Promise.all([
-        storage.getSpendSources(campaignId),
-        storage.getSpendBreakdownBySource(campaignId, date, date),
+        storage.getSpendSources(campaignId, platformContext),
+        storage.getSpendBreakdownBySource(campaignId, date, date, platformContext),
       ]);
       const eligibleSourceIds = new Set(
         (Array.isArray(sources) ? sources : [])
@@ -3442,13 +3462,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? null
         : parsePlatformContext(requestedPlatformContextRaw, "ga4", res);
       if (typeof requestedPlatformContextRaw !== "undefined" && !requestedPlatformContext) return;
-      const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+      const existingSpendSources = await storage.getSpendSources(campaignId, requestedPlatformContext || undefined).catch(() => [] as any[]);
       const deletingSource = (Array.isArray(existingSpendSources) ? existingSpendSources : [])
         .find((s: any) => String(s?.id || "") === String(sourceId));
       if (!deletingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
-      if (requestedPlatformContext && String((deletingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== requestedPlatformContext) {
-        return res.status(404).json({ success: false, error: "Spend source not found" });
-      }
       let deletingSheetsConnectionId = "";
       if (String((deletingSource as any)?.sourceType || "") === "google_sheets") {
         try {
@@ -4931,6 +4948,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const spendSourceMatchesPlatformContext = (source: any, platformContext?: string | null) => {
+    const requested = String(platformContext || "").trim().toLowerCase();
+    if (!requested) return true;
+    const stored = String(source?.platformContext || "").trim().toLowerCase();
+    return requested === "ga4" ? stored === "" || stored === "ga4" : stored === requested;
+  };
+
   // Keep spend totals predictable: whenever a user "processes spend" for a campaign,
   // we deactivate prior spend sources so totals don't silently double-count across imports.
   const deactivateSpendSourcesForCampaign = async (campaignId: string, opts?: { keepSourceId?: string; platformContext?: string }) => {
@@ -4940,7 +4964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const s of existing || []) {
         if (!s) continue;
         // If platformContext scoping requested, only deactivate sources matching that platform
-        if (opts?.platformContext && (s as any).platformContext !== opts.platformContext) continue;
+        if (!spendSourceMatchesPlatformContext(s, opts?.platformContext)) continue;
         const sid = String((s as any).id);
         if (keep && sid === keep) continue;
         await storage.deleteSpendSource(sid);
@@ -4957,7 +4981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return requestedSourceType || "manual";
   };
 
-  const scopedSpendPlatformContexts = new Set(["google_sheets", "custom_integration"]);
+  const scopedSpendPlatformContexts = new Set(["ga4", "google_sheets", "custom_integration"]);
   const isSupportedScopedSpendPlatformContext = (value: string) => scopedSpendPlatformContexts.has(value);
 
   const recalcCampaignSpend = async (campaignId: string) => {
@@ -5038,7 +5062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
         if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
-        if (platformContext && String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== String(platformContext).trim().toLowerCase()) {
+        if (!spendSourceMatchesPlatformContext(existingSource, platformContext)) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
         if (overrideSourceType && String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
@@ -5297,7 +5321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existingSource || String((existingSource as any).sourceType || "").trim() !== "linkedin_api") {
           return res.status(404).json({ success: false, error: "LinkedIn spend source not found" });
         }
-        if (platformContext && String((existingSource as any).platformContext || "").trim().toLowerCase() !== platformContext) {
+        if (!spendSourceMatchesPlatformContext(existingSource, platformContext)) {
           return res.status(404).json({ success: false, error: "LinkedIn spend source not found" });
         }
         await storage.deleteSpendRecordsBySource(existingSourceId);
@@ -5314,7 +5338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
         for (const s of (Array.isArray(existingSources) ? existingSources : [])) {
           if ((s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api") {
-            if (platformContext && String((s as any).platformContext || "").trim().toLowerCase() !== platformContext) continue;
+            if (!spendSourceMatchesPlatformContext(s, platformContext)) continue;
             await storage.deleteSpendRecordsBySource(String((s as any).id));
             await storage.updateSpendSource(String((s as any).id), { isActive: false } as any);
           }
@@ -5421,8 +5445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!mapping?.spendColumn) {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
-      const rawPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();
-      const requestedPlatformContext = rawPlatformContext === "ga4" ? "" : rawPlatformContext;
+      const requestedPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();
       if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
@@ -5457,7 +5480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
-        if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext) {
+        if (!spendSourceMatchesPlatformContext(existingSource, platformContext)) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
         let existingMapping: any = null;
@@ -5579,7 +5602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
-        if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext) {
+        if (!spendSourceMatchesPlatformContext(existingSource, platformContext)) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
       }
@@ -5969,7 +5992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? (Array.isArray(existingSpendSources) ? existingSpendSources : []).find((s: any) => {
             if (!s || (s as any).isActive === false) return false;
             if (String((s as any).sourceType || "") !== "google_sheets") return false;
-            if (platformContext && String((s as any).platformContext || "").trim().toLowerCase() !== platformContext) return false;
+            if (!spendSourceMatchesPlatformContext(s, platformContext)) return false;
             return String((s as any).id || "") === existingSourceId;
           })
         : null;
@@ -6335,7 +6358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const financialWindow = getGA4KPIFinancialSourceWindow();
       const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0 }));
-      const spend = await storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate).catch(() => ({ totalSpend: 0 }));
+      const spend = await storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalSpend: 0 }));
       const importedRevenueValue = Number((importedRevenue as any)?.totalRevenue || 0) || 0;
       const spendValue = Number((spend as any)?.totalSpend || 0) || 0;
       const hasFinancialSourceInput = (Array.isArray((importedRevenue as any)?.sourceIds) && (importedRevenue as any).sourceIds.length > 0)
@@ -8862,15 +8885,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const financialWindow = getGA4KPIFinancialSourceWindow();
       const [importedRevenueTotals, schedulerSpendTotals, spendSources, spendBreakdown] = await Promise.all([
         storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] })),
-        storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate).catch(() => ({ totalSpend: 0, sourceIds: [] as string[] })),
-        storage.getSpendSources(campaignId).catch(() => [] as any[]),
-        storage.getSpendBreakdownBySource(campaignId, financialWindow.startDate, financialWindow.endDate).catch(() => [] as any[]),
+        storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] })),
+        storage.getSpendSources(campaignId, "ga4").catch(() => [] as any[]),
+        storage.getSpendBreakdownBySource(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => [] as any[]),
       ]);
       const importedRevenue = round2Local(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0);
       const schedulerSpend = round2Local(Number((schedulerSpendTotals as any)?.totalSpend || 0) || 0);
       const spendBreakdownTotal = round2Local((Array.isArray(spendBreakdown) ? spendBreakdown : []).reduce((sum: number, source: any) => sum + (Number(source?.spend || 0) || 0), 0));
       const uiSpend = (Array.isArray(spendSources) && spendSources.length > 0)
-        ? round2Local(spendBreakdownTotal || parseNum((campaign as any)?.spend) || 0)
+        ? spendBreakdownTotal
         : 0;
 
       const buildDailyInput = (totals: any, latest: any) => ({
@@ -13464,7 +13487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Keep live GA4 result if persisted fallback is unavailable.
         }
       }
-      const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
+      const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate, "ga4");
       const persistedSpend = parseNum((spendTotals as any)?.totalSpend);
       let performanceSummarySpendTotals = spendTotals;
       let performanceSummarySpend = persistedSpend;
@@ -13473,7 +13496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Budget pacing dates are campaign metadata and must not narrow imported spend provenance.
         const spendStartDate = "1900-01-01";
         const spendEndDate = new Date().toISOString().slice(0, 10);
-        const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);
+        const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4");
         financialSpendInputs = spendBreakdown
           .filter((source: any) => parseNum(source?.spend) > 0)
           .map((source: any) => ({
@@ -30001,11 +30024,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let executiveRevenueSources: any[] = [];
       let executiveShopifyRevenueFreshness: any[] = [];
       try {
-        const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
+        const executiveSpendPlatformContext = hasGA4Connection ? "ga4" : undefined;
+        const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate, executiveSpendPlatformContext);
         canonicalSpend = spendResult.totalSpend || 0;
         performanceSummarySpend = canonicalSpend;
         performanceSummarySpendTotals = spendResult;
-        const spendBreakdown = await storage.getSpendBreakdownBySource(id, "1900-01-01", endDate).catch(() => []);
+        const spendBreakdown = await storage.getSpendBreakdownBySource(id, "1900-01-01", endDate, executiveSpendPlatformContext).catch(() => []);
         const spendToDate = (Array.isArray(spendBreakdown) ? spendBreakdown : []).reduce((sum: number, source: any) => sum + parseNum(source?.spend), 0);
         if (spendToDate > performanceSummarySpend) {
           performanceSummarySpend = Number(spendToDate.toFixed(2));

@@ -40,14 +40,14 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 2 (`5cff21ad`) deployed the fixed window/source order and passed its bounded UI smoke validation; later failure-state, spend-scope, source-family, freshness, cleanup, and downstream gates remain. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 2 (`5cff21ad`) deployed the fixed window/source order; Current Commit 3 (`7b162083` plus `a0b205b5`) passed its bounded banner validation; Current Commit 4 locally scopes GA4 spend and removes the stale campaign-spend fallback. Commit 4 deployment/UI validation plus later source-family, freshness, cleanup, and downstream gates remain. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 
 - Budget & Financial Analysis may use the shared campaign aggregate for totals such as revenue, spend, ROAS, ROI, CPA, and CVR
 - detailed financial input rows must come from explicit GA4 financial provenance, not from the high-level `performanceSummary.sources` list
 - `/api/campaigns/:id/outcome-totals.financialInputs.revenue` should include native GA4 revenue plus active GA4-context revenue breakdown rows
-- `/api/campaigns/:id/outcome-totals.financialInputs.spend` should include active spend breakdown rows
+- `/api/campaigns/:id/outcome-totals.financialInputs.spend` should include active GA4-context and supported legacy null-context spend breakdown rows, never explicit foreign-platform spend
 - current `/api/campaigns/:id/outcome-totals.performanceSummary` financial values should use the same selected GA4 native financial revenue/conversion source as the GA4 Overview financial cards, while the top-level `/outcome-totals.ga4` response may still represent the requested date-range GA4 view
 - this keeps Campaign DeepDive aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
 - imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms; they can feed total spend, ROI, and ROAS, but Budget Allocation should only show allocation sources after a spend-capable ad platform is connected in `Connected Platforms`
@@ -720,7 +720,7 @@ Important meaning:
 - when a date column is mapped, every selected positive-spend row must have a valid date; blank or invalid dates must fail before source mutation because the app must not invent a spend date
 - the CSV Date column must be None or a different column from the selected Spend and Campaign identifier columns; the UI must omit those conflicting choices and the server must reject forged or stale duplicate-role mappings before aggregation
 - for CSV preview mapping, Date choices must contain only columns whose non-empty sampled values are date-like; purely numeric metric values must not be treated as dates or coerced into calendar years
-- GA4 CSV spend must normalize the UI ga4 context to the default unscoped spend context rather than returning Unsupported spend platformContext
+- GA4 CSV spend must accept and persist explicit `platformContext=ga4`; legacy null-context sources remain readable for compatibility and self-heal to `ga4` only when that exact source is edited
 - an import with no selected positive-spend rows must fail before creating or updating a source
 - CSV spend source add/edit and replacement spend records must commit in one campaign/source/type-scoped transaction; record materialization failure must roll back and return failure rather than false success
 - the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Spend`; optional campaign mapping is handled on the mapping screen

@@ -90,7 +90,7 @@ async function getPersistedRoasForDate(campaign: any, propertyId: string, date: 
     0
   );
   const importedRevenue = await storage.getRevenueTotalForRange(campaignId, "2000-01-01", date, "ga4");
-  const spend = await storage.getSpendTotalForRange(campaignId, "2000-01-01", date);
+  const spend = await storage.getSpendTotalForRange(campaignId, "2000-01-01", date, "ga4");
   const totalRevenue = round2(ga4Revenue + parseNumber((importedRevenue as any)?.totalRevenue));
   const totalSpend = round2(parseNumber((spend as any)?.totalSpend));
 

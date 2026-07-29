@@ -90,7 +90,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(processRoute.indexOf("if (!resp.ok) {")).toBeLessThan(processRoute.indexOf("await storage.deleteSpendRecordsBySource"));
 
     for (const queryName of ["spendToDateResp", "spendSourcesResp", "spendBreakdownResp"]) {
-      const queryStart = metrics.indexOf(`const { data: ${queryName} }`);
+      const queryStart = metrics.indexOf(`const { data: ${queryName},`);
       const queryEnd = metrics.indexOf("  });", queryStart);
       expect(queryStart).toBeGreaterThan(-1);
       expect(metrics.slice(queryStart, queryEnd)).toContain("refetchInterval: 15 * 1000");

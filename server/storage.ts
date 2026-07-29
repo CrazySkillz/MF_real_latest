@@ -14,6 +14,14 @@ const devLog = (...args: any[]) => {
 };
 
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
+export type SpendPlatformContext = RevenuePlatformContext;
+
+const spendPlatformContextPredicate = (platformContext?: SpendPlatformContext) => {
+  if (!platformContext) return undefined;
+  return platformContext === "ga4"
+    ? or(eq(spendSources.platformContext, "ga4"), isNull(spendSources.platformContext))
+    : eq(spendSources.platformContext, platformContext);
+};
 
 const deleteInstagramFinancialDataForCampaign = async (tx: any, campaignId: string): Promise<void> => {
   const instagramSpendSources = await tx
@@ -136,9 +144,9 @@ export interface IStorage {
   getLinkedInDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<LinkedInDailyMetric[]>;
 
   // Spend (generic)
-  getSpendSources(campaignId: string): Promise<SpendSource[]>;
+  getSpendSources(campaignId: string, platformContext?: SpendPlatformContext): Promise<SpendSource[]>;
   getInactiveSpendSources(campaignId: string): Promise<SpendSource[]>;
-  getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined>;
+  getSpendSource(campaignId: string, sourceId: string, platformContext?: SpendPlatformContext): Promise<SpendSource | undefined>;
   createSpendSource(source: InsertSpendSource): Promise<SpendSource>;
   updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined>;
   deleteSpendSource(sourceId: string): Promise<boolean>;
@@ -152,8 +160,8 @@ export interface IStorage {
     source: InsertSpendSource,
     records: Array<Omit<InsertSpendRecord, "spendSourceId">>,
   ): Promise<SpendSource>;
-  getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
-  getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>>;
+  getSpendTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
+  getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>>;
 
   // Revenue (generic; platform-scoped to avoid GA4/LinkedIn leakage)
   getRevenueSources(campaignId: string, platformContext?: RevenuePlatformContext): Promise<RevenueSource[]>;
@@ -1065,9 +1073,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Spend methods
-  async getSpendSources(campaignId: string): Promise<SpendSource[]> {
+  async getSpendSources(campaignId: string, platformContext?: SpendPlatformContext): Promise<SpendSource[]> {
     return db.select().from(spendSources)
-      .where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true)))
+      .where(and(
+        eq(spendSources.campaignId, campaignId),
+        eq(spendSources.isActive, true),
+        spendPlatformContextPredicate(platformContext),
+      ))
       .orderBy(desc(spendSources.connectedAt));
   }
 
@@ -1077,11 +1089,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(spendSources.connectedAt));
   }
 
-  async getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined> {
+  async getSpendSource(campaignId: string, sourceId: string, platformContext?: SpendPlatformContext): Promise<SpendSource | undefined> {
     const [s] = await db.select().from(spendSources)
       // Some DBs have spend_sources.id as UUID while our API passes string IDs.
       // Cast to text to avoid "operator does not exist: uuid = text".
-      .where(and(sql`${spendSources.id}::text = ${sourceId}`, eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true)));
+      .where(and(
+        sql`${spendSources.id}::text = ${sourceId}`,
+        eq(spendSources.campaignId, campaignId),
+        eq(spendSources.isActive, true),
+        spendPlatformContextPredicate(platformContext),
+      ));
     return s || undefined;
   }
 
@@ -1188,7 +1205,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
+  async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
     // spend_records.date is stored as YYYY-MM-DD; lexicographic compare works.
     const rows = await db
       .select({
@@ -1201,7 +1218,9 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(spendSources, sql`${spendSources.id}::text = ${spendRecords.spendSourceId}`)
       .where(and(
         eq(spendRecords.campaignId, campaignId),
+        eq(spendSources.campaignId, campaignId),
         eq(spendSources.isActive, true),
+        spendPlatformContextPredicate(platformContext),
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));
@@ -1220,7 +1239,7 @@ export class DatabaseStorage implements IStorage {
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
-  async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
+  async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
     const rows = await db
       .select({
         spendSourceId: spendRecords.spendSourceId,
@@ -1233,7 +1252,9 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(spendSources, sql`${spendSources.id}::text = ${spendRecords.spendSourceId}`)
       .where(and(
         eq(spendRecords.campaignId, campaignId),
+        eq(spendSources.campaignId, campaignId),
         eq(spendSources.isActive, true),
+        spendPlatformContextPredicate(platformContext),
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));

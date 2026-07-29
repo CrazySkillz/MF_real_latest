@@ -26,7 +26,7 @@ describe("Latest Day Spend regression guard", () => {
     expect(routesFile).toContain("if (cfg?.testMode === true) return false;");
     expect(routesFile).toContain("return true;");
     expect(routesFile).toContain('const date = String(req.query.date || "").trim() || yesterdayUTC();');
-    expect(routesFile).toContain('storage.getSpendBreakdownBySource(campaignId, date, date)');
+    expect(routesFile).toContain('storage.getSpendBreakdownBySource(campaignId, date, date, platformContext)');
     expect(routesFile).toContain('isEligibleForLatestDaySpend(source)');
   });
 });

@@ -92,7 +92,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("let usedGA4SourceTruth = false;");
     expect(route).toContain("if (!usedGA4SourceTruth) {");
     expect(route).toContain("ga4: { connected: hasGA4Connection, ...ga4Metrics }");
-    expect(route).toContain("const spendBreakdown = await storage.getSpendBreakdownBySource(id, \"1900-01-01\", endDate).catch(() => []);");
+    expect(route).toContain('const executiveSpendPlatformContext = hasGA4Connection ? "ga4" : undefined;');
+    expect(route).toContain('const spendBreakdown = await storage.getSpendBreakdownBySource(id, "1900-01-01", endDate, executiveSpendPlatformContext).catch(() => []);');
     expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, \"1900-01-01\", endDate, \"ga4\").catch(() => []);");
     expect(route).toContain("const aggregateRevenue = hasGA4Connection");
     expect(route).toContain("parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))");

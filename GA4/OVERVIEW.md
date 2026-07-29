@@ -8,6 +8,10 @@ Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Cur
 
 Commit 2 deployment record: commit `5cff21ad` was pushed to `main` and deployed on `2026-07-16`. The user-confirmed bounded UI smoke check passed for one configured campaign/window: the four visible configured-window labels agreed, the Users provenance tooltip was correct, Revenue & Financial was labeled campaign-to-date, and the downloaded Overview report matched the observed screen values. This does not prove all 30/60/90 live provider variants or close later Overview blockers.
 
+Commit 3 deployment record: `7b162083` plus banner follow-up `a0b205b5` deployed, and the user-confirmed one-refresh validation passed with the incorrect page-wide banner gone. The bounded Commit 3 packet is closed; synthetic failure injection and a valid-zero production fixture remain unobserved.
+
+Commit 4 implementation record: GA4 spend reads are locally scoped to explicit `ga4` plus legacy null-context sources, valid zero materialized spend no longer falls through to `campaign.spend`, and GA4 reports/jobs/aggregates use the same boundary. Local tests, TypeScript, and production build pass. Commit, deployment, and bounded UI validation are pending.
+
 ## Overview Structure
 
 The platform-level GA4 `Overview` tab contains:
@@ -349,7 +353,7 @@ Current Commit 3 defines these states explicitly:
 - with valid zero revenue and positive spend, Profit is negative spend, ROAS is `0.00x`, and ROI is `-100%`; zero revenue is not a missing prerequisite
 - browser-generated Overview reports and scheduled/server Overview reports fail closed when a selected Overview subsection lacks required inputs; they must not export a plausible zero/empty artifact from a failed request
 
-Deployed validation of Current Commit 3 (`7b162083`) exposed one presentation-only follow-up: the page-wide banner aggregated hidden Diagnostics and duplicate connection-list errors together with visible Overview requests, so an initial optional failure could show a generic red warning even while visible values were handled correctly. The bounded follow-up keeps initial failures local to the affected card/table and shows the page-wide warning only when visible Overview values are retained from a previous successful request.
+Deployed validation of Current Commit 3 (`7b162083`) exposed one presentation-only follow-up: the page-wide banner aggregated hidden Diagnostics and duplicate connection-list errors together with visible Overview requests, so an initial optional failure could show a generic red warning even while visible values were handled correctly. Follow-up `a0b205b5` keeps initial failures local to the affected card/table and shows the page-wide warning only when visible Overview values are retained from a previous successful request. After deployment, the user-confirmed one-refresh validation passed: the incorrect banner was gone. This closes the bounded Current Commit 3 packet without claiming unobserved failure-injection or valid-zero production fixtures.
 
 This failure-state contract does not close the later GA4 spend-context/cache, source-family lifecycle, provider freshness, cleanup, or complete downstream-certification blockers.
 

@@ -252,18 +252,19 @@ describe("source safety regression guards", () => {
 
     expect(route).toContain("storage.getSpendSources(campaignId)");
     expect(route).toContain("const requestedPlatformContextRaw = (req.query as any)?.platformContext;");
-    expect(route).toContain('String((deletingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== requestedPlatformContext');
-    expect(route.indexOf("storage.deleteSpendSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId)"));
-    expect(route.indexOf("storage.deleteSpendRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId)"));
+    expect(route).toContain("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)");
+    expect(route.indexOf("storage.deleteSpendSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)"));
+    expect(route.indexOf("storage.deleteSpendRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)"));
     expect(route).toContain("Spend source not found");
 
     const storageSource = readStorageSource();
-    const methodStart = storageSource.indexOf("async getSpendSource(campaignId: string, sourceId: string)");
+    const methodStart = storageSource.indexOf("async getSpendSource(campaignId: string, sourceId: string, platformContext?: SpendPlatformContext)");
     const methodEnd = storageSource.indexOf("async createSpendSource", methodStart);
     const method = storageSource.slice(methodStart, methodEnd);
 
     expect(method).toContain("eq(spendSources.campaignId, campaignId)");
     expect(method).toContain("eq(spendSources.isActive, true)");
+    expect(method).toContain("spendPlatformContextPredicate(platformContext)");
   });
 
   it("CSV preview routes require campaign access before parsing uploaded files", () => {
@@ -1600,9 +1601,9 @@ describe("source safety regression guards", () => {
     expect(storageSource).toContain("'custom_integration'");
     expect(routesSource).toContain('"custom_integration"');
     expect(routesSource).toContain('if (ctx === "custom_integration") return "custom_integration_revenue";');
-    expect(routesSource).toContain('platformContext === "google_sheets" || platformContext === "custom_integration"');
-    expect(routesSource).toContain('String(source?.platformContext || "").trim().toLowerCase() === platformContext');
-    expect(routesSource).toContain('const scopedSpendPlatformContexts = new Set(["google_sheets", "custom_integration"]);');
+    expect(routesSource).toContain("storage.getSpendSources(campaignId, platformContext)");
+    expect(routesSource).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext)");
+    expect(routesSource).toContain('const scopedSpendPlatformContexts = new Set(["ga4", "google_sheets", "custom_integration"]);');
     expect(revenueModal).toContain("'custom_integration'");
     expect(revenueModal).toContain("custom_integration_revenue");
     expect(revenueModal).toContain("platformContext=custom_integration");

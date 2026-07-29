@@ -1979,7 +1979,7 @@ export default function GA4Metrics() {
 
   // Spend/Revenue to-date for executive financial metrics (lifetime).
   const { data: spendToDateResp, isLoading: spendToDateLoading, isError: spendToDateError } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-to-date`],
+    queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1987,7 +1987,7 @@ export default function GA4Metrics() {
     refetchInterval: 15 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-to-date`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
         throw new Error(json?.message || json?.error || "Failed to fetch campaign spend");
@@ -2180,7 +2180,7 @@ export default function GA4Metrics() {
 
   // Resolve spend source labels for the Financial section (so we don't show a broken/undefined label).
   const { data: spendSourcesResp, isLoading: spendSourcesLoading, isError: spendSourcesError } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-sources`],
+    queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -2188,7 +2188,7 @@ export default function GA4Metrics() {
     refetchInterval: 15 * 1000, // 15 seconds
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
         throw new Error(json?.message || json?.error || "Failed to fetch spend sources");
@@ -2217,7 +2217,7 @@ export default function GA4Metrics() {
   });
 
   const { data: spendBreakdownResp, isLoading: spendBreakdownLoading, isError: spendBreakdownError } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`],
+    queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -2225,7 +2225,7 @@ export default function GA4Metrics() {
     refetchInterval: 15 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-breakdown`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
         throw new Error(json?.message || json?.error || "Failed to fetch spend breakdown");
@@ -2236,12 +2236,12 @@ export default function GA4Metrics() {
 
   // Latest-day endpoints default to the server's previous complete UTC day.
   const { data: spendDailyResp, isError: spendDailyError } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, "latest"],
+    queryKey: [`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`, "latest"],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`);
       if (!resp.ok) throw new Error("Failed to fetch latest-day spend");
       return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
     },
@@ -2603,10 +2603,10 @@ export default function GA4Metrics() {
       name: benchmark?.name,
       label: "benchmark",
     });
-  // Prefer spend-breakdown total (sums actual spend_records) over spend-to-date (reads campaign.spend column which may be stale/zero).
-  // If no spend sources exist at all, force to 0 — the campaign.spend column may be stale after source deletion.
+  // Prefer the scoped breakdown response. The scoped spend-to-date endpoint is a
+  // source-backed fallback only; it never reads the denormalized campaign.spend cache.
   const hasSpendSources = spendDisplaySources.length > 0;
-  const totalSpendForFinancials = hasSpendSources ? Number(spendBreakdownResp?.totalSpend || spendToDateResp?.spendToDate || 0) : 0;
+  const totalSpendForFinancials = hasSpendSources ? Number(spendBreakdownResp?.totalSpend ?? spendToDateResp?.spendToDate ?? 0) : 0;
   const usingAutoLinkedInSpend = false;
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
@@ -6320,13 +6320,13 @@ export default function GA4Metrics() {
                     platformContext="ga4"
                     initialSource={editingSpendSource || undefined}
                     onProcessed={() => {
-                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
-                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
-                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`], exact: false });
+                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
+                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
                     }}
                   />
                   <AddRevenueWizardModal
@@ -6544,18 +6544,18 @@ export default function GA4Metrics() {
                           className="bg-red-600 hover:bg-red-700 text-white"
                           onClick={async () => {
                             try {
-                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources/${deletingSpendSourceId}`, { method: "DELETE", credentials: "include" });
+                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources/${deletingSpendSourceId}?platformContext=ga4`, { method: "DELETE", credentials: "include" });
                               const json = await resp.json().catch(() => null);
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove spend source");
                               }
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
-                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
                               toast({ title: "Spend source removed", description: "Total Spend has been recalculated." });
                             } catch (e: any) {
                               console.error(e);

@@ -162,8 +162,9 @@ describe("Google Sheets aggregate source adapter", () => {
       '// Spend-to-date (campaign lifetime)'
     );
 
-    expect(spendTotalsRoute).toContain('platformContext === "google_sheets" || platformContext === "custom_integration"');
-    expect(spendTotalsRoute).toContain('String(source?.platformContext || "").trim().toLowerCase() === platformContext');
+    expect(spendTotalsRoute).toContain("if (platformContext) {");
+    expect(spendTotalsRoute).toContain("storage.getSpendSources(campaignId, platformContext)");
+    expect(spendTotalsRoute).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext)");
     expect(spendTotalsRoute).toContain("eligibleSourceIds.has");
     expect(spendTotalsRoute).toContain("totalSpend: Number(totalSpend.toFixed(2))");
     expect(spendTotalsRoute).toContain("sourcesWithDetails");
@@ -190,7 +191,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(sheetsSpendRoute).toContain("requestedPlatformContext");
     expect(sheetsSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
     expect(sheetsSpendRoute).toContain("platformContext: platformContext || null");
-    expect(sheetsSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
+    expect(sheetsSpendRoute).toContain("!spendSourceMatchesPlatformContext(s, platformContext)");
 
     const csvSpendRoute = sliceBetween(
       routes,
@@ -200,7 +201,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(csvSpendRoute).toContain("requestedPlatformContext");
     expect(csvSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
     expect(csvSpendRoute).toContain("...(platformContext ? { platformContext } : {})");
-    expect(csvSpendRoute).toContain('String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext');
+    expect(csvSpendRoute).toContain("!spendSourceMatchesPlatformContext(existingSource, platformContext)");
 
     const linkedInSpendRoute = sliceBetween(
       routes,
@@ -210,7 +211,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(linkedInSpendRoute).toContain("requestedPlatformContext");
     expect(linkedInSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
     expect(linkedInSpendRoute).toContain("platformContext: platformContext || null");
-    expect(linkedInSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
+    expect(linkedInSpendRoute).toContain("!spendSourceMatchesPlatformContext(s, platformContext)");
   });
 
   it("keeps Google Sheets campaign display labels separate from source values", () => {

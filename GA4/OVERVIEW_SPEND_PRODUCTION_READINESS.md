@@ -80,7 +80,7 @@ Root cause of the current evidence gap:
 - Current Commit 10a then preserved those rows by assigning blank/invalid-date spend to the import date. That reconciled lifetime totals but falsely represented when the spend occurred and could distort date-range financial metrics.
 - The CSV Date dropdown listed every uploaded header, including the selected Spend and Campaign identifier columns, while the server had no duplicate-role guard. Campaign text usually failed as an invalid date, but permissive JavaScript date parsing can interpret integer spend values such as 500 or 600 as years, allowing false temporal records.
 - Current Commit 10c removed selected role collisions but intentionally left every other header visible. Therefore unassigned revenue and conversion-value columns still appeared as Date choices, and numeric values still needed an explicit server rejection rather than JavaScript date coercion.
-- The GA4 Overview modal sends platformContext ga4, while the scoped spend allowlist intentionally contains only google_sheets and custom_integration. The CSV route failed to normalize GA4 to its default unscoped spend context and returned Unsupported spend platformContext.
+- At the time of the failed packet, the GA4 Overview modal sent `platformContext=ga4` while the scoped write allowlist contained only `google_sheets` and `custom_integration`. The CSV route rejected the request. That historical workaround normalized GA4 to null; the whole-Overview Current Commit 4 now accepts and persists explicit `ga4` instead.
 - The CSV spend route also caught spend-record creation failures, logged a warning, recalculated, and returned success, allowing false-success or partially materialized source state.
 
 Google Sheets spend evidence gap:
@@ -93,7 +93,7 @@ CSV spend evidence gap:
 
 - Local code trace proves the current path from CSV preview/process to spend source/record materialization, Overview refetch, active-source-only totals, and exact-source delete.
 - Local tests cover CSV process source-type safety, CSV preview campaign access ordering, ownership-checked spend source delete, financial-card platform context, representative delimiter/line-ending parsing, snapshot and dated totals, exact campaign filtering, invalid-row rejection, stored-row edit guards, and transactional source/record replacement.
-- Current Commit 10a restored GA4 context normalization and exact campaign summation but its import-date fallback is not valid readiness evidence.
+- Current Commit 10a restored the then-current GA4 compatibility behavior and exact campaign summation, but its import-date fallback is not valid readiness evidence. Whole-Overview Current Commit 4 later replaced null normalization with explicit GA4 spend context while continuing to read legacy null rows.
 - Current Commit 10b fails dated imports before mutation when any selected positive row has a blank/invalid date. Deployed UI evidence now confirms the rejection message and successful Total Spend propagation after the invalid-date rows were removed.
 - Snapshot behavior remains available by selecting None for Date column, but that alternative was not part of this deployed Current Commit 10b validation.
 - Current Commit 10c removes the current Spend and Campaign identifier selections from CSV Date choices, clears a stale collision, and adds a server fail-closed guard before aggregation. Valid Date and None mappings remain unchanged.
@@ -226,28 +226,28 @@ Provider/UI validation must come after these tests and must stay scoped to one s
 
 Frontend trace:
 
-- `client/src/pages/ga4-metrics.tsx` queries `/api/campaigns/:id/spend-to-date`, `/api/campaigns/:id/spend-sources`, and `/api/campaigns/:id/spend-breakdown`.
-- Overview financial spend uses source-backed spend when spend sources exist and prefers `spend-breakdown` total over `spend-to-date`.
+- `client/src/pages/ga4-metrics.tsx` queries `/api/campaigns/:id/spend-to-date?platformContext=ga4`, `/api/campaigns/:id/spend-sources?platformContext=ga4`, `/api/campaigns/:id/spend-breakdown?platformContext=ga4`, and `/api/campaigns/:id/spend-daily?platformContext=ga4`.
+- Overview financial spend uses the scoped source-backed breakdown when present and preserves valid zero; scoped spend-to-date is a materialized-record fallback and never reads `campaign.spend`.
 - Spend add/update and delete actions invalidate and refetch spend-to-date, spend sources, and spend breakdown queries.
 
 API trace:
 
-- `GET /api/campaigns/:id/spend-sources` returns campaign-scoped active spend sources behind campaign access.
-- `GET /api/campaigns/:id/spend-to-date` returns selected campaign spend and source IDs behind campaign access.
-- `GET /api/campaigns/:id/spend-breakdown` returns active-source spend totals for the selected campaign.
+- `GET /api/campaigns/:id/spend-sources` accepts optional `platformContext` and returns campaign-scoped active sources behind campaign access.
+- `GET /api/campaigns/:id/spend-to-date` uses materialized source records when a context is supplied; its unscoped legacy caller contract remains unchanged.
+- `GET /api/campaigns/:id/spend-breakdown` accepts optional `platformContext` and returns active-source spend totals for the selected campaign/context.
 - `POST /api/campaigns/:id/spend/csv/preview` checks campaign access before CSV parsing.
 - `POST /api/campaigns/:id/spend/csv/process` checks campaign access, verifies existing source updates are active CSV spend sources, writes spend records, recalculates campaign spend, and schedules heavier downstream recompute after the response.
 - `POST /api/campaigns/:id/spend/sheets/preview` checks campaign access and spend-purpose Google Sheets connection state.
 - `POST /api/campaigns/:id/spend/sheets/process` checks campaign access, preserves stable source IDs for edit/refresh, keeps add mode additive, writes spend records, recalculates campaign spend, persists fresh preview metadata, and schedules heavier downstream recompute after the response.
 - `POST /api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now` is a campaign/source-scoped validation trigger for Google Sheets spend reprocess only.
-- `DELETE /api/campaigns/:id/spend-sources/:sourceId` verifies campaign access and source membership before deleting only the requested source records and deactivating the requested source.
+- `DELETE /api/campaigns/:id/spend-sources/:sourceId` verifies campaign access and optional platform-context membership before deleting only the requested source records and deactivating the requested source.
 
 Storage trace:
 
-- `getSpendSources` returns active spend sources for one campaign.
-- `getSpendSource` requires source ID, campaign ID, and active state.
+- `getSpendSources` returns active spend sources for one campaign and accepts an optional platform context.
+- `getSpendSource` requires source ID, campaign ID, active state, and an optional platform context.
 - `createSpendSource`, `updateSpendSource`, `deleteSpendSource`, `deleteSpendRecordsBySource`, and `createSpendRecords` are the write boundary for materialized spend.
-- `getSpendTotalForRange` and `getSpendBreakdownBySource` join spend records to active spend sources.
+- `getSpendTotalForRange` and `getSpendBreakdownBySource` join spend records to active same-campaign sources and accept an optional platform context. GA4 includes explicit `ga4` plus legacy null; other explicit contexts match exactly.
 
 Scheduler trace:
 
@@ -304,7 +304,7 @@ Proven locally for current code:
 - CSV Date mapping locally excludes the selected Spend and Campaign identifier columns, and the server rejects either duplicate role before aggregation; Google Sheets mapping options are unchanged.
 - CSV Date mapping locally excludes remaining columns whose non-empty preview values are not date-like, and purely numeric date values are rejected instead of being interpreted as calendar years.
 - The v1 Spend chooser locally exposes Google Ads, Google Sheets, and Upload CSV while hiding LinkedIn Ads and Meta / Facebook; retained platform code still supports existing-source continuity.
-- GA4 CSV requests normalize ga4 to the default unscoped spend context; genuinely unsupported scoped contexts still fail closed.
+- New and edited GA4 CSV spend requests persist explicit `ga4` context; legacy null-context GA4 sources remain readable and self-heal only when that exact source is edited. Unsupported contexts still fail closed.
 - Imports with no selected positive-spend rows fail before source mutation.
 - CSV source add/edit and replacement spend records are committed in one campaign/source/type-scoped database transaction, and materialization failures do not return success.
 - Google Sheets spend refresh/reprocess uses a stable source ID.

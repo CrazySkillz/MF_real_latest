@@ -366,6 +366,6 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("if (cfg?.testMode === true) return false;");
     expect(routesFile).toContain("return true;");
     expect(routesFile).toContain('isEligibleForLatestDaySpend(source)');
-    expect(routesFile).toContain('storage.getSpendBreakdownBySource(campaignId, date, date)');
+    expect(routesFile).toContain('storage.getSpendBreakdownBySource(campaignId, date, date, platformContext)');
   });
 });

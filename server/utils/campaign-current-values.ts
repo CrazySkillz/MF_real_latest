@@ -213,9 +213,9 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
 
   const [revenueTotals, spendTotals, revenueBreakdown, spendBreakdown] = await Promise.all([
     storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 })),
-    storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate).catch(() => ({ totalSpend: 0 })),
+    storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalSpend: 0 })),
     storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, financialSourceStartDate, endDate).catch(() => [] as any[]),
+    storage.getSpendBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[]),
   ]);
 
   return {

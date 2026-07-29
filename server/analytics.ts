@@ -1798,7 +1798,13 @@ export class GoogleAnalytics4Service {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Failed to refresh token: ${errorData.error_description || errorData.error}`);
+        const refreshError = new Error(`Failed to refresh token: ${errorData.error_description || errorData.error}`) as Error & {
+          oauthError?: string;
+          oauthStatus?: number;
+        };
+        refreshError.oauthError = String(errorData.error || '');
+        refreshError.oauthStatus = response.status;
+        throw refreshError;
       }
 
       const tokenData = await response.json();
@@ -1823,7 +1829,13 @@ export class GoogleAnalytics4Service {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Token refresh failed without client credentials:', errorData);
-        throw new Error('Automatic refresh requires Google OAuth credentials for guaranteed operation');
+        const refreshError = new Error('Automatic refresh requires Google OAuth credentials for guaranteed operation') as Error & {
+          oauthError?: string;
+          oauthStatus?: number;
+        };
+        refreshError.oauthError = String(errorData.error || '');
+        refreshError.oauthStatus = response.status;
+        throw refreshError;
       }
 
       const tokenData = await response.json();
@@ -2172,17 +2184,19 @@ export class GoogleAnalytics4Service {
     } catch (error: any) {
       console.log('GA4 API call failed:', error.message);
       
-      // Check if error is due to expired token
-      if (error.message.includes('invalid_grant') || 
-          error.message.includes('401') || 
-          error.message.includes('403') ||
-          error.message.includes('invalid authentication credentials') ||
-          error.message.includes('Request had invalid authentication credentials')) {
+      // Refresh only for authentication failures. A 403 is a provider permission failure,
+      // not proof that the user's refresh credential has expired.
+      const accessErrorMessage = String(error?.message || '').toLowerCase();
+      if (accessErrorMessage.includes('invalid_grant') ||
+          accessErrorMessage.includes('401') ||
+          accessErrorMessage.includes('unauthenticated') ||
+          accessErrorMessage.includes('invalid authentication credentials')) {
         
         console.log('Access token invalid/expired - attempting automatic background refresh');
         
         // Attempt automatic token refresh if we have a refresh token
         if (connection.refreshToken) {
+          let refreshResult;
           try {
             console.log('Refreshing access token automatically in background...');
             console.log('Using stored OAuth credentials:', {
@@ -2192,7 +2206,7 @@ export class GoogleAnalytics4Service {
             });
             
             // Use stored client credentials for automatic refresh
-            const refreshResult = await this.refreshAccessToken(
+            refreshResult = await this.refreshAccessToken(
               connection.refreshToken, 
               connection.clientId || undefined,
               connection.clientSecret || undefined
@@ -2205,19 +2219,23 @@ export class GoogleAnalytics4Service {
               expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000))
             });
             
-            console.log('Access token refreshed successfully - retrying metrics call');
-            
-            // Retry with new token using specified date range
-            return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter);
           } catch (refreshError: any) {
             console.error('Failed to refresh access token automatically:', refreshError.message);
-            
-            // If automatic refresh fails, fall back to UI refresh
-            const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
-            (autoRefreshError as any).isAutoRefreshNeeded = true;
-            (autoRefreshError as any).hasRefreshToken = !!connection.refreshToken;
-            throw autoRefreshError;
+
+            const oauthError = String(refreshError?.oauthError || '').toLowerCase();
+            if (oauthError === 'invalid_grant' || String(refreshError?.message || '').toLowerCase().includes('invalid_grant')) {
+              const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
+              (autoRefreshError as any).isAutoRefreshNeeded = true;
+              (autoRefreshError as any).hasRefreshToken = true;
+              throw autoRefreshError;
+            }
+            throw refreshError;
           }
+
+          console.log('Access token refreshed successfully - retrying metrics call');
+
+          // Retry outside the refresh catch so provider/permission failures are not mislabeled as reconnect.
+          return await this.getMetricsWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter);
         } else {
           console.log('No refresh token available - user needs to reconnect');
           const tokenExpiredError = new Error('TOKEN_EXPIRED');

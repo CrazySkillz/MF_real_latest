@@ -271,6 +271,8 @@ The client does not pass `platformContext=ga4` to the Salesforce proxy endpoint.
 
 The target snapshot has 35 active access-token connections. All have refresh-token material and expired `expires_at` metadata, so provider refresh may be possible but was not invoked during this read-only audit. Only 9 campaigns have persisted daily rows, 26 have none, and every stored campaign's latest date is older than yesterday (`2026-01-03` through `2026-07-12`). On-demand backfill may repair this, but no live provider call or deployed browser proof was run. Overview does not display the returned stale warning beside its Summary/financial cards.
 
+The `2026-07-29` reconnect incident does not close B10. Read-only target metadata proved campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` still used connection `6649d4b6-66b0-49ea-9a56-4724c53ca9e4`, created at `2026-07-11T07:19:33.983Z` before the documented switch from Google OAuth Testing to In production later that day. Its last stored access-token expiry was `2026-07-14T04:48:11.747Z`. This is a pre-publish Testing credential and cannot be repaired without one post-publish user consent flow. The same trace found that `getMetricsWithAutoRefresh` overclassified every refresh-stage failure and a post-refresh provider failure as `AUTO_REFRESH_NEEDED`; the current change set limits the user reconnect signal to missing refresh material or Google `invalid_grant`. Render deployment, the one required post-publish reconnect, automatic renewal, and more-than-seven-day durability evidence remain open.
+
 ### B11. Baseline source-family regression suite was red; resolved by Current Commit 1
 
 The broad rerun produced 3 failures and 49 passes across the three isolated files:
@@ -403,6 +405,19 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 - the broad `server/source-safety-regression.test.ts` run has seven pre-existing Instagram route-slice failures; the Commit 4 spend-delete and Custom Integration scope assertions pass. No globally green-suite claim is made.
 - no schema migration, dependency, API response-field removal, provider query, scheduler cadence, bulk data migration, or persisted-data cleanup was introduced
 - deployed UI behavior, a live foreign-context fixture, and a live active-source-with-zero-record fixture remain unverified
+
+### GA4 reconnect incident and local classifier validation (`2026-07-29`)
+
+- read-only target connection metadata confirmed the affected credential predates the Google OAuth publishing-status change; no tokens were read, printed, refreshed, or mutated
+- focused reconnect classifier: 1 file / 6 tests passed
+- adjacent GA4 OAuth/UI packet: 4 files / 62 tests passed
+- `npm run check`: passed
+- `npm run build`: passed
+- `git diff --check`: passed
+- **PROVEN:** GA4 `403`, transient token-endpoint failure, server/storage failure, and post-refresh provider failure no longer become `requiresReauthorization`; Google `invalid_grant` still does
+- **UNPROVEN:** Render deployment and deployed UI behavior
+- **REQUIRES EXTERNAL VALIDATION:** the live provider's exact latest error payload, the final post-publish consent flow, deployed automatic renewal, and more-than-seven-day credential durability
+- no schema, stored token, OAuth scope, connection ownership, API response shape, provider query, scheduler, analytics value, or persisted data changed
 
 ### What passing tests do not prove
 

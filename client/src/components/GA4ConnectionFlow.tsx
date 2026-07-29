@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { getSelectableGA4CampaignFilter } from '@/lib/ga4-campaign-selection';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface GA4ConnectionFlowProps {
@@ -47,6 +48,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
   const [didLoadCampaigns, setDidLoadCampaigns] = useState(false);
   const [manualCampaignInput, setManualCampaignInput] = useState('');
+  const selectableGa4CampaignFilter = getSelectableGA4CampaignFilter(ga4CampaignFilter, availableCampaigns);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -144,7 +146,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   }, [step, didLoadCampaigns]);
 
   const saveCampaignFilter = async () => {
-    const values = ga4CampaignFilter.map(v => v.trim()).filter(Boolean);
+    const values = selectableGa4CampaignFilter.map(v => v.trim()).filter(Boolean);
     if (values.length === 0) {
       toast({
         title: "Select at least one campaign",
@@ -391,7 +393,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     Clear
                   </Button>
                   <span className="text-xs text-muted-foreground ml-auto">
-                    {ga4CampaignFilter.length} of {availableCampaigns.length} selected
+                    {selectableGa4CampaignFilter.length} of {availableCampaigns.length} selected
                   </span>
                 </div>
                 <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
@@ -491,8 +493,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Importing...
                 </>
-              ) : ga4CampaignFilter.length > 1 ? (
-                `Import ${ga4CampaignFilter.length} campaigns`
+              ) : selectableGa4CampaignFilter.length > 1 ? (
+                `Import ${selectableGa4CampaignFilter.length} campaigns`
               ) : (
                 'Import metrics'
               )}

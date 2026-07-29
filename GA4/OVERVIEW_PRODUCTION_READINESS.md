@@ -419,6 +419,14 @@ No cleanup was run. The forward read/display defects must be fixed first. A futu
 - **REQUIRES EXTERNAL VALIDATION:** the live provider's exact latest error payload, the final post-publish consent flow, deployed automatic renewal, and more-than-seven-day credential durability
 - no schema, stored token, OAuth scope, connection ownership, API response shape, provider query, scheduler, analytics value, or persisted data changed
 
+### GA4 reconnect campaign-picker selection count (`2026-07-29`)
+
+- root cause: the picker counter and save path used the raw persisted filter length, while row checks used only campaign names returned for the newly selected property; a stale hidden name could therefore display as selected and be re-saved
+- smallest fix: derive the counter, button label, and saved values from the intersection of the visible property campaign list and the selected filter; preserve manual selections when GA4 returns no list
+- **PROVEN:** 3 focused selection tests and the 50-test adjacent GA4 UI/refresh packet passed locally
+- **UNPROVEN:** Render deployment and deployed UI behavior
+- no API, schema, provider query, persisted data, analytics calculation, campaign ownership, OAuth, scheduler, or unrelated source behavior changed
+
 ### What passing tests do not prove
 
 - current live GA4 values for all 35 connections

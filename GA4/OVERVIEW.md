@@ -246,7 +246,8 @@ Current production behavior:
 - users select the GA4 property and GA4 campaign values during campaign creation or GA4 connection setup
 - the saved `ga4CampaignFilter` defines the GA4 scope for the campaign
 - the GA4 analytics page shows the saved client, campaign, GA4 property ID, and selected campaign values for provenance
-- the GA4 analytics provenance card does not show `Last updated`; refresh freshness belongs in logs, scheduler state, or explicit status surfaces rather than this compact header card
+- the GA4 analytics provenance card does not use request-time `Last updated`; it shows the latest persisted GA4 daily date, the expected completed-day boundary, and an explicit delayed warning from `/ga4-daily`
+- a non-stale daily boundary means the expected persisted day is present, not that GA4 has finished delayed event processing; the UI states that completed-day values may still change
 - the GA4 analytics page does not expose a post-setup campaign picker
 - the setup picker should discover selectable UTM campaign values after property selection from GA4 campaign dimensions, manual UTM dimensions, and finally `pageLocation` URLs containing `utm_campaign`
 - placeholder values such as `(direct)`, `(not set)`, or empty values are not sufficient proof that no UTM campaigns exist when manual UTM dimensions or `pageLocation` contain real campaign values

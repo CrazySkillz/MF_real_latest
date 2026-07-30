@@ -50,12 +50,27 @@ describe("GA4 reporting-day cutoff", () => {
     expect(routes).toContain("oldestDueMissingDailyDate,");
     expect(routes).toContain("providerRefreshWarning,");
     expect(routes).toContain("refreshIsStale:");
+    expect(routes).toContain("providerRefreshAttempted,");
+    expect(routes).toContain("providerRefreshOutcome,");
+    expect(routes).toContain("providerRefreshRowCount,");
     expect(routes).toContain("getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))");
     expect(routes).toContain("Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.");
 
     expect(page).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);");
     expect(page).toContain("const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || \"\").trim();");
     expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
+    expect(page).toContain("const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;");
+    expect(page).toContain('data-testid="ga4-overview-freshness-summary"');
+    expect(page).toContain('data-testid="ga4-overview-freshness-warning"');
+    expect(page).toContain("Completed-day data may change as GA4 finishes processing.");
+    expect(page).toContain("formatConnectionTimestamp((ga4DailyResp as any)?.lastCompletedRefreshAt)");
+    expect(page).not.toContain("formatConnectionTimestamp(provenanceLastUpdated)");
+
+    const runner = read("client", "public", "ga4-overview-validation-runner.js");
+    expect(runner).toContain("dailyFreshnessContractPresent:");
+    expect(runner).toContain("providerRefreshOutcome: dailyData.providerRefreshOutcome || null");
+    expect(runner).toContain("providerRefreshWarningPresent: Boolean(dailyData.providerRefreshWarning)");
+    expect(runner).toContain("does not prove GA4 has finished delayed event processing");
   });
 
   it("keeps GA4 to-date from calling the provider with an inverted completed-day window", () => {

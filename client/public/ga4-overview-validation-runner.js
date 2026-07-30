@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-12.6";
+  var VERSION = "2026-07-30.8";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -637,6 +637,10 @@
       }).every(function (status) { return status.pass === true; }),
       sourceCountsAreNonNegative: base.revenue.sourceCount >= 0 && base.spend.sourceCount >= 0,
       dailyEndpointPasses: !!(extraByName.ga4Daily && extraByName.ga4Daily.pass),
+      dailyFreshnessContractPresent:
+        typeof dailyData.refreshIsStale === "boolean" &&
+        typeof dailyData.providerRefreshAttempted === "boolean" &&
+        ["not_needed", "rows_returned", "empty", "failed", "simulated"].indexOf(String(dailyData.providerRefreshOutcome || "")) >= 0,
       dailyNotStale: requireFreshDaily ? dailyData.refreshIsStale !== true : undefined,
       landingPagesEndpointPasses: !!(extraByName.ga4LandingPages && extraByName.ga4LandingPages.pass),
       conversionEventsEndpointPasses: !!(extraByName.ga4ConversionEvents && extraByName.ga4ConversionEvents.pass)
@@ -672,11 +676,20 @@
         dailyLatestDate: latestDateOf(dailyRows),
         dataThroughDate: dailyData.dataThroughDate || null,
         refreshIsStale: dailyData.refreshIsStale === true,
+        expectedRefreshAt: dailyData.expectedRefreshAt || null,
+        lastCompletedRefreshAt: dailyData.lastCompletedRefreshAt || null,
+        latestStoredDailyDate: dailyData.latestStoredDailyDate || null,
+        oldestDueMissingDailyDate: dailyData.oldestDueMissingDailyDate || null,
+        providerRefreshAttempted: dailyData.providerRefreshAttempted === true,
+        providerRefreshOutcome: dailyData.providerRefreshOutcome || null,
+        providerRefreshRowCount: numberOrNull(dailyData.providerRefreshRowCount),
+        providerRefreshWarningPresent: Boolean(dailyData.providerRefreshWarning),
         landingPageRowCount: landingRows.length,
         conversionEventRowCount: conversionRows.length
       },
       caveats: [
         "Automated endpoint validation only; it does not inspect rendered UI pixels or prove inbox email delivery.",
+        "refreshIsStale=false proves the expected persisted daily boundary is present; it does not prove GA4 has finished delayed event processing.",
         "Provider data can change after GA4 processes delayed events; compare checkedAt timestamps when reviewing evidence.",
         "A passing pack is not clean certification for untested source families or future report/email deliveries."
       ],

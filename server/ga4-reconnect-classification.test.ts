@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { GoogleAnalytics4Service } from "./analytics";
 
 const connection = {
@@ -127,5 +129,18 @@ describe("GA4 reconnect classification", () => {
       connection.id,
       expect.objectContaining({ accessToken: "fresh-access-token" }),
     );
+  });
+
+  it("does not refresh tokens for generic GA4 403 permission failures in route-level provider callers", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const providerCallers = [
+      routes.slice(routes.indexOf("const resolveNotificationAlertRow"), routes.indexOf("const isResolvedAlertRowBreached")),
+      routes.slice(routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"'), routes.indexOf("// Benchmark-read-only GA4 input validation")),
+      routes.slice(routes.indexOf('app.get("/api/campaigns/:id/ga4-benchmark-provider-validation"'), routes.indexOf("// ============================================================================", routes.indexOf('app.get("/api/campaigns/:id/ga4-benchmark-provider-validation"'))),
+    ];
+    providerCallers.forEach((caller) => {
+      expect(caller.length).toBeGreaterThan(0);
+      expect(caller).not.toContain('msg.includes("403")');
+    });
   });
 });

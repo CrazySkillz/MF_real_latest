@@ -5427,11 +5427,16 @@ export default function GA4Metrics() {
 
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
-  const provenanceLastUpdated =
-    (ga4Breakdown as any)?.lastUpdated ||
-    (ga4Metrics as any)?.lastUpdated ||
-    (ga4Diagnostics as any)?.lastUpdated ||
-    null;
+  const ga4DailyLatestStoredDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
+  const ga4DailyExpectedThroughDate = String((ga4DailyResp as any)?.dataThroughDate || "").trim();
+  const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
+  const ga4DailyProviderRefreshWarning = Boolean(String((ga4DailyResp as any)?.providerRefreshWarning || "").trim());
+  const ga4DailyFreshnessAvailable = ga4ConnectionUsable && Boolean(ga4DailyResp);
+  const ga4DailyFreshnessLabel = !ga4DailyFreshnessAvailable
+    ? "Unavailable"
+    : ga4DailyRefreshIsStale
+      ? `Delayed — through ${ga4DailyLatestStoredDate || "no stored day"}`
+      : `Through ${ga4DailyLatestStoredDate || ga4DailyExpectedThroughDate || "no stored day"}`;
   const provenanceProperty =
     (ga4Diagnostics as any)?.connection?.displayName ||
     (ga4Diagnostics as any)?.connection?.propertyName ||
@@ -5477,17 +5482,6 @@ export default function GA4Metrics() {
   };
   const headerClientName = clients.find((client) => client.id === (campaign as any)?.clientId)?.name || "—";
   const headerPropertyCampaigns = selectedGa4CampaignFilterList.length > 0 ? selectedGa4CampaignFilterList.join(", ") : "All campaigns";
-  const headerLastUpdated = provenanceLastUpdated
-    ? new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date(provenanceLastUpdated))
-    : "—";
   const diagnosticsWarnings: string[] = Array.isArray((ga4Diagnostics as any)?.warnings) ? (ga4Diagnostics as any).warnings : [];
   // Hide warnings that are noisy/confusing in the MVP UI.
   const visibleDiagnosticsWarnings = diagnosticsWarnings.filter((w) => {
@@ -5692,8 +5686,31 @@ export default function GA4Metrics() {
                 <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
                 <div><span className="font-medium text-foreground">GA4 Property ID:</span> {ga4ConnectionUsable ? (provenancePropertyId || provenanceProperty) : "Unavailable"}</div>
                 <div><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
+                {ga4ConnectionUsable && (ga4DailyResp || ga4Error) && (
+                  <div data-testid="ga4-overview-freshness-summary">
+                    <span className="font-medium text-foreground">GA4 daily data:</span> {ga4DailyFreshnessLabel}
+                    {ga4DailyExpectedThroughDate ? ` (expected through ${ga4DailyExpectedThroughDate})` : ""}
+                    <div className="text-xs mt-1">Completed-day data may change as GA4 finishes processing.</div>
+                  </div>
+                )}
               </CardContent>
             </Card>
+            {ga4ConnectionUsable && ga4DailyRefreshIsStale && (
+              <div
+                className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                data-testid="ga4-overview-freshness-warning"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  {ga4DailyProviderRefreshWarning ? "The latest GA4 provider refresh did not complete. " : "GA4 daily data is delayed. "}
+                  {ga4DailyLatestStoredDate ? (
+                    <>Stored data is available through {ga4DailyLatestStoredDate}{ga4DailyExpectedThroughDate ? `; expected through ${ga4DailyExpectedThroughDate}` : ""}. Saved values remain visible while refresh is retried.</>
+                  ) : (
+                    <>No stored daily values are currently available{ga4DailyExpectedThroughDate ? `; expected through ${ga4DailyExpectedThroughDate}` : ""}; refresh will be retried.</>
+                  )}
+                </span>
+              </div>
+            )}
             {!ga4ConnectionUsable && (
               <div
                 className="mt-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
@@ -8711,20 +8728,20 @@ export default function GA4Metrics() {
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
                           <div className="flex items-start justify-between gap-4">
-                            <span className="text-muted-foreground/70">Last updated</span>
-                            <span className="font-medium text-right text-foreground">{formatConnectionTimestamp(provenanceLastUpdated)}</span>
+                            <span className="text-muted-foreground/70">Status</span>
+                            <span className="font-medium text-right text-foreground">{ga4DailyFreshnessLabel}</span>
                           </div>
                           <div className="flex items-start justify-between gap-4">
-                            <span className="text-muted-foreground/70">Report date</span>
-                            <span className="font-medium text-foreground">{ga4ReportDate || "Not available yet"}</span>
+                            <span className="text-muted-foreground/70">Last completed refresh</span>
+                            <span className="font-medium text-right text-foreground">{formatConnectionTimestamp((ga4DailyResp as any)?.lastCompletedRefreshAt)}</span>
                           </div>
                           <div className="flex items-start justify-between gap-4">
-                            <span className="text-muted-foreground/70">Daily facts range</span>
-                            <span className="font-medium text-right text-foreground">
-                              {(ga4DailyResp as any)?.startDate && (ga4DailyResp as any)?.endDate
-                                ? `${String((ga4DailyResp as any).startDate)} to ${String((ga4DailyResp as any).endDate)}`
-                                : "Not available yet"}
-                            </span>
+                            <span className="text-muted-foreground/70">Latest stored day</span>
+                            <span className="font-medium text-foreground">{ga4DailyLatestStoredDate || "Not available yet"}</span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Expected through</span>
+                            <span className="font-medium text-foreground">{ga4DailyExpectedThroughDate || "Not available yet"}</span>
                           </div>
                           <div className="flex items-start justify-between gap-4">
                             <span className="text-muted-foreground/70">Daily rows available</span>

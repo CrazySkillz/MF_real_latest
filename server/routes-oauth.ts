@@ -6579,8 +6579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               msg.toLowerCase().includes("invalid authentication credentials") ||
               msg.toLowerCase().includes("request had invalid authentication credentials") ||
               msg.toLowerCase().includes("invalid_grant") ||
-              msg.includes("401") ||
-              msg.includes("403");
+              msg.includes("401");
             if (isAuth && connection?.refreshToken && connection?.id) {
               const refresh = await ga4Service.refreshAccessToken(
                 String(connection.refreshToken),
@@ -8609,6 +8608,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days,
           reportingTimeZone,
           data: merged,
+          providerRefreshAttempted: false,
+          providerRefreshOutcome: "simulated",
+          providerRefreshRowCount: 0,
           ...buildFreshness(lastCompletedRefreshAt, getLatestStoredDailyDate(merged)),
           lastUpdated: lastCompletedRefreshAt,
         });
@@ -8682,8 +8684,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Read from persisted store first
       let providerRefreshWarning: string | null = null;
+      let providerRefreshAttempted = false;
+      let providerRefreshOutcome: "not_needed" | "rows_returned" | "empty" | "failed" = "not_needed";
+      let providerRefreshRowCount = 0;
       let stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
       const refreshFromProvider = async () => {
+        providerRefreshAttempted = true;
         const series = await ga4Service.getTimeSeriesData(
           campaignId,
           storage,
@@ -8692,6 +8698,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignFilter
         );
         const upserts = toDailyMetricUpserts(series);
+        providerRefreshRowCount = upserts.length;
+        providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
 
         if (upserts.length > 0) {
           await storage.upsertGA4DailyMetrics(upserts as any);
@@ -8707,9 +8715,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           await refreshFromProvider();
         } catch (e: any) {
+          providerRefreshOutcome = "failed";
           providerRefreshWarning = e?.message || "Failed to refresh missing GA4 daily rows";
         }
       } else if (needsConversionRevenueRepair(stored)) {
+        providerRefreshAttempted = true;
         const series = await ga4Service.getTimeSeriesData(
           campaignId,
           storage,
@@ -8718,6 +8728,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignFilter
         );
         const upserts = toDailyMetricUpserts(series);
+        providerRefreshRowCount = upserts.length;
+        providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
         const recoveredConversionRevenue = upserts.some((r: any) =>
           Number(r?.conversions || 0) > 0 ||
           Number(r?.revenue || 0) > 0
@@ -8749,6 +8761,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         days,
         reportingTimeZone,
         data: stored.map(addDerivedEngagedSessions),
+        providerRefreshAttempted,
+        providerRefreshOutcome,
+        providerRefreshRowCount,
         ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });
@@ -8918,8 +8933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           msg.toLowerCase().includes("invalid authentication credentials") ||
           msg.toLowerCase().includes("request had invalid authentication credentials") ||
           msg.toLowerCase().includes("invalid_grant") ||
-          msg.includes("401") ||
-          msg.includes("403");
+          msg.includes("401");
         if (isAuth && (connection as any).refreshToken) {
           const refresh = await ga4Service.refreshAccessToken(
             String((connection as any).refreshToken),
@@ -9059,8 +9073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           msg.includes("invalid authentication credentials") ||
           msg.includes("request had invalid authentication credentials") ||
           msg.includes("invalid_grant") ||
-          msg.includes("401") ||
-          msg.includes("403")
+          msg.includes("401")
         );
       };
       const fetchProviderTotals = async (token: string, fromDate = startDate, toDate = endDate) =>

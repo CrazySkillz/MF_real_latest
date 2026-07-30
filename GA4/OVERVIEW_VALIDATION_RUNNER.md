@@ -49,7 +49,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-12.2');
+await import('/ga4-overview-validation-runner.js?v=2026-07-30.8');
 GA4OverviewValidation.help();
 ```
 
@@ -64,7 +64,7 @@ await GA4OverviewValidation.overviewPack({
 });
 ```
 
-This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. It does not inspect UI pixels, PDF text, or future inbox delivery outside recorded packets.
+This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-30.8` also records the expected refresh, last completed refresh, latest stored/due-missing dates, compact provider refresh attempted/outcome/row-count evidence, and provider-warning presence without printing the raw provider error. `refreshIsStale=false` proves the expected persisted daily boundary is present; it does not prove GA4 has finished delayed event processing. The pack does not inspect UI pixels, PDF text, or future inbox delivery outside recorded packets.
 
 For saved report snapshot/PDF smoke validation, use:
 

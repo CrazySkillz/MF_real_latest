@@ -1426,6 +1426,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     .filter((source) => !overviewInventoryAllowedPlatformContexts.has(normalizeOverviewInventoryPlatformContext(source?.platformContext)))
     .map((source) => summarizeOverviewInventorySource(source, recordCounts.get(String(source.id)) || 0));
 
+  const overviewRetainedRevenueTypes = new Set(["manual", "salesforce", "google_sheets"]);
+  const overviewRetainedSpendTypes = new Set(["manual", "google_sheets", "linkedin_api", "ad_platforms"]);
+  const isOverviewRetainedSource = (source: any, retainedTypes: Set<string>) => {
+    const storedContext = String(source?.platformContext || "").trim();
+    return source?.isActive !== false
+      && (!storedContext || retainedTypes.has(String(source?.sourceType || "").trim().toLowerCase()));
+  };
+  const buildOverviewRetainedSourceInventory = (
+    sources: any[],
+    records: any[],
+    sourceKey: "revenueSourceId" | "spendSourceId",
+    amountKey: "revenue" | "spend",
+    retainedTypes: Set<string>,
+  ) => sources
+    .filter((source) => isOverviewRetainedSource(source, retainedTypes))
+    .map((source) => {
+      const sourceId = String(source?.id || "");
+      const mapping = normalizeOverviewInventoryMappingConfig(source?.mappingConfig);
+      const sourceRecords = records.filter((record) => String(record?.[sourceKey] || "") === sourceId);
+      return {
+        ...summarizeOverviewInventorySource(source, sourceRecords.length),
+        storedPlatformContext: String(source?.platformContext || "").trim() || null,
+        legacyNullContext: !String(source?.platformContext || "").trim(),
+        amountTotal: centsOverviewInventoryTotal(sourceRecords, amountKey),
+        mappingHash: hashOverviewInventoryValue(mapping),
+        mappedPlatform: mapping?.platform ? String(mapping.platform) : null,
+        connectionId: mapping?.connectionId ? String(mapping.connectionId) : null,
+        selectedCampaignCount: Array.isArray(mapping?.selectedCampaignIds) ? mapping.selectedCampaignIds.length : null,
+      };
+    });
+
   app.get("/api/campaigns/:id/ga4-overview/source-damage-inventory", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
@@ -1460,41 +1491,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const spendSourceById = new Map((allSpendSources as any[]).map((source) => [String(source.id), source]));
       const revenueRecordCounts = countOverviewInventoryRecordsBySource(allRevenueRecords as any[], "revenueSourceId");
       const spendRecordCounts = countOverviewInventoryRecordsBySource(allSpendRecords as any[], "spendSourceId");
-      const retainedRevenueTypes = new Set(["manual", "salesforce", "google_sheets"]);
-      const retainedSpendTypes = new Set(["manual", "google_sheets", "linkedin_api", "ad_platforms"]);
-      const buildRetainedSourceInventory = (
-        sources: any[],
-        records: any[],
-        sourceKey: "revenueSourceId" | "spendSourceId",
-        amountKey: "revenue" | "spend",
-        retainedTypes: Set<string>,
-        recordCounts: Map<string, number>,
-      ) => sources
-        .filter((source) => source?.isActive !== false)
-        .filter((source) => {
-          const storedContext = String(source?.platformContext || "").trim();
-          return !storedContext || retainedTypes.has(String(source?.sourceType || "").trim().toLowerCase());
-        })
-        .map((source) => {
-          const sourceId = String(source?.id || "");
-          const mapping = normalizeOverviewInventoryMappingConfig(source?.mappingConfig);
-          const sourceRecords = records.filter((record) => String(record?.[sourceKey] || "") === sourceId);
-          return {
-            ...summarizeOverviewInventorySource(source, recordCounts.get(sourceId) || 0),
-            storedPlatformContext: String(source?.platformContext || "").trim() || null,
-            legacyNullContext: !String(source?.platformContext || "").trim(),
-            amountTotal: centsOverviewInventoryTotal(sourceRecords, amountKey),
-            mappingHash: hashOverviewInventoryValue(mapping),
-            mappedPlatform: mapping?.platform ? String(mapping.platform) : null,
-            connectionId: mapping?.connectionId ? String(mapping.connectionId) : null,
-            selectedCampaignCount: Array.isArray(mapping?.selectedCampaignIds) ? mapping.selectedCampaignIds.length : null,
-          };
-        });
-      const activeRetainedRevenueSources = buildRetainedSourceInventory(
-        allRevenueSources as any[], allRevenueRecords as any[], "revenueSourceId", "revenue", retainedRevenueTypes, revenueRecordCounts,
+      const activeRetainedRevenueSources = buildOverviewRetainedSourceInventory(
+        allRevenueSources as any[], allRevenueRecords as any[], "revenueSourceId", "revenue", overviewRetainedRevenueTypes,
       );
-      const activeRetainedSpendSources = buildRetainedSourceInventory(
-        allSpendSources as any[], allSpendRecords as any[], "spendSourceId", "spend", retainedSpendTypes, spendRecordCounts,
+      const activeRetainedSpendSources = buildOverviewRetainedSourceInventory(
+        allSpendSources as any[], allSpendRecords as any[], "spendSourceId", "spend", overviewRetainedSpendTypes,
       );
       const retainedSourceReviewCount = activeRetainedRevenueSources.length + activeRetainedSpendSources.length;
 
@@ -1867,6 +1868,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to run GA4 Overview source-damage inventory" });
+    }
+  });
+  app.get("/api/ga4-overview/retained-source-inventory", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+      const ownedCampaigns = (await storage.getCampaigns()).filter((campaign: any) =>
+        String(campaign?.ownerId || "").trim() === actorId
+      );
+      const ownedCampaignIds = ownedCampaigns.map((campaign: any) => String(campaign.id)).filter(Boolean);
+      if (ownedCampaignIds.length === 0) {
+        return res.json({
+          success: true, readonly: true, checkedAt: new Date().toISOString(),
+          ownedCampaignCount: 0, ga4CampaignCount: 0, campaignReviewCount: 0,
+          retainedSourceReviewCount: 0, retainedSourceInventoryPass: true,
+          ownerScopedBatchComplete: true, campaigns: [], automaticCleanupAllowed: false,
+        });
+      }
+      const activeGa4Connections = (await db.select({
+        campaignId: ga4Connections.campaignId,
+        isActive: ga4Connections.isActive,
+      }).from(ga4Connections).where(inArray(ga4Connections.campaignId, ownedCampaignIds)))
+        .filter((connection: any) => connection?.isActive !== false);
+      const ga4CampaignIdSet = new Set(activeGa4Connections.map((connection: any) => String(connection.campaignId)).filter(Boolean));
+      const ga4CampaignIds = ownedCampaignIds.filter((campaignId) => ga4CampaignIdSet.has(campaignId));
+      if (ga4CampaignIds.length === 0) {
+        return res.json({
+          success: true, readonly: true, checkedAt: new Date().toISOString(),
+          ownedCampaignCount: ownedCampaigns.length, ga4CampaignCount: 0, campaignReviewCount: 0,
+          retainedSourceReviewCount: 0, retainedSourceInventoryPass: true,
+          ownerScopedBatchComplete: true, campaigns: [], automaticCleanupAllowed: false,
+        });
+      }
+      const [allRevenueSources, allSpendSources] = await Promise.all([
+        db.select().from(revenueSourcesTable).where(inArray(revenueSourcesTable.campaignId, ga4CampaignIds)),
+        db.select().from(spendSourcesTable).where(inArray(spendSourcesTable.campaignId, ga4CampaignIds)),
+      ]);
+      const retainedRevenueSources = (allRevenueSources as any[]).filter((source) =>
+        isOverviewRetainedSource(source, overviewRetainedRevenueTypes)
+      );
+      const retainedSpendSources = (allSpendSources as any[]).filter((source) =>
+        isOverviewRetainedSource(source, overviewRetainedSpendTypes)
+      );
+      const retainedRevenueSourceIds = retainedRevenueSources.map((source) => String(source.id)).filter(Boolean);
+      const retainedSpendSourceIds = retainedSpendSources.map((source) => String(source.id)).filter(Boolean);
+      const [retainedRevenueRecords, retainedSpendRecords] = await Promise.all([
+        retainedRevenueSourceIds.length > 0
+          ? db.select().from(revenueRecordsTable).where(inArray(revenueRecordsTable.revenueSourceId, retainedRevenueSourceIds))
+          : Promise.resolve([] as any[]),
+        retainedSpendSourceIds.length > 0
+          ? db.select().from(spendRecordsTable).where(inArray(spendRecordsTable.spendSourceId, retainedSpendSourceIds))
+          : Promise.resolve([] as any[]),
+      ]);
+      const campaigns = ownedCampaigns
+        .filter((campaign: any) => ga4CampaignIdSet.has(String(campaign.id)))
+        .map((campaign: any) => {
+          const campaignId = String(campaign.id);
+          const revenueSources = retainedRevenueSources.filter((source) => String(source.campaignId) === campaignId);
+          const spendSources = retainedSpendSources.filter((source) => String(source.campaignId) === campaignId);
+          const revenueRecords = (retainedRevenueRecords as any[]).filter((record) => String(record.campaignId) === campaignId);
+          const spendRecords = (retainedSpendRecords as any[]).filter((record) => String(record.campaignId) === campaignId);
+          const activeRetainedRevenueSources = buildOverviewRetainedSourceInventory(
+            revenueSources, revenueRecords, "revenueSourceId", "revenue", overviewRetainedRevenueTypes,
+          );
+          const activeRetainedSpendSources = buildOverviewRetainedSourceInventory(
+            spendSources, spendRecords, "spendSourceId", "spend", overviewRetainedSpendTypes,
+          );
+          return {
+            campaignId,
+            campaignName: campaign.name || null,
+            retainedSourceReviewCount: activeRetainedRevenueSources.length + activeRetainedSpendSources.length,
+            activeRetainedRevenueSources,
+            activeRetainedSpendSources,
+          };
+        });
+      const retainedSourceReviewCount = campaigns.reduce((sum, campaign) => sum + campaign.retainedSourceReviewCount, 0);
+      return res.json({
+        success: true,
+        readonly: true,
+        checkedAt: new Date().toISOString(),
+        ownedCampaignCount: ownedCampaigns.length,
+        ga4CampaignCount: campaigns.length,
+        campaignReviewCount: campaigns.filter((campaign) => campaign.retainedSourceReviewCount > 0).length,
+        retainedSourceReviewCount,
+        retainedSourceInventoryPass: retainedSourceReviewCount === 0,
+        ownerScopedBatchComplete: true,
+        campaigns,
+        automaticCleanupAllowed: false,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to run owner-scoped retained-source inventory" });
     }
   });
   app.get("/api/ga4-overview/shopify/source-damage-inventory", async (req, res) => {

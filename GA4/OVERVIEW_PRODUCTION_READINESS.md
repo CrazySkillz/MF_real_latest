@@ -548,8 +548,13 @@ Smallest safe fix:
 - Salesforce Pipeline Proxy requires an explicit supported context, searches only that context, rejects mapping-context mismatches, and fails closed when no exact campaign/source scope matches
 - the existing campaign-access-guarded GET inventory now reports active retained/null-context sources with exact source identity and sanitized mapping evidence
 - the inventory is read-only and returns `automaticCleanupAllowed: false`; no source, record, total, schema, scheduler, or response field was removed or mutated
+- the follow-up owner-scoped batch GET reads only the signed-in owner's active GA4 campaigns and only records linked to retained source IDs, avoiding repeated campaign-by-campaign requests and the known high-volume orphan-record tables
 
-Local validation: 5 focused files / 65 tests passed, the relevant Salesforce and Custom Integration assertions passed in the broader source-safety suite, `npm run check` passed, and the production build passed. Seven unrelated pre-existing Instagram route-slice assertions remain red. B9 is locally resolved but requires deployed validation. B8 remains open until the read-only inventory is run against exact production campaigns and each returned source is reviewed before any separate support, migration, or deactivation decision.
+Local validation: the original 5 focused files / 65 tests passed, the relevant Salesforce and Custom Integration assertions passed in the broader source-safety suite, `npm run check` passed, and the production build passed. The owner-scoped batch follow-up adds one focused guard; its 2-file packet passes 10 tests and TypeScript. Seven unrelated pre-existing Instagram route-slice assertions remain red.
+
+Deployed bounded evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` passed on `2026-07-30`. The read-only inventory returned zero retained Revenue sources and four active legacy-null Spend sources: three CSV sources totaling 2,000.00 and one Google Sheets source totaling 698.75. The generic damage summary returned zero orphan, inactive-source-record, duplicate-active-source, or unexpected-context findings. The user confirmed the Spend Sources modal showed the same four names and amounts and that they reconciled exactly to Total Spend 2,698.75. No source was deleted, migrated, edited, or deactivated. This proves only that campaign.
+
+B9 is locally resolved; Salesforce UI validation was not applicable to the observed campaign because it has no Salesforce source. B8 and Current Commit 6 remain open until the owner-scoped batch endpoint is deployed and its complete production result is reviewed. Do not infer all-campaign completion from the single-campaign pass.
 
 ### Current Commit 7 — Complete source-family lifecycle evidence
 

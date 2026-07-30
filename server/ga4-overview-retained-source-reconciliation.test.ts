@@ -43,13 +43,32 @@ describe("GA4 Overview retained-source reconciliation", () => {
       'app.get("/api/ga4-overview/shopify/source-damage-inventory"',
     );
 
-    expect(route).toContain('new Set(["manual", "salesforce", "google_sheets"])');
-    expect(route).toContain('new Set(["manual", "google_sheets", "linkedin_api", "ad_platforms"])');
-    expect(route).toContain("storedPlatformContext");
-    expect(route).toContain("legacyNullContext");
-    expect(route).toContain("mappingHash");
-    expect(route).toContain("amountTotal");
+    expect(routes).toContain('new Set(["manual", "salesforce", "google_sheets"])');
+    expect(routes).toContain('new Set(["manual", "google_sheets", "linkedin_api", "ad_platforms"])');
+    expect(routes).toContain("storedPlatformContext");
+    expect(routes).toContain("legacyNullContext");
+    expect(routes).toContain("mappingHash");
+    expect(routes).toContain("amountTotal");
     expect(route).toContain("retainedSourceInventoryPass");
+    expect(route).toContain("automaticCleanupAllowed: false");
+    expect(route).not.toContain("updateRevenueSource(");
+    expect(route).not.toContain("updateSpendSource(");
+    expect(route).not.toContain("deleteRevenueSource(");
+    expect(route).not.toContain("deleteSpendSource(");
+  });
+
+  it("batches retained-source evidence only across the signed-in owner's active GA4 campaigns", () => {
+    const route = routeSlice(
+      'app.get("/api/ga4-overview/retained-source-inventory"',
+      'app.get("/api/ga4-overview/shopify/source-damage-inventory"',
+    );
+
+    expect(route).toContain("const actorId = getActorId(req as any)");
+    expect(route).toContain('String(campaign?.ownerId || "").trim() === actorId');
+    expect(route).toContain("connection?.isActive !== false");
+    expect(route).toContain("inArray(revenueRecordsTable.revenueSourceId, retainedRevenueSourceIds)");
+    expect(route).toContain("inArray(spendRecordsTable.spendSourceId, retainedSpendSourceIds)");
+    expect(route).toContain("ownerScopedBatchComplete: true");
     expect(route).toContain("automaticCleanupAllowed: false");
     expect(route).not.toContain("updateRevenueSource(");
     expect(route).not.toContain("updateSpendSource(");

@@ -675,11 +675,14 @@ Deployed proof and closure boundary:
 - Current Commit 10 is closed for its implementation, regression, build, deployment, and bounded browser-value comparison
 - scheduled snapshot/attachment values, historical Trend behavior, live multi-source variants, valid-zero/negative production fixtures, and unobserved downstream surfaces remain external evidence gates; closure does not upgrade them to proven
 
-### Current Commit 11 — Pipeline Proxy campaign-scope fail-closed — documented, not implemented
+### Current Commit 11 — Pipeline Proxy campaign-scope fail-closed — implemented and locally validated; deployment/UI validation pending
 
-- Root cause: the frontend uses `sorted[0]`, and the HubSpot Pipeline Proxy API uses `candidates[0]`, when no saved CRM source matches the configured GA4 campaign scope. The wrong API result can also overwrite a correct same-scope client fallback.
-- Fix: remove only those two wrong-scope fallbacks; preserve successful same-scope endpoint values, same-scope saved fallback, provider aggregation, campaign access, and confirmed-revenue exclusion. The already-correct Salesforce fail-closed selector remains unchanged.
+- Root cause: the frontend uses `sorted[0]`, and the HubSpot Pipeline Proxy API uses `candidates[0]`, when no saved CRM source matches the configured GA4 campaign scope. Without an explicit no-match return, the HubSpot route can also continue with connection-level mapping data. A wrong API result can overwrite a correct same-scope client fallback.
+- Fix: remove the frontend fallback and replace the HubSpot API fallback/connection continuation with an explicit `404` on no scoped match; preserve successful same-scope endpoint values, same-scope saved fallback, provider aggregation, campaign access, and confirmed-revenue exclusion. The already-correct Salesforce fail-closed selector remains unchanged.
 - Completion: both HubSpot API selection and client saved-source selection fail closed on mismatched scope, while same-scope HubSpot and Salesforce behavior passes focused regression coverage.
+- Local implementation: the client returns only `sorted.find(sourceMatchesGa4Scope) || null`; the HubSpot API returns `404` when no scoped saved source matches; the Salesforce selector is unchanged.
+- Local evidence: the exact Commit 11 guard passed 1/1; HubSpot pagination and retained-source reconciliation passed 9/9; TypeScript and the production build passed; `git diff --check` passed. The full HubSpot file still has nine pre-existing obsolete runner-version assertions assigned to Commit 14, and an extended Google Ads packet exposed five unrelated stale platform assertions; neither failure set intersects this selector change.
+- Unproven until Render deploys the final commit: deployed UI behavior. No API shape, storage/schema, provider query, calculation, source record, connection, token, scheduler, or production data was changed.
 
 ### Current Commit 12 — Financial unavailable-versus-valid-zero contract — documented, not implemented
 

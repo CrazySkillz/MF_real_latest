@@ -2437,7 +2437,7 @@ export default function GA4Metrics() {
     };
     const selectPipelineSource = (sources: any[]) => {
       const sorted = [...sources].sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
-      return sorted.find(sourceMatchesGa4Scope) || sorted[0] || null;
+      return sorted.find(sourceMatchesGa4Scope) || null;
     };
     const normalizeTotal = (data: any) => {
       if (!data?.success) return data;

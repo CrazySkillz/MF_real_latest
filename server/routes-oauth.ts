@@ -17761,12 +17761,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
-      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || candidates[0] || null;
-      let pipelineSource: any = null;
-      if (selectedPipelineSource) {
-        cfg = selectedPipelineSource.cfg;
-        pipelineSource = selectedPipelineSource.source;
+      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;
+      if (!selectedPipelineSource) {
+        return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested GA4 campaign scope." });
       }
+      cfg = selectedPipelineSource.cfg;
+      const pipelineSource: any = selectedPipelineSource.source;
       const requireCompletePipelinePagination = String(
         cfg?.platformContext || pipelineSource?.platformContext || requestedPlatformContext || 'ga4',
       ).trim().toLowerCase() === 'ga4';

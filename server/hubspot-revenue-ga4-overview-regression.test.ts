@@ -285,6 +285,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(pipelineRoute).toContain("requestedPlatformContext");
     expect(pipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
+    expect(pipelineRoute).toContain("const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;");
+    expect(pipelineRoute).toContain('return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested GA4 campaign scope." });');
+    expect(pipelineRoute).not.toContain("|| candidates[0] || null");
     expect(pipelineRoute).toContain("const pipelineSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];");
     expect(pipelineRoute).toContain("{ propertyName: campaignProp, operator: 'IN', values: pipelineSelectedValues }");
     expect(pipelineRoute).toContain("{ propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] }");
@@ -292,6 +295,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(pipelineMemo).toContain('getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot")');
     expect(pipelineMemo).toContain("sourceMatchesGa4Scope");
+    expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
+    expect(pipelineMemo).not.toContain("|| sorted[0] || null");
     expect(pipelineMemo).toContain("providerEntries: entries.map");
     expect(financialRevenueBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(financialRevenueBlock).not.toContain("pipelineProxyData");

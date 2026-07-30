@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is not production-ready or clean-certified. Current Commits 1-7 are closed for their documented bounded packets, including the exact `Summer splash` Manual Spend cleanup and post-delete inventory on `2026-07-30`. Freshness/provider, broader retained-source review, and downstream gates remain; whole-Overview Current Commit 8 is next. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+- GA4 Overview is not production-ready or clean-certified. Current Commits 1-7 are closed for their documented bounded packets, including the exact `Summer splash` Manual Spend cleanup and post-delete inventory on `2026-07-30`. Whole-Overview Current Commit 8 is deployed; its 30-day coverage/activity and UI-stability checks passed, while live 90-day and current timer-fired evidence remain unproven. Broader retained-source and downstream gates also remain. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 ## GA4 Scope Changes
 
@@ -180,6 +180,8 @@ Important timing:
 - Trends uses persisted completed-day rows through the campaign reporting timezone's latest completed day, so same-day script events generally do not become a new Trends day until the following reporting day and a scheduler/on-demand backfill reads them
 - Connection Details shows the successful provider check-through date separately from the latest stored activity date. The normal campaign header does not insert that success text after load; Overview still warns when no successful current coverage exists or a stale refresh attempt fails, and retains stored values on failure
 - generic GA4 `403 PERMISSION_DENIED` responses are provider/permission failures, not confirmed authentication expiry; this includes the daily time-series fetch before and after a confirmed token refresh, and only confirmed authentication signals may trigger token refresh/reconnect handling
+
+Deployed UI-stability validation passed after commit `c26d2768`: the user confirmed the normal campaign header remained stable and did not insert the duplicate freshness text after load. Read-only scheduler health captured at `2026-07-30T15:14:09.442Z` showed `started=true`, `timerScheduled=true`, UTC `03:00`, `runOnStartup=false`, next run `2026-07-31T03:00:00.000Z`, no error, and `totalScheduledRuns=0`. This proves configuration and timer scheduling for the current process, not that its timer has fired.
 
 ## Scheduler 2: External Value Auto-Refresh And Auto-Process
 

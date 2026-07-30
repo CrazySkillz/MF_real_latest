@@ -6413,17 +6413,19 @@ export default function GA4Metrics() {
                                 <span className="font-medium tabular-nums text-foreground">
                                   {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                 </span>
-                                <button
-                                  onClick={() => {
-                                    setShowRevenueSourcesDialog(false);
-                                    setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
-                                    setShowRevenueDialog(true);
-                                  }}
-                                  className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
-                                  title="Edit revenue source"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </button>
+                                {s.sourceType !== "manual" && (
+                                  <button
+                                    onClick={() => {
+                                      setShowRevenueSourcesDialog(false);
+                                      setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
+                                      setShowRevenueDialog(true);
+                                    }}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                                    title="Edit revenue source"
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => {
                                     setShowRevenueSourcesDialog(false);
@@ -6465,17 +6467,19 @@ export default function GA4Metrics() {
                               <span className="font-medium tabular-nums text-foreground">
                                 {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
                               </span>
-                              <button
-                                onClick={() => {
-                                  setShowSpendSourcesDialog(false);
-                                  setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
-                                  setShowSpendDialog(true);
-                                }}
-                                className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
-                                title="Edit spend source"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </button>
+                              {s.sourceType !== "manual" && (
+                                <button
+                                  onClick={() => {
+                                    setShowSpendSourcesDialog(false);
+                                    setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
+                                    setShowSpendDialog(true);
+                                  }}
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                                  title="Edit spend source"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setShowSpendSourcesDialog(false);

@@ -242,7 +242,7 @@ Important meaning:
 - they are not six labels pointing to one generic "add revenue" action
 - future development should preserve the source-specific flow for each option
 - direct `Manual` revenue entry is no longer selectable for new source creation
-- existing stored manual revenue sources must still render, continue contributing to totals, and remain editable/deletable until explicitly removed
+- existing stored manual revenue sources remain visible in totals only until exact reviewed deletion; they cannot be created or edited
 
 ### Revenue Workflow Meaning
 
@@ -257,7 +257,7 @@ Production direction note:
 
 - new direct `Manual` revenue entry has been removed from the production revenue-source picker
 - the reason is data-quality and data-integrity protection: unrestricted manual revenue entry creates avoidable provenance, duplication, and audit-risk issues
-- existing stored manual revenue sources are still supported for continuity until the user edits or removes them
+- existing stored manual revenue sources are unsupported legacy data: creation and editing are blocked, while exact reviewed deletion remains available
 
 Executive-UX note:
 
@@ -508,20 +508,18 @@ Important meaning:
 - deleting a CSV revenue source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized revenue records tied to that verified source ID
 - CSV damaged-data inventory must remain campaign-access guarded and read-only. It may report exact active zero-record, inactive-source-record, proven missing/cross-campaign/wrong-type source-link, incomplete retained mapping, stored-total mismatch, dated-row loss, duplicate row-grain, and suspicious duplicate-source candidates, but it must not clean, merge, backfill, allocate, or mutate them. Missing legacy retained rows are an incomplete-evidence finding, not permission to guess the original CSV.
 
-## Revenue Source 6: Existing Stored Manual Revenue
+## Cleanup Reference: Existing Stored Manual Revenue
 
 Current production-state rule:
 
-- new direct `Manual` revenue creation is no longer exposed in the GA4 production revenue-source picker
-- existing stored `Manual` revenue sources must still render, continue contributing to totals, and remain editable/deletable until explicitly removed
+- GA4 `Manual` Revenue creation and editing are blocked in both UI and API
+- any existing stored `Manual` Revenue remains visible in source totals only until exact reviewed deletion; the delete action remains available
 
 Important meaning:
 
-- `Manual` revenue is now a continuity/edit path for previously stored sources, not a normal new-source GA4 creation journey
-- existing stored `Manual` is a direct value-entry workflow
-- unlike CRM and sheet-based options, it is not an attribution or import mapping process
-- it behaves more like a manually maintained revenue snapshot and is best treated as a higher-friction, less automated path
-- it should be treated as a temporary validation/testing path rather than a long-term production workflow
+- `Manual` Revenue is not a supported GA4 source
+- the completed owner-scoped inventory found no active retained Manual Revenue source among the owner's 10 active GA4 campaigns
+- any future retained row must be reviewed and deleted by exact campaign/source ID; it must not be edited or treated as continuity
 
 ## The Two V1 `Total Spend +` Options
 
@@ -550,7 +548,7 @@ Production direction note:
 
 - new direct `Manual` spend entry has been removed from the production spend-source picker
 - the reason is data-quality and data-integrity protection: unrestricted manual spend entry creates avoidable provenance, duplication, and audit-risk issues
-- existing stored manual spend sources are still supported for continuity until the user edits or removes them
+- existing stored manual spend sources are unsupported legacy data: creation and editing are blocked, while exact reviewed deletion remains available
 - `LinkedIn Ads` and `Meta / Facebook` are removed from the new-source Spend chooser for v1
 - existing stored LinkedIn/Meta spend sources and their edit/backend continuity paths remain supported; this chooser change does not delete records, disconnect providers, or certify those source families
 - the earlier `2026-07-12` three-option chooser evidence is superseded; the user confirmed the deployed Google Ads/Upload CSV chooser after whole-Overview Current Commit 5
@@ -746,19 +744,19 @@ Important meaning:
 - new GA4 CSV sources must select a Date column in both UI and API; omitted-context creation is rejected, and a dated saved source cannot be converted to undated
 - already-undated saved sources remain exact-source continuity rows and unproven; unusual/unlisted CSV formats, deployed forged-request checks, and additional inventories remain deferred and do not expand the existing bounded dated-CSV claim
 
-## Continuity Reference: Existing Stored Manual Spend
+## Cleanup Reference: Existing Stored Manual Spend
 
 Current production-state rule:
 
-- new direct `Manual` spend creation is no longer exposed in the GA4 production spend-source picker
-- existing stored `Manual` spend sources must still render, continue contributing to totals, and remain editable/deletable until explicitly removed
+- GA4 `Manual` Spend creation and editing are blocked in both UI and API
+- existing stored `Manual` Spend remains visible in source totals only until exact reviewed deletion; the delete action remains available
 
 Important meaning:
 
-- `Manual` spend is now a continuity/edit path for previously stored sources, not a normal new-source GA4 creation journey
-- existing stored `Manual` is a direct spend-entry workflow
-- it behaves like a manually maintained snapshot, not a refreshable connector
-- it should be treated as a temporary validation/testing path rather than a long-term production workflow
+- the owner-scoped inventory found source `570de6df-d49a-40c3-9a78-1a61a55394b1`, created `2026-03-15`, with one `$400` record and null stored platform context
+- Git history confirms Manual Spend was visible when the row was created and was hidden on `2026-04-23`; hiding the card did not remove the persisted row
+- the user confirmed this source is unwanted; it must not be edited or treated as an intentional continuity source
+- production deletion remains a separate exact-source action followed by Total Spend and inventory verification
 
 ## Source Modal From The Cards
 
@@ -785,7 +783,7 @@ The required pattern is:
 3. campaign financial values are recomputed
 4. the cards and source modal provenance repopulate from the new state
 
-Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. It also makes retained GA4 Manual, Salesforce, Google Sheets, and LinkedIn/ad-platform source replacement transactional and fail-closed so a failed insert cannot erase last-good records. Salesforce connection mapping is committed with its source and records; ambiguous duplicate LinkedIn Spend refresh is rejected. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Local tests, TypeScript, and build pass; deployed validation remains required before closure.
+Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. Retained Salesforce, Google Sheets, and LinkedIn/ad-platform source replacement is transactional and fail-closed so a failed insert cannot erase last-good records. The Manual financial-source follow-up rejects GA4 Manual Revenue and Manual Spend create/edit before mutation while preserving exact deletion. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Local tests pass; deployed cleanup validation remains required before closure.
 
 ### Edit Meaning By Source Type
 

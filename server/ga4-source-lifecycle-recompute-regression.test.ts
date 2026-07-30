@@ -50,7 +50,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
 
   it("passes platform context through GA4 revenue source add, edit, and delete recompute paths", () => {
     const platformContextCalls = routes.match(/await recomputeCampaignDerivedValues\(campaignId, \{ platformContext \}\);/g) || [];
-    expect(platformContextCalls.length).toBe(9);
+    expect(platformContextCalls.length).toBe(8);
 
     const platformCtxCalls = routes.match(/await recomputeCampaignDerivedValues\(campaignId, \{ platformContext: platformCtx \}\);/g) || [];
     expect(platformCtxCalls.length).toBe(5);
@@ -160,7 +160,6 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(storage).toContain('async replaceRevenueSourceWithRecords(');
     expect(storage).toContain('async replaceGa4SalesforceRevenueSourceWithRecords(');
     for (const routeCall of [
-      "replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'manual', 'ga4'",
       "replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, 'ga4'",
       "replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'",
       "replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'",
@@ -169,5 +168,40 @@ describe("GA4 source lifecycle recompute route guards", () => {
     ]) expect(routes).toContain(routeCall);
     expect(routes).toContain("Multiple active LinkedIn spend sources require review.");
     expect(storage).toContain("if (!savedConnection) throw new Error('Salesforce connection not found')");
+  });
+
+  it('blocks GA4 Manual Revenue and Spend create/edit while preserving exact deletion', () => {
+    const manualRevenueRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/revenue/process/manual"',
+      '"/api/campaigns/:id/revenue/csv/preview"',
+    );
+    const revenueRejection = manualRevenueRoute.indexOf('Manual Revenue is not supported for GA4.');
+    expect(revenueRejection).toBeGreaterThan(-1);
+    expect(manualRevenueRoute).not.toContain('replaceRevenueSourceWithRecords(');
+    expect(revenueRejection).toBeLessThan(manualRevenueRoute.indexOf('storage.updateRevenueSource('));
+    expect(revenueRejection).toBeLessThan(manualRevenueRoute.indexOf('storage.createRevenueSource('));
+
+    const manualSpendRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/spend/process/manual"',
+      'const processConnectorDerivedSpend',
+    );
+    const rejection = manualSpendRoute.indexOf("Manual Spend is not supported for GA4.");
+    expect(rejection).toBeGreaterThan(-1);
+    expect(manualSpendRoute).toContain("String(platformContext || 'ga4').trim().toLowerCase() === 'ga4'");
+    expect(rejection).toBeLessThan(manualSpendRoute.indexOf('replaceSpendSourceWithRecords('));
+    expect(rejection).toBeLessThan(manualSpendRoute.indexOf('storage.updateSpendSource('));
+    expect(rejection).toBeLessThan(manualSpendRoute.indexOf('storage.createSpendSource('));
+
+    const revenueSourcesModal = sliceBetween(ga4Page, '>Revenue Sources</DialogTitle>', '>Spend Sources</DialogTitle>');
+    expect(revenueSourcesModal).toContain('{s.sourceType !== "manual" && (');
+    expect(revenueSourcesModal).toContain('setDeletingRevenueSourceId(s.sourceId);');
+    expect(revenueSourcesModal).toContain('title="Remove revenue source"');
+
+    const spendSourcesModal = sliceBetween(ga4Page, '>Spend Sources</DialogTitle>', '>Pipeline Proxy Sources</DialogTitle>');
+    expect(spendSourcesModal).toContain('{s.sourceType !== "manual" && (');
+    expect(spendSourcesModal).toContain('setDeletingSpendSourceId(s.sourceId);');
+    expect(spendSourcesModal).toContain('title="Remove spend source"');
   });
 });

@@ -3880,6 +3880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sendBadRequest(res, "Invalid revenue payload", parsedBody.error.errors);
       }
       const platformContext = parsedBody.data.platformContext || "ga4";
+      if (platformContext === 'ga4') {
+        return res.status(400).json({ success: false, error: 'Manual Revenue is not supported for GA4.' });
+      }
       const valueSource = parsedBody.data.valueSource || "revenue";
       const amount = parseNum(parsedBody.data.amount);
       const conversionValueRaw = parseNum(parsedBody.data.conversionValue);
@@ -3922,15 +3925,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformContext,
         subCampaignUrn: subCampaignUrn || null,
       });
-
-      if (platformContext === 'ga4') {
-        const endDate = yesterdayUTC();
-        const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'manual', 'ga4', {
-          campaignId, sourceType: 'manual', platformContext: 'ga4', displayName, currency: cur, mappingConfig, isActive: true,
-        } as any, [{ campaignId, date: endDate, revenue: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur, subCampaignUrn: subCampaignUrn || null } as any]);
-        await recomputeCampaignDerivedValues(campaignId, { platformContext });
-        return res.json({ success: true, sourceId: source.id, date: endDate, currency: cur, mode, valueSource: 'revenue', revenueToDate: Number(amount.toFixed(2)), conversionValue: 0 });
-      }
 
       let source: any;
       if (existingSourceId) {
@@ -5230,6 +5224,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);
       const effectiveDisplayName = overrideDisplayName || (platformContext ? `Manual spend – ${platformContext}` : "Manual entry");
+      if (String(platformContext || 'ga4').trim().toLowerCase() === 'ga4' && effectiveSourceType === 'manual') {
+        return res.status(400).json({ success: false, error: 'Manual Spend is not supported for GA4.' });
+      }
 
       // Build mappingConfig: use client-provided config if available, otherwise default
       const finalMappingConfig = clientMappingConfig

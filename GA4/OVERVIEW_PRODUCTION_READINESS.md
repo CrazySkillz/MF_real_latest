@@ -675,20 +675,23 @@ Deployed proof and closure boundary:
 - Current Commit 10 is closed for its implementation, regression, build, deployment, and bounded browser-value comparison
 - scheduled snapshot/attachment values, historical Trend behavior, live multi-source variants, valid-zero/negative production fixtures, and unobserved downstream surfaces remain external evidence gates; closure does not upgrade them to proven
 
-### Current Commit 11 — Pipeline Proxy campaign-scope fail-closed — implemented and locally validated; deployment/UI validation pending
+### Current Commit 11 — Pipeline Proxy campaign-scope fail-closed — closed for bounded implementation/deployed fail-closed packet
 
 - Root cause: the frontend uses `sorted[0]`, and the HubSpot Pipeline Proxy API uses `candidates[0]`, when no saved CRM source matches the configured GA4 campaign scope. Without an explicit no-match return, the HubSpot route can also continue with connection-level mapping data. A wrong API result can overwrite a correct same-scope client fallback.
 - Fix: remove the frontend fallback and replace the HubSpot API fallback/connection continuation with an explicit `404` on no scoped match; preserve successful same-scope endpoint values, same-scope saved fallback, provider aggregation, campaign access, and confirmed-revenue exclusion. The already-correct Salesforce fail-closed selector remains unchanged.
 - Completion: both HubSpot API selection and client saved-source selection fail closed on mismatched scope, while same-scope HubSpot and Salesforce behavior passes focused regression coverage.
 - Local implementation: the client returns only `sorted.find(sourceMatchesGa4Scope) || null`; the HubSpot API returns `404` when no scoped saved source matches; the Salesforce selector is unchanged.
 - Local evidence: the exact Commit 11 guard passed 1/1; HubSpot pagination and retained-source reconciliation passed 9/9; TypeScript and the production build passed; `git diff --check` passed. The full HubSpot file still has nine pre-existing obsolete runner-version assertions assigned to Commit 14, and an extended Google Ads packet exposed five unrelated stale platform assertions; neither failure set intersects this selector change.
-- Unproven until Render deploys the final commit: deployed UI behavior. No API shape, storage/schema, provider query, calculation, source record, connection, token, scheduler, or production data was changed.
+- Deployed evidence: commit `9ac3fea9` was pushed to `main` and deployed. The user opened an existing GA4 Overview and confirmed Pipeline Proxy rendered `Unavailable` rather than a saved value from an unusable/non-matching scope. This passes the deployed fail-closed case; deployed same-scope positive-value behavior remains unproven and is retained in Commit 15. No API shape, storage/schema, provider query, calculation, source record, connection, token, scheduler, or production data was changed.
 
-### Current Commit 12 — Financial unavailable-versus-valid-zero contract — documented, not implemented
+### Current Commit 12 — Financial unavailable-versus-valid-zero contract — implemented and locally validated; deployment/UI validation pending
 
-- Root cause: Profit uses revenue/spend metric gates, but ROAS, ROI, and browser Overview report output use weaker request-availability checks.
-- Fix: apply one existing revenue-availability decision to Total Revenue-dependent cards and browser report output without changing formulas, source order, APIs, or persistence.
-- Completion: missing revenue is unavailable; valid zero with positive spend produces negative-spend Profit, `0.00x` ROAS, and `-100%` ROI; negative revenue remains numeric.
+- Root cause: `financialRevenueAvailable` and `financialSpendAvailable` prove only that their requests resolved; they do not prove that a campaign-scoped source/capability exists. Total Revenue, Total Spend, ROAS, ROI, CPA, and browser Overview report preflight can therefore accept plausible zero/empty output when the financial input is actually unavailable, while Profit separately uses the stronger metric gates.
+- Fix boundary: require the existing `revenueMetricAvailable` and `spendMetricAvailable` capability/source decisions in the corresponding financial availability flags. This reuses the established gates across financial cards and browser Overview report preflight without changing formulas, financial-source order, API contracts, storage/schema, provider queries, or persistence.
+- Completion: missing revenue or spend is unavailable; valid source-backed zero remains numeric, including zero revenue with positive spend producing negative-spend Profit, `0.00x` ROAS, and `-100%` ROI; negative revenue remains numeric.
+- Local implementation: `financialRevenueAvailable` now requires `revenueMetricAvailable`, and `financialSpendAvailable` now requires `spendMetricAvailable`. Existing render and browser-report preflight consumers inherit the same decision.
+- Local evidence: the focused GA4 UI, financial-rule, and financial-source parity packet passed 46/46; TypeScript and the production build passed; `git diff --check` passed.
+- Unproven until deployment: browser behavior for one campaign with a missing financial source and one source-backed valid-zero fixture. No formulas, source selection/order, API response, storage/schema, provider query, persistence, scheduler, connection, token, or production data changed.
 
 ### Current Commit 13 — Ordered financial-source validation parity — documented, not implemented
 

@@ -195,6 +195,8 @@ describe("GA4 UI regression guard", () => {
     );
     expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
     expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
+    expect(ga4Metrics).toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
+    expect(ga4Metrics).toContain("spendSourceDefinitionsKnownEmpty) &&\n    spendMetricAvailable;");
     expect(ga4Metrics).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Number(breakdownTotals.revenue || 0);");
     expect(ga4Metrics).not.toContain("return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || breakdownTotals.revenue > 0;");
@@ -251,6 +253,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Conversion event data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Campaign breakdown is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("const renderFinancialValue = (loading: boolean, available: boolean, value: string)");
+    expect(ga4Metrics).toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))");
+    expect(ga4Metrics).toContain('if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");');
     expect(ga4Metrics).toContain("financialRevenueAvailable && financialSpendAvailable && revenueMetricAvailable && spendMetricAvailable");
     expect(ga4Metrics).toContain("financialSpend > 0 ? `${financialROAS.toFixed(2)}x`");
     expect(ga4Metrics).toContain("financialSpend > 0 ? formatPercentage(financialROI)");

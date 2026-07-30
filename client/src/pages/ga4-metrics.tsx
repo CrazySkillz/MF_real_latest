@@ -2619,7 +2619,7 @@ export default function GA4Metrics() {
     Array.isArray(revenueSourcesResp?.sources) &&
     revenueSourcesResp.sources.length === 0;
   const importedRevenueAvailable = importedRevenueToDateResp !== undefined || revenueSourceDefinitionsKnownEmpty;
-  const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;
+  const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;
   const financialRevenueLoading =
     !financialRevenueAvailable &&
     (ga4ToDateLoading || ga4Loading || breakdownLoading || importedRevenueLoading || revenueSourcesLoading);
@@ -2628,9 +2628,10 @@ export default function GA4Metrics() {
     Array.isArray(spendSourcesResp?.sources) &&
     spendSourcesResp.sources.length === 0;
   const financialSpendAvailable =
-    spendBreakdownResp !== undefined ||
-    spendToDateResp !== undefined ||
-    spendSourceDefinitionsKnownEmpty;
+    (spendBreakdownResp !== undefined ||
+      spendToDateResp !== undefined ||
+      spendSourceDefinitionsKnownEmpty) &&
+    spendMetricAvailable;
   const financialSpendLoading =
     !financialSpendAvailable &&
     (spendBreakdownLoading || spendToDateLoading || spendSourcesLoading);

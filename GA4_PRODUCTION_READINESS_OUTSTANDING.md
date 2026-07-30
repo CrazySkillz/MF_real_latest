@@ -22,16 +22,16 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Remaining Production Blockers
 
-GA4 Overview has an active blocker queue in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current Commit 2 closed the window/source-contract defects and passed bounded deployed UI validation. Current Commit 3 (`7b162083` plus `a0b205b5`) passed its user-confirmed one-refresh banner follow-up and is closed for its bounded packet. Current Commit 4 locally resolves the spend-scope/stale-cache defect but is not yet committed, deployed, or UI-validated. Visible on-hold source, retained legacy source, freshness, cleanup, and downstream-proof blockers remain.
+GA4 Overview has an active blocker queue in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current Commits 1-7 are closed for their documented bounded packets. The exact `Summer splash` `$400` Manual Spend cleanup and post-delete owner inventory passed on `2026-07-30`. Freshness/provider, broader retained-source review, and downstream-proof blockers remain under whole-Overview Current Commits 8-10.
 
 ## Latest Readiness Review
 
-Overview-specific update on 2026-07-16:
+Overview-specific update on 2026-07-30:
 
 - GA4 Overview is not production-ready or clean-certified.
 - The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
-- Current Commit 2 (`5cff21ad`) was committed, pushed, deployed, and passed the user-confirmed bounded UI smoke check for one configured campaign/window and its downloaded Overview report.
-- Full 30/60/90 live provider evidence and later blocker commits remain open.
+- Current Commits 1-7 are closed for their documented bounded packets; this includes the exact `$400` deletion, resulting `$14,045.83` Total Spend, and post-delete inventory evidence.
+- Whole-Overview Current Commits 8-10 remain open; the complete Overview is not certified.
 
 Reviewed on 2026-05-10:
 
@@ -43,7 +43,7 @@ Reviewed on 2026-05-10:
 Current conclusion:
 
 - GA4 Overview remains not production-ready while the canonical blocker queue is open.
-- Commits 2 and 3 are complete for their bounded packets; Current Commit 4 is implemented and locally validated, with commit/deployment/UI validation pending.
+- Current Commits 1-7 are complete for their bounded packets; Current Commits 8-10 remain open.
 - Separate GA4 tabs and source-family certifications keep only their own documented scope and do not certify the complete Overview.
 
 ## Required Production Validation

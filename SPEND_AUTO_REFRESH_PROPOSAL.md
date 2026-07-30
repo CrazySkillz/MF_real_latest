@@ -1,7 +1,7 @@
 # GA4 Spend Auto-Refresh Implementation Proposal
 
-**Status**: Phase 1 In Progress  
-**Last Updated**: February 12, 2026
+**Status**: Historical proposal; GA4 Manual Spend creation/editing is now blocked, with exact legacy deletion only
+**Last Updated**: July 30, 2026
 
 ## Executive Summary
 
@@ -21,8 +21,8 @@
 Currently, GA4 spend data updates are **mostly manual**:
 
 1. **CSV Spend**: User uploads CSV → Spend calculated → **NEVER auto-updates** (becomes stale immediately)
-2. **Google Sheets Spend**: User clicks "Process" → Daily auto-refresh works ✅ (but requires initial manual setup)
-3. **Manual Spend**: Static value → **NEVER updates**
+2. **Google Sheets Spend**: Retained continuity only; new GA4 setup and certification work are on hold
+3. **Legacy Manual Spend**: Unsupported retained value → **no creation/editing; exact reviewed deletion only**
 4. **Paste Spend**: Same as CSV → **NEVER auto-updates**
 
 **Result**: Spend data is stale, requiring users to manually re-upload CSVs every day to keep ROAS/ROI/CPA accurate.
@@ -534,12 +534,12 @@ const totalSpend = await db.query(
    - Connect Sheets to MetricMind
    - Deactivate old CSV source
 
-### Users with Google Sheets Spend:
-- ✅ **Already auto-refreshing** (no action needed)
+### Campaigns with retained Google Sheets Spend:
+- ⚠️ **Continuity only**; new GA4 setup is blocked and automatic refresh remains unproven while certification work is on hold
 
-### Users with Manual Spend:
-- ⚠️ **Not suitable for auto-refresh** (manual entry is for testing only)
-- Recommend switching to Google Sheets or CSV
+### Campaigns with legacy Manual Spend:
+- ⚠️ **Unsupported retained data**; GA4 creation and editing are blocked
+- Review provenance, delete only an exact confirmed legacy source, and verify totals plus the post-delete inventory
 
 ---
 

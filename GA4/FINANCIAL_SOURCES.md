@@ -749,16 +749,16 @@ Important meaning:
 Current production-state rule:
 
 - GA4 `Manual` Spend creation and editing are blocked in both UI and API
-- existing stored `Manual` Spend remains visible in source totals only until exact reviewed deletion; the delete action remains available
+- existing stored `Manual` Spend remains visible in source totals only until exact reviewed deletion; the delete action remains available for any separately proven cleanup candidate
 
 Important meaning:
 
 - the owner-scoped inventory found source `570de6df-d49a-40c3-9a78-1a61a55394b1`, created `2026-03-15`, with one `$400` record and null stored platform context
 - Git history confirms Manual Spend was visible when the row was created and was hidden on `2026-04-23`; hiding the card did not remove the persisted row
-- the user confirmed this source is unwanted; it must not be edited or treated as an intentional continuity source
-- production deletion remains a separate exact-source action followed by Total Spend and inventory verification
+- the user confirmed this source was unwanted and deleted only that exact `$400` row on `2026-07-30`
+- Total Spend then became `$14,045.83`; the post-delete read-only inventory confirmed the Manual source is absent and the unchanged Google Ads source is the only retained source for `Summer splash`
 - the `Summer splash` cleanup was temporarily unreachable because its active OAuth placeholder had an empty GA4 Property ID and the analytics page rendered permanent initialization skeletons
-- the local Current Commit 7 follow-up treats that placeholder as unusable, keeps provider metrics unavailable, hides new financial-source controls, and retains the existing exact campaign-scoped source modal deletion path; it does not reconnect GA4 or mutate the `$400` source
+- the deployed Current Commit 7 follow-up treats that placeholder as unusable, keeps provider metrics unavailable, hides new financial-source controls, and retains the existing exact campaign-scoped source modal deletion path; the user validated this state before performing the exact reviewed deletion
 
 ## Source Modal From The Cards
 
@@ -785,7 +785,7 @@ The required pattern is:
 3. campaign financial values are recomputed
 4. the cards and source modal provenance repopulate from the new state
 
-Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. Retained Salesforce, Google Sheets, and LinkedIn/ad-platform source replacement is transactional and fail-closed so a failed insert cannot erase last-good records. The Manual financial-source follow-up rejects GA4 Manual Revenue and Manual Spend create/edit before mutation while preserving exact deletion. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Local tests pass; deployed cleanup validation remains required before closure.
+Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. Retained Salesforce, Google Sheets, and LinkedIn/ad-platform source replacement is transactional and fail-closed so a failed insert cannot erase last-good records. The Manual financial-source follow-up rejects GA4 Manual Revenue and Manual Spend create/edit before mutation while preserving exact deletion. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Local tests passed; deployed cleanup validation passed on `2026-07-30` for the exact `Summer splash` Manual source deletion and post-delete total/inventory boundary.
 
 ### Edit Meaning By Source Type
 

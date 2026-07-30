@@ -37,7 +37,7 @@ Shopify Revenue current status (2026-07-15): **production-ready and clean-certif
 
 ## Current Status
 
-The tracked May 2026 GA4 report-template blockers are complete. GA4 Overview is production-ready for the current GA4 code scope; the durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`. GA4 can be used as the implementation template for Overview, report routes, scheduled report handling, source-backed PDF generation, direct snapshot PDF output, and report email safety, provided future integrations copy the proven GA4 patterns rather than introducing parallel report, scheduler, source, or visibility paths.
+The tracked May 2026 GA4 report-template blockers are complete, but GA4 Overview is not production-ready or clean-certified. Whole-Overview Current Commits 1-7 are closed for their documented bounded packets; Current Commits 8-10 remain open. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Only individually proven GA4 patterns may be reused for Overview, report routes, scheduled report handling, source-backed PDF generation, direct snapshot PDF output, and report email safety.
 
 This status does not close the newer findings below. Later shared report/source infrastructure changes can affect GA4 even when the visible GA4 page is not directly edited.
 
@@ -301,7 +301,7 @@ Validation:
 
 ## Next Step
 
-No local GA4 Overview follow-up commit is currently needed. GA4 Overview is production-ready for the current GA4 code scope per `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Future GA4 production-readiness work should be selected from the validation gates below only after a separate trace or deployed validation proves a specific issue.
+Whole-Overview Current Commit 8 is next: collect bounded production freshness/provider evidence. GA4 Overview remains not production-ready or clean-certified; Current Commits 9-10 remain queued after Commit 8. Use `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the canonical scope and status.
 
 ## Current Unverified Areas
 
@@ -372,9 +372,9 @@ Spend source families:
 - Google Ads
 - Google Sheets
 - CSV
-- existing legacy Manual spend, if present
+- existing legacy Manual spend, if present — delete-only cleanup; never add or edit
 
-Validation steps for each source family:
+Validation steps for each supported add/edit source family:
 
 1. Add or import the source with known test data.
 2. Confirm it appears in `Total Revenue -> Sources` or `Total Spend -> Sources`.
@@ -389,11 +389,13 @@ Validation steps for each source family:
 11. For refreshable sources, run or wait for scheduler refresh.
 12. Confirm refresh updates the same source ID instead of creating a duplicate.
 
+GA4 Manual Revenue and Manual Spend are exceptions to this add/edit checklist: creation and editing are blocked in UI and API. A separately proven legacy cleanup candidate may only be reviewed, deleted by exact campaign/source scope, and verified by totals plus a post-delete inventory.
+
 Pass criteria:
 
-- add, edit, delete, source modal display, totals, and downstream recompute work for the source family
+- for supported full-lifecycle sources, add, edit, delete, source modal display, totals, and downstream recompute work for the source family
 - source modal provenance reconciles to the relevant total card
-- edit and scheduler paths preserve stable source identity
+- applicable edit and scheduler paths preserve stable source identity
 - delete affects only the verified source ID
 - refreshable sources update in place and do not append duplicates
 

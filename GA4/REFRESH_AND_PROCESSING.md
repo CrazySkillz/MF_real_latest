@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is not production-ready or clean-certified. Current Commit 2 (`5cff21ad`) is deployed and its bounded UI smoke validation passed, but later failure-state, spend-scope, source lifecycle, freshness, cleanup, and downstream gates remain. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+- GA4 Overview is not production-ready or clean-certified. Current Commits 1-7 are closed for their documented bounded packets, including the exact `Summer splash` Manual Spend cleanup and post-delete inventory on `2026-07-30`. Freshness/provider, broader retained-source review, and downstream gates remain; whole-Overview Current Commit 8 is next. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 ## GA4 Scope Changes
 

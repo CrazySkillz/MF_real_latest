@@ -20,7 +20,7 @@ This app is a marketing analytics platform that pulls performance data from mult
 - Meta
 - custom uploads
 - CRM and ecommerce revenue sources
-- manual spend and revenue inputs
+- legacy or platform-specific manual spend and revenue inputs where explicitly enabled; GA4 Manual Revenue and Manual Spend creation/editing are blocked, with exact deletion retained only for reviewed legacy cleanup
 
 The platform transforms those inputs into:
 

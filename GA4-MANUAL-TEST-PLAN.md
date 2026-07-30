@@ -1,5 +1,7 @@
 # GA4 Manual Test Plan — User Journeys
 
+**Status**: Mixed historical/current reference. The simulation-era `Run Refresh` control and backend were removed; do not execute any remaining step that mentions `Run Refresh` or its mock numbers. Use the canonical tab/source readiness document for current validation, including `GA4/OVERVIEW_PRODUCTION_READINESS.md` for Overview.
+
 ## How This Plan Works
 Each journey follows the real user flow as closely as possible.
 
@@ -12,7 +14,7 @@ Important:
 
 - treat the GA4 docs as the product spec if a step here is ambiguous
 - treat exact mock numbers as reference values, not absolute truth, unless the campaign state is clean
-- if a campaign already has prior `Run Refresh` history or added sources, prioritize directional correctness over exact sample numbers
+- if a campaign contains historical simulation data or added sources, prioritize documented provenance and current readiness evidence over exact sample numbers
 
 Ad Comparison status for future reference:
 
@@ -372,32 +374,25 @@ Checkpoint after Journey 2:
 
 ---
 
-## Journey 3: Run Refresh — Spend Arrives (Unlocks Financial Metrics)
+## Journey 3: Add A Supported Spend Source (Unlocks Financial Metrics)
 
-**Why**: GA4 doesn't track spend. In production, spend arrives when the user adds it via the Add Spend wizard (CSV, Google Sheets, or connecting an ad platform). Existing stored manual spend can still contribute if already present, but new direct manual spend creation is no longer exposed in the production GA4 picker. Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue) — it does NOT bring in spend.
+**Why**: GA4 doesn't track spend. In the current GA4 UI, new spend setup is limited to Google Ads and dated Upload CSV; retained exact-source continuity may still contribute where documented. GA4 Manual Spend creation and editing are blocked in UI and API, while exact reviewed deletion remains available for legacy cleanup. Refreshing GA4 metrics does not import spend.
 
 Checkpoint after Journey 3:
 
-- Run Refresh updates GA4 values only
-- Add Spend works
+- GA4 metrics remain separate from imported spend
+- supported Add Spend works
 - financial metrics unlock correctly
 - Insights integrity behavior updates correctly
 
-### Step 1: Run Refresh (GA4 data only, no spend)
+### Step 1: Verify GA4 metrics without spend mutation
 - [ ] Click the **Overview** tab
-- [ ] Find and click the **Run Refresh** button
-- [ ] Toast appears with date + summary: sessions, conversions, revenue — **NO spend**
-- [ ] **Spend still = $0** — Run Refresh does not create spend
-- [ ] **Sessions ≈ 66,770** (simulation baseline 65,600 + 1 day of 1,170)
-- [ ] **Conversions ≈ 2,648** (simulation 2,592 + 1 day of 56)
-- [ ] **Revenue ≈ $244,552** (simulation $240,352 + 1 day of $4,200)
-- [ ] Values AGGREGATE — simulation baseline + Run Refresh increments, not replaced
-- [ ] If GA4 native revenue exists, the `GA4 Revenue` row in the Total Revenue source modal updates to the refreshed aggregated GA4 amount for the selected GA4 scope
-- [ ] Financial templates (ROAS/ROI/CPA) still DISABLED — need spend
+- [ ] Confirm the configured GA4 metrics load without creating a spend source
+- [ ] If no spend source exists, financial templates that require spend remain unavailable
 
 ### Step 2: Add spend via Add Spend wizard
 - [ ] On the Overview tab, click the **"+"** icon on the Total Spend card
-- [ ] Select **Upload CSV**, **Google Sheets**, or a supported ad-platform test-mode path
+- [ ] Select **Upload CSV** or **Google Ads**
 - [ ] Import spend totaling **$5,000.00**
 - [ ] **Total Spend = $5,000.00**
 - [ ] Total Spend source modal shows the imported source and **$5,000.00**
@@ -417,13 +412,9 @@ Checkpoint after Journey 3:
 - [ ] Click the **Insights** tab
 - [ ] "Spend missing" integrity insight is GONE
 
-### Step 6: Run Refresh ×2 more (3 days total)
-- [ ] Click Run Refresh two more times
-- [ ] **Spend stays at $5,000** — Run Refresh only adds GA4 data
-- [ ] After 3 total Run Refreshes:
-  - Sessions ≈ 65,600 + (3 × 1,170) = **69,110**
-  - Conversions ≈ 2,592 + (3 × 56) = **2,760**
-  - Revenue ≈ $240,352 + (3 × $4,200) = **$252,952**
+### Step 6: Reload once
+- [ ] Reload the page
+- [ ] **Spend stays at $5,000** and the same source remains in the Spend Sources modal
 
 ---
 
@@ -1304,8 +1295,8 @@ Use this instead of rerunning the full plan after every small fix:
 6. Templates DISABLED when required data missing; ENABLED when data exists
 7. Blocked KPIs excluded from scoring + show integrity insight
 8. Notifications created when thresholds breached
-9. All production GA4 spend sources (CSV/Sheets/LinkedIn/Meta/Google Ads) work, and any existing stored Manual spend remains editable/deletable
-10. All v1 production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Shopify) work, Salesforce revenue is deferred/hidden for v1, and any existing stored legacy Manual revenue remains editable/deletable
+9. Enabled GA4 spend source families are evaluated only under their source-specific readiness scopes; GA4 Manual Spend creation/editing are blocked, and any reviewed legacy Manual source is delete-only
+10. Enabled GA4 revenue source families are evaluated only under their source-specific readiness scopes; GA4 Manual Revenue creation/editing are blocked, and any reviewed legacy Manual source is delete-only
 11. Total Spend = sum of source-modal spend rows (exact)
 12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
 13. Edit spend/revenue sources → no duplicates. Delete → recalculates.

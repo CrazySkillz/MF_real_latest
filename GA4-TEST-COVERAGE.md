@@ -231,7 +231,7 @@ Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign
 | N7 | Daily chart SVG elements exist on page |
 | N8 | Report date (UTC) banner with date |
 | N9 | Back to Campaign link → /campaigns/yesop-brand |
-| N10 | Run Refresh button visible for yesop campaign |
+| N10 | Removed Run Refresh control is not presented as a current GA4 action |
 | N11 | Ad Comparison bar chart container exists |
 | N12 | Insight recommendation has actionable text |
 | N13 | Campaign name "Brand Search" in header |
@@ -242,10 +242,10 @@ Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign
 
 | Test | What it checks |
 |------|----------------|
-| J1 | Add manual spend via wizard → page shows $950 |
-| J2 | Add $500 more → ROAS decreases |
-| J3 | Edit spend via pencil icon → amount updates |
-| J4 | Delete spend via trash → ROAS changes |
+| J1 | GA4 Manual Spend is absent from setup and rejected by the API |
+| J2 | GA4 Manual Spend edit requests are rejected before mutation |
+| J3 | A retained legacy Manual Spend row has no edit action |
+| J4 | Exact reviewed legacy deletion remains available and recomputes totals |
 
 ### Revenue Journeys (2 tests)
 
@@ -258,7 +258,7 @@ Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign
 
 | Test | What it checks |
 |------|----------------|
-| J7 ×3 | Click Run Refresh → all tabs still work after each cycle |
+| J7 ×3 | Reload the Overview → all tabs still work after each cycle |
 
 ### KPI Journeys (9 tests)
 

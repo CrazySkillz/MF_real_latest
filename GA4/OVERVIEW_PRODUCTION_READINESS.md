@@ -28,7 +28,7 @@ The earlier clean-certified answer is retracted. Current code and target-databas
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`; banner follow-up `a0b205b5` then deployed, and the user-confirmed one-refresh follow-up validation passed with the incorrect banner gone. Current Commit 4 deployed as `7c54da65` and passed its bounded user-confirmed spend validation on `2026-07-30`: Total Spend agreed with the Spend Sources list and remained correct after refresh. Current Commit 5 deployed as `5da5f41c`; the user confirmed Google Sheets was absent from both new GA4 Revenue and Spend source choosers. Current Commit 6 deployed through `1c721864` and `6fa4d439`; Current Commit 7 deployed through `107d6240`, `c69354e7`, and `4c44522d`. Their bounded cleanup packet closed on `2026-07-30`. Commits 1-7 are closed. Current Commit 8 is deployed through `950c5091` and UI-stability follow-up `c26d2768`; its 30-day coverage/activity and stable-header UI checks passed. Live 90-day and current timer-fired evidence remain unproven. B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
+Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`; banner follow-up `a0b205b5` then deployed, and the user-confirmed one-refresh follow-up validation passed with the incorrect banner gone. Current Commit 4 deployed as `7c54da65` and passed its bounded user-confirmed spend validation on `2026-07-30`: Total Spend agreed with the Spend Sources list and remained correct after refresh. Current Commit 5 deployed as `5da5f41c`; the user confirmed Google Sheets was absent from both new GA4 Revenue and Spend source choosers. Current Commit 6 deployed through `1c721864` and `6fa4d439`; Current Commit 7 deployed through `107d6240`, `c69354e7`, and `4c44522d`. Their bounded cleanup packet closed on `2026-07-30`. Commits 1-7 are closed. Current Commit 8 is deployed through `950c5091` and UI-stability follow-up `c26d2768`; its 30-day coverage/activity and stable-header UI checks passed. Live 90-day and current timer-fired evidence remain unproven. Current Commit 9's owner-scoped read-only inventory is complete and its forward-only scheduler fix is local; post-deploy no-growth proof and any separately authorized exact cleanup remain open. B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
 
 The durable answer is:
 
@@ -334,9 +334,28 @@ Production data may already mislead Overview and is partly damaged.
 
 Coarse grouping found same-campaign/source-type/display-name clusters for Google Sheets and HubSpot revenue, but no active sources had byte-identical complete mapping configurations. These are review candidates, not proven duplicates, and must not be deleted automatically.
 
+### Current Commit 9 owner-scoped refresh (`2026-07-30`)
+
+The transaction at `2026-07-30T15:44:40.022Z` used `BEGIN READ ONLY` and covered all 10 active GA4 campaigns for the validated owner, 73 revenue sources, and 93 spend sources. It changed nothing.
+
+- orphan revenue: 0
+- orphan spend: 4 groups / 325,478 rows
+- record/source campaign mismatches: 0 revenue and 0 spend
+- inactive-source records: 0 revenue and 45 spend groups / 885 rows; active joins already exclude them
+- exact duplicate-signature candidates: 0
+- active sources with zero records: 0
+- unexpected active platform contexts: 0
+- materialized-versus-cached spend drift: 2 campaigns
+
+The four orphan groups are `linkedin_daily_metrics` / `linkedin_api` and `meta_daily_metrics` / `meta_api` for each of `myGA4` and `Summer splash`. A second read-only density check at `2026-07-30T16:07:51.727Z` found the `myGA4` LinkedIn group had grown from 43,194 to 43,254 rows, proving an active producer rather than static legacy residue.
+
+Root cause: both platform schedulers first persisted their returned data in the canonical LinkedIn/Meta daily tables, then appended the same daily window to generic `spend_records` under pseudo source IDs. No matching `spend_sources` definition exists, and `spend_records` has no applicable uniqueness constraint, so each scheduler run appended more orphan copies. Overview generic spend reads inner-join active source definitions, while LinkedIn and Meta analytics read their canonical daily tables, so these pseudo-source writes are redundant and excluded from current visible totals.
+
+The smallest forward fix removes only the two test-mode and two live pseudo-source write blocks. Canonical daily persistence, provider calls, campaign scoping, refresh state, and the existing cached `campaign.spend` updates remain unchanged. The two cache-drift findings are retained because `campaign.spend` has broader LinkedIn/Meta scheduler and Dashboard/campaign-list consumers; resolving that boundary is separate work. No existing production record was deleted or updated.
+
 ### Cleanup rule
 
-No cleanup was run. The forward read/display defects must be fixed first. A future cleanup must be dry-run-first, owner/campaign/source scoped, and must prove why each orphan or drifted row is safe to change. The 568,233 GA4-campaign orphan rows must not be generalized to the 4,044,066 whole-database rows without separate platform/tenant evidence.
+No cleanup was run. The forward producer must first be deployed and a new read-only inventory must prove the four exact groups have stopped growing. Any later cleanup must be separately authorized, dry-run-first, owner/campaign/source scoped, and must prove why each exact row is safe to change. Neither the earlier 568,233 GA4-campaign snapshot nor the Current Commit 9 owner-scoped result may be generalized to the 4,044,066 whole-database rows without separate platform/tenant evidence.
 
 ## Negative-Case Matrix
 
@@ -614,12 +633,16 @@ Local evidence: the earlier 12-file retained-source lifecycle packet passed 104 
 
 Local implementation evidence before the follow-up: the four-file focused GA4 freshness/auth/lifecycle/provider-validation packet passed 27 tests; the expanded seven-file scheduler/refresh packet passed 48 tests; `npm run check`, validation-runner syntax, `git diff --check`, and the production build passed. The follow-up adds direct pure-function coverage for successful coverage with older activity and retained provider-failure staleness, plus direct daily time-series tests for initial/post-refresh generic `403`, transient token failure, storage failure, and confirmed `invalid_grant`. Its two-file focused packet passes 23 tests; its expanded seven-file scheduler/refresh packet passes 55 tests; TypeScript, validation-runner syntax, `git diff --check`, and the production build pass. The validation runner now also records `providerCoverageThroughDate` and states that current coverage neither invents zero rows nor proves GA4 processing finality. Commits `950c5091` and `c26d2768` are deployed; the 30-day coverage/activity and UI-stability checks passed. Current Commit 8 remains open for a suitable live 90-day provider packet, timer-fired scheduled refresh, the remaining safe stale/provider-empty/on-demand evidence, and durable token evidence. No synthetic production failure injection is authorized.
 
-### Current Commit 9 — Production inventory and bounded cleanup
+### Current Commit 9 — Production inventory and bounded cleanup — forward fix local; cleanup not authorized
 
-- rerun owner/campaign/source-scoped inventory after forward fixes
-- classify all orphan, inactive, duplicate-candidate, no-record, and cache-drift rows
-- apply only reviewed exact candidates
-- rerun post-apply inventory and record counts/skips
+- complete: owner/campaign/source-scoped `BEGIN READ ONLY` inventory covering 10 campaigns, 73 revenue sources, and 93 spend sources
+- complete: classification of orphan, inactive, mismatch, duplicate-candidate, no-record, unexpected-context, and cache-drift results
+- complete locally: remove the redundant LinkedIn/Meta pseudo-source scheduler writes that actively create the four orphan groups
+- next: deploy the forward fix, then rerun the same read-only inventory to prove those groups no longer grow
+- not authorized or performed: deletion/update of existing orphan rows, inactive-source rows, sources, connections, or cached campaign spend
+- later only with explicit authorization: exact cleanup dry run, reviewed apply, and post-apply inventory with counts/skips
+
+Local evidence: the 3-test Current Commit 9 guard, 2 LinkedIn scheduler guards, and 2 targeted Meta persistence/disconnect guards pass. `npm run check`, `git diff --check`, and the production build pass. The wider pre-existing Meta/source-safety packets still contain unrelated stale assertion failures outside this change; they are not presented as passing evidence for Commit 9.
 
 ### Current Commit 10 — Complete downstream propagation and deployed UI evidence
 

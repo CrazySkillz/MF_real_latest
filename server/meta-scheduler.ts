@@ -174,29 +174,6 @@ export async function generateMockMetaData(
     await storage.updateCampaign(campaignId, { spend: totalSpend.toFixed(2) });
     console.log(`[Meta Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${totalSpend.toFixed(2)}`);
 
-    // Populate spend_records for daily granularity (Insights tab support)
-    const spendRecordsToInsert = dailyMetrics
-      .filter((m: any) => parseFloat(String(m?.spend || 0)) > 0)
-      .map((m: any) => ({
-        campaignId,
-        spendSourceId: 'meta_daily_metrics',
-        date: String(m.date),
-        spend: String(parseFloat(String(m.spend || 0)).toFixed(2)),
-        currency: 'USD',
-        sourceType: 'meta_api'
-      }));
-
-    if (spendRecordsToInsert.length > 0) {
-      try {
-        await storage.createSpendRecords(spendRecordsToInsert as any);
-        console.log(`[Meta Scheduler] TEST MODE: Populated ${spendRecordsToInsert.length} daily spend records for campaign ${campaignId}`);
-      } catch (e: any) {
-        if (!e?.message?.includes('duplicate') && !e?.message?.includes('conflict')) {
-          console.warn(`[Meta Scheduler] TEST MODE: Spend records insert failed for ${campaignId}:`, e?.message || e);
-        }
-      }
-    }
-
     // Persist canonical last refresh timestamp for coverage UI.
     try {
       await storage.updateMetaConnection(campaignId, { lastRefreshAt: new Date() } as any);
@@ -304,28 +281,6 @@ async function fetchRealMetaData(
       await storage.updateCampaign(campaignId, { spend: totalSpend.toFixed(2) });
       console.log(`[Meta Scheduler] Updated campaign ${campaignId} spend: ${totalSpend.toFixed(2)}`);
 
-      // Populate spend_records for daily granularity (Insights tab support)
-      const spendRecordsToInsert = dailyMetrics
-        .filter((m: any) => parseFloat(String(m?.spend || 0)) > 0)
-        .map((m: any) => ({
-          campaignId,
-          spendSourceId: 'meta_daily_metrics',
-          date: String(m.date),
-          spend: String(parseFloat(String(m.spend || 0)).toFixed(2)),
-          currency: 'USD',
-          sourceType: 'meta_api'
-        }));
-
-      if (spendRecordsToInsert.length > 0) {
-        try {
-          await storage.createSpendRecords(spendRecordsToInsert as any);
-          console.log(`[Meta Scheduler] Populated ${spendRecordsToInsert.length} daily spend records for campaign ${campaignId}`);
-        } catch (e: any) {
-          if (!e?.message?.includes('duplicate') && !e?.message?.includes('conflict')) {
-            console.warn(`[Meta Scheduler] Spend records insert failed for ${campaignId}:`, e?.message || e);
-          }
-        }
-      }
     }
 
     console.log(`[Meta Scheduler] ✅ Real data fetched and stored for campaign ${campaignId}`);

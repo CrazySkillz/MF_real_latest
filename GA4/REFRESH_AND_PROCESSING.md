@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is not production-ready or clean-certified. Current Commits 1-7 are closed for their documented bounded packets, including the exact `Summer splash` Manual Spend cleanup and post-delete inventory on `2026-07-30`. Whole-Overview Current Commit 8 is deployed; its 30-day coverage/activity and UI-stability checks passed, while live 90-day and current timer-fired evidence remain unproven. Broader retained-source and downstream gates also remain. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+- GA4 Overview is not production-ready or clean-certified. Current Commits 1-7 are closed for their documented bounded packets, including the exact `Summer splash` Manual Spend cleanup and post-delete inventory on `2026-07-30`. Whole-Overview Current Commit 8 is deployed; its 30-day coverage/activity and UI-stability checks passed, while live 90-day and current timer-fired evidence remain unproven. Current Commit 9's read-only inventory found redundant LinkedIn/Meta scheduler writes into orphan generic spend rows; the local forward-only fix removes only those writes. Existing rows remain unchanged pending post-deploy proof and separate cleanup authorization. Broader retained-source and downstream gates also remain. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 ## GA4 Scope Changes
 
@@ -197,6 +197,8 @@ Current eligible sources include:
 - LinkedIn Ads spend
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
+
+LinkedIn and Meta schedulers persist their analytics in their canonical platform daily tables. They must not also append those windows to generic `spend_records` under pseudo source IDs such as `linkedin_daily_metrics` or `meta_daily_metrics`; generic financial spend must remain backed by a real campaign-scoped `spend_sources` row.
 
 Runtime cadence:
 

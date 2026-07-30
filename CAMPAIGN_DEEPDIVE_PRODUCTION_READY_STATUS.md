@@ -213,6 +213,6 @@ The remaining work is:
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.
 
-## 2026-07-30 Current Commit 10 Status
+## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
 
-The downstream parity correction is implemented locally, not deployed. Scheduled/manual Campaign DeepDive aggregates now follow the ordered campaign-to-date GA4 financial contract, explicit GA4 financial-source context, valid-zero ROAS/ROI semantics, and `performance_summary_aggregate_v2` compatibility. Performance Summary, Budget & Financial Analysis, Trend Analysis, Executive Summary, and scheduled Custom Report trackers record the exact boundary. Current deployed report/Trend/multi-source evidence is still required; Campaign DeepDive is not newly certified by local tests alone.
+Commit `ec265895` deployed the downstream parity correction. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend, and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Scheduled/manual Campaign DeepDive aggregates follow the ordered campaign-to-date GA4 financial contract, explicit GA4 financial-source context, valid-zero/negative ROAS/ROI semantics, and `performance_summary_aggregate_v2` compatibility. This closes the bounded Commit 10 code/browser packet. Scheduled attachment values, historical Trend behavior, live multi-source variants, and valid-zero/negative production fixtures remain unproven; Campaign DeepDive is not broadly recertified by this closure.

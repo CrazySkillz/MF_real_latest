@@ -461,6 +461,6 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Local validation passed on 2026-05-28: `npm run check`.
 - Local validation passed on 2026-05-28: `npm run build`.
 
-## 2026-07-30 Current Commit 10 Status
+## 2026-07-30 Current Commit 10 Status — Shared Input Deployed; Attachment Evidence Open
 
-Scheduled Campaign DeepDive PDFs continue to use the existing `aggregateCampaignMetrics` path. That path now supplies the ordered campaign-to-date GA4 financial values, GA4-context persisted sources, valid-zero ROAS/ROI, and `performance_summary_aggregate_v2` compatibility without changing report schemas or delivery code. Local rendering/regression evidence does not prove deployed attachment values or inbox delivery; those remain external validation requirements.
+Scheduled Campaign DeepDive PDFs continue to use the existing `aggregateCampaignMetrics` path. Commit `ec265895` deployed ordered campaign-to-date GA4 financial values, GA4-context persisted sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2` compatibility without changing report schemas or delivery code. Commit 10 is closed for its bounded code/browser packet, but the recorded validation did not inspect a scheduled PDF attachment or inbox delivery. Those external requirements remain unproven.

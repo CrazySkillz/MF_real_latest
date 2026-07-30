@@ -842,6 +842,6 @@ Not covered by local implementation validation:
 - Complete frontend regression coverage beyond the targeted Executive Summary guards and user-validated flows.
 - Future standalone platforms beyond the current shared aggregate contract require the future-platform acceptance gate before that specific source is called production-ready in Executive Summary.
 
-## 2026-07-30 Current Commit 10 Status
+## 2026-07-30 Current Commit 10 Status — Shared Input Deployed; External Evidence Open
 
-Executive Summary's live aggregate contract is unchanged. Its scheduled/manual snapshot input now uses the same ordered campaign-to-date GA4 financial selection and GA4-context persisted financial sources as the corrected downstream aggregate, with valid-zero ROAS/ROI and `performance_summary_aggregate_v2` compatibility. Local tests prove the code boundary only; deployed trajectory, report, and live multi-source evidence remain required.
+Executive Summary's live aggregate contract is unchanged. Commit `ec265895` deployed its scheduled/manual snapshot input alignment to the ordered campaign-to-date GA4 financial selection, GA4-context persisted financial sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2` compatibility. Commit 10 is closed for its bounded code/browser packet, but the recorded validation did not inspect Executive Summary trajectory, scheduled output, or a live multi-source campaign. Those exact evidence gates remain unproven.

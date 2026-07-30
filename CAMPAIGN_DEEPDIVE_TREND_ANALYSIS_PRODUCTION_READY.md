@@ -540,6 +540,6 @@ Commits 1 through 7 are completed and validated locally.
 
 Trend Analysis now has an aggregate contract plus aggregate-backed Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, Insights, and scheduler/snapshot alignment. Final live historical validation should still be completed later with the planned mock-live GA4 account after enough controlled daily rows exist.
 
-## 2026-07-30 Current Commit 10 Status
+## 2026-07-30 Current Commit 10 Status — Implementation Deployed; External Trend Evidence Open
 
-Root cause: the existing scheduled Trend financial SQL joined active sources without a GA4 `platform_context` predicate, so foreign-context financial rows could enter a GA4 snapshot on a multi-platform campaign. The local fix adds GA4 context predicates while preserving the existing 90-day Trend window and `trend_analysis_aggregate_v1` response contract. The enclosing Performance Summary snapshot is now `performance_summary_aggregate_v2`. Local regression evidence passed; deployed historical Trend and multi-source evidence remain required.
+Root cause: the scheduled Trend financial SQL joined active sources without a GA4 `platform_context` predicate, so foreign-context financial rows could enter a GA4 snapshot on a multi-platform campaign. Commit `ec265895` deployed GA4 context predicates while preserving the existing 90-day Trend window and `trend_analysis_aggregate_v1` response contract; the enclosing Performance Summary snapshot is `performance_summary_aggregate_v2`. Commit 10 is closed for its bounded implementation/browser packet, but the recorded browser validation did not inspect historical Trend or a live multi-source campaign. Those exact Trend gates remain unproven.

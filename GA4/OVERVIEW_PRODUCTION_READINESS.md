@@ -675,6 +675,56 @@ Deployed proof and closure boundary:
 - Current Commit 10 is closed for its implementation, regression, build, deployment, and bounded browser-value comparison
 - scheduled snapshot/attachment values, historical Trend behavior, live multi-source variants, valid-zero/negative production fixtures, and unobserved downstream surfaces remain external evidence gates; closure does not upgrade them to proven
 
+### Current Commit 11 — Pipeline Proxy campaign-scope fail-closed — documented, not implemented
+
+- Root cause: the frontend uses `sorted[0]` when no saved CRM source matches the configured GA4 campaign scope.
+- Fix: remove only that wrong-scope fallback; preserve successful endpoint values, same-scope saved fallback, provider aggregation, and confirmed-revenue exclusion.
+- Completion: mismatched scope fails closed and same-scope behavior passes focused regression coverage.
+
+### Current Commit 12 — Financial unavailable-versus-valid-zero contract — documented, not implemented
+
+- Root cause: Profit uses revenue/spend metric gates, but ROAS, ROI, and browser Overview report output use weaker request-availability checks.
+- Fix: apply one existing revenue-availability decision to Total Revenue-dependent cards and browser report output without changing formulas, source order, APIs, or persistence.
+- Completion: missing revenue is unavailable; valid zero with positive spend produces negative-spend Profit, `0.00x` ROAS, and `-100%` ROI; negative revenue remains numeric.
+
+### Current Commit 13 — Ordered financial-source validation parity — documented, not implemented
+
+- Root cause: two validation-runner helpers and server GA4 Benchmark provider-validation still choose maximum revenue instead of the live fixed ordered complete-source contract.
+- Fix: use provider totals, then persisted daily totals, then breakdown only when earlier complete candidates are absent.
+- Completion: first complete candidate wins even when later revenue is larger; incomplete candidates fall through; valid zero/negative remains authoritative; provider queries and response shapes remain unchanged.
+
+### Current Commit 14 — Regression and documentation alignment — documented, not implemented
+
+- Fix nine obsolete validation-runner version assertions, the pre-Commit-10 unscoped scheduler assertion, and add exact negative guards for Commits 11–13.
+- Correct Pipeline Proxy scope/visibility, Total Revenue placement/source meaning, valid-zero provenance, freshness placement, stale Salesforce fallback status, obsolete highest-revenue runner wording, status hashes, and final evidence across canonical Overview documents.
+- Completion: focused and adjacent non-scheduler tests, TypeScript, production build, runner syntax/version, and `git diff --check` pass from the final code state; historical evidence remains distinguishable from current behavior.
+
+### Current Commit 15 — Deployed UI and financial edge-state validation — documented, not started
+
+- Validate wrong-scope and same-scope Pipeline Proxy behavior, missing revenue, valid zero/negative financial behavior, card/source-modal totals, browser Overview report parity, provider/query failure, zero-record source, and foreign-context exclusion.
+- Use safe existing fixtures only. Do not create, reconnect, edit, delete, or rewrite production data to manufacture evidence.
+- Completion: every observed case passes; unavailable fixtures remain explicitly unproven.
+
+### Current Commit 16 — Live window and OAuth durability evidence — documented, not started
+
+- Existing deployed 30-day coverage/activity evidence remains valid; live 60-day and non-simulated 90-day variants remain unproven.
+- Immediate post-publish OAuth reconnect passed; automatic renewal and survival beyond the former seven-day Testing-token window remain unproven.
+- Completion: evidence is observed on existing production configurations without creating or reconfiguring campaigns; missing fixtures remain explicit.
+
+### Current Commit 17 — Retained-source lifecycle and production-data disposition — documented, not started
+
+- Prove exact add/import, edit/replace, delete/deactivate, refresh/reprocess, source-modal, totals, and recompute behavior for every retained source that can contribute, or obtain a separately reviewed scoped disposition.
+- Record an explicit decision for existing orphan/inactive rows and cached-spend drift. No cleanup is authorized by this queue.
+- Completion: retained contributors are proven or separately dispositioned; any cleanup follows read-only dry run, exact owner/campaign/source boundary, explicit authorization, reviewed apply, and post-apply inventory.
+
+### Current Commit 18 — Remaining non-scheduler downstream parity and final certification — documented, not started
+
+- Rerun repaired KPI/Benchmark/provider-validation comparisons and prove browser report, historical Trend, and live multi-source downstream combinations use the same scoped Overview values.
+- Reconcile every non-scheduler acceptance result with the code and canonical documents.
+- Completion: no applicable non-scheduler blocker remains unproven; only then may the bounded non-scheduler Overview receive a clean-certification decision.
+- Certification statement after every Commit 11–18 requirement passes at the same deployed commit and production-data state: **GA4 Overview is clean-certified and production-ready for the documented non-scheduler Overview scope.** Explicitly excluded scheduler paths remain unproven and must stay named in every status.
+
+Explicit exclusions from Commits 11–18: timer/startup refresh proof; scheduled email/PDF/snapshot validation; post-scheduler-cycle inventory; unauthorized production mutation; unrelated tabs/platforms and architectural refactoring. Excluded work remains unproven and is not silently certified.
 Estimated remaining work: Current Commit 8 external provider/scheduler evidence, Current Commit 9 post-cycle inventory/authorized cleanup decision, and the explicitly deferred downstream evidence gates. The count will increase if Google Sheets is re-enabled rather than retained as continuity-only, or if broader production cleanup separates into multiple independently reviewed batches.
 
 ## UI Validation Requirement

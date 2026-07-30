@@ -22,6 +22,8 @@ Current Commit 9 read-only inventory on `2026-07-30` covered all 10 owner campai
 
 Current Commit 10 closed status on `2026-07-30`: commit `ec265895` deployed the downstream scheduled/manual Campaign DeepDive aggregate change that reuses the shared ordered GA4 campaign-to-date financial selection, scopes persisted revenue/spend and Trend financial rows to GA4, preserves valid zero/negative revenue for ROAS/ROI, and writes `performance_summary_aggregate_v2` compatibility snapshots. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Performance Summary has no Total Revenue card. This closes the bounded Commit 10 code/browser packet only; scheduled artifacts, historical Trend, live multi-source, and valid-zero/negative production fixtures remain unproven.
 
+Documentation-first status on `2026-07-30`: the complete currently known non-scheduler remaining-work queue is recorded chronologically as Current Commits 11–18 in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Implementation, regression repair, deployment, UI validation, live-window/OAuth evidence, retained-source disposition, and final downstream certification have not started. Explicit scheduler exclusions remain unproven.
+
 ## Overview Structure
 
 The platform-level GA4 `Overview` tab contains:

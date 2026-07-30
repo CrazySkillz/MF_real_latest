@@ -4,6 +4,10 @@
 
 This file defines the accelerated validation path for GA4 Overview. It replaces repeated one-off browser-console snippets with reusable automation while preserving the no-overclaim production-readiness standard.
 
+## Current Certification Warning
+
+The Current Commit 11–18 remaining-work queue is documented but not implemented; ordered-source validation repair is Current Commit 13. The deployed runner's HubSpot KPI/Benchmark and report-value financial helpers, plus the server GA4 Benchmark provider-validation comparison, still use maximum-revenue selection instead of the live Overview's fixed ordered source contract. Until that is repaired and regression-covered, those financial comparisons are **not valid clean-certification evidence**. Endpoint availability, access, inventory, and non-financial checks remain bounded evidence only. Do not rerun or cite the affected financial packs as proof of Overview parity.
+
 ## What Is Automated
 
 The deployed browser helper `GA4OverviewValidation.overviewPack(...)` checks, in one command:

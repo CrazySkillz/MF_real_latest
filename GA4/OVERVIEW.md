@@ -180,6 +180,8 @@ High-level rule:
 - the read-only Overview source-damage inventory separately reports retained/null-context sources for exact production review; its owner-scoped production run found nine sources across three of the owner's 10 active GA4 campaigns, and the user subsequently confirmed the `Summer splash` `$400` Manual Spend source is unwanted legacy data
 - after a GA4 Spend source is added, edited, or deleted, the page invalidates the same KPI, Benchmark, Reports, and Notifications caches as a Revenue source mutation so mounted downstream consumers do not retain pre-mutation values
 - GA4 Manual Revenue and Manual Spend creation/editing are blocked in UI and API; exact campaign-scoped deletion remains available only for reviewed legacy cleanup
+- an active OAuth placeholder with an empty GA4 Property ID is setup state, not a usable GA4 analytics connection; it must never leave Overview in a permanent loading skeleton
+- when no usable GA4 property exists but saved financial sources do, Overview fails GA4 metrics and tables closed as unavailable, hides new-source controls, and keeps only the existing campaign-scoped source review/removal path reachable
 - retained GA4 Google Sheets, Salesforce, and LinkedIn/ad-platform source replacements update source metadata and materialized records transactionally; failed replacement preserves the prior committed source state, and ambiguous duplicate LinkedIn Spend refresh fails closed
 - profit and efficiency metrics are derived outputs, not manually stored totals
 

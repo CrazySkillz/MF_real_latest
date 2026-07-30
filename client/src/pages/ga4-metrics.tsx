@@ -1574,7 +1574,9 @@ export default function GA4Metrics() {
   const ga4PropsFromAll: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
     Array.isArray((allGA4Connections as any)?.connections) ? (allGA4Connections as any).connections : [];
   const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
-    ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll;
+    (ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll)
+      .filter((property) => String(property?.propertyId || "").trim().length > 0);
+  const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0;
 
   // Read lookbackDays from the active GA4 connection (default 90 for backward compatibility)
   const GA4_DAILY_LOOKBACK_DAYS = (() => {
@@ -2406,6 +2408,8 @@ export default function GA4Metrics() {
       materializedRevenueStatus: d.materializedRevenueStatus,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
+  const persistedFinancialSourceCleanupAvailable =
+    revenueDisplaySources.length > 0 || spendDisplaySources.length > 0;
   const pipelineProxyData = useMemo(() => {
     const sourceDefs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     const scopedCampaignValues = Array.isArray(selectedGa4CampaignFilterList)
@@ -2688,9 +2692,9 @@ export default function GA4Metrics() {
     (hubspotPipelineProxyError && hubspotPipelineProxyData !== undefined) ||
     (salesforcePipelineProxyError && salesforcePipelineProxyData !== undefined)
   );
-  const campaignBreakdownUnavailable = breakdownError && ga4Breakdown === undefined;
-  const landingPagesUnavailable = landingPagesError && ga4LandingPages === undefined;
-  const conversionEventsUnavailable = conversionEventsError && ga4ConversionEvents === undefined;
+  const campaignBreakdownUnavailable = !ga4ConnectionUsable || (breakdownError && ga4Breakdown === undefined);
+  const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
+  const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
   // GA4 KPIs are evaluated on cumulative values — target is the absolute goal.
@@ -5447,11 +5451,10 @@ export default function GA4Metrics() {
     availableGA4Properties[0] ||
     null;
   const ga4ContentInitializing =
-    (!!ga4Connection?.connected &&
-      (Number((ga4Connection as any)?.totalConnections || 0) > 0 || availableGA4Properties.length > 0) &&
+    (ga4ConnectionUsable &&
       !selectedGA4PropertyId) ||
     (!!campaignId &&
-      !!ga4Connection?.connected &&
+      ga4ConnectionUsable &&
       !!selectedGA4PropertyId &&
       !ga4ToDateResp &&
       (ga4ToDateLoading || (!ga4Metrics && (ga4Loading || breakdownLoading))));
@@ -5528,7 +5531,7 @@ export default function GA4Metrics() {
   }
 
   // Prevent a "flash" of the GA4 connection flow before the connection check finishes.
-  if (ga4ConnLoading) {
+  if (ga4ConnLoading || (!ga4ConnectionUsable && (revenueSourcesLoading || spendSourcesLoading))) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -5587,8 +5590,8 @@ export default function GA4Metrics() {
     );
   }
 
-  // If GA4 is not connected or has no connections, show connection flow
-  if (!ga4Connection?.connected || ga4Connection?.totalConnections === 0) {
+  // Keep exact persisted financial-source cleanup reachable even when no GA4 property is usable.
+  if (!ga4ConnectionUsable && !persistedFinancialSourceCleanupAvailable) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -5687,10 +5690,19 @@ export default function GA4Metrics() {
               <CardContent className="p-4 text-sm text-muted-foreground/80 space-y-1">
                 <div><span className="font-medium text-foreground">Client:</span> {headerClientName}</div>
                 <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
-                <div><span className="font-medium text-foreground">GA4 Property ID:</span> {provenancePropertyId || provenanceProperty}</div>
+                <div><span className="font-medium text-foreground">GA4 Property ID:</span> {ga4ConnectionUsable ? (provenancePropertyId || provenanceProperty) : "Unavailable"}</div>
                 <div><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
               </CardContent>
             </Card>
+            {!ga4ConnectionUsable && (
+              <div
+                className="mt-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                data-testid="ga4-financial-cleanup-state"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>GA4 metrics are unavailable. Saved financial sources remain available below for review or removal.</span>
+              </div>
+            )}
             {/* Intentionally no inline "Data warnings" banner in the MVP UI (keeps the page clean for execs). */}
           </div>
 
@@ -5837,15 +5849,19 @@ export default function GA4Metrics() {
           ) : (
             <>
               {/* Charts and Detailed Analytics */}
-              <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7">
+              <Tabs value={ga4ConnectionUsable ? activeTab : "overview"} onValueChange={handleActiveTabChange} className="space-y-6">
+                <TabsList className={ga4ConnectionUsable ? "grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7" : "grid w-full grid-cols-1"}>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
+                  {ga4ConnectionUsable && (
+                    <>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="campaigns">Ad Comparison</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                   <TabsTrigger value="connection-details">Connection details</TabsTrigger>
+                    </>
+                  )}
                 </TabsList>
 
                 {activeTab === "overview" && overviewVisibleDataUsingLastGoodData && (
@@ -5937,13 +5953,13 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
-                              <button
+                              {ga4ConnectionUsable && <button
                                 onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}
                                 className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
                                 title="Add revenue source"
                               >
                                 <Plus className="h-3.5 w-3.5" />
-                              </button>
+                              </button>}
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))}
@@ -5995,13 +6011,13 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
-                              <button
+                              {ga4ConnectionUsable && <button
                                 onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
                                 className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
                                 title="Add spend source"
                               >
                                 <Plus className="h-3.5 w-3.5" />
-                              </button>
+                              </button>}
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(Number(financialSpend || 0)))}
@@ -6413,7 +6429,7 @@ export default function GA4Metrics() {
                                 <span className="font-medium tabular-nums text-foreground">
                                   {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                 </span>
-                                {s.sourceType !== "manual" && (
+                                {ga4ConnectionUsable && s.sourceType !== "manual" && (
                                   <button
                                     onClick={() => {
                                       setShowRevenueSourcesDialog(false);
@@ -6467,7 +6483,7 @@ export default function GA4Metrics() {
                               <span className="font-medium tabular-nums text-foreground">
                                 {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
                               </span>
-                              {s.sourceType !== "manual" && (
+                              {ga4ConnectionUsable && s.sourceType !== "manual" && (
                                 <button
                                   onClick={() => {
                                     setShowSpendSourcesDialog(false);

@@ -12893,16 +12893,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all GA4 connections for this campaign
       const ga4Connections = await storage.getGA4Connections(campaignId);
+      // An OAuth placeholder without a selected property is setup state, not a usable analytics connection.
+      const usableGA4Connections = ga4Connections.filter((connection: any) =>
+        String(connection?.propertyId || "").trim().length > 0
+      );
 
       console.log(`[GA4 Check] Found ${ga4Connections.length} connections for campaign ${campaignId}`);
 
-      if (ga4Connections && ga4Connections.length > 0) {
-        const primaryConnection = ga4Connections.find(conn => conn.isPrimary) || ga4Connections[0];
+      if (usableGA4Connections.length > 0) {
+        const primaryConnection = usableGA4Connections.find(conn => conn.isPrimary) || usableGA4Connections[0];
         return res.json({
           connected: true,
           primaryPropertyId: primaryConnection.propertyId,
-          totalConnections: ga4Connections.length,
-          connections: ga4Connections.map(conn => ({
+          totalConnections: usableGA4Connections.length,
+          connections: usableGA4Connections.map(conn => ({
             id: conn.id,
             propertyId: conn.propertyId,
             propertyName: conn.propertyName,
@@ -12915,7 +12919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           primaryPropertyName: primaryConnection.propertyName,
           primaryDisplayName: primaryConnection.displayName || primaryConnection.propertyName,
           primaryConnectedAt: primaryConnection.connectedAt,
-          hasValidToken: ga4Connections.some(conn => !!conn.accessToken),
+          hasValidToken: usableGA4Connections.some(conn => !!conn.accessToken),
           method: primaryConnection.method
         });
       }

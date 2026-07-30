@@ -195,13 +195,47 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(rejection).toBeLessThan(manualSpendRoute.indexOf('storage.createSpendSource('));
 
     const revenueSourcesModal = sliceBetween(ga4Page, '>Revenue Sources</DialogTitle>', '>Spend Sources</DialogTitle>');
-    expect(revenueSourcesModal).toContain('{s.sourceType !== "manual" && (');
+    expect(revenueSourcesModal).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');
     expect(revenueSourcesModal).toContain('setDeletingRevenueSourceId(s.sourceId);');
     expect(revenueSourcesModal).toContain('title="Remove revenue source"');
 
     const spendSourcesModal = sliceBetween(ga4Page, '>Spend Sources</DialogTitle>', '>Pipeline Proxy Sources</DialogTitle>');
-    expect(spendSourcesModal).toContain('{s.sourceType !== "manual" && (');
+    expect(spendSourcesModal).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');
     expect(spendSourcesModal).toContain('setDeletingSpendSourceId(s.sourceId);');
     expect(spendSourcesModal).toContain('title="Remove spend source"');
+  });
+
+  it('does not report an empty-property GA4 placeholder as a usable connection', () => {
+    const connectionRoute = sliceBetween(
+      routes,
+      'app.get("/api/ga4/check-connection/:campaignId"',
+      '// Connected platforms summary for campaign detail page',
+    );
+    const accessGuard = connectionRoute.indexOf('await ensureCampaignAccess(req as any, res as any, campaignId)');
+    const sourceRead = connectionRoute.indexOf('await storage.getGA4Connections(campaignId)');
+    const usableFilter = connectionRoute.indexOf('const usableGA4Connections = ga4Connections.filter');
+    expect(accessGuard).toBeGreaterThan(-1);
+    expect(accessGuard).toBeLessThan(sourceRead);
+    expect(usableFilter).toBeGreaterThan(sourceRead);
+    expect(connectionRoute).toContain('String(connection?.propertyId || "").trim().length > 0');
+    expect(connectionRoute).toContain('if (usableGA4Connections.length > 0)');
+    expect(connectionRoute).toContain('totalConnections: usableGA4Connections.length');
+    expect(connectionRoute).toContain('connections: usableGA4Connections.map');
+  });
+
+  it('fails closed without skeletons while retaining exact financial-source cleanup', () => {
+    expect(ga4Page).toContain('.filter((property) => String(property?.propertyId || "").trim().length > 0)');
+    expect(ga4Page).toContain('const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0;');
+    expect(ga4Page).toContain('ga4ConnLoading || (!ga4ConnectionUsable && (revenueSourcesLoading || spendSourcesLoading))');
+    expect(ga4Page).toContain('if (!ga4ConnectionUsable && !persistedFinancialSourceCleanupAvailable)');
+    expect(ga4Page).toContain('data-testid="ga4-financial-cleanup-state"');
+    expect(ga4Page).toContain('GA4 metrics are unavailable. Saved financial sources remain available below for review or removal.');
+    expect(ga4Page).toContain('const campaignBreakdownUnavailable = !ga4ConnectionUsable');
+    expect(ga4Page).toContain('const landingPagesUnavailable = !ga4ConnectionUsable');
+    expect(ga4Page).toContain('const conversionEventsUnavailable = !ga4ConnectionUsable');
+    expect(ga4Page).toContain('{ga4ConnectionUsable && <button');
+    expect(ga4Page).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');
+    expect(ga4Page).toContain('setDeletingRevenueSourceId(s.sourceId);');
+    expect(ga4Page).toContain('setDeletingSpendSourceId(s.sourceId);');
   });
 });

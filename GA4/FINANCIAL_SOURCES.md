@@ -757,6 +757,8 @@ Important meaning:
 - Git history confirms Manual Spend was visible when the row was created and was hidden on `2026-04-23`; hiding the card did not remove the persisted row
 - the user confirmed this source is unwanted; it must not be edited or treated as an intentional continuity source
 - production deletion remains a separate exact-source action followed by Total Spend and inventory verification
+- the `Summer splash` cleanup was temporarily unreachable because its active OAuth placeholder had an empty GA4 Property ID and the analytics page rendered permanent initialization skeletons
+- the local Current Commit 7 follow-up treats that placeholder as unusable, keeps provider metrics unavailable, hides new financial-source controls, and retains the existing exact campaign-scoped source modal deletion path; it does not reconnect GA4 or mutate the `$400` source
 
 ## Source Modal From The Cards
 

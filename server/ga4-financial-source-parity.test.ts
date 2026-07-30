@@ -39,6 +39,71 @@ describe("GA4 downstream financial-source parity", () => {
     expect(campaign.indexOf("toDateCandidate,")).toBeLessThan(campaign.indexOf("financialRows.length > 0 ? dailyCandidate : null"));
   });
 
+  it("makes the browser runner preserve zero and negative first candidates and fall through incomplete ones", () => {
+    const runner = read("client/public/ga4-overview-validation-runner.js");
+    const selectorSource = runner.slice(
+      runner.indexOf("function firstOverviewFinancialNumber("),
+      runner.indexOf("function normalizeFinancialMetricKey("),
+    );
+    const select = new Function(
+      "rowsOf",
+      "firstNumber",
+      "money",
+      "sumRows",
+      `${selectorSource}\nreturn overviewFinancialSourceTotals;`,
+    )(
+      (data: any) => Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [],
+      (data: any, keys: string[]) => {
+        for (const key of keys) {
+          const value = data?.[key];
+          if (value !== null && value !== undefined && Number.isFinite(Number(value))) return Number(value);
+        }
+        return null;
+      },
+      (value: any) => Number.isFinite(Number(value)) ? Math.round(Number(value) * 100) / 100 : null,
+      (rows: any[], keys: string[]) => rows.reduce((sum, row) => {
+        const value = keys.map((key) => row?.[key]).find((item) => item !== null && item !== undefined && Number.isFinite(Number(item)));
+        return sum + (value === undefined ? 0 : Number(value));
+      }, 0),
+    );
+
+    expect(select({ totals: { revenue: 0, conversions: 0 } }, { totals: { revenue: 300, conversions: 8 } }, [{ revenue: 200, conversions: 4 }]).source).toBe("ga4-to-date");
+    expect(select({ totals: { revenue: -25, conversions: 1 } }, { totals: { revenue: 300, conversions: 8 } }, [{ revenue: 200, conversions: 4 }]).source).toBe("ga4-to-date");
+    expect(select({ totals: { revenue: 100 } }, { totals: { revenue: 300, conversions: 8 } }, [{ revenue: 200, conversions: 4 }]).source).toBe("ga4-daily");
+    expect(select(null, { totals: { revenue: 300, conversions: 8 } }, []).source).toBe("ga4-breakdown");
+  });
+
+  it("keeps read-only runner and Benchmark validation on the same ordered complete-source contract", () => {
+    const runner = read("client/public/ga4-overview-validation-runner.js");
+    const routes = read("server/routes-oauth.ts");
+    const runnerVersion = runner.match(/var VERSION = "([^"]+)";/)?.[1];
+    const runnerSelector = runner.slice(
+      runner.indexOf("function overviewFinancialSourceTotals("),
+      runner.indexOf("function normalizeFinancialMetricKey("),
+    );
+    const reportHelper = runner.slice(
+      runner.indexOf("async function hubspotReportValuePack("),
+      runner.indexOf("function hubspotPortabilityUniqueSorted("),
+    );
+    const providerRouteStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-benchmark-provider-validation"');
+    const providerValidation = routes.slice(
+      providerRouteStart,
+      routes.indexOf("  // ============================================================================", providerRouteStart),
+    );
+
+    expect(runnerSelector.indexOf('source: "ga4-to-date"')).toBeLessThan(runnerSelector.indexOf('source: "ga4-daily"'));
+    expect(runnerSelector.indexOf('source: "ga4-daily"')).toBeLessThan(runnerSelector.indexOf('source: "ga4-breakdown"'));
+    expect(runnerSelector).toContain('return ["revenue", "conversions"].every');
+    expect(runnerSelector).not.toContain("reduce(function (best, current)");
+    expect(reportHelper).toContain("var reportFinancialSource = overviewFinancialSourceTotals(");
+    expect(reportHelper).not.toContain("Math.max(Number(ga4ToDateRevenue");
+    expect(providerValidation).toContain("selectGA4FinancialTotalsSource(");
+    expect(providerValidation.indexOf("uiFinancialProviderCandidate,")).toBeLessThan(providerValidation.indexOf("uiFinancialDailyCandidate],"));
+    expect(providerValidation).not.toContain("reduce((best: any, current: any)");
+    expect(runnerVersion).toBeTruthy();
+    expect(runner).toContain(`await import('/ga4-overview-validation-runner.js?v=${runnerVersion}')`);
+  });
+
   it("limits provider candidate reads to campaign financial metrics and isolates cache variants", () => {
     const campaign = read("server/utils/campaign-current-values.ts");
     expect(campaign).toContain('["revenue", "profit", "roas", "roi", "cpa"]');

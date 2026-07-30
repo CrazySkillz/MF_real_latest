@@ -9196,9 +9196,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uiBaseInputs = (currentValueDailyInput.sessions > 0 || currentValueDailyInput.users > 0 || currentValueDailyInput.conversions > 0 || currentValueDailyInput.pageviews > 0 || currentValueDailyInput.ga4Revenue > 0)
         ? currentValueDailyInput
         : (currentValueProviderInput || currentValueDailyInput);
-      const uiFinancialBase = [currentValueProviderInput, currentValueDailyInput]
-        .filter(Boolean)
-        .reduce((best: any, current: any) => Number(current?.ga4Revenue || 0) > Number(best?.ga4Revenue || 0) ? current : best, currentValueProviderInput || currentValueDailyInput);
+      const uiFinancialProviderCandidate = currentValueProviderInput ? {
+        revenue: currentValueProviderInput.ga4Revenue,
+        conversions: currentValueProviderInput.conversions,
+        value: currentValueProviderInput,
+      } : null;
+      const uiFinancialDailyCandidate = {
+        revenue: currentValueDailyInput.ga4Revenue,
+        conversions: currentValueDailyInput.conversions,
+        value: currentValueDailyInput,
+      };
+      const uiFinancialBase = selectGA4FinancialTotalsSource(
+        [uiFinancialProviderCandidate, uiFinancialDailyCandidate],
+        uiFinancialDailyCandidate,
+      ).value;
       const uiFinancialInputs = { ...uiFinancialBase, importedRevenue, spend: uiSpend };
 
       const computeUIValue = (metricKey: string) => {

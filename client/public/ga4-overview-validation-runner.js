@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-30.9";
+  var VERSION = "2026-07-30.10";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -2170,11 +2170,23 @@
     return sourceType(sourceDefinitionsById.get(id));
   }
 
+  function firstOverviewFinancialNumber(data, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      var value = data && data[keys[i]];
+      if (value === null || value === undefined) continue;
+      var parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  }
+
   function endpointMetricTotals(data) {
     var totals = data && data.totals || data || {};
+    var revenue = firstOverviewFinancialNumber(totals, ["revenue", "totalRevenue", "total", "amount"]);
+    var conversions = firstOverviewFinancialNumber(totals, ["conversions", "totalConversions"]);
     return {
-      revenue: money(firstNumber(totals, ["revenue", "totalRevenue", "total", "amount"]) || 0) || 0,
-      conversions: money(firstNumber(totals, ["conversions", "totalConversions"]) || 0) || 0,
+      revenue: revenue === null ? null : money(revenue),
+      conversions: conversions === null ? null : money(conversions),
       sessions: money(firstNumber(totals, ["sessions", "totalSessions"]) || 0) || 0,
       users: money(firstNumber(totals, ["users", "totalUsers"]) || 0) || 0,
       pageviews: money(firstNumber(totals, ["pageviews", "screenPageViews", "views"]) || 0) || 0,
@@ -2195,14 +2207,23 @@
   }
 
   function overviewFinancialSourceTotals(ga4ToDateData, ga4BreakdownData, ga4DailyData) {
+    var dailyRows = rowsOf(ga4DailyData);
+    var breakdownRows = rowsOf(ga4BreakdownData);
+    var breakdownTotals = endpointMetricTotals(ga4BreakdownData);
+    var breakdownSummedTotals = summedMetricTotals(ga4BreakdownData);
+    if (breakdownTotals.revenue === null) breakdownTotals.revenue = breakdownSummedTotals.revenue;
+    if (breakdownTotals.conversions === null) breakdownTotals.conversions = breakdownSummedTotals.conversions;
     var candidates = [
-      { source: "ga4-to-date", totals: endpointMetricTotals(ga4ToDateData) },
-      { source: "ga4-daily", totals: summedMetricTotals(ga4DailyData) },
-      { source: "ga4-breakdown", totals: summedMetricTotals(ga4BreakdownData) }
-    ];
-    return candidates.reduce(function (best, current) {
-      return Number(current.totals.revenue || 0) > Number(best.totals.revenue || 0) ? current : best;
-    }, candidates[0]);
+      ga4ToDateData && ga4ToDateData.totals ? { source: "ga4-to-date", totals: endpointMetricTotals(ga4ToDateData) } : null,
+      dailyRows.length > 0 ? { source: "ga4-daily", totals: summedMetricTotals(ga4DailyData) } : null,
+      ga4BreakdownData && (ga4BreakdownData.totals || breakdownRows.length > 0) ? { source: "ga4-breakdown", totals: breakdownTotals } : null
+    ].filter(Boolean);
+    return candidates.find(function (candidate) {
+      return ["revenue", "conversions"].every(function (field) {
+        var value = candidate.totals[field];
+        return value !== null && value !== undefined && Number.isFinite(Number(value));
+      });
+    }) || { source: "ga4-to-date-fallback", totals: endpointMetricTotals(ga4ToDateData) };
   }
 
   function normalizeFinancialMetricKey(value) {
@@ -2504,11 +2525,12 @@
     var importedRevenueForFinancials = sumRows(revenueBreakdownRows, ["revenue", "amount", "totalRevenue", "total", "value"]);
     var hubspotRevenueForFinancials = sumRows(hubspotRevenueRows, ["revenue", "amount", "totalRevenue", "total", "value"]);
     var spendForFinancials = sumRows(spendBreakdownRows, ["spend", "amount", "totalSpend", "total", "cost", "value"]);
-    var ga4ToDateRevenue = endpointRevenueTotal(byName.ga4ToDate && byName.ga4ToDate.data);
-    var ga4BreakdownRevenue = endpointRevenueTotal(byName.ga4Breakdown && byName.ga4Breakdown.data);
-    var ga4DailyRevenue = sumRows(rowsOf(byName.ga4Daily && byName.ga4Daily.data), ["revenue", "totalRevenue", "amount", "total", "value"]);
-    var ga4RevenueForFinancials = Math.max(Number(ga4ToDateRevenue || 0), Number(ga4DailyRevenue || 0), Number(ga4BreakdownRevenue || 0));
-    ga4RevenueForFinancials = money(ga4RevenueForFinancials);
+    var reportFinancialSource = overviewFinancialSourceTotals(
+      byName.ga4ToDate && byName.ga4ToDate.data,
+      byName.ga4Breakdown && byName.ga4Breakdown.data,
+      byName.ga4Daily && byName.ga4Daily.data
+    );
+    var ga4RevenueForFinancials = money(reportFinancialSource.totals.revenue || 0);
     var reportFinancialRevenue = money(Number(ga4RevenueForFinancials || 0) + Number(importedRevenueForFinancials || 0));
 
     var selectedGa4CampaignValues = config.selectedGa4CampaignValues !== undefined
@@ -3672,7 +3694,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-12.6')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-30.10')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

@@ -177,7 +177,9 @@ High-level rule:
 - active Google Sheets spend sources must be repulled automatically after mapped sheet values change; the default near-real-time target is a provider pull within 1 minute, and the open Overview spend queries refetch persisted values within 15 additional seconds
 - this Google Sheets spend contract is bounded polling rather than an instantaneous provider push; failed pulls must retain the last successful stored spend instead of clearing or replacing it with guessed values
 - Google Sheets OAuth/durability and automatic-update certification work is on hold; new GA4 Google Sheets revenue/spend creation is locally fail-closed until that work resumes, without deleting or deactivating retained sources
-- the read-only Overview source-damage inventory separately reports retained/null-context sources for exact production review; it never authorizes automatic cleanup, migration, or deactivation
+- the read-only Overview source-damage inventory separately reports retained/null-context sources for exact production review; Current Commit 6's completed owner-scoped production run found nine retained continuity sources across three of the owner's 10 active GA4 campaigns and never authorized automatic cleanup, migration, or deactivation
+- after a GA4 Spend source is added, edited, or deleted, the page invalidates the same KPI, Benchmark, Reports, and Notifications caches as a Revenue source mutation so mounted downstream consumers do not retain pre-mutation values
+- retained GA4 Manual, Google Sheets, Salesforce, and LinkedIn/ad-platform source replacements update source metadata and materialized records transactionally; failed replacement preserves the prior committed source state, and ambiguous duplicate LinkedIn Spend refresh fails closed
 - profit and efficiency metrics are derived outputs, not manually stored totals
 
 Pipeline Proxy rule:

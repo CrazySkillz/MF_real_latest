@@ -3,6 +3,8 @@ import { join } from "path";
 import { describe, expect, it } from "vitest";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
+const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
+const ga4Page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf8");
 
 const sliceBetween = (source: string, start: string, end: string) => {
   const startIndex = source.indexOf(start);
@@ -48,7 +50,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
 
   it("passes platform context through GA4 revenue source add, edit, and delete recompute paths", () => {
     const platformContextCalls = routes.match(/await recomputeCampaignDerivedValues\(campaignId, \{ platformContext \}\);/g) || [];
-    expect(platformContextCalls.length).toBe(7);
+    expect(platformContextCalls.length).toBe(9);
 
     const platformCtxCalls = routes.match(/await recomputeCampaignDerivedValues\(campaignId, \{ platformContext: platformCtx \}\);/g) || [];
     expect(platformCtxCalls.length).toBe(5);
@@ -90,7 +92,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
     );
     expect(scheduleHelper).toContain("setImmediate(() => {");
     expect(scheduleHelper).toContain('void recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update").catch');
-    expect((routes.match(/scheduleGA4SpendPostResponseRecompute\(campaignId\);/g) || []).length).toBe(4);
+    expect((routes.match(/scheduleGA4SpendPostResponseRecompute\(campaignId\);/g) || []).length).toBe(7);
 
     const processRoutes = [
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/process/manual"', "const processConnectorDerivedSpend"),
@@ -135,5 +137,37 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(bulkSpendDeleteRoute.indexOf('await storage.updateCampaign(campaignId, { spend: "0" as any } as any);')).toBeLessThan(
       bulkSpendDeleteRoute.indexOf('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");'),
     );
+  });
+
+  it("refreshes every GA4 downstream cache after spend add, edit, or delete", () => {
+    const spendProcessed = sliceBetween(ga4Page, "<AddSpendWizardModal", "<AddRevenueWizardModal");
+    const spendDelete = sliceBetween(
+      ga4Page,
+      'fetch(`/api/campaigns/${campaignId}/spend-sources/${deletingSpendSourceId}?platformContext=ga4`',
+      '<AlertDialog open={!!deletingRevenueSourceId}',
+    );
+
+    for (const successPath of [spendProcessed, spendDelete]) {
+      expect(successPath).toContain('queryKey: [`/api/platforms/google_analytics/kpis`, campaignId]');
+      expect(successPath).toContain('queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")]');
+      expect(successPath).toContain('queryKey: ["/api/platforms/google_analytics/reports", campaignId]');
+      expect(successPath).toContain("void refreshNotificationQueries();");
+    }
+  });
+
+  it('atomically replaces every retained GA4 source family without deleting last-good records first', () => {
+    expect(storage).toContain('async replaceSpendSourceWithRecords(');
+    expect(storage).toContain('async replaceRevenueSourceWithRecords(');
+    expect(storage).toContain('async replaceGa4SalesforceRevenueSourceWithRecords(');
+    for (const routeCall of [
+      "replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'manual', 'ga4'",
+      "replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, 'ga4'",
+      "replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'",
+      "replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'",
+      "replaceSpendSourceWithRecords(campaignId, sourceId, 'linkedin_api', 'ga4'",
+      'replaceGa4SalesforceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull',
+    ]) expect(routes).toContain(routeCall);
+    expect(routes).toContain("Multiple active LinkedIn spend sources require review.");
+    expect(storage).toContain("if (!savedConnection) throw new Error('Salesforce connection not found')");
   });
 });

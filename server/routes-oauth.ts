@@ -3923,6 +3923,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subCampaignUrn: subCampaignUrn || null,
       });
 
+      if (platformContext === 'ga4') {
+        const endDate = yesterdayUTC();
+        const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'manual', 'ga4', {
+          campaignId, sourceType: 'manual', platformContext: 'ga4', displayName, currency: cur, mappingConfig, isActive: true,
+        } as any, [{ campaignId, date: endDate, revenue: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur, subCampaignUrn: subCampaignUrn || null } as any]);
+        await recomputeCampaignDerivedValues(campaignId, { platformContext });
+        return res.json({ success: true, sourceId: source.id, date: endDate, currency: cur, mode, valueSource: 'revenue', revenueToDate: Number(amount.toFixed(2)), conversionValue: 0 });
+      }
+
       let source: any;
       if (existingSourceId) {
         const existingSource = await storage.getRevenueSource(campaignId, existingSourceId);
@@ -4961,6 +4970,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: "Revenue source not found" });
       }
 
+      if (platformContext === 'ga4') {
+        const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+        const records: any[] = dateCol && dailyRevenueMap.size > 0
+          ? Array.from(dailyRevenueMap.entries()).filter(([, rev]) => rev > 0).map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency }))
+          : totalRevenue > 0 ? [{ campaignId, date: endDate, revenue: totalRevenue.toFixed(2) as any, currency }] : [];
+        for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
+          const [date, ...urnParts] = key.split(':');
+          const subCampaignUrn = urnParts.join(':');
+          if (date && subCampaignUrn && rev > 0) records.push({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency, subCampaignUrn });
+        }
+        const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
+          campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : 'Google Sheets revenue'), currency, mappingConfig: nextMappingConfig, isActive: true,
+        } as any, records);
+        await recomputeCampaignDerivedValues(campaignId, { platformContext });
+        return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue });
+      }
+
       let source: any = existingSheetsSource || null;
       if (!source) {
         // Note: do NOT deactivate existing sources — revenue sources are additive.
@@ -5209,6 +5235,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const finalMappingConfig = clientMappingConfig
         ? JSON.stringify({ ...clientMappingConfig, amount: Number(amount.toFixed(2)), currency: cur })
         : JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date", subCampaignUrn: subCampaignUrn || null });
+
+      if (platformContext === 'ga4' && existingSourceId) {
+        const existingSource = await storage.getSpendSource(campaignId, existingSourceId, 'ga4');
+        if (!existingSource || String((existingSource as any)?.sourceType || '').trim() !== effectiveSourceType) {
+          return res.status(404).json({ success: false, error: 'Spend source not found' });
+        }
+        if (effectiveSourceType === 'ad_platforms' && overrideDisplayName && String((existingSource as any)?.displayName || '').trim() !== effectiveDisplayName) {
+          return res.status(404).json({ success: false, error: `${effectiveDisplayName} spend source not found` });
+        }
+      }
+      if (platformContext === 'ga4') {
+        const today = new Date().toISOString().split('T')[0];
+        const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, 'ga4', {
+          campaignId, sourceType: effectiveSourceType, platformContext: 'ga4', displayName: effectiveDisplayName, currency: cur, mappingConfig: finalMappingConfig, isActive: true,
+        } as any, [{ campaignId, date: today, spend: amount.toFixed(2), currency: cur, sourceType: effectiveSourceType, subCampaignUrn: subCampaignUrn || null } as any]);
+        await recalcCampaignSpend(campaignId);
+        scheduleGA4SpendPostResponseRecompute(campaignId);
+        return res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext });
+      }
 
       let source: any;
       if (existingSourceId) {
@@ -5466,6 +5511,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateRange: `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
         fetchedAt: new Date().toISOString(),
       });
+
+      if (platformContext === 'ga4') {
+        let sourceId = existingSourceId || null;
+        if (!sourceId) {
+          const matches = (await storage.getSpendSources(campaignId, 'ga4')).filter((candidate: any) => candidate?.isActive !== false && String(candidate?.sourceType || '') === 'linkedin_api');
+          if (matches.length > 1) return res.status(409).json({ success: false, error: 'Multiple active LinkedIn spend sources require review.' });
+          sourceId = matches[0]?.id ? String(matches[0].id) : null;
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const source = await storage.replaceSpendSourceWithRecords(campaignId, sourceId, 'linkedin_api', 'ga4', {
+          campaignId, sourceType: 'linkedin_api', platformContext: 'ga4', displayName: 'LinkedIn Ads', currency: cur, mappingConfig, isActive: true,
+        } as any, [{ campaignId, date: today, spend: totalSpend.toFixed(2), currency: cur, sourceType: 'linkedin_api' } as any]);
+        await recalcCampaignSpend(campaignId);
+        scheduleGA4SpendPostResponseRecompute(campaignId);
+        return res.json({ success: true, sourceId: source.id, totalSpend: Number(totalSpend.toFixed(2)), currency: cur, campaignCount: breakdown.length });
+      }
       let source: any;
 
       if (existingSourceId) {
@@ -6176,6 +6237,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       if (existingSourceId && !existingSheetsSpendSource) {
         return res.status(404).json({ success: false, error: "Spend source not found" });
+      }
+
+      if (platformContext === 'ga4') {
+        const records = dateCol && dailySpendMap.size > 0
+          ? Array.from(dailySpendMap.entries()).filter(([, spend]) => spend > 0).map(([date, spend]) => ({ campaignId, date, spend: String(Number(spend.toFixed(2))), currency, sourceType: 'google_sheets' }))
+          : [{ campaignId, date: new Date().toISOString().split('T')[0], spend: totalSpend.toFixed(2), currency, sourceType: 'google_sheets' }];
+        const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
+          campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || 'Google Sheets', currency, mappingConfig: nextSpendMappingConfig, isActive: true,
+        } as any, records as any);
+        await recalcCampaignSpend(campaignId);
+        scheduleGA4SpendPostResponseRecompute(campaignId);
+        return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: Number(totalSpend.toFixed(2)) });
       }
 
       let source: any = existingSheetsSpendSource || null;
@@ -16932,6 +17005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let pipelineProxyFields: any = {};
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
+      let salesforceConnectionMappingConfig: string | null = null;
       if (sfConn) {
         const rcRaw = String(revenueClassification || '').trim();
         const rc =
@@ -17047,7 +17121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineWarning: mappingConfig.pipelineWarning,
           pipelineValueRevenueTotals: mappingConfig.pipelineValueRevenueTotals,
         };
-        await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+        salesforceConnectionMappingConfig = JSON.stringify(mappingConfig);
+        if (platformCtx !== 'ga4') await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: salesforceConnectionMappingConfig } as any);
       }
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it.
@@ -17082,7 +17157,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
       let source: any;
-      if (existingSourceIdOrNull) {
+      if (platformCtx === 'ga4') {
+        source = { id: existingSourceIdOrNull || '' };
+      } else if (existingSourceIdOrNull) {
         source = await storage.updateRevenueSource(existingSourceIdOrNull, {
           sourceType: "salesforce",
           displayName: `Salesforce (Opportunities)`,
@@ -17138,12 +17215,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (revenueRecordsToInsert.length > 0) {
+      if (platformCtx === 'ga4') {
+        if (totalRevenue > 0 && revenueRecordsToInsert.length <= 0) {
+          return res.status(500).json({ error: 'Salesforce revenue was fetched but no daily revenue records were materialized.' });
+        }
+        if (!sfConn || !salesforceConnectionMappingConfig) return res.status(404).json({ error: 'Salesforce connection not found.' });
+        source = await storage.replaceGa4SalesforceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, String(sfConn.id), salesforceConnectionMappingConfig, {
+          campaignId, sourceType: 'salesforce', platformContext: 'ga4', displayName: 'Salesforce (Opportunities)', currency: cur, mappingConfig: JSON.stringify(normalizedMapping), isActive: true,
+        } as any, revenueRecordsToInsert);
+        materializedRecordCount = revenueRecordsToInsert.length;
+      } else if (revenueRecordsToInsert.length > 0) {
         const inserted = await storage.createRevenueRecords(revenueRecordsToInsert);
         materializedRecordCount = Array.isArray(inserted) ? inserted.length : revenueRecordsToInsert.length;
-      }
-      if (platformCtx === "ga4" && totalRevenue > 0 && materializedRecordCount <= 0) {
-        return res.status(500).json({ error: "Salesforce revenue was fetched but no daily revenue records were materialized." });
       }
       const materializedDates = Array.from(revenueByDate.keys()).sort();
       const unmatchedSelectedValues = selected.filter((value) => !matchedSelectedValues.has(value));

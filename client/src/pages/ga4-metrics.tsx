@@ -6325,6 +6325,10 @@ export default function GA4Metrics() {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+                      void refreshNotificationQueries();
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
                     }}
@@ -6554,6 +6558,10 @@ export default function GA4Metrics() {
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")], exact: false });
+                              queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+                              void refreshNotificationQueries();
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`], exact: false });
                               toast({ title: "Spend source removed", description: "Total Spend has been recalculated." });

@@ -28,11 +28,11 @@ The earlier clean-certified answer is retracted. Current code and target-databas
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`; banner follow-up `a0b205b5` then deployed, and the user-confirmed one-refresh follow-up validation passed with the incorrect banner gone. Current Commit 4 deployed as `7c54da65` and passed its bounded user-confirmed spend validation on `2026-07-30`: Total Spend agreed with the Spend Sources list and remained correct after refresh. Current Commit 5 deployed as `5da5f41c`; the user confirmed Google Sheets was absent from both new GA4 Revenue and Spend source choosers. Commits 1-5 are closed for their bounded packets. Current Commit 6 is implemented locally, but its exact production retained-source review remains external validation. B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
+Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`; banner follow-up `a0b205b5` then deployed, and the user-confirmed one-refresh follow-up validation passed with the incorrect banner gone. Current Commit 4 deployed as `7c54da65` and passed its bounded user-confirmed spend validation on `2026-07-30`: Total Spend agreed with the Spend Sources list and remained correct after refresh. Current Commit 5 deployed as `5da5f41c`; the user confirmed Google Sheets was absent from both new GA4 Revenue and Spend source choosers. Current Commit 6 deployed through `1c721864` and `6fa4d439`; its owner-scoped batch production inventory completed successfully on `2026-07-30`. Commits 1-6 are closed for their bounded packets. Retained-source lifecycle safety remains open under Current Commit 7, and B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
 
 The durable answer is:
 
-`No. GA4 Overview is not production-ready or clean-certified. Commits 1-5 are closed for their bounded packets. Retained legacy sources, freshness/provider proof, production-data cleanup, and complete downstream evidence remain open.`
+`No. GA4 Overview is not production-ready or clean-certified. Commits 1-6 are closed for their bounded packets. Retained-source lifecycle safety, freshness/provider proof, production-data cleanup, and complete downstream evidence remain open.`
 
 ## Scope
 
@@ -257,17 +257,17 @@ The original target evidence motivating the fix remains:
 
 ### B7. Retained Google Sheets paths are on hold and feed included totals
 
-Current Commit 5 removes Google Sheets Revenue and Spend from new GA4 source setup and rejects new direct-API creation, but deliberately does not mutate or deactivate saved sources. Their canonical component docs retain incomplete transactional replacement/failure retention, durable OAuth, automatic polling, and deployed mutation evidence. Current target rows also lack recorded success/freshness timestamps. Those retained rows remain an open Commit 6/7 boundary and cannot be treated as certified.
+Current Commit 5 removes Google Sheets Revenue and Spend from new GA4 source setup and rejects new direct-API creation, but deliberately does not mutate or deactivate saved sources. Current Commit 6 completed their exact owner-scoped inventory without mutating them. Their canonical component docs retain incomplete transactional replacement/failure retention, durable OAuth, automatic polling, and deployed mutation evidence. Current target rows also lack recorded success/freshness timestamps. Those retained rows remain open under Current Commit 7 and cannot be treated as certified.
 
 ### B8. Hidden/legacy sources still affect current values
 
 Salesforce and Manual setup cards are hidden, but retained active records remain readable. The target includes one active legacy null-context Salesforce revenue source with 180 records totaling 6,000.00 and three active legacy Manual spend sources totaling 520.00. Hidden creation UI does not make retained data safe or certified.
 
-Current Commit 6 adds a campaign-access-guarded, read-only retained-source inventory to the existing source-damage endpoint. It lists exact active retained/null-context source IDs, stored and normalized context, sanitized mapping identity, record count, and amount, and explicitly forbids automatic cleanup. Production ownership review and any later exact support, migration, or deactivation decision remain unproven; this commit does not mutate retained data.
+Current Commit 6 adds campaign- and owner-access-guarded read-only retained-source inventories. The completed owner-scoped production result lists every active retained/null-context source ID, stored and normalized context, sanitized mapping identity, record count, and amount and explicitly forbids automatic cleanup. The nine returned sources are retained for continuity; their mutation/refresh lifecycle is not certified and remains open under Current Commit 7. This commit did not mutate retained data.
 
 ### B9. Salesforce Pipeline Proxy can cross platform context
 
-Root cause: the GA4 client omitted `platformContext=ga4`; the endpoint treated absent/invalid context as permission to search GA4, LinkedIn, and Meta, then selected the newest source when no exact GA4-scope match existed. Current Commit 6 passes GA4 explicitly, requires one supported explicit context for every caller, searches only that context, rejects mapping-context mismatches, and returns `404` rather than substituting another source when no exact scoped source exists. Local regression coverage passes; deployment and UI/API validation remain unproven.
+Root cause: the GA4 client omitted `platformContext=ga4`; the endpoint treated absent/invalid context as permission to search GA4, LinkedIn, and Meta, then selected the newest source when no exact GA4-scope match existed. Current Commit 6 passes GA4 explicitly, requires one supported explicit context for every caller, searches only that context, rejects mapping-context mismatches, and returns `404` rather than substituting another source when no exact scoped source exists. Local regression coverage passes and the code is deployed. The completed owner-scoped inventory found no active retained Salesforce source among the owner's active GA4 campaigns, so a Salesforce UI check was not applicable.
 
 ### B10. Daily freshness is not proven for the current target
 
@@ -530,11 +530,11 @@ Smallest safe decision implemented:
 - the server rejects new GA4 Google Sheets creation and new spend creation with omitted context before provider reads or source mutation
 - new GA4 CSV Spend requires a Date column in both UI and API; a dated existing source cannot be converted to undated
 - existing Google Sheets and already-undated CSV sources remain readable/editable/deletable by exact source ID; no persisted row, total, connection, scheduler, response shape, or calculation was changed
-- retained-source certification and inventory remain explicitly open under Current Commits 6 and 7
+- retained-source inventory is closed under Current Commit 6; retained-source lifecycle certification remains open under Current Commit 7
 
 Local validation: 4 focused files / 60 tests passed, plus the expanded seven-file run passed 149 relevant tests. Seven unrelated pre-existing Instagram source-safety slice assertions remained red. `npm run check` and `npm run build` passed. Commit `5da5f41c` deployed, and the user confirmed Google Sheets is absent from both new GA4 Revenue and Spend source choosers. No CSV upload was performed; the dated-only UI/API guard remains automated evidence, not a separately observed deployed CSV packet.
 
-### Current Commit 6 — Reconcile retained legacy sources — implemented locally; production review required
+### Current Commit 6 — Reconcile retained legacy sources — closed
 
 Root cause:
 
@@ -552,13 +552,38 @@ Smallest safe fix:
 
 Local validation: the original 5 focused files / 65 tests passed, the relevant Salesforce and Custom Integration assertions passed in the broader source-safety suite, `npm run check` passed, and the production build passed. The owner-scoped batch follow-up adds one focused guard; its 2-file packet passes 10 tests and TypeScript. Seven unrelated pre-existing Instagram route-slice assertions remain red.
 
-Deployed bounded evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` passed on `2026-07-30`. The read-only inventory returned zero retained Revenue sources and four active legacy-null Spend sources: three CSV sources totaling 2,000.00 and one Google Sheets source totaling 698.75. The generic damage summary returned zero orphan, inactive-source-record, duplicate-active-source, or unexpected-context findings. The user confirmed the Spend Sources modal showed the same four names and amounts and that they reconciled exactly to Total Spend 2,698.75. No source was deleted, migrated, edited, or deactivated. This proves only that campaign.
+Deployed bounded evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` passed on `2026-07-30`. The read-only inventory returned zero retained Revenue sources and four active legacy-null Spend sources: three CSV sources totaling 2,000.00 and one Google Sheets source totaling 698.75. The generic damage summary returned zero orphan, inactive-source-record, duplicate-active-source, or unexpected-context findings. The user confirmed the Spend Sources modal showed the same four names and amounts and that they reconciled exactly to Total Spend 2,698.75.
 
-B9 is locally resolved; Salesforce UI validation was not applicable to the observed campaign because it has no Salesforce source. B8 and Current Commit 6 remain open until the owner-scoped batch endpoint is deployed and its complete production result is reviewed. Do not infer all-campaign completion from the single-campaign pass.
+The owner-scoped batch production result then returned `success: true`, `readonly: true`, `ownerScopedBatchComplete: true`, and `automaticCleanupAllowed: false`. It covered all 10 active GA4 campaigns owned by the signed-in user: seven had no retained sources, and three contained nine retained sources:
 
-### Current Commit 7 — Complete source-family lifecycle evidence
+- `Summer splash`: legacy-null Google Ads Spend with 90 records totaling 14,045.83 and Manual Spend with one record totaling 400.00
+- `myGA4`: two distinct Google Sheets Revenue sources, with different source IDs, mapping hashes, and connection IDs, totaling 15,200.00 and 30,300.00; plus one legacy-null Google Sheets Spend source with two records totaling 498.75
+- `ga4_mock`: the four previously UI-reconciled Spend sources totaling 2,698.75
 
-For every enabled family that can feed Overview, cover add, edit, delete, refresh/reprocess, scheduler, modal display, totals, downstream recompute, failure retention, and damaged-data boundary. Reuse narrow HubSpot/Shopify/CSV evidence only after current tests and shared inputs pass.
+`retainedSourceInventoryPass: false` means retained sources exist; it is not evidence that these rows are damaged. Every returned source is active and has materialized records. Distinct source identity evidence does not justify treating the two `myGA4` Google Sheets Revenue sources as duplicates. No source was deleted, migrated, edited, or deactivated. Current Commit 6 is closed because the exact owner-scoped inventory and review are complete. The nine sources remain continuity-only and unproven for edit/refresh failure retention; that lifecycle boundary is carried into Current Commit 7.
+
+### Current Commit 7 — Complete source-family lifecycle evidence — implemented locally; deployed validation required
+
+Confirmed root cause for the first bounded fix: spend add/edit/delete already recomputes GA4 KPI and Benchmark values on the server, but the GA4 page invalidated only its Spend-card queries. Revenue mutations already invalidate KPI, Benchmark, Reports, and Notifications. Therefore mounted downstream spend consumers could remain stale until a reload even after the server held correct values.
+
+Smallest safe local fix:
+
+- add the four existing GA4 downstream cache invalidations to spend process success and single-source delete success
+- preserve every calculation, API route/response, source write, campaign/platform guard, scheduler, and refetch interval
+- add a regression guard covering both spend success paths
+- repair two stale CSV downstream guards so they assert the current materialized-source and financial-formula code instead of removed formatting/marker text
+
+The remaining root cause was separate metadata update, old-record deletion, and replacement insertion commits in retained Manual Revenue/Spend, Salesforce Revenue, Google Sheets Revenue/Spend, and LinkedIn/ad-platform Spend paths. A mid-write failure could remove last-good materialized values or leave source and connection metadata inconsistent.
+
+Smallest safe completion:
+
+- add campaign-, platform-, source-type-, and source-ID-scoped transactional replacement helpers in the existing storage layer
+- use them only for GA4 Manual Revenue, Manual/ad-platform Spend, retained Google Sheets Revenue/Spend, and LinkedIn Spend
+- include Salesforce connection mapping, source metadata, old-record deletion, and replacement records in one transaction
+- fail closed when a LinkedIn refresh without a stable source ID finds multiple active GA4 LinkedIn Spend sources
+- preserve response shapes, calculations, recompute order, source additivity, campaign access, and non-GA4 branches
+
+Local evidence: the final 12-file retained-source lifecycle packet passes 104 tests; TypeScript and the production build pass. Diff review confirms no cleanup, migration, schema, calculation, response-shape, or scheduler-timing change. Current Commit 7 remains open only for deployed validation of a normal retained-source mutation plus visible Total Spend/Revenue and downstream refresh behavior. The transaction boundary is locally regression-guarded; production failure injection is not safe.
 
 ### Current Commit 8 — Production freshness/provider evidence
 
@@ -581,7 +606,7 @@ For every enabled family that can feed Overview, cover add, edit, delete, refres
 - complete named deployed report/Trend/multi-source evidence relevant to the claimed scope
 - rerun all matrices and update this file only after evidence is current
 
-Estimated remaining work after the Current Commit 6 local implementation: a minimum of 5 bounded evidence/engineering packets (the Current Commit 6 production retained-source review plus Current Commits 7-10). The count will increase if Google Sheets is re-enabled rather than retained as continuity-only, or if production cleanup separates into multiple independently reviewed batches.
+Estimated remaining work after Current Commit 6 closure: a minimum of 4 bounded evidence/engineering packets (Current Commits 7-10). The count will increase if Google Sheets is re-enabled rather than retained as continuity-only, or if production cleanup separates into multiple independently reviewed batches.
 
 ## UI Validation Requirement
 

@@ -154,6 +154,7 @@ export interface IStorage {
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
+  replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource>;
   replaceCsvSpendSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -177,6 +178,8 @@ export interface IStorage {
     requests: Array<{ campaignId: string; expectedActiveSourceIds: string[]; expectedActiveConnectionIds: string[] }>,
   ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deactivatedConnectionIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
+  replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource>;
+  replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -1164,6 +1167,31 @@ export class DatabaseStorage implements IStorage {
 
     return results;
   }
+  async replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource> {
+    return await db.transaction(async (tx: any) => {
+      const contextCondition = platformContext === 'ga4'
+        ? or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext))
+        : eq(spendSources.platformContext, platformContext as any);
+      let savedSource: SpendSource | undefined;
+      if (existingSourceId) {
+        [savedSource] = await tx.update(spendSources).set({ ...source, campaignId, sourceType, platformContext, isActive: true } as any).where(and(
+          sql`${spendSources.id}::text = ${existingSourceId}`,
+          eq(spendSources.campaignId, campaignId),
+          eq(spendSources.sourceType, sourceType),
+          eq(spendSources.isActive, true),
+          contextCondition,
+        )).returning();
+        if (!savedSource) throw new Error('Spend source not found');
+      } else {
+        [savedSource] = await tx.insert(spendSources).values({ ...source, campaignId, sourceType, platformContext, isActive: true } as any).returning();
+      }
+      if (!savedSource) throw new Error('Failed to save spend source');
+      const sourceId = String(savedSource.id);
+      await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.spendSourceId, sourceId)));
+      if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
+      return savedSource;
+    });
+  }
   async replaceCsvSpendSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -1607,6 +1635,61 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return results;
+  }
+  async replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource> {
+    return await db.transaction(async (tx: any) => {
+      const contextCondition = platformContext === 'ga4'
+        ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
+        : eq(revenueSources.platformContext, platformContext as any);
+      let savedSource: RevenueSource | undefined;
+      if (existingSourceId) {
+        [savedSource] = await tx.update(revenueSources).set({ ...source, campaignId, sourceType, platformContext, isActive: true } as any).where(and(
+          sql`${revenueSources.id}::text = ${existingSourceId}`,
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, sourceType),
+          eq(revenueSources.isActive, true),
+          contextCondition,
+        )).returning();
+        if (!savedSource) throw new Error('Revenue source not found');
+      } else {
+        [savedSource] = await tx.insert(revenueSources).values({ ...source, campaignId, sourceType, platformContext, isActive: true } as any).returning();
+      }
+      if (!savedSource) throw new Error('Failed to save revenue source');
+      const sourceId = String(savedSource.id);
+      await tx.delete(revenueRecords).where(and(eq(revenueRecords.campaignId, campaignId), eq(revenueRecords.revenueSourceId, sourceId)));
+      if (records.length) await tx.insert(revenueRecords).values(records.map((record) => ({ ...record, campaignId, revenueSourceId: sourceId, sourceType })) as any);
+      return savedSource;
+    });
+  }
+
+  async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource> {
+    return await db.transaction(async (tx: any) => {
+      const sourceValues = { ...source, campaignId, sourceType: 'salesforce', platformContext: 'ga4', isActive: true } as any;
+      let savedSource: RevenueSource | undefined;
+      if (existingSourceId) {
+        [savedSource] = await tx.update(revenueSources).set(sourceValues).where(and(
+          sql`${revenueSources.id}::text = ${existingSourceId}`,
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, 'salesforce'),
+          eq(revenueSources.isActive, true),
+          or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+        )).returning();
+        if (!savedSource) throw new Error('Salesforce revenue source not found');
+      } else {
+        [savedSource] = await tx.insert(revenueSources).values(sourceValues).returning();
+      }
+      if (!savedSource) throw new Error('Failed to save Salesforce revenue source');
+      const sourceId = String(savedSource.id);
+      await tx.delete(revenueRecords).where(and(eq(revenueRecords.campaignId, campaignId), eq(revenueRecords.revenueSourceId, sourceId)));
+      if (records.length) await tx.insert(revenueRecords).values(records.map((record) => ({ ...record, campaignId, revenueSourceId: sourceId, sourceType: 'salesforce' })) as any);
+      const [savedConnection] = await tx.update(salesforceConnections).set({ mappingConfig: connectionMappingConfig } as any).where(and(
+        eq(salesforceConnections.id, connectionId),
+        eq(salesforceConnections.campaignId, campaignId),
+        eq(salesforceConnections.isActive, true),
+      )).returning({ id: salesforceConnections.id });
+      if (!savedConnection) throw new Error('Salesforce connection not found');
+      return savedSource;
+    });
   }
 
   async replaceGa4CsvRevenueSourceWithRecords(

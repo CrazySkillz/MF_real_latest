@@ -89,14 +89,16 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
     expect(endpoints).toContain("storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext)");
     expect(endpoints).toContain("storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any)");
     expect(endpoints).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext)');
-    expect(endpoints).toContain('const recordTotal = totalsBySource.get(String(source?.id || "")) || 0;');
+    expect(endpoints).toContain('const sourceId = String(source?.id || "");');
+    expect(endpoints).toContain("const hasMaterializedRevenue = totalsBySource.has(sourceId);");
+    expect(endpoints).toContain("const recordTotal = totalsBySource.get(sourceId) || 0;");
   });
 
   it("feeds imported CSV revenue into Total Revenue, Profit, ROAS, and ROI but not CPA", () => {
     const financials = sliceBetween(
       ga4Page,
       "const importedRevenueForFinancials",
-      "const toRateRatio",
+      "// Initial failures render at the affected card/table.",
     );
     const cards = sliceBetween(ga4Page, "{/* Total Revenue */}", "{/* Campaign Breakdown */}");
 

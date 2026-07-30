@@ -367,7 +367,7 @@ Important meaning:
 
 V1 scope note: Salesforce revenue is deferred for v1 and hidden from the `Add revenue source` chooser. This section documents retained/non-v1 behavior only; it is not current v1 production-certification evidence.
 
-Whole-Overview Current Commit 6 requires every Salesforce Pipeline Proxy request to pass an explicit supported platform context. GA4 passes `ga4`; the server searches only that context, rejects mapping-context mismatches, and fails closed when no exact scoped active Salesforce source exists. Retained/null-context Salesforce sources are listed only through the campaign-access-guarded read-only inventory; exact production ownership review remains required before any support, migration, or deactivation decision.
+Whole-Overview Current Commit 6 requires every Salesforce Pipeline Proxy request to pass an explicit supported platform context. GA4 passes `ga4`; the server searches only that context, rejects mapping-context mismatches, and fails closed when no exact scoped active Salesforce source exists. Its completed owner-scoped production inventory found no active retained Salesforce source among the owner's 10 active GA4 campaigns. No Salesforce UI check or source mutation was applicable.
 
 The user journey is:
 
@@ -784,6 +784,8 @@ The required pattern is:
 2. the source definition and/or materialized records are updated
 3. campaign financial values are recomputed
 4. the cards and source modal provenance repopulate from the new state
+
+Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. It also makes retained GA4 Manual, Salesforce, Google Sheets, and LinkedIn/ad-platform source replacement transactional and fail-closed so a failed insert cannot erase last-good records. Salesforce connection mapping is committed with its source and records; ambiguous duplicate LinkedIn Spend refresh is rejected. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Local tests, TypeScript, and build pass; deployed validation remains required before closure.
 
 ### Edit Meaning By Source Type
 

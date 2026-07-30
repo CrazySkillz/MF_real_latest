@@ -183,7 +183,7 @@ if ($SourceKind -eq "all" -or $SourceKind -eq "spend") {
 }
 if ($SourceKind -eq "all" -or $SourceKind -eq "pipeline") {
   $paths["hubspotPipelineProxy"] = "/api/hubspot/$([uri]::EscapeDataString($CampaignId))/pipeline-proxy"
-  $paths["salesforcePipelineProxy"] = "/api/salesforce/$([uri]::EscapeDataString($CampaignId))/pipeline-proxy"
+  $paths["salesforcePipelineProxy"] = "/api/salesforce/$([uri]::EscapeDataString($CampaignId))/pipeline-proxy?platformContext=ga4"
 }
 if (-not [string]::IsNullOrWhiteSpace($PropertyId)) {
   $paths["ga4ToDate"] = Add-QueryParam (Add-QueryParam "$campaignPath/ga4-to-date" "dateRange" $DateRange) "propertyId" $PropertyId

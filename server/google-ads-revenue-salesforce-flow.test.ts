@@ -21,8 +21,8 @@ describe("Google Ads revenue Salesforce flow", () => {
       "// Salesforce pipeline proxy status"
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routes).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routes).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
     expect(route).toContain("platformContext: zSalesforceRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
   });
@@ -35,7 +35,7 @@ describe("Google Ads revenue Salesforce flow", () => {
       "// Salesforce pipeline proxy status"
     );
 
-    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : "ga4"');
+    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : platformContextRaw === "custom_integration" ? "custom_integration" : "ga4"');
     expect(route).toContain("platformCtx === 'linkedin' && String(valueSource || '').trim().toLowerCase() === 'conversion_value'");
     expect(route).toContain('sourceType: "salesforce"');
     expect(route).toContain("platformContext: platformCtx");
@@ -82,8 +82,9 @@ describe("Google Ads revenue Salesforce flow", () => {
       "// HubSpot pipeline proxy status"
     );
 
-    expect(pipelineRoute).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram", "google_sheets"]');
-    expect(pipelineRoute).toContain(': ["ga4", "linkedin", "meta"] as const;');
+    expect(pipelineRoute).toContain("zSalesforceRevenuePlatformContext.safeParse");
+    expect(pipelineRoute).toContain("const requestedContexts = [requestedPlatformContext];");
+    expect(pipelineRoute).not.toContain('["ga4", "linkedin", "meta"] as const');
     expect(pipelineRoute).toContain('String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext');
     expect(pipelineRoute).toContain("totalToDate: cached");
     expect(pipelineRoute).toContain("mode: cachedMode");
@@ -94,7 +95,7 @@ describe("Google Ads revenue Salesforce flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets";');
+    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";');
     expect(wizard).toContain("platformContext = \"ga4\"");
     expect(wizard).toContain("...(mode === \"edit\" && sourceId ? { sourceId } : {})");
     expect(wizard).toContain("selectedValues,");

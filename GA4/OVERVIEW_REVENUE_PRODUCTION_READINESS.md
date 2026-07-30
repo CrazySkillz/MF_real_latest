@@ -344,7 +344,7 @@ Current Commit 12 read-only rescan at `2026-07-12T11:40:50.064Z`:
 
 ## External Provider/Deployed Validation Gates
 
-Whole-Overview Current Commit 5 locally hides new GA4 Google Sheets Revenue setup and rejects direct new-source process requests before provider reads or mutation. Existing exact-source edit/delete/refresh continuity is preserved and remains unproven; no saved source or total was changed. Re-enabling new setup requires the Google Sheets gates below plus a new deployed validation packet.
+Whole-Overview Current Commit 5 (`5da5f41c`) hides new GA4 Google Sheets Revenue setup and rejects direct new-source process requests before provider reads or mutation. The user confirmed the deployed Revenue chooser no longer shows Google Sheets. Existing exact-source edit/delete/refresh continuity is preserved and remains unproven; no saved source or total was changed. Re-enabling new setup requires the Google Sheets gates below plus a new deployed validation packet.
 
 After the automated gates pass and the fixes are deployed:
 

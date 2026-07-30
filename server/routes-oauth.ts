@@ -1460,6 +1460,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const spendSourceById = new Map((allSpendSources as any[]).map((source) => [String(source.id), source]));
       const revenueRecordCounts = countOverviewInventoryRecordsBySource(allRevenueRecords as any[], "revenueSourceId");
       const spendRecordCounts = countOverviewInventoryRecordsBySource(allSpendRecords as any[], "spendSourceId");
+      const retainedRevenueTypes = new Set(["manual", "salesforce", "google_sheets"]);
+      const retainedSpendTypes = new Set(["manual", "google_sheets", "linkedin_api", "ad_platforms"]);
+      const buildRetainedSourceInventory = (
+        sources: any[],
+        records: any[],
+        sourceKey: "revenueSourceId" | "spendSourceId",
+        amountKey: "revenue" | "spend",
+        retainedTypes: Set<string>,
+        recordCounts: Map<string, number>,
+      ) => sources
+        .filter((source) => source?.isActive !== false)
+        .filter((source) => {
+          const storedContext = String(source?.platformContext || "").trim();
+          return !storedContext || retainedTypes.has(String(source?.sourceType || "").trim().toLowerCase());
+        })
+        .map((source) => {
+          const sourceId = String(source?.id || "");
+          const mapping = normalizeOverviewInventoryMappingConfig(source?.mappingConfig);
+          const sourceRecords = records.filter((record) => String(record?.[sourceKey] || "") === sourceId);
+          return {
+            ...summarizeOverviewInventorySource(source, recordCounts.get(sourceId) || 0),
+            storedPlatformContext: String(source?.platformContext || "").trim() || null,
+            legacyNullContext: !String(source?.platformContext || "").trim(),
+            amountTotal: centsOverviewInventoryTotal(sourceRecords, amountKey),
+            mappingHash: hashOverviewInventoryValue(mapping),
+            mappedPlatform: mapping?.platform ? String(mapping.platform) : null,
+            connectionId: mapping?.connectionId ? String(mapping.connectionId) : null,
+            selectedCampaignCount: Array.isArray(mapping?.selectedCampaignIds) ? mapping.selectedCampaignIds.length : null,
+          };
+        });
+      const activeRetainedRevenueSources = buildRetainedSourceInventory(
+        allRevenueSources as any[], allRevenueRecords as any[], "revenueSourceId", "revenue", retainedRevenueTypes, revenueRecordCounts,
+      );
+      const activeRetainedSpendSources = buildRetainedSourceInventory(
+        allSpendSources as any[], allSpendRecords as any[], "spendSourceId", "spend", retainedSpendTypes, spendRecordCounts,
+      );
+      const retainedSourceReviewCount = activeRetainedRevenueSources.length + activeRetainedSpendSources.length;
 
       const findings = {
         orphanRevenueRecordGroups: groupOverviewInventoryRecords(
@@ -1726,6 +1763,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           findingCount,
         },
         findings,
+        retainedSourceInventoryPass: retainedSourceReviewCount === 0,
+        retainedSourceSummary: {
+          activeRetainedRevenueSourceCount: activeRetainedRevenueSources.length,
+          activeRetainedSpendSourceCount: activeRetainedSpendSources.length,
+          retainedSourceReviewCount,
+        },
+        retainedSourceFindings: {
+          activeRetainedRevenueSources,
+          activeRetainedSpendSources,
+        },
+        retainedSourceAssessment: {
+          candidateReviewRequired: retainedSourceReviewCount > 0,
+          automaticCleanupAllowed: false,
+          reason: retainedSourceReviewCount === 0
+            ? "No active null-context or retained hidden-source rows were found for this campaign."
+            : "Review each returned source ID, context, mapping identity, record count, and amount before explicit support, exact migration, or deactivation; this inventory does not mutate data.",
+        },
         csvInventoryPass: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0,
         csvSummary: { ...csvInventory.summary, findingCount: csvFindingCount },
         csvFindings: { ...csvInventory.findings, duplicateActiveCsvSourceGroups },
@@ -1808,6 +1862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "HubSpot provenance output is non-secret endpoint evidence for the connected account, saved mapping, and source-modal expected values; it does not inspect rendered pixels.",
           "Duplicate detection uses source type, platform context, currency, and a sanitized mapping-config hash; suspicious groups still require human review before cleanup.",
           "Null revenue platform context is normalized as ga4 for legacy GA4 revenue-source compatibility.",
+          "Retained-source findings preserve the stored null context separately and require exact review; they are not automatic cleanup instructions.",
         ],
       });
     } catch (e: any) {
@@ -17062,11 +17117,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         cfg = {};
       }
-      const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram", "google_sheets", "custom_integration"] as const).includes(requestedPlatformContext as any)
-        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "google_sheets" | "custom_integration"]
-        : ["ga4", "linkedin", "meta"] as const;
-      if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
+      const parsedPlatformContext = zSalesforceRevenuePlatformContext.safeParse(String((req.query as any)?.platformContext || "").trim().toLowerCase());
+      if (!parsedPlatformContext.success) {
+        return sendBadRequest(res, "A supported platformContext is required for Salesforce Pipeline Proxy", parsedPlatformContext.error.errors);
+      }
+      const requestedPlatformContext = parsedPlatformContext.data;
+      const requestedContexts = [requestedPlatformContext];
+      if (String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
         cfg = {};
       }
 
@@ -17088,17 +17145,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!source?.mappingConfig || String(source?.sourceType || '').toLowerCase() !== 'salesforce') continue;
           try {
             const sourceCfg = JSON.parse(String(source.mappingConfig));
+            const mappingContext = String(sourceCfg?.platformContext || sourceCfg?.platform || "").trim().toLowerCase();
+            if (mappingContext && mappingContext !== requestedPlatformContext) continue;
             if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) candidates.push({ source, cfg: sourceCfg });
           } catch { /* ignore malformed source mapping */ }
         }
       }
       candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
-      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || candidates[0] || null;
-      let pipelineSource: any = null;
-      if (selectedPipelineSource) {
-        cfg = selectedPipelineSource.cfg;
-        pipelineSource = selectedPipelineSource.source;
+      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;
+      if (!selectedPipelineSource) {
+        return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested platform context." });
       }
+      cfg = selectedPipelineSource.cfg;
+      const pipelineSource: any = selectedPipelineSource.source;
 
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageName) {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });

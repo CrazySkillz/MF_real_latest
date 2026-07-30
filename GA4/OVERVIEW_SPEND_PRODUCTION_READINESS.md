@@ -304,7 +304,7 @@ Proven locally for current code:
 - CSV campaign filtering is exact. No-date imports sum every selected positive row as a snapshot; dated imports fail before mutation if any selected positive row has a blank/invalid date, so the app never invents temporal provenance.
 - CSV Date mapping locally excludes the selected Spend and Campaign identifier columns, and the server rejects either duplicate role before aggregation; Google Sheets mapping options are unchanged.
 - CSV Date mapping locally excludes remaining columns whose non-empty preview values are not date-like, and purely numeric date values are rejected instead of being interpreted as calendar years.
-- Whole-Overview Current Commit 5 locally narrows the GA4 new-source Spend chooser to Google Ads and Upload CSV. Google Sheets, LinkedIn Ads, and Meta / Facebook remain available only through retained exact-source continuity paths.
+- Whole-Overview Current Commit 5 (`5da5f41c`) narrows the GA4 new-source Spend chooser to Google Ads and Upload CSV. The user confirmed the deployed chooser no longer shows Google Sheets. Google Sheets, LinkedIn Ads, and Meta / Facebook remain available only through retained exact-source continuity paths.
 - New GA4 CSV Spend requires a Date column in UI and API. Already-undated saved sources remain continuity-only; a dated saved source cannot be converted to undated.
 - New and edited GA4 CSV spend requests persist explicit `ga4` context; legacy null-context GA4 sources remain readable and self-heal only when that exact source is edited. Unsupported contexts still fail closed.
 - Imports with no selected positive-spend rows fail before source mutation.
@@ -319,7 +319,7 @@ Proven by recorded deployed evidence:
 - Current Commit 10b deployed UI evidence confirms mixed blank/invalid-date input is rejected and that the remaining valid dated rows update Total Spend through a CSV source after those invalid rows are removed.
 - Current Commit 10d deployed UI evidence confirms non-date revenue and conversion-value columns are removed from Date choices for the tested CSV.
 - Current Commit 10e deployed evidence confirms exact invalid-import no-mutation, $150 add, exact delete restoration, and same-source edit replacement to $1,250 with Beta excluded and no source-count increase.
-- Current Commit 12's earlier three-option chooser evidence is superseded when whole-Overview Current Commit 5 deploys; the new two-option chooser still requires deployed UI confirmation.
+- Current Commit 12's earlier three-option chooser evidence is superseded; whole-Overview Current Commit 5's deployed two-option chooser was user-confirmed.
 
 ## Unproven
 
@@ -352,4 +352,4 @@ Proven by recorded deployed evidence:
 
 Use only when the request is limited to GA4 Overview spend from Google Sheets and Upload CSV:
 
-GA4 Overview Google Sheets spend is not yet clean-certified, so whole-Overview Current Commit 5 locally blocks new GA4 setup while preserving existing exact-source continuity. Upload CSV retains its bounded deployed dated-Alpha lifecycle packet; new GA4 CSV sources are now dated-only in UI and API. Existing undated sources, unusual/unlisted CSV shapes, deployed forged-request behavior, and additional inventories remain unproven. Deployment/UI validation is still required for the new chooser/date policy. Google Ads and all other source families remain excluded from this component certification.
+GA4 Overview Google Sheets spend is not yet clean-certified, so whole-Overview Current Commit 5 blocks new GA4 setup while preserving existing exact-source continuity. The deployed chooser removal was user-confirmed. Upload CSV retains its bounded deployed dated-Alpha lifecycle packet; new GA4 CSV sources are dated-only by automated UI/API guards, but no separate deployed CSV mapping check was performed for this packet. Existing undated sources, unusual/unlisted CSV shapes, deployed forged-request behavior, and additional inventories remain unproven. Google Ads and all other source families remain excluded from this component certification.

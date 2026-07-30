@@ -367,6 +367,8 @@ Important meaning:
 
 V1 scope note: Salesforce revenue is deferred for v1 and hidden from the `Add revenue source` chooser. This section documents retained/non-v1 behavior only; it is not current v1 production-certification evidence.
 
+Whole-Overview Current Commit 6 requires every Salesforce Pipeline Proxy request to pass an explicit supported platform context. GA4 passes `ga4`; the server searches only that context, rejects mapping-context mismatches, and fails closed when no exact scoped active Salesforce source exists. Retained/null-context Salesforce sources are listed only through the campaign-access-guarded read-only inventory; exact production ownership review remains required before any support, migration, or deactivation decision.
+
 The user journey is:
 
 1. user clicks `+` on `Total Revenue`
@@ -531,7 +533,7 @@ Spend source options:
 Current certification focus:
 
 - Google Ads live spend validation is deferred. Do not include Google Ads spend in the current GA4 spend production-readiness or clean-certification claim until the real OAuth/customer-selection/provider daily-metrics path, deployed browser lifecycle, scheduler refresh, production data inventory, and downstream report/email value packets have their own Google Ads-specific evidence.
-- New Google Sheets setup is on hold and locally hidden/API-blocked by whole-Overview Current Commit 5. Existing exact-source continuity remains unproven. The active new-source certification target is dated `Upload CSV` under the strict no-overclaiming standard in `PRODUCTION_READINESS.md`.
+- New Google Sheets setup is on hold and hidden/API-blocked by whole-Overview Current Commit 5 (`5da5f41c`); the user confirmed both deployed GA4 choosers omit Google Sheets. Existing exact-source continuity remains unproven. The active new-source certification target is dated `Upload CSV` under the strict no-overclaiming standard in `PRODUCTION_READINESS.md`.
 
 When the user clicks `+` on the `Total Spend` card:
 
@@ -551,7 +553,7 @@ Production direction note:
 - existing stored manual spend sources are still supported for continuity until the user edits or removes them
 - `LinkedIn Ads` and `Meta / Facebook` are removed from the new-source Spend chooser for v1
 - existing stored LinkedIn/Meta spend sources and their edit/backend continuity paths remain supported; this chooser change does not delete records, disconnect providers, or certify those source families
-- the earlier `2026-07-12` three-option chooser evidence is superseded after whole-Overview Current Commit 5 deploys; the new Google Ads/Upload CSV chooser requires deployed UI confirmation
+- the earlier `2026-07-12` three-option chooser evidence is superseded; the user confirmed the deployed Google Ads/Upload CSV chooser after whole-Overview Current Commit 5
 - existing Google Sheets, LinkedIn, and Meta source edit/delete paths remain continuity-only; this policy performs no persisted-data mutation
 
 Important meaning:

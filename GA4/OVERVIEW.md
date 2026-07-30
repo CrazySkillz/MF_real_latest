@@ -168,14 +168,16 @@ High-level rule:
 - GA4-native financial revenue and CPA conversions use the first complete source in this fixed order: campaign-to-date provider totals, campaign-to-date persisted daily totals, then the configured-lookback breakdown only when both earlier sources are absent; values are never selected by maximum revenue
 - valid zero and negative campaign-to-date native values remain authoritative; a provider response without both revenue and conversions is treated as empty and falls through to the next complete candidate
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
+- Current Commit 6 makes Salesforce Pipeline Proxy context mandatory. GA4 passes `platformContext=ga4`; the server searches only that context and returns unavailable when no exact scoped Salesforce source matches instead of falling back across platforms
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
-- Current Commit 5 locally narrows the GA4 new-source Spend chooser to `Google Ads` and `Upload CSV`; Google Sheets, LinkedIn Ads, and Meta / Facebook are hidden for new GA4 setup while existing stored sources remain available through exact-source continuity/edit paths
+- Current Commit 5 (`5da5f41c`) narrows the GA4 new-source Spend chooser to `Google Ads` and `Upload CSV`; deployed UI validation confirmed Google Sheets is absent, while existing stored sources remain available through exact-source continuity/edit paths
 - new GA4 CSV Spend requires a Date column in both UI and API; already-undated saved sources remain continuity-only and are not certified
-- the earlier `2026-07-12` three-option chooser evidence is superseded after Current Commit 5 deploys; the new two-option chooser still requires deployed UI confirmation
+- the earlier `2026-07-12` three-option chooser evidence is superseded; the user confirmed the deployed two-option chooser after Current Commit 5
 - active Google Sheets spend sources must be repulled automatically after mapped sheet values change; the default near-real-time target is a provider pull within 1 minute, and the open Overview spend queries refetch persisted values within 15 additional seconds
 - this Google Sheets spend contract is bounded polling rather than an instantaneous provider push; failed pulls must retain the last successful stored spend instead of clearing or replacing it with guessed values
 - Google Sheets OAuth/durability and automatic-update certification work is on hold; new GA4 Google Sheets revenue/spend creation is locally fail-closed until that work resumes, without deleting or deactivating retained sources
+- the read-only Overview source-damage inventory separately reports retained/null-context sources for exact production review; it never authorizes automatic cleanup, migration, or deactivation
 - profit and efficiency metrics are derived outputs, not manually stored totals
 
 Pipeline Proxy rule:

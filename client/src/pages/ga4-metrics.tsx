@@ -2161,12 +2161,12 @@ export default function GA4Metrics() {
   });
 
   const { data: salesforcePipelineProxyData, isLoading: salesforcePipelineProxyLoading, isError: salesforcePipelineProxyError } = useQuery<any>({
-    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"],
+    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "ga4"],
     enabled: !!campaignId && configuredPipelineSourceTypes.has("salesforce"),
     staleTime: 0,
     retry: false,
     queryFn: async () => {
-      const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy`);
+      const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
         throw new Error(json?.message || json?.error || "Failed to fetch Salesforce Pipeline Proxy");

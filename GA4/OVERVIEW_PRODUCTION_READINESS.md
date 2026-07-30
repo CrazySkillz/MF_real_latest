@@ -677,9 +677,9 @@ Deployed proof and closure boundary:
 
 ### Current Commit 11 — Pipeline Proxy campaign-scope fail-closed — documented, not implemented
 
-- Root cause: the frontend uses `sorted[0]` when no saved CRM source matches the configured GA4 campaign scope.
-- Fix: remove only that wrong-scope fallback; preserve successful endpoint values, same-scope saved fallback, provider aggregation, and confirmed-revenue exclusion.
-- Completion: mismatched scope fails closed and same-scope behavior passes focused regression coverage.
+- Root cause: the frontend uses `sorted[0]`, and the HubSpot Pipeline Proxy API uses `candidates[0]`, when no saved CRM source matches the configured GA4 campaign scope. The wrong API result can also overwrite a correct same-scope client fallback.
+- Fix: remove only those two wrong-scope fallbacks; preserve successful same-scope endpoint values, same-scope saved fallback, provider aggregation, campaign access, and confirmed-revenue exclusion. The already-correct Salesforce fail-closed selector remains unchanged.
+- Completion: both HubSpot API selection and client saved-source selection fail closed on mismatched scope, while same-scope HubSpot and Salesforce behavior passes focused regression coverage.
 
 ### Current Commit 12 — Financial unavailable-versus-valid-zero contract — documented, not implemented
 

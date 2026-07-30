@@ -149,7 +149,8 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
   it("wires validated aggregation into the route before source mutation", () => {
     const route = csvSpendRoute();
 
-    expect(route).toContain('const requestedPlatformContext = rawPlatformContext === "ga4" ? "" : rawPlatformContext;');
+    expect(route).toContain('const requestedPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();');
+    expect(route).toContain("const platformContext = requestedPlatformContext || null;");
     expect(route).toContain("const aggregation = aggregateCsvSpendRows(parsedRows");
     expect(route).toContain('if (kept === 0)');
     expect(route).toContain("if (dateCol && aggregation.undatedSpend > 0)");

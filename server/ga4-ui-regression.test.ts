@@ -96,10 +96,9 @@ describe("GA4 UI regression guard", () => {
     expect(readClient("components/GA4ConnectionFlow.tsx")).toContain('data-testid="button-connect-ga4"');
     expect(campaignDetail).toContain("|| platform.requiresReauthorization || customIntegrationEmailReady");
   });
-  it("keeps Add Spend source picker copy explicit about sync behavior", () => {
+  it("keeps enabled Add Spend source picker copy explicit about sync behavior", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
 
-    expect(spendModal).toContain("Import spend from a connected Google Sheet tab.");
     expect(spendModal).toContain("Import spend from a CSV. Requires manual re-upload to update.");
   });
 
@@ -591,7 +590,7 @@ describe("GA4 UI regression guard", () => {
     expect(chooser).not.toContain("LinkedIn Ads");
     expect(chooser).not.toContain("Meta / Facebook");
     expect(chooser).toContain("Google Ads");
-    expect(chooser).toContain("Google Sheets");
+    expect(chooser).toContain('{props.platformContext !== "ga4" && (');
     expect(chooser).toContain("Upload CSV");
     expect(spendModal).toContain('selectedPlatform === "linkedin"');
     expect(spendModal).toContain('selectedPlatform === "meta"');

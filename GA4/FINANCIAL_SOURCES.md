@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 2 (`5cff21ad`) deployed the fixed window/source order; Current Commit 3 (`7b162083` plus `a0b205b5`) passed its bounded banner validation; Current Commit 4 locally scopes GA4 spend and removes the stale campaign-spend fallback. Commit 4 deployment/UI validation plus later source-family, freshness, cleanup, and downstream gates remain. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 2 (`5cff21ad`) deployed the fixed window/source order; Current Commit 3 (`7b162083` plus `a0b205b5`) passed its bounded banner validation; Current Commit 4 (`7c54da65`) deployed and passed user-confirmed Total Spend/Spend Sources parity plus refresh persistence on `2026-07-30`. Foreign-context, active-source-with-zero-record, later source-family, freshness, cleanup, and downstream gates remain. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 
@@ -211,18 +211,16 @@ Revenue source options:
 
 1. `Shopify`
 2. `HubSpot`
-3. `Google Sheets`
-4. `Upload CSV`
+3. `Upload CSV`
 
 Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Upload CSV Revenue is clean-certified for the validated documented scope after Current Commit 12 plus the final user-confirmed deployed invalid-file no-mutation result. The bounded evidence includes transactional lifecycle behavior, exact `$150` / `$1,250` / `$150` UI values without duplicates, Revenue baseline restoration, unchanged Spend, 44/44 final local tests, runner syntax and TypeScript checks, and refreshed inventory with no active/reconciliation damage. Google Sheets Revenue remains on hold and is not clean-certified.
 
-All further Google Sheets Revenue coverage is on hold, including transactional replacement, polling, provider/OAuth and scheduler evidence, damaged-data inventory, downstream propagation automation, and deployed validation. Current Commit 8 is limited to Upload CSV Revenue downstream propagation automation.
+All further Google Sheets Revenue coverage is on hold, including transactional replacement, polling, provider/OAuth and scheduler evidence, damaged-data inventory, downstream propagation automation, and deployed validation. Whole-Overview Current Commit 5 therefore hides new GA4 Google Sheets Revenue setup and rejects direct new-source processing before provider reads or mutation. Existing exact-source continuity remains enabled and unproven; no saved data is removed.
 
 Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
 
 Visible source-picker helper text:
 
-- `Google Sheets`: `Import revenue from a connected Google Sheets tab`
 - `Upload CSV`: `Import revenue from a CSV. Requires manual re-upload to update.`
 
 Visible source-picker status badges:
@@ -432,6 +430,8 @@ Production validation:
 
 ## Revenue Source 4: Google Sheets Journey
 
+Current GA4 status: continuity/reference only. New GA4 setup is hidden and API-blocked by whole-Overview Current Commit 5 until this source family is certified. Existing exact-source edit/delete/refresh behavior is retained for later reconciliation.
+
 The user journey is:
 
 1. user clicks `+` on `Total Revenue`
@@ -521,13 +521,17 @@ Important meaning:
 - it behaves more like a manually maintained revenue snapshot and is best treated as a higher-friction, less automated path
 - it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
-## The Three V1 `Total Spend +` Options
+## The Two V1 `Total Spend +` Options
 
 Spend source options:
 
 1. `Google Ads`
-2. `Google Sheets`
-3. `Upload CSV`
+2. `Upload CSV`
+
+Current certification focus:
+
+- Google Ads live spend validation is deferred. Do not include Google Ads spend in the current GA4 spend production-readiness or clean-certification claim until the real OAuth/customer-selection/provider daily-metrics path, deployed browser lifecycle, scheduler refresh, production data inventory, and downstream report/email value packets have their own Google Ads-specific evidence.
+- New Google Sheets setup is on hold and locally hidden/API-blocked by whole-Overview Current Commit 5. Existing exact-source continuity remains unproven. The active new-source certification target is dated `Upload CSV` under the strict no-overclaiming standard in `PRODUCTION_READINESS.md`.
 
 When the user clicks `+` on the `Total Spend` card:
 
@@ -538,7 +542,7 @@ When the user clicks `+` on the `Total Spend` card:
 ### Spend Workflow Meaning
 
 - `Google Ads` is the v1 connector-based spend workflow with campaign selection inside the modal
-- `Google Sheets` and `CSV` are preview + mapping + import workflows
+- `CSV` is the enabled preview + mapping + import workflow; new GA4 CSV sources require a Date column
 
 Production direction note:
 
@@ -547,11 +551,12 @@ Production direction note:
 - existing stored manual spend sources are still supported for continuity until the user edits or removes them
 - `LinkedIn Ads` and `Meta / Facebook` are removed from the new-source Spend chooser for v1
 - existing stored LinkedIn/Meta spend sources and their edit/backend continuity paths remain supported; this chooser change does not delete records, disconnect providers, or certify those source families
-- deployed UI confirmation on `2026-07-12` verified that the chooser shows Google Ads, Google Sheets, and Upload CSV only; existing LinkedIn/Meta edit continuity remains local evidence
+- the earlier `2026-07-12` three-option chooser evidence is superseded after whole-Overview Current Commit 5 deploys; the new Google Ads/Upload CSV chooser requires deployed UI confirmation
+- existing Google Sheets, LinkedIn, and Meta source edit/delete paths remain continuity-only; this policy performs no persisted-data mutation
 
 Important meaning:
 
-- these are three distinct active v1 spend-source journeys
+- these are two distinct active v1 spend-source journeys
 - they are not labels pointing to one generic "add spend" action
 
 ## Deferred V1 Reference: LinkedIn Ads Journey
@@ -691,7 +696,7 @@ Important current-state note:
 - spreadsheet-tab loading should use the same newest/pending OAuth token selection pattern as spreadsheet listing so reconnects do not list files with one token and try to load tabs with an older token
 - if a saved Google Sheets spend connection's token fails during preview or import, the spend path may self-heal by verifying the same spreadsheet/tab with the newest campaign Google Sheets token and updating the saved connection tokens before asking the user to reconnect
 - deployed Google Sheets spend refresh code does not by itself prove durable OAuth credentials; recurring disconnects were traced to the Google OAuth app being `External + Testing`
-- Publishing status is now `In production`, but public `mumus.app` pages/domain ownership, Google branding/data-access verification, final post-publish Google Sheets and GA4 reconnects, automatic token renewal, and more-than-seven-day durability proof are explicitly on hold
+- Publishing status is now `In production`; the post-publish GA4 reconnect and immediate UI validation passed on `2026-07-30`. The final Google Sheets reconnect, public `mumus.app` pages/domain ownership, Google branding/data-access verification, automatic token renewal, and more-than-seven-day durability proof remain open
 - until the hold closes, Google Sheets spend must not be clean-certified as a stable production connection; the exact blocking queue is in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 - this Google Sheets hold will be completed later when the user resumes the OAuth and deployed automatic-update validation work
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
@@ -736,7 +741,8 @@ Important meaning:
 - CSV spend preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 - CSV spend process/edit must verify that any provided existing `sourceId` is an active CSV spend source for the requested campaign before updating records
 - deleting a CSV spend source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized spend records tied to that verified source ID
-- optional no-date snapshot UI validation, unusual/unlisted CSV formats, deployed forged-request checks, and additional campaign/source inventories are deferred for later and do not block the existing bounded dated-CSV claim
+- new GA4 CSV sources must select a Date column in both UI and API; omitted-context creation is rejected, and a dated saved source cannot be converted to undated
+- already-undated saved sources remain exact-source continuity rows and unproven; unusual/unlisted CSV formats, deployed forged-request checks, and additional inventories remain deferred and do not expand the existing bounded dated-CSV claim
 
 ## Continuity Reference: Existing Stored Manual Spend
 

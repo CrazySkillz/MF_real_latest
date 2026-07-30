@@ -10,7 +10,7 @@ Commit 2 deployment record: commit `5cff21ad` was pushed to `main` and deployed 
 
 Commit 3 deployment record: `7b162083` plus banner follow-up `a0b205b5` deployed, and the user-confirmed one-refresh validation passed with the incorrect page-wide banner gone. The bounded Commit 3 packet is closed; synthetic failure injection and a valid-zero production fixture remain unobserved.
 
-Commit 4 implementation record: GA4 spend reads are locally scoped to explicit `ga4` plus legacy null-context sources, valid zero materialized spend no longer falls through to `campaign.spend`, and GA4 reports/jobs/aggregates use the same boundary. Local tests, TypeScript, and production build pass. Commit, deployment, and bounded UI validation are pending.
+Commit 4 completion record: commit `7c54da65` deployed; GA4 spend reads are scoped to explicit `ga4` plus legacy null-context sources, valid zero materialized spend no longer falls through to `campaign.spend`, and GA4 reports/jobs/aggregates use the same boundary. Local tests, TypeScript, and production build passed. On `2026-07-30`, the user confirmed Total Spend agreed with the Spend Sources list and remained correct after refresh. Foreign-context and active-source-with-zero-record production fixtures remain unproven.
 
 ## Overview Structure
 
@@ -170,11 +170,12 @@ High-level rule:
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
-- the v1 new-source Spend chooser offers `Google Ads`, `Google Sheets`, and `Upload CSV`; `LinkedIn Ads` and `Meta / Facebook` are hidden for new setup while existing stored sources remain available through continuity/edit paths
-- deployed UI confirmation on `2026-07-12` verified those three chooser options and the absence of LinkedIn/Meta; existing-source continuity remains local evidence only
+- Current Commit 5 locally narrows the GA4 new-source Spend chooser to `Google Ads` and `Upload CSV`; Google Sheets, LinkedIn Ads, and Meta / Facebook are hidden for new GA4 setup while existing stored sources remain available through exact-source continuity/edit paths
+- new GA4 CSV Spend requires a Date column in both UI and API; already-undated saved sources remain continuity-only and are not certified
+- the earlier `2026-07-12` three-option chooser evidence is superseded after Current Commit 5 deploys; the new two-option chooser still requires deployed UI confirmation
 - active Google Sheets spend sources must be repulled automatically after mapped sheet values change; the default near-real-time target is a provider pull within 1 minute, and the open Overview spend queries refetch persisted values within 15 additional seconds
 - this Google Sheets spend contract is bounded polling rather than an instantaneous provider push; failed pulls must retain the last successful stored spend instead of clearing or replacing it with guessed values
-- Google Sheets OAuth/durability and automatic-update certification work is on hold and will be completed later; optional broader CSV variants and production inventories are also deferred and do not expand the current bounded dated-CSV claim
+- Google Sheets OAuth/durability and automatic-update certification work is on hold; new GA4 Google Sheets revenue/spend creation is locally fail-closed until that work resumes, without deleting or deactivating retained sources
 - profit and efficiency metrics are derived outputs, not manually stored totals
 
 Pipeline Proxy rule:

@@ -184,6 +184,11 @@ export function AddSpendWizardModal(props: {
   const autoDateDecisionRef = useRef<string | null>(null);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
   const [csvEditNotice, setCsvEditNotice] = useState<string>("");
+  const editingExistingUndatedGa4Csv = isEditing
+    && String(props.initialSource?.sourceType || "").toLowerCase() === "csv"
+    && !!csvPrefillMapping
+    && !String(csvPrefillMapping?.storedDateColumn || csvPrefillMapping?.dateColumn || "");
+  const requiresDatedGa4Csv = props.platformContext === "ga4" && !editingExistingUndatedGa4Csv;
 
   useEffect(() => {
     if (props.open && props.initialSource) return;
@@ -862,6 +867,10 @@ export function AddSpendWizardModal(props: {
       toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
       return;
     }
+    if (requiresDatedGa4Csv && !spendDateColumn) {
+      toast({ title: "Missing mappings", description: "Select a Date column.", variant: "destructive" });
+      return;
+    }
     if (requiresCampaignValueSelection) {
       toast({
         title: "Campaign mapping incomplete",
@@ -1522,15 +1531,17 @@ export function AddSpendWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileSpreadsheet className="w-4 h-4" />
-                      Google Sheets
-                    </CardTitle>
-                    <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
-                  </CardHeader>
-                </Card>
+                {props.platformContext !== "ga4" && (
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileSpreadsheet className="w-4 h-4" />
+                        Google Sheets
+                      </CardTitle>
+                      <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
 
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
                   <CardHeader>
@@ -2486,7 +2497,9 @@ export function AddSpendWizardModal(props: {
                         </div>
                         {(step === "csv_map" || step === "sheets_map") && (
                           <div className="pt-2 border-t space-y-2">
-                            <Label className="font-normal">Date column (recommended for daily tracking)</Label>
+                            <Label className="font-normal">
+                              {requiresDatedGa4Csv && step === "csv_map" ? "Date column (required)" : "Date column (recommended for daily tracking)"}
+                            </Label>
                             <Select
                               value={spendDateColumn || CAMPAIGN_COL_NONE}
                               onValueChange={(v) => setSpendDateColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
@@ -2495,12 +2508,16 @@ export function AddSpendWizardModal(props: {
                                 <SelectValue placeholder="Select date column" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
+                                {(!requiresDatedGa4Csv || step !== "csv_map") && (
+                                  <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
+                                )}
                                 {dateColumnHeaders.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground/70">
-                              Select a date column for daily spend tracking. If you leave this blank, the source will behave like a spend-to-date snapshot rather than daily history.
+                              {requiresDatedGa4Csv && step === "csv_map"
+                                ? "A date column is required for GA4 Overview CSV spend."
+                                : "Select a date column for daily spend tracking. If you leave this blank, the source will behave like a spend-to-date snapshot rather than daily history."}
                             </p>
                           </div>
                         )}

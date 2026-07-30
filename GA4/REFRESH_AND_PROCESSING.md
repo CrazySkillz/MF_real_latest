@@ -21,9 +21,9 @@ User expectation:
 Google OAuth continuity boundary:
 
 - recurring Google Sheets and GA4 disconnects were traced to the OAuth app being `External + Testing`, whose relevant authorizations expired after seven days
-- Publishing status has been changed to `In production`, but public `mumus.app` pages/domain ownership, branding/data-access verification, final post-publish reconnects, automatic token renewal, and more-than-seven-day durability proof are explicitly on hold
-- the `2026-07-29` GA4 reconnect incident is the expected pre-publish-token boundary: the affected campaign connection was created at `2026-07-11T07:19:33.983Z`, before the documented publishing-status change later that day, and its last stored access-token expiry was `2026-07-14T04:48:11.747Z`; application code cannot convert or renew a Google-revoked Testing-mode refresh token, so this exact connection still requires one post-publish reconnect
-- the current reconnect-classification change set reserves `Reconnect required` for a missing refresh credential or Google `invalid_grant`; a GA4 `403`, a transient token-endpoint failure, server OAuth configuration failure, storage failure, or a provider failure after successful refresh remains an operational error and is not relabeled as user reauthorization. Render deployment and the final post-publish reconnect remain pending.
+- Publishing status has been changed to `In production`. The post-publish GA4 reconnect completed on `2026-07-30`; the final Google Sheets reconnect, public `mumus.app` pages/domain ownership, and branding/data-access verification remain open
+- the `2026-07-29` GA4 reconnect incident was the expected pre-publish-token boundary. Reconnect classifier `efaa6f60` and picker fix `6d32514a` deployed; the user confirmed GA4 connected, the intended campaign selection and metrics loaded, and the state remained correct after refresh
+- `Reconnect required` is now reserved for a missing refresh credential or Google `invalid_grant`; a GA4 `403`, transient token-endpoint failure, server OAuth configuration failure, storage failure, or provider failure after successful refresh remains an operational error. Automatic token renewal and more-than-seven-day durability require later external validation.
 - until that work resumes and the evidence is captured, background refresh code and a successful repaired manual refresh must not be described as stable production OAuth operation
 - the authoritative hold and blocking commit queue are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 

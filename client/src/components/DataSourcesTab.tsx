@@ -528,6 +528,7 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
         open={spendWizardOpen}
         onOpenChange={setSpendWizardOpen}
         currency={campaignCurrency}
+        platformContext="ga4"
       />
     </div>
   );

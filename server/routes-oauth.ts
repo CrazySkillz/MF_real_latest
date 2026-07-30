@@ -4537,6 +4537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMapping = zRevenueMapping.safeParse(body.data.mapping || {});
       if (!parsedMapping.success) return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
       const mapping = parsedMapping.data as any;
+      if (platformContext === "ga4" && !mapping?.sourceId) {
+        return sendBadRequest(res, "New Google Sheets revenue sources are temporarily unavailable for GA4 Overview");
+      }
 
       const valueSource: "revenue" | "conversion_value" =
         platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
@@ -5449,7 +5452,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
+      if (!requestedPlatformContext && !mapping?.sourceId) {
+        return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
+      }
       const platformContext = requestedPlatformContext || null;
+      if (platformContext === "ga4" && !mapping?.dateColumn) {
+        const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : "";
+        const existingSource = existingSourceId ? await storage.getSpendSource(campaignId, existingSourceId) : null;
+        let existingMapping: any = null;
+        try {
+          existingMapping = (existingSource as any)?.mappingConfig ? JSON.parse(String((existingSource as any).mappingConfig)) : null;
+        } catch {
+          existingMapping = null;
+        }
+        const isExistingUndatedGa4Csv = !!existingSource
+          && String((existingSource as any)?.sourceType || "").trim().toLowerCase() === "csv"
+          && spendSourceMatchesPlatformContext(existingSource, platformContext)
+          && !String(existingMapping?.storedDateColumn || existingMapping?.dateColumn || "");
+        if (!isExistingUndatedGa4Csv) {
+          return res.status(400).json({ success: false, error: "dateColumn is required for new GA4 CSV spend sources" });
+        }
+      }
 
       const file = (req as any).file as any;
       let parsedRows: Array<Record<string, any>> = [];
@@ -5807,7 +5830,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
+      if (!requestedPlatformContext && !mapping?.sourceId) {
+        return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
+      }
       const platformContext = requestedPlatformContext || null;
+      if (platformContext === "ga4" && !mapping?.sourceId) {
+        return res.status(400).json({ success: false, error: "New Google Sheets spend sources are temporarily unavailable for GA4 Overview" });
+      }
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);

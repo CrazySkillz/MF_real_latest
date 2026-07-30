@@ -344,6 +344,8 @@ Current Commit 12 read-only rescan at `2026-07-12T11:40:50.064Z`:
 
 ## External Provider/Deployed Validation Gates
 
+Whole-Overview Current Commit 5 locally hides new GA4 Google Sheets Revenue setup and rejects direct new-source process requests before provider reads or mutation. Existing exact-source edit/delete/refresh continuity is preserved and remains unproven; no saved source or total was changed. Re-enabling new setup requires the Google Sheets gates below plus a new deployed validation packet.
+
 After the automated gates pass and the fixes are deployed:
 
 - CSV: follow `GA4/OVERVIEW_VALIDATION_RUNNER.md` Current Commit 10 procedure and capture exact campaign/property, durable fixture identity, headers, role mappings, selected campaign values, Date mode, source ID/count, target amount, to-date, breakdown, inventory, Total Revenue, Profit, ROAS, ROI, CPA, and unrelated-source values before and after invalid import, add, two same-source edits, and delete.

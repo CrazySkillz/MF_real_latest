@@ -5,6 +5,7 @@ import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-shee
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state';
+import { getCampaignMetricTotals } from './utils/campaign-current-values';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -78,6 +79,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   startDateObj.setDate(startDateObj.getDate() - 90);
   const startDate = startDateObj.toISOString().slice(0, 10);
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+  const financialSourceStartDate = "1900-01-01";
 
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
@@ -159,6 +161,18 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     }
   } catch (err) {
     console.log(`No GA4 metrics found for campaign ${campaignId}`);
+  }
+
+  let ga4FinancialData = { ...ga4Data };
+  if (ga4Connected) {
+    const financialTotals = await getCampaignMetricTotals(campaignId, true).catch(() => null);
+    if (financialTotals) {
+      ga4FinancialData = {
+        ...ga4Data,
+        revenue: financialTotals.ga4Revenue,
+        conversions: financialTotals.financialConversions,
+      };
+    }
   }
 
   let googleAdsConn: any = null;
@@ -327,7 +341,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let persistedSpend = 0;
   let spendSourceIds: string[] = [];
   try {
-    const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
+    const spendTotals = await storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4");
     persistedSpend = parseNum((spendTotals as any)?.totalSpend);
     spendSourceIds = Array.isArray((spendTotals as any)?.sourceIds) ? (spendTotals as any).sourceIds : [];
   } catch {
@@ -338,7 +352,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let offsiteRevenueTotal = 0;
   try {
     const sources = await storage.getRevenueSources(campaignId, "ga4");
-    const breakdown = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4");
+    const breakdown = await storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4");
     for (const source of sources as any[]) {
       const match = (breakdown as any[]).find((row: any) => String(row?.sourceId) === String(source?.id));
       const lastTotalRevenue = parseNum(match?.revenue);
@@ -371,13 +385,13 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
         FROM spend_records sr
         INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
-        WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND sr.date >= ${startDate} AND sr.date <= ${endDate}
+        WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND COALESCE(ss.platform_context, 'ga4') = 'ga4' AND sr.date >= ${startDate} AND sr.date <= ${endDate}
         GROUP BY sr.date
         UNION ALL
         SELECT rr.date, 0::NUMERIC as spend, SUM(rr.revenue::NUMERIC) as revenue
         FROM revenue_records rr
         INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
-        WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND rr.date >= ${startDate} AND rr.date <= ${endDate}
+        WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND COALESCE(rs.platform_context, 'ga4') = 'ga4' AND rr.date >= ${startDate} AND rr.date <= ${endDate}
         GROUP BY rr.date
       `);
       const financialByDate = new Map<string, { date: string; spend: number; revenue: number }>();
@@ -404,12 +418,12 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   const performanceSummary = buildPerformanceSummaryAggregate({
     campaignId,
     dateRange: "90days",
-    ga4: { connected: ga4Connected, ...ga4Data },
+    ga4: { connected: ga4Connected, ...ga4FinancialData },
     webAnalytics: {
       connected: ga4Connected || customIntegrationIsWebProvider,
       provider: ga4Connected ? "ga4" : customIntegrationIsWebProvider ? "custom_integration" : null,
-      revenue: ga4Connected ? ga4Data.revenue : parseNum(customIntegrationData.revenue),
-      conversions: ga4Connected ? ga4Data.conversions : parseNum(customIntegrationData.conversions),
+      revenue: ga4Connected ? ga4FinancialData.revenue : parseNum(customIntegrationData.revenue),
+      conversions: ga4Connected ? ga4FinancialData.conversions : parseNum(customIntegrationData.conversions),
       sessions: ga4Connected ? ga4Data.sessions : parseNum(customIntegrationData.sessions),
       users: ga4Connected ? ga4Data.users : parseNum(customIntegrationData.users),
     },
@@ -489,9 +503,9 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       ...(googleSheets ? [googleSheets] : []),
     ],
     revenue: {
-      onsiteRevenue: ga4Data.revenue,
+      onsiteRevenue: ga4FinancialData.revenue,
       offsiteRevenue: parseFloat((offsiteRevenueTotal + googleAdsData.attributedRevenue).toFixed(2)),
-      totalRevenue: parseFloat((ga4Data.revenue + offsiteRevenueTotal + googleAdsData.attributedRevenue).toFixed(2)),
+      totalRevenue: parseFloat((ga4FinancialData.revenue + offsiteRevenueTotal + googleAdsData.attributedRevenue).toFixed(2)),
     },
     revenueSources,
   });

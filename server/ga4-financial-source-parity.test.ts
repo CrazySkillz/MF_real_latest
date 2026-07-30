@@ -26,12 +26,14 @@ describe("GA4 downstream financial-source parity", () => {
     expect(selectGA4FinancialTotalsSource([{}, { sessions: 20, users: 10 }, null, daily, breakdown], breakdown)).toBe(daily);
   });
 
-  it("uses the shared ordered selector in Overview, outcome totals, and campaign current values", () => {
+  it("uses the shared ordered selector in Overview, outcome totals, campaign current values, and scheduled aggregates", () => {
     const overview = read("client/src/pages/ga4-metrics.tsx");
     const outcome = read("server/routes-oauth.ts");
     const campaign = read("server/utils/campaign-current-values.ts");
+    const scheduler = read("server/scheduler.ts");
     expect(overview).toContain("selectGA4FinancialTotalsSource(ga4FinancialCandidates");
     for (const source of [outcome, campaign]) expect(source).toContain("selectGA4FinancialTotalsSource([");
+    expect(scheduler).toContain("getCampaignMetricTotals(campaignId, true)");
     expect(overview.indexOf("(ga4ToDateResp as any)?.totals,")).toBeLessThan(overview.indexOf("ga4DailyRows.length > 0 ? dailySummedTotals : null"));
     expect(outcome.indexOf("toDateFinancialCandidate,")).toBeLessThan(outcome.indexOf("persistedFinancialCandidate,"));
     expect(campaign.indexOf("toDateCandidate,")).toBeLessThan(campaign.indexOf("financialRows.length > 0 ? dailyCandidate : null"));

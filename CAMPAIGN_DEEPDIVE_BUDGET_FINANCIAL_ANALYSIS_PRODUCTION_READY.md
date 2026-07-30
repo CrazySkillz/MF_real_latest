@@ -471,3 +471,7 @@ Outstanding:
 - Complete deployed live OAuth/source-refresh validation as real non-test integrations are exercised.
 - Register future main Connected Platforms, including TikTok, Instagram, and other sources, into the shared aggregate contract as part of implementing those integrations.
 - Keep documentation updated if future source integrations add new aggregate capabilities.
+
+## 2026-07-30 Current Commit 10 Status
+
+Root cause: scheduled/manual aggregates could calculate campaign financial cards from only the last 90 days, unlike Overview's ordered campaign-to-date GA4 financial source contract, and valid zero revenue made ROAS/ROI appear unavailable. The local fix keeps engagement/platform windows unchanged, reads GA4-context persisted revenue/spend campaign-to-date, preserves zero revenue as available when spend exists, and separates corrected snapshots as `performance_summary_aggregate_v2`. Local regression evidence passed; deployed browser-versus-snapshot financial parity remains required.

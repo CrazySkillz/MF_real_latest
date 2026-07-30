@@ -841,3 +841,7 @@ Not covered by local implementation validation:
 - Complete historical trajectory behavior in deployed/live data after compatible snapshots exist for the latest point and roughly seven days earlier.
 - Complete frontend regression coverage beyond the targeted Executive Summary guards and user-validated flows.
 - Future standalone platforms beyond the current shared aggregate contract require the future-platform acceptance gate before that specific source is called production-ready in Executive Summary.
+
+## 2026-07-30 Current Commit 10 Status
+
+Executive Summary's live aggregate contract is unchanged. Its scheduled/manual snapshot input now uses the same ordered campaign-to-date GA4 financial selection and GA4-context persisted financial sources as the corrected downstream aggregate, with valid-zero ROAS/ROI and `performance_summary_aggregate_v2` compatibility. Local tests prove the code boundary only; deployed trajectory, report, and live multi-source evidence remain required.

@@ -9,6 +9,13 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(scheduler).toContain('import { buildPerformanceSummaryAggregate }');
     expect(scheduler).toContain("const performanceSummary = buildPerformanceSummaryAggregate({");
     expect(scheduler).toContain('dateRange: "90days"');
+    expect(scheduler).toContain('getCampaignMetricTotals(campaignId, true)');
+    expect(scheduler).toContain('const financialSourceStartDate = "1900-01-01";');
+    expect(scheduler).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
+    expect(scheduler).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4")');
+    expect(scheduler).toContain("COALESCE(ss.platform_context, 'ga4') = 'ga4'");
+    expect(scheduler).toContain("COALESCE(rs.platform_context, 'ga4') = 'ga4'");
+    expect(scheduler).toContain('ga4: { connected: ga4Connected, ...ga4FinancialData }');
     expect(scheduler).toContain('platformSources: [');
     expect(scheduler).toContain('id: "google_ads"');
     expect(scheduler).toContain('metrics: googleAdsData');

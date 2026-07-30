@@ -539,3 +539,7 @@ Trend Analysis is production ready only when:
 Commits 1 through 7 are completed and validated locally.
 
 Trend Analysis now has an aggregate contract plus aggregate-backed Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, Insights, and scheduler/snapshot alignment. Final live historical validation should still be completed later with the planned mock-live GA4 account after enough controlled daily rows exist.
+
+## 2026-07-30 Current Commit 10 Status
+
+Root cause: the existing scheduled Trend financial SQL joined active sources without a GA4 `platform_context` predicate, so foreign-context financial rows could enter a GA4 snapshot on a multi-platform campaign. The local fix adds GA4 context predicates while preserving the existing 90-day Trend window and `trend_analysis_aggregate_v1` response contract. The enclosing Performance Summary snapshot is now `performance_summary_aggregate_v2`. Local regression evidence passed; deployed historical Trend and multi-source evidence remain required.

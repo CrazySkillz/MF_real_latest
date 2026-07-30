@@ -273,7 +273,7 @@ Reviewed current behavior:
 - Delta cards are populated by `client/src/pages/campaign-performance.tsx` from `/api/campaigns/:id/snapshots/comparison?type=...`.
 - The selected range maps to comparison types: `24h -> yesterday`, `7d -> last_week`, and `30d -> last_month`.
 - Current delta-card values prefer live `outcomeTotals.performanceSummary.totals` and fall back to local page totals only when no aggregate metric is available.
-- Previous delta-card values prefer `previous.metrics.performanceSummary.totals`; if the historical snapshot does not have the same `performance_summary_aggregate_v1` version as the current aggregate, the UI shows no historical comparison instead of comparing incompatible data.
+- Previous delta-card values prefer `previous.metrics.performanceSummary.totals`; if the historical snapshot does not have the same `performance_summary_aggregate_v2` version as the current aggregate, the UI shows no historical comparison instead of comparing incompatible data.
 - Snapshot creation through scheduler/platform-sync/manual snapshot routes uses `aggregateCampaignMetrics`, which embeds `metrics.performanceSummary` in new snapshots.
 - Trend charts are still populated from `/api/campaigns/:id/snapshots?period=...` using legacy snapshot columns only: impressions, clicks, conversions, and spend. They do not yet render sessions, users, revenue, or aggregate source capability metadata.
 - Current logic is safe for avoiding incompatible delta-card comparisons, but the tab is not fully aggregate-model complete until trend charts and snapshot read routes are aligned with the same aggregate display model and access-guard expectations.
@@ -286,7 +286,7 @@ Production-ready task bundle:
 - Add source-aware context to delta cards, such as `Source: Google Analytics` or `Source: Campaign spend sources`.
 - Keep spend direction neutral or contextual unless ROI/ROAS proves higher spend is negative.
 - Update `Metric Trends` to read from `snapshot.metrics.performanceSummary.totals` instead of legacy snapshot columns.
-- Filter trend snapshots to compatible `performance_summary_aggregate_v1` snapshots only.
+- Filter trend snapshots to compatible `performance_summary_aggregate_v2` snapshots only.
 - Render trend charts only for available connected-source metrics; for GA4-only campaigns this should prioritize sessions, users, conversions, revenue, and spend when available, not impressions/clicks when unavailable.
 - Add clear empty states for no compatible historical aggregate snapshots.
 - Add regression coverage proving legacy snapshots are ignored, incompatible snapshot versions are not compared, and GA4-only charts do not show unavailable paid-media metrics.
@@ -522,7 +522,7 @@ Scope:
 - Completed: Scheduler snapshot creation now treats GA4-only aggregate values such as sessions, users, revenue, and conversions as valid snapshot data instead of requiring impressions, clicks, or spend.
 - Completed: The retained manual `POST /api/campaigns/:id/snapshots` route now reuses `aggregateCampaignMetrics` instead of maintaining a separate LinkedIn/Custom Integration-only aggregation path.
 - Completed: No current frontend caller for the retained manual snapshot creation route was found; because the route mutates campaign snapshot data, it now uses the existing campaign access guard before creating a snapshot.
-- Completed: `What's Changed` now compares current values only against historical snapshots with the same `performance_summary_aggregate_v1` version and reads historical values from `metrics.performanceSummary.totals`.
+- Completed: `What's Changed` now compares current values only against historical snapshots with the same `performance_summary_aggregate_v2` version and reads historical values from `metrics.performanceSummary.totals`.
 - Completed: `What's Changed` no longer compares aggregate current values against legacy snapshot columns when the historical snapshot lacks compatible aggregate metadata.
 - Completed: The old `Engagements` comparison was replaced with `Sessions` because the aggregate contract does not define an `engagements` total.
 - Completed: Added `server/performance-summary-scheduler-regression.test.ts`.
@@ -665,7 +665,7 @@ Scope:
 Required regression coverage:
 
 - Delta cards do not compare against `comparisonData.current` when no previous snapshot exists.
-- Delta cards ignore historical snapshots without matching `performance_summary_aggregate_v1`.
+- Delta cards ignore historical snapshots without matching `performance_summary_aggregate_v2`.
 - Metric Trends ignore legacy snapshot columns when aggregate totals are present.
 - Metric Trends filter incompatible snapshots and show an empty state when fewer than two compatible points exist.
 - GA4-only Metric Trends do not render unavailable impressions/clicks charts.
@@ -693,7 +693,7 @@ Live GA4 end-to-end validation setup for later:
 - It will test: GA4 data changes over time; the app refresh pulls updated GA4 data; Performance Summary current values update; new compatible snapshots are created; `What's Changed` compares current values against the previous compatible snapshot; and `Metric Trends` charts multiple compatible snapshots over time.
 - Minimum data needed: at least two compatible snapshots to validate `Metric Trends`; at least two comparable time periods to validate `What's Changed`; seven or more days of snapshots to validate `Last 7 Days`; and thirty or more days of snapshots to validate `Last 30 Days`.
 - Validate `Previous` values by opening `/api/campaigns/:id/snapshots/comparison?type=yesterday`, `/api/campaigns/:id/snapshots/comparison?type=last_week`, or `/api/campaigns/:id/snapshots/comparison?type=last_month` and confirming `previous.metrics.performanceSummary.totals.<metric>.value` matches the UI.
-- Validate `Metric Trends` by opening `/api/campaigns/:id/snapshots?period=daily`, `/api/campaigns/:id/snapshots?period=weekly`, or `/api/campaigns/:id/snapshots?period=monthly` and confirming visible chart points come only from snapshots whose `metrics.performanceSummary.version` is `performance_summary_aggregate_v1`.
+- Validate `Metric Trends` by opening `/api/campaigns/:id/snapshots?period=daily`, `/api/campaigns/:id/snapshots?period=weekly`, or `/api/campaigns/:id/snapshots?period=monthly` and confirming visible chart points come only from snapshots whose `metrics.performanceSummary.version` is `performance_summary_aggregate_v2`.
 - Expected GA4-only UI behavior: sessions, users, conversions, revenue, and campaign spend can appear when available; impressions and clicks should not appear unless a connected paid-media source provides them.
 
 ### Commit 6: Docs And Final Validation
@@ -796,3 +796,7 @@ Unverified:
 - All legacy snapshot route callers.
 - Complete frontend test coverage for every Performance Summary tab.
 - Live GA4 7-day and 30-day time-based validation. This will be validated later with the documented live GA4 test-property setup after enough compatible snapshots exist.
+
+## 2026-07-30 Current Commit 10 Status
+
+Root cause: scheduler snapshots used 90-day GA4 financial values while Overview/current-value consumers used the ordered campaign-to-date contract, and ROAS/ROI incorrectly required positive revenue. The local fix reuses the shared full financial selector, scopes persisted financial values to GA4, preserves valid zero revenue, and bumps compatibility to `performance_summary_aggregate_v2`. Existing consumers compare versions dynamically, so v1 history is not mixed with corrected values. Local regression evidence passed; deployment and current browser-versus-snapshot value proof remain required.

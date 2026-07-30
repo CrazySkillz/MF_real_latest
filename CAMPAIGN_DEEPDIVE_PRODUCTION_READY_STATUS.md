@@ -212,3 +212,7 @@ The remaining work is:
 3. deployed scheduled Custom Report email evidence.
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.
+
+## 2026-07-30 Current Commit 10 Status
+
+The downstream parity correction is implemented locally, not deployed. Scheduled/manual Campaign DeepDive aggregates now follow the ordered campaign-to-date GA4 financial contract, explicit GA4 financial-source context, valid-zero ROAS/ROI semantics, and `performance_summary_aggregate_v2` compatibility. Performance Summary, Budget & Financial Analysis, Trend Analysis, Executive Summary, and scheduled Custom Report trackers record the exact boundary. Current deployed report/Trend/multi-source evidence is still required; Campaign DeepDive is not newly certified by local tests alone.

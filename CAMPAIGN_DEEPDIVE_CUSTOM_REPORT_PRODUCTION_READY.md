@@ -460,3 +460,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.
 - Local validation passed on 2026-05-28: `npm run build`.
+
+## 2026-07-30 Current Commit 10 Status
+
+Scheduled Campaign DeepDive PDFs continue to use the existing `aggregateCampaignMetrics` path. That path now supplies the ordered campaign-to-date GA4 financial values, GA4-context persisted sources, valid-zero ROAS/ROI, and `performance_summary_aggregate_v2` compatibility without changing report schemas or delivery code. Local rendering/regression evidence does not prove deployed attachment values or inbox delivery; those remain external validation requirements.

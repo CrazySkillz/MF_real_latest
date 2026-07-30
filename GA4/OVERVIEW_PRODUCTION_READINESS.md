@@ -28,7 +28,7 @@ The earlier clean-certified answer is retracted. Current code and target-databas
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`; banner follow-up `a0b205b5` then deployed, and the user-confirmed one-refresh follow-up validation passed with the incorrect banner gone. Current Commit 4 deployed as `7c54da65` and passed its bounded user-confirmed spend validation on `2026-07-30`: Total Spend agreed with the Spend Sources list and remained correct after refresh. Current Commit 5 deployed as `5da5f41c`; the user confirmed Google Sheets was absent from both new GA4 Revenue and Spend source choosers. Current Commit 6 deployed through `1c721864` and `6fa4d439`; Current Commit 7 deployed through `107d6240`, `c69354e7`, and `4c44522d`. Their bounded cleanup packet closed on `2026-07-30`. Commits 1-7 are closed. Current Commit 8 is deployed through `950c5091` and UI-stability follow-up `c26d2768`; its 30-day coverage/activity and stable-header UI checks passed. Live 90-day and current timer-fired evidence remain unproven. Current Commit 9's owner-scoped read-only inventory is complete, commit `57036ebc` is deployed, and immediate post-deploy no-growth proof passed. First four-hour scheduled-cycle proof and any separately authorized exact cleanup remain open. B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
+Current Commit 2 was committed and pushed as `5cff21ad`, deployed, and passed the user-confirmed bounded UI smoke validation on `2026-07-16`. The validation covered one configured campaign/window, consistent visible window labels, Users provenance copy, campaign-to-date financial labeling, and downloaded Overview report parity; it does not prove all 30/60/90 live provider variants. Current Commit 3 deployed as `7b162083`; banner follow-up `a0b205b5` then deployed, and the user-confirmed one-refresh follow-up validation passed with the incorrect banner gone. Current Commit 4 deployed as `7c54da65` and passed its bounded user-confirmed spend validation on `2026-07-30`: Total Spend agreed with the Spend Sources list and remained correct after refresh. Current Commit 5 deployed as `5da5f41c`; the user confirmed Google Sheets was absent from both new GA4 Revenue and Spend source choosers. Current Commit 6 deployed through `1c721864` and `6fa4d439`; Current Commit 7 deployed through `107d6240`, `c69354e7`, and `4c44522d`. Their bounded cleanup packet closed on `2026-07-30`. Commits 1-7 are closed. Current Commit 8 is deployed through `950c5091` and UI-stability follow-up `c26d2768`; its 30-day coverage/activity and stable-header UI checks passed. Live 90-day and current timer-fired evidence remain unproven. Current Commit 9's owner-scoped read-only inventory is complete, commit `57036ebc` is deployed, and immediate post-deploy no-growth proof passed. First four-hour scheduled-cycle proof and any separately authorized exact cleanup remain open. Current Commit 10's downstream parity fix is implemented and locally validated but is not deployed: Campaign DeepDive scheduled/manual aggregates now reuse the shared ordered GA4 financial selection and campaign-to-date GA4-context revenue/spend, Trend financial rows are GA4-context scoped, valid zero revenue remains available for ROAS/ROI, and incompatible old snapshots are excluded by `performance_summary_aggregate_v2`. Deployed report/Trend/multi-source evidence remains required. B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
 
 The durable answer is:
 
@@ -647,12 +647,30 @@ Local implementation evidence before the follow-up: the four-file focused GA4 fr
 
 Local evidence: the 3-test Current Commit 9 guard, 2 LinkedIn scheduler guards, and 2 targeted Meta persistence/disconnect guards pass. `npm run check`, `git diff --check`, and the production build pass. The wider pre-existing Meta/source-safety packets still contain unrelated stale assertion failures outside this change; they are not presented as passing evidence for Commit 9.
 
-### Current Commit 10 — Complete downstream propagation and deployed UI evidence
+### Current Commit 10 — Complete downstream propagation and deployed UI evidence — local fix complete; deployment evidence pending
 
-- automate and manually verify the complete propagation matrix across KPIs, Benchmarks, alerts/notifications, Ad Comparison, Insights, Reports, and every named Campaign DeepDive subsection
-- verify browser and scheduled/server artifacts use the same source/window/failure semantics
-- complete named deployed report/Trend/multi-source evidence relevant to the claimed scope
-- rerun all matrices and update this file only after evidence is current
+Root cause confirmed on `2026-07-30`:
+
+- scheduled/manual Campaign DeepDive aggregates read GA4 financial revenue, conversions, imported revenue, and spend from a 90-day subset while Overview, KPI, Benchmark, alert, and outcome-current-value paths use the shared ordered campaign-to-date financial contract
+- Trend snapshot SQL joined active financial sources but did not restrict their `platform_context`, allowing foreign-context rows into a GA4 aggregate on a multi-platform campaign
+- Performance Summary treated revenue as available only when it was positive, so valid zero revenue with positive spend incorrectly produced unavailable ROAS/ROI instead of `0` and `-100%`
+- the existing regression packet checked the shared selector in Overview/outcome/current-value paths but did not guard the scheduler consumer
+
+Smallest safe implementation:
+
+- export and reuse the existing `getCampaignMetricTotals(campaignId, true)` helper in the existing scheduler aggregate path; no endpoint, storage, schema, provider-query, or response shape was added
+- retain the existing 90-day engagement and paid-platform windows, but read persisted GA4 financial sources campaign-to-date with explicit `platformContext="ga4"`
+- add the same GA4 platform-context predicate to Trend financial source joins
+- determine ROAS/ROI availability from source presence plus non-zero spend, preserving valid zero/negative revenue
+- bump only the Performance Summary compatibility marker to `performance_summary_aggregate_v2`; current consumers already compare versions dynamically, so old incompatible snapshots are ignored rather than mixed
+
+Local proof: `npm run check` and the production build passed. The final 12-file Commit 10 downstream packet passed 118/118 tests, including Performance Summary, scheduler parity, ordered GA4 financial selection, outcome totals, KPI, Benchmark, alerts, Custom Reports, report email, and Insights/report parity. A separate wider packet passed 136 assertions but retained three unrelated pre-existing stale assertions (one Campaign Financial Analysis source-string assertion and two notification-navigation assertions); an extended legacy packet also exposed stale scheduler/validation-runner assertions outside the touched paths. Those failures are not presented as Commit 10 failures or passing evidence. `git diff --check` passed for every Commit 10 code and documentation file. No production data was created, reconnected, edited, deleted, refreshed, or cleaned up.
+
+Still required before closing Current Commit 10:
+
+- deploy this local fix and verify a current GA4 campaign's browser values against its Campaign DeepDive Performance Summary and Budget & Financial Analysis values
+- complete named deployed scheduled report/Trend/multi-source evidence relevant to the claimed scope
+- retain KPI, Benchmark, alerts/notifications, Ad Comparison, Insights, Reports, and each Campaign DeepDive subsection as proven only to the exact code/test/deployed boundary recorded in its own tracker
 
 Estimated remaining work: Current Commits 8-10. The count will increase if Google Sheets is re-enabled rather than retained as continuity-only, or if broader production cleanup separates into multiple independently reviewed batches.
 

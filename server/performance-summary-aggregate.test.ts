@@ -21,7 +21,7 @@ describe("Performance Summary aggregate contract", () => {
       revenueSources: [],
     });
 
-    expect(aggregate.version).toBe("performance_summary_aggregate_v1");
+    expect(aggregate.version).toBe("performance_summary_aggregate_v2");
     expect(aggregate.sources.map((source) => source.id)).toEqual(["ga4"]);
     expect(aggregate.totals.sessions).toMatchObject({ available: true, value: 300, sources: ["ga4"] });
     expect(aggregate.totals.users).toMatchObject({ available: true, value: 180, sources: ["ga4"] });
@@ -407,6 +407,34 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 0, sources: ["linkedin"] });
     expect(aggregate.totals.spend).toMatchObject({ available: true, value: 0, sources: ["linkedin"] });
     expect(aggregate.totals.sessions.available).toBe(false);
+  });
+
+  it("keeps valid zero and negative revenue available in ROAS and ROI when spend is positive", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-zero-revenue",
+      dateRange: "90days",
+      ga4: { connected: true, revenue: 0, conversions: 0, sessions: 20, users: 10 },
+      webAnalytics: { connected: true, provider: "ga4", revenue: 0, conversions: 0, sessions: 20, users: 10 },
+      spend: { unifiedSpend: 100, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {},
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 0, sources: ["ga4"] });
+    expect(aggregate.totals.roas).toMatchObject({ available: true, value: 0, sources: ["revenue", "spend"] });
+    expect(aggregate.totals.roi).toMatchObject({ available: true, value: -100, sources: ["revenue", "spend"] });
+
+    const negative = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-negative-revenue",
+      dateRange: "90days",
+      ga4: { connected: true, revenue: -50, conversions: 0, sessions: 20, users: 10 },
+      webAnalytics: { connected: true, provider: "ga4", revenue: -50, conversions: 0, sessions: 20, users: 10 },
+      spend: { unifiedSpend: 100, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {}, revenue: { onsiteRevenue: -50, offsiteRevenue: 0, totalRevenue: -50 }, revenueSources: [],
+    });
+    expect(negative.totals.roas).toMatchObject({ available: true, value: -0.5 });
+    expect(negative.totals.roi).toMatchObject({ available: true, value: -150 });
   });
 
   it("keeps missing Custom Integration fields unavailable instead of zero-filling aggregate availability", () => {

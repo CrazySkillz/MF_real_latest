@@ -232,6 +232,8 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   };
 }
 
+export { getCampaignMetricTotals };
+
 function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number {
   if (sourceId === "total_revenue") return totals.revenue;
   if (sourceId === "total_spend") return totals.spend;

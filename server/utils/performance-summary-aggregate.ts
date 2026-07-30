@@ -319,6 +319,8 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const revenueSourceIds = sourceBreakdown
     .filter((source) => source.includedMetrics.includes("revenue") || source.includedMetrics.includes("attributedRevenue"))
     .map((source) => source.id);
+  const hasRevenue = revenueSourceIds.length > 0;
+  const hasSpend = spendSource.length > 0;
 
   const impressionsSources = paidMetricSources("impressions").map((source) => source.id);
   const clicksSources = paidMetricSources("clicks").map((source) => source.id);
@@ -339,8 +341,8 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const cpc = spendValue > 0 && totalClicks > 0 ? round2(spendValue / totalClicks) : null;
   const cpa = spendValue > 0 && totalConversions > 0 ? round2(spendValue / totalConversions) : null;
   const cpm = spendValue > 0 && totalImpressions > 0 ? round2((spendValue / totalImpressions) * 1000) : null;
-  const roas = spendValue > 0 && revenueValue > 0 ? round2(revenueValue / spendValue) : null;
-  const roi = spendValue > 0 && revenueValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
+  const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
+  const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
   const cvr = totalClicks > 0 && totalConversions > 0
     ? round2((totalConversions / totalClicks) * 100)
@@ -356,7 +358,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   return {
     campaignId: input.campaignId,
     dateRange: input.dateRange,
-    version: "performance_summary_aggregate_v1",
+    version: "performance_summary_aggregate_v2",
     sources: sourceBreakdown,
     totals: {
       impressions: metric(totalImpressions, impressionsSources, ["No connected paid-media source provides impressions; GA4 engagement rate is not an impressions metric"]),

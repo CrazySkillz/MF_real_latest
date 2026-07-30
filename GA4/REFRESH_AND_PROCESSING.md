@@ -178,7 +178,7 @@ Important timing:
 - Overview values can update as soon as GA4 has processed the events and the relevant page query refetches
 - Overview does not need to wait for the next completed reporting day when it is reading live to-date or breakdown data
 - Trends uses persisted completed-day rows through the campaign reporting timezone's latest completed day, so same-day script events generally do not become a new Trends day until the following reporting day and a scheduler/on-demand backfill reads them
-- Overview shows the successful provider check-through date separately from the latest stored activity date; it warns when no successful current coverage exists or a stale refresh attempt fails, and retains stored values on failure
+- Connection Details shows the successful provider check-through date separately from the latest stored activity date. The normal campaign header does not insert that success text after load; Overview still warns when no successful current coverage exists or a stale refresh attempt fails, and retains stored values on failure
 - generic GA4 `403 PERMISSION_DENIED` responses are provider/permission failures, not confirmed authentication expiry; this includes the daily time-series fetch before and after a confirmed token refresh, and only confirmed authentication signals may trigger token refresh/reconnect handling
 
 ## Scheduler 2: External Value Auto-Refresh And Auto-Process

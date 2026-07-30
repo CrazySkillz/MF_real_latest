@@ -5689,13 +5689,6 @@ export default function GA4Metrics() {
                 <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
                 <div><span className="font-medium text-foreground">GA4 Property ID:</span> {ga4ConnectionUsable ? (provenancePropertyId || provenanceProperty) : "Unavailable"}</div>
                 <div><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
-                {ga4ConnectionUsable && (ga4DailyResp || ga4Error) && (
-                  <div data-testid="ga4-overview-freshness-summary">
-                    <span className="font-medium text-foreground">GA4 daily data:</span> {ga4DailyFreshnessLabel}
-                    {ga4DailyExpectedThroughDate && ga4DailyProviderCoverageThroughDate !== ga4DailyExpectedThroughDate ? ` (expected through ${ga4DailyExpectedThroughDate})` : ""}
-                    <div className="text-xs mt-1">Completed-day data may change as GA4 finishes processing.</div>
-                  </div>
-                )}
               </CardContent>
             </Card>
             {ga4ConnectionUsable && ga4DailyRefreshIsStale && (

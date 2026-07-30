@@ -5429,6 +5429,7 @@ export default function GA4Metrics() {
 
   const ga4DailyLatestStoredDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
   const ga4DailyExpectedThroughDate = String((ga4DailyResp as any)?.dataThroughDate || "").trim();
+  const ga4DailyProviderCoverageThroughDate = String((ga4DailyResp as any)?.providerCoverageThroughDate || "").trim();
   const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
   const ga4DailyProviderRefreshWarning = Boolean(String((ga4DailyResp as any)?.providerRefreshWarning || "").trim());
   const ga4DailyFreshnessAvailable = ga4ConnectionUsable && Boolean(ga4DailyResp);
@@ -5436,6 +5437,8 @@ export default function GA4Metrics() {
     ? "Unavailable"
     : ga4DailyRefreshIsStale
       ? `Delayed — through ${ga4DailyLatestStoredDate || "no stored day"}`
+      : ga4DailyProviderCoverageThroughDate
+        ? `Checked through ${ga4DailyProviderCoverageThroughDate}; latest activity ${ga4DailyLatestStoredDate || "none"}`
       : `Through ${ga4DailyLatestStoredDate || ga4DailyExpectedThroughDate || "no stored day"}`;
   const provenanceProperty =
     (ga4Diagnostics as any)?.connection?.displayName ||
@@ -5689,7 +5692,7 @@ export default function GA4Metrics() {
                 {ga4ConnectionUsable && (ga4DailyResp || ga4Error) && (
                   <div data-testid="ga4-overview-freshness-summary">
                     <span className="font-medium text-foreground">GA4 daily data:</span> {ga4DailyFreshnessLabel}
-                    {ga4DailyExpectedThroughDate ? ` (expected through ${ga4DailyExpectedThroughDate})` : ""}
+                    {ga4DailyExpectedThroughDate && ga4DailyProviderCoverageThroughDate !== ga4DailyExpectedThroughDate ? ` (expected through ${ga4DailyExpectedThroughDate})` : ""}
                     <div className="text-xs mt-1">Completed-day data may change as GA4 finishes processing.</div>
                   </div>
                 )}

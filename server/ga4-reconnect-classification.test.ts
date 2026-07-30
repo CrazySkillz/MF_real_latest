@@ -56,6 +56,95 @@ describe("GA4 reconnect classification", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("does not refresh tokens for a time-series 403 permission failure", async () => {
+    const service = new GoogleAnalytics4Service();
+    const storage = makeStorage();
+    const refresh = vi.spyOn(service, "refreshAccessToken");
+    vi.spyOn(service, "getTimeSeriesWithToken").mockRejectedValueOnce(
+      new Error("GA4 Time Series API Error: 403 PERMISSION_DENIED"),
+    );
+
+    await expect(
+      service.getTimeSeriesData("campaign-1", storage),
+    ).rejects.toThrow("PERMISSION_DENIED");
+    expect(refresh).not.toHaveBeenCalled();
+    expect(storage.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it("does not relabel a post-refresh time-series permission failure as reconnect", async () => {
+    const service = new GoogleAnalytics4Service();
+    const storage = makeStorage();
+    vi.spyOn(service, "getTimeSeriesWithToken")
+      .mockRejectedValueOnce(new Error("GA4 Time Series API Error: 401 UNAUTHENTICATED"))
+      .mockRejectedValueOnce(new Error("GA4 Time Series API Error: 403 PERMISSION_DENIED"));
+    vi.spyOn(service, "refreshAccessToken").mockResolvedValueOnce({
+      access_token: "fresh-access-token",
+      expires_in: 3600,
+    });
+
+    await expect(
+      service.getTimeSeriesData("campaign-1", storage),
+    ).rejects.toThrow("PERMISSION_DENIED");
+    expect(storage.updateGA4ConnectionTokens).toHaveBeenCalledWith(
+      connection.id,
+      expect.objectContaining({ accessToken: "fresh-access-token" }),
+    );
+  });
+
+  it("does not relabel a transient time-series token refresh failure as reconnect", async () => {
+    const service = new GoogleAnalytics4Service();
+    const storage = makeStorage();
+    vi.spyOn(service, "getTimeSeriesWithToken").mockRejectedValueOnce(
+      new Error("GA4 Time Series API Error: 401 UNAUTHENTICATED"),
+    );
+    vi.spyOn(service, "refreshAccessToken").mockRejectedValueOnce(
+      new Error("OAuth token endpoint temporarily unavailable"),
+    );
+
+    await expect(
+      service.getTimeSeriesData("campaign-1", storage),
+    ).rejects.toThrow("temporarily unavailable");
+  });
+
+  it("does not relabel time-series token persistence failure as reconnect", async () => {
+    const service = new GoogleAnalytics4Service();
+    const storage = makeStorage();
+    storage.updateGA4ConnectionTokens.mockRejectedValueOnce(
+      new Error("Database temporarily unavailable"),
+    );
+    vi.spyOn(service, "getTimeSeriesWithToken").mockRejectedValueOnce(
+      new Error("GA4 Time Series API Error: 401 UNAUTHENTICATED"),
+    );
+    vi.spyOn(service, "refreshAccessToken").mockResolvedValueOnce({
+      access_token: "fresh-access-token",
+      expires_in: 3600,
+    });
+
+    await expect(
+      service.getTimeSeriesData("campaign-1", storage),
+    ).rejects.toThrow("Database temporarily unavailable");
+  });
+
+  it("requires reconnect when Google rejects the time-series refresh credential", async () => {
+    const service = new GoogleAnalytics4Service();
+    const storage = makeStorage();
+    vi.spyOn(service, "getTimeSeriesWithToken").mockRejectedValueOnce(
+      new Error("GA4 Time Series API Error: 401 UNAUTHENTICATED"),
+    );
+    vi.spyOn(service, "refreshAccessToken").mockRejectedValueOnce(Object.assign(
+      new Error("Failed to refresh token: invalid_grant"),
+      { oauthError: "invalid_grant", oauthStatus: 400 },
+    ));
+
+    await expect(
+      service.getTimeSeriesData("campaign-1", storage),
+    ).rejects.toMatchObject({
+      message: "AUTO_REFRESH_NEEDED",
+      isAutoRefreshNeeded: true,
+      hasRefreshToken: true,
+    });
+  });
+
   it("does not ask for reconnect when token refresh fails transiently", async () => {
     const service = new GoogleAnalytics4Service();
     const storage = makeStorage();

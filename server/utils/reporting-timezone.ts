@@ -108,3 +108,30 @@ export function getExpectedDailyRefreshAt(dataThroughDate: any, reportingTimeZon
   const safeMinute = Math.min(Math.max(Math.floor(Number(minute) || 0), 0), 59);
   return zonedDateTimeToUTC(normalizeReportingTimeZone(reportingTimeZone), refreshDay.year, refreshDay.month, refreshDay.day, safeHour, safeMinute);
 }
+
+export function resolveGA4DailyFreshness(input: {
+  dataThroughDate: string;
+  expectedRefreshAt: Date | null;
+  lastCompletedRefreshAt: string | null;
+  oldestDueMissingDailyDate: string | null;
+  providerCoverageThroughDate: string | null;
+  providerRefreshWarning?: string | null;
+  now?: Date;
+}) {
+  const coverage = String(input.providerCoverageThroughDate || "").trim();
+  const providerCoverageIsCurrent =
+    /^\d{4}-\d{2}-\d{2}$/.test(coverage) && coverage >= input.dataThroughDate;
+  const oldestDueMissingDailyDate = providerCoverageIsCurrent ? null : input.oldestDueMissingDailyDate;
+  const refreshedAt = input.lastCompletedRefreshAt ? new Date(input.lastCompletedRefreshAt).getTime() : NaN;
+  const expectedAt = input.expectedRefreshAt?.getTime() ?? NaN;
+  const now = input.now || new Date();
+
+  return {
+    providerCoverageThroughDate: coverage || null,
+    oldestDueMissingDailyDate,
+    refreshIsStale: Boolean(input.providerRefreshWarning) || (!providerCoverageIsCurrent && (
+      Boolean(oldestDueMissingDailyDate) ||
+      (Number.isFinite(expectedAt) && expectedAt <= now.getTime() && (!Number.isFinite(refreshedAt) || refreshedAt < expectedAt))
+    )),
+  };
+}

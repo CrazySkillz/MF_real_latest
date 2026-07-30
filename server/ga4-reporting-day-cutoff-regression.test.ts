@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getExpectedDailyRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getExpectedDailyRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), "utf-8");
 
@@ -37,6 +37,33 @@ describe("GA4 reporting-day cutoff", () => {
     expect(getExpectedDailyRefreshAt("2026-06-20", "Europe/Amsterdam", 3, 0)?.toISOString()).toBe("2026-06-21T01:00:00.000Z");
   });
 
+  it("treats successful provider coverage as current without inventing missing activity rows", () => {
+    expect(resolveGA4DailyFreshness({
+      dataThroughDate: "2026-07-29",
+      expectedRefreshAt: new Date("2026-07-30T03:00:00.000Z"),
+      lastCompletedRefreshAt: "2026-07-30T11:54:41.666Z",
+      oldestDueMissingDailyDate: "2026-07-13",
+      providerCoverageThroughDate: "2026-07-29",
+      now: new Date("2026-07-30T13:00:00.000Z"),
+    })).toEqual({
+      providerCoverageThroughDate: "2026-07-29",
+      oldestDueMissingDailyDate: null,
+      refreshIsStale: false,
+    });
+  });
+
+  it("retains a failed provider warning even when prior coverage was current", () => {
+    expect(resolveGA4DailyFreshness({
+      dataThroughDate: "2026-07-29",
+      expectedRefreshAt: new Date("2026-07-30T03:00:00.000Z"),
+      lastCompletedRefreshAt: "2026-07-30T11:54:41.666Z",
+      oldestDueMissingDailyDate: "2026-07-13",
+      providerCoverageThroughDate: "2026-07-29",
+      providerRefreshWarning: "provider failed",
+      now: new Date("2026-07-30T13:00:00.000Z"),
+    }).refreshIsStale).toBe(true);
+  });
+
   it("wires the timezone cutoff through the GA4 daily route and Trends UI", () => {
     const routes = read("server", "routes-oauth.ts");
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
@@ -47,12 +74,14 @@ describe("GA4 reporting-day cutoff", () => {
     expect(routes).toContain("expectedRefreshAt: expectedRefreshAtISO,");
     expect(routes).toContain("lastCompletedRefreshAt,");
     expect(routes).toContain("latestStoredDailyDate,");
-    expect(routes).toContain("oldestDueMissingDailyDate,");
+    expect(routes).toContain("oldestDueMissingDailyDate: getOldestDueMissingDailyDate(latestStoredDailyDate, now),");
     expect(routes).toContain("providerRefreshWarning,");
-    expect(routes).toContain("refreshIsStale:");
+    expect(routes).toContain("const freshness = resolveGA4DailyFreshness({");
     expect(routes).toContain("providerRefreshAttempted,");
     expect(routes).toContain("providerRefreshOutcome,");
     expect(routes).toContain("providerRefreshRowCount,");
+    expect(routes).toContain("providerCoverageThroughDate = dataThroughDate;");
+    expect(routes).toContain("providerRefreshCompletedAt || lastUpdated");
     expect(routes).toContain("getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))");
     expect(routes).toContain("Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.");
 
@@ -60,6 +89,7 @@ describe("GA4 reporting-day cutoff", () => {
     expect(page).toContain("const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || \"\").trim();");
     expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
     expect(page).toContain("const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;");
+    expect(page).toContain("Checked through ${ga4DailyProviderCoverageThroughDate}; latest activity ${ga4DailyLatestStoredDate");
     expect(page).toContain('data-testid="ga4-overview-freshness-summary"');
     expect(page).toContain('data-testid="ga4-overview-freshness-warning"');
     expect(page).toContain("Completed-day data may change as GA4 finishes processing.");
@@ -69,8 +99,9 @@ describe("GA4 reporting-day cutoff", () => {
     const runner = read("client", "public", "ga4-overview-validation-runner.js");
     expect(runner).toContain("dailyFreshnessContractPresent:");
     expect(runner).toContain("providerRefreshOutcome: dailyData.providerRefreshOutcome || null");
+    expect(runner).toContain("providerCoverageThroughDate: dailyData.providerCoverageThroughDate || null");
     expect(runner).toContain("providerRefreshWarningPresent: Boolean(dailyData.providerRefreshWarning)");
-    expect(runner).toContain("does not prove GA4 has finished delayed event processing");
+    expect(runner).toContain("does not invent zero rows or prove GA4 has finished delayed event processing");
   });
 
   it("keeps GA4 to-date from calling the provider with an inverted completed-day window", () => {

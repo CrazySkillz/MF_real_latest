@@ -41,7 +41,7 @@ import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-ag
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign, resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
@@ -8537,18 +8537,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const missingExpectedRefreshAt = getExpectedDailyRefreshAt(oldestMissingDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute);
         return missingExpectedRefreshAt && missingExpectedRefreshAt.getTime() <= now.getTime() ? oldestMissingDate : null;
       };
-      const buildFreshness = (lastCompletedRefreshAt: string | null, latestStoredDailyDate: string | null, providerRefreshWarning: string | null = null, now = new Date()) => {
-        const refreshedAt = lastCompletedRefreshAt ? new Date(lastCompletedRefreshAt).getTime() : NaN;
-        const expectedAt = expectedRefreshAt ? expectedRefreshAt.getTime() : NaN;
-        const oldestDueMissingDailyDate = getOldestDueMissingDailyDate(latestStoredDailyDate, now);
+      const buildFreshness = (lastCompletedRefreshAt: string | null, latestStoredDailyDate: string | null, providerRefreshWarning: string | null = null, providerCoverageThroughDate: string | null = null, now = new Date()) => {
+        const freshness = resolveGA4DailyFreshness({
+          dataThroughDate,
+          expectedRefreshAt,
+          lastCompletedRefreshAt,
+          oldestDueMissingDailyDate: getOldestDueMissingDailyDate(latestStoredDailyDate, now),
+          providerCoverageThroughDate,
+          providerRefreshWarning,
+          now,
+        });
         return {
           expectedRefreshAt: expectedRefreshAtISO,
           refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
           lastCompletedRefreshAt,
           latestStoredDailyDate,
-          oldestDueMissingDailyDate,
           providerRefreshWarning,
-          refreshIsStale: Boolean(oldestDueMissingDailyDate) || (Number.isFinite(expectedAt) && expectedAt <= now.getTime() && (!Number.isFinite(refreshedAt) || refreshedAt < expectedAt)),
+          ...freshness,
         };
       };
       const addDerivedEngagedSessions = (row: any) => {
@@ -8687,6 +8692,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let providerRefreshAttempted = false;
       let providerRefreshOutcome: "not_needed" | "rows_returned" | "empty" | "failed" = "not_needed";
       let providerRefreshRowCount = 0;
+      let providerRefreshCompletedAt: string | null = null;
+      let providerCoverageThroughDate: string | null = null;
       let stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
       const refreshFromProvider = async () => {
         providerRefreshAttempted = true;
@@ -8704,7 +8711,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (upserts.length > 0) {
           await storage.upsertGA4DailyMetrics(upserts as any);
         }
-        stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+        stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
+        providerRefreshCompletedAt = new Date().toISOString();
+        providerCoverageThroughDate = dataThroughDate;
       };
 
       if (!stored || stored.length === 0) {
@@ -8736,8 +8745,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         if (recoveredConversionRevenue) {
           await storage.upsertGA4DailyMetrics(upserts as any);
-          stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+          stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
         }
+        providerRefreshCompletedAt = new Date().toISOString();
+        providerCoverageThroughDate = dataThroughDate;
       }
       const latestStoredDailyDate = getLatestStoredDailyDate(stored);
 
@@ -8764,7 +8775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerRefreshAttempted,
         providerRefreshOutcome,
         providerRefreshRowCount,
-        ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning),
+        ...buildFreshness(providerRefreshCompletedAt || lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });
     } catch (error: any) {

@@ -1870,18 +1870,20 @@ export class GoogleAnalytics4Service {
     } catch (error: any) {
       console.log('GA4 time series API call failed:', error.message);
       
-      // Check if error is due to expired token
-      if (error.message.includes('invalid_grant') || 
-          error.message.includes('401') || 
-          error.message.includes('403') ||
-          error.message.includes('invalid authentication credentials') ||
-          error.message.includes('Request had invalid authentication credentials')) {
+      // Refresh only for confirmed authentication failures. A generic 403 is a
+      // provider permission failure, not proof that the refresh credential expired.
+      const accessErrorMessage = String(error?.message || '').toLowerCase();
+      if (accessErrorMessage.includes('invalid_grant') ||
+          accessErrorMessage.includes('401') ||
+          accessErrorMessage.includes('unauthenticated') ||
+          accessErrorMessage.includes('invalid authentication credentials')) {
         
         console.log('Access token invalid/expired for time series - attempting automatic refresh');
         
         if (connection.refreshToken) {
+          let refreshResult;
           try {
-            const refreshResult = await this.refreshAccessToken(
+            refreshResult = await this.refreshAccessToken(
               connection.refreshToken, 
               connection.clientId || undefined,
               connection.clientSecret || undefined
@@ -1892,16 +1894,20 @@ export class GoogleAnalytics4Service {
               refreshToken: connection.refreshToken,
               expiresAt: new Date(Date.now() + (refreshResult.expires_in * 1000))
             });
-            
-            console.log('Access token refreshed successfully - retrying time series call');
-            return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter);
           } catch (refreshError: any) {
             console.error('Failed to refresh access token for time series:', refreshError.message);
-            const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
-            (autoRefreshError as any).isAutoRefreshNeeded = true;
-            (autoRefreshError as any).hasRefreshToken = !!connection.refreshToken;
-            throw autoRefreshError;
+            const oauthError = String(refreshError?.oauthError || '').toLowerCase();
+            if (oauthError === 'invalid_grant' || String(refreshError?.message || '').toLowerCase().includes('invalid_grant')) {
+              const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
+              (autoRefreshError as any).isAutoRefreshNeeded = true;
+              (autoRefreshError as any).hasRefreshToken = true;
+              throw autoRefreshError;
+            }
+            throw refreshError;
           }
+
+          console.log('Access token refreshed successfully - retrying time series call');
+          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter);
         } else {
           const tokenExpiredError = new Error('TOKEN_EXPIRED');
           (tokenExpiredError as any).isTokenExpired = true;

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-30.8";
+  var VERSION = "2026-07-30.9";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -679,6 +679,7 @@
         expectedRefreshAt: dailyData.expectedRefreshAt || null,
         lastCompletedRefreshAt: dailyData.lastCompletedRefreshAt || null,
         latestStoredDailyDate: dailyData.latestStoredDailyDate || null,
+        providerCoverageThroughDate: dailyData.providerCoverageThroughDate || null,
         oldestDueMissingDailyDate: dailyData.oldestDueMissingDailyDate || null,
         providerRefreshAttempted: dailyData.providerRefreshAttempted === true,
         providerRefreshOutcome: dailyData.providerRefreshOutcome || null,
@@ -689,7 +690,7 @@
       },
       caveats: [
         "Automated endpoint validation only; it does not inspect rendered UI pixels or prove inbox email delivery.",
-        "refreshIsStale=false proves the expected persisted daily boundary is present; it does not prove GA4 has finished delayed event processing.",
+        "refreshIsStale=false proves a successful provider check covered the expected boundary or that stored activity reached it; it does not invent zero rows or prove GA4 has finished delayed event processing.",
         "Provider data can change after GA4 processes delayed events; compare checkedAt timestamps when reviewing evidence.",
         "A passing pack is not clean certification for untested source families or future report/email deliveries."
       ],

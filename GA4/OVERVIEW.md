@@ -12,6 +12,8 @@ Commit 3 deployment record: `7b162083` plus banner follow-up `a0b205b5` deployed
 
 Commit 4 completion record: commit `7c54da65` deployed; GA4 spend reads are scoped to explicit `ga4` plus legacy null-context sources, valid zero materialized spend no longer falls through to `campaign.spend`, and GA4 reports/jobs/aggregates use the same boundary. Local tests, TypeScript, and production build passed. On `2026-07-30`, the user confirmed Total Spend agreed with the Spend Sources list and remained correct after refresh. Foreign-context and active-source-with-zero-record production fixtures remain unproven.
 
+Commit 8 follow-up: read-only production evidence showed that the selected `ga4_mock` scope successfully rewrote 19 provider-returned daily rows on `2026-07-30`, while the latest returned activity date remained `2026-07-12`. The freshness contract had incorrectly treated that latest activity date as the provider coverage boundary, even though GA4 can omit dates with no returned activity. The follow-up keeps all returned metrics unchanged, creates no zero rows, reports the successful check-through date separately, and leaves an actual failed provider attempt stale. The remaining generic `403` classifier in the daily time-series service was also removed; permission failures and post-refresh provider failures remain operational errors rather than reconnect requests. Deployed UI validation of this follow-up remains required.
+
 ## Overview Structure
 
 The platform-level GA4 `Overview` tab contains:
@@ -70,6 +72,7 @@ Important meaning:
 - queries and normalized records are the real inputs
 - the cards are the presentation layer for those recomputed results
 - GA4 Data API values can change after already-sent events are processed by Google; the app should display the latest refetched values rather than treating the first observed value as final
+- a successful daily provider query can cover the completed-day window even when the latest returned activity row is older; Overview labels the check-through date and latest activity date separately without materializing absent dates as zero-valued metrics
 - Overview current/to-date values may update before `Insights -> Trends`, because Trends waits for persisted completed-day daily rows while Overview can use current to-date and breakdown query results
 
 ## Fetched Vs Derived Values

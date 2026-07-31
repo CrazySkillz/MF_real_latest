@@ -144,6 +144,52 @@ describe("GA4 UI regression guard", () => {
     expect(conversionMethod).toContain("dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }]");
   });
 
+  it("returns the persisted GA4 window without exposing OAuth credentials", () => {
+    const routes = readServer("routes-oauth.ts");
+    const checkStart = routes.indexOf('app.get("/api/ga4/check-connection/:campaignId"');
+    const connectionListStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"');
+    const connectionListEnd = routes.indexOf('app.put("/api/campaigns/:id/ga4-connections/:connectionId/primary"', connectionListStart);
+    const checkRoute = routes.slice(checkStart, routes.indexOf("// Connected platforms summary for campaign detail page", checkStart));
+    const connectionListRoute = routes.slice(connectionListStart, connectionListEnd);
+
+    expect(checkStart).toBeGreaterThan(-1);
+    expect(connectionListStart).toBeGreaterThan(-1);
+    expect(connectionListEnd).toBeGreaterThan(connectionListStart);
+    for (const route of [checkRoute, connectionListRoute]) {
+      expect(route).toContain("lookbackDays: [30, 60, 90].includes(Number(conn.lookbackDays)) ? Number(conn.lookbackDays) : 90");
+      expect(route).not.toContain("accessToken: conn.accessToken");
+      expect(route).not.toContain("refreshToken: conn.refreshToken");
+      expect(route).not.toContain("clientSecret: conn.clientSecret");
+    }
+    expect(checkRoute).toContain("hasRefreshCredential: Boolean(conn.refreshToken)");
+    expect(checkRoute).toContain("tokenExpiresAt: conn.expiresAt || null");
+  });
+
+  it("binds Commit 16 validation to the saved window and avoids GA4 daily writes", () => {
+    const runner = readFileSync(join(process.cwd(), "client", "public", "ga4-overview-validation-runner.js"), "utf-8");
+    const overviewStart = runner.indexOf("async function overviewPack(config)");
+    const commit16Start = runner.indexOf("async function commit16Pack(config)");
+    const reportStart = runner.indexOf("async function reportPack(config)", commit16Start);
+    const overviewPack = runner.slice(overviewStart, commit16Start);
+    const commit16Pack = runner.slice(commit16Start, reportStart);
+
+    expect(runner).toContain('var VERSION = "2026-07-31.13";');
+    expect(overviewStart).toBeGreaterThan(-1);
+    expect(commit16Start).toBeGreaterThan(overviewStart);
+    expect(reportStart).toBeGreaterThan(commit16Start);
+    expect(overviewPack).toContain("configuredLookbackDays(selectedConnectionBefore && selectedConnectionBefore.lookbackDays)");
+    expect(overviewPack).toContain('dateRange = configuredDays ? String(configuredDays) + "days"');
+    expect(overviewPack).toContain("actualWindowMatchesConfigured:");
+    expect(overviewPack).toContain("requestedWindowMatchesConfigured:");
+    expect(commit16Pack).toContain('stage: "ga4-overview-commit-16"');
+    expect(commit16Pack).toContain("configuredLookbackPresent:");
+    expect(commit16Pack).toContain("providerResponsesUseConfiguredWindow:");
+    expect(commit16Pack).toContain("tokenExpiryAdvancedDuringPack:");
+    expect(commit16Pack).toContain('postPublishSevenDayDurability: "requires_external_validation"');
+    expect(commit16Pack).not.toContain('fetchJson("ga4Daily"');
+    expect(commit16Pack).not.toMatch(/method:\s*["'](?:POST|PUT|PATCH|DELETE)["']/);
+  });
+
   it("keeps campaign-scoped GA4 mapping options limited to imported campaign values", () => {
     const routes = readServer("routes-oauth.ts");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-campaign-values"');

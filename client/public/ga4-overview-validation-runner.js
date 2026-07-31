@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-31.12";
+  var VERSION = "2026-07-31.13";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -11,6 +11,20 @@
     }
     return String(value);
   }
+  function configuredLookbackDays(value) {
+    var days = Number(value);
+    return [30, 60, 90].indexOf(days) >= 0 ? days : null;
+  }
+
+  function timeOrNull(value) {
+    var time = Date.parse(String(value || ""));
+    return Number.isFinite(time) ? time : null;
+  }
+
+  function isLiveNumericPropertyId(value) {
+    return /^(?:properties\/)?\d+$/.test(String(value || "").trim());
+  }
+
 
   function numberOrNull(value) {
     if (value === undefined || value === null || value === "") return null;
@@ -599,8 +613,20 @@
     config = config || {};
     var campaignId = requireValue(config.campaignId, "campaignId");
     var propertyId = requireValue(config.propertyId, "propertyId");
-    var dateRange = config.dateRange || DEFAULT_DATE_RANGE;
-    var dailyDays = config.dailyDays || 30;
+    var requestedDateRange = config.dateRange ? String(config.dateRange) : null;
+    var requestedDailyDays = config.dailyDays === undefined || config.dailyDays === null
+      ? null
+      : Number(config.dailyDays);
+    var connectionBefore = await fetchJson("ga4ConnectionBefore", "/api/ga4/check-connection/" + encodeURIComponent(campaignId));
+    var beforeConnections = Array.isArray(connectionBefore.data && connectionBefore.data.connections)
+      ? connectionBefore.data.connections
+      : [];
+    var selectedConnectionBefore = beforeConnections.find(function (connection) {
+      return String(connection && connection.propertyId || "") === propertyId;
+    }) || null;
+    var configuredDays = configuredLookbackDays(selectedConnectionBefore && selectedConnectionBefore.lookbackDays);
+    var dateRange = configuredDays ? String(configuredDays) + "days" : (requestedDateRange || DEFAULT_DATE_RANGE);
+    var dailyDays = configuredDays || configuredLookbackDays(requestedDailyDays) || 30;
 
     var base = await snapshot({
       campaignId: campaignId,
@@ -618,17 +644,41 @@
       fetchJson("ga4ConversionEvents", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-conversion-events?dateRange=" + encodeURIComponent(dateRange) + "&propertyId=" + encodeURIComponent(propertyId))
     ]);
 
+    var connectionAfter = await fetchJson("ga4ConnectionAfter", "/api/ga4/check-connection/" + encodeURIComponent(campaignId));
+    var afterConnections = Array.isArray(connectionAfter.data && connectionAfter.data.connections)
+      ? connectionAfter.data.connections
+      : [];
+    var selectedConnection = afterConnections.find(function (connection) {
+      return String(connection && connection.propertyId || "") === propertyId;
+    }) || selectedConnectionBefore;
     var extraByName = endpointMap(extraResults);
     var dailyRows = rowsOf(extraByName.ga4Daily && extraByName.ga4Daily.data);
     var landingRows = rowsOf(extraByName.ga4LandingPages && extraByName.ga4LandingPages.data);
     var conversionRows = rowsOf(extraByName.ga4ConversionEvents && extraByName.ga4ConversionEvents.data);
-    var allStatuses = base.endpointStatus.concat(extraResults.map(compactEndpointStatus));
+    var allStatuses = [compactEndpointStatus(connectionBefore)]
+      .concat(base.endpointStatus)
+      .concat(extraResults.map(compactEndpointStatus))
+      .concat([compactEndpointStatus(connectionAfter)]);
     var endpointPass = allStatuses.every(function (status) { return status.pass === true; });
     var noReauthorizationRequired = allStatuses.every(function (status) { return status.requiresReauthorization !== true; });
     var dailyData = extraByName.ga4Daily && extraByName.ga4Daily.data || {};
     var requireFreshDaily = config.requireFreshDaily !== false;
+    var checkedAt = new Date().toISOString();
+    var connectedAt = selectedConnection && selectedConnection.connectedAt || null;
+    var tokenExpiresAt = selectedConnection && selectedConnection.tokenExpiresAt || null;
 
     var checks = {
+      connectionEndpointsPass: connectionBefore.pass === true && connectionAfter.pass === true,
+      selectedPropertyConnectionPresent: !!selectedConnection,
+      configuredLookbackPresent: configuredDays !== null,
+      actualWindowMatchesConfigured:
+        configuredDays !== null &&
+        dateRange === String(configuredDays) + "days" &&
+        dailyDays === configuredDays,
+      requestedWindowMatchesConfigured:
+        configuredDays !== null &&
+        (requestedDateRange === null || requestedDateRange === String(configuredDays) + "days") &&
+        (requestedDailyDays === null || requestedDailyDays === configuredDays),
       endpointsPass: endpointPass,
       noReauthorizationRequired: noReauthorizationRequired,
       ga4ToDateEndpointPasses: !!(base.ga4 && base.ga4.toDatePass),
@@ -667,13 +717,24 @@
 
     var summary = {
       runnerVersion: VERSION,
-      checkedAt: new Date().toISOString(),
+      checkedAt: checkedAt,
       stage: config.stage || "ga4-overview-automated-pack",
       campaignId: campaignId,
       propertyId: propertyId,
       dateRange: dateRange,
       dailyDays: dailyDays,
       endpointStatus: allStatuses,
+      connection: {
+        requestedDateRange: requestedDateRange,
+        requestedDailyDays: requestedDailyDays,
+        configuredLookbackDays: configuredDays,
+        connectionRecordCreatedAt: connectedAt,
+        method: selectedConnection && selectedConnection.method || null,
+        hasRefreshCredential: selectedConnection && selectedConnection.hasRefreshCredential === true,
+        tokenExpiresAt: tokenExpiresAt,
+        liveNumericProperty: isLiveNumericPropertyId(propertyId),
+        providerAccessHealthy: endpointPass && noReauthorizationRequired && isLiveNumericPropertyId(propertyId)
+      },
       financial: {
         revenueToDate: base.revenue.toDate,
         revenueBreakdownTotal: base.revenue.breakdownTotal,
@@ -712,6 +773,111 @@
     };
 
     summary.overallPass = Object.keys(effectiveChecks).every(function (name) { return effectiveChecks[name] === true; });
+    console.log(summary);
+    return summary;
+  }
+
+  async function commit16Pack(config) {
+    config = config || {};
+    var campaignId = requireValue(config.campaignId, "campaignId");
+    var propertyId = requireValue(config.propertyId, "propertyId");
+    var requestedDateRange = config.dateRange ? String(config.dateRange) : null;
+    var requestedDailyDays = config.dailyDays === undefined || config.dailyDays === null
+      ? null
+      : Number(config.dailyDays);
+    var connectionBefore = await fetchJson("ga4ConnectionBefore", "/api/ga4/check-connection/" + encodeURIComponent(campaignId));
+    var beforeConnections = Array.isArray(connectionBefore.data && connectionBefore.data.connections)
+      ? connectionBefore.data.connections
+      : [];
+    var selectedBefore = beforeConnections.find(function (connection) {
+      return String(connection && connection.propertyId || "") === propertyId;
+    }) || null;
+    var configuredDays = configuredLookbackDays(selectedBefore && selectedBefore.lookbackDays);
+    var tokenExpiresAtBefore = selectedBefore && selectedBefore.tokenExpiresAt || null;
+    var expiresTimeBefore = timeOrNull(tokenExpiresAtBefore);
+    var dateRange = configuredDays ? String(configuredDays) + "days" : null;
+    var providerResults = configuredDays === null ? [] : await Promise.all([
+      fetchJson("ga4Breakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-breakdown?propertyId=" + encodeURIComponent(propertyId) + "&dateRange=" + encodeURIComponent(dateRange)),
+      fetchJson("ga4LandingPages", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-landing-pages?propertyId=" + encodeURIComponent(propertyId) + "&dateRange=" + encodeURIComponent(dateRange)),
+      fetchJson("ga4ConversionEvents", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-conversion-events?propertyId=" + encodeURIComponent(propertyId) + "&dateRange=" + encodeURIComponent(dateRange))
+    ]);
+    var connectionAfter = await fetchJson("ga4ConnectionAfter", "/api/ga4/check-connection/" + encodeURIComponent(campaignId));
+    var afterConnections = Array.isArray(connectionAfter.data && connectionAfter.data.connections)
+      ? connectionAfter.data.connections
+      : [];
+    var selectedAfter = afterConnections.find(function (connection) {
+      return String(connection && connection.propertyId || "") === propertyId;
+    }) || selectedBefore;
+    var checkedAt = new Date().toISOString();
+    var connectedAt = selectedAfter && selectedAfter.connectedAt || null;
+    var tokenExpiresAt = selectedAfter && selectedAfter.tokenExpiresAt || null;
+    var expiresTime = timeOrNull(tokenExpiresAt);
+    var providerEndpointsPass = providerResults.length === 3 && providerResults.every(function (result) {
+      return result.pass === true;
+    });
+    var noReauthorizationRequired = providerResults.every(function (result) {
+      return result.requiresReauthorization !== true;
+    });
+    var liveNumericProperty = isLiveNumericPropertyId(propertyId) && providerResults.every(function (result) {
+      return !(result.data && result.data.isSimulated === true);
+    });
+    var tokenExpiryAdvancedDuringPack =
+      expiresTimeBefore !== null &&
+      expiresTime !== null &&
+      expiresTime > expiresTimeBefore &&
+      providerEndpointsPass &&
+      noReauthorizationRequired;
+    var checks = {
+      connectionEndpointsPass: connectionBefore.pass === true && connectionAfter.pass === true,
+      selectedPropertyConnectionPresent: !!selectedAfter,
+      configuredLookbackPresent: configuredDays !== null,
+      requestedWindowMatchesConfigured:
+        configuredDays !== null &&
+        (requestedDateRange === null || requestedDateRange === dateRange) &&
+        (requestedDailyDays === null || requestedDailyDays === configuredDays),
+      providerEndpointsPass: providerEndpointsPass,
+      providerResponsesUseConfiguredWindow:
+        providerResults.length === 3 &&
+        providerResults.every(function (result) {
+          return String(result.data && result.data.dateRange || "") === dateRange;
+        }),
+      liveNumericProperty: liveNumericProperty,
+      noReauthorizationRequired: noReauthorizationRequired,
+      refreshCredentialPresent: selectedAfter && selectedAfter.hasRefreshCredential === true,
+      tokenExpiryAdvancedDuringPack: tokenExpiryAdvancedDuringPack
+    };
+    var summary = {
+      runnerVersion: VERSION,
+      checkedAt: checkedAt,
+      stage: "ga4-overview-commit-16",
+      campaignId: campaignId,
+      propertyId: propertyId,
+      window: {
+        requestedDateRange: requestedDateRange,
+        requestedDailyDays: requestedDailyDays,
+        configuredLookbackDays: configuredDays,
+        dateRange: dateRange
+      },
+      oauth: {
+        connectionRecordCreatedAt: connectedAt,
+        hasRefreshCredential: selectedAfter && selectedAfter.hasRefreshCredential === true,
+        tokenExpiresAtBefore: tokenExpiresAtBefore,
+        tokenExpiresAt: tokenExpiresAt,
+        tokenExpiryAdvancedDuringPack: tokenExpiryAdvancedDuringPack,
+        postPublishSevenDayDurability: "requires_external_validation"
+      },
+      endpointStatus: [compactEndpointStatus(connectionBefore)]
+        .concat(providerResults.map(compactEndpointStatus))
+        .concat([compactEndpointStatus(connectionAfter)]),
+      checks: checks,
+      caveats: [
+        "This pack uses existing authenticated GET paths and does not create, reconnect, edit, or delete a campaign or source.",
+        "The runner does not call ga4-daily, so it does not backfill or write GA4 daily metric rows; a provider endpoint may persist a renewed access token when the old access token is expired.",
+        "tokenExpiryAdvancedDuringPack proves only that persisted expiry advanced between the authenticated before/after reads while live provider endpoints passed without reauthorization.",
+        "The legacy connection record date can predate a reconnect, so post-publish survival beyond seven days remains requires_external_validation and is never inferred from connectedAt."
+      ]
+    };
+    summary.overallPass = Object.keys(checks).every(function (name) { return checks[name] === true; });
     console.log(summary);
     return summary;
   }
@@ -3708,8 +3874,9 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-31.12')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-31.13')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
+      "await GA4OverviewValidation.commit16Pack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",
       "await GA4OverviewValidation.csvRevenueInventory({ campaignId, expectedInactiveSourceIds: [] })",
@@ -3751,6 +3918,7 @@
     refreshSpend: refreshSpend,
     refreshRevenue: refreshRevenue,
     overviewPack: overviewPack,
+    commit16Pack: commit16Pack,
     reportPack: reportPack,
     sourceDamageInventory: sourceDamageInventory,
     csvRevenueInventory: csvRevenueInventory,

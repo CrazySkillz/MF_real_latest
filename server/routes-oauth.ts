@@ -12949,7 +12949,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             websiteUrl: conn.websiteUrl,
             isPrimary: conn.isPrimary,
             isActive: conn.isActive,
-            connectedAt: conn.connectedAt
+            connectedAt: conn.connectedAt,
+            method: conn.method,
+            lookbackDays: [30, 60, 90].includes(Number(conn.lookbackDays)) ? Number(conn.lookbackDays) : 90,
+            hasRefreshCredential: Boolean(conn.refreshToken),
+            tokenExpiresAt: conn.expiresAt || null
           })),
           primaryPropertyName: primaryConnection.propertyName,
           primaryDisplayName: primaryConnection.displayName || primaryConnection.propertyName,
@@ -14219,7 +14223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isPrimary: conn.isPrimary,
           isActive: conn.isActive,
           connectedAt: conn.connectedAt,
-          method: conn.method
+          method: conn.method,
+          lookbackDays: [30, 60, 90].includes(Number(conn.lookbackDays)) ? Number(conn.lookbackDays) : 90
         }))
       });
     } catch (error) {

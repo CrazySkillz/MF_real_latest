@@ -8,7 +8,7 @@ It standardizes the repeated before/after endpoint checks used for source lifecy
 
 ## Safety Boundary
 
-Read-only functions:
+Helpers with no explicit create/edit/delete action (provider-backed GETs can still perform the application's existing automatic token or metric persistence):
 
 - `GA4OverviewValidation.snapshot(config)`
 - `GA4OverviewValidation.before(label, config)`
@@ -17,6 +17,7 @@ Read-only functions:
 - `GA4OverviewValidation.csvRevenueAfter(label, config)`
 - `GA4OverviewValidation.csvRevenueInventory(config)`
 - `GA4OverviewValidation.overviewPack(config)`
+- `GA4OverviewValidation.commit16Pack(config)`
 - `GA4OverviewValidation.sourceDamageInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotInventory({ campaignId })`
 - `GA4OverviewValidation.hubspotProvenance({ campaignId, expectedPipelineEnabled: false })`
@@ -32,6 +33,8 @@ Read-only functions:
 - `GA4OverviewValidation.hubspotOtherCampaignPortabilityPack(config)`
 - `GA4OverviewValidation.hubspotAlternateMappingMatrixPack(config)`
 - `GA4OverviewValidation.googleSheetsVariantPack(config)`
+
+`overviewPack(...)` calls `/ga4-daily` and can persist returned daily facts. `commit16Pack(...)` deliberately avoids `/ga4-daily`, but its three existing provider GET paths can persist a renewed encrypted access token and expiry when the previous access token has expired. Neither helper is a database-read-only inventory.
 
 Explicit mutation helpers:
 
@@ -49,7 +52,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 GA4OverviewValidation.help();
 ```
 
@@ -64,7 +67,22 @@ await GA4OverviewValidation.overviewPack({
 });
 ```
 
-This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-31.12` retains the GA4-scoped spend reads from `2026-07-31.11`, recognizes the API's `spendToDate` field, preserves absent financial totals as `null`, and requires revenue/spend to-date values to match their breakdown totals before `overallPass` can be true. Valid numeric zero remains authoritative. The pack does not inspect UI pixels, PDF text, provider/query failure injection, or future inbox delivery outside recorded packets.
+This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-31.13` retains Commit 15's scoped financial parity checks, reads the selected property's persisted `lookbackDays`, derives both `dateRange` and `dailyDays` from it, and fails closed when an explicitly supplied window differs. Valid numeric zero remains authoritative. The pack does not inspect UI pixels, PDF text, provider/query failure injection, or future inbox delivery outside recorded packets.
+
+## Current Commit 16 Window And OAuth Pack
+
+After runner `2026-07-31.13` is deployed, use an existing live numeric-property campaign:
+
+```js
+await GA4OverviewValidation.commit16Pack({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID'
+});
+```
+
+The pack derives the saved 30/60/90-day window, validates three live-provider responses against it, rejects simulated/non-numeric properties, checks that a refresh credential exists, and compares sanitized expiry timestamps before and after. `tokenExpiryAdvancedDuringPack` is true only when persisted expiry actually advances during the packet. `overallPass` therefore stays false if renewal was not required or not observed. The pack never infers seven-day durability from the legacy connection record date; `postPublishSevenDayDurability` remains `requires_external_validation` until the real post-reconnect time gate passes.
+
+Do not create, reconnect, edit, delete, or rescope production data to force a pass. Missing 60/90-day fixtures remain unproven.
 
 For saved report snapshot/PDF smoke validation, use:
 
@@ -488,7 +506,7 @@ Current Commit 4.10d note: HubSpot Revenue Sources mapped-campaign subtitles and
 For Current Commit 4.11 read-only HubSpot Campaign Breakdown exact mapped-revenue transition automation, capture the row baseline before the controlled provider/source transition:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 
 await GA4OverviewValidation.hubspotCampaignBreakdownBefore({
   campaignId: 'CAMPAIGN_ID',
@@ -526,7 +544,7 @@ Recorded deployed Current Commit 4.12 evidence: runner `2026-07-04.9` returned `
 For Current Commit 4.13 read-only HubSpot KPI/Benchmark value propagation validation, first make sure the GA4 campaign has the KPI and Benchmark rows you want to prove. Then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 
 await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
@@ -554,7 +572,7 @@ Current Commit 4.13 local automation and the persisted-job financial-source runt
 For Current Commit 4.15 read-only HubSpot other-campaign portability validation, use the latest runner after the additional campaign has an already-created HubSpot revenue source:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 
 await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({
   campaigns: [
@@ -581,7 +599,7 @@ This helper is read-only: it uses GET endpoints only, does not create/edit/delet
 For Current Commit 4.16 read-only HubSpot alternate-mapping matrix validation, use the latest runner after each variant source already exists and after any edit/update source-ID stability evidence has been captured:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 
 await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({
   variants: [
@@ -620,7 +638,7 @@ The previous lifecycle, startup scheduler, downstream content, delivered-email, 
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 
 await GA4OverviewValidation.hubspotReportValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',

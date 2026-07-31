@@ -6,11 +6,11 @@ This file defines the accelerated validation path for GA4 Overview. It replaces 
 
 ## Current Certification Warning
 
-The Current Commit 11–18 remaining-work queue is documented. Commit 15 scope fix `03930b1c` deployed runner `2026-07-31.11`. Its authenticated read-only pack returned `overallPass: true` and all 14 endpoints healthy, but `spendToDate: 0` versus `spendBreakdownTotal: 2698.75` exposed a validation-only parser defect: the runner omitted the API's `spendToDate` field and coerced a missing total to zero. Runner `2026-07-31.12` locally fixes that exact boundary and adds required revenue/spend parity checks. Commit/deployment and remaining external edge fixtures are pending; this is not complete Overview certification.
+The Current Commit 11–18 queue is documented. Commit 15's bounded deployed parser/parity packet closed at `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. Unavailable edge fixtures remain unproven. Commit 16 runner `2026-07-31.13` is local and derives requests from the persisted saved window; deployment, live 30/60/90 evidence, observed expiry advancement, and the external seven-day durability gate remain pending. This is not complete Overview certification.
 
 ## What Is Automated
 
-The deployed browser helper `GA4OverviewValidation.overviewPack(...)` checks, in one command:
+The browser helper `GA4OverviewValidation.overviewPack(...)` checks, in one command:
 
 - campaign access
 - GA4 connection health through `/ga4-metrics`
@@ -19,6 +19,11 @@ The deployed browser helper `GA4OverviewValidation.overviewPack(...)` checks, in
 - source counts and financial totals summary
 - stale daily-row warning state
 - reconnect-required provider failures when endpoints return them
+- persisted selected-property 30/60/90-day window presence and request parity
+
+Runner `2026-07-31.13` also provides `GA4OverviewValidation.commit16Pack(...)`. It uses the saved window for three live-provider GET reads, verifies each response reports that window, rejects simulated/non-numeric properties, checks refresh-credential presence, and compares sanitized token-expiry metadata before and after. It does not call `/ga4-daily`; existing provider code can persist a renewed encrypted access token and expiry when the prior access token has expired. Seven-day post-publish durability remains external because the connection record date can predate reconnect.
+
+`overviewPack(...)` does call `/ga4-daily` and provider-backed endpoints. It can persist GA4 daily rows and an automatically renewed token; it is not a database-read-only inventory.
 
 The optional `GA4OverviewValidation.reportPack(...)` checks, in one command when a saved report exists:
 
@@ -53,12 +58,23 @@ These remain external evidence gates:
 Open the deployed app while logged in, then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.13');
 await GA4OverviewValidation.overviewPack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
   propertyId: '542352127'
 });
 ```
+
+For Commit 16 after runner `2026-07-31.13` is deployed, use an existing live numeric-property campaign only:
+
+```js
+await GA4OverviewValidation.commit16Pack({
+  campaignId: 'CAMPAIGN_ID',
+  propertyId: 'PROPERTY_ID'
+});
+```
+
+`overallPass` requires the persisted expiry to advance during this exact pack. If the current access token does not need renewal, that check correctly remains false; do not reconnect or reconfigure data to force it. The output always marks post-publish seven-day durability `requires_external_validation`.
 
 If validating a saved GA4 Overview report snapshot/PDF smoke path, run with a real saved report ID:
 
@@ -141,7 +157,7 @@ If `e2e/auth.json` does not exist, the Playwright spec skips with an explicit me
 
 A passing automated pack is strong operational evidence for the endpoints or configured fixture variants it checks, but it is not blanket production-readiness proof for untested lifecycle actions, future source families, unlisted Google Sheets mapping shapes, PDF text parity, future inbox delivery outside recorded packets, production cleanup, or future provider behavior. Record the exact pack output and keep unresolved external gates explicit in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
-For strictly read-only production investigations, do not run `overviewPack(...)`, `/ga4-daily`, provider-validation, or scheduler run-now routes: those paths can refresh OAuth tokens, persist daily rows, or run recomputation. Use database `SELECT` transactions and `/health/scheduler` only. The `2026-07-30` Current Commit 8 investigation followed this boundary.
+For strictly read-only production investigations, do not run `overviewPack(...)`, `commit16Pack(...)`, `/ga4-daily`, provider-validation, or scheduler run-now routes: those paths can refresh OAuth tokens, persist daily rows, or run recomputation. Use database `SELECT` transactions and `/health/scheduler` only. The `2026-07-30` Current Commit 8 investigation followed this boundary.
 
 Current Commit 9 used a database `BEGIN READ ONLY` owner/campaign/source inventory. The inventory must separately report orphan records, inactive-source records, source/record campaign mismatches, exact duplicate candidates, active sources with no records, unexpected active platform contexts, and materialized-versus-cached drift. Inventory output is evidence only: it must never trigger cleanup.
 

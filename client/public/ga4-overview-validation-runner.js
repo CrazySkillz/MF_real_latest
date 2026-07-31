@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-30.10";
+  var VERSION = "2026-07-31.11";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -307,9 +307,9 @@
       fetchJson("revenueToDate", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-to-date"),
       fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
       fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
-      fetchJson("spendToDate", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-to-date"),
-      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown"),
-      fetchJson("spendSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-sources")
+      fetchJson("spendToDate", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-to-date?platformContext=ga4"),
+      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown?platformContext=ga4"),
+      fetchJson("spendSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-sources?platformContext=ga4")
     ];
 
     if (includeGa4) {
@@ -2320,7 +2320,7 @@
       fetchJson("ga4Daily", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-daily?days=" + encodeURIComponent(String(dailyDays)) + "&propertyId=" + encodeURIComponent(propertyId)),
       fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
       fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
-      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown"),
+      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown?platformContext=ga4"),
       fetchJson("hubspotSourceDamageInventory", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"),
       fetchJson("kpis", "/api/platforms/" + encodeURIComponent(platformType) + "/kpis?campaignId=" + encodeURIComponent(campaignId)),
       fetchJson("benchmarks", "/api/platforms/" + encodeURIComponent(platformType) + "/benchmarks?campaignId=" + encodeURIComponent(campaignId))
@@ -2483,7 +2483,7 @@
       fetchJson("ga4Daily", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-daily?days=" + encodeURIComponent(String(dailyDays)) + "&propertyId=" + encodeURIComponent(propertyId)),
       fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
       fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
-      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown"),
+      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown?platformContext=ga4"),
       fetchJson("hubspotSourceDamageInventory", "/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"),
       fetchJson("reports", "/api/platforms/" + encodeURIComponent(platformType) + "/reports?campaignId=" + encodeURIComponent(campaignId))
     ]);
@@ -3219,8 +3219,8 @@
     var results = await Promise.all([
       fetchJson("revenueSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-sources"),
       fetchJson("revenueBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/revenue-breakdown"),
-      fetchJson("spendSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-sources"),
-      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown")
+      fetchJson("spendSources", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-sources?platformContext=ga4"),
+      fetchJson("spendBreakdown", "/api/campaigns/" + encodeURIComponent(campaignId) + "/spend-breakdown?platformContext=ga4")
     ]);
     var byName = endpointMap(results);
     var revenueSources = rowsOf(byName.revenueSources && byName.revenueSources.data);
@@ -3694,7 +3694,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-30.10')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-31.11')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

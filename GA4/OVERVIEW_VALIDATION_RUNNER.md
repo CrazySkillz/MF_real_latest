@@ -49,7 +49,7 @@ The output summarizes pass/fail, totals, source counts, and target-source presen
 After the helper is deployed, open the app while logged in and run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 GA4OverviewValidation.help();
 ```
 
@@ -64,7 +64,7 @@ await GA4OverviewValidation.overviewPack({
 });
 ```
 
-This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-30.10` also records the expected refresh, last completed refresh, latest stored/due-missing dates, successful provider coverage-through date, compact provider refresh attempted/outcome/row-count evidence, and provider-warning presence without printing the raw provider error. Its financial helpers choose the first complete provider → persisted-daily → breakdown candidate and preserve valid zero/negative values; they do not select maximum revenue. `refreshIsStale=false` proves that a successful provider check covered the expected boundary or stored activity reached it; it does not invent zero rows or prove GA4 has finished delayed event processing. The pack does not inspect UI pixels, PDF text, or future inbox delivery outside recorded packets.
+This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-31.11` preserves the ordered provider → persisted-daily → breakdown financial selector from `2026-07-30.10` and scopes every generic snapshot, KPI/Benchmark, report, and Google Sheets spend read to `platformContext=ga4`, matching the visible GA4 Overview and excluding explicit foreign contexts from validation evidence. `refreshIsStale=false` proves that a successful provider check covered the expected boundary or stored activity reached it; it does not invent zero rows or prove GA4 has finished delayed event processing. The pack does not inspect UI pixels, PDF text, provider/query failure injection, or future inbox delivery outside recorded packets.
 
 For saved report snapshot/PDF smoke validation, use:
 
@@ -488,7 +488,7 @@ Current Commit 4.10d note: HubSpot Revenue Sources mapped-campaign subtitles and
 For Current Commit 4.11 read-only HubSpot Campaign Breakdown exact mapped-revenue transition automation, capture the row baseline before the controlled provider/source transition:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 
 await GA4OverviewValidation.hubspotCampaignBreakdownBefore({
   campaignId: 'CAMPAIGN_ID',
@@ -526,7 +526,7 @@ Recorded deployed Current Commit 4.12 evidence: runner `2026-07-04.9` returned `
 For Current Commit 4.13 read-only HubSpot KPI/Benchmark value propagation validation, first make sure the GA4 campaign has the KPI and Benchmark rows you want to prove. Then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 
 await GA4OverviewValidation.hubspotKpiBenchmarkValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
@@ -554,7 +554,7 @@ Current Commit 4.13 local automation and the persisted-job financial-source runt
 For Current Commit 4.15 read-only HubSpot other-campaign portability validation, use the latest runner after the additional campaign has an already-created HubSpot revenue source:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 
 await GA4OverviewValidation.hubspotOtherCampaignPortabilityPack({
   campaigns: [
@@ -581,7 +581,7 @@ This helper is read-only: it uses GET endpoints only, does not create/edit/delet
 For Current Commit 4.16 read-only HubSpot alternate-mapping matrix validation, use the latest runner after each variant source already exists and after any edit/update source-ID stability evidence has been captured:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 
 await GA4OverviewValidation.hubspotAlternateMappingMatrixPack({
   variants: [
@@ -620,7 +620,7 @@ The previous lifecycle, startup scheduler, downstream content, delivered-email, 
 For Current Commit 4.12 read-only HubSpot Reports value propagation validation, use:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 
 await GA4OverviewValidation.hubspotReportValuePack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',

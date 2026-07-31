@@ -21,10 +21,15 @@ describe("GA4 spend source-scope regression guard", () => {
 
   it("keeps GA4 Overview reads and deletion inside the GA4 source family", () => {
     const page = read("client/src/pages/ga4-metrics.tsx");
+    const validationRunner = read("client/public/ga4-overview-validation-runner.js");
     const routes = read("server/routes-oauth.ts");
 
     for (const endpoint of ["spend-to-date", "spend-sources", "spend-breakdown", "spend-daily"]) {
       expect(page).toContain(endpoint + "?platformContext=ga4");
+    }
+    for (const endpoint of ["spend-to-date", "spend-sources", "spend-breakdown"]) {
+      expect(validationRunner).toContain(endpoint + "?platformContext=ga4");
+      expect(validationRunner).not.toContain(endpoint + '"),');
     }
     expect(page).toContain("spend-sources/${deletingSpendSourceId}?platformContext=ga4");
     expect(routes).toContain("const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);");

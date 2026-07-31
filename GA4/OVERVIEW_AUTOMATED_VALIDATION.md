@@ -6,7 +6,7 @@ This file defines the accelerated validation path for GA4 Overview. It replaces 
 
 ## Current Certification Warning
 
-The Current Commit 11–18 remaining-work queue is documented. Commits 11 and 12 are closed for their bounded deployed packets at `9ac3fea9` and `152a7dd3`. Commit 13 is closed at deployed commit `d353383e`: Render serves runner `2026-07-30.10`, and the authenticated read-only configured-campaign comparison returned `success: true`, `provider: live_provider_success`, provider revenue `$34,705.93`, persisted-daily revenue `$34,705.94`, and selected revenue `$34,705.93`. That proves the deployed Benchmark comparison follows provider-first ordering instead of maximum revenue. Local functional tests prove the runner selector's zero/negative retention and incomplete-candidate fallthrough; this bounded evidence does not certify untested fixtures or the complete Overview. Commit 14 regression/document alignment is implemented and locally validated with no runtime-code change; commit is pending. Commits 15–18 retain the remaining external gates.
+The Current Commit 11–18 remaining-work queue is documented. Commit 13 remains closed at deployed commit `d353383e` for its bounded provider-first comparison. Commit 14 is closed at pushed commit `f8b51e31`; it changed only tests/documentation and required no UI validation. Commit 15 found that the read-only runner's generic snapshot, KPI/Benchmark, report, and Google Sheets packs used seven unscoped spend reads that could disagree with GA4 Overview. Runner `2026-07-31.11` locally adds `platformContext=ga4` to those reads without changing application runtime or production data. Commit/deployment and the required external edge-state evidence remain pending; this is not complete Overview certification.
 
 ## What Is Automated
 
@@ -53,7 +53,7 @@ These remain external evidence gates:
 Open the deployed app while logged in, then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
 await GA4OverviewValidation.overviewPack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
   propertyId: '542352127'

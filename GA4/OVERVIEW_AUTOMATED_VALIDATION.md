@@ -6,7 +6,7 @@ This file defines the accelerated validation path for GA4 Overview. It replaces 
 
 ## Current Certification Warning
 
-The Current Commit 11–18 remaining-work queue is documented. Commit 13 remains closed at deployed commit `d353383e` for its bounded provider-first comparison. Commit 14 is closed at pushed commit `f8b51e31`; it changed only tests/documentation and required no UI validation. Commit 15 found that the read-only runner's generic snapshot, KPI/Benchmark, report, and Google Sheets packs used seven unscoped spend reads that could disagree with GA4 Overview. Runner `2026-07-31.11` locally adds `platformContext=ga4` to those reads without changing application runtime or production data. Commit/deployment and the required external edge-state evidence remain pending; this is not complete Overview certification.
+The Current Commit 11–18 remaining-work queue is documented. Commit 15 scope fix `03930b1c` deployed runner `2026-07-31.11`. Its authenticated read-only pack returned `overallPass: true` and all 14 endpoints healthy, but `spendToDate: 0` versus `spendBreakdownTotal: 2698.75` exposed a validation-only parser defect: the runner omitted the API's `spendToDate` field and coerced a missing total to zero. Runner `2026-07-31.12` locally fixes that exact boundary and adds required revenue/spend parity checks. Commit/deployment and remaining external edge fixtures are pending; this is not complete Overview certification.
 
 ## What Is Automated
 
@@ -53,7 +53,7 @@ These remain external evidence gates:
 Open the deployed app while logged in, then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-31.11');
+await import('/ga4-overview-validation-runner.js?v=2026-07-31.12');
 await GA4OverviewValidation.overviewPack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
   propertyId: '542352127'

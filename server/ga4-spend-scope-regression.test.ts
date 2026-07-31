@@ -37,6 +37,16 @@ describe("GA4 spend source-scope regression guard", () => {
     expect(routes).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext)");
     expect(routes).toContain("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)");
   });
+  it("fails closed when runner financial totals are missing or disagree", () => {
+    const validationRunner = read("client/public/ga4-overview-validation-runner.js");
+
+    expect(validationRunner).toContain('if (value === undefined || value === null || value === "") return null;');
+    expect(validationRunner).toContain('["spendToDate", "totalSpend", "spend", "total", "amount"]');
+    expect(validationRunner).toContain("financialTotalsPresent:");
+    expect(validationRunner).toContain("revenueToDateMatchesBreakdown:");
+    expect(validationRunner).toContain("spendToDateMatchesBreakdown:");
+  });
+
 
   it("treats valid zero as authoritative and does not reuse cached campaign spend for GA4", () => {
     const page = read("client/src/pages/ga4-metrics.tsx");

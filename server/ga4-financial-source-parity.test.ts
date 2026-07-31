@@ -73,6 +73,53 @@ describe("GA4 downstream financial-source parity", () => {
     expect(select(null, { totals: { revenue: 300, conversions: 8 } }, []).source).toBe("ga4-breakdown");
   });
 
+  it("parses spendToDate without converting a missing financial total to zero", () => {
+    const runner = read("client/public/ga4-overview-validation-runner.js");
+    const functionSource = (name: string, nextName: string) => runner.slice(
+      runner.indexOf(`function ${name}(`),
+      runner.indexOf(`function ${nextName}(`),
+    );
+    const buildTotals = new Function(
+      "rowsOf",
+      "sumRows",
+      `${functionSource("numberOrNull", "formattedNumberOrNull")}
+${functionSource("money", "closeMoney")}
+${functionSource("firstNumber", "rowsOf")}
+${runner.slice(runner.indexOf("function buildTotals("), runner.indexOf("async function snapshot("))}
+return buildTotals;`,
+    )(
+      (data: any) => Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [],
+      (rows: any[], keys: string[]) => rows.reduce((sum, row) => {
+        const value = keys.map((key) => row?.[key]).find((item) =>
+          item !== null && item !== undefined && item !== "" && Number.isFinite(Number(item))
+        );
+        return sum + (value === undefined ? 0 : Number(value));
+      }, 0),
+    );
+
+    const matching = buildTotals({
+      revenueToDate: { data: { totalRevenue: 16700 } },
+      revenueBreakdown: { data: { totalRevenue: 16700 } },
+      spendToDate: { data: { spendToDate: 2698.75 } },
+      spendBreakdown: { data: { totalSpend: 2698.75 } },
+    });
+    expect(matching).toEqual({
+      revenueToDate: 16700,
+      revenueBreakdownTotal: 16700,
+      spendToDate: 2698.75,
+      spendBreakdownTotal: 2698.75,
+    });
+
+    const missing = buildTotals({
+      revenueToDate: { data: { totalRevenue: 0 } },
+      revenueBreakdown: { data: { totalRevenue: 0 } },
+      spendToDate: { data: {} },
+      spendBreakdown: { data: { totalSpend: 0 } },
+    });
+    expect(missing.spendToDate).toBeNull();
+    expect(missing.spendBreakdownTotal).toBe(0);
+  });
+
   it("keeps read-only runner and Benchmark validation on the same ordered complete-source contract", () => {
     const runner = read("client/public/ga4-overview-validation-runner.js");
     const routes = read("server/routes-oauth.ts");

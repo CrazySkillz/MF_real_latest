@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-07-31.11";
+  var VERSION = "2026-07-31.12";
   var DEFAULT_DATE_RANGE = "30days";
   var STORAGE_PREFIX = "ga4-overview-validation:";
 
@@ -13,6 +13,7 @@
   }
 
   function numberOrNull(value) {
+    if (value === undefined || value === null || value === "") return null;
     var n = Number(value);
     return Number.isFinite(n) ? n : null;
   }
@@ -275,7 +276,7 @@
     var spendBreakdownRows = rowsOf(byName.spendBreakdown && byName.spendBreakdown.data);
 
     var revenueToDate = money(firstNumber(byName.revenueToDate && byName.revenueToDate.data, ["totalRevenue", "revenue", "total", "amount"]));
-    var spendToDate = money(firstNumber(byName.spendToDate && byName.spendToDate.data, ["totalSpend", "spend", "total", "amount"]));
+    var spendToDate = money(firstNumber(byName.spendToDate && byName.spendToDate.data, ["spendToDate", "totalSpend", "spend", "total", "amount"]));
 
     var revenueBreakdownTotal = money(firstNumber(byName.revenueBreakdown && byName.revenueBreakdown.data, ["totalRevenue", "revenue", "total", "amount"]));
     if (revenueBreakdownTotal === null) {
@@ -635,6 +636,19 @@
       financialEndpointsPass: base.endpointStatus.filter(function (status) {
         return /^(revenue|spend)/.test(status.endpoint);
       }).every(function (status) { return status.pass === true; }),
+      financialTotalsPresent:
+        base.revenue.toDate !== null &&
+        base.revenue.breakdownTotal !== null &&
+        base.spend.toDate !== null &&
+        base.spend.breakdownTotal !== null,
+      revenueToDateMatchesBreakdown:
+        base.revenue.toDate !== null &&
+        base.revenue.breakdownTotal !== null &&
+        closeMoney(base.revenue.toDate, base.revenue.breakdownTotal),
+      spendToDateMatchesBreakdown:
+        base.spend.toDate !== null &&
+        base.spend.breakdownTotal !== null &&
+        closeMoney(base.spend.toDate, base.spend.breakdownTotal),
       sourceCountsAreNonNegative: base.revenue.sourceCount >= 0 && base.spend.sourceCount >= 0,
       dailyEndpointPasses: !!(extraByName.ga4Daily && extraByName.ga4Daily.pass),
       dailyFreshnessContractPresent:
@@ -3694,7 +3708,7 @@
 
   function help() {
     var examples = [
-      "await import('/ga4-overview-validation-runner.js?v=2026-07-31.11')",
+      "await import('/ga4-overview-validation-runner.js?v=2026-07-31.12')",
       "await GA4OverviewValidation.overviewPack({ campaignId, propertyId })",
       "await GA4OverviewValidation.reportPack({ campaignId, reportId, createSnapshot: true })",
       "await GA4OverviewValidation.sourceDamageInventory({ campaignId })",

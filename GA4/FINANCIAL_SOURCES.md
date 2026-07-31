@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Commit 13 is closed for its bounded deployed provider-first comparison, and Commit 14 is closed at pushed commit `f8b51e31`. Commit 15 found seven unscoped spend reads in the read-only validation runner; runner `2026-07-31.11` locally scopes each to GA4 so foreign platform spend cannot be accepted as GA4 validation evidence. This does not change visible calculations or production data. Commit/deployment plus missing/zero/negative, Pipeline Proxy, provider-failure, zero-record, foreign-context, report, lifecycle, OAuth, downstream, and named scheduler evidence remain pending. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Commit 15 scope fix `03930b1c` deployed runner `2026-07-31.11`, whose authenticated pack exposed a validation-only `spendToDate: 0` versus `spendBreakdownTotal: 2698.75` mismatch. Runner `2026-07-31.12` locally recognizes `spendToDate`, preserves missing financial values as `null`, and requires to-date/breakdown parity. This does not change visible calculations or production data. Commit/deployment plus missing/zero/negative, Pipeline Proxy, provider-failure, zero-record, foreign-context, report, lifecycle, OAuth, downstream, and named scheduler evidence remain pending. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 

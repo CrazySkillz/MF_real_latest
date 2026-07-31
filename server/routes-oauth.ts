@@ -3615,6 +3615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deletingSource = (Array.isArray(existingSpendSources) ? existingSpendSources : [])
         .find((s: any) => String(s?.id || "") === String(sourceId));
       if (!deletingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+      const deletingSourcePlatformContext = (String((deletingSource as any)?.platformContext || "").trim() || requestedPlatformContext || "ga4") as RevenueReadPlatformContext;
       let deletingSheetsConnectionId = "";
       if (String((deletingSource as any)?.sourceType || "") === "google_sheets") {
         try {
@@ -3624,8 +3625,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deletingSheetsConnectionId = "";
         }
       }
-      await storage.deleteSpendSource(sourceId);
-      await storage.deleteSpendRecordsBySource(sourceId);
+      const deleted = await storage.deleteSpendSourceWithRecords(campaignId, sourceId, deletingSourcePlatformContext);
+      if (!deleted) return res.status(404).json({ success: false, error: "Spend source not found" });
       await recalcCampaignSpend(campaignId);
       await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       if (deletingSheetsConnectionId) {
@@ -34119,4 +34120,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
   return server;
 }
-

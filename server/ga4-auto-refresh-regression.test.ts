@@ -106,8 +106,10 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg)");
     expect(content).toContain('mapping: { ...(mappingConfig || {}), sourceId: String(source?.id || "") },');
     expect(content).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)");
-    expect(content).toContain("await storage.deleteRevenueRecordsBySource(sourceId);");
-    expect(content).toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
+    expect(content).toContain("await storage.replaceRevenueSourceWithRecords(");
+    expect(content).toContain("await storage.replaceSpendRecordsForSource(");
+    expect(content).not.toContain("await storage.deleteRevenueRecordsBySource(sourceId);");
+    expect(content).not.toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
     expect(content).not.toContain('String((s as any).sourceType || "") === "csv"');
     expect(content).not.toContain("reprocessCsv");
   });

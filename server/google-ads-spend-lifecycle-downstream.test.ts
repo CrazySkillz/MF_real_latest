@@ -136,8 +136,9 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(spendBreakdownRoute).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext)");
     expect(deleteRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(deleteRoute).toContain("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)");
-    expect(deleteRoute).toContain("await storage.deleteSpendSource(sourceId);");
-    expect(deleteRoute).toContain("await storage.deleteSpendRecordsBySource(sourceId);");
+    expect(deleteRoute).toContain("await storage.deleteSpendSourceWithRecords(campaignId, sourceId, deletingSourcePlatformContext);");
+    expect(deleteRoute).not.toContain("await storage.deleteSpendSource(sourceId);");
+    expect(deleteRoute).not.toContain("await storage.deleteSpendRecordsBySource(sourceId);");
     expect(deleteRoute).toContain("await recalcCampaignSpend(campaignId);");
     expect(deleteRoute).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
     expect(spendStorage).toContain("eq(spendSources.campaignId, campaignId)");
@@ -209,8 +210,9 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(googleAdsBranch.indexOf("continue;")).toBeLessThan(googleAdsBranch.indexOf("storage.getGoogleAdsDailyMetrics"));
     expect(googleAdsBranch).toContain("rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];");
     expect(googleAdsBranch).toContain('rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));');
-    expect(adPlatformReprocess).toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
-    expect(adPlatformReprocess).toContain("await storage.createSpendRecords(records);");
+    expect(adPlatformReprocess).toContain("await storage.replaceSpendRecordsForSource(");
+    expect(adPlatformReprocess).not.toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
+    expect(adPlatformReprocess).not.toContain("await storage.createSpendRecords(records);");
     expect(adPlatformReprocess).toContain('const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate);');
     expect(adPlatformReprocess).toContain("await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);");
   });

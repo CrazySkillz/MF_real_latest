@@ -409,35 +409,23 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     const total = Number(totalRevenue.toFixed(2));
     const sourceId = String(source.id);
     const endDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // yesterday
-
-    // Delete old records and create new
-    await storage.deleteRevenueRecordsBySource(sourceId);
-    if (total > 0) {
-      const campaign = await storage.getCampaign(campaignId);
-      const currency = String(mappingConfig.currency || (campaign as any)?.currency || "USD");
-
-      if (dateCol && dailyRevenueMap.size > 0) {
-        const revenueRecordsToInsert = Array.from(dailyRevenueMap.entries())
-          .filter(([, rev]) => rev > 0)
-          .map(([date, rev]) => ({
-            campaignId,
-            revenueSourceId: sourceId,
-            date,
-            revenue: Number(rev.toFixed(2)).toFixed(2) as any,
-            currency,
-          } as any));
-        if (revenueRecordsToInsert.length > 0) {
-          await storage.createRevenueRecords(revenueRecordsToInsert);
-        }
-      } else {
-        await storage.createRevenueRecords([{ campaignId, revenueSourceId: sourceId, date: endDate, revenue: total.toFixed(2) as any, currency } as any]);
-      }
-    }
-
-    // Update lastSyncedAt
-    await storage.updateRevenueSource(sourceId, {
+    const campaign = await storage.getCampaign(campaignId);
+    const currency = String(mappingConfig.currency || source?.currency || (campaign as any)?.currency || "USD");
+    const platformContext = String(mappingConfig.platformContext || source?.platformContext || "ga4") as any;
+    const records = total > 0
+      ? dateCol && dailyRevenueMap.size > 0
+        ? Array.from(dailyRevenueMap.entries()).filter(([, rev]) => rev > 0).map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency }))
+        : [{ campaignId, date: endDate, revenue: total.toFixed(2) as any, currency }]
+      : [];
+    await storage.replaceRevenueSourceWithRecords(campaignId, sourceId, "google_sheets", platformContext, {
+      campaignId,
+      sourceType: "google_sheets",
+      platformContext,
+      displayName: source?.displayName || "Google Sheets revenue",
+      currency,
       mappingConfig: JSON.stringify({ ...mappingConfig, lastSyncedAt: new Date().toISOString() }),
-    } as any);
+      isActive: true,
+    } as any, records as any);
 
     console.log(`[Auto Refresh] ✅ Google Sheets revenue synced for campaign ${campaignId}: $${total} from ${kept} rows`);
     return true;
@@ -856,7 +844,6 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
 
             const records = Array.from(spendByDate.entries()).map(([date, spend]) => ({
               campaignId,
-              spendSourceId: String((src as any).id),
               date,
               spend: String(spend.toFixed(2)),
               currency: "USD",
@@ -865,8 +852,8 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             if (records.length > 0) {
               attempted++;
               try {
-                await storage.deleteSpendRecordsBySource(String((src as any).id));
-                await storage.createSpendRecords(records);
+                const platformContext = String((src as any).platformContext || cfg?.platformContext || "ga4") as any;
+                await storage.replaceSpendRecordsForSource(campaignId, String((src as any).id), "ad_platforms", platformContext, records);
                 const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate);
                 await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);
                 succeeded++;

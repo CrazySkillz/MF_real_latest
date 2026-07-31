@@ -150,11 +150,13 @@ export interface IStorage {
   createSpendSource(source: InsertSpendSource): Promise<SpendSource>;
   updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined>;
   deleteSpendSource(sourceId: string): Promise<boolean>;
+  deleteSpendSourceWithRecords(campaignId: string, sourceId: string, platformContext: SpendPlatformContext): Promise<boolean>;
   hardDeleteInactiveSpendSource(campaignId: string, sourceId: string): Promise<boolean>;
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
   replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource>;
+  replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<void>;
   replaceCsvSpendSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -1133,6 +1135,26 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  async deleteSpendSourceWithRecords(campaignId: string, sourceId: string, platformContext: SpendPlatformContext): Promise<boolean> {
+    return await db.transaction(async (tx: any) => {
+      const contextCondition = platformContext === "ga4"
+        ? or(eq(spendSources.platformContext, "ga4" as any), isNull(spendSources.platformContext))
+        : eq(spendSources.platformContext, platformContext as any);
+      const [deletedSource] = await tx.update(spendSources).set({ isActive: false } as any).where(and(
+        sql`${spendSources.id}::text = ${sourceId}`,
+        eq(spendSources.campaignId, campaignId),
+        eq(spendSources.isActive, true),
+        contextCondition,
+      )).returning({ id: spendSources.id });
+      if (!deletedSource) return false;
+      await tx.delete(spendRecords).where(and(
+        eq(spendRecords.spendSourceId, sourceId),
+        eq(spendRecords.campaignId, campaignId),
+      ));
+      return true;
+    });
+  }
+
   async hardDeleteInactiveSpendSource(campaignId: string, sourceId: string): Promise<boolean> {
     const result = await db
       .delete(spendSources)
@@ -1190,6 +1212,24 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.spendSourceId, sourceId)));
       if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
       return savedSource;
+    });
+  }
+
+  async replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<void> {
+    await db.transaction(async (tx: any) => {
+      const contextCondition = platformContext === "ga4"
+        ? or(eq(spendSources.platformContext, "ga4" as any), isNull(spendSources.platformContext))
+        : eq(spendSources.platformContext, platformContext as any);
+      const [source] = await tx.select({ id: spendSources.id }).from(spendSources).where(and(
+        sql`${spendSources.id}::text = ${sourceId}`,
+        eq(spendSources.campaignId, campaignId),
+        eq(spendSources.sourceType, sourceType),
+        eq(spendSources.isActive, true),
+        contextCondition,
+      )).limit(1);
+      if (!source) throw new Error("Spend source not found");
+      await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.spendSourceId, sourceId)));
+      if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
     });
   }
   async replaceCsvSpendSourceWithRecords(

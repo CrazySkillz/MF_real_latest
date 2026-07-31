@@ -241,19 +241,20 @@ API trace:
 - `POST /api/campaigns/:id/spend/sheets/preview` checks campaign access and spend-purpose Google Sheets connection state.
 - `POST /api/campaigns/:id/spend/sheets/process` checks campaign access, preserves stable source IDs for edit/refresh, keeps add mode additive, writes spend records, recalculates campaign spend, persists fresh preview metadata, and schedules heavier downstream recompute after the response.
 - `POST /api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now` is a campaign/source-scoped validation trigger for Google Sheets spend reprocess only.
-- `DELETE /api/campaigns/:id/spend-sources/:sourceId` verifies campaign access and optional platform-context membership before deleting only the requested source records and deactivating the requested source.
+- `DELETE /api/campaigns/:id/spend-sources/:sourceId` verifies campaign access and optional platform-context membership, then transactionally deactivates only the exact active source and deletes only its same-campaign records.
 
 Storage trace:
 
 - `getSpendSources` returns active spend sources for one campaign and accepts an optional platform context.
 - `getSpendSource` requires source ID, campaign ID, active state, and an optional platform context.
-- `createSpendSource`, `updateSpendSource`, `deleteSpendSource`, `deleteSpendRecordsBySource`, and `createSpendRecords` are the write boundary for materialized spend.
+- `createSpendSource`, `updateSpendSource`, `deleteSpendSource`, `deleteSpendRecordsBySource`, and `createSpendRecords` remain legacy/basic write methods. GA4 source replacement uses `replaceSpendSourceWithRecords`; whole-Overview Commit 17 adds `replaceSpendRecordsForSource` for exact retained scheduler refresh and `deleteSpendSourceWithRecords` for atomic individual deletion.
 - `getSpendTotalForRange` and `getSpendBreakdownBySource` join spend records to active same-campaign sources and accept an optional platform context. GA4 includes explicit `ga4` plus legacy null; other explicit contexts match exactly.
 
 Scheduler trace:
 
 - Google Sheets spend reprocess posts back to `/api/campaigns/:id/spend/sheets/process` with a stable `sourceId`.
 - The scheduler iterates active Google Sheets spend sources and does not use CSV snapshots as auto-refresh sources.
+- Whole-Overview Commit 17 makes Google Ads/Meta retained-source scheduler replacement transactional at the exact campaign/source/type/context boundary. It does not change Google Sheets polling cadence, provider selection, or CSV snapshot behavior.
 - One-minute source-family timer execution remains unproven until a deployed mutation packet is captured without the manual validation trigger. The recorded `200/success:true` packet proves only the repaired manual run-now path.
 
 ## Lifecycle Matrix

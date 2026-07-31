@@ -71,7 +71,7 @@ This checks the core Overview endpoint family, GA4 daily freshness state, native
 
 ## Current Commit 16 Window And OAuth Pack
 
-After runner `2026-07-31.13` is deployed, use an existing live numeric-property campaign:
+Runner `2026-07-31.13` is deployed. The bounded existing 30-day connection-response check passed; for any remaining OAuth or 60/90-day evidence, use an existing live numeric-property campaign:
 
 ```js
 await GA4OverviewValidation.commit16Pack({

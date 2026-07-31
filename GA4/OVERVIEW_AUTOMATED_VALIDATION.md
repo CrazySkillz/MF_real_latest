@@ -6,7 +6,7 @@ This file defines the accelerated validation path for GA4 Overview. It replaces 
 
 ## Current Certification Warning
 
-The Current Commit 11–18 queue is documented. Commit 15's bounded deployed parser/parity packet closed at `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. Unavailable edge fixtures remain unproven. Commit 16 runner `2026-07-31.13` is local and derives requests from the persisted saved window; deployment, live 30/60/90 evidence, observed expiry advancement, and the external seven-day durability gate remain pending. This is not complete Overview certification.
+The Current Commit 11–18 queue is documented. Commit 16 runner `2026-07-31.13` deployed in `747192ff`; the authenticated existing connection response returned its saved `lookbackDays: 30`, closing the bounded saved-window correction. No live 60/90-day fixture, independent provider-value comparison, observed expiry advancement, or external seven-day durability evidence was produced. This is not complete Overview certification.
 
 ## What Is Automated
 
@@ -65,7 +65,7 @@ await GA4OverviewValidation.overviewPack({
 });
 ```
 
-For Commit 16 after runner `2026-07-31.13` is deployed, use an existing live numeric-property campaign only:
+For any remaining Commit 16 OAuth/window evidence, use an existing live numeric-property campaign only:
 
 ```js
 await GA4OverviewValidation.commit16Pack({

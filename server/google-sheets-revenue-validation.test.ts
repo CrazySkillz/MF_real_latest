@@ -63,14 +63,14 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(validation).toBeLessThan(firstMutation);
   });
 
-  it("fails the GA4 scheduler path before record deletion", () => {
+  it("fails the GA4 scheduler path before atomic source replacement", () => {
     const start = scheduler.indexOf("async function reprocessGoogleSheetsRevenue(");
     const end = scheduler.indexOf("export async function runGoogleSheetsSpendSourceRefreshForValidation", start);
     const fn = scheduler.slice(start, end);
     expect(fn).toContain('=== "ga4"');
     expect(fn).toContain("const validation = aggregateCsvRevenueRows(mappedRows.map");
-    expect(fn.indexOf("validation.keptRows === 0")).toBeLessThan(fn.indexOf("storage.deleteRevenueRecordsBySource"));
-    expect(fn.indexOf("validation.undatedRevenue > 0")).toBeLessThan(fn.indexOf("storage.deleteRevenueRecordsBySource"));
+    expect(fn.indexOf("validation.keptRows === 0")).toBeLessThan(fn.indexOf("storage.replaceRevenueSourceWithRecords"));
+    expect(fn.indexOf("validation.undatedRevenue > 0")).toBeLessThan(fn.indexOf("storage.replaceRevenueSourceWithRecords"));
   });
 
   it("limits only GA4 Google Sheets Date choices and clears stale selections", () => {

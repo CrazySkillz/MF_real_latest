@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
+const scheduler = readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
 const ga4Page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf8");
 
 const sliceBetween = (source: string, start: string, end: string) => {
@@ -168,6 +169,24 @@ describe("GA4 source lifecycle recompute route guards", () => {
     ]) expect(routes).toContain(routeCall);
     expect(routes).toContain("Multiple active LinkedIn spend sources require review.");
     expect(storage).toContain("if (!savedConnection) throw new Error('Salesforce connection not found')");
+    const sheetsRevenueRefresh = sliceBetween(scheduler, 'async function reprocessGoogleSheetsRevenue(', 'export async function runGoogleSheetsSpendSourceRefreshForValidation');
+    expect(sheetsRevenueRefresh).toContain('storage.replaceRevenueSourceWithRecords(');
+    expect(sheetsRevenueRefresh).not.toContain('storage.deleteRevenueRecordsBySource(');
+    const adPlatformRefresh = sliceBetween(scheduler, '// Ad Platform Spend (Google Ads / Meta)', '// Google Sheets (Revenue)');
+    expect(adPlatformRefresh).toContain('storage.replaceSpendRecordsForSource(');
+    expect(adPlatformRefresh).not.toContain('storage.deleteSpendRecordsBySource(');
+  });
+
+  it('atomically deletes the exact retained spend source and its campaign records', () => {
+    const singleSpendDelete = sliceBetween(
+      routes,
+      '// Individual spend source delete',
+      'app.get("/api/campaigns/:id/revenue-totals"',
+    );
+    expect(storage).toContain('async deleteSpendSourceWithRecords(');
+    expect(singleSpendDelete).toContain('storage.deleteSpendSourceWithRecords(campaignId, sourceId, deletingSourcePlatformContext)');
+    expect(singleSpendDelete).not.toContain('storage.deleteSpendSource(sourceId)');
+    expect(singleSpendDelete).not.toContain('storage.deleteSpendRecordsBySource(sourceId)');
   });
 
   it('blocks GA4 Manual Revenue and Spend create/edit while preserving exact deletion', () => {

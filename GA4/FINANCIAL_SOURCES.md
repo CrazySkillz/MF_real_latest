@@ -786,7 +786,7 @@ The required pattern is:
 3. campaign financial values are recomputed
 4. the cards and source modal provenance repopulate from the new state
 
-Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. Retained Salesforce, Google Sheets, and LinkedIn/ad-platform source replacement is transactional and fail-closed so a failed insert cannot erase last-good records. The Manual financial-source follow-up rejects GA4 Manual Revenue and Manual Spend create/edit before mutation while preserving exact deletion. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Local tests passed; deployed cleanup validation passed on `2026-07-30` for the exact `Summer splash` Manual source deletion and post-delete total/inventory boundary.
+Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend add/edit/delete with the existing revenue behavior: KPI, Benchmark, Reports, and Notifications queries are invalidated after successful mutation. Its foreground retained-source replacements are transactional and fail closed. Current Commit 17 closes three separate local forward gaps: Google Sheets Revenue and Google Ads/Meta Spend scheduler replacement plus individual Spend deletion are now atomic at the exact campaign/source/context boundary. The Manual financial-source follow-up rejects GA4 Manual Revenue and Manual Spend create/edit before mutation while preserving exact reviewed deletion. Calculations, response shapes, source additivity, and non-GA4 branches are unchanged. Commit 17 is not yet deployed or provider-cycle validated, and no production data was changed.
 
 ### Edit Meaning By Source Type
 
@@ -808,8 +808,8 @@ Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend 
 - Salesforce confirmed campaign-level provenance is built from exact confirmed Opportunity records and requires the save/materialization query to select the attribution field as well as filter by it
 - Salesforce Review Settings preview should use the same selected date field as save/materialization so the displayed Total Revenue (to date) matches the source rows that will be persisted
 - if an Ad Comparison or Overview provenance entry is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
-- `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
-- existing stored `Manual` spend edit should label the action `Update spend` and keep it disabled until the amount changes
+- GA4 `Manual` Revenue and Spend cannot be created or edited; retained legacy rows may only be removed through exact reviewed campaign/source-scoped deletion
+- non-GA4 Manual behavior, where separately supported, is outside the GA4 prohibition and must retain its platform-specific contract
 
 ### Campaign Filter Meaning For CSV And Google Sheets
 

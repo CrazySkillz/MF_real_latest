@@ -13653,6 +13653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         users: 0,
       };
       let ga4TotalsFromSourceTruth = false;
+      let ga4TotalsAvailable = !activeGA4;
       try {
         if (activeGA4) {
           const ga4DateRange = toGa4DateRange(dateRange);
@@ -13713,6 +13714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isSimulated: true,
             };
             ga4TotalsFromSourceTruth = true;
+            ga4TotalsAvailable = true;
           } else {
             const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
             ga4Totals = {
@@ -13722,6 +13724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sessions: parseNum(result?.totals?.sessions),
               users: parseNum(result?.totals?.users),
             };
+            ga4TotalsAvailable = true;
           }
         }
       } catch (e: any) {
@@ -13743,6 +13746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           if (persistedPropertyId) {
             const rows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDate, endDate);
+            if (rows.length > 0) ga4TotalsAvailable = true;
             const persistedGA4 = (rows || []).reduce((totals: any, row: any) => ({
               users: totals.users + parseNum(row?.users),
               sessions: totals.sessions + parseNum(row?.sessions),
@@ -13813,12 +13817,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueToDateTotal = 0;
       let importedRevenueSources: any[] = [];
       let financialRevenueInputs: any[] = [];
+      let importedRevenueAvailable = false;
       const materializedRevenueSourceTypes = new Set<string>();
       try {
         // Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.
         const revenueStartDate = "1900-01-01";
         const revenueEndDate = new Date().toISOString().slice(0, 10);
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
+        importedRevenueAvailable = true;
         const revenueSourceDefinitions = await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]);
         const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
         for (const source of revenueBreakdown) {
@@ -13998,8 +14004,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? parseNum(custom?.users)
               : 0,
       };
-      let financialGa4Totals = { ...ga4Totals };
-      const financialWebAnalytics = { ...webAnalytics };
+      let financialGa4Totals = { ...ga4Totals, available: ga4TotalsAvailable };
+      const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? ga4TotalsAvailable : !webAnalyticsProvider || !custom?.error };
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         try {
           let persistedFinancialCandidate: any = null;
@@ -14042,6 +14048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             persistedFinancialCandidate,
             financialGa4Totals,
           ], toDateFinancialCandidate || financialGa4Totals);
+          financialGa4Totals.available = ga4TotalsAvailable;
           financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
           financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
           financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
@@ -14160,6 +14167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         mainPlatformSources: { googleAds, instagram, tiktok, googleSheets },
         revenue: {
+          available: (!activeGA4 || ga4TotalsAvailable) && importedRevenueAvailable,
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
           totalRevenue: totalRevenueUnified,

@@ -16,6 +16,8 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
+Current-code override on July 31, 2026: Commit 18 changes the shared campaign Benchmark current-value failure contract. Failed financial reads, disconnected/missing GA4, and missing selected source IDs now return unavailable so existing refresh loops preserve last-known values instead of writing misleading zero. The bounded local implementation is proven by focused tests, TypeScript, and a production build, but it is not yet committed, deployed, or externally validated. The affected current-value/recompute/alert path is therefore **unproven**, and the historical certification below must not be repeated as a current whole-path claim until Commit 18 deployed validation passes. Timer-fired scheduler execution remains outside this Commit 18 proof.
+
 As of July 1, 2026, after a strict current-code re-trace, focused Benchmark validation, and controlled deployed provider/UI/email/scheduler/token-failure evidence, GA4 Benchmarks are **clean-certified for the current GA4 Benchmarks section under the documented scope in this file**.
 
 No Current Commit blockers remain open for the current GA4 Benchmarks certification scope. Do not extend this claim to future code changes, future GA4 properties/windows, future alert emails, a real unsimulated Google token revocation event, daily timer-fired evidence, or future platforms without fresh evidence.

@@ -18,6 +18,13 @@ type CampaignMetricTotals = {
   engagementRate: number;
   revenueBySource: Map<string, number>;
   spendBySource: Map<string, number>;
+  revenueAvailable?: boolean;
+  spendAvailable?: boolean;
+  revenueBreakdownAvailable?: boolean;
+  spendBreakdownAvailable?: boolean;
+  ga4Available?: boolean;
+  ga4RevenueAvailable?: boolean;
+  financialConversionsAvailable?: boolean;
 };
 
 const round2 = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
@@ -133,11 +140,17 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   let sessions = 0;
   let engagementRate = 0;
 
-  const connections = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
+  const connections = await storage.getGA4Connections(campaignId).catch(() => null as any);
+  if (!connections) return null;
   const primary = (connections || []).find((conn: any) => conn?.isPrimary) || (connections || [])[0];
+  let ga4Available = false;
+  let ga4RevenueAvailable = false;
   if (primary?.propertyId) {
     const propertyId = String(primary.propertyId);
-    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => [] as any[]);
+    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
+    if (!rows) return null;
+    ga4Available = true;
+    ga4RevenueAvailable = true;
     let engagementSum = 0;
     let engagementRows = 0;
     for (const row of rows || []) {
@@ -162,7 +175,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       financialConversions = conversions;
     } else if (useFullFinancialCandidate) {
       const financialEndDate = previousCompleteUTC();
-      const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, financialEndDate).catch(() => [] as any[]);
+      const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, financialEndDate).catch(() => null as any);
       const dailyCandidate = (financialRows || []).reduce((totals: any, row: any) => ({
         revenue: totals.revenue + parseNum(row?.revenue),
         conversions: totals.conversions + parseNum(row?.conversions),
@@ -202,21 +215,26 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       }
       const selectedFinancialCandidate = selectGA4FinancialTotalsSource([
         toDateCandidate,
-        financialRows.length > 0 ? dailyCandidate : null,
+        financialRows?.length > 0 ? dailyCandidate : null,
         breakdownCandidate,
       ], toDateCandidate || dailyCandidate);
       ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
       financialConversions = parseNum(selectedFinancialCandidate?.conversions);
+      ga4RevenueAvailable = toDateCandidate !== null || financialRows !== null || breakdownCandidate !== null;
     }
   }
   if (financialConversions === null) financialConversions = conversions;
 
-  const [revenueTotals, spendTotals, revenueBreakdown, spendBreakdown] = await Promise.all([
-    storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 })),
-    storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalSpend: 0 })),
-    storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[]),
+  const [revenueTotalsResult, spendTotalsResult, revenueBreakdownResult, spendBreakdownResult] = await Promise.allSettled([
+    storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4"),
+    storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4"),
+    storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4"),
+    storage.getSpendBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4"),
   ]);
+  const revenueTotals: any = revenueTotalsResult.status === "fulfilled" ? revenueTotalsResult.value : { totalRevenue: 0 };
+  const spendTotals: any = spendTotalsResult.status === "fulfilled" ? spendTotalsResult.value : { totalSpend: 0 };
+  const revenueBreakdown: any[] = revenueBreakdownResult.status === "fulfilled" ? revenueBreakdownResult.value : [];
+  const spendBreakdown: any[] = spendBreakdownResult.status === "fulfilled" ? spendBreakdownResult.value : [];
 
   return {
     revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),
@@ -229,38 +247,62 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
     engagementRate: round2(engagementRate),
     revenueBySource: new Map((revenueBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.revenue)])),
     spendBySource: new Map((spendBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.spend)])),
+    revenueAvailable: revenueTotalsResult.status === "fulfilled" && (!primary?.propertyId || ga4RevenueAvailable),
+    spendAvailable: spendTotalsResult.status === "fulfilled",
+    revenueBreakdownAvailable: revenueBreakdownResult.status === "fulfilled",
+    spendBreakdownAvailable: spendBreakdownResult.status === "fulfilled",
+    ga4Available,
+    ga4RevenueAvailable,
+    financialConversionsAvailable: ga4RevenueAvailable,
   };
 }
 
 export { getCampaignMetricTotals };
 
-function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number {
-  if (sourceId === "total_revenue") return totals.revenue;
-  if (sourceId === "total_spend") return totals.spend;
-  if (sourceId === "total_conversions") return totals.conversions;
-  if (sourceId === "total_users") return totals.users;
-  if (sourceId === "total_sessions") return totals.sessions;
-  if (sourceId === "total_engagement_rate") return totals.engagementRate;
-  if (sourceId.startsWith("revenue-source:")) return totals.revenueBySource.get(sourceId.replace("revenue-source:", "")) || 0;
-  if (sourceId.startsWith("spend-source:")) return totals.spendBySource.get(sourceId.replace("spend-source:", "")) || 0;
-  if (sourceId === "ga4" && inputKey === "revenue") return totals.ga4Revenue;
-  if (sourceId === "ga4" && inputKey === "conversions") return totals.conversions;
-  if (sourceId === "ga4" && inputKey === "users") return totals.users;
-  if (sourceId === "ga4" && inputKey === "sessions") return totals.sessions;
-  if (sourceId === "ga4" && inputKey === "engagementRate") return totals.engagementRate;
-  return 0;
+function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number | null {
+  if (sourceId === "total_revenue") return totals.revenueAvailable === false ? null : totals.revenue;
+  if (sourceId === "total_spend") return totals.spendAvailable === false ? null : totals.spend;
+  if (sourceId === "total_conversions") return totals.ga4Available === false ? null : totals.conversions;
+  if (sourceId === "total_users") return totals.ga4Available === false ? null : totals.users;
+  if (sourceId === "total_sessions") return totals.ga4Available === false ? null : totals.sessions;
+  if (sourceId === "total_engagement_rate") return totals.ga4Available === false ? null : totals.engagementRate;
+  if (sourceId.startsWith("revenue-source:")) {
+    const id = sourceId.replace("revenue-source:", "");
+    return totals.revenueBreakdownAvailable === false || !totals.revenueBySource.has(id) ? null : totals.revenueBySource.get(id)!;
+  }
+  if (sourceId.startsWith("spend-source:")) {
+    const id = sourceId.replace("spend-source:", "");
+    return totals.spendBreakdownAvailable === false || !totals.spendBySource.has(id) ? null : totals.spendBySource.get(id)!;
+  }
+  if (sourceId === "ga4" && inputKey === "revenue") return totals.ga4RevenueAvailable === false ? null : totals.ga4Revenue;
+  if (sourceId === "ga4" && inputKey === "conversions") return totals.ga4Available === false ? null : totals.conversions;
+  if (sourceId === "ga4" && inputKey === "users") return totals.ga4Available === false ? null : totals.users;
+  if (sourceId === "ga4" && inputKey === "sessions") return totals.ga4Available === false ? null : totals.sessions;
+  if (sourceId === "ga4" && inputKey === "engagementRate") return totals.ga4Available === false ? null : totals.engagementRate;
+  return null;
 }
 
-function sumSelected(inputKey: string, sourceIds: string[] | undefined, totals: CampaignMetricTotals): number {
-  return (sourceIds || []).reduce((sum, id) => sum + sourceValue(inputKey, String(id), totals), 0);
+function sumSelected(inputKey: string, sourceIds: string[] | undefined, totals: CampaignMetricTotals): number | null {
+  let sum = 0;
+  for (const id of sourceIds || []) {
+    const value = sourceValue(inputKey, String(id), totals);
+    if (value === null) return null;
+    sum += value;
+  }
+  return sum;
 }
 
-function sumSelectedFinancialConversions(sourceIds: string[] | undefined, totals: CampaignMetricTotals): number {
-  return (sourceIds || []).reduce((sum, id) => {
+function sumSelectedFinancialConversions(sourceIds: string[] | undefined, totals: CampaignMetricTotals): number | null {
+  let sum = 0;
+  for (const id of sourceIds || []) {
     const sourceId = String(id);
-    if (sourceId === "total_conversions" || sourceId === "ga4") return sum + totals.financialConversions;
-    return sum + sourceValue("conversions", sourceId, totals);
-  }, 0);
+    const value = sourceId === "total_conversions" || sourceId === "ga4"
+      ? totals.financialConversionsAvailable === false ? null : totals.financialConversions
+      : sourceValue("conversions", sourceId, totals);
+    if (value === null) return null;
+    sum += value;
+  }
+  return sum;
 }
 
 export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals: CampaignMetricTotals): number | null {
@@ -268,35 +310,39 @@ export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals
   const metric = String(cfg?.metric || "").trim();
   if (!metric) return null;
 
-  if (metric === "revenue") return round2(sumSelected("revenue", cfg?.inputs?.revenue, totals));
-  if (metric === "spend") return round2(sumSelected("spend", cfg?.inputs?.spend, totals));
-  if (metric === "conversions") return Math.round(sumSelected("conversions", cfg?.inputs?.conversions, totals));
-  if (metric === "users") return Math.round(sumSelected("users", cfg?.inputs?.users, totals));
-  if (metric === "sessions") return Math.round(sumSelected("sessions", cfg?.inputs?.sessions, totals));
-  if (metric === "engagementRate") return round2(sumSelected("engagementRate", cfg?.inputs?.engagementRate, totals));
+  if (["revenue", "spend", "conversions", "users", "sessions", "engagementRate"].includes(metric)) {
+    const value = sumSelected(metric, cfg?.inputs?.[metric], totals);
+    if (value === null) return null;
+    return ["conversions", "users", "sessions"].includes(metric) ? Math.round(value) : round2(value);
+  }
   if (metric === "conversion-rate-website") {
     const conv = sumSelected("conversions", cfg?.inputs?.conversions, totals);
     const sessions = sumSelected("sessions", cfg?.inputs?.sessions, totals);
+    if (conv === null || sessions === null) return null;
     return sessions > 0 ? round2((conv / sessions) * 100) : 0;
   }
   if (metric === "roas") {
     const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
+    if (revenue === null || spend === null) return null;
     return spend > 0 ? round2(revenue / spend) : 0;
   }
   if (metric === "roi") {
     const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
+    if (revenue === null || spend === null) return null;
     return spend > 0 ? round2(((revenue - spend) / spend) * 100) : 0;
   }
   if (metric === "profit") {
     const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
+    if (revenue === null || spend === null) return null;
     return round2(revenue - spend);
   }
   if (metric === "cpa") {
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
     const conversions = sumSelectedFinancialConversions(cfg?.inputs?.conversions, totals);
+    if (spend === null || conversions === null) return null;
     return conversions > 0 ? round2(spend / conversions) : 0;
   }
 

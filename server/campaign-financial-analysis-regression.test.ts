@@ -54,7 +54,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(routes).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
     expect(route).toContain("const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);");
     expect(route).toContain("const { linkedIn, linkedInSpend } = await buildLinkedInPlatformSourceForAggregate(campaignId, linkedInConn);");
-    expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend).toFixed(2));");
+    expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(custom?.spend)).toFixed(2));");
     expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
   });
 

@@ -36,7 +36,7 @@ describe("GA4 downstream financial-source parity", () => {
     expect(scheduler).toContain("getCampaignMetricTotals(campaignId, true)");
     expect(overview.indexOf("(ga4ToDateResp as any)?.totals,")).toBeLessThan(overview.indexOf("ga4DailyRows.length > 0 ? dailySummedTotals : null"));
     expect(outcome.indexOf("toDateFinancialCandidate,")).toBeLessThan(outcome.indexOf("persistedFinancialCandidate,"));
-    expect(campaign.indexOf("toDateCandidate,")).toBeLessThan(campaign.indexOf("financialRows.length > 0 ? dailyCandidate : null"));
+    expect(campaign.indexOf("toDateCandidate,")).toBeLessThan(campaign.indexOf("financialRows?.length > 0 ? dailyCandidate : null"));
   });
 
   it("makes the browser runner preserve zero and negative first candidates and fall through incomplete ones", () => {
@@ -165,7 +165,7 @@ return buildTotals;`,
     const campaign = read("server/utils/campaign-current-values.ts");
     expect(campaign).toContain("revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue))");
     expect(campaign).toContain('if (sourceId === "ga4" && inputKey === "revenue") return totals.ga4Revenue');
-    expect(campaign).toContain('if (metric === "revenue")');
+    expect(campaign).toContain('["revenue", "spend", "conversions", "users", "sessions", "engagementRate"].includes(metric)');
     expect(campaign).toContain('if (metric === "profit")');
     expect(campaign).toContain('if (metric === "roas")');
     expect(campaign).toContain('if (metric === "roi")');

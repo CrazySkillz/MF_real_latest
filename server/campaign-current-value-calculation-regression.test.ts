@@ -42,4 +42,27 @@ describe("campaign current-value calculation regression guard", () => {
     expect(computeCampaignCurrentValueFromConfig(cpaConfig, totals({ spend: 480 }))).toBe(8);
     expect(computeCampaignCurrentValueFromConfig(cpaConfig, totals({ financialConversions: 75 }))).toBe(4);
   });
+
+  it("fails closed when a selected source or required total is unavailable", () => {
+    expect(computeCampaignCurrentValueFromConfig({
+      metric: "revenue",
+      inputs: { revenue: ["revenue-source:missing"] },
+    }, totals())).toBeNull();
+    expect(computeCampaignCurrentValueFromConfig({
+      metric: "roas",
+      inputs: { revenue: ["total_revenue"], spend: ["total_spend"] },
+    }, totals({ revenueAvailable: false }))).toBeNull();
+    expect(computeCampaignCurrentValueFromConfig({
+      metric: "spend",
+      inputs: { spend: ["total_spend"] },
+    }, totals({ spendAvailable: false }))).toBeNull();
+    expect(computeCampaignCurrentValueFromConfig({
+      metric: "conversions",
+      inputs: { conversions: ["total_conversions"] },
+    }, totals({ ga4Available: false }))).toBeNull();
+    expect(computeCampaignCurrentValueFromConfig({
+      metric: "revenue",
+      inputs: { revenue: ["ga4"] },
+    }, totals({ ga4RevenueAvailable: false }))).toBeNull();
+  });
 });

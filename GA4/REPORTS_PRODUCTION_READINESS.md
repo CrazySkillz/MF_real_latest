@@ -17,6 +17,8 @@ This file defines whether that implementation is production-ready, what has been
 
 ## Durable Future Answer
 
+Current-code override on July 31, 2026: Commit 18 changes the shared Campaign DeepDive Performance Summary aggregate so failed GA4/imported-revenue reads remain connected but their metrics are unavailable, preventing partial or false-zero revenue/ROAS from reaching browser report consumers. The bounded local implementation and Custom Report/Executive Summary regression paths are proven locally, but the code is not yet committed, deployed, or externally validated. The affected Campaign DeepDive/browser-report aggregate path is therefore **unproven**; the historical Reports certification below does not certify this changed path. Scheduled email/PDF/snapshot behavior was not changed and remains outside Commit 18.
+
 GA4 Reports is production-ready for the current code implementation as of the 2026-06-27 Reports readiness fix series, with one remaining named deferred validation: `Campaign DeepDive Scheduled Report Visibility`. Deployed GA4 Overview Report email delivery has user-confirmed evidence from the 2026-07-03 Overview report packet:
 
 - `7d98a867` Correct GA4 Scheduled Overview Revenue Label

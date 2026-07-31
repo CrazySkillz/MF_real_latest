@@ -34,6 +34,45 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.roas.available).toBe(false);
   });
 
+  it("keeps connected GA4 visible but marks failed downstream inputs unavailable", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-failed-ga4",
+      dateRange: "30days",
+      ga4: { connected: true, available: false, revenue: 0, conversions: 0, sessions: 0, users: 0 },
+      webAnalytics: { connected: true, available: false, provider: "ga4", revenue: 0, conversions: 0, sessions: 0, users: 0 },
+      spend: { available: true, unifiedSpend: 100, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {},
+      revenue: { available: false, onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [{ type: "csv", connected: true, lastTotalRevenue: 0 }],
+    });
+
+    const ga4 = aggregate.sources.find((source) => source.id === "ga4");
+    expect(ga4?.connected).toBe(true);
+    expect(ga4?.includedMetrics).toEqual([]);
+    expect(ga4?.metrics.sessions).toBeNull();
+    expect(aggregate.totals.sessions.available).toBe(false);
+    expect(aggregate.totals.revenue.available).toBe(false);
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 100 });
+    expect(aggregate.totals.roas.available).toBe(false);
+  });
+
+  it("does not present native GA4 revenue as a complete total when imported revenue failed", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-partial-revenue",
+      dateRange: "30days",
+      ga4: { connected: true, available: true, revenue: 50, conversions: 2, sessions: 10, users: 8 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 50, conversions: 2, sessions: 10, users: 8 },
+      spend: { unifiedSpend: 20, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {},
+      revenue: { available: false, onsiteRevenue: 50, offsiteRevenue: 0, totalRevenue: 50 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.totals.sessions).toMatchObject({ available: true, value: 10 });
+    expect(aggregate.totals.revenue.available).toBe(false);
+    expect(aggregate.totals.roas.available).toBe(false);
+  });
+
   it("aggregates connected paid-platform metrics without requiring GA4", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-2",

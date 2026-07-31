@@ -105,13 +105,14 @@ const mainSourceAdapters: SourceAdapter[] = [
     id: "ga4",
     build: (input) => {
       const ga4Connected = input.ga4?.connected === true;
+      const ga4Available = ga4Connected && input.ga4?.available !== false;
       return {
         id: "ga4",
         label: "Google Analytics",
         category: "web_analytics",
         connected: ga4Connected,
         capabilities: ["users", "sessions", "conversions", "revenue"],
-        includedMetrics: ga4Connected ? ["users", "sessions", "conversions", "revenue"] : [],
+        includedMetrics: ga4Available ? ["users", "sessions", "conversions", "revenue"] : [],
         excludedMetrics: [
           { metric: "impressions", reason: "GA4 is not an ad-impression source" },
           { metric: "clicks", reason: "GA4 is not an ad-click source" },
@@ -119,10 +120,10 @@ const mainSourceAdapters: SourceAdapter[] = [
           { metric: "leads", reason: "Leads are not available from GA4 unless mapped as conversions" },
         ],
         metrics: {
-          users: parseNum(input.ga4?.users),
-          sessions: parseNum(input.ga4?.sessions),
-          conversions: parseNum(input.ga4?.conversions),
-          revenue: parseNum(input.ga4?.revenue),
+          users: ga4Available ? parseNum(input.ga4?.users) : null,
+          sessions: ga4Available ? parseNum(input.ga4?.sessions) : null,
+          conversions: ga4Available ? parseNum(input.ga4?.conversions) : null,
+          revenue: ga4Available ? parseNum(input.ga4?.revenue) : null,
         },
       };
     },
@@ -271,6 +272,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   }
 
   const revenueSources = Array.isArray(input.revenueSources) ? input.revenueSources : [];
+  const revenueAvailable = input.revenue?.available !== false;
   for (const source of revenueSources) {
     if (source?.connected !== true) continue;
     addSource(sourceBreakdown, {
@@ -279,7 +281,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
       category: "financial",
       connected: true,
       capabilities: ["revenue"],
-      includedMetrics: ["revenue"],
+      includedMetrics: revenueAvailable ? ["revenue"] : [],
       excludedMetrics: [
         { metric: "impressions", reason: "Revenue sources do not provide ad impressions" },
         { metric: "clicks", reason: "Revenue sources do not provide ad clicks" },
@@ -288,7 +290,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
         { metric: "users", reason: "Revenue sources do not provide web users" },
       ],
       metrics: {
-        revenue: parseNum(source.lastTotalRevenue),
+        revenue: revenueAvailable ? parseNum(source.lastTotalRevenue) : null,
       },
       freshness: source.freshness && typeof source.freshness === "object"
         ? { ...source.freshness, ...(source.platformContext ? { platformContext: source.platformContext } : {}) }
@@ -304,21 +306,24 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const sumPaidMetric = (metricName: string) =>
     paidMetricSources(metricName).reduce((sum, source) => sum + parseNum(source.metrics[metricName]), 0);
 
-  const webConnected = input.webAnalytics?.connected === true;
+  const webConnected = input.webAnalytics?.connected === true && input.webAnalytics?.available !== false;
   const webSource = webConnected && input.webAnalytics?.provider === "ga4" ? "ga4"
     : webConnected && input.webAnalytics?.provider === "custom_integration" ? "custom_integration"
       : null;
 
   const spendValue = parseNum(input.spend?.unifiedSpend);
-  const hasCanonicalSpendSource = input.spend?.spendSource === "persisted_spend_sources"
-    || (Array.isArray(input.spend?.sourceIds) && input.spend.sourceIds.length > 0);
+  const spendAvailable = input.spend?.available !== false;
+  const hasCanonicalSpendSource = spendAvailable && (input.spend?.spendSource === "persisted_spend_sources"
+    || (Array.isArray(input.spend?.sourceIds) && input.spend.sourceIds.length > 0));
   const spendSource = hasCanonicalSpendSource
     ? ["canonical_spend_sources"]
-    : paidMetricSources("spend").map((source) => source.id);
+    : spendAvailable ? paidMetricSources("spend").map((source) => source.id) : [];
   const revenueValue = parseNum(input.revenue?.totalRevenue);
-  const revenueSourceIds = sourceBreakdown
-    .filter((source) => source.includedMetrics.includes("revenue") || source.includedMetrics.includes("attributedRevenue"))
-    .map((source) => source.id);
+  const revenueSourceIds = revenueAvailable
+    ? sourceBreakdown
+      .filter((source) => source.includedMetrics.includes("revenue") || source.includedMetrics.includes("attributedRevenue"))
+      .map((source) => source.id)
+    : [];
   const hasRevenue = revenueSourceIds.length > 0;
   const hasSpend = spendSource.length > 0;
 

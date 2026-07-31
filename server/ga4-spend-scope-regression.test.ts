@@ -76,12 +76,12 @@ describe("GA4 spend source-scope regression guard", () => {
     expect(routes).not.toContain('requestedPlatformContext === "ga4" ? null');
   });
 
-  it("leaves generic all-platform schedulers unscoped", () => {
+  it("keeps the GA4 aggregate scheduler scoped while generic auto-refresh stays unscoped", () => {
     const scheduler = read("server/scheduler.ts");
     const autoRefresh = read("server/auto-refresh-scheduler.ts");
 
-    expect(scheduler).toContain("storage.getSpendTotalForRange(campaignId, startDate, endDate)");
-    expect(scheduler).not.toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, "ga4")');
+    expect(scheduler).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
+    expect(scheduler).not.toContain("storage.getSpendTotalForRange(campaignId, startDate, endDate)");
     expect(autoRefresh).toContain("storage.getSpendSources(campaignId)");
     expect(autoRefresh).toContain('storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate)');
   });

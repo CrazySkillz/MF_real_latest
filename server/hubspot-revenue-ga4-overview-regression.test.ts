@@ -257,6 +257,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       'app.get("/api/hubspot/:campaignId/pipeline-proxy"',
       'app.delete("/api/hubspot/:campaignId/pipeline-proxy"'
     );
+    const salesforcePipelineRoute = sliceBetween(
+      routes,
+      'app.get("/api/salesforce/:campaignId/pipeline-proxy"',
+      'app.get("/api/hubspot/:campaignId/pipeline-proxy"'
+    );
     const pipelineMemo = sliceBetween(
       client,
       "const pipelineProxyData = useMemo(() => {",
@@ -289,6 +294,13 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineRoute).toContain('return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested GA4 campaign scope." });');
     expect(pipelineRoute).not.toContain("|| candidates[0] || null");
     expect(pipelineRoute).toContain("const pipelineSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];");
+    expect(pipelineRoute).not.toContain("selectedPipelineSource = candidates[0]");
+    expect(salesforcePipelineRoute).toContain("requestedPlatformContext");
+    expect(salesforcePipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
+    expect(salesforcePipelineRoute).toContain("const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;");
+    expect(salesforcePipelineRoute).toContain('return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested platform context." });');
+    expect(salesforcePipelineRoute).not.toContain("|| candidates[0] || null");
+    expect(salesforcePipelineRoute).not.toContain("selectedPipelineSource = candidates[0]");
     expect(pipelineRoute).toContain("{ propertyName: campaignProp, operator: 'IN', values: pipelineSelectedValues }");
     expect(pipelineRoute).toContain("{ propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] }");
     expect(pipelineRoute).toContain("totalToDate: Number(cfg.pipelineTotalToDate || 0)");
@@ -297,6 +309,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineMemo).toContain("sourceMatchesGa4Scope");
     expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
     expect(pipelineMemo).not.toContain("|| sorted[0] || null");
+    expect(pipelineMemo).not.toContain("return sorted[0]");
     expect(pipelineMemo).toContain("providerEntries: entries.map");
     expect(financialRevenueBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(financialRevenueBlock).not.toContain("pipelineProxyData");
@@ -342,7 +355,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).not.toContain("recomputeGA4KPIAndBenchmarkValues");
     expect(inventoryRoute).not.toContain("recalcCampaignSpend");
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(hubspotRunner).toContain('"hubspotInventory"');
     expect(hubspotRunner).toContain('"/api/campaigns/" + encodeURIComponent(campaignId) + "/ga4-overview/source-damage-inventory"');
     expect(hubspotRunner).toContain("inventoryPass: data.hubspotInventoryPass === true");
@@ -463,7 +476,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function normalizeHubspotPipelineValue(value)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(propagationRunner).toContain("async function hubspotPropagationBefore(config)");
     expect(propagationRunner).toContain("async function hubspotPropagationAfter(config)");
     expect(propagationRunner).toContain("hubspotPropagationPoint(config");
@@ -496,7 +509,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "    if (config.expectedPipelineStageId !== undefined) {"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(pipelineRunner).toContain('"hubspotSourceDamageInventory"');
     expect(pipelineRunner).toContain("selectHubspotPipelineSource(activeSources, config.sourceId)");
     expect(pipelineRunner).toContain("activePipelineSourceCountMatchesExpected");
@@ -523,7 +536,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function parseStoredGa4CampaignFilterForRunner(raw)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(transitionRunner).toContain("async function hubspotProxyTransitionBefore(config)");
     expect(transitionRunner).toContain("async function hubspotProxyTransitionAfter(config)");
     expect(transitionRunner).toContain('"hubspotSourceDamageInventory"');
@@ -550,7 +563,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownBefore(config)");
     expect(campaignBreakdownRunner).toContain("async function hubspotCampaignBreakdownAfter(config)");
     expect(campaignBreakdownRunner).toContain('"ga4Breakdown"');
@@ -699,7 +712,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(reportRunner).toContain('"reports"');
     expect(reportRunner).toContain('"snapshots"');
     expect(reportRunner).toContain('"snapshotPdf"');
@@ -832,7 +845,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "async function hubspotReportValuePack(config)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(kpiBenchmarkRunner).toContain('"kpis"');
     expect(kpiBenchmarkRunner).toContain('"benchmarks"');
     expect(kpiBenchmarkRunner).toContain('"hubspotSourceDamageInventory"');
@@ -860,7 +873,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(portabilityRunner).toContain("hubspotPortabilityCampaignPoint");
     expect(portabilityRunner).toContain('"campaign"');
     expect(portabilityRunner).toContain('"ga4ToDate"');
@@ -888,7 +901,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
       "function googleSheetsAmount(sourceRow, breakdownRows, family)"
     );
 
-    expect(runner).toContain('var VERSION = "2026-07-12.6";');
+    expect(runner).toContain('var VERSION = "2026-07-30.10";');
     expect(mappingRunner).toContain("hubspotAlternateMappingVariantPoint");
     expect(mappingRunner).toContain("hubspotAlternateMappingMatrixPack");
     expect(mappingRunner).toContain('"campaign"');

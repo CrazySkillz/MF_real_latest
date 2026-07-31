@@ -22,7 +22,7 @@ Current Commit 9 read-only inventory on `2026-07-30` covered all 10 owner campai
 
 Current Commit 10 closed status on `2026-07-30`: commit `ec265895` deployed the downstream scheduled/manual Campaign DeepDive aggregate change that reuses the shared ordered GA4 campaign-to-date financial selection, scopes persisted revenue/spend and Trend financial rows to GA4, preserves valid zero/negative revenue for ROAS/ROI, and writes `performance_summary_aggregate_v2` compatibility snapshots. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Performance Summary has no Total Revenue card. This closes the bounded Commit 10 code/browser packet only; scheduled artifacts, historical Trend, live multi-source, and valid-zero/negative production fixtures remain unproven.
 
-Current queue status on `2026-07-30`: the complete currently known non-scheduler remaining-work queue is recorded chronologically as Current Commits 11–18 in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Commit 11 is closed for its bounded implementation and deployed fail-closed UI packet at `9ac3fea9`; same-scope positive-value UI behavior remains in Commit 15. Commit 12 is closed for its bounded deployed configured-value packet at `152a7dd3`; missing-source and valid-zero/negative edge fixtures remain in Commit 15. Commit 13 is implemented and locally validated with deployment/runtime validation pending; Commits 14–18 have not started. Live-window/OAuth evidence, retained-source disposition, final downstream certification, and explicit scheduler exclusions remain unproven.
+Current queue status on `2026-07-30`: the complete currently known non-scheduler remaining-work queue is recorded chronologically as Current Commits 11–18 in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Commits 11 and 12 are closed for their bounded deployed packets at `9ac3fea9` and `152a7dd3`. Commit 13 is closed at deployed commit `d353383e`: runner `2026-07-30.10` is served in production, and the configured read-only Benchmark comparison selected live provider revenue `$34,705.93` instead of the higher persisted-daily `$34,705.94`, proving the ordered provider-first contract. Commit 14 regression/document alignment is implemented and locally validated with no runtime-code change; commit is pending. Live edge-state, window/OAuth, retained-source disposition, final downstream certification, and explicit scheduler exclusions remain unproven.
 
 ## Overview Structure
 
@@ -171,7 +171,7 @@ Visible layout:
 High-level rule:
 
 - `Total Revenue` is additive:
-  `Total Revenue = selected scoped GA4-native financial revenue + imported campaign revenue`
+  `Total Revenue = selected scoped GA4-native financial revenue + active GA4-context source-backed imported campaign revenue`
 - the `Total Revenue` Revenue Sources modal should show HubSpot and Shopify mapped platform campaign names from saved `campaignMappings` when available, not only generic source type labels
 - the `Add revenue source` chooser is v1-scoped: Salesforce revenue is hidden for v1, while retained Salesforce docs/code paths are not current GA4 v1 certification scope
 - Campaign Breakdown row revenue must add imported HubSpot revenue only to rows matched by saved CRM-to-platform `campaignMappings`; the currently recorded HubSpot deployed evidence is limited to the Current Commit 4.11 `yesop_retargeting` mapped-row packet
@@ -202,7 +202,7 @@ Pipeline Proxy rule:
 
 - Pipeline Proxy appears in the Revenue & Financial area; before a HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source is configured, the card shows `Not configured`
 - the render condition is the active CRM revenue source configuration, not only the separate pipeline proxy endpoint response
-- when the endpoint returns a fresh value, the card should use that value; if the endpoint path is stale or unavailable, the card may still render from the active source's saved Pipeline Proxy config
+- when the endpoint returns a fresh same-scope value, the card uses it; if that endpoint is stale or unavailable, only the already-selected same-scope active source may supply saved Pipeline Proxy metadata, while a scope mismatch fails closed as unavailable
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show a compact `Sources` action; provider-specific provenance belongs in a read-only Pipeline Proxy sources modal rather than inline card microcopy
 - the `Sources` count should include only providers with positive Pipeline Proxy contribution; zero-value configured CRM providers should not show as contributing sources
@@ -259,8 +259,8 @@ Current production behavior:
 - users select the GA4 property and GA4 campaign values during campaign creation or GA4 connection setup
 - the saved `ga4CampaignFilter` defines the GA4 scope for the campaign
 - the GA4 analytics page shows the saved client, campaign, GA4 property ID, and selected campaign values for provenance
-- the GA4 analytics provenance card does not use request-time `Last updated`; it shows the latest persisted GA4 daily date, the expected completed-day boundary, and an explicit delayed warning from `/ga4-daily`
-- a non-stale daily boundary means the expected persisted day is present, not that GA4 has finished delayed event processing; the UI states that completed-day values may still change
+- the stable campaign provenance header does not insert a late success/freshness line; normal check-through/latest-activity detail lives in Connection Details, while an actual stale/provider failure remains an explicit Overview warning
+- a non-stale daily boundary means a successful provider check covered the expected completed-day boundary or stored activity reached it, not that GA4 has finished delayed event processing; no absent date is materialized as a fake zero row
 - the GA4 analytics page does not expose a post-setup campaign picker
 - the setup picker should discover selectable UTM campaign values after property selection from GA4 campaign dimensions, manual UTM dimensions, and finally `pageLocation` URLs containing `utm_campaign`
 - placeholder values such as `(direct)`, `(not set)`, or empty values are not sufficient proof that no UTM campaigns exist when manual UTM dimensions or `pageLocation` contain real campaign values

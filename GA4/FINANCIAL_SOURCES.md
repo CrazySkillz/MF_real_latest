@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 2 (`5cff21ad`) deployed the fixed window/source order; Current Commit 3 (`7b162083` plus `a0b205b5`) passed its bounded banner validation; Current Commit 4 (`7c54da65`) deployed and passed user-confirmed Total Spend/Spend Sources parity plus refresh persistence on `2026-07-30`. Foreign-context, active-source-with-zero-record, later source-family, freshness, cleanup, and downstream gates remain. The durable Overview readiness and future-platform template source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Current Commit 13 is closed at deployed commit `d353383e`: the configured read-only Benchmark comparison selected provider revenue `$34,705.93` rather than the higher persisted-daily `$34,705.94`, proving provider-first ordered selection. Commits 11–12 also fail closed on mismatched Pipeline Proxy scope and missing financial capability/source while preserving configured and valid-zero/negative values. Commit 14 regression/document alignment is implemented and locally validated with no runtime-code change; commit is pending. Missing/zero/negative deployed fixtures, foreign-context and zero-record fixtures, later lifecycle/disposition, live-window/OAuth, downstream, and named scheduler gates remain. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 
@@ -64,6 +64,7 @@ Where:
 
 - GA4 native revenue comes from this campaign's GA4 scope and uses the same selected scoped GA4 financial source as Overview in fixed order: campaign-to-date provider totals, persisted daily totals where available to the caller, then configured-lookback breakdown only when earlier complete candidates are absent; valid zero and negative values remain authoritative, and conversions stay on that same source for CPA
 - imported revenue comes from active GA4-context revenue sources attached to this campaign
+- when a GA4 native revenue metric is configured, valid zero retains GA4-native source provenance; absence of both native capability and an active imported source is unavailable, not a fabricated `$0`
 
 Important clarification:
 
@@ -180,7 +181,7 @@ Pipeline Proxy rule:
 - clicking `Sources` should open a read-only Pipeline Proxy sources modal with source provider, provider proxy amount, selected CRM stage label, and selected/contributing campaign values where available
 - the Pipeline Proxy `Sources` action should count and show only provider entries with a positive proxy amount; configured providers with `$0.00` proxy should not inflate the source count
 - each Pipeline Proxy source value should render on its own line as `Stage: <stage label> | <campaign value>`
-- Overview should render it from the active CRM revenue source configuration and enrich it with endpoint data when available; it must not disappear solely because the separate proxy endpoint is stale
+- Overview should render it only from the active CRM source matching the saved GA4 campaign scope and enrich it with same-scope endpoint data when available; a stale endpoint may use that same source's saved proxy metadata, but a scope mismatch must fail closed instead of selecting another source
 - if both HubSpot and Salesforce are active with Pipeline Proxy for the same GA4 campaign, the single Overview Pipeline Proxy card should aggregate both exact proxy totals
 - when multiple CRM providers contribute, modal provenance should render as separate provider entries rather than one flattened merged sentence
 - HubSpot Pipeline Proxy must use only the HubSpot wizard's saved selected campaign values and selected stage; it must not broaden to GA4 campaign filter values and must never fall back to confirmed `lastTotalRevenue`

@@ -6,7 +6,7 @@ This file defines the accelerated validation path for GA4 Overview. It replaces 
 
 ## Current Certification Warning
 
-The Current Commit 11–18 remaining-work queue is documented. Commit 11 is closed for its bounded implementation and deployed fail-closed UI packet at `9ac3fea9`; same-scope positive-value UI behavior remains in Commit 15. Commit 12 is closed for its bounded deployed configured-value packet at `152a7dd3`; missing-source and valid-zero/negative edge fixtures remain in Commit 15. Commit 13 is implemented and locally validated with deployment/runtime validation pending; Commits 14–18 are not implemented. Local runner `2026-07-30.10` and the Benchmark comparison route now use the live Overview's fixed ordered complete-source contract, but the currently deployed runner/route remain unproven until this commit deploys. Until deployment is confirmed, those financial comparisons are **not valid clean-certification evidence**. Endpoint availability, access, inventory, and non-financial checks remain bounded evidence only. Do not rerun or cite the affected financial packs as proof of Overview parity.
+The Current Commit 11–18 remaining-work queue is documented. Commits 11 and 12 are closed for their bounded deployed packets at `9ac3fea9` and `152a7dd3`. Commit 13 is closed at deployed commit `d353383e`: Render serves runner `2026-07-30.10`, and the authenticated read-only configured-campaign comparison returned `success: true`, `provider: live_provider_success`, provider revenue `$34,705.93`, persisted-daily revenue `$34,705.94`, and selected revenue `$34,705.93`. That proves the deployed Benchmark comparison follows provider-first ordering instead of maximum revenue. Local functional tests prove the runner selector's zero/negative retention and incomplete-candidate fallthrough; this bounded evidence does not certify untested fixtures or the complete Overview. Commit 14 regression/document alignment is implemented and locally validated with no runtime-code change; commit is pending. Commits 15–18 retain the remaining external gates.
 
 ## What Is Automated
 
@@ -53,7 +53,7 @@ These remain external evidence gates:
 Open the deployed app while logged in, then run:
 
 ```js
-await import('/ga4-overview-validation-runner.js?v=2026-07-03.4');
+await import('/ga4-overview-validation-runner.js?v=2026-07-30.10');
 await GA4OverviewValidation.overviewPack({
   campaignId: '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458',
   propertyId: '542352127'

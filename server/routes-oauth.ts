@@ -11863,13 +11863,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const { propertyId, lookbackDays: rawLookback } = req.body;
-      const lookbackDays = [30, 60, 90].includes(Number(rawLookback)) ? Number(rawLookback) : 90;
 
       if (!propertyId) {
         return res.status(400).json({ message: "Property ID is required" });
       }
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      if (Number(rawLookback) !== 30) {
+        return res.status(400).json({
+          success: false,
+          error: "UNSUPPORTED_GA4_LOOKBACK",
+          message: "This release supports only a 30-day GA4 lookback.",
+        });
+      }
+      const lookbackDays = 30;
 
       // Try to update in-memory realGA4Client (may not have it if OAuth went through ga4:connect flow)
       realGA4Client.setPropertyId(campaignId, propertyId);
@@ -12930,9 +12937,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all GA4 connections for this campaign
       const ga4Connections = await storage.getGA4Connections(campaignId);
       // An OAuth placeholder without a selected property is setup state, not a usable analytics connection.
-      const usableGA4Connections = ga4Connections.filter((connection: any) =>
+      const configuredGA4Connections = ga4Connections.filter((connection: any) =>
         String(connection?.propertyId || "").trim().length > 0
       );
+      const usableGA4Connections = configuredGA4Connections.filter((connection: any) =>
+        Number(connection?.lookbackDays) === 30
+      );
+      const unsupportedLookbackConnectionCount = configuredGA4Connections.length - usableGA4Connections.length;
 
       console.log(`[GA4 Check] Found ${ga4Connections.length} connections for campaign ${campaignId}`);
 
@@ -12942,6 +12953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connected: true,
           primaryPropertyId: primaryConnection.propertyId,
           totalConnections: usableGA4Connections.length,
+          unsupportedLookbackConnectionCount,
           connections: usableGA4Connections.map(conn => ({
             id: conn.id,
             propertyId: conn.propertyId,
@@ -12952,7 +12964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: conn.isActive,
             connectedAt: conn.connectedAt,
             method: conn.method,
-            lookbackDays: [30, 60, 90].includes(Number(conn.lookbackDays)) ? Number(conn.lookbackDays) : 90,
+            lookbackDays: 30,
             hasRefreshCredential: Boolean(conn.refreshToken),
             tokenExpiresAt: conn.expiresAt || null
           })),
@@ -12961,6 +12973,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           primaryConnectedAt: primaryConnection.connectedAt,
           hasValidToken: usableGA4Connections.some(conn => !!conn.accessToken),
           method: primaryConnection.method
+        });
+      }
+
+      if (unsupportedLookbackConnectionCount > 0) {
+        return res.json({
+          connected: false,
+          totalConnections: 0,
+          connections: [],
+          unsupportedLookback: true,
+          unsupportedLookbackConnectionCount,
+          message: "This saved GA4 connection uses a lookback that is not supported in this release.",
         });
       }
 
@@ -14220,10 +14243,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const connections = await storage.getGA4Connections(campaignId);
+      const usableConnections = connections.filter((connection: any) =>
+        String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) === 30
+      );
+      const unsupportedLookbackConnectionCount = connections.filter((connection: any) =>
+        String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) !== 30
+      ).length;
 
       res.json({
         success: true,
-        connections: connections.map(conn => ({
+        unsupportedLookbackConnectionCount,
+        connections: usableConnections.map(conn => ({
           id: conn.id,
           propertyId: conn.propertyId,
           propertyName: conn.propertyName,
@@ -14233,7 +14263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: conn.isActive,
           connectedAt: conn.connectedAt,
           method: conn.method,
-          lookbackDays: [30, 60, 90].includes(Number(conn.lookbackDays)) ? Number(conn.lookbackDays) : 90
+          lookbackDays: 30
         }))
       });
     } catch (error) {
@@ -14292,15 +14322,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ga4/select-property", async (req, res) => {
     try {
       const { campaignId, propertyId, lookbackDays: rawLookback } = req.body;
-      const lookbackDays = [30, 60, 90].includes(Number(rawLookback)) ? Number(rawLookback) : 90;
-
-      console.log('[GA4 Select Property] Request:', { campaignId, propertyId, lookbackDays });
 
       if (!campaignId || !propertyId) {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      if (Number(rawLookback) !== 30) {
+        return res.status(400).json({
+          success: false,
+          error: "UNSUPPORTED_GA4_LOOKBACK",
+          message: "This release supports only a 30-day GA4 lookback.",
+        });
+      }
+      const lookbackDays = 30;
+
+      console.log('[GA4 Select Property] Request:', { campaignId, propertyId, lookbackDays });
 
       // Look up the GA4 connection from the database by campaignId — use the LATEST connection
       const ga4Connections = await storage.getGA4Connections(campaignId);

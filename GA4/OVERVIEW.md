@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Overview` tab and the GA4-specific scope rules that feed the rest of the GA4 experience.
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: GA4 Overview is not production-ready or clean-certified; use that readiness file for the current blocker inventory and commit queue.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: GA4 Overview is not production-ready or clean-certified. Use `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md` for detailed evidence and `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md` for the chronological Commit 0–19 record.
 
 Commit 2 deployment record: commit `5cff21ad` was pushed to `main` and deployed on `2026-07-16`. The user-confirmed bounded UI smoke check passed for one configured campaign/window: the four visible configured-window labels agreed, the Users provenance tooltip was correct, Revenue & Financial was labeled campaign-to-date, and the downloaded Overview report matched the observed screen values. This does not prove all 30/60/90 live provider variants or close later Overview blockers.
 
@@ -22,7 +22,9 @@ Current Commit 9 read-only inventory on `2026-07-30` covered all 10 owner campai
 
 Current Commit 10 closed status on `2026-07-30`: commit `ec265895` deployed the downstream scheduled/manual Campaign DeepDive aggregate change that reuses the shared ordered GA4 campaign-to-date financial selection, scopes persisted revenue/spend and Trend financial rows to GA4, preserves valid zero/negative revenue for ROAS/ROI, and writes `performance_summary_aggregate_v2` compatibility snapshots. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Performance Summary has no Total Revenue card. This closes the bounded Commit 10 code/browser packet only; scheduled artifacts, historical Trend, live multi-source, and valid-zero/negative production fixtures remain unproven.
 
-Current queue status on `2026-07-31`: Commit 16's bounded deployed 30-day saved-window correction is closed; OAuth seven-day durability remains unproven. Commit 17 deployed as `36676deb`, and the user confirmed existing Total Revenue, Total Spend, and source lists were unchanged; its bounded forward implementation is closed while provider-cycle rollback and the eight-source disposition remain open. Commit 18's bounded fail-closed downstream implementation is complete locally and passed 12 files / 104 tests, TypeScript, and the production build. It is not yet committed, deployed, externally validated, or clean-certified; no production data was changed.
+Current queue status on `2026-08-01`: Commit 16's bounded deployed 30-day saved-window correction is closed; OAuth seven-day durability remains unproven. Commit 17 deployed as `36676deb`, and the user confirmed existing Total Revenue, Total Spend, and source lists were unchanged; its bounded forward implementation is closed while provider-cycle rollback and the eight-source disposition remain open. Commit 18's fail-closed downstream implementation is deployed, but its unavailable/last-good downstream production fixtures remain unproven. Its corrective scheduler-backed Summary deployed as `e857c15d`; on existing campaign `GA4 single` / `ga4_mock`, the rendered 30-day Summary and exact `/ga4-daily` response both returned 866 Sessions, 867 daily-summed Users, 110 Conversions, 68.4% Engagement Rate, and 12.7% Conversion Rate with `refreshIsStale: false`. The bounded metric-correction follow-up is closed without claiming independent GA4 report-UI parity, GA4 processing finality, timer-fired scheduler proof, or clean certification.
+
+Current Commit 19 is implemented locally but not yet committed, deployed, or production-validated. Both GA4 setup surfaces expose only 30 days; both persistence APIs reject new missing/60/90-day configuration before provider or storage mutation; and retained non-30 connections fail closed without record mutation. OAuth durability must be tested on `2026-08-07` or later, then the final non-scheduler pack must pass. Explicit scheduler execution/delivery checks remain excluded and unproven.
 
 ## Overview Structure
 
@@ -127,7 +129,7 @@ Daily records and endpoints may still exist for source validation, refresh, and 
 ### Summary Cards
 
 - `Sessions`
-  Populated from the selected connection's persisted GA4 daily facts for its configured 30/60/90-day completed-day lookback, with same-window live breakdown fallback only when daily facts are absent.
+  Populated from the selected supported 30-day connection's persisted GA4 daily facts for exactly 30 completed reporting days, with same-window live breakdown fallback only when daily facts are absent. Retained non-30 connections fail closed in this release.
 - `Users`
   Populated from the same configured-lookback Summary source as Sessions.
 - `Conversions`
@@ -354,7 +356,7 @@ Current code-path meaning:
 - in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
 - production table population uses the real GA4 query path, not a mock-refresh design
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
-- `Landing Pages` and `Conversion Events` use the selected connection's configured 30/60/90-day completed-day lookback; explicit API `startDate` remains a compatibility override for callers that intentionally request it
+- `Landing Pages` and `Conversion Events` use the selected supported connection's 30-day completed-day lookback; explicit API `startDate` remains a compatibility override for callers that intentionally request it
 - `Landing Pages` and `Conversion Events` are not reconstructed from scheduler-populated `ga4_daily_metrics`; they fetch row-level GA4 views directly and use exact-match fallback supplementation only when GA4 returns compatible row-level values
 - when attribution dimensions are empty or partial for fresh live traffic, table queries may fall back to same-scope `pageLocation` `utm_campaign`; landing page source/medium and conversion-event counts can then be supplemented only by exact row-level match
 

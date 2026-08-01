@@ -1569,22 +1569,17 @@ export default function GA4Metrics() {
     },
   });
 
-  const ga4PropsFromCheck: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
+  const ga4PropsFromCheck: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean; lookbackDays?: number }> =
     Array.isArray((ga4Connection as any)?.connections) ? (ga4Connection as any).connections : [];
-  const ga4PropsFromAll: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
+  const ga4PropsFromAll: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean; lookbackDays?: number }> =
     Array.isArray((allGA4Connections as any)?.connections) ? (allGA4Connections as any).connections : [];
-  const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
+  const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean; lookbackDays?: number }> =
     (ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll)
-      .filter((property) => String(property?.propertyId || "").trim().length > 0);
+      .filter((property) => String(property?.propertyId || "").trim().length > 0)
+      .filter((property) => Number(property?.lookbackDays) === 30);
   const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0;
 
-  // Read lookbackDays from the active GA4 connection (default 90 for backward compatibility)
-  const GA4_DAILY_LOOKBACK_DAYS = (() => {
-    const conns = ga4PropsFromAll.length > 0 ? ga4PropsFromAll : ga4PropsFromCheck;
-    const active = conns.find((c: any) => String(c.propertyId) === String(selectedGA4PropertyId)) || conns[0];
-    const lookbackDays = Number((active as any)?.lookbackDays);
-    return [30, 60, 90].includes(lookbackDays) ? lookbackDays : 90;
-  })();
+  const GA4_DAILY_LOOKBACK_DAYS = 30;
   const dateRange = `${GA4_DAILY_LOOKBACK_DAYS}days`;
 
   // Always scope GA4 metrics to a single selected property (default: primary).

@@ -229,7 +229,7 @@ export default function Campaigns() {
   const [selectedGA4CampaignValues, setSelectedGA4CampaignValues] = useState<string[]>([]);
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
-  const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(90);
+  const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(30);
   const [wizardGA4TestMode, setWizardGA4TestMode] = useState(false);
   const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
@@ -789,7 +789,7 @@ export default function Campaigns() {
     setGA4CampaignValues([]);
     setSelectedGA4CampaignValues([]);
     setGa4ConfigSubStep('property');
-    setWizardLookbackDays(90);
+    setWizardLookbackDays(30);
     setWizardGA4TestMode(false);
     setInstagramAdAccountId("act_instagram_test");
     setInstagramAdAccountName("Test Instagram Ad Account");
@@ -1693,7 +1693,7 @@ export default function Campaigns() {
                           <div className="space-y-2">
                             <Label>Import historical data</Label>
                             <div className="flex gap-2">
-                              {[30, 60, 90].map((days) => (
+                              {[30].map((days) => (
                                 <Button
                                   key={days}
                                   type="button"
@@ -1705,7 +1705,7 @@ export default function Campaigns() {
                                 </Button>
                               ))}
                             </div>
-                            <p className="text-xs text-muted-foreground">How far back to fetch GA4 data. Default: 90 days.</p>
+                            <p className="text-xs text-muted-foreground">This release imports the last 30 completed days.</p>
                           </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)}>

@@ -111,7 +111,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' })");
   });
 
-  it("uses each selected GA4 connection lookback across Overview live tables", () => {
+  it("uses the supported 30-day GA4 connection window across Overview live tables", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const routes = readServer("routes-oauth.ts");
     const analytics = readServer("analytics.ts");
@@ -128,7 +128,8 @@ describe("GA4 UI regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(conversionStart);
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId]');
-    expect(ga4Metrics).toContain("return [30, 60, 90].includes(lookbackDays) ? lookbackDays : 90;");
+    expect(ga4Metrics).toContain("const GA4_DAILY_LOOKBACK_DAYS = 30;");
+    expect(ga4Metrics).toContain("Number(property?.lookbackDays) === 30");
     expect(ga4Metrics).toContain('const dateRange = `${GA4_DAILY_LOOKBACK_DAYS}days`;');
     expect(ga4Metrics).not.toContain('const dateRange = "90days";');
     expect(ga4Metrics).toContain("dateRange: String(dateRange),");
@@ -156,7 +157,8 @@ describe("GA4 UI regression guard", () => {
     expect(connectionListStart).toBeGreaterThan(-1);
     expect(connectionListEnd).toBeGreaterThan(connectionListStart);
     for (const route of [checkRoute, connectionListRoute]) {
-      expect(route).toContain("lookbackDays: [30, 60, 90].includes(Number(conn.lookbackDays)) ? Number(conn.lookbackDays) : 90");
+      expect(route).toContain("lookbackDays: 30");
+      expect(route).toContain("unsupportedLookbackConnectionCount");
       expect(route).not.toContain("accessToken: conn.accessToken");
       expect(route).not.toContain("refreshToken: conn.refreshToken");
       expect(route).not.toContain("clientSecret: conn.clientSecret");

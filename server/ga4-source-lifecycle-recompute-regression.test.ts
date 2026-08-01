@@ -232,10 +232,12 @@ describe("GA4 source lifecycle recompute route guards", () => {
     );
     const accessGuard = connectionRoute.indexOf('await ensureCampaignAccess(req as any, res as any, campaignId)');
     const sourceRead = connectionRoute.indexOf('await storage.getGA4Connections(campaignId)');
-    const usableFilter = connectionRoute.indexOf('const usableGA4Connections = ga4Connections.filter');
+    const configuredFilter = connectionRoute.indexOf('const configuredGA4Connections = ga4Connections.filter');
+    const usableFilter = connectionRoute.indexOf('const usableGA4Connections = configuredGA4Connections.filter');
     expect(accessGuard).toBeGreaterThan(-1);
     expect(accessGuard).toBeLessThan(sourceRead);
-    expect(usableFilter).toBeGreaterThan(sourceRead);
+    expect(configuredFilter).toBeGreaterThan(sourceRead);
+    expect(usableFilter).toBeGreaterThan(configuredFilter);
     expect(connectionRoute).toContain('String(connection?.propertyId || "").trim().length > 0');
     expect(connectionRoute).toContain('if (usableGA4Connections.length > 0)');
     expect(connectionRoute).toContain('totalConnections: usableGA4Connections.length');

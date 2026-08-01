@@ -39,7 +39,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [selectedProperty, setSelectedProperty] = useState('');
 
   // Lookback window — how many days of historical data to import
-  const [lookbackDays, setLookbackDays] = useState<number>(90);
+  const [lookbackDays, setLookbackDays] = useState<number>(30);
 
   // Campaign filter state (kept from original)
   const [ga4CampaignFilter, setGa4CampaignFilter] = useState<string[]>([]);
@@ -538,7 +538,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               <div className="space-y-1">
                 <Label className="text-sm">Import historical data</Label>
                 <div className="flex gap-2">
-                  {[30, 60, 90].map((days) => (
+                  {[30].map((days) => (
                     <Button
                       key={days}
                       variant={lookbackDays === days ? "default" : "outline"}
@@ -549,7 +549,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     </Button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">How far back to fetch GA4 data. Default: 90 days.</p>
+                <p className="text-xs text-muted-foreground">This release imports the last 30 completed days.</p>
               </div>
               <div className="flex gap-2">
                 <Button

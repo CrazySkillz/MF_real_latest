@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "f8ca8b77bff0efadd46310a2bc68450a31a94df922e3fd9209ee20d9d3b616a3",
+  "contractSha256": "7610a3665b51710003ec66d715f19ea1b6c82589fb37982acee71111214a0c11",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "c4f4d6759b34aa47b3532ea6b1d42801fbcaf015",
+  "lastReviewedSha": "59894165785e4178fcae4704646423b2e4dc8c64",
   "certifiedSha": null,
   "invalidationReason": "The August 1, 2026 re-certification found unresolved live-versus-persisted window, source, failure-state, alert, notification, report, and persistence parity gaps. Historical certification is not current evidence.",
   "configurationBoundary": {
@@ -59,6 +59,7 @@
     { "path": "server/ga4-kpi-certification-gate.ts", "role": "certification invalidation checker", "sha256": null },
     { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": null },
     { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": null },
+    { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": null },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": null },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "financial revenue source lifecycle producer", "sha256": null },
     { "path": "client/src/components/AddSpendWizardModal.tsx", "role": "financial spend source lifecycle producer", "sha256": null },
@@ -91,6 +92,7 @@
     { "path": "shared/kpi-math.ts", "role": "threshold, direction, progress, and sufficiency math", "sha256": null },
     { "path": "shared/metric-math.ts", "role": "shared financial and rate formulas", "sha256": null },
     { "path": "shared/ga4-kpi-live-value.ts", "role": "shared live-card and browser-PDF KPI value resolver", "sha256": null },
+    { "path": "shared/ga4-kpi-metric-identity.ts", "role": "canonical standard and legacy GA4 KPI metric identity inventory", "sha256": null },
     { "path": "shared/ga4-financial-source.ts", "role": "GA4 financial candidate precedence", "sha256": null },
     { "path": "server/ga4-30-day-production-scope-regression.test.ts", "role": "30-day source contract regression", "sha256": null },
     { "path": "server/ga4-financial-source-parity.test.ts", "role": "financial source parity regression", "sha256": null },
@@ -145,7 +147,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 1, 2026: the checker passed and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
+      "evidence": "August 1, 2026 Current Commit 3: the checker passed after the identity dependency/test contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
     },
     {
       "id": "kpi_core_regressions",
@@ -157,7 +159,13 @@
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026: 1 file / 5 tests passed using one authoritative nine-metric fixture through the shared live-card/browser-PDF resolver, actual persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and the shared report preflight/PDF builder used by direct snapshot, test-send, manual, and scheduled reports. Caller reachability remains separately structural; deployed UI, email delivery, timer execution, and production data remain external gates."
+      "evidence": "August 1, 2026 Current Commit 3: 1 file / 5 tests passed using actual stored template keys, every supported legacy alias, and Pageviews through the shared live-card/browser-PDF resolver, actual persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and the shared report preflight/PDF builder. Deployed UI, email delivery, timer execution, and production data remain external gates."
+    },
+    {
+      "id": "metric_identity_contract",
+      "command": "npm test -- server/ga4-kpi-metric-identity-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 1, 2026: 3 files / 11 tests passed for the pinned inventory, stored-key/display-label/legacy normalization, dependency gates, canonical alert deduplication, and real-path cross-consumer values."
     },
     {
       "id": "typescript",

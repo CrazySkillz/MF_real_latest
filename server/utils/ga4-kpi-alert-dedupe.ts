@@ -1,3 +1,5 @@
+import { normalizeGA4KpiMetricAlias, resolveGA4KpiMetricIdentity } from "../../shared/ga4-kpi-metric-identity";
+
 type GA4KPIDuplicateCandidate = {
   id?: unknown;
   campaignId?: unknown;
@@ -7,9 +9,6 @@ type GA4KPIDuplicateCandidate = {
   createdAt?: unknown;
   updatedAt?: unknown;
 };
-
-const normalizeGA4KPIDuplicateMetric = (value: unknown): string =>
-  String(value || "").trim().toLowerCase().replace(/\s+/g, "");
 
 const timestampRank = (value: unknown): number => {
   const time = value instanceof Date ? value.getTime() : new Date(value as any).getTime();
@@ -33,7 +32,9 @@ export function getGA4KPIDuplicateKey(kpi: GA4KPIDuplicateCandidate): string | n
   if (platformType !== "google_analytics") return null;
 
   const campaignId = String(kpi?.campaignId || "").trim();
-  const metricKey = normalizeGA4KPIDuplicateMetric(kpi?.metric || kpi?.name);
+  const metricKey =
+    resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name) ||
+    normalizeGA4KpiMetricAlias(kpi?.metric || kpi?.name);
   if (!campaignId || !metricKey) return null;
 
   return `${campaignId}:${metricKey}`;

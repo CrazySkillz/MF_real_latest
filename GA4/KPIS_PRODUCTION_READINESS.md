@@ -27,7 +27,7 @@ The current UI, API, storage, refresh/scheduler, alert/email, notification, brow
 - live Users, Sessions, Conversions, and Conversion Rate use 30 completed days, while persisted KPI/progress/alert/report values use campaign-start-to-UTC-yesterday totals
 - live Engagement Rate uses the 30-day Overview aggregate; the job uses one latest daily row and notification enrichment averages daily percentages without weighting
 - live Revenue/ROAS/ROI/CPA use the fixed ordered financial source selector, but the job and notification resolver can replace inputs with a higher-revenue 90-day breakdown; revenue/spend read failures are coerced to zero
-- server-supported Pageviews and legacy aliases are not normalized consistently by live value and dependency lookup; custom/unsupported row preservation is locally proven
+- metric identity drift is locally corrected by Current Commit 3; window, source, failure-state, and persistence contracts remain unresolved
 
 Locally proven, but not sufficient for certification:
 
@@ -35,6 +35,7 @@ Locally proven, but not sufficient for certification:
 - create/edit preserve campaign/platform identity, UI invalidations exist, and custom KPI rows are preserved
 - shared metric-aware threshold/unit/direction math and tracker exclusion of blocked/insufficient rows have focused coverage
 - duplicate latest-row handling, campaign-scoped notification action URLs, and email audit/idempotency/retry/provider-acceptance semantics have focused coverage
+- Current Commit 3 normalizes the supported standard and legacy-alias inventory through live values, dependency gating, persisted recompute, alert deduplication, notification enrichment, Insights recommendations, and report value consumers
 - TypeScript passed on August 1, 2026
 
 Current unproven or unsafe paths:
@@ -54,7 +55,7 @@ External validation required after forward fixes: read-only target-data inventor
 0. **Documentation revocation and dependency inventory — completed by this audit.** Keep certification withdrawn; identify every producer/consumer and preserve earlier evidence as history only.
 1. **Certification integrity gate — implemented and locally validated in Current Commit 1; certification remains withdrawn.** The machine-readable record, fail-closed checker, focused tests, and existing CI step are present. A future ready claim requires a full certified SHA, SHA-256 for every dependency, matching current-status markers, completed required tests, and completed external gates. This implementation does not close Current Commits 2-10.
 2. **Real-path cross-consumer parity guard — implemented and locally validated in Current Commit 2; certification remains withdrawn.** One authoritative nine-metric fixture now runs through the shared live-card/browser-PDF resolver, persisted GA4 job, KPI API, alert truth, notification enrichment API, Insights/scheduled PDF, and the shared preflight/PDF builder reached by direct snapshot, test-send, manual, and scheduled reports. Existing caller-reachability checks remain structural and do not replace the dynamic value guard.
-3. **Metric identity contract.** Normalize the complete metric and legacy-alias inventory across live values, dependency gating, recompute, alerts, notifications, and reports.
+3. **Metric identity contract — implemented and locally validated in Current Commit 3; certification remains withdrawn.** One shared inventory now normalizes standard stored keys, display labels, Pageviews, and the supported legacy `total*` aliases across live values, dependency gating, recompute, alert deduplication, notification enrichment, Insights, and report consumers.
 4. **Authoritative window/date contract.** Make persisted traffic/rate inputs use the documented 30 completed reporting days, weighted Engagement Rate, and campaign reporting timezone.
 5. **Financial source/failure contract.** Replace higher-revenue financial selection with fixed source precedence; preserve valid zero and propagate unavailable without overwriting last-good values.
 6. **Alert/notification contract.** Apply identical blocked/insufficient/unavailable rules to in-app alerts, email eligibility, duplicate refresh, bell state, and notification enrichment.
@@ -127,7 +128,7 @@ Smallest safe implementation:
 Side-effect boundary:
 
 - no KPI formula, source precedence, date window, persistence behavior, alert behavior, notification behavior, report behavior, API contract, schema, scheduler, or production data changed
-- Current Commits 3-10 remain open; this guard is evidence and regression protection, not a runtime correction or re-certification
+- Current Commits 4-10 remain open; this guard is evidence and regression protection, not a runtime correction or re-certification
 
 Validation on August 1, 2026:
 
@@ -144,8 +145,49 @@ What this proves:
 
 What this does not prove:
 
-- aliases, unsupported/custom metric identity, corrected 30-completed-day weighting/timezone behavior, valid-zero/unavailable/failure behavior, or exact updated/skipped/failed KPI IDs; these remain Current Commits 3-8
+- corrected 30-completed-day weighting/timezone behavior, valid-zero/unavailable/failure behavior, or exact updated/skipped/failed KPI IDs; these remain Current Commits 4-8
 - target production data, an actual browser render/download, a real test-send or scheduled email, timer execution, provider/token behavior, deployment, or external UI parity
+- GA4 KPI production readiness
+
+### Current Commit 3 - Metric identity contract
+
+Status: implemented and locally validated. Certification remains withdrawn.
+
+Root cause:
+
+- standard KPI rows are stored with machine keys such as `conversionRate`, `engagementRate`, `users`, and `sessions`, but the live-card/browser-PDF resolver compared display labels
+- recompute, dependency gates, notification enrichment, alert deduplication, and Insights each maintained separate partial normalizers; `Revenue` and legacy `Total Revenue` could therefore be treated as different alert identities
+- the Current Commit 2 fixture used display labels as its stored `metric` values, so it did not exercise the actual template-key boundary and could pass while real stored rows fell back to stale persisted values
+
+Smallest safe implementation:
+
+- `shared/ga4-kpi-metric-identity.ts` is the single identity inventory: Revenue/Total Revenue, Conversions/Total Conversions, Sessions/Total Sessions, Users/Total Users, Pageviews, Conversion Rate, Engagement Rate, ROAS, ROI, and CPA; matching is case- and separator-insensitive
+- the live/browser resolver, UI dependency and rate gates, persisted recompute, read-only validation API, notification enrichment, alert duplicate key, and Insights recommendation classification consume that identity
+- persisted report values inherit the normalized recompute identity; browser reports inherit the shared live resolver; no report/API response shape changed
+- custom and unsupported metrics remain unguessed and retain their existing stored-value fallback/preservation behavior
+- the real-path parity fixture now contains the actual stored template keys, all supported legacy aliases, and Pageviews, and executes them through the live/browser, persisted/API, notification, Insights/scheduled-PDF, and shared report-preflight/PDF paths
+
+Side-effect boundary:
+
+- formulas, source precedence, windows/timezones, valid-zero/unavailable behavior, scheduler result shape, schema, and production data were not changed
+- Current Commits 4-10 remain open
+
+Validation on August 1, 2026:
+
+- focused identity/parity/duplicate packet passed: 3 files / 11 tests
+- wider KPI/alert/Insights/report packet passed 89/91 tests; the two failures are the pre-existing Notifications top-bar source-text guards for the already-broadened Shopify/KPI attention indicator, not metric identity behavior
+- `npm run check` passed
+- certification checker passed and its focused regression passed: 1 file / 9 tests
+
+What this proves:
+
+- every supported standard identity and legacy alias maps to one canonical identity on the locally exercised live, recompute, alert/notification, Insights, and report paths
+- actual template keys no longer fall through the live resolver to a stale stored value merely because they are not display labels
+- Revenue/Total Revenue and the supported `total*` aliases share recompute, dependency, and duplicate-alert identity
+
+What this does not prove:
+
+- window/timezone correctness, financial source precedence, valid-zero/unavailable/stale/failure behavior, exact recompute result IDs, persistence/destructive safety, target production data, deployed UI behavior, provider behavior, timer execution, or email delivery
 - GA4 KPI production readiness
 
 ## Historical Status And Evidence (non-authoritative)

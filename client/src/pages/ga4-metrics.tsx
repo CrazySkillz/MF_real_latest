@@ -38,6 +38,7 @@ import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
+import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 
 interface Campaign {
   id: string;
@@ -258,13 +259,6 @@ const KPI_NEEDS_ATTENTION_PCT = 90;
 // Minimum daily history for anomaly detection
 const INSIGHTS_MIN_HISTORY_DAYS = 14;
 const INSIGHTS_SHORT_WINDOW_DAYS = 6;
-// Canonical metric sets for exact matching (avoids false positives from loose .includes())
-const CONVERSION_METRICS = new Set(["conversionrate", "conversion rate", "total conversions", "conversions"]);
-const REVENUE_METRICS = new Set(["revenue"]);
-const TRAFFIC_METRICS = new Set(["sessions", "total sessions", "users", "total users"]);
-const CPA_METRICS = new Set(["cpa"]);
-const ENGAGEMENT_METRICS = new Set(["engagementrate", "engagement rate"]);
-
 const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabels: string[]) => {
   const hasSpend = spendLabels.length > 0;
   const hasRevenue = revenueLabels.length > 0;
@@ -1473,14 +1467,19 @@ export default function GA4Metrics() {
   };
 
   const getKpiIcon = (kpiName: string) => {
-    const n = String(kpiName || "").toLowerCase();
-    if (n === "revenue") return { Icon: DollarSign, color: "text-emerald-600" };
-    if (n === "roas" || n === "roi") return { Icon: TrendingUp, color: "text-violet-600" };
-    if (n === "cpa") return { Icon: Target, color: "text-blue-600" };
-    if (n.includes("conversion")) return { Icon: Target, color: "text-indigo-600" };
-    if (n.includes("engagement")) return { Icon: MousePointer, color: "text-orange-600" };
-    if (n.includes("session")) return { Icon: Clock, color: "text-muted-foreground" };
-    if (n.includes("user")) return { Icon: Users, color: "text-muted-foreground" };
+    const metric = resolveGA4KpiMetricIdentity(kpiName);
+    if (metric === "revenue") return { Icon: DollarSign, color: "text-emerald-600" };
+    if (metric === "roas" || metric === "roi") return { Icon: TrendingUp, color: "text-violet-600" };
+    if (metric === "cpa") return { Icon: Target, color: "text-blue-600" };
+    if (metric === "conversions" || metric === "conversion_rate") return { Icon: Target, color: "text-indigo-600" };
+    if (metric === "engagement_rate") return { Icon: MousePointer, color: "text-orange-600" };
+    if (metric === "sessions") return { Icon: Clock, color: "text-muted-foreground" };
+    if (metric === "users") return { Icon: Users, color: "text-muted-foreground" };
+    const name = String(kpiName || "").toLowerCase();
+    if (name.includes("conversion")) return { Icon: Target, color: "text-indigo-600" };
+    if (name.includes("engagement")) return { Icon: MousePointer, color: "text-orange-600" };
+    if (name.includes("session")) return { Icon: Clock, color: "text-muted-foreground" };
+    if (name.includes("user")) return { Icon: Users, color: "text-muted-foreground" };
     return { Icon: BarChart3, color: "text-muted-foreground" };
   };
 
@@ -2090,6 +2089,7 @@ export default function GA4Metrics() {
     conversions: Number(overviewTotalsSource?.conversions || 0),
     revenue: Number(overviewTotalsSource?.revenue || 0),
     users: Number(overviewTotalsSource?.users || 0),
+    pageviews: Number(overviewTotalsSource?.pageviews || 0),
   };
 
   const { data: importedRevenueToDateResp, isLoading: importedRevenueLoading, isError: importedRevenueError } = useQuery<any>({
@@ -2543,22 +2543,7 @@ export default function GA4Metrics() {
   }, [activeRevenueSource, ga4HasRevenueMetric]);
 
   const getMissingDependenciesForMetric = (metricKey: string) => {
-    const key = String(metricKey || "").trim();
-    const lower = key.toLowerCase();
-    // KPI templates use display names ("ROAS"), while Benchmarks use metric keys ("roas").
-    const m =
-      lower === "roas" || key === "ROAS"
-        ? "roas"
-        : lower === "roi" || key === "ROI"
-          ? "roi"
-          : lower === "cpa" || key === "CPA"
-            ? "cpa"
-            : lower === "revenue" || key === "Revenue"
-              ? "revenue"
-              : lower;
-
-    const requiresSpend = m === "roas" || m === "roi" || m === "cpa";
-    const requiresRevenue = m === "roas" || m === "roi" || m === "revenue";
+    const { requiresSpend, requiresRevenue } = getGA4KpiMetricDependencies(metricKey);
     const missing: Array<"Spend" | "Revenue"> = [];
     if (requiresSpend && !spendMetricAvailable) missing.push("Spend");
     if (requiresRevenue && !revenueMetricAvailable) missing.push("Revenue");
@@ -2566,8 +2551,8 @@ export default function GA4Metrics() {
   };
 
   const isBoundedRateMetric = (metricKey: any, name: any) => {
-    const keys = [metricKey, name].map((value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, ""));
-    return keys.includes("conversionrate") || keys.includes("engagementrate");
+    const metric = resolveGA4KpiMetricIdentity(metricKey, name);
+    return metric === "conversion_rate" || metric === "engagement_rate";
   };
 
   const getInvalidComparisonConfigReason = (input: {
@@ -4810,12 +4795,13 @@ export default function GA4Metrics() {
         })(),
         recommendation: (() => {
           const m = metric.toLowerCase();
+          const identity = resolveGA4KpiMetricIdentity((k as any)?.metric, (k as any)?.name);
           const ch = channelAnalysis;
           const isCustom = !m || m === "__custom__";
-          const isConversion = CONVERSION_METRICS.has(m) || (!isCustom && m.includes("conversion"));
-          const isRevenue = REVENUE_METRICS.has(m);
-          const isTraffic = TRAFFIC_METRICS.has(m);
-          const isCpa = CPA_METRICS.has(m);
+          const isConversion = identity === "conversions" || identity === "conversion_rate" || (!identity && !isCustom && m.includes("conversion"));
+          const isRevenue = identity === "revenue";
+          const isTraffic = identity === "sessions" || identity === "users" || identity === "pageviews";
+          const isCpa = identity === "cpa";
           if (isConversion) {
             const base = "Check landing page changes, funnel breaks, and traffic mix shifts.";
             return ch?.lowestCRChannel
@@ -4871,11 +4857,12 @@ export default function GA4Metrics() {
         )} (${String(p?.labelPct || "0")}% to benchmark).${trendNote}${volNote}`,
         recommendation: (() => {
           const m = metric.toLowerCase();
+          const identity = resolveGA4KpiMetricIdentity((b as any)?.metric, (b as any)?.name);
           const ch = channelAnalysis;
           const isCustom = !m || m === "__custom__";
-          const isConversion = CONVERSION_METRICS.has(m) || (!isCustom && m.includes("conversion"));
-          const isEngagement = ENGAGEMENT_METRICS.has(m) || (!isCustom && m.includes("engagement"));
-          const isRevenue = REVENUE_METRICS.has(m);
+          const isConversion = identity === "conversions" || identity === "conversion_rate" || (!identity && !isCustom && m.includes("conversion"));
+          const isEngagement = identity === "engagement_rate" || (!identity && !isCustom && m.includes("engagement"));
+          const isRevenue = identity === "revenue";
           if (isConversion) {
             const base = "Focus on landing page UX and traffic quality; validate conversion tagging.";
             return ch?.lowestCRChannel

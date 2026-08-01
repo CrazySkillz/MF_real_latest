@@ -118,29 +118,35 @@ const dailyRow = {
   engagementRate: 0.6,
   updatedAt: "2026-08-01T08:00:00.000Z",
 };
-const expectedByMetric: Record<string, string> = {
-  Revenue: "200",
-  "Total Conversions": "5",
-  "Conversion Rate": "5",
-  "Engagement Rate": "60",
-  "Total Users": "80",
-  "Total Sessions": "100",
-  ROAS: "2",
-  ROI: "100",
-  CPA: "20",
-};
-const kpiRows = Object.keys(expectedByMetric).map((metric, index) => ({
+const metricFixtures = [
+  { metric: "revenue", expected: "200", unit: "USD" },
+  { metric: "totalRevenue", expected: "200", unit: "USD" },
+  { metric: "conversions", expected: "5", unit: "count" },
+  { metric: "Total Conversions", expected: "5", unit: "count" },
+  { metric: "conversionRate", expected: "5", unit: "%" },
+  { metric: "engagementRate", expected: "60", unit: "%" },
+  { metric: "users", expected: "80", unit: "count" },
+  { metric: "Total Users", expected: "80", unit: "count" },
+  { metric: "sessions", expected: "100", unit: "count" },
+  { metric: "Total Sessions", expected: "100", unit: "count" },
+  { metric: "pageviews", expected: "200", unit: "count" },
+  { metric: "roas", expected: "2", unit: "ratio" },
+  { metric: "roi", expected: "100", unit: "%" },
+  { metric: "cpa", expected: "20", unit: "USD" },
+] as const;
+const expectedByMetric = Object.fromEntries(metricFixtures.map(({ metric, expected }) => [metric, expected]));
+const kpiRows = metricFixtures.map(({ metric, unit }, index) => ({
   id: `kpi-${index + 1}`,
   campaignId: campaign.id,
   platformType: "google_analytics",
   name: `${metric} KPI`,
   metric,
-  unit: metric === "ROAS" ? "ratio" : metric.includes("Rate") || metric === "ROI" ? "%" : metric === "Revenue" || metric === "CPA" ? "USD" : "count",
+  unit,
   currentValue: "-1",
   targetValue: "250",
-  alertThreshold: metric === "Revenue" ? "250" : null,
+  alertThreshold: metric === "totalRevenue" ? "250" : null,
   alertCondition: "below",
-  alertsEnabled: metric === "Revenue",
+  alertsEnabled: metric === "totalRevenue",
 }));
 const report = {
   id: "ga4-parity-report",
@@ -220,7 +226,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("feeds the authoritative fixture through the actual live-card and browser-PDF value resolver", () => {
     const common = {
-      breakdownTotals: { sessions: 100, users: 80, conversions: 5 },
+      breakdownTotals: { sessions: 100, users: 80, pageviews: 200, conversions: 5 },
       overviewEngagementRate: 0.6,
       financialRevenue: 200,
       financialSpend: 100,
@@ -248,7 +254,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("uses the same recomputed revenue for actual alert truth and notification enrichment", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
-    const revenueKpi = kpiRows.find((row) => row.metric === "Revenue")!;
+    const revenueKpi = kpiRows.find((row) => row.metric === "totalRevenue")!;
     expect(shouldTriggerAlert(revenueKpi as any)).toBe(true);
     storageMock.getNotifications.mockResolvedValue([{
       id: "notification-1",
@@ -275,7 +281,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(buffer.length).toBeGreaterThan(100);
     expect(text).toContain("Data Summary");
     expect(text).toContain("USD 200.00");
-    expect(text).toContain("Revenue KPI");
+    expect(text).toContain("totalRevenue KPI");
     expect(text).toContain("200");
   });
 
@@ -285,7 +291,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     pdfTextCalls.length = 0;
     const buffer = await buildPdfAttachmentForReport({ report, windowStart: "2026-07-02", windowEnd: "2026-07-31", campaignName: campaign.name, isTest: true });
     expect(buffer?.length).toBeGreaterThan(100);
-    expect(pdfTextCalls.join("\n")).toContain("Revenue KPI");
+    expect(pdfTextCalls.join("\n")).toContain("totalRevenue KPI");
     expect(pdfTextCalls.join("\n")).toContain("200");
   });
 });

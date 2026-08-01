@@ -40,6 +40,10 @@ import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+import {
+  isGA4FinancialKpiMetricIdentity,
+  resolveGA4KpiMetricIdentity,
+} from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
@@ -6479,9 +6483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const resolved = await resolveCampaignCurrentValueForAlert(row);
     const platform = String(resolved?.platformType || "").trim().toLowerCase();
     const campaignId = String(resolved?.campaignId || "").trim();
-    const metricOrName = [resolved?.metric, resolved?.name]
-      .map((value) => String(value || "").trim())
-      .find((value) => isComputableGA4KpiMetric(value)) || "";
+    const metricOrName = resolveGA4KpiMetricIdentity(resolved?.metric, resolved?.name) || "";
     if (!isGA4NotificationPlatform(platform) || !campaignId || !metricOrName) return resolved;
 
     try {
@@ -6515,8 +6517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         engagementRate: Number((latest as any)?.engagementRate || 0) || 0,
       };
       let hasGA4SourceInput = sourceRows.length > 0;
-      const financialMetricKey = normalizeNotificationKey(metricOrName);
-      const usesGA4FinancialSource = ["revenue", "totalrevenue", "roas", "roi", "cpa"].includes(financialMetricKey);
+      const usesGA4FinancialSource = isGA4FinancialKpiMetricIdentity(metricOrName);
       let ga4FinancialInputs = { ...ga4Inputs };
       const applyGA4FinancialCandidate = (candidate: any) => {
         if (!usesGA4FinancialSource) return;
@@ -9214,11 +9215,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uiFinancialInputs = { ...uiFinancialBase, importedRevenue, spend: uiSpend };
 
       const computeUIValue = (metricKey: string) => {
-        const normalized = String(metricKey || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
-        if (normalized === "revenue" || normalized === "totalrevenue" || normalized === "roas" || normalized === "roi" || normalized === "cpa") {
-          return computeKpiValue(metricKey, uiFinancialInputs);
+        const metric = resolveGA4KpiMetricIdentity(metricKey);
+        if (metric && isGA4FinancialKpiMetricIdentity(metric)) {
+          return computeKpiValue(metric, uiFinancialInputs);
         }
-        return computeKpiValue(metricKey, uiBaseInputs);
+        return computeKpiValue(metric || metricKey, uiBaseInputs);
       };
 
       const benchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]);

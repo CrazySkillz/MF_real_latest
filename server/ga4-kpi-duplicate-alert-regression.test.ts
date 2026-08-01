@@ -65,7 +65,7 @@ describe("GA4 KPI duplicate alert latest-row behavior", () => {
       { ...latestRevenue, id: "linkedin-revenue", platformType: "linkedin" },
     ]);
 
-    expect(getGA4KPIDuplicateKey({ ...oldRevenue, metric: "Total Revenue" })).toBe("campaign-a:totalrevenue");
+    expect(getGA4KPIDuplicateKey({ ...oldRevenue, metric: "Total Revenue" })).toBe("campaign-a:revenue");
     expect(getGA4KPIDuplicateKey(nameFallback)).toBe("campaign-a:qualifiedpipeline");
     expect(latestIds.get("campaign-a:revenue")).toBe("kpi-latest-revenue");
     expect(latestIds.get("campaign-b:revenue")).toBe("kpi-other-campaign");

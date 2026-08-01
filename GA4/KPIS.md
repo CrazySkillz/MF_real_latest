@@ -287,6 +287,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is not production-ready. Current Commit 2 proves one authoritative nine-metric fixture across the exercised live/browser, persisted job/API, alert/notification, Insights/scheduled PDF, and shared report preflight/builder boundaries. Metric aliases, window/timezone correctness, failure and valid-zero states, exact recompute results, persistence safety, deployed behavior, and external validation remain open.
+The GA4 `KPIs` tab is not production-ready. Current Commit 3 adds one shared standard/legacy metric identity contract and real-path coverage across live/browser, persisted job/API, alert/notification, Insights/scheduled PDF, and shared report preflight/builder boundaries. Window/timezone correctness, failure and valid-zero states, exact recompute results, persistence safety, deployed behavior, and external validation remain open.
 
 The controlling evidence boundary, prevention contract, external gates, and Current Commits 0-10 are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

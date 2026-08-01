@@ -58,12 +58,12 @@ describe("notification visibility regression guard", () => {
 
     expect(routesFile).toContain('import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";');
     expect(routesFile).toContain('import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";');
-    expect(routesFile).toContain('const metricOrName = [resolved?.metric, resolved?.name]');
+    expect(routesFile).toContain('const metricOrName = resolveGA4KpiMetricIdentity(resolved?.metric, resolved?.name) || "";');
     expect(routesFile).toContain('if (!isGA4NotificationPlatform(platform) || !campaignId || !metricOrName) return resolved;');
     expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
     expect(routesFile).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
     expect(routesFile).toContain('const sim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });');
-    expect(routesFile).toContain('const usesGA4FinancialSource = ["revenue", "totalrevenue", "roas", "roi", "cpa"].includes(financialMetricKey);');
+    expect(routesFile).toContain("const usesGA4FinancialSource = isGA4FinancialKpiMetricIdentity(metricOrName);");
     expect(routesFile).toContain("let ga4FinancialInputs = { ...ga4Inputs };");
     expect(routesFile).toContain('ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000');
     expect(routesFile).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs : ga4Inputs;");

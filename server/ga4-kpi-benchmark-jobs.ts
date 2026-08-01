@@ -1,6 +1,12 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
 import { computeCpa, computeConversionRatePercent, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
+import {
+  getGA4KpiMetricIdentity,
+  isComputableGA4KpiMetricIdentity,
+  isGA4FinancialKpiMetricIdentity,
+  resolveGA4KpiMetricIdentity,
+} from "../shared/ga4-kpi-metric-identity";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
@@ -120,32 +126,12 @@ const computeRoasRatio = (revenue: number, spend: number) => {
   return s > 0 ? r / s : 0;
 };
 
-const normalizeGA4KpiMetricName = (metricOrName: string) =>
-  String(metricOrName || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
-
 export function isComputableGA4KpiMetric(metricOrName: string) {
-  const m = normalizeGA4KpiMetricName(metricOrName);
-  return (
-    m === "revenue" ||
-    m === "totalrevenue" ||
-    m === "totalconversions" ||
-    m === "conversions" ||
-    m === "totalsessions" ||
-    m === "sessions" ||
-    m === "totalusers" ||
-    m === "users" ||
-    m === "pageviews" ||
-    m === "conversionrate" ||
-    m === "engagementrate" ||
-    m === "roas" ||
-    m === "roi" ||
-    m === "cpa"
-  );
+  return isComputableGA4KpiMetricIdentity(metricOrName);
 }
 
 const isGA4FinancialKpiMetric = (metricOrName: string) => {
-  const m = normalizeGA4KpiMetricName(metricOrName);
-  return m === "revenue" || m === "totalrevenue" || m === "roas" || m === "roi" || m === "cpa";
+  return isGA4FinancialKpiMetricIdentity(metricOrName);
 };
 
 export function computeKpiValue(metricOrName: string, inputs: {
@@ -158,16 +144,16 @@ export function computeKpiValue(metricOrName: string, inputs: {
   spend: number;
   engagementRate: number; // 0..1
 }) {
-  const m = normalizeGA4KpiMetricName(metricOrName);
+  const m = getGA4KpiMetricIdentity(metricOrName);
   const revenue = inputs.ga4Revenue + inputs.importedRevenue;
 
-  if (m === "revenue" || m === "totalrevenue") return round2(revenue);
-  if (m === "totalconversions" || m === "conversions") return Math.round(inputs.conversions || 0);
-  if (m === "totalsessions" || m === "sessions") return Math.round(inputs.sessions || 0);
-  if (m === "totalusers" || m === "users") return Math.round(inputs.users || 0);
+  if (m === "revenue") return round2(revenue);
+  if (m === "conversions") return Math.round(inputs.conversions || 0);
+  if (m === "sessions") return Math.round(inputs.sessions || 0);
+  if (m === "users") return Math.round(inputs.users || 0);
   if (m === "pageviews") return Math.round(inputs.pageviews || 0);
-  if (m === "conversionrate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
-  if (m === "engagementrate") return round2(normalizeRateToPercent(inputs.engagementRate));
+  if (m === "conversion_rate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
+  if (m === "engagement_rate") return round2(normalizeRateToPercent(inputs.engagementRate));
   if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));
   if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));
   if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));
@@ -199,8 +185,7 @@ function computeTrendDirection(prevValue: number | null, nextValue: number) {
 }
 
 export function computeBenchmarkVariance(metricKey: string, current: number, benchmark: number) {
-  const m = String(metricKey || "").toLowerCase();
-  const lowerIsBetter = m === "cpa" || m.includes("cpa");
+  const lowerIsBetter = getGA4KpiMetricIdentity(metricKey) === "cpa";
   if (!(benchmark > 0)) return 0;
   if (lowerIsBetter) return round2(((benchmark - current) / benchmark) * 100);
   return round2(((current - benchmark) / benchmark) * 100);
@@ -388,10 +373,13 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         recordBenchmarkHistory(history: any): Promise<any>;
       };
       const benchmarks = await benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []);
-      const hasFinancialMetric = [
-        ...(Array.isArray(kpis) ? kpis : []).map((kpi: any) => String(kpi?.metric || kpi?.name || "")),
-        ...(Array.isArray(benchmarks) ? benchmarks : []).map((benchmark: any) => String(benchmark?.metric || "")),
-      ].some(isGA4FinancialKpiMetric);
+      const hasFinancialMetric =
+        (Array.isArray(kpis) ? kpis : []).some((kpi: any) =>
+          isGA4FinancialKpiMetric(resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name) || ""),
+        ) ||
+        (Array.isArray(benchmarks) ? benchmarks : []).some((benchmark: any) =>
+          isGA4FinancialKpiMetric(String(benchmark?.metric || "")),
+        );
 
       let financialInputs = { ...inputs };
       const applyGA4FinancialCandidate = (candidate: any) => {
@@ -423,8 +411,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const kpiId = String((kpi as any)?.id || "");
         if (!kpiId) continue;
 
-        const metricOrName = String((kpi as any)?.metric || (kpi as any)?.name || "");
-        if (!isComputableGA4KpiMetric(metricOrName)) continue;
+        const metricOrName = resolveGA4KpiMetricIdentity((kpi as any)?.metric, (kpi as any)?.name);
+        if (!metricOrName) continue;
 
         const valueNum = computeKpiValue(metricOrName, inputsForMetric(metricOrName));
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,

@@ -16,6 +16,101 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
+
+### Fresh re-certification — August 1, 2026 (controlling status)
+
+**Result: not production-ready. Clean certification is withdrawn.** This section supersedes every older production-ready or durable-future-chat answer below; those sections are historical evidence only.
+
+The current UI, API, storage, refresh/scheduler, alert/email, notification, browser-report, and scheduled/server-report paths do not maintain one authoritative value contract:
+
+- live Users, Sessions, Conversions, and Conversion Rate use 30 completed days, while persisted KPI/progress/alert/report values use campaign-start-to-UTC-yesterday totals
+- live Engagement Rate uses the 30-day Overview aggregate; the job uses one latest daily row and notification enrichment averages daily percentages without weighting
+- live Revenue/ROAS/ROI/CPA use the fixed ordered financial source selector, but the job and notification resolver can replace inputs with a higher-revenue 90-day breakdown; revenue/spend read failures are coerced to zero
+- server-supported Pageviews and legacy aliases are not normalized consistently by live value and dependency lookup; custom/unsupported row preservation is locally proven
+
+Locally proven, but not sufficient for certification:
+
+- platform KPI CRUD routes enforce actor, campaign, KPI-owner, and exact-platform scope; selected GA4 property/campaign filter and GA4 financial source context are passed on traced paths
+- create/edit preserve campaign/platform identity, UI invalidations exist, and custom KPI rows are preserved
+- shared metric-aware threshold/unit/direction math and tracker exclusion of blocked/insufficient rows have focused coverage
+- duplicate latest-row handling, campaign-scoped notification action URLs, and email audit/idempotency/retry/provider-acceptance semantics have focused coverage
+- TypeScript passed on August 1, 2026
+
+Current unproven or unsafe paths:
+
+- default recompute uses UTC yesterday rather than campaign reporting timezone; implicit create/edit/source/scheduler callers omit an authoritative date
+- KPI list failure renders as empty, and KPI source/query failures have no KPI-specific stale/last-good state; initial failures can collapse values to zero
+- scheduler alert/email evaluation, card breach pulse, and browser PDF rows do not consistently apply the card/tracker insufficiency gates
+- source recompute, KPI reads/updates, and alert reconciliation swallow failures; job results do not identify the exact KPI IDs updated, so report preflight cannot prove selected rows are fresh
+- `kpi_progress` remains `numeric(10,2)` and can fail after current value update; KPI child-row deletion is non-transactional and notification hiding is best-effort
+- the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
+- the two August 1 focused runs passed 431/436 tests: one GA4 financial-window guard has a stale call-shape expectation after GA4 spend scoping, two notification-navigation guards no longer match the broadened attention indicator, one scheduler guard expects an older exact call shape, and one reporting-timezone guard expects an older exact import
+
+External validation required after forward fixes: read-only target-data inventory (attempted August 1, 2026, but this environment has no `DATABASE_URL`; no data was read or changed); deployed valid-zero/unavailable/stale/provider-failure/source-mix/timezone parity; a timer-fired scheduler run with exact KPI update evidence; current GA4/token-refresh and email-provider evidence; and browser/direct/test/scheduled report, bell, Notifications, and Insights parity.
+
+#### Chronological smallest-safe fix queue
+
+0. **Documentation revocation and dependency inventory — completed by this audit.** Keep certification withdrawn; identify every producer/consumer and preserve earlier evidence as history only.
+1. **Certification integrity gate — implemented and locally validated in Current Commit 1; certification remains withdrawn.** The machine-readable record, fail-closed checker, focused tests, and existing CI step are present. A future ready claim requires a full certified SHA, SHA-256 for every dependency, matching current-status markers, completed required tests, and completed external gates. This implementation does not close Current Commits 2-10.
+2. **Real-path cross-consumer parity guard.** Feed authoritative fixtures through the actual live-value, persisted job, alert/notification, Insights, browser PDF, direct snapshot, test-send, and scheduled-report paths. Copied formulas and source-text assertions remain structural guards only.
+3. **Metric identity contract.** Normalize the complete metric and legacy-alias inventory across live values, dependency gating, recompute, alerts, notifications, and reports.
+4. **Authoritative window/date contract.** Make persisted traffic/rate inputs use the documented 30 completed reporting days, weighted Engagement Rate, and campaign reporting timezone.
+5. **Financial source/failure contract.** Replace higher-revenue financial selection with fixed source precedence; preserve valid zero and propagate unavailable without overwriting last-good values.
+6. **Alert/notification contract.** Apply identical blocked/insufficient/unavailable rules to in-app alerts, email eligibility, duplicate refresh, bell state, and notification enrichment.
+7. **UI and browser-consumer states.** Distinguish empty from failed/stale in the KPI UI, state the window, and align card pulse, tracker, Insights, and browser PDF status.
+8. **Recompute/report proof.** Return exact KPI update/skip/failure IDs; make source lifecycle and all report preflights fail closed for selected KPI rows.
+9. **Persistence/destructive safety.** Widen KPI-progress numeric capacity, then make KPI child deletion atomic and notification hiding retryable without broadening scope.
+10. **Full validation and re-certification.** Restore/extend focused regressions, require the relevant suite/TypeScript/production build, run a read-only target inventory, design any cleanup separately, deploy, complete the external matrix, update the certification record to the final SHA, and only then re-certify.
+
+Current Commit 1 is a release gate, not optional process cleanup. Functional Commits 3-9 must not be used to restore readiness if Commits 1-2 are absent or failing.
+
+### Current Commit 1 - Certification integrity gate
+
+Status: implemented and locally validated. Certification remains withdrawn.
+
+Root cause:
+
+- the earlier certification was narrative Markdown with no machine-readable status, certified revision, dependency snapshot, or CI check
+- later producer and consumer changes could therefore leave a reusable production-ready sentence in place without any automated failure
+- the existing CI workflow ran tests, but nothing connected their result or dependency changes to the readiness claim
+
+Smallest safe implementation:
+
+- `GA4/certifications/ga4-kpis.json` records the current `UNVERIFIED` status, reviewed SHA, configuration/source boundary, explicit producer/consumer/test/doc dependency inventory, required tests, external gates, and invalidation reason
+- `server/ga4-kpi-certification-gate.ts` fails closed when the record is missing or malformed, its reviewed/certified SHA is not a real ancestor Git commit, the pinned configuration/dependency/status/test/external contract changes, status documents disagree, an unverified document claims GA4 KPI readiness, or a future ready record lacks matching dependency hashes or complete evidence
+- `server/ga4-kpi-certification-gate.test.ts` covers missing records, unknown Git SHAs, reduced contract inventories, stale claims, changed dependency hashes, incomplete evidence, the allowed ready case, and this repository's current fail-closed record
+- `npm run check:ga4-kpi-certification` is wired into automatic push, pull-request, and manual GitHub Actions runs before the full test suite; checkout uses full history so exact certified/reviewed commit ancestry can be validated
+- machine status markers in `GA4/README.md`, `GA4/KPIS.md`, and this controlling section must agree with the record
+
+Side-effect boundary:
+
+- no KPI calculation, API, storage, scheduler, alert, notification, report, schema, or production-data behavior changed
+- dependency hashes remain `null` while status is `UNVERIFIED`; they become mandatory only for a future evidence-complete `PRODUCTION_READY` record
+- Current Commit 2 real-path parity and Current Commits 3-10 remain open
+
+Validation on August 1, 2026:
+
+- `npm run check:ga4-kpi-certification` passed
+- `npm test -- server/ga4-kpi-certification-gate.test.ts` passed: 1 file / 9 tests
+- `npm run check` passed
+- neighboring focused run passed 62/65 tests: the new guard, KPI UI, and report-consumer files passed; the same three previously recorded exact-source guards failed (one GA4 spend call-shape assertion and two notification attention-indicator source assertions). They were not changed because they are outside Current Commit 1.
+
+What this proves:
+
+- a clean checkout cannot carry a GA4 KPI ready claim through the three current-status documents unless the record is ready, its SHA resolves to the exact reviewed ancestor commit, the canonical contract is unchanged, and its evidence/dependency gates pass
+- a future changed dependency hash makes a ready record fail
+- the current repository status is consistently `UNVERIFIED`
+
+What this does not prove:
+
+- KPI numerical parity, scheduler correctness, alert/notification breach truth, report freshness, target production data, provider behavior, or deployed behavior
+- GA4 KPI production readiness
+
+## Historical Status And Evidence (non-authoritative)
+
+Everything below this heading predates the August 1, 2026 controlling re-certification. It may be used as historical evidence for a specifically unchanged path, but it cannot supply the current status or bypass Current Commits 0-10 above.
+
 Current-code override on July 31, 2026: Commit 18 changes the shared campaign KPI current-value failure contract. Failed financial reads, disconnected/missing GA4, and missing selected source IDs now return unavailable so existing refresh loops preserve last-known values instead of writing misleading zero. The bounded local implementation is proven by focused tests, TypeScript, and a production build, but it is not yet committed, deployed, or externally validated. The affected current-value/recompute/alert path is therefore **unproven**, and the historical certification below must not be repeated as a current whole-path claim until Commit 18 deployed validation passes. Timer-fired scheduler execution remains outside this Commit 18 proof.
 
 As of June 29, 2026, GA4 KPIs are **production-ready for the current GA4 code scope**.
@@ -33,7 +128,7 @@ Certification result:
 - deployed/user-validated on June 29, 2026: scheduled GA4 report execution ran in Render, Mailgun HTTP API accepted the send, the email arrived, and the report output matched current GA4 KPI values
 - not locally verifiable / external caveat: future live GA4 provider outages, token-refresh edge cases, GA4 processing latency, Mailgun/provider outages, recipient spam filtering, and future unvalidated source mixes or code changes
 
-The current answer is:
+The historical June answer was:
 
 `GA4 KPIs are production-ready for the current GA4 code scope. Current Commits 0-7, the follow-up GA4 notification financial-source visibility fix, the direct GA4 snapshot PDF preflight fix, the target-database damaged-data dry-run, deployed GA4 daily scheduler timing validation, immediate GA4 KPI alert email validation, and scheduled GA4 report/provider validation are complete. The target-database damaged-data inventory dry-run completed with 0 candidates and 9 skipped rows, so no apply command should be run from this output. This certification applies only to the current GA4 code scope and validated deployed paths; future provider outages, live GA4 latency/token-refresh edge cases, new source mixes, or code changes require a new readiness pass.`
 
@@ -43,15 +138,15 @@ This status should change only after:
 - the GA4 KPI source model, provider configuration, scheduler behavior, report generation path, alert/email behavior, or downstream consumers change
 - a future source/platform attempts to reuse this evidence without its own source-specific proof
 
-Necessary certification rule:
+Historical certification rule:
 
 - completing the local fix queue makes GA4 KPIs eligible for production-readiness certification; it does not by itself make them production-ready
-- the final answer can remain `production-ready for the current GA4 code scope` only while the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and test coverage remain covered by current code and validation evidence
-Durable future-chat answer:
+- the historical final answer was allowed to remain `production-ready for the current GA4 code scope` only while the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and test coverage remained covered by current code and validation evidence
+Current future-chat answer:
 
-- In a new chat session or on a later date, absent later GA4 KPI code changes, provider/config changes, failed validation, contradictory deployed evidence, newly reported bugs, or changed requirements, answer that GA4 KPIs are production-ready for the current GA4 code scope.
-- Do not reopen closed GA4 KPI blockers solely because time has passed. Reopen only when a new value path, changed implementation, failed validation, or new bug affects the certified scope.
-- This certification is reusable as the KPI refinement and validation template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source, but it is not proof that those sources are production-ready.
+- Answer that GA4 KPIs are not production-ready and remain `UNVERIFIED` until Current Commits 1-10 pass.
+- Do not carry the June certification forward. It is historical and was invalidated by later dependency changes plus newly proven gaps.
+- The audit shape remains reusable as a template; neither the historical certification nor future GA4 fixes prove another source ready.
 
 ## How To Use This File In A New Chat
 
@@ -60,11 +155,11 @@ Read in this order:
 1. `Current Status`
 2. `Current Scope`
 3. `Current Certification Gaps And Completed Local Fixes`
-4. `Current Fix Queue`
+4. `Chronological smallest-safe fix queue` in the controlling status
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Answer that GA4 KPIs are production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target damaged-data dry-run, deployed/user-validated direct GA4 snapshot PDF preflight, deployed/user-validated GA4 daily scheduler timing, immediate GA4 KPI alert email validation, and scheduled GA4 report/provider validation are complete. Do not reuse this certification for future providers, source mixes, platforms, or code changes without a fresh readiness pass.
+Answer that GA4 KPIs are not production-ready. Start with the controlling August 1 status and Current Commits 0-10. Historical local/deployed evidence may narrow what needs retesting, but it cannot restore readiness without the certification integrity and parity gates.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -666,9 +761,9 @@ Resolved by:
 
 - Commit 6 added the bounded cleanup script and the script was applied after matching dry-run evidence.
 
-## Current Fix Queue
+## Historical June 2026 Completed Fix Queue
 
-Do not implement these changes as one broad refactor. Each commit should be minimal, independently testable, and should preserve the existing GA4 KPI architecture: frontend page flow, platform KPI routes in `server/routes-oauth.ts`, persistence in `server/storage.ts`, shared contracts in `shared/schema.ts`, and scheduler/service behavior in the existing GA4 job files.
+This queue is historical and completed for the earlier defect set. The only current queue is Current Commits 0-10 in the controlling August 1 section. Do not implement these historical items again or use their completion as current certification evidence.
 
 ### Current Commit 0 - Documentation clarification only
 

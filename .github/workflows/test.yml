@@ -1,8 +1,5 @@
 name: Tests
-# Disabled until GitHub Actions permissions are configured.
-# To re-enable: change 'workflow_dispatch' back to '[push, pull_request]'
-# and ensure repo Settings → Actions → Workflow permissions = "Read and write"
-on: workflow_dispatch
+on: [push, pull_request, workflow_dispatch]
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
@@ -11,9 +8,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
+      - run: npm run check:ga4-kpi-certification
       - run: npm run test

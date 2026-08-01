@@ -298,13 +298,14 @@ Deployed proof and closure boundary:
 Explicit exclusions from Commits 11–18: timer/startup refresh proof; scheduled email/PDF/snapshot validation; post-scheduler-cycle inventory; unauthorized production mutation; unrelated tabs/platforms and architectural refactoring. Excluded work remains unproven and is not silently certified.
 Estimated remaining work: Current Commit 8 external provider/scheduler evidence, Current Commit 9 post-cycle inventory/authorized cleanup decision, and the explicitly deferred downstream evidence gates. The count will increase if Google Sheets is re-enabled rather than retained as continuity-only, or if broader production cleanup separates into multiple independently reviewed batches.
 
-### Current Commit 19 — Enforce the 30-day-only production scope — implemented locally; deployment validation pending
+### Current Commit 19 — Enforce the 30-day-only production scope — committed and pushed; deployment validation pending
 
 - Root cause: the two GA4 property setup surfaces still defaulted to 90 days and exposed 30/60/90, while both persistence APIs accepted all three values and silently coerced missing/invalid input to 90. Connection-read responses therefore also treated retained non-30 rows as usable, which could not support a truthful 30-day-only release boundary.
 - Smallest safe implementation: expose and submit only 30 days in the existing setup flows; explicitly reject missing/60/90 persistence requests after campaign access but before provider/storage/in-memory mutation; expose only 30-day configured connections to Overview consumers; return an explicit unsupported state for retained non-30 rows; and add a client-side 30-day usability guard.
 - Production-data boundary: no production connection, campaign, source, record, metric, token, property selection, or saved lookback was edited, migrated, reconnected, deleted, or rewritten. Existing non-30 rows remain retained and outside the release scope.
 - Local evidence: the regression-first guard failed 3/3 before implementation and passed 3/3 afterward. The final focused/adjacent packet passed 3 files / 49 tests; TypeScript and the production build passed.
-- Remaining evidence: commit/push/deploy, one existing 30-day UI/value check, and one direct unsupported persistence request proving rejection before mutation. Current Commit 19 is not closed and does not certify Overview.
+- Commit/push evidence: `ba2e4329` was pushed to `origin/main` for Render auto-deployment.
+- Remaining evidence: deployment, one existing 30-day UI/value check, and one direct unsupported persistence request proving rejection before mutation. Current Commit 19 is not closed and does not certify Overview.
 
 ## UI Validation Requirement
 

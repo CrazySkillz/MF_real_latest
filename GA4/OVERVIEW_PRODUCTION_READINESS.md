@@ -46,7 +46,7 @@ Future 60/90-day options are outside this release and require later implementati
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |
-| Current Commit 19 | **Implemented locally; deployment validation pending** | Local UI/API enforcement, no-mutation rejection, legacy non-30 fail-closed guards, 49 focused/adjacent tests, TypeScript, and production build pass. Deployment and production validation remain unproven. |
+| Current Commit 19 | **Committed and pushed as `ba2e4329`; deployment validation pending** | UI/API enforcement, no-mutation rejection, legacy non-30 fail-closed guards, 49 focused/adjacent tests, TypeScript, and production build pass. Deployment and production validation remain unproven. |
 | OAuth durability | **Requires external validation** | On 2026-08-07 or later, confirm the existing unreconnected GA4 connection and metrics still work; do not infer automatic renewal unless observed. |
 | Final non-scheduler pack | **Unproven** | Reconcile included values, valid-zero/unavailable behavior, retained sources, guarded APIs, and downstream consumers for the intended 30-day scope. |
 

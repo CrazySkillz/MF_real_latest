@@ -499,7 +499,7 @@ The following pre-condensation active plan is preserved verbatim from `OVERVIEW_
 
 Historical Current Commits 0-19 remain in chronological order in the [history ledger](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md).
 
-### Current Commit 19 — Enforce The 30-Day-Only Production Scope — implemented locally; deployment validation pending
+### Current Commit 19 — Enforce The 30-Day-Only Production Scope — committed and pushed; deployment validation pending
 
 Root cause:
 
@@ -544,7 +544,7 @@ Completion evidence required:
 - direct unsupported-window request fails before mutation
 - canonical documents are updated with the deployed result
 
-Current classification: **local implementation proven; commit, deployment, direct deployed rejection, and existing 30-day production validation unproven**.
+Current classification: **implementation and push `ba2e4329` proven; deployment, direct deployed rejection, and existing 30-day production validation unproven**.
 
 ## OAuth Durability Gate
 

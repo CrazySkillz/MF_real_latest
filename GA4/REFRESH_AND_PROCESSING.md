@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is not production-ready or clean-certified. The concise current decision and gates live in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence and Current Commit 0–19 chronology live in its evidence/history companion ledgers. Current Commit 19 now enforces the intended 30-completed-day boundary locally in UI and persistence APIs, but commit/deployment/production validation remain unproven. OAuth durability requires validation on `2026-08-07` or later. Explicit timer/startup scheduler and scheduled delivery checks remain excluded and unproven.
+- GA4 Overview is not production-ready or clean-certified. The concise current decision and gates live in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence and Current Commit 0–19 chronology live in its evidence/history companion ledgers. Current Commit 19 now enforces the intended 30-completed-day boundary in UI and persistence APIs and is pushed as `ba2e4329`; deployment/production validation remain unproven. OAuth durability requires validation on `2026-08-07` or later. Explicit timer/startup scheduler and scheduled delivery checks remain excluded and unproven.
 
 Whole-Overview Commit 16 deployed as `747192ff`: authenticated connection responses add sanitized saved-window metadata, the existing Overview uses the persisted 30/60/90-day value, and runner `2026-07-31.13` detects mismatches. The existing `GA4 single` / `ga4_mock` response returned `lookbackDays: 30`, closing the bounded saved-window correction. No scheduler cadence, provider query, formula, storage/schema, campaign scope, or production data changed. Live 60/90-day variants, timer-fired evidence, observed automatic renewal, and post-publish seven-day durability remain unproven.
 
@@ -81,7 +81,7 @@ Whole-Overview Commit 17 deployed as `36676deb`. Google Sheets Revenue daily rep
 
 Whole-Overview Commit 18 corrective Summary commit `e857c15d` is deployed. On `2026-08-01`, the existing `GA4 single` / `ga4_mock` rendered 30-day Summary and exact scheduler-backed `/ga4-daily` response agreed at 866 Sessions, 867 daily-summed Users, 110 Conversions, 68.4% Engagement Rate, and 12.7% Conversion Rate, with `refreshIsStale: false`. This closes the bounded metric-correction follow-up without proving GA4 processing finality, live 60/90-day variants, timer-fired scheduler execution, or OAuth seven-day durability.
 
-Whole-Overview Current Commit 19 is implemented locally: both GA4 property setup surfaces expose 30 days only, corresponding persistence APIs reject unsupported writes before mutation, and retained non-30 records remain unchanged and fail closed at the Overview connection boundary. The existing 30-day scheduler-backed contract is unchanged. No production data was modified; commit/deployment/production validation remain unproven.
+Whole-Overview Current Commit 19 is pushed as `ba2e4329`: both GA4 property setup surfaces expose 30 days only, corresponding persistence APIs reject unsupported writes before mutation, and retained non-30 records remain unchanged and fail closed at the Overview connection boundary. The existing 30-day scheduler-backed contract is unchanged. No production data was modified; deployment/production validation remain unproven.
 
 ## GA4 Scope Changes
 

@@ -142,19 +142,19 @@ Important meaning:
 - these are GA4-native campaign metrics
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
-- Summary cards should keep a coherent selected-campaign GA4 source instead of taking per-metric maximum values across daily, to-date, and breakdown endpoints
-- when persisted selected-campaign daily facts exist, Summary uses those facts for the configured completed-day lookback; if they are absent, Summary may use selected-campaign breakdown totals requested for that same lookback
+- Summary cards use GA4's aggregate totals for the exact selected property, saved completed-day lookback, and campaign filter; they do not take per-metric maximum values or sum non-additive daily user rows
+- persisted selected-campaign daily facts remain the source for charts/history and an ordered financial fallback, not the Summary-card source
 - campaign-to-date totals are not a Summary fallback because they are a different window
 - selected-campaign daily facts may combine `pageLocation` UTM traffic with `campaignName` conversion/revenue supplementation only for missing conversion/revenue fields; sessions, users, pageviews, and engagement remain from the traffic query
-- when live `pageLocation` UTM fallback is needed, visible card totals may also use populated GA4 breakdown totals so the top cards do not remain zero while scoped live table rows already exist
+- when live `pageLocation` UTM fallback is needed, the same GA4 aggregate response remains the Summary source so cards and scoped live table rows share one property/window/filter request
 - on initial page load or browser refresh, Summary card values should not briefly render stale fallback totals while the selected GA4 property's campaign breakdown query is still loading; show a stable skeleton for the card values until the breakdown-backed totals are ready
 
 Important `Users` rule:
 
-- the top `Users` card follows the same coherent selected-campaign GA4 source as the other Summary cards
-- when persisted daily facts are the selected source, `Users` is the sum of GA4 daily `totalUsers` rows for the selected campaign scope, not a cross-day deduplicated user count
+- the top `Users` card follows the same aggregate selected-property/campaign/window GA4 response as the other Summary cards
+- `Users` is GA4's aggregate `totalUsers` value for the full selected window, not a sum of daily or dimension-row user counts
 - the top `Users` card may show a short clarification tooltip:
-  `GA4 users summed for the selected window; the same user may appear on more than one day or breakdown row.`
+  `Unique GA4 users for the selected property, completed-day window, and campaign scope.`
 
 ### Financial Cards
 

@@ -1121,6 +1121,7 @@ export class GoogleAnalytics4Service {
             { name: metricName },
             { name: 'engagedSessions' },
           ],
+          metricAggregations: ['TOTAL'],
           orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
           limit: Math.min(Math.max(limit, 1), 10000),
         }),
@@ -1161,6 +1162,7 @@ export class GoogleAnalytics4Service {
                     { name: metricName },
                     { name: 'engagedSessions' },
                   ],
+                  metricAggregations: ['TOTAL'],
                   orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
                   limit: Math.min(Math.max(limit, 1), 10000),
                 }),
@@ -1447,18 +1449,26 @@ export class GoogleAnalytics4Service {
       rows.push(d);
     }
 
-    const totalSessions = rows.reduce((sum: number, r: any) => sum + (Number(r.sessions) || 0), 0);
+    const aggregateMetricValues = Array.isArray(data?.totals) && Array.isArray(data.totals[0]?.metricValues)
+      ? data.totals[0].metricValues
+      : [];
+    const hasAggregateTotals = aggregateMetricValues.length >= 5;
+    const totalSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[0]?.value || '0', 10) || 0 : totalSessionsRaw;
+    const resolvedUsers = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[1]?.value || '0', 10) || 0 : totalUsers;
+    const resolvedConversions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[2]?.value || '0', 10) || 0 : totalConversions;
+    const resolvedRevenue = hasAggregateTotals ? Number.parseFloat(aggregateMetricValues[3]?.value || '0') || 0 : totalRevenue;
+    const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
 
     return {
       rows,
       totals: {
         sessions: totalSessions,
-        sessionsRaw: totalSessionsRaw,
-        users: totalUsers,
-        conversions: totalConversions,
-        revenue: Number(totalRevenue.toFixed(2)),
-        engagedSessions: totalEngagedSessions,
-        engagementRate: totalSessions > 0 ? totalEngagedSessions / totalSessions : 0,
+        sessionsRaw: totalSessions,
+        users: resolvedUsers,
+        conversions: resolvedConversions,
+        revenue: Number(resolvedRevenue.toFixed(2)),
+        engagedSessions: resolvedEngagedSessions,
+        engagementRate: totalSessions > 0 ? resolvedEngagedSessions / totalSessions : 0,
       },
       meta: {
         propertyId: normalizedPropertyId,

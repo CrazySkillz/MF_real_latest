@@ -203,24 +203,24 @@ describe("GA4 UI regression guard", () => {
     expect(route).toContain("campaigns: applySavedCampaignScope(result.campaigns || [])");
   });
 
-  it("keeps GA4 Overview totals on one coherent source before falling back to breakdown totals", () => {
+  it("keeps GA4 Overview totals on the exact property aggregate instead of summing daily users", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
 
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
-    expect(ga4Metrics).toContain("const hasDailyOverviewTotals = ga4DailyRows.length > 0;");
     expect(ga4Metrics).toContain("const hasBreakdownOverviewTotals =");
-    expect(ga4Metrics).toContain("const hasBreakdownOverviewResponse = ga4Breakdown !== undefined;");
-    expect(ga4Metrics).toContain("const overviewTotalsSource = hasDailyOverviewTotals");
-    expect(ga4Metrics).toContain(": hasBreakdownOverviewResponse ? ga4BreakdownTotals : null;");
+    expect(ga4Metrics).toContain("const overviewTotalsSource = hasBreakdownOverviewTotals ? ga4BreakdownTotals : null;");
+    expect(ga4Metrics).not.toContain("const overviewTotalsSource = hasDailyOverviewTotals");
     expect(ga4Metrics).not.toContain("hasToDateOverviewTotals");
     expect(ga4Metrics).toContain("const rate = Number(overviewTotalsSource?.engagementRate ?? 0);");
     expect(ga4Metrics).toContain("sessions: Number(overviewTotalsSource?.sessions || 0)");
     expect(ga4Metrics).not.toContain("Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions, ga4BreakdownTotals.sessions)");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
 
-    expect(scheduledPdf).toContain("const overviewTotalsSource = hasDailyOverviewTotals");
-    expect(scheduledPdf).toContain(": hasBreakdownOverviewTotals ? { ...breakdownFinancialTotals, engagementRate: breakdownEngagementRate } : null;");
+    expect(scheduledPdf).toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
+    expect(scheduledPdf).toContain("? { ...breakdownFinancialTotals, engagementRate: breakdownEngagementRate }");
+    expect(scheduledPdf).toContain(": null;");
+    expect(scheduledPdf).not.toContain("const overviewTotalsSource = hasDailyOverviewTotals");
     expect(scheduledPdf).not.toContain("hasToDateOverviewTotals");
     expect(scheduledPdf).toContain("engagementRate: Number(overviewTotalsSource?.engagementRate || 0)");
     expect(scheduledPdf).not.toContain("sessions: Math.max(Number((ga4ToDate as any)?.totals?.sessions || 0), Number(dailySummedTotals.sessions || 0))");
@@ -267,8 +267,8 @@ describe("GA4 UI regression guard", () => {
     expect(summarySection).toContain("renderSummaryValue(formatNumber(breakdownTotals.conversions || 0))");
     expect(summarySection).not.toContain("ga4Metrics?.conversions");
     expect(summarySection).toContain("Last {GA4_DAILY_LOOKBACK_DAYS} completed days");
-    expect(summarySection).toContain("GA4 users summed for the selected window; the same user may appear on more than one day or breakdown row.");
-    expect(summarySection).not.toContain("Unique GA4 users for the selected campaign scope.");
+    expect(summarySection).toContain("Unique GA4 users for the selected property, completed-day window, and campaign scope.");
+    expect(summarySection).not.toContain("same user may appear on more than one day or breakdown row");
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
 

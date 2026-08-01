@@ -2073,13 +2073,10 @@ export default function GA4Metrics() {
     revenue: Number((ga4ToDateResp as any)?.totals?.revenue || 0),
     users: Number((ga4ToDateResp as any)?.totals?.users || 0),
   };
-  const hasDailyOverviewTotals = ga4DailyRows.length > 0;
   const hasBreakdownOverviewTotals = Boolean((ga4Breakdown as any)?.totals) ||
     (Array.isArray((ga4Breakdown as any)?.rows) && (ga4Breakdown as any).rows.length > 0);
   const hasBreakdownOverviewResponse = ga4Breakdown !== undefined;
-  const overviewTotalsSource = hasDailyOverviewTotals
-    ? dailySummedTotals
-    : hasBreakdownOverviewResponse ? ga4BreakdownTotals : null;
+  const overviewTotalsSource = hasBreakdownOverviewTotals ? ga4BreakdownTotals : null;
   const overviewSummaryAvailable = overviewTotalsSource !== null;
   const overviewEngagementRate = (() => {
     const rate = Number(overviewTotalsSource?.engagementRate ?? 0);
@@ -5913,7 +5910,7 @@ export default function GA4Metrics() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                  GA4 users summed for the selected window; the same user may appear on more than one day or breakdown row.
+                                  Unique GA4 users for the selected property, completed-day window, and campaign scope.
                                 </TooltipContent>
                               </UITooltip>
                             </div>

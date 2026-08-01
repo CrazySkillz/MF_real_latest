@@ -448,7 +448,7 @@ async function buildGA4ReportPayload(report: any) {
   }
   const overviewRequirements = getOverviewReportRequirements(report);
   const unavailableOverviewParts: string[] = [];
-  if (overviewRequirements.summary && dailyRows.length === 0 && failedParts.has("acquisition breakdown")) {
+  if (overviewRequirements.summary && failedParts.has("acquisition breakdown")) {
     unavailableOverviewParts.push("Summary");
   }
   if (overviewRequirements.revenue) {
@@ -495,8 +495,6 @@ async function buildGA4ReportPayload(report: any) {
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
 
-  const hasDailyOverviewTotals = dailyRows.length > 0;
-
   const breakdownFinancialRows = Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : [];
   const breakdownFinancialSummed = breakdownFinancialRows.reduce(
     (acc: { sessions: number; users: number; conversions: number; revenue: number; engagedSessions: number }, row: any) => ({
@@ -521,9 +519,9 @@ async function buildGA4ReportPayload(report: any) {
   const breakdownEngagementRate = breakdownFinancialTotals.sessions > 0
     ? breakdownFinancialTotals.engagedSessions / breakdownFinancialTotals.sessions
     : 0;
-  const overviewTotalsSource = hasDailyOverviewTotals
-    ? dailySummedTotals
-    : hasBreakdownOverviewTotals ? { ...breakdownFinancialTotals, engagementRate: breakdownEngagementRate } : null;
+  const overviewTotalsSource = hasBreakdownOverviewTotals
+    ? { ...breakdownFinancialTotals, engagementRate: breakdownEngagementRate }
+    : null;
   const breakdownTotals = {
     sessions: Number(overviewTotalsSource?.sessions || 0),
     conversions: Number(overviewTotalsSource?.conversions || 0),

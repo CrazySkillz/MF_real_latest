@@ -40,6 +40,7 @@ import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+import { addDerivedGA4EngagedSessions, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import {
   isGA4FinancialKpiMetricIdentity,
   resolveGA4KpiMetricIdentity,
@@ -6493,32 +6494,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = String(primary?.propertyId || "").trim();
       if (!campaign || !propertyId) return resolved;
 
-      const reportEnd = new Date();
-      reportEnd.setUTCDate(reportEnd.getUTCDate() - 1);
-      const endDate = notificationDateUTC(reportEnd);
-      const startDate = notificationCampaignStartDate(campaign);
-      const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => [] as any[]);
+      const reportingWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);
+      const { startDate, endDate } = reportingWindow;
+      const financialStartDate = notificationCampaignStartDate(campaign);
+      const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, endDate).catch(() => [] as any[]);
       const sourceRows = Array.isArray(rows) ? rows : [];
-      const latest = sourceRows.length > 0 ? sourceRows[sourceRows.length - 1] : await storage.getLatestGA4DailyMetric(campaignId, propertyId).catch(() => null as any);
-      const storedEngagementTotal = sourceRows.reduce((sum: number, r: any) => sum + (Number(r?.engagementRate || 0) || 0), 0);
-      const totals = sourceRows.reduce((acc: any, r: any) => ({
-        users: acc.users + (Number(r?.users || 0) || 0),
-        sessions: acc.sessions + (Number(r?.sessions || 0) || 0),
-        pageviews: acc.pageviews + (Number(r?.pageviews || 0) || 0),
-        conversions: acc.conversions + (Number(r?.conversions || 0) || 0),
-        ga4Revenue: acc.ga4Revenue + (Number(r?.revenue || 0) || 0),
-      }), { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0 });
+      const trafficRows = sourceRows.filter((row: any) => String(row?.date || "") >= startDate && String(row?.date || "") <= endDate);
+      const totals = summarizeGA4TrafficRows(trafficRows);
+      const financialTotals = summarizeGA4TrafficRows(sourceRows);
       let ga4Inputs = {
         users: Math.round(totals.users || 0),
         sessions: Math.round(totals.sessions || 0),
         pageviews: Math.round(totals.pageviews || 0),
         conversions: Math.round(totals.conversions || 0),
-        ga4Revenue: Number((totals.ga4Revenue || 0).toFixed(2)),
-        engagementRate: Number((latest as any)?.engagementRate || 0) || 0,
+        ga4Revenue: Number((totals.revenue || 0).toFixed(2)),
+        engagementRate: Number(totals.engagementRate || 0) || 0,
       };
       let hasGA4SourceInput = sourceRows.length > 0;
       const usesGA4FinancialSource = isGA4FinancialKpiMetricIdentity(metricOrName);
-      let ga4FinancialInputs = { ...ga4Inputs };
+      let ga4FinancialInputs = {
+        users: Math.round(financialTotals.users || 0),
+        sessions: Math.round(financialTotals.sessions || 0),
+        pageviews: Math.round(financialTotals.pageviews || 0),
+        conversions: Math.round(financialTotals.conversions || 0),
+        ga4Revenue: Number((financialTotals.revenue || 0).toFixed(2)),
+        engagementRate: Number(financialTotals.engagementRate || 0) || 0,
+      };
       const applyGA4FinancialCandidate = (candidate: any) => {
         if (!usesGA4FinancialSource) return;
         const candidateRevenue = Number(candidate?.revenue || candidate?.ga4Revenue || 0) || 0;
@@ -6534,26 +6535,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasGA4SourceInput = true;
         }
       };
-      applyGA4FinancialCandidate(ga4Inputs);
-
       if (isYesopMockProperty(propertyId)) {
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
-        const simRows = Array.isArray((sim as any)?.timeSeries) ? (sim as any).timeSeries : [];
-        let simEngagementTotal = 0;
-        for (const r of simRows) {
-          ga4Inputs.users += Number(r?.users || 0) || 0;
-          ga4Inputs.sessions += Number(r?.sessions || 0) || 0;
-          ga4Inputs.pageviews += Number(r?.pageviews || 0) || 0;
-          ga4Inputs.conversions += Number(r?.conversions || 0) || 0;
-          ga4Inputs.ga4Revenue += Number(r?.revenue || 0) || 0;
-          simEngagementTotal += Number(r?.engagementRate || 0) || 0;
-        }
-        ga4Inputs.ga4Revenue = Number((ga4Inputs.ga4Revenue || 0).toFixed(2));
-        applyGA4FinancialCandidate(ga4Inputs);
-        const engagementDays = simRows.length + sourceRows.length;
-        ga4Inputs.engagementRate = engagementDays > 0 ? (simEngagementTotal + storedEngagementTotal) / engagementDays : ga4Inputs.engagementRate;
-        hasGA4SourceInput = hasGA4SourceInput || simRows.length > 0;
+        const trafficSim = simulateGA4({ campaignId, propertyId, dateRange: "30days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const trafficSimRows = Array.isArray((trafficSim as any)?.timeSeries) ? (trafficSim as any).timeSeries : [];
+        const combinedTraffic = summarizeGA4TrafficRows([...trafficRows, ...trafficSimRows]);
+        ga4Inputs = {
+          users: Math.round(combinedTraffic.users || 0),
+          sessions: Math.round(combinedTraffic.sessions || 0),
+          pageviews: Math.round(combinedTraffic.pageviews || 0),
+          conversions: Math.round(combinedTraffic.conversions || 0),
+          ga4Revenue: Number((combinedTraffic.revenue || 0).toFixed(2)),
+          engagementRate: Number(combinedTraffic.engagementRate || 0) || 0,
+        };
+        const financialSim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        applyGA4FinancialCandidate((financialSim as any)?.totals || {});
+        hasGA4SourceInput = hasGA4SourceInput || trafficSimRows.length > 0;
       } else {
         const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
         if (connection?.method === "access_token" && connection?.accessToken) {
@@ -6567,12 +6564,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               engagementRate: Number(live?.totals?.engagementRate || ga4Inputs.engagementRate) || 0,
             };
             hasGA4SourceInput = true;
-            applyGA4FinancialCandidate(ga4Inputs);
           };
-          const attempt = async (token: string) =>
-            ga4Service.getTotalsWithRevenue(String(connection.propertyId || propertyId), token, startDate, endDate, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
+          const attempt = async (token: string, fromDate: string) =>
+            ga4Service.getTotalsWithRevenue(String(connection.propertyId || propertyId), token, fromDate, endDate, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
+          const assignProviderInputs = async (token: string) => {
+            assignLiveTotals(await attempt(token, startDate));
+            if (usesGA4FinancialSource) {
+              applyGA4FinancialCandidate((await attempt(token, financialStartDate))?.totals || {});
+            }
+          };
           try {
-            assignLiveTotals(await attempt(String(connection.accessToken)));
+            await assignProviderInputs(String(connection.accessToken));
           } catch (e: any) {
             const msg = String(e?.message || "");
             const isAuth =
@@ -6593,7 +6595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 refreshToken: String(connection.refreshToken),
                 expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
               });
-              assignLiveTotals(await attempt(String(refresh.access_token)));
+              await assignProviderInputs(String(refresh.access_token));
             }
             // Keep the stored daily-row fallback for notification rendering only.
           }
@@ -8558,14 +8560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...freshness,
         };
       };
-      const addDerivedEngagedSessions = (row: any) => {
-        const sessions = Number(row?.sessions || 0) || 0;
-        const existing = Number(row?.engagedSessions || 0) || 0;
-        if (existing > 0 || sessions <= 0) return { ...row, engagedSessions: existing };
-        const rawRate = Number(row?.engagementRate || 0) || 0;
-        const rate = rawRate > 1 ? rawRate / 100 : rawRate;
-        return { ...row, engagedSessions: Math.max(0, Math.round(sessions * rate)) };
-      };
+      const addDerivedEngagedSessions = addDerivedGA4EngagedSessions;
 
       if (shouldSimulate) {
         const pid = requestedPropertyId || "yesop";
@@ -9012,8 +9007,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isISODate(startDate) || !isISODate(endDate) || startDate > endDate) {
         return res.status(400).json({ success: false, error: "startDate/endDate must be YYYY-MM-DD and startDate must be <= endDate" });
       }
-      const currentValueStartDate = campaignStartDate;
-      const currentValueEndDate = endDate;
+      const currentValueWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);
+      const currentValueStartDate = currentValueWindow.startDate;
+      const currentValueEndDate = currentValueWindow.endDate;
       const simulateRefreshFailure = ["1", "true", "yes"].includes(String((req.query as any)?.simulateRefreshFailure || "").trim().toLowerCase());
 
       const requestedPropertyId = String(req.query.propertyId || "").trim();

@@ -7,7 +7,9 @@ import {
   isGA4FinancialKpiMetricIdentity,
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
+import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
+import { getReportingDateWindow } from "./utils/reporting-timezone";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
 const GA4_KPI_FINANCIAL_SOURCE_START_DATE = "1900-01-01";
@@ -17,12 +19,15 @@ export const getGA4KPIFinancialSourceWindow = (now: Date = new Date()) => ({
   endDate: isoDateUTC(now),
 });
 
-const reportDateUTC = () => {
-  const now = new Date();
-  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const y = new Date(todayUtc);
-  y.setUTCDate(y.getUTCDate() - 1);
-  return isoDateUTC(y);
+export const getGA4KPIReportingWindow = (reportingTimeZone: unknown, requestedDate?: string, now: Date = new Date()) => {
+  const currentWindow = getReportingDateWindow(30, reportingTimeZone, now);
+  const requested = String(requestedDate || "").trim();
+  const endDate = /^\d{4}-\d{2}-\d{2}$/.test(requested) && requested < currentWindow.endDate
+    ? requested
+    : currentWindow.endDate;
+  const start = new Date(`${endDate}T00:00:00.000Z`);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return { ...currentWindow, startDate: isoDateUTC(start), endDate, dataThroughDate: endDate };
 };
 
 const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
@@ -60,7 +65,7 @@ const isNoRevenueFilter = (raw: any): boolean => {
   return s.includes("no_revenue") || s.includes("no-revenue") || s.includes("no revenue") || s.includes("no_rev") || s.includes("no-rev");
 };
 
-const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: any, noRevenue: boolean) => {
+const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: any, noRevenue: boolean, windowDays: 30 | 90 = 90) => {
   const campaignProfiles: Record<string, { scale: number; engagementDelta: number }> = {
     "yesop-brand": { scale: 1.0, engagementDelta: 0.0 },
     "yesop-prospecting": { scale: 0.6, engagementDelta: -0.08 },
@@ -105,13 +110,14 @@ const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: any, 
   const totalScale = profilesToSum.reduce((s, p) => s + p.scale, 0);
   const weightedEngDelta = profilesToSum.reduce((s, p) => s + p.engagementDelta * p.scale, 0) / (totalScale || 1);
   const scale = totalScale || 1;
+  const isThirtyDayWindow = windowDays === 30;
   return {
-    users: Math.round(31800 * scale),
-    sessions: Math.round(41000 * scale),
-    pageviews: Math.round(123400 * scale),
-    conversions: Math.round(1620 * scale),
-    revenue: Number(((noRevenue ? 0 : 150220.15) * scale).toFixed(2)),
-    engagementRate: Math.min(1, Math.max(0, 0.57 + weightedEngDelta)),
+    users: Math.round((isThirtyDayWindow ? 10800 : 31800) * scale),
+    sessions: Math.round((isThirtyDayWindow ? 14075 : 41000) * scale),
+    pageviews: Math.round((isThirtyDayWindow ? 42110 : 123400) * scale),
+    conversions: Math.round((isThirtyDayWindow ? 553 : 1620) * scale),
+    revenue: Number(((noRevenue ? 0 : isThirtyDayWindow ? 54680.78 : 150220.15) * scale).toFixed(2)),
+    engagementRate: Math.min(1, Math.max(0, (isThirtyDayWindow ? 0.59 : 0.57) + weightedEngDelta)),
   };
 };
 
@@ -202,12 +208,12 @@ export function computeBenchmarkRating(variancePct: number) {
 }
 
 export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; date?: string; suppressAlerts?: boolean }) {
-  const date = String(opts?.date || reportDateUTC()).trim();
+  const requestedDate = String(opts?.date || "").trim();
   const campaigns = opts?.campaignId
     ? [await storage.getCampaign(String(opts.campaignId)).catch(() => undefined)].filter(Boolean) as any[]
     : await storage.getCampaigns().catch(() => []);
 
-  const recordedAt = toRecordedAtUtc(date);
+  let reportedDate = requestedDate || getReportingDateWindow(1, "UTC").endDate;
   let processed = 0;
   let kpisRecorded = 0;
   let benchmarksRecorded = 0;
@@ -224,6 +230,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       if (!primary?.propertyId) continue;
       const propertyId = String(primary.propertyId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone, requestedDate);
+      const date = reportingWindow.endDate;
+      const recordedAt = toRecordedAtUtc(date);
+      if (opts?.campaignId) reportedDate = date;
 
       // Ensure the daily row exists (best-effort backfill)
       let daily = await storage.getGA4DailyMetrics(campaignId, propertyId, date, date).catch(() => []);
@@ -275,6 +285,23 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       })();
 
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+      let trafficTotals = summarizeGA4TrafficRows(
+        await storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => []),
+      );
+      if (isYesopMockProperty(propertyId)) {
+        const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue, 30);
+        const baselineEngagedSessions = Math.round(baseline.sessions * baseline.engagementRate);
+        const sessions = trafficTotals.sessions + baseline.sessions;
+        trafficTotals = {
+          users: trafficTotals.users + baseline.users,
+          sessions,
+          pageviews: trafficTotals.pageviews + baseline.pageviews,
+          conversions: trafficTotals.conversions + baseline.conversions,
+          revenue: trafficTotals.revenue + baseline.revenue,
+          engagedSessions: trafficTotals.engagedSessions + baselineEngagedSessions,
+          engagementRate: sessions > 0 ? (trafficTotals.engagedSessions + baselineEngagedSessions) / sessions : 0,
+        };
+      }
       const toDateRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => []);
       let sessionsToDate = 0;
       let usersToDate = 0;
@@ -356,14 +383,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       const spendToDate = Number((spendTotalResult as any)?.totalSpend || 0) || 0;
 
       const inputs = {
-        users: Math.round(usersToDate || 0),
-        sessions: Math.round(sessionsToDate || 0),
-        pageviews: Math.round(pageviewsToDate || 0),
-        conversions: Math.round(conversionsToDate || 0),
-        ga4Revenue: round2(ga4RevenueToDate || 0),
+        users: Math.round(trafficTotals.users || 0),
+        sessions: Math.round(trafficTotals.sessions || 0),
+        pageviews: Math.round(trafficTotals.pageviews || 0),
+        conversions: Math.round(trafficTotals.conversions || 0),
+        ga4Revenue: round2(trafficTotals.revenue || 0),
         importedRevenue: round2(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0),
         spend: round2(spendToDate || 0),
-        engagementRate: Number((row as any)?.engagementRate || 0) || 0,
+        engagementRate: Number(trafficTotals.engagementRate || 0) || 0,
       };
       const kpis = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []);
       const benchmarkStorage = storage as typeof storage & {
@@ -381,7 +408,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           isGA4FinancialKpiMetric(String(benchmark?.metric || "")),
         );
 
-      let financialInputs = { ...inputs };
+      let financialInputs = {
+        ...inputs,
+        users: Math.round(usersToDate || 0),
+        sessions: Math.round(sessionsToDate || 0),
+        pageviews: Math.round(pageviewsToDate || 0),
+        conversions: Math.round(conversionsToDate || 0),
+        ga4Revenue: round2(ga4RevenueToDate || 0),
+      };
       const applyGA4FinancialCandidate = (candidate: any) => {
         const candidateRevenue = Number(candidate?.revenue || candidate?.ga4Revenue || 0) || 0;
         if (candidateRevenue <= Number(financialInputs.ga4Revenue || 0)) return;
@@ -395,7 +429,6 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           engagementRate: Number(candidate?.engagementRate || financialInputs.engagementRate || 0) || 0,
         };
       };
-      applyGA4FinancialCandidate(inputs);
       if (hasFinancialMetric && !isYesopMockProperty(propertyId)) {
         try {
           const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, campaignFilter);
@@ -513,7 +546,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     }
   }
 
-  return { date, campaignsProcessed: processed, kpisRecorded, benchmarksRecorded, benchmarksUpdated, benchmarkIdsUpdated };
+  return { date: reportedDate, campaignsProcessed: processed, kpisRecorded, benchmarksRecorded, benchmarksUpdated, benchmarkIdsUpdated };
 }
 
 

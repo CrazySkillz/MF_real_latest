@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "7610a3665b51710003ec66d715f19ea1b6c82589fb37982acee71111214a0c11",
+  "contractSha256": "872ae881ed2ba73950bc4a949641f1a982bf84169344caf698c9f3c0ba35e8c5",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "59894165785e4178fcae4704646423b2e4dc8c64",
+  "lastReviewedSha": "5ee3f12011875552a5dcfa60d26b97a185b5421e",
   "certifiedSha": null,
-  "invalidationReason": "The August 1, 2026 re-certification found unresolved live-versus-persisted window, source, failure-state, alert, notification, report, and persistence parity gaps. Historical certification is not current evidence.",
+  "invalidationReason": "Current Commit 4 locally corrects the traffic/rate window divergence, but financial source, failure-state, alert/UI, exact-result, report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -25,7 +25,7 @@
     "windowRules": [
       "The intended traffic and rate contract is 30 completed reporting days in the campaign reporting timezone.",
       "Engagement Rate must be weighted from authoritative inputs.",
-      "The current implementation does not yet prove this contract across all consumers."
+      "Current Commit 4 locally aligns persisted recompute, notification enrichment, and read-only comparison inputs to this contract; deployed and external parity remain pending."
     ],
     "ownershipRules": [
       "Every KPI read and mutation must prove actor, campaign, KPI owner, and exact platform scope.",
@@ -60,6 +60,7 @@
     { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": null },
     { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": null },
     { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": null },
+    { "path": "server/ga4-kpi-reporting-window-regression.test.ts", "role": "campaign-timezone 30-completed-day and weighted Engagement Rate regression", "sha256": null },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": null },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "financial revenue source lifecycle producer", "sha256": null },
     { "path": "client/src/components/AddSpendWizardModal.tsx", "role": "financial spend source lifecycle producer", "sha256": null },
@@ -93,6 +94,7 @@
     { "path": "shared/metric-math.ts", "role": "shared financial and rate formulas", "sha256": null },
     { "path": "shared/ga4-kpi-live-value.ts", "role": "shared live-card and browser-PDF KPI value resolver", "sha256": null },
     { "path": "shared/ga4-kpi-metric-identity.ts", "role": "canonical standard and legacy GA4 KPI metric identity inventory", "sha256": null },
+    { "path": "shared/ga4-traffic-window.ts", "role": "shared persisted and notification traffic/rate window aggregation", "sha256": null },
     { "path": "shared/ga4-financial-source.ts", "role": "GA4 financial candidate precedence", "sha256": null },
     { "path": "server/ga4-30-day-production-scope-regression.test.ts", "role": "30-day source contract regression", "sha256": null },
     { "path": "server/ga4-financial-source-parity.test.ts", "role": "financial source parity regression", "sha256": null },
@@ -147,7 +149,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 3: the checker passed after the identity dependency/test contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
+      "evidence": "August 1, 2026 Current Commit 4: the checker passed after the reporting-window dependency/test contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
     },
     {
       "id": "kpi_core_regressions",
@@ -168,10 +170,16 @@
       "evidence": "August 1, 2026: 3 files / 11 tests passed for the pinned inventory, stored-key/display-label/legacy normalization, dependency gates, canonical alert deduplication, and real-path cross-consumer values."
     },
     {
+      "id": "authoritative_reporting_window",
+      "command": "npm test -- server/ga4-kpi-reporting-window-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 1, 2026 Current Commit 4: 1 file / 3 tests passed for campaign-timezone completed-day boundaries, incomplete-date clamping, exact 30-date persisted job inputs, session-weighted Engagement Rate, progress date, and separation of lifetime financial conversions. The relevant scheduler/consumer packet passed 10 files / 67 tests."
+    },
+    {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 1, 2026: TypeScript completed successfully."
+      "evidence": "August 1, 2026 Current Commit 4: TypeScript completed successfully."
     },
     {
       "id": "production_build",

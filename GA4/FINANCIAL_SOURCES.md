@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Commit 15's bounded parser/parity packet closed at deployed commit `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. This did not change visible calculations or production data. Missing/zero/negative, Pipeline Proxy, provider-failure, zero-record, foreign-context, report, lifecycle, OAuth, downstream, and named scheduler fixtures remain unproven. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Commit 15's bounded parser/parity packet closed at deployed commit `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. On `2026-08-01`, the user matched and approved keeping the same four visible Spend sources totaling $2,698.75; their presence is intentional, not damage. The active retained Google Sheets Spend lifecycle remains unproven, so the final whole-Overview non-scheduler pack did not pass. No cleanup or production mutation was performed. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 
@@ -128,6 +128,8 @@ Imported `Total Spend`, `Spend Breakdown`, and the `Spend Sources` modal must us
 Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all active spend-source records to date.
 
 Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
+
+Current release boundary: whole-Overview Commit 5 hides and API-blocks new GA4 Google Sheets Spend setup. The rules in this section remain authoritative for the existing retained source and future re-enablement; they do not mean new setup is currently available.
 
 After setup, edits to mapped Google Sheets spend values must automatically reprocess the same active spend source without requiring the user to reopen or resave the wizard. The default near-real-time target is a provider pull within 1 minute and an open GA4 Overview spend-query refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions. This is not an instantaneous Google Sheets push guarantee. A failed provider read must preserve the last successful source records and total, report the source-specific failure, and retry on a later interval; it must not create a replacement source or write a guessed zero.
 

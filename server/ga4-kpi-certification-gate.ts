@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 export const GA4_KPI_CERTIFICATION_RECORD =
   "GA4/certifications/ga4-kpis.json";
 export const GA4_KPI_CERTIFICATION_CONTRACT_SHA256 =
-  "fc4bad6838792250baac0a84aa93d6ddc833b1e9b600ba278cad0f475f9bdee9";
+  "f8ca8b77bff0efadd46310a2bc68450a31a94df922e3fd9209ee20d9d3b616a3";
 
 type CertificationStatus = "UNVERIFIED" | "PRODUCTION_READY";
 type EvidenceStatus = "passed" | "failed" | "pending" | "not_applicable";

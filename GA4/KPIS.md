@@ -13,7 +13,7 @@ As of the August 1, 2026 fresh re-certification, the GA4 `KPIs` tab is **not pro
 The controlling source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Historical June validation remains evidence only. Later shared-input changes and newly traced gaps invalidated cards-to-persistence parity, alert/notification decisions, Insights/report consumers, failure states, scheduler dates, and destructive/persistence safety.
 Future sessions must not carry a readiness answer forward from prose. They must verify the certification record, certified SHA/dependency boundary, invalidation result, real-path parity suite, and remaining external gates. Until that mechanism and the current queue are complete, the answer remains not production-ready.
 
-The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. The current record is `UNVERIFIED`; Current Commit 1 implements only the integrity gate, not the KPI value fixes or re-certification.
+The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. The current record is `UNVERIFIED`; Current Commit 1 implements the integrity gate and Current Commit 2 adds a bounded real-path parity guard, but neither supplies the functional fixes, external validation, or re-certification in Current Commits 3-10.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -287,6 +287,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is not production-ready. Its split live/persisted/job/alert/report implementation currently lacks one proven authoritative value and failure-state contract. Current Commit 1 now provides the automated certification-invalidation gate, but it does not prove or repair those value paths.
+The GA4 `KPIs` tab is not production-ready. Current Commit 2 proves one authoritative nine-metric fixture across the exercised live/browser, persisted job/API, alert/notification, Insights/scheduled PDF, and shared report preflight/builder boundaries. Metric aliases, window/timezone correctness, failure and valid-zero states, exact recompute results, persistence safety, deployed behavior, and external validation remain open.
 
 The controlling evidence boundary, prevention contract, external gates, and Current Commits 0-10 are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

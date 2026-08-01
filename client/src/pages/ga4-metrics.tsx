@@ -37,6 +37,7 @@ import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPe
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
+import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 
 interface Campaign {
   id: string;
@@ -72,6 +73,7 @@ const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
 const DEFAULT_KPI_ALERT_SCHEDULE_HOUR = "09";
 const DEFAULT_KPI_ALERT_SCHEDULE_DAY = "monday";
+
 const getKpiAlertHourOptions = () => Array.from({ length: 24 }, (_, hour) => {
   const value = String(hour).padStart(2, "0");
   return { value, label: `${value}:00` };
@@ -2699,30 +2701,16 @@ export default function GA4Metrics() {
   };
 
   const getLiveKpiValue = (kpi: any): string => {
-    const name = String(kpi?.metric || kpi?.name || "").trim();
-    // Use the same sources as the GA4 Overview:
-    // - Revenue/Conversions/Sessions/Users from GA4 breakdown totals
-    // - Spend/Revenue for financial metrics from spend-to-date + revenue-to-date (no LinkedIn fallback)
-    if (name === "Revenue") return Number(financialRevenue || 0).toFixed(2);
-    if (name === "Total Conversions") return String(Math.round(Number(breakdownTotals.conversions || 0)));
-    if (name === "Conversion Rate") {
-      const s = Number(breakdownTotals.sessions || 0);
-      const c = Number(breakdownTotals.conversions || 0);
-      return computeConversionRatePercent(c, s).toFixed(2);
-    }
-    if (name === "Engagement Rate") {
-      const er = overviewEngagementRate;
-      return normalizeRateToPercent(er).toFixed(2);
-    }
-    if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || 0)));
-    if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || 0)));
-    // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
-    // ROAS as ratio (48.91x) to match Overview display — NOT percentage (4,891%)
-    if (name === "ROAS") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);
-    if (name === "ROI") return Number(financialROI || 0).toFixed(2);
-    if (name === "CPA") return Number(financialCPA || 0).toFixed(2);
-    // Fallback to stored value for any legacy/custom KPI.
-    return String(kpi?.currentValue ?? "0.00");
+    // Cards and the browser PDF deliberately share this resolver and source model.
+    return resolveGA4KpiLiveValue({
+      kpi,
+      breakdownTotals,
+      overviewEngagementRate,
+      financialRevenue,
+      financialSpend,
+      financialROI,
+      financialCPA,
+    });
   };
 
   const getKpiDataSufficiency = (kpi: any) => {

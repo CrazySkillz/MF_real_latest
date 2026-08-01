@@ -53,7 +53,7 @@ External validation required after forward fixes: read-only target-data inventor
 
 0. **Documentation revocation and dependency inventory — completed by this audit.** Keep certification withdrawn; identify every producer/consumer and preserve earlier evidence as history only.
 1. **Certification integrity gate — implemented and locally validated in Current Commit 1; certification remains withdrawn.** The machine-readable record, fail-closed checker, focused tests, and existing CI step are present. A future ready claim requires a full certified SHA, SHA-256 for every dependency, matching current-status markers, completed required tests, and completed external gates. This implementation does not close Current Commits 2-10.
-2. **Real-path cross-consumer parity guard.** Feed authoritative fixtures through the actual live-value, persisted job, alert/notification, Insights, browser PDF, direct snapshot, test-send, and scheduled-report paths. Copied formulas and source-text assertions remain structural guards only.
+2. **Real-path cross-consumer parity guard — implemented and locally validated in Current Commit 2; certification remains withdrawn.** One authoritative nine-metric fixture now runs through the shared live-card/browser-PDF resolver, persisted GA4 job, KPI API, alert truth, notification enrichment API, Insights/scheduled PDF, and the shared preflight/PDF builder reached by direct snapshot, test-send, manual, and scheduled reports. Existing caller-reachability checks remain structural and do not replace the dynamic value guard.
 3. **Metric identity contract.** Normalize the complete metric and legacy-alias inventory across live values, dependency gating, recompute, alerts, notifications, and reports.
 4. **Authoritative window/date contract.** Make persisted traffic/rate inputs use the documented 30 completed reporting days, weighted Engagement Rate, and campaign reporting timezone.
 5. **Financial source/failure contract.** Replace higher-revenue financial selection with fixed source precedence; preserve valid zero and propagate unavailable without overwriting last-good values.
@@ -87,7 +87,7 @@ Side-effect boundary:
 
 - no KPI calculation, API, storage, scheduler, alert, notification, report, schema, or production-data behavior changed
 - dependency hashes remain `null` while status is `UNVERIFIED`; they become mandatory only for a future evidence-complete `PRODUCTION_READY` record
-- Current Commit 2 real-path parity and Current Commits 3-10 remain open
+- Commit 1 did not close the real-path or functional work; Current Commit 2 is now recorded below and Current Commits 3-10 remain open
 
 Validation on August 1, 2026:
 
@@ -105,6 +105,47 @@ What this proves:
 What this does not prove:
 
 - KPI numerical parity, scheduler correctness, alert/notification breach truth, report freshness, target production data, provider behavior, or deployed behavior
+- GA4 KPI production readiness
+
+### Current Commit 2 - Real-path cross-consumer parity guard
+
+Status: implemented and locally validated. Certification remains withdrawn.
+
+Root cause:
+
+- earlier KPI consistency tests copied formulas or asserted source text, so they could pass while independent live, persisted, notification, Insights, and report implementations drifted
+- the live KPI cards and browser PDF used an unexported nested resolver, preventing the server regression runner from feeding the same fixture through that actual value path
+- direct snapshot, test-send, manual, and scheduled reports have different entry points but converge on `preflightGA4ReportKPIConsumers` and `buildPdfAttachmentForReport`; caller reachability alone did not prove the values produced by that shared core
+
+Smallest safe implementation:
+
+- `shared/ga4-kpi-live-value.ts` contains the unchanged value resolver now called by both live KPI cards and the browser PDF; no formula, source, metric name, fallback, or output formatting changed
+- `server/ga4-kpi-real-path-parity-regression.test.ts` feeds one authoritative fixture for Revenue, Total Conversions, Conversion Rate, Engagement Rate, Total Users, Total Sessions, ROAS, ROI, and CPA through the actual shared client resolver, persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, report preflight, and PDF builder
+- the dynamic report test covers the value-producing shared preflight/builder; `server/ga4-kpi-report-consumer-regression.test.ts` separately retains structural reachability guards for scheduled send, test-send, manual snapshot, and direct snapshot PDF callers
+- the certification record pins the new shared resolver and parity test as dependencies and records the exact test command/evidence
+
+Side-effect boundary:
+
+- no KPI formula, source precedence, date window, persistence behavior, alert behavior, notification behavior, report behavior, API contract, schema, scheduler, or production data changed
+- Current Commits 3-10 remain open; this guard is evidence and regression protection, not a runtime correction or re-certification
+
+Validation on August 1, 2026:
+
+- `npm test -- server/ga4-kpi-real-path-parity-regression.test.ts` passed: 1 file / 5 tests
+- focused downstream packet passed: 6 files / 33 tests
+- `npm run check:ga4-kpi-certification` passed
+- `npm run check` passed
+
+What this proves:
+
+- the authoritative fixture produces the same nine standard KPI values at the actual shared live/browser resolver, persisted job/API, alert/notification, Insights/scheduled PDF, and shared report preflight/builder boundaries exercised by the test
+- the client card/browser renderer now has a directly executable parity seam without duplicating its formulas in the test
+- the included report entry points remain wired to the dynamically exercised shared preflight/builder according to the existing structural caller guards
+
+What this does not prove:
+
+- aliases, unsupported/custom metric identity, corrected 30-completed-day weighting/timezone behavior, valid-zero/unavailable/failure behavior, or exact updated/skipped/failed KPI IDs; these remain Current Commits 3-8
+- target production data, an actual browser render/download, a real test-send or scheduled email, timer execution, provider/token behavior, deployment, or external UI parity
 - GA4 KPI production readiness
 
 ## Historical Status And Evidence (non-authoritative)

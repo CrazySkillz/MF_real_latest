@@ -1,6 +1,7 @@
 import { storage } from "../storage";
 import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
+import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 
 type CalcConfig = {
   metric?: string;
@@ -370,11 +371,27 @@ export async function resolveCampaignCurrentValueForAlert<T extends { campaignId
   const totalsPromise = cache?.get(cacheKey) || getCampaignMetricTotals(campaignId, useFullFinancialCandidate);
   if (cache && !cache.has(cacheKey)) cache.set(cacheKey, totalsPromise);
   const totals = await totalsPromise;
-  if (!totals) return row;
+  if (!totals) return blockAlertDecision(row, "unavailable");
 
   const currentValue = computeCampaignCurrentValueFromConfig(row.calculationConfig, totals);
-  if (currentValue === null || !Number.isFinite(currentValue)) return row;
-  return { ...row, currentValue: String(currentValue) };
+  if (currentValue === null || !Number.isFinite(currentValue)) return blockAlertDecision(row, "blocked");
+  const metric = String(config?.metric || "").trim();
+  const sessions = metric === "engagementRate"
+    ? totals.ga4Available === false ? null : totals.sessions
+    : sumSelected("sessions", config?.inputs?.sessions, totals);
+  const conversions = metric === "cpa"
+    ? sumSelectedFinancialConversions(config?.inputs?.conversions, totals)
+    : sumSelected("conversions", config?.inputs?.conversions, totals);
+  const spend = sumSelected("spend", config?.inputs?.spend, totals);
+  return applyAlertDataSufficiency(
+    { ...row, currentValue: String(currentValue) },
+    {
+      metric: metric === "conversion-rate-website" ? "conversion_rate" : metric,
+      sessions,
+      conversions,
+      spend,
+    },
+  );
 }
 
 export async function refreshCampaignCurrentValuesForCampaign(campaignId: string): Promise<{ kpisUpdated: number; benchmarksUpdated: number }> {

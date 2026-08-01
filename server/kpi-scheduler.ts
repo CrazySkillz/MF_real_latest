@@ -11,7 +11,7 @@ import {
   shouldTriggerAlert
 } from "./kpi-notifications";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
-import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
+import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 
 /**
@@ -251,7 +251,7 @@ export async function checkPerformanceAlerts(): Promise<void> {
         await resolveKPIAlerts(String((rawKpi as any).id), 'superseded');
         continue;
       }
-      const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
+      const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);
       const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
       const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
       if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined") {
@@ -479,4 +479,3 @@ export function startKPIScheduler(): void {
 
   console.log('[KPI Scheduler] KPI scheduler started successfully');
 }
-

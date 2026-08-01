@@ -7,23 +7,23 @@ describe("campaign alert current-value regression guard", () => {
     const scheduler = readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
     const kpiNotifications = readFileSync(join(process.cwd(), "server", "kpi-notifications.ts"), "utf-8");
 
-    expect(scheduler).toContain('import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
+    expect(scheduler).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(scheduler).toContain("const campaignMetricCache = new Map");
-    expect(scheduler).toContain("const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);");
+    expect(scheduler).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);");
     expect(scheduler).toContain("shouldTriggerAlert(kpi)");
     expect(scheduler).toContain("await createKPIAlert(kpi)");
-    expect(kpiNotifications).toContain('import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";');
-    expect(kpiNotifications).toContain("currentValue: kpi.currentValue");
-    expect(kpiNotifications).toContain("thresholdValue: kpi.alertThreshold");
+    expect(kpiNotifications).toContain('import { isAlertDecisionBreached } from "./utils/alert-decision";');
+    expect(kpiNotifications).toContain("return isAlertDecisionBreached(kpi);");
   });
 
   it("resolves campaign Benchmark alerts from connected-platform totals before threshold checks", () => {
     const notifications = readFileSync(join(process.cwd(), "server", "benchmark-notifications.ts"), "utf-8");
 
-    expect(notifications).toContain('import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
+    expect(notifications).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(notifications).toContain('import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";');
     expect(notifications).toContain("const campaignMetricCache = new Map");
-    expect(notifications).toContain("const b = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);");
+    expect(notifications).toContain("const b = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);");
+    expect(notifications).toContain("if (!isAlertDecisionBreached(b)) {");
     expect(notifications).toContain("const currentRaw = b.currentValue;");
     expect(notifications).toContain("currentValue: currentRaw");
     expect(notifications).not.toContain('currentRaw ?? "0"');

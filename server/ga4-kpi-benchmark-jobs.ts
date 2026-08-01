@@ -32,7 +32,7 @@ export const getGA4KPIReportingWindow = (reportingTimeZone: unknown, requestedDa
   return { ...currentWindow, startDate: isoDateUTC(start), endDate, dataThroughDate: endDate };
 };
 
-const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
+export const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
   if (!raw) return undefined;
   if (Array.isArray(raw)) return raw.map((v) => String(v || "").trim()).filter(Boolean);
   const s = String(raw || "").trim();
@@ -56,18 +56,18 @@ const normalizePropertyIdForMock = (pid: string) => {
   return raw.replace(/^\/+/, "");
 };
 
-const isYesopMockProperty = (pid: string) => {
+export const isYesopMockProperty = (pid: string) => {
   const v = String(pid || "").trim().toLowerCase();
   const normalized = normalizePropertyIdForMock(v).toLowerCase();
   return v === "yesop" || normalized === "yesop";
 };
 
-const isNoRevenueFilter = (raw: any): boolean => {
+export const isNoRevenueFilter = (raw: any): boolean => {
   const s = String(raw || "").toLowerCase();
   return s.includes("no_revenue") || s.includes("no-revenue") || s.includes("no revenue") || s.includes("no_rev") || s.includes("no-rev");
 };
 
-const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: any, noRevenue: boolean, windowDays: 30 | 90 = 90) => {
+export const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: any, noRevenue: boolean, windowDays: 30 | 90 = 90) => {
   const campaignProfiles: Record<string, { scale: number; engagementDelta: number }> = {
     "yesop-brand": { scale: 1.0, engagementDelta: 0.0 },
     "yesop-prospecting": { scale: 0.6, engagementDelta: -0.08 },

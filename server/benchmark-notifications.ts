@@ -3,8 +3,9 @@ import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schem
 import { desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
-import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
+import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";
+import { isAlertDecisionBreached } from "./utils/alert-decision";
 
 function isIsoCurrencyCode(unit: string): boolean {
   return /^[A-Z]{3}$/.test(String(unit || "").trim());
@@ -102,12 +103,16 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
   const campaignMetricCache = new Map<string, Promise<any>>();
 
   for (const rawBenchmark of items as any[]) {
-    const b = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);
+    const b = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);
     const thresholdRaw = b.alertThreshold;
     const currentRaw = b.currentValue;
     const platformType = String((b?.platformType || "")).trim().toLowerCase();
     const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
     if (!b.alertsEnabled || thresholdRaw === null || typeof thresholdRaw === "undefined") {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
+    if (!isAlertDecisionBreached(b)) {
       if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
       continue;
     }

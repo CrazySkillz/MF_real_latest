@@ -13,6 +13,7 @@ const LINKEDIN_REVENUE_FILE = join(__dirname, "utils", "linkedin-revenue.ts");
 const KPI_REFRESH_FILE = join(__dirname, "utils", "kpi-refresh.ts");
 const GA4_SCHEDULED_REPORT_PDF_FILE = join(__dirname, "ga4-scheduled-report-pdf.ts");
 const GA4_KPI_BENCHMARK_JOBS_FILE = join(__dirname, "ga4-kpi-benchmark-jobs.ts");
+const GA4_ALERT_CURRENT_VALUE_FILE = join(__dirname, "utils", "ga4-alert-current-value.ts");
 
 function read(file: string): string {
   return readFileSync(file, "utf-8").replace(/\r\n/g, "\n");
@@ -182,6 +183,7 @@ describe("Shopify revenue regression guard", () => {
     const routes = read(ROUTES_FILE);
     const reportPdf = read(GA4_SCHEDULED_REPORT_PDF_FILE);
     const kpiBenchmarkJobs = read(GA4_KPI_BENCHMARK_JOBS_FILE);
+    const alertCurrentValue = read(GA4_ALERT_CURRENT_VALUE_FILE);
 
     const modalDownstreamBlock = routeSection(
       modal,
@@ -214,8 +216,8 @@ describe("Shopify revenue regression guard", () => {
     expect(reportPdf).toContain('["Total Revenue", formatMoney(payload.financialRevenue)]');
     expect(kpiBenchmarkJobs).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
     expect(kpiBenchmarkJobs).toContain("if (dependencies.requiresRevenue && importedRevenueValue === null) return null;");
-    expect(routes).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
-    expect(routes).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs! : ga4Inputs;");
+    expect(alertCurrentValue).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
+    expect(alertCurrentValue).toContain("const inputs = usesFinancialSource ? financialInputs! : ga4Inputs;");
   });
 
   it("does not silently truncate Shopify order pagination", () => {

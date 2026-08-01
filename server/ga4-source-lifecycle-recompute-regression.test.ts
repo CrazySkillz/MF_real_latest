@@ -17,7 +17,8 @@ const sliceBetween = (source: string, start: string, end: string) => {
 
 describe("GA4 source lifecycle recompute route guards", () => {
   it("keeps GA4 revenue source responses off the heavyweight KPI/Benchmark job", () => {
-    expect(routes).toContain('import { refreshCampaignCurrentValuesForCampaign, resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
+    expect(routes).toContain('import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
+    expect(routes).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
 
     const ga4Helper = sliceBetween(
       routes,

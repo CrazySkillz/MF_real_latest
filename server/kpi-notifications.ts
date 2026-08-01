@@ -3,7 +3,8 @@ import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
 import type { KPI, InsertNotification, Notification as AppNotification } from "../shared/schema";
 import { storage } from "./storage";
-import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";
+import { parseAlertNumber } from "./utils/alert-evaluation";
+import { isAlertDecisionBreached } from "./utils/alert-decision";
 
 function isIsoCurrencyCode(unit: string): boolean {
   return /^[A-Z]{3}$/.test(String(unit || "").trim());
@@ -399,14 +400,6 @@ export async function createTrendAlert(kpi: KPI, consecutivePeriods: number): Pr
  * Helper function to check if KPI should trigger alert
  */
 export function shouldTriggerAlert(kpi: KPI): boolean {
-  if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined") {
-    return false;
-  }
-
-  return evaluateAlertThreshold({
-    currentValue: kpi.currentValue,
-    thresholdValue: kpi.alertThreshold,
-    condition: kpi.alertCondition,
-  }).triggered;
+  return isAlertDecisionBreached(kpi);
 }
 

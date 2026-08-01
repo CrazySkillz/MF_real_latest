@@ -26,7 +26,7 @@ The current UI, API, storage, refresh/scheduler, alert/email, notification, brow
 
 - Current Commit 4 locally aligns persisted Users, Sessions, Pageviews, Conversions, Conversion Rate, and Engagement Rate inputs plus notification enrichment to the same 30 completed reporting days in the campaign reporting timezone; Engagement Rate is session-weighted
 - Current Commit 5 locally applies the documented financial source order to persisted recompute, campaign current-value refresh, and notification enrichment; successful zero is authoritative, malformed or failed required reads are unavailable, and affected stored KPI/Benchmark values are not overwritten
-- metric identity, traffic/rate windows, and the bounded financial producer/failure contract are locally corrected by Current Commits 3-5; alert-state, UI-state, exact-result/report, persistence, deployed, and external-validation contracts remain unresolved
+- metric identity, traffic/rate windows, the bounded financial producer/failure contract, and the alert/notification eligibility contract are locally corrected by Current Commits 3-6; UI-state, exact-result/report, persistence, deployed, and external-validation contracts remain unresolved
 
 Locally proven, but not sufficient for certification:
 
@@ -36,12 +36,13 @@ Locally proven, but not sufficient for certification:
 - duplicate latest-row handling, campaign-scoped notification action URLs, and email audit/idempotency/retry/provider-acceptance semantics have focused coverage
 - Current Commit 3 normalizes the supported standard and legacy-alias inventory through live values, dependency gating, persisted recompute, alert deduplication, notification enrichment, Insights recommendations, and report value consumers
 - Current Commit 4 resolves the persisted reporting window per campaign, clamps recompute dates to completed reporting dates, uses the exact 30-date daily-row query for traffic/count/rate values, and weights Engagement Rate from engaged sessions divided by sessions
+- Current Commit 6 routes in-app KPI/Benchmark reconciliation, immediate/scheduled/retry email eligibility, duplicate refresh, bell/Notifications filtering, and notification enrichment through one source-resolved, fail-closed alert decision
 - TypeScript passed on August 1, 2026
 
 Current unproven or unsafe paths:
 
 - KPI list failure still renders as empty, and the KPI UI has no KPI-specific failed/stale/last-good state even though the corrected background producers now preserve affected stored financial values
-- scheduler alert/email evaluation, card breach pulse, and browser PDF rows do not consistently apply the card/tracker insufficiency gates
+- card breach pulse, Insights, and browser PDF rows do not consistently expose or apply the same unavailable/stale presentation contract; those UI/browser consumers remain Current Commit 7
 - source recompute, KPI reads/updates, and alert reconciliation swallow failures; job results do not identify the exact KPI IDs updated, so report preflight cannot prove selected rows are fresh
 - `kpi_progress` remains `numeric(10,2)` and can fail after current value update; KPI child-row deletion is non-transactional and notification hiding is best-effort
 - the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
@@ -57,7 +58,7 @@ External validation required after forward fixes: read-only target-data inventor
 3. **Metric identity contract — implemented and locally validated in Current Commit 3; certification remains withdrawn.** One shared inventory now normalizes standard stored keys, display labels, Pageviews, and the supported legacy `total*` aliases across live values, dependency gating, recompute, alert deduplication, notification enrichment, Insights, and report consumers.
 4. **Authoritative window/date contract — implemented and locally validated in Current Commit 4; certification remains withdrawn.** Persisted traffic/count/rate inputs, notification enrichment, and the read-only Benchmark comparison resolver use 30 completed reporting days in the campaign reporting timezone; Engagement Rate is session-weighted. Deployment and external parity remain open.
 5. **Financial source/failure contract - implemented and locally validated in Current Commit 5; certification remains withdrawn.** Persisted recompute, campaign current-value refresh, and notification enrichment now use fixed provider-to-persisted-to-configured-breakdown precedence, keep valid zero authoritative, reject malformed values, and preserve affected last-good KPI/Benchmark values when required native/revenue/spend reads are unavailable.
-6. **Alert/notification contract.** Apply identical blocked/insufficient/unavailable rules to in-app alerts, email eligibility, duplicate refresh, bell state, and notification enrichment.
+6. **Alert/notification contract - implemented and locally validated in Current Commit 6; certification remains withdrawn.** In-app KPI/Benchmark reconciliation, immediate/scheduled/retry alert-email eligibility, duplicate refresh, bell/Notifications visibility, and notification enrichment now share the same source-resolved blocked/insufficient/unavailable decision. Preserved last-good values are ineligible while their required source input is unavailable.
 7. **UI and browser-consumer states.** Distinguish empty from failed/stale in the KPI UI, state the window, and align card pulse, tracker, Insights, and browser PDF status.
 8. **Recompute/report proof.** Return exact KPI update/skip/failure IDs; make source lifecycle and all report preflights fail closed for selected KPI rows.
 9. **Persistence/destructive safety.** Widen KPI-progress numeric capacity, then make KPI child deletion atomic and notification hiding retryable without broadening scope.
@@ -288,9 +289,61 @@ What this proves:
 
 What this does not prove:
 
-- identical blocked/insufficient/unavailable decisions across alert creation, email eligibility, duplicate refresh, bell/UI state, Insights, browser PDF, or reports; those remain Current Commits 6-8
+- at the Current Commit 5 boundary, alert parity remained open; Current Commit 6 now closes the bounded backend alert/notification contract below, while UI/browser state and report freshness remain Current Commits 7-8
 - exact updated/skipped/failed KPI IDs, report freshness proof, persistence/destructive safety, or cleanup need; those remain Current Commits 8-10
 - target production data, deployed behavior, timer execution, live provider/token refresh, external notification/report parity, or email delivery
+- GA4 KPI production readiness
+
+### Current Commit 6 - Alert/notification contract
+
+Status: implemented and locally validated. Certification remains withdrawn.
+
+Root cause:
+
+- alert truth was split across the KPI scheduler, KPI notification helper, Benchmark reconciliation, immediate/scheduled/retry email service, and Notifications API
+- only the Notifications API recomputed GA4 source inputs and failed closed when a required source was unavailable; the other paths compared the persisted currentValue directly
+- Current Commit 5 intentionally preserved the last-good stored value on required-source failure, but without a shared eligibility marker that stale value could still create, refresh, retry, email, or keep visible a breach
+- card/tracker sufficiency rules for zero sessions, conversions, or spend were not applied by those backend alert consumers
+
+Smallest safe implementation:
+
+- server/utils/ga4-alert-current-value.ts owns the existing GA4 notification source resolution and applies the same selected campaign/property/filter, 30-completed-day traffic window, financial source precedence, valid-zero handling, and dependency reads before any backend alert decision
+- server/utils/alert-decision.ts is the single internal eligibility and threshold predicate; unavailable/blocked and exact insufficient-session/conversion/spend states fail closed, while authoritative zero remains eligible for metrics that do not require a denominator
+- campaign current-value alert resolution now carries the same internal decision metadata when a selected dependency is blocked/unavailable or insufficient
+- KPI and Benchmark in-app reconciliation, duplicate refresh, immediate email, scheduled email, retry eligibility, Notifications enrichment/visibility, and therefore bell visibility all use the shared resolver/predicate
+- decision metadata is transient server-only state; persisted KPI/Benchmark values and public API response shapes are unchanged
+
+Side-effect boundary:
+
+- no KPI formula, source precedence, reporting window, ownership/campaign/property/platform/source scope, schema, report behavior, destructive path, or production data changed
+- no Commit 7-10 UI, exact-result/report, persistence, cleanup, deployment, or external-validation work was implemented
+- no production write, provider call, email send, or target-data check was run during validation
+
+Files changed:
+
+- shared alert decision and GA4 source-resolution utilities
+- existing campaign resolver and KPI/Benchmark in-app, email, and Notifications consumers
+- focused alert/source/notification tests plus stale exact-source assertions affected by the resolver relocation
+- canonical KPI readiness evidence and machine-readable certification boundary
+
+Validation on August 1, 2026:
+
+- focused Commit 6 source/decision guard passed: 1 file / 4 tests
+- alert/notification/email real-path packet passed: 14 files / 111 tests
+- exact Commit 5 financial packet passed: 5 files / 27 tests
+- exact Commit 5 validation-closure packet passed: 9 files / 114 tests
+- certification regression/checker and TypeScript passed
+
+What this proves:
+
+- locally exercised successful zero source inputs can still breach where mathematically valid, while Conversion Rate/Engagement Rate without sessions, CPA without conversions or spend, and ROAS/ROI without spend are alert-ineligible
+- locally exercised required-source failure preserves the stored last-good value but marks it ineligible before in-app creation/refresh, immediate/scheduled/retry email, and Notifications/bell visibility
+- all traced backend KPI and Benchmark alert consumers call the same source resolver and decision predicate, with latest-row duplicate suppression retained
+
+What this does not prove:
+
+- deployed behavior, a timer-fired scheduler run, live GA4/token-refresh behavior, provider acceptance or inbox delivery, or target production data
+- Commit 7 UI/card/Insights/browser-PDF unavailable and stale presentation, Commit 8 exact recompute/report freshness proof, Commit 9 persistence/destructive safety, or Commit 10 external re-certification
 - GA4 KPI production readiness
 
 ## Historical Status And Evidence (non-authoritative)

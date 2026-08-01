@@ -40,11 +40,11 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toMatch(/import \{[^}]*resolveCampaignCurrentValueForAlert[^}]*\} from "\.\/utils\/campaign-current-values";/);
-    expect(routesFile).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> => {");
-    expect(routesFile).toContain("const resolved = await resolveCampaignCurrentValueForAlert(row);");
-    expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean => {");
-    expect(routesFile).toContain("if (isGA4NotificationPlatform(resolved?.platformType) && resolved?.__ga4NotificationSourceVerified === false) return false;");
+    expect(routesFile).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
+    expect(routesFile).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> =>");
+    expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row);");
+    expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean =>");
+    expect(routesFile).toContain("isAlertDecisionBreached(resolved);");
     expect(routesFile).toContain("if (!(await isLatestGA4NotificationKPI(kpi))) return null;");
     expect(routesFile).toContain("if (!isResolvedAlertRowBreached(resolvedKpi)) return null;");
     expect(routesFile).toContain("if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
@@ -55,30 +55,25 @@ describe("notification visibility regression guard", () => {
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
     );
+    const resolverFile = readFileSync(
+      join(process.cwd(), "server", "utils", "ga4-alert-current-value.ts"),
+      "utf-8"
+    );
 
-    expect(routesFile).toContain('import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";');
+    expect(routesFile).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(routesFile).toContain('import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";');
-    expect(routesFile).toContain('const metricOrName = resolveGA4KpiMetricIdentity(resolved?.metric, resolved?.name) || "";');
-    expect(routesFile).toContain('if (!isGA4NotificationPlatform(platform) || !campaignId || !metricOrName) return resolved;');
-    expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
-    expect(routesFile).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
-    expect(routesFile).toContain("const reportingWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);");
-    expect(routesFile).toContain("const totals = summarizeGA4TrafficRows(trafficRows);");
-    expect(routesFile).toContain('const trafficSim = simulateGA4({ campaignId, propertyId, dateRange: "30days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });');
-    expect(routesFile).toContain('const financialSim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });');
-    expect(routesFile).toContain("const usesGA4FinancialSource = isGA4FinancialKpiMetricIdentity(metricOrName);");
-    expect(routesFile).toContain("const financialTotals = summarizeGA4TrafficRows(sourceRows);");
-    expect(routesFile).toContain('ga4Service.getAcquisitionBreakdown(campaignId, storage, `${lookbackDays}daysAgo`, propertyId, 2000');
-    expect(routesFile).toContain("selectGA4FinancialTotalsSource(");
-    expect(routesFile).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs! : ga4Inputs;");
-    expect(routesFile).toContain("return { ...resolved, __ga4NotificationSourceVerified: false };");
-    expect(routesFile).toContain("const attempt = async (token: string, fromDate: string) =>");
-    expect(routesFile).toContain("const refresh = await ga4Service.refreshAccessToken(");
-    expect(routesFile).toContain("await storage.updateGA4ConnectionTokens(connection.id, {");
-    expect(routesFile).toContain("if (!financialSourceVerified) return { ...resolved, __ga4NotificationSourceVerified: false };");
-    expect(routesFile).toContain("if (!usesGA4FinancialSource && !hasGA4SourceInput) return { ...resolved, __ga4NotificationSourceVerified: false };");
-    expect(routesFile).toContain("const currentValue = computeKpiValue(metricOrName, {");
-    expect(routesFile).toContain("return { ...resolved, currentValue: String(currentValue) };");
+    expect(resolverFile).toContain("const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone);");
+    expect(resolverFile).toContain("let trafficTotals = summarizeGA4TrafficRows(trafficRows);");
+    expect(resolverFile).toContain("getYesopMockBaselineTotals");
+    expect(resolverFile).toContain("const earlierCandidate = selectGA4FinancialTotalsSource(");
+    expect(resolverFile).toContain("[mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate, breakdownFinancialCandidate]");
+    expect(resolverFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
+    expect(resolverFile).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
+    expect(resolverFile).toContain("const refresh = await ga4Service.refreshAccessToken(");
+    expect(resolverFile).toContain("await storage.updateGA4ConnectionTokens(connection.id, {");
+    expect(resolverFile).toContain('if (!sourceVerified) return blockAlertDecision(resolved, "unavailable");');
+    expect(resolverFile).toContain('return blockAlertDecision(resolved, "unavailable");');
+    expect(resolverFile).toContain("return applyAlertDataSufficiency(");
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');
   });
 

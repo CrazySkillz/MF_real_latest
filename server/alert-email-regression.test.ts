@@ -50,12 +50,14 @@ describe("alert email regression guard", () => {
   it("uses resolved campaign current values for immediate and scheduled email alert checks", () => {
     const source = readAlertMonitoring();
 
-    expect(source).toContain('import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";');
-    expect(source).toContain("const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);");
-    expect(source).toContain("const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark);");
+    expect(source).toContain('import { resolveAlertCurrentValueForDecision } from "../utils/ga4-alert-current-value";');
+    expect(source).toContain('import { isAlertDecisionBreached } from "../utils/alert-decision";');
+    expect(source).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi);");
+    expect(source).toContain("const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark);");
     expect(source).toContain("const campaignMetricCache = new Map<string, Promise<any>>();");
-    expect(source).toContain("const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);");
-    expect(source).toContain("const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);");
+    expect(source).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);");
+    expect(source).toContain("const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);");
+    expect(source.match(/if \(!isAlertDecisionBreached\((kpi|benchmark)\)\) (return false|continue);/g)).toHaveLength(6);
   });
 
   it("keeps invalid values fail-closed and uses audit claims, not lastAlertSent, for immediate sends", () => {

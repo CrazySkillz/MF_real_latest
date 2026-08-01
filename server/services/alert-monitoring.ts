@@ -3,7 +3,8 @@ import { campaigns, clients, kpis, benchmarks, kpiAlerts, emailAlertEvents } fro
 import { eq, and, sql, lte } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
-import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";
+import { resolveAlertCurrentValueForDecision } from "../utils/ga4-alert-current-value";
+import { isAlertDecisionBreached } from "../utils/alert-decision";
 import { getGA4KPIDuplicateKey, getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "../utils/ga4-kpi-alert-dedupe";
 import { ALERT_EMAIL_MAX_ATTEMPTS, claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim } from "../utils/alert-email-audit";
 
@@ -107,9 +108,10 @@ class AlertMonitoringService {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
     if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;
-    const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
+    const kpi = await resolveAlertCurrentValueForDecision(rawKpi);
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
+    if (!isAlertDecisionBreached(kpi)) return false;
 
     const frequency = (kpi.alertFrequency || 'daily') as any;
     if (!retryClaim && !isAlertEmailScheduleDue((kpi as any).calculationConfig, frequency)) return false;
@@ -172,10 +174,11 @@ class AlertMonitoringService {
   async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
     const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
     if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
-    const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark);
+    const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark);
     if (String((benchmark as any).status || 'active') !== 'active') return false;
     const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
+    if (!isAlertDecisionBreached(benchmark)) return false;
 
     const frequency = (benchmark.alertFrequency || 'daily') as any;
 
@@ -258,9 +261,10 @@ class AlertMonitoringService {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
     if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;
-    const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
+    const kpi = await resolveAlertCurrentValueForDecision(rawKpi);
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, true);
     if (!campaignName) return false;
+    if (!isAlertDecisionBreached(kpi)) return false;
     const currentValue = this.parseAlertNumber(kpi.currentValue);
     const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);
     if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;
@@ -272,10 +276,11 @@ class AlertMonitoringService {
   private async isBenchmarkAlertRetryStillSendable(benchmarkId: string): Promise<boolean> {
     const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
     if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
-    const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark);
+    const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark);
     if (String((benchmark as any).status || 'active') !== 'active') return false;
     const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, true);
     if (!campaignName) return false;
+    if (!isAlertDecisionBreached(benchmark)) return false;
     const currentValue = this.parseAlertNumber(benchmark.currentValue);
     const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
     if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;
@@ -357,11 +362,12 @@ class AlertMonitoringService {
 
       for (const rawKpi of kpisToCheck) {
         if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) continue;
-        const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
+        const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);
         // Skip if no email recipients configured
         if (!kpi.emailRecipients) continue;
         const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
         if (!campaignName) continue;
+        if (!isAlertDecisionBreached(kpi)) continue;
 
         const frequency = (kpi.alertFrequency || 'daily') as any;
         const frequencyHours =
@@ -461,11 +467,12 @@ class AlertMonitoringService {
       const campaignMetricCache = new Map<string, Promise<any>>();
 
       for (const rawBenchmark of benchmarksToCheck) {
-        const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);
+        const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);
         // Skip if no email recipients configured
         if (!benchmark.emailRecipients) continue;
         const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);
         if (!campaignName) continue;
+        if (!isAlertDecisionBreached(benchmark)) continue;
 
         const frequency = (benchmark.alertFrequency || 'daily') as any;
         const frequencyHours =

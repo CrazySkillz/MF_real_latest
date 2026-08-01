@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "872ae881ed2ba73950bc4a949641f1a982bf84169344caf698c9f3c0ba35e8c5",
+  "contractSha256": "b9c4ed15dbe5eee0e14efe361721005da90909c6c1af15f408393971001f2865",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "5ee3f12011875552a5dcfa60d26b97a185b5421e",
+  "lastReviewedSha": "5939b106a0e28a1d4e8bb3adcd997878563f2022",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 4 locally corrects the traffic/rate window divergence, but financial source, failure-state, alert/UI, exact-result, report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
+  "invalidationReason": "Current Commit 5 locally corrects the bounded financial source and producer-failure contract, but alert/email insufficiency, UI state, exact-result/report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -20,6 +20,7 @@
     "sourceRules": [
       "Traffic and rate metrics remain selected-property and selected-campaign scoped.",
       "Financial values must use fixed documented source precedence; valid zero is authoritative and unavailable must not become zero.",
+      "Current Commit 5 locally applies provider-to-persisted-to-configured-breakdown precedence and preserves affected last-good stored values when required native, revenue, or spend inputs are unavailable.",
       "Custom and unsupported KPI values must not be overwritten by guessed recomputation."
     ],
     "windowRules": [
@@ -59,6 +60,7 @@
     { "path": "server/ga4-kpi-certification-gate.ts", "role": "certification invalidation checker", "sha256": null },
     { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": null },
     { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": null },
+    { "path": "server/campaign-current-value-financial-source-regression.test.ts", "role": "campaign current-value financial precedence and unavailable preservation regression", "sha256": null },
     { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": null },
     { "path": "server/ga4-kpi-reporting-window-regression.test.ts", "role": "campaign-timezone 30-completed-day and weighted Engagement Rate regression", "sha256": null },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": null },
@@ -149,7 +151,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 4: the checker passed after the reporting-window dependency/test contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
+      "evidence": "August 1, 2026 Current Commit 5: the checker passed after the financial-source dependency/test contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
     },
     {
       "id": "kpi_core_regressions",
@@ -161,7 +163,7 @@
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 3: 1 file / 5 tests passed using actual stored template keys, every supported legacy alias, and Pageviews through the shared live-card/browser-PDF resolver, actual persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and the shared report preflight/PDF builder. Deployed UI, email delivery, timer execution, and production data remain external gates."
+      "evidence": "August 1, 2026 Current Commit 5: 1 file / 10 tests passed through the actual shared live-card/browser-PDF resolver, persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and shared report preflight/PDF builder, including all three precedence branches, authoritative provider zero, dependency-isolated revenue/spend failures, and native-source unavailability preservation. Deployed UI, email delivery, timer execution, and production data remain external gates."
     },
     {
       "id": "metric_identity_contract",
@@ -176,10 +178,16 @@
       "evidence": "August 1, 2026 Current Commit 4: 1 file / 3 tests passed for campaign-timezone completed-day boundaries, incomplete-date clamping, exact 30-date persisted job inputs, session-weighted Engagement Rate, progress date, and separation of lifetime financial conversions. The relevant scheduler/consumer packet passed 10 files / 67 tests."
     },
     {
+      "id": "financial_source_failure_contract",
+      "command": "npm test -- server/campaign-current-value-financial-source-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/campaign-current-value-calculation-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 1, 2026 Current Commit 5: 5 files / 27 tests passed for fixed provider-to-persisted-to-configured-breakdown precedence, authoritative zero, malformed-candidate rejection, native/revenue/spend unavailability, dependency-isolated persistence, and last-good preservation. The neighboring packet passed 110 of 114 tests; four pre-existing stale source-text guards remain explicitly uncorrected and are not clean evidence."
+    },
+    {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 4: TypeScript completed successfully."
+      "evidence": "August 1, 2026 Current Commit 5: TypeScript completed successfully."
     },
     {
       "id": "production_build",

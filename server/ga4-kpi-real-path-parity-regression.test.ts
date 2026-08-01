@@ -274,6 +274,123 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(Number(JSON.parse(body[0].metadata).currentValue)).toBe(200);
   });
 
+  it("keeps authoritative provider zero ahead of higher persisted and breakdown candidates in the job and Notifications", async () => {
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [] });
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      revenueMetric: "purchaseRevenue",
+      totals: { ...dailyRow, revenue: 0, conversions: 5 },
+    });
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: 0, totalRevenue: 0, roas: 0, roi: -100, cpa: 20 });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+
+    const revenueKpi = kpiRows.find((row) => row.metric === "totalRevenue")!;
+    storageMock.getNotifications.mockResolvedValue([{
+      id: "notification-zero",
+      campaignId: campaign.id,
+      type: "performance-alert",
+      title: "stale title",
+      message: "stale message",
+      read: false,
+      createdAt: "2026-08-01T09:00:00.000Z",
+      metadata: JSON.stringify({ alertType: "performance-alert", kpiId: revenueKpi.id }),
+    }]);
+
+    vi.useRealTimers();
+    const response = await fetch(`${baseUrl}/api/notifications`);
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(Number(JSON.parse(body[0].metadata).currentValue)).toBe(0);
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
+  it("keeps persisted campaign-to-date totals ahead of configured breakdown when the provider candidate is incomplete", async () => {
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { sessions: 100, users: 80 } });
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      totals: { ...dailyRow, revenue: 999, conversions: 99 },
+    });
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: 200, totalRevenue: 200, roas: 2, roi: 100, cpa: 20 });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
+  it("uses the configured-lookback breakdown only when provider and persisted candidates are absent", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { sessions: 100, users: 80 } });
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      totals: { ...dailyRow, revenue: 150, conversions: 5 },
+    });
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: 200, totalRevenue: 200, roas: 2, roi: 100, cpa: 20 });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledWith(
+      campaign.id,
+      storageMock,
+      "30daysAgo",
+      connection.propertyId,
+      2000,
+      "parity_campaign",
+    );
+  });
+
+  it("preserves last-good financial rows only when their required source read is unavailable", async () => {
+    storageMock.getRevenueTotalForRange.mockRejectedValue(new Error("revenue read failed"));
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    let values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: -1, totalRevenue: -1, roas: -1, roi: -1, cpa: 20 });
+    for (const metric of ["revenue", "totalRevenue", "roas", "roi"]) {
+      const id = kpiRows.find((row) => row.metric === metric)!.id;
+      expect(storageMock.updateKPI).not.toHaveBeenCalledWith(id, expect.anything());
+    }
+
+    const revenueKpi = kpiRows.find((row) => row.metric === "totalRevenue")!;
+    storageMock.getNotifications.mockResolvedValue([{
+      id: "notification-unavailable",
+      campaignId: campaign.id,
+      type: "performance-alert",
+      title: "stale title",
+      message: "stale message",
+      read: false,
+      createdAt: "2026-08-01T09:00:00.000Z",
+      metadata: JSON.stringify({ alertType: "performance-alert", kpiId: revenueKpi.id }),
+    }]);
+    vi.useRealTimers();
+    const response = await fetch(`${baseUrl}/api/notifications`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"));
+    setAuthoritativeFixture();
+    storageMock.getSpendTotalForRange.mockRejectedValue(new Error("spend read failed"));
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: 200, totalRevenue: 200, roas: -1, roi: -1, cpa: -1 });
+  });
+
+  it("preserves every last-good financial row when all native GA4 candidates are unavailable", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error("provider unavailable"));
+    ga4ServiceMock.getAcquisitionBreakdown.mockRejectedValue(new Error("breakdown unavailable"));
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: -1, totalRevenue: -1, roas: -1, roi: -1, cpa: -1 });
+    for (const metric of ["revenue", "totalRevenue", "roas", "roi", "cpa"]) {
+      const id = kpiRows.find((row) => row.metric === metric)!.id;
+      expect(storageMock.updateKPI).not.toHaveBeenCalledWith(id, expect.anything());
+    }
+  });
+
   it("renders matching KPI and Insights values through the actual scheduled GA4 PDF path", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     const buffer = await buildGA4ScheduledPdfAttachment({ report, reportName: report.name, windowStart: "2026-07-02", windowEnd: "2026-07-31", campaignName: campaign.name });

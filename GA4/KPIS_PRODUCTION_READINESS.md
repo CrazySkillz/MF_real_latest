@@ -25,8 +25,8 @@ This file defines whether the current implementation is production-ready, what h
 The current UI, API, storage, refresh/scheduler, alert/email, notification, browser-report, and scheduled/server-report paths do not yet maintain one fully authoritative value contract:
 
 - Current Commit 4 locally aligns persisted Users, Sessions, Pageviews, Conversions, Conversion Rate, and Engagement Rate inputs plus notification enrichment to the same 30 completed reporting days in the campaign reporting timezone; Engagement Rate is session-weighted
-- live Revenue/ROAS/ROI/CPA use the fixed ordered financial source selector, but the job and notification resolver can replace inputs with a higher-revenue 90-day breakdown; revenue/spend read failures are coerced to zero
-- metric identity drift is locally corrected by Current Commit 3 and the traffic/rate window drift is locally corrected by Current Commit 4; source, failure-state, alert-state, exact-result, and persistence contracts remain unresolved
+- Current Commit 5 locally applies the documented financial source order to persisted recompute, campaign current-value refresh, and notification enrichment; successful zero is authoritative, malformed or failed required reads are unavailable, and affected stored KPI/Benchmark values are not overwritten
+- metric identity, traffic/rate windows, and the bounded financial producer/failure contract are locally corrected by Current Commits 3-5; alert-state, UI-state, exact-result/report, persistence, deployed, and external-validation contracts remain unresolved
 
 Locally proven, but not sufficient for certification:
 
@@ -40,12 +40,12 @@ Locally proven, but not sufficient for certification:
 
 Current unproven or unsafe paths:
 
-- KPI list failure renders as empty, and KPI source/query failures have no KPI-specific stale/last-good state; initial failures can collapse values to zero
+- KPI list failure still renders as empty, and the KPI UI has no KPI-specific failed/stale/last-good state even though the corrected background producers now preserve affected stored financial values
 - scheduler alert/email evaluation, card breach pulse, and browser PDF rows do not consistently apply the card/tracker insufficiency gates
 - source recompute, KPI reads/updates, and alert reconciliation swallow failures; job results do not identify the exact KPI IDs updated, so report preflight cannot prove selected rows are fresh
 - `kpi_progress` remains `numeric(10,2)` and can fail after current value update; KPI child-row deletion is non-transactional and notification hiding is best-effort
 - the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
-- the Current Commit 4 directly affected scheduler/consumer packet passed 67/67 tests; the full notification guard passed 33/35, retaining the two previously documented top-bar source-text failures for the broadened attention indicator
+- the Current Commit 5 focused financial packet passed 27/27 tests; the neighboring packet passed 110/114, retaining two pre-existing HubSpot formula/signature source-text failures and two pre-existing Notifications attention-indicator source-text failures
 
 External validation required after forward fixes: read-only target-data inventory (attempted August 1, 2026, but this environment has no `DATABASE_URL`; no data was read or changed); deployed valid-zero/unavailable/stale/provider-failure/source-mix/timezone parity; a timer-fired scheduler run with exact KPI update evidence; current GA4/token-refresh and email-provider evidence; and browser/direct/test/scheduled report, bell, Notifications, and Insights parity.
 
@@ -56,7 +56,7 @@ External validation required after forward fixes: read-only target-data inventor
 2. **Real-path cross-consumer parity guard — implemented and locally validated in Current Commit 2; certification remains withdrawn.** One authoritative nine-metric fixture now runs through the shared live-card/browser-PDF resolver, persisted GA4 job, KPI API, alert truth, notification enrichment API, Insights/scheduled PDF, and the shared preflight/PDF builder reached by direct snapshot, test-send, manual, and scheduled reports. Existing caller-reachability checks remain structural and do not replace the dynamic value guard.
 3. **Metric identity contract — implemented and locally validated in Current Commit 3; certification remains withdrawn.** One shared inventory now normalizes standard stored keys, display labels, Pageviews, and the supported legacy `total*` aliases across live values, dependency gating, recompute, alert deduplication, notification enrichment, Insights, and report consumers.
 4. **Authoritative window/date contract — implemented and locally validated in Current Commit 4; certification remains withdrawn.** Persisted traffic/count/rate inputs, notification enrichment, and the read-only Benchmark comparison resolver use 30 completed reporting days in the campaign reporting timezone; Engagement Rate is session-weighted. Deployment and external parity remain open.
-5. **Financial source/failure contract.** Replace higher-revenue financial selection with fixed source precedence; preserve valid zero and propagate unavailable without overwriting last-good values.
+5. **Financial source/failure contract - implemented and locally validated in Current Commit 5; certification remains withdrawn.** Persisted recompute, campaign current-value refresh, and notification enrichment now use fixed provider-to-persisted-to-configured-breakdown precedence, keep valid zero authoritative, reject malformed values, and preserve affected last-good KPI/Benchmark values when required native/revenue/spend reads are unavailable.
 6. **Alert/notification contract.** Apply identical blocked/insufficient/unavailable rules to in-app alerts, email eligibility, duplicate refresh, bell state, and notification enrichment.
 7. **UI and browser-consumer states.** Distinguish empty from failed/stale in the KPI UI, state the window, and align card pulse, tracker, Insights, and browser PDF status.
 8. **Recompute/report proof.** Return exact KPI update/skip/failure IDs; make source lifecycle and all report preflights fail closed for selected KPI rows.
@@ -169,7 +169,7 @@ Smallest safe implementation:
 Side-effect boundary:
 
 - formulas, source precedence, windows/timezones, valid-zero/unavailable behavior, scheduler result shape, schema, and production data were not changed
-- At the Current Commit 3 boundary, Current Commits 4-10 remained open. Current Commit 4 is now implemented below; Current Commits 5-10 remain open.
+- At the Current Commit 3 boundary, Current Commits 4-10 remained open. Current Commits 4 and 5 are now implemented below; Current Commits 6-10 remain open.
 
 Validation on August 1, 2026:
 
@@ -232,8 +232,63 @@ What this proves:
 
 What this does not prove:
 
-- Current Commits 5-10: fixed financial source precedence, valid-zero/unavailable/stale/failure behavior, alert/email insufficiency rules, UI states, exact recompute result IDs, persistence/destructive safety, or final re-certification
+- At the Current Commit 4 boundary, Current Commits 5-10 remained open. Current Commit 5 is now implemented below; Current Commits 6-10 remain open.
 - target production data, deployed UI/report/notification parity, a timer-fired run, live provider/token refresh, email delivery, or production behavior
+- GA4 KPI production readiness
+
+### Current Commit 5 - Financial source/failure contract
+
+Status: implemented and locally validated. Certification remains withdrawn.
+
+Root cause:
+
+- the persisted GA4 KPI/Benchmark job and notification enrichment each had a local "higher revenue wins" transform, so a later configured-lookback breakdown could replace an earlier complete campaign-to-date provider or persisted candidate
+- falsy fallback expressions treated an authoritative provider zero as absent when a nonzero fallback existed
+- required imported-revenue and spend read failures were caught as zero before recompute, making source failure indistinguishable from a successful zero and allowing affected last-good values to be overwritten
+- the campaign current-value resolver treated an empty successful daily query as a complete zero-valued native candidate, so a fully unavailable native source could be presented as zero
+
+Smallest safe implementation:
+
+- the existing shared ordered selector now accepts only finite numeric or nonblank numeric-string revenue and conversion pairs; zero and negative values remain complete candidates, while blanks, booleans, arrays, missing fields, and non-finite values are rejected
+- persisted platform recompute, campaign current-value refresh, and notification enrichment select in fixed order: campaign-to-date provider totals, persisted campaign-to-date daily totals when rows exist, then the connection's configured-lookback breakdown only when no earlier complete candidate exists
+- persisted recompute reads campaign-scoped imported revenue and spend independently and keeps a failure/malformed state as unavailable; dependency-aware gating skips only the affected financial KPI/Benchmark rows, so Revenue can still update when spend fails and CPA can still update when imported revenue fails
+- native candidate failure skips all affected financial KPI/Benchmark current-value and progress writes; the campaign current-value refresh likewise returns no replacement value, preserving each stored last-good value
+- Notifications recompute from the same ordered financial inputs and suppress an affected stale alert row when a required native/revenue/spend input cannot be verified
+
+Side-effect boundary:
+
+- no KPI/Benchmark formula, metric identity, traffic/rate window, API response shape, schema, destructive path, alert-email policy, report preflight result, or production data changed
+- this commit does not add the identical alert/email insufficiency contract from Current Commit 6, the UI stale/unavailable states from Current Commit 7, or exact recompute/report proof from Current Commit 8
+- no production write, cleanup, migration, or provider validation was run
+
+Files changed:
+
+- `shared/ga4-financial-source.ts`
+- `server/ga4-kpi-benchmark-jobs.ts`
+- `server/utils/campaign-current-values.ts`
+- `server/routes-oauth.ts`
+- focused financial-source, real-path, campaign-current-value, notification, and adjacent source regression guards
+- canonical KPI status/evidence and certification-boundary files
+
+Validation on August 1, 2026:
+
+- focused financial contract packet passed: 5 files / 27 tests
+- directly affected and neighboring scheduler/source/notification packet passed 110 of 114 tests; the four failures are pre-existing stale source-text guards: two HubSpot guards still expect pre-Commit-2/3 inline formulas/signatures, and two Notifications guards still expect the old KPI-only attention label instead of the existing combined attention behavior
+- `npm test -- server/ga4-kpi-certification-gate.test.ts` passed: 1 file / 9 tests; `npm run check:ga4-kpi-certification` passed
+- `npm run check` passed
+
+What this proves:
+
+- the locally exercised persisted job, campaign current-value refresh, and notification resolver no longer choose the numerically highest revenue candidate
+- provider zero remains authoritative over higher persisted and breakdown totals; a complete persisted candidate prevents the configured-breakdown call
+- malformed or failed native, imported-revenue, and spend inputs do not become zero on the corrected producer paths, and affected last-good KPI/Benchmark values are not overwritten
+- dependency isolation is exercised: imported-revenue failure blocks Revenue/ROAS/ROI but not CPA, while spend failure blocks ROAS/ROI/CPA but not Revenue
+
+What this does not prove:
+
+- identical blocked/insufficient/unavailable decisions across alert creation, email eligibility, duplicate refresh, bell/UI state, Insights, browser PDF, or reports; those remain Current Commits 6-8
+- exact updated/skipped/failed KPI IDs, report freshness proof, persistence/destructive safety, or cleanup need; those remain Current Commits 8-10
+- target production data, deployed behavior, timer execution, live provider/token refresh, external notification/report parity, or email delivery
 - GA4 KPI production readiness
 
 ## Historical Status And Evidence (non-authoritative)

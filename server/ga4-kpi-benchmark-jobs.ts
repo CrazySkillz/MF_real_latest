@@ -2,11 +2,13 @@ import { storage } from "./storage";
 import { ga4Service } from "./analytics";
 import { computeCpa, computeConversionRatePercent, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import {
+  getGA4KpiMetricDependencies,
   getGA4KpiMetricIdentity,
   isComputableGA4KpiMetricIdentity,
   isGA4FinancialKpiMetricIdentity,
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
+import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { getReportingDateWindow } from "./utils/reporting-timezone";
@@ -302,7 +304,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           engagementRate: sessions > 0 ? (trafficTotals.engagedSessions + baselineEngagedSessions) / sessions : 0,
         };
       }
-      const toDateRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => []);
+      const toDateRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => null as any);
       let sessionsToDate = 0;
       let usersToDate = 0;
       let conversionsToDate = 0;
@@ -316,6 +318,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         ga4RevenueToDate += Number((r as any)?.revenue || 0) || 0;
       }
 
+      let providerFinancialCandidate: any = null;
       if (isYesopMockProperty(propertyId)) {
         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue);
         sessionsToDate += baseline.sessions;
@@ -332,11 +335,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
             };
             try {
               const res = await attempt(String(conn.accessToken));
-              sessionsToDate = Number(res?.totals?.sessions || sessionsToDate) || 0;
-              usersToDate = Number(res?.totals?.users || usersToDate) || 0;
-              conversionsToDate = Number(res?.totals?.conversions || conversionsToDate) || 0;
-              pageviewsToDate = Number(res?.totals?.pageviews || pageviewsToDate) || 0;
-              ga4RevenueToDate = Number(res?.totals?.revenue || ga4RevenueToDate) || 0;
+              providerFinancialCandidate = isGA4FinancialTotalsCandidate(res?.totals) ? res.totals : null;
             } catch (e: any) {
               const msg = String(e?.message || "");
               const isAuth =
@@ -359,11 +358,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
                   expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
                 });
                 const res = await attempt(String(refresh.access_token));
-                sessionsToDate = Number(res?.totals?.sessions || sessionsToDate) || 0;
-                usersToDate = Number(res?.totals?.users || usersToDate) || 0;
-                conversionsToDate = Number(res?.totals?.conversions || conversionsToDate) || 0;
-                pageviewsToDate = Number(res?.totals?.pageviews || pageviewsToDate) || 0;
-                ga4RevenueToDate = Number(res?.totals?.revenue || ga4RevenueToDate) || 0;
+                providerFinancialCandidate = isGA4FinancialTotalsCandidate(res?.totals) ? res.totals : null;
               }
             }
           }
@@ -373,14 +368,16 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
 
       const financialSourceWindow = getGA4KPIFinancialSourceWindow();
-      const importedRevenueTotals = await storage
-        .getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")
-        .catch(() => ({ totalRevenue: 0 }));
-      // Use actual spend records (not the denormalized campaign.spend field which can be stale).
-      const spendTotalResult = await storage
-        .getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")
-        .catch(() => ({ totalSpend: 0 }));
-      const spendToDate = Number((spendTotalResult as any)?.totalSpend || 0) || 0;
+      const [importedRevenueResult, spendTotalResult] = await Promise.allSettled([
+        storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
+        storage.getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
+      ]);
+      const importedRevenueValue = importedRevenueResult.status === "fulfilled"
+        ? parseGA4FinancialNumber((importedRevenueResult.value as any)?.totalRevenue)
+        : null;
+      const spendValue = spendTotalResult.status === "fulfilled"
+        ? parseGA4FinancialNumber((spendTotalResult.value as any)?.totalSpend)
+        : null;
 
       const inputs = {
         users: Math.round(trafficTotals.users || 0),
@@ -388,8 +385,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         pageviews: Math.round(trafficTotals.pageviews || 0),
         conversions: Math.round(trafficTotals.conversions || 0),
         ga4Revenue: round2(trafficTotals.revenue || 0),
-        importedRevenue: round2(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0),
-        spend: round2(spendToDate || 0),
+        importedRevenue: round2(importedRevenueValue ?? 0),
+        spend: round2(spendValue ?? 0),
         engagementRate: Number(trafficTotals.engagementRate || 0) || 0,
       };
       const kpis = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []);
@@ -408,36 +405,49 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           isGA4FinancialKpiMetric(String(benchmark?.metric || "")),
         );
 
-      let financialInputs = {
-        ...inputs,
+      const persistedFinancialCandidate = (Array.isArray(toDateRows) && toDateRows.length > 0) || isYesopMockProperty(propertyId) ? {
         users: Math.round(usersToDate || 0),
         sessions: Math.round(sessionsToDate || 0),
         pageviews: Math.round(pageviewsToDate || 0),
         conversions: Math.round(conversionsToDate || 0),
-        ga4Revenue: round2(ga4RevenueToDate || 0),
-      };
-      const applyGA4FinancialCandidate = (candidate: any) => {
-        const candidateRevenue = Number(candidate?.revenue || candidate?.ga4Revenue || 0) || 0;
-        if (candidateRevenue <= Number(financialInputs.ga4Revenue || 0)) return;
-        financialInputs = {
-          ...financialInputs,
-          users: Math.round(Number(candidate?.users || financialInputs.users || 0) || 0),
-          sessions: Math.round(Number(candidate?.sessions || candidate?.sessionsRaw || financialInputs.sessions || 0) || 0),
-          pageviews: Math.round(Number(candidate?.pageviews || financialInputs.pageviews || 0) || 0),
-          conversions: Math.round(Number(candidate?.conversions || financialInputs.conversions || 0) || 0),
-          ga4Revenue: round2(candidateRevenue),
-          engagementRate: Number(candidate?.engagementRate || financialInputs.engagementRate || 0) || 0,
-        };
-      };
-      if (hasFinancialMetric && !isYesopMockProperty(propertyId)) {
+        revenue: round2(ga4RevenueToDate || 0),
+      } : null;
+      let breakdownFinancialCandidate: any = null;
+      const missingEarlierFinancialCandidate = !isGA4FinancialTotalsCandidate(
+        selectGA4FinancialTotalsSource([providerFinancialCandidate, persistedFinancialCandidate], {} as any),
+      );
+      if (hasFinancialMetric && missingEarlierFinancialCandidate && !isYesopMockProperty(propertyId)) {
         try {
-          const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, campaignFilter);
-          applyGA4FinancialCandidate((breakdown as any)?.totals || {});
+          const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays)) ? Number((primary as any).lookbackDays) : 90;
+          const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, `${lookbackDays}daysAgo`, propertyId, 2000, campaignFilter);
+          breakdownFinancialCandidate = isGA4FinancialTotalsCandidate((breakdown as any)?.totals) ? (breakdown as any).totals : null;
         } catch {
           // Keep the existing to-date/daily financial source if breakdown is unavailable.
         }
       }
-      const inputsForMetric = (metric: string) => isGA4FinancialKpiMetric(metric) ? financialInputs : inputs;
+      const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
+        [providerFinancialCandidate, persistedFinancialCandidate, breakdownFinancialCandidate],
+        {} as any,
+      );
+      const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
+      const financialInputs = financialCandidateAvailable ? {
+        ...inputs,
+        users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? inputs.users),
+        sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? inputs.sessions),
+        pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? inputs.pageviews),
+        conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
+        ga4Revenue: round2(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0),
+        importedRevenue: round2(importedRevenueValue ?? 0),
+        spend: round2(spendValue ?? 0),
+      } : null;
+      const inputsForMetric = (metric: string) => {
+        if (!isGA4FinancialKpiMetric(metric)) return inputs;
+        const dependencies = getGA4KpiMetricDependencies(metric);
+        if (!financialInputs) return null;
+        if (dependencies.requiresRevenue && importedRevenueValue === null) return null;
+        if (dependencies.requiresSpend && spendValue === null) return null;
+        return financialInputs;
+      };
 
       // 1) KPI progress points (daily)
       for (const kpi of Array.isArray(kpis) ? kpis : []) {
@@ -447,7 +457,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const metricOrName = resolveGA4KpiMetricIdentity((kpi as any)?.metric, (kpi as any)?.name);
         if (!metricOrName) continue;
 
-        const valueNum = computeKpiValue(metricOrName, inputsForMetric(metricOrName));
+        const metricInputs = inputsForMetric(metricOrName);
+        if (!metricInputs) continue;
+        const valueNum = computeKpiValue(metricOrName, metricInputs);
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {
@@ -493,7 +505,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const metricKey = String((b as any)?.metric || "").trim();
         if (!metricKey) continue; // can't compute without a metric key
 
-        const currentValue = computeKpiValue(metricKey, inputsForMetric(metricKey));
+        const metricInputs = inputsForMetric(metricKey);
+        if (!metricInputs) continue;
+        const currentValue = computeKpiValue(metricKey, metricInputs);
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {

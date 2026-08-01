@@ -213,9 +213,9 @@ describe("Shopify revenue regression guard", () => {
     expect(reportPdf).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");
     expect(reportPdf).toContain('["Total Revenue", formatMoney(payload.financialRevenue)]');
     expect(kpiBenchmarkJobs).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
-    expect(kpiBenchmarkJobs).toContain("const inputsForMetric = (metric: string) => isGA4FinancialKpiMetric(metric) ? financialInputs : inputs;");
-    expect(routes).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
-    expect(routes).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs : ga4Inputs;");
+    expect(kpiBenchmarkJobs).toContain("if (dependencies.requiresRevenue && importedRevenueValue === null) return null;");
+    expect(routes).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
+    expect(routes).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs! : ga4Inputs;");
   });
 
   it("does not silently truncate Shopify order pagination", () => {

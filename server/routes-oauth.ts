@@ -39,9 +39,10 @@ import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefr
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
-import { selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { addDerivedGA4EngagedSessions, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import {
+  getGA4KpiMetricDependencies,
   isGA4FinancialKpiMetricIdentity,
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
@@ -6497,7 +6498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportingWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);
       const { startDate, endDate } = reportingWindow;
       const financialStartDate = notificationCampaignStartDate(campaign);
-      const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, endDate).catch(() => [] as any[]);
+      const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, endDate).catch(() => null as any);
       const sourceRows = Array.isArray(rows) ? rows : [];
       const trafficRows = sourceRows.filter((row: any) => String(row?.date || "") >= startDate && String(row?.date || "") <= endDate);
       const totals = summarizeGA4TrafficRows(trafficRows);
@@ -6510,31 +6511,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ga4Revenue: Number((totals.revenue || 0).toFixed(2)),
         engagementRate: Number(totals.engagementRate || 0) || 0,
       };
-      let hasGA4SourceInput = sourceRows.length > 0;
+      let hasGA4SourceInput = trafficRows.length > 0;
       const usesGA4FinancialSource = isGA4FinancialKpiMetricIdentity(metricOrName);
-      let ga4FinancialInputs = {
+      const storedFinancialCandidate = sourceRows.length > 0 ? {
         users: Math.round(financialTotals.users || 0),
         sessions: Math.round(financialTotals.sessions || 0),
         pageviews: Math.round(financialTotals.pageviews || 0),
         conversions: Math.round(financialTotals.conversions || 0),
-        ga4Revenue: Number((financialTotals.revenue || 0).toFixed(2)),
+        revenue: Number((financialTotals.revenue || 0).toFixed(2)),
         engagementRate: Number(financialTotals.engagementRate || 0) || 0,
-      };
-      const applyGA4FinancialCandidate = (candidate: any) => {
-        if (!usesGA4FinancialSource) return;
-        const candidateRevenue = Number(candidate?.revenue || candidate?.ga4Revenue || 0) || 0;
-        if (candidateRevenue > Number(ga4FinancialInputs.ga4Revenue || 0)) {
-          ga4FinancialInputs = {
-            users: Math.round(Number(candidate?.users || ga4FinancialInputs.users || 0) || 0),
-            sessions: Math.round(Number(candidate?.sessions || candidate?.sessionsRaw || ga4FinancialInputs.sessions || 0) || 0),
-            pageviews: Math.round(Number(candidate?.pageviews || ga4FinancialInputs.pageviews || 0) || 0),
-            conversions: Math.round(Number(candidate?.conversions || ga4FinancialInputs.conversions || 0) || 0),
-            ga4Revenue: Number(candidateRevenue.toFixed(2)),
-            engagementRate: Number(candidate?.engagementRate || ga4FinancialInputs.engagementRate || 0) || 0,
-          };
-          hasGA4SourceInput = true;
-        }
-      };
+      } : null;
+      let providerFinancialCandidate: any = null;
+      let mockFinancialCandidate: any = null;
       if (isYesopMockProperty(propertyId)) {
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
         const trafficSim = simulateGA4({ campaignId, propertyId, dateRange: "30days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
@@ -6549,7 +6537,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           engagementRate: Number(combinedTraffic.engagementRate || 0) || 0,
         };
         const financialSim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
-        applyGA4FinancialCandidate((financialSim as any)?.totals || {});
+        const financialSimRows = Array.isArray((financialSim as any)?.timeSeries) ? (financialSim as any).timeSeries : [];
+        const combinedFinancial = summarizeGA4TrafficRows([...sourceRows, ...financialSimRows]);
+        mockFinancialCandidate = {
+          ...combinedFinancial,
+          revenue: combinedFinancial.revenue,
+        };
         hasGA4SourceInput = hasGA4SourceInput || trafficSimRows.length > 0;
       } else {
         const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
@@ -6570,7 +6563,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const assignProviderInputs = async (token: string) => {
             assignLiveTotals(await attempt(token, startDate));
             if (usesGA4FinancialSource) {
-              applyGA4FinancialCandidate((await attempt(token, financialStartDate))?.totals || {});
+              const candidate = (await attempt(token, financialStartDate))?.totals;
+              providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
             }
           };
           try {
@@ -6600,32 +6594,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Keep the stored daily-row fallback for notification rendering only.
           }
         }
-        try {
-          const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
-          applyGA4FinancialCandidate((breakdown as any)?.totals || {});
-        } catch {
-          // Keep the already-resolved GA4 source if the breakdown endpoint is unavailable.
+        const earlierFinancialCandidate = selectGA4FinancialTotalsSource([providerFinancialCandidate, storedFinancialCandidate], {} as any);
+        if (usesGA4FinancialSource && !isGA4FinancialTotalsCandidate(earlierFinancialCandidate)) {
+          try {
+            const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays)) ? Number((primary as any).lookbackDays) : 90;
+            const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, `${lookbackDays}daysAgo`, propertyId, 2000, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
+            const candidate = (breakdown as any)?.totals;
+            providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
+          } catch {
+            // Keep the already-resolved GA4 source if the breakdown endpoint is unavailable.
+          }
         }
       }
+      const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
+        [mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate],
+        {} as any,
+      );
+      const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
+      const ga4FinancialInputs = financialCandidateAvailable ? {
+        users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? ga4Inputs.users),
+        sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? ga4Inputs.sessions),
+        pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? ga4Inputs.pageviews),
+        conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
+        ga4Revenue: Number((parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0).toFixed(2)),
+        engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
+      } : null;
       const financialWindow = getGA4KPIFinancialSourceWindow();
-      const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0 }));
-      const spend = await storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalSpend: 0 }));
-      const importedRevenueValue = Number((importedRevenue as any)?.totalRevenue || 0) || 0;
-      const spendValue = Number((spend as any)?.totalSpend || 0) || 0;
+      const [importedRevenueResult, spendResult] = await Promise.allSettled([
+        storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
+        storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
+      ]);
+      const importedRevenue = importedRevenueResult.status === "fulfilled" ? importedRevenueResult.value : null;
+      const spend = spendResult.status === "fulfilled" ? spendResult.value : null;
+      const importedRevenueValue = parseGA4FinancialNumber((importedRevenue as any)?.totalRevenue);
+      const spendValue = parseGA4FinancialNumber((spend as any)?.totalSpend);
       const hasFinancialSourceInput = (Array.isArray((importedRevenue as any)?.sourceIds) && (importedRevenue as any).sourceIds.length > 0)
         || (Array.isArray((spend as any)?.sourceIds) && (spend as any).sourceIds.length > 0);
-      if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;
+      if (usesGA4FinancialSource) {
+        const dependencies = getGA4KpiMetricDependencies(metricOrName);
+        const financialSourceVerified = !!ga4FinancialInputs
+          && (!dependencies.requiresRevenue || importedRevenueValue !== null)
+          && (!dependencies.requiresSpend || spendValue !== null);
+        if (!financialSourceVerified) return { ...resolved, __ga4NotificationSourceVerified: false };
+      }
+      if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === null && spendValue === null) return resolved;
       // Do not show a source-backed GA4 alert from stale persisted data when native GA4 input is unavailable.
-      if (!hasGA4SourceInput) return { ...resolved, __ga4NotificationSourceVerified: false };
-      const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs : ga4Inputs;
+      if (!usesGA4FinancialSource && !hasGA4SourceInput) return { ...resolved, __ga4NotificationSourceVerified: false };
+      const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs! : ga4Inputs;
       const currentValue = computeKpiValue(metricOrName, {
         users: kpiInputs.users,
         sessions: kpiInputs.sessions,
         pageviews: kpiInputs.pageviews,
         conversions: kpiInputs.conversions,
         ga4Revenue: kpiInputs.ga4Revenue,
-        importedRevenue: importedRevenueValue,
-        spend: spendValue,
+        importedRevenue: importedRevenueValue ?? 0,
+        spend: spendValue ?? 0,
         engagementRate: kpiInputs.engagementRate,
       });
       return { ...resolved, currentValue: String(currentValue) };

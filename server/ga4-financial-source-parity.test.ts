@@ -23,7 +23,7 @@ describe("GA4 downstream financial-source parity", () => {
   it("falls through provider-empty candidates in declared order", () => {
     const daily = { revenue: 0, conversions: 0, source: "daily" };
     const breakdown = { revenue: 175, conversions: 30, source: "breakdown" };
-    expect(selectGA4FinancialTotalsSource([{}, { sessions: 20, users: 10 }, null, daily, breakdown], breakdown)).toBe(daily);
+    expect(selectGA4FinancialTotalsSource([{}, { sessions: 20, users: 10 }, { revenue: "", conversions: "" }, { revenue: false, conversions: [] }, null, daily, breakdown], breakdown)).toBe(daily);
   });
 
   it("uses the shared ordered selector in Overview, outcome totals, campaign current values, and scheduled aggregates", () => {

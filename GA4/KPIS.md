@@ -13,7 +13,7 @@ As of the August 1, 2026 fresh re-certification, the GA4 `KPIs` tab is **not pro
 The controlling source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Historical June validation remains evidence only. Later shared-input changes and newly traced gaps invalidated cards-to-persistence parity, alert/notification decisions, Insights/report consumers, failure states, scheduler dates, and destructive/persistence safety.
 Future sessions must not carry a readiness answer forward from prose. They must verify the certification record, certified SHA/dependency boundary, invalidation result, real-path parity suite, and remaining external gates. Until that mechanism and the current queue are complete, the answer remains not production-ready.
 
-The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. The current record is `UNVERIFIED`; Current Commits 1-4 implement the integrity gate, real-path parity guard, metric identity contract, and authoritative traffic/rate window contract. Current Commits 5-10, external validation, and re-certification remain open.
+The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. The current record is `UNVERIFIED`; Current Commits 1-5 implement the integrity gate, real-path parity guard, metric identity contract, authoritative traffic/rate window contract, and bounded financial source/failure contract. Current Commits 6-10, external validation, and re-certification remain open.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -287,6 +287,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is not production-ready. Current Commit 4 locally makes persisted traffic/count/rate values and notification enrichment use 30 completed reporting days in the campaign reporting timezone with session-weighted Engagement Rate. Financial source precedence, failure and valid-zero states, alert/UI rules, exact recompute results, persistence safety, deployed behavior, and external validation remain open in Current Commits 5-10.
+The GA4 `KPIs` tab is not production-ready. Current Commit 4 locally makes persisted traffic/count/rate values and notification enrichment use 30 completed reporting days in the campaign reporting timezone with session-weighted Engagement Rate. Current Commit 5 locally corrects fixed financial precedence, valid-zero handling, and bounded producer-failure preservation. Alert/email and UI rules, exact recompute/report proof, persistence safety, deployed behavior, and external validation remain open in Current Commits 6-10.
 
 The controlling evidence boundary, prevention contract, external gates, and Current Commits 0-10 are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

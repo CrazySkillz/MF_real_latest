@@ -1,8 +1,15 @@
+export function parseGA4FinancialNumber(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function isGA4FinancialTotalsCandidate(candidate: unknown): boolean {
   if (!candidate) return false;
   return ["revenue", "conversions"].every((field) => {
     const value = (candidate as any)?.[field];
-    return value !== null && value !== undefined && Number.isFinite(Number(value));
+    return parseGA4FinancialNumber(value) !== null;
   });
 }
 

@@ -1,6 +1,6 @@
 import { storage } from "../storage";
 import { ga4Service } from "../analytics";
-import { selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
+import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
 
 type CalcConfig = {
   metric?: string;
@@ -197,30 +197,38 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
           // Keep persisted and breakdown candidates when to-date provider totals are unavailable.
         }
       }
-      try {
-        const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
-          ? Number((primary as any).lookbackDays)
-          : 90;
-        const breakdown = await ga4Service.getAcquisitionBreakdown(
-          campaignId,
-          storage,
-          `${lookbackDays}daysAgo`,
-          propertyId,
-          2000,
-          campaignFilter,
-        );
-        breakdownCandidate = (breakdown as any)?.totals || {};
-      } catch {
-        // Keep persisted and to-date candidates when breakdown totals are unavailable.
+      const earlierFinancialCandidate = selectGA4FinancialTotalsSource([
+        toDateCandidate,
+        financialRows?.length > 0 ? dailyCandidate : null,
+      ], {} as any);
+      if (!isGA4FinancialTotalsCandidate(earlierFinancialCandidate)) {
+        try {
+          const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
+            ? Number((primary as any).lookbackDays)
+            : 90;
+          const breakdown = await ga4Service.getAcquisitionBreakdown(
+            campaignId,
+            storage,
+            `${lookbackDays}daysAgo`,
+            propertyId,
+            2000,
+            campaignFilter,
+          );
+          breakdownCandidate = (breakdown as any)?.totals || {};
+        } catch {
+          // Keep persisted and to-date candidates when breakdown totals are unavailable.
+        }
       }
       const selectedFinancialCandidate = selectGA4FinancialTotalsSource([
         toDateCandidate,
         financialRows?.length > 0 ? dailyCandidate : null,
         breakdownCandidate,
-      ], toDateCandidate || dailyCandidate);
-      ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
-      financialConversions = parseNum(selectedFinancialCandidate?.conversions);
-      ga4RevenueAvailable = toDateCandidate !== null || financialRows !== null || breakdownCandidate !== null;
+      ], {} as any);
+      ga4RevenueAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
+      if (ga4RevenueAvailable) {
+        ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
+        financialConversions = parseNum(selectedFinancialCandidate?.conversions);
+      }
     }
   }
   if (financialConversions === null) financialConversions = conversions;

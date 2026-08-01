@@ -36,9 +36,9 @@ Commit 17's bounded forward implementation deployed as `36676deb`; the user conf
 
 Commit 18's fail-closed downstream correction and corrective scheduler-backed Summary are deployed. The bounded 30-day metric-correction follow-up passed on `2026-08-01`, but unavailable/last-good downstream production fixtures, browser report/Executive Summary parity, historical Trend, live multi-source combinations, and the named external/scheduler gates remain unproven.
 
-Commit 19 runtime `ba2e4329` is deployed. The user confirmed the existing `GA4 single` / `ga4_mock` page shows `Last 30 completed days` and loads its metric cards normally. Unsupported missing/60/90-day persistence rejection is automated/code-path proven at that deployed source commit and was deliberately not production-injected. The bounded Commit 19 implementation is closed without production-data mutation. The final non-scheduler production reconciliation ran but did not pass because four active retained Spend sources remain undispositioned; OAuth durability remains pending until `2026-08-07` or later.
+Commit 19 runtime `ba2e4329` is deployed. The user confirmed the existing `GA4 single` / `ga4_mock` page shows `Last 30 completed days` and loads its metric cards normally. Unsupported missing/60/90-day persistence rejection is automated/code-path proven at that deployed source commit and was deliberately not production-injected. The bounded Commit 19 implementation is closed without production-data mutation. The user reviewed and explicitly approved keeping all four visible retained Spend sources, closing their disposition question. The final non-scheduler production reconciliation still did not pass because the active retained Google Sheets Spend lifecycle is not clean-certified; OAuth durability remains pending until `2026-08-07` or later.
 
-The earlier clean-certified answer is retracted. Commits 1–19 close only their documented bounded packets. Future 60/90-day options are outside the current release rather than active certification targets. Observed automatic token renewal, post-publish seven-day durability, the remaining production reconciliation, enabled-but-unproven source paths, incomplete downstream proof, retained production-data disposition, and named scheduler exclusions still block complete certification.
+The earlier clean-certified answer is retracted. Commits 1–19 close only their documented bounded packets. Future 60/90-day options are outside the current release rather than active certification targets. The retained-source keep/remove review is complete, but the active retained Google Sheets Spend lifecycle remains unproven. That included source path, OAuth durability, and the named scheduler exclusions prevent complete certification.
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
@@ -46,7 +46,7 @@ Commit 16 deployed as `747192ff`. The user queried the authenticated connection 
 
 The durable answer is:
 
-`No. GA4 Overview is not production-ready or clean-certified. Commits 1–19 are closed only for their documented bounded packets. Commit 19's deployed 30-day UI path is proven, and unsupported-window rejection is automated/code-path proven but not production-injected. The authenticated final production reconciliation did not pass because four active retained Spend sources remain undispositioned. OAuth durability on or after 2026-08-07, retained-source/data disposition, included downstream proof, and named scheduler exclusions remain open or unproven.`
+`No. GA4 Overview is not production-ready or clean-certified. Commits 1–19 are closed only for their documented bounded packets. The four retained Spend sources were reviewed and approved to remain, but the active Google Sheets Spend lifecycle is not clean-certified, so the final non-scheduler pack did not pass. OAuth durability must still be validated on or after 2026-08-07. The named scheduler exclusions remain explicitly unproven.`
 
 ## Scope
 
@@ -586,10 +586,11 @@ Completed read-only run on `2026-08-01`:
 - the deployed public `/health` endpoint returned HTTP 200
 - the user supplied the authenticated campaign-guarded inventory captured at `2026-08-01T12:14:14.823Z`; it returned `success=true`, `readonly=true`, `overallPass=true`, zero generic damage findings, `csvInventoryPass=true`, `hubspotInventoryPass=true`, `hubspotProvenancePass=true`, and `shopifyLocalPersistencePass=true`
 - the same inventory returned `retainedSourceInventoryPass=false`: four active retained Spend sources with eight records remain in the current totals—three legacy-null-context CSV sources totaling $2,000.00 and one legacy-null-context Google Sheets source totaling $698.75
-- automatic cleanup is explicitly disallowed; each exact source requires reviewed support, migration, or deactivation under separate authorization
+- the user compared those four names and amounts with the deployed Spend Sources modal and explicitly approved keeping all four; this is their reviewed `keep/support` disposition, and no cleanup is required or authorized
+- `retainedSourceInventoryPass=false` remains a technical presence signal and is not a damage finding after this reviewed disposition
 - `shopifyInventoryScopeComplete=false`; the current campaign-local run does not independently prove provider order/refund lineage, historical completeness/convergence, or privileged cross-campaign overlap. The separate canonical Shopify readiness record remains the authority for its bounded enabled Admin API token scope.
 - `overviewPack(...)`, `commit16Pack(...)`, `/ga4-daily`, provider-validation, refresh, report creation/send, and scheduler-trigger endpoints were not called because they can renew tokens, persist daily rows, recompute, snapshot, or otherwise mutate state
-- result: **run completed but did not pass; retained-source disposition remains unresolved and clean certification is not authorized**
+- result: **did not pass; the retained-source disposition is closed as keep/support, but the included active Google Sheets Spend refresh/credential lifecycle remains unproven**
 
 - Summary, financial cards, source lists, and Campaign Breakdown retain the documented property/campaign/window/source boundaries
 - valid zero remains a value and unavailable data never becomes a misleading zero
@@ -601,7 +602,7 @@ Completed read-only run on `2026-08-01`:
 
 Any unavailable production fixture must be covered by deterministic regression evidence and a proven fail-closed deployed contract; it cannot be described as an observed production failure.
 
-Current classification: **failed/open because four active retained Spend sources remain undispositioned; no cleanup was authorized or performed**.
+Current classification: **failed/open on the active retained Google Sheets Spend lifecycle; no cleanup was authorized or performed**.
 
 ## Explicit Scheduler Exclusions
 

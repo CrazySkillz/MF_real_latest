@@ -104,7 +104,7 @@ await GA4OverviewValidation.sourceDamageInventory({
 
 This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
 
-Recorded `2026-08-01` final-pack evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: the endpoint returned `success=true`, `readonly=true`, zero generic damage findings, and passing CSV/HubSpot/Shopify-local checks. The final pack still did not pass because `retainedSourceInventoryPass=false` for four active retained Spend sources totaling $2,698.75. `shopifyInventoryScopeComplete=false` also preserves the campaign-local provider/history/cross-campaign evidence boundary. No cleanup was authorized or performed.
+Recorded `2026-08-01` final-pack evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: the endpoint returned `success=true`, `readonly=true`, zero generic damage findings, and passing CSV/HubSpot/Shopify-local checks. The user matched the four visible retained Spend sources totaling $2,698.75 to the deployed modal and explicitly approved keeping all four. `retainedSourceInventoryPass=false` therefore records their presence, not damage. The active Google Sheets Spend refresh/credential lifecycle remains unproven under its canonical readiness record. `shopifyInventoryScopeComplete=false` preserves the campaign-local provider/history/cross-campaign evidence boundary governed by the separate canonical Shopify readiness record. The final non-scheduler pack did not pass; no cleanup was authorized or performed.
 
 ## Current Commit H9 HubSpot Read-Only Damage Inventory
 

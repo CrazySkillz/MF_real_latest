@@ -19,7 +19,7 @@ The browser helper `GA4OverviewValidation.overviewPack(...)` checks, in one comm
 - source counts and financial totals summary
 - stale daily-row warning state
 - reconnect-required provider failures when endpoints return them
-- persisted selected-property 30/60/90-day window presence and request parity
+- persisted selected-property 30-day production-window presence and request parity; future 60/90-day options are excluded
 
 Runner `2026-07-31.13` also provides `GA4OverviewValidation.commit16Pack(...)`. It uses the saved window for three live-provider GET reads, verifies each response reports that window, rejects simulated/non-numeric properties, checks refresh-credential presence, and compares sanitized token-expiry metadata before and after. It does not call `/ga4-daily`; existing provider code can persist a renewed encrypted access token and expiry when the prior access token has expired. Seven-day post-publish durability remains external because the connection record date can predate reconnect.
 
@@ -157,7 +157,7 @@ If `e2e/auth.json` does not exist, the Playwright spec skips with an explicit me
 
 A passing automated pack is strong operational evidence for the endpoints or configured fixture variants it checks, but it is not blanket production-readiness proof for untested lifecycle actions, future source families, unlisted Google Sheets mapping shapes, PDF text parity, future inbox delivery outside recorded packets, production cleanup, or future provider behavior. Record the exact pack output and keep unresolved external gates explicit in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
-For strictly read-only production investigations, do not run `overviewPack(...)`, `commit16Pack(...)`, `/ga4-daily`, provider-validation, or scheduler run-now routes: those paths can refresh OAuth tokens, persist daily rows, or run recomputation. Use database `SELECT` transactions and `/health/scheduler` only. The `2026-07-30` Current Commit 8 investigation followed this boundary.
+For strictly read-only production investigations, do not run `overviewPack(...)`, `commit16Pack(...)`, `/ga4-daily`, provider-validation, or scheduler run-now routes: those paths can refresh OAuth tokens, persist daily rows, or run recomputation. Use authenticated guarded inventory GETs, database `SELECT` transactions, and public health endpoints only. The `2026-07-30` Current Commit 8 investigation and completed `2026-08-01` final-pack run followed this boundary. That final pack did not pass because the authenticated inventory reported four active retained Spend sources totaling $2,698.75; no cleanup was authorized.
 
 Current Commit 9 used a database `BEGIN READ ONLY` owner/campaign/source inventory. The inventory must separately report orphan records, inactive-source records, source/record campaign mismatches, exact duplicate candidates, active sources with no records, unexpected active platform contexts, and materialized-versus-cached drift. Inventory output is evidence only: it must never trigger cleanup.
 

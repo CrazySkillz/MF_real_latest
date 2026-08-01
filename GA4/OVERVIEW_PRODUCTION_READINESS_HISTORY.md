@@ -298,14 +298,25 @@ Deployed proof and closure boundary:
 Explicit exclusions from Commits 11–18: timer/startup refresh proof; scheduled email/PDF/snapshot validation; post-scheduler-cycle inventory; unauthorized production mutation; unrelated tabs/platforms and architectural refactoring. Excluded work remains unproven and is not silently certified.
 Estimated remaining work: Current Commit 8 external provider/scheduler evidence, Current Commit 9 post-cycle inventory/authorized cleanup decision, and the explicitly deferred downstream evidence gates. The count will increase if Google Sheets is re-enabled rather than retained as continuity-only, or if broader production cleanup separates into multiple independently reviewed batches.
 
-### Current Commit 19 — Enforce the 30-day-only production scope — committed and pushed; deployment validation pending
+### Current Commit 19 — Enforce the 30-day-only production scope — bounded implementation closed
 
 - Root cause: the two GA4 property setup surfaces still defaulted to 90 days and exposed 30/60/90, while both persistence APIs accepted all three values and silently coerced missing/invalid input to 90. Connection-read responses therefore also treated retained non-30 rows as usable, which could not support a truthful 30-day-only release boundary.
 - Smallest safe implementation: expose and submit only 30 days in the existing setup flows; explicitly reject missing/60/90 persistence requests after campaign access but before provider/storage/in-memory mutation; expose only 30-day configured connections to Overview consumers; return an explicit unsupported state for retained non-30 rows; and add a client-side 30-day usability guard.
 - Production-data boundary: no production connection, campaign, source, record, metric, token, property selection, or saved lookback was edited, migrated, reconnected, deleted, or rewritten. Existing non-30 rows remain retained and outside the release scope.
 - Local evidence: the regression-first guard failed 3/3 before implementation and passed 3/3 afterward. The final focused/adjacent packet passed 3 files / 49 tests; TypeScript and the production build passed.
-- Commit/push evidence: `ba2e4329` was pushed to `origin/main` for Render auto-deployment.
-- Remaining evidence: deployment, one existing 30-day UI/value check, and one direct unsupported persistence request proving rejection before mutation. Current Commit 19 is not closed and does not certify Overview.
+- Commit/deployment evidence: `ba2e4329` was pushed to `origin/main` and deployed through Render; documentation follow-up `eb836d7e` was also pushed.
+- Deployed UI evidence: the user opened existing `GA4 single` / `ga4_mock`, confirmed `Last 30 completed days`, and confirmed the metric cards loaded normally.
+- Negative-path boundary: unsupported persistence rejection is regression/source-order proven at the deployed source commit but was not injected against a real production campaign, avoiding the possibility of an unexpected saved-connection mutation.
+- Completion: the bounded Commit 19 implementation/deployment/UI packet is closed. This does not close OAuth durability, the final non-scheduler pack, or whole-Overview certification.
+
+### Final non-scheduler read-only pack — run completed; did not pass
+
+- On `2026-08-01`, the non-mutating local reconciliation passed 19 files / 190 tests across the supported 30-day, Summary, financial, retained-source, failure, reconnect, report, Executive Summary, Campaign DeepDive, Trend, alert/current-value, and outcome-total paths.
+- Production reachability passed through public `/health` with HTTP 200.
+- The user supplied the authenticated guarded inventory captured at `2026-08-01T12:14:14.823Z`. It was read-only and returned zero generic damage findings; CSV, HubSpot integrity/provenance, and Shopify local persistence checks passed.
+- The inventory did not pass the retained-source gate: four active retained Spend sources with eight records still contribute $2,698.75—three CSV sources totaling $2,000.00 and one Google Sheets source totaling $698.75. `automaticCleanupAllowed=false`.
+- Shopify campaign-local scope remained incomplete for provider lineage/history/convergence and privileged cross-campaign overlap; the separate canonical Shopify readiness record retains authority for its bounded enabled Admin API token scope.
+- Mutation-capable/provider GETs, refreshes, scheduler triggers, report writes/sends, production failure injection, and cleanup were not used. The final production reconciliation did not pass, and no clean-certification claim is allowed.
 
 ## UI Validation Requirement
 

@@ -46,9 +46,9 @@ Future 60/90-day options are outside this release and require later implementati
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |
-| Current Commit 19 | **Committed and pushed as `ba2e4329`; deployment validation pending** | UI/API enforcement, no-mutation rejection, legacy non-30 fail-closed guards, 49 focused/adjacent tests, TypeScript, and production build pass. Deployment and production validation remain unproven. |
+| Current Commit 19 | **Bounded implementation closed** | Runtime `ba2e4329` deployed; the existing `GA4 single` / `ga4_mock` page showed `Last 30 completed days` and loaded normally. Unsupported-write rejection is automated/code-path proven at this source, not production-injected. |
 | OAuth durability | **Requires external validation** | On 2026-08-07 or later, confirm the existing unreconnected GA4 connection and metrics still work; do not infer automatic renewal unless observed. |
-| Final non-scheduler pack | **Unproven** | Reconcile included values, valid-zero/unavailable behavior, retained sources, guarded APIs, and downstream consumers for the intended 30-day scope. |
+| Final non-scheduler pack | **Run; did not pass** | The non-mutating local packet passed 19 files / 190 tests and production health returned 200. The authenticated read-only inventory passed its generic damage checks with zero findings, but `retainedSourceInventoryPass=false`: four active retained Spend sources still contribute $2,698.75 and require exact disposition. No mutation-capable/provider endpoint was called. |
 
 The exact implementation, no-mutation, validation, and completion requirements are preserved in the [evidence ledger](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md#active-gate-specifications-moved-from-the-main-index).
 

@@ -67,11 +67,11 @@ await GA4OverviewValidation.overviewPack({
 });
 ```
 
-This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-31.13` retains Commit 15's scoped financial parity checks, reads the selected property's persisted `lookbackDays`, derives both `dateRange` and `dailyDays` from it, and fails closed when an explicitly supplied window differs. Valid numeric zero remains authoritative. The pack does not inspect UI pixels, PDF text, provider/query failure injection, or future inbox delivery outside recorded packets.
+This checks the core Overview endpoint family, GA4 daily freshness state, native GA4 endpoint health, source-backed revenue/spend endpoint health, source counts, and compact financial totals. Version `2026-07-31.13` retains Commit 15's scoped financial parity checks, reads the selected property's persisted 30-day production `lookbackDays`, derives both `dateRange` and `dailyDays` from it, and fails closed when an explicitly supplied window differs. Valid numeric zero remains authoritative. Future 60/90-day options are excluded. The pack does not inspect UI pixels, PDF text, provider/query failure injection, or future inbox delivery outside recorded packets.
 
 ## Current Commit 16 Window And OAuth Pack
 
-Runner `2026-07-31.13` is deployed. The bounded existing 30-day connection-response check passed; for any remaining OAuth or 60/90-day evidence, use an existing live numeric-property campaign:
+Runner `2026-07-31.13` is deployed. The bounded existing 30-day connection-response check passed. `commit16Pack(...)` is retained for OAuth evidence on an existing live numeric-property campaign; future 60/90-day options are outside this release:
 
 ```js
 await GA4OverviewValidation.commit16Pack({
@@ -80,7 +80,7 @@ await GA4OverviewValidation.commit16Pack({
 });
 ```
 
-The pack derives the saved 30/60/90-day window, validates three live-provider responses against it, rejects simulated/non-numeric properties, checks that a refresh credential exists, and compares sanitized expiry timestamps before and after. `tokenExpiryAdvancedDuringPack` is true only when persisted expiry actually advances during the packet. `overallPass` therefore stays false if renewal was not required or not observed. The pack never infers seven-day durability from the legacy connection record date; `postPublishSevenDayDurability` remains `requires_external_validation` until the real post-reconnect time gate passes.
+The pack derives the saved supported 30-day window, validates three live-provider responses against it, rejects simulated/non-numeric properties, checks that a refresh credential exists, and compares sanitized expiry timestamps before and after. `tokenExpiryAdvancedDuringPack` is true only when persisted expiry actually advances during the packet. `overallPass` therefore stays false if renewal was not required or not observed. The pack never infers seven-day durability from the legacy connection record date; `postPublishSevenDayDurability` remains `requires_external_validation` until the real post-reconnect time gate passes.
 
 Do not create, reconnect, edit, delete, or rescope production data to force a pass. Missing 60/90-day fixtures remain unproven.
 
@@ -103,6 +103,8 @@ await GA4OverviewValidation.sourceDamageInventory({
 ```
 
 This calls a campaign-access-guarded GET route and returns source/record IDs only for suspicious groups. It does not clean, deactivate, recompute, refresh, or send anything.
+
+Recorded `2026-08-01` final-pack evidence for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`: the endpoint returned `success=true`, `readonly=true`, zero generic damage findings, and passing CSV/HubSpot/Shopify-local checks. The final pack still did not pass because `retainedSourceInventoryPass=false` for four active retained Spend sources totaling $2,698.75. `shopifyInventoryScopeComplete=false` also preserves the campaign-local provider/history/cross-campaign evidence boundary. No cleanup was authorized or performed.
 
 ## Current Commit H9 HubSpot Read-Only Damage Inventory
 

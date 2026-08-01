@@ -21,11 +21,11 @@ User expectation:
 Google OAuth continuity boundary:
 
 - recurring Google Sheets and GA4 disconnects were traced to the OAuth app being `External + Testing`, whose relevant authorizations expired after seven days
-- Publishing status has been changed to `In production`. The post-publish GA4 reconnect completed on `2026-07-30`; the final Google Sheets reconnect, public `mumus.app` pages/domain ownership, and branding/data-access verification remain open
+- Publishing status has been changed to `In production`. The post-publish GA4 reconnect completed on `2026-07-30`; the post-publish Google Sheets reconnect and one no-click automatic mapped-value update were user-confirmed on `2026-08-01`. Broader branding/data-access verification remains outside the whole-Overview non-scheduler decision
 - the `2026-07-29` GA4 reconnect incident was the expected pre-publish-token boundary. Reconnect classifier `efaa6f60` and picker fix `6d32514a` deployed; the user confirmed GA4 connected, the intended campaign selection and metrics loaded, and the state remained correct after refresh
 - `Reconnect required` is now reserved for a missing refresh credential or Google `invalid_grant`; a GA4 `403`, transient token-endpoint failure, server OAuth configuration failure, storage failure, or provider failure after successful refresh remains an operational error. Automatic token renewal and more-than-seven-day durability require later external validation.
 - until that work resumes and the evidence is captured, background refresh code and a successful repaired manual refresh must not be described as stable production OAuth operation
-- the authoritative hold and blocking commit queue are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
+- the authoritative Google Sheets source-family evidence and broader exclusions are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`; the remaining whole-Overview gates are one current-release timer-fired GA4 daily scheduled run and OAuth durability
 
 ## Campaign Reporting Timezone Configuration
 
@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is not production-ready or clean-certified. The concise current decision and gates live in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence and Current Commit 0–19 chronology live in its evidence/history companion ledgers. Current Commit 19 runtime `ba2e4329` deployed, and the existing `GA4 single` / `ga4_mock` 30-day UI check passed; its bounded packet is closed. OAuth durability requires validation on `2026-08-07` or later. Explicit timer/startup scheduler and scheduled delivery checks remain excluded and unproven.
+- GA4 Overview has passed its implemented 30-day gates; formal clean certification remains pending one current-release timer-fired GA4 daily scheduled run and OAuth durability on `2026-08-07` or later. The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence and Current Commit 0–19 chronology live in its evidence/history companion ledgers. Current Commit 19 runtime `ba2e4329` deployed, and the existing `GA4 single` / `ga4_mock` 30-day UI check passed; its bounded packet is closed. Startup refresh, scheduled delivery, and hypothetical future-provider behavior remain outside this Overview release.
 
 Whole-Overview Commit 16 deployed as `747192ff`: authenticated connection responses added sanitized saved-window metadata, and runner `2026-07-31.13` detected mismatches. The existing `GA4 single` / `ga4_mock` response returned `lookbackDays: 30`, closing that bounded correction. Commit 19 later narrowed the supported production contract to 30 days only; retained non-30 rows now fail closed. No scheduler cadence, provider query, formula, storage/schema, campaign scope, or production data changed. Timer-fired evidence, observed automatic renewal, and post-publish seven-day durability remain unproven.
 
@@ -83,7 +83,7 @@ Whole-Overview Commit 18 corrective Summary commit `e857c15d` is deployed. On `2
 
 Whole-Overview Current Commit 19 runtime `ba2e4329` is deployed: both GA4 property setup surfaces expose 30 days only, corresponding persistence APIs reject unsupported writes before mutation, and retained non-30 records remain unchanged and fail closed at the Overview connection boundary. The existing 30-day scheduler-backed contract is unchanged. The user confirmed the supported 30-day UI loaded normally; no production data was modified. Unsupported-write rejection remains automated/code-path proven rather than production-injected.
 
-The `2026-08-01` final non-scheduler read-only run passed 19 files / 190 non-mutating local tests and public production health. The authenticated guarded inventory returned zero generic damage findings. The user matched the four active retained Spend sources totaling $2,698.75 to the deployed modal and explicitly approved keeping all four; their keep/remove disposition is closed without cleanup. The active Google Sheets Spend refresh/credential lifecycle remains unproven. No `/ga4-daily`, provider-validation, refresh, scheduler-trigger, report-write/send, cleanup, or other mutation-capable endpoint was called. The final non-scheduler pack did not pass.
+The `2026-08-01` final non-scheduler read-only run passed 19 files / 190 non-mutating local tests and public production health. The authenticated guarded inventory returned zero generic damage findings. The user matched the four active retained Spend sources totaling $2,698.75 to the deployed modal and explicitly approved keeping all four; their keep/remove disposition is closed without cleanup. No `/ga4-daily`, provider-validation, refresh, scheduler-trigger, report-write/send, cleanup, or other mutation-capable endpoint was called by that read-only packet. Later that day, the user completed the post-publish Google Sheets reconnect, changed the mapped sheet, left Overview open without manually refreshing, and confirmed the displayed value updated automatically. The final non-scheduler pack passes; exact scheduler-family behavior is not generalized from that one event.
 
 ## GA4 Scope Changes
 

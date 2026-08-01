@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: GA4 Overview financial-source behavior is not clean-certified as a complete tab. Commit 15's bounded parser/parity packet closed at deployed commit `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. On `2026-08-01`, the user matched and approved keeping the same four visible Spend sources totaling $2,698.75; their presence is intentional, not damage. The active retained Google Sheets Spend lifecycle remains unproven, so the final whole-Overview non-scheduler pack did not pass. No cleanup or production mutation was performed. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: Commit 15's bounded parser/parity packet closed at deployed commit `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. On `2026-08-01`, the user matched and approved keeping the same four visible Spend sources totaling $2,698.75; their presence is intentional, not damage. The post-publish Google Sheets reconnect and one no-click automatic mapped-value update were then user-confirmed. The deterministic/read-only whole-Overview pack passes, while formal clean certification remains pending one current-release timer-fired GA4 daily scheduled run and the `2026-08-07` OAuth durability gate. No cleanup was performed. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Campaign DeepDive financial provenance rule:
 
@@ -534,7 +534,7 @@ Spend source options:
 Current certification focus:
 
 - Google Ads live spend validation is deferred. Do not include Google Ads spend in the current GA4 spend production-readiness or clean-certification claim until the real OAuth/customer-selection/provider daily-metrics path, deployed browser lifecycle, scheduler refresh, production data inventory, and downstream report/email value packets have their own Google Ads-specific evidence.
-- New Google Sheets setup is on hold and hidden/API-blocked by whole-Overview Current Commit 5 (`5da5f41c`); the user confirmed both deployed GA4 choosers omit Google Sheets. Existing exact-source continuity remains unproven. The active new-source certification target is dated `Upload CSV` under the strict no-overclaiming standard in `PRODUCTION_READINESS.md`.
+- New Google Sheets setup is on hold and hidden/API-blocked by whole-Overview Current Commit 5 (`5da5f41c`); the user confirmed both deployed GA4 choosers omit Google Sheets. Existing Google Sheets Revenue continuity remains unproven; existing Spend continuity has post-publish reconnect and one automatic-update observation, with durability pending. The active new-source certification target is dated `Upload CSV` under the strict no-overclaiming standard in `PRODUCTION_READINESS.md`.
 
 When the user clicks `+` on the `Total Spend` card:
 
@@ -699,9 +699,9 @@ Important current-state note:
 - spreadsheet-tab loading should use the same newest/pending OAuth token selection pattern as spreadsheet listing so reconnects do not list files with one token and try to load tabs with an older token
 - if a saved Google Sheets spend connection's token fails during preview or import, the spend path may self-heal by verifying the same spreadsheet/tab with the newest campaign Google Sheets token and updating the saved connection tokens before asking the user to reconnect
 - deployed Google Sheets spend refresh code does not by itself prove durable OAuth credentials; recurring disconnects were traced to the Google OAuth app being `External + Testing`
-- Publishing status is now `In production`; the post-publish GA4 reconnect and immediate UI validation passed on `2026-07-30`. The final Google Sheets reconnect, public `mumus.app` pages/domain ownership, Google branding/data-access verification, automatic token renewal, and more-than-seven-day durability proof remain open
-- until the hold closes, Google Sheets spend must not be clean-certified as a stable production connection; the exact blocking queue is in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
-- this Google Sheets hold will be completed later when the user resumes the OAuth and deployed automatic-update validation work
+- Publishing status is now `In production`; the post-publish GA4 reconnect and immediate UI validation passed on `2026-07-30`. The post-publish Google Sheets reconnect and one deployed no-click automatic mapped-value update were user-confirmed on `2026-08-01`. Automatic token renewal and more-than-seven-day durability proof remain open; broader Google branding/data-access verification remains outside the whole-Overview non-scheduler decision
+- Google Sheets spend must not be described as durably connected until the more-than-seven-day gate passes; exact broader source-family exclusions are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` and do not block the whole-Overview non-scheduler decision
+- the new-setup/Google Sheets Revenue hold remains; existing Google Sheets Spend automatic update was observed once after post-publish reconnect, and only durability plus broader excluded source-family evidence remain
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
 ## Spend Source 3: CSV Journey

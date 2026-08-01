@@ -309,15 +309,24 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 - Negative-path boundary: unsupported persistence rejection is regression/source-order proven at the deployed source commit but was not injected against a real production campaign, avoiding the possibility of an unexpected saved-connection mutation.
 - Completion: the bounded Commit 19 implementation/deployment/UI packet is closed. This does not close OAuth durability, the final non-scheduler pack, or whole-Overview certification.
 
-### Final non-scheduler read-only pack — disposition reviewed; did not pass
+### Final non-scheduler read-only pack — passed after retained-source review and deployed Google Sheets follow-up
 
 - On `2026-08-01`, the non-mutating local reconciliation passed 19 files / 190 tests across the supported 30-day, Summary, financial, retained-source, failure, reconnect, report, Executive Summary, Campaign DeepDive, Trend, alert/current-value, and outcome-total paths.
 - Production reachability passed through public `/health` with HTTP 200.
 - The user supplied the authenticated guarded inventory captured at `2026-08-01T12:14:14.823Z`. It was read-only and returned zero generic damage findings; CSV, HubSpot integrity/provenance, and Shopify local persistence checks passed.
 - The inventory reported four active retained Spend sources with eight records contributing $2,698.75—three CSV sources totaling $2,000.00 and one Google Sheets source totaling $698.75. The user matched all four names and amounts to the deployed Spend Sources modal and explicitly approved keeping all four. `retainedSourceInventoryPass=false` therefore records their presence, not damage; their reviewed disposition is `keep/support`, and `automaticCleanupAllowed=false` remains correct.
 - Shopify campaign-local scope remained incomplete for provider lineage/history/convergence and privileged cross-campaign overlap; the separate canonical Shopify readiness record retains authority for its bounded enabled Admin API token scope.
-- The keep/remove disposition is closed: all four sources are intentional and must remain. This does not prove the active Google Sheets Spend refresh/credential lifecycle. Its canonical Spend readiness record still marks final post-publish reconnect, exact deployed mutation reconciliation, automatic polling behavior, and durable credentials open.
-- Mutation-capable/provider GETs, refreshes, scheduler triggers, report writes/sends, production failure injection, and cleanup were not used. The final non-scheduler reconciliation did not pass because that included active source lifecycle remains unresolved. OAuth durability is separately due on `2026-08-07` or later; named scheduler exclusions remain unproven.
+- The keep/remove disposition is closed: all four sources are intentional and must remain. On `2026-08-01`, the user then completed the post-publish Google Sheets reconnect, changed the mapped sheet, left Overview open without manually refreshing, and confirmed the displayed value updated automatically.
+- The original read-only packet did not call mutation-capable/provider GETs, refreshes, scheduler triggers, report writes/sends, production failure injection, or cleanup. The later user-controlled Google Sheets change supplies bounded deployed automatic-propagation evidence without authorizing cleanup. The final non-scheduler reconciliation now passes. OAuth durability is separately due on `2026-08-07` or later; named scheduler/provider exclusions remain unproven and outside this decision.
+
+### Certification-gate correction — current-release GA4 scheduled run included
+
+- Stable cross-session answer: **the Overview tab is not yet clean-certified or production-ready for live users. Two mandatory tests remain: current-release GA4 scheduled-run validation, and OAuth durability validation on or after `2026-08-07`. Every other supported 30-day Overview requirement has passed.**
+- Root cause: the earlier certification boundary treated timer-fired GA4 scheduler execution as a permanent exclusion. That limited non-scheduler status was later presented as equivalent to strict live-production readiness, which was incorrect.
+- Corrected active gates: one normal timer-fired GA4 daily scheduler run on the current deployed release, followed by a read-only scoped-value/no-damage check; and OAuth durability on `2026-08-07` or later.
+- Already closed: the Google Sheets post-publish reconnect and one deployed no-click automatic mapped-value update remain passed and are not reopened.
+- Outside this bounded Overview release: future 60/90-day options, startup-triggered refresh, scheduled report delivery, future configurations, and hypothetical future-provider behavior.
+- Documentation-only correction: no runtime code, scheduler configuration, provider request, token, campaign, source, financial value, or production row changed.
 
 ## UI Validation Requirement
 

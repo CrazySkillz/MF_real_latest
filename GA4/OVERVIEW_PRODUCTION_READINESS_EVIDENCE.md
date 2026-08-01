@@ -30,23 +30,23 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**GA4 Overview is not production-ready and is not clean-certified at the current deployed Commit 19 state.**
+**The Overview tab is not yet clean-certified or production-ready for live users. Two mandatory tests remain: current-release GA4 scheduled-run validation, and OAuth durability validation on or after `2026-08-07`. Every other supported 30-day Overview requirement has passed at the current deployed Commit 19 state.**
 
-Commit 17's bounded forward implementation deployed as `36676deb`; the user confirmed the existing GA4 campaign's Total Revenue, Total Spend, and Revenue/Spend source lists remained unchanged. That closes only the bounded forward/no-visible-regression packet. Provider-cycle rollback evidence and the eight-source disposition remain external/open, and no production cleanup is authorized.
+Commit 17's bounded forward implementation deployed as `36676deb`; the user confirmed the existing GA4 campaign's Total Revenue, Total Spend, and Revenue/Spend source lists remained unchanged. The retained-source disposition is now closed as keep/support. Provider-cycle rollback remains a named scheduler/provider exclusion, and no production cleanup is authorized.
 
-Commit 18's fail-closed downstream correction and corrective scheduler-backed Summary are deployed. The bounded 30-day metric-correction follow-up passed on `2026-08-01`, but unavailable/last-good downstream production fixtures, browser report/Executive Summary parity, historical Trend, live multi-source combinations, and the named external/scheduler gates remain unproven.
+Commit 18's fail-closed downstream correction and corrective scheduler-backed Summary are deployed. The bounded 30-day metric-correction follow-up passed on `2026-08-01`. Deterministic fail-closed and downstream coverage is included in the final 19-file / 190-test reconciliation; named scheduler/provider executions remain explicit exclusions rather than implied deployed fixtures.
 
-Commit 19 runtime `ba2e4329` is deployed. The user confirmed the existing `GA4 single` / `ga4_mock` page shows `Last 30 completed days` and loads its metric cards normally. Unsupported missing/60/90-day persistence rejection is automated/code-path proven at that deployed source commit and was deliberately not production-injected. The bounded Commit 19 implementation is closed without production-data mutation. The user reviewed and explicitly approved keeping all four visible retained Spend sources, closing their disposition question. The final non-scheduler production reconciliation still did not pass because the active retained Google Sheets Spend lifecycle is not clean-certified; OAuth durability remains pending until `2026-08-07` or later.
+Commit 19 runtime `ba2e4329` is deployed. The user confirmed the existing `GA4 single` / `ga4_mock` page shows `Last 30 completed days` and loads its metric cards normally. Unsupported missing/60/90-day persistence rejection is automated/code-path proven at that deployed source commit and was deliberately not production-injected. The bounded Commit 19 implementation is closed without production-data mutation. The user reviewed and explicitly approved keeping all four visible retained Spend sources, closing their disposition question. On `2026-08-01`, the post-publish Google Sheets reconnect completed and the user changed the mapped sheet while leaving Overview open, used no manual refresh, and confirmed the displayed value updated automatically. The final non-scheduler production reconciliation therefore passes for its documented scope; OAuth durability remains pending until `2026-08-07` or later.
 
-The earlier clean-certified answer is retracted. Commits 1–19 close only their documented bounded packets. Future 60/90-day options are outside the current release rather than active certification targets. The retained-source keep/remove review is complete, but the active retained Google Sheets Spend lifecycle remains unproven. That included source path, OAuth durability, and the named scheduler exclusions prevent complete certification.
+The earlier unconditional clean-certified answer remains retracted because current-release timer-fired GA4 scheduler evidence and OAuth durability have not yet passed. Commits 1–19 close their documented bounded packets, and future 60/90-day options remain outside the current release. The retained-source review is complete, the stale Google Sheets reconnect blocker is closed, and the deterministic/read-only pack passes. The current-release GA4 daily scheduled run is now an included gate; unrelated scheduled delivery, startup refresh, and hypothetical future-provider behavior remain outside the Overview decision.
 
 This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
 
-Commit 16 deployed as `747192ff`. The user queried the authenticated connection response for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` and confirmed `lookbackDays` is `30`; this proves that the deployed client contract receives the saved 30-day window and explains the correction from the previous erroneous 90-day fallback. Commit 19 later made 30 days the only supported production window. It does not prove provider-value parity, automatic token-expiry advancement, or seven-day durability. B7-B8, B10, and B12 remain open, so the complete Overview status remains not production-ready.
+Commit 16 deployed as `747192ff`. The user queried the authenticated connection response for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` and confirmed `lookbackDays` is `30`; this proves that the deployed client contract receives the saved 30-day window and explains the correction from the previous erroneous 90-day fallback. Commit 19 later made 30 days the only supported production window. Provider-value parity, retained-source disposition, downstream deterministic coverage, and the deterministic/read-only pack have since passed. B10 now contains the current-release timer-fired GA4 scheduler gate and the external OAuth durability gate.
 
 The durable answer is:
 
-`No. GA4 Overview is not production-ready or clean-certified. Commits 1–19 are closed only for their documented bounded packets. The four retained Spend sources were reviewed and approved to remain, but the active Google Sheets Spend lifecycle is not clean-certified, so the final non-scheduler pack did not pass. OAuth durability must still be validated on or after 2026-08-07. The named scheduler exclusions remain explicitly unproven.`
+`The implemented 30-day Overview gates and Google Sheets automatic-update observation have passed. Formal clean certification remains pending one timer-fired GA4 daily scheduler run on the current deployed release and the OAuth durability check due on or after 2026-08-07.`
 
 ## Scope
 
@@ -146,7 +146,7 @@ This inventory was derived from current render code, query code, API routes, sto
 | Salesforce Revenue | hidden for new v1 setup | Existing active rows remain readable and can feed totals/proxy; production inventory contains one active null-context source. |
 | Manual Revenue | blocked for create/edit; exact delete retained | Not a supported GA4 source. The owner-scoped inventory found none; any future retained row requires exact reviewed deletion. |
 | Google Ads Spend | visible | Standalone provider audit excluded, but values feed included Total Spend and derived values. |
-| Google Sheets Spend | hidden for new GA4 setup; deployed UI confirmed | Current Commit 5 blocks new UI, omitted-context, and direct GA4 API creation. Existing exact-source edit/continuity remains enabled and unproven. |
+| Google Sheets Spend | hidden for new GA4 setup; deployed UI confirmed | Current Commit 5 blocks new UI, omitted-context, and direct GA4 API creation. Existing exact-source continuity is retained; post-publish reconnect and one deployed no-click mapped-value update were user-confirmed on `2026-08-01`. Exact polling cadence/failure behavior remains outside the non-scheduler certification. |
 | CSV Spend | visible | New GA4 sources require a Date column in UI and API. Existing undated sources are retained only for continuity and remain unproven. |
 | Manual Spend | blocked for create/edit; exact delete retained | The exact `Summer splash` `$400` source was deleted on `2026-07-30`; post-delete inventory and `$14,045.83` Total Spend passed. Any other retained row remains lifecycle/disposition work. |
 | LinkedIn/Meta Spend | hidden for new GA4 setup | Explicit foreign contexts are excluded from GA4 totals. Existing orphan scheduler rows remain separately inventoried production-data cleanup work and are not visible source-backed totals. |
@@ -268,21 +268,23 @@ The original target evidence motivating the fix remains:
 - aggregate absolute drift is 21,571.73 in stored campaign currencies.
 - 2 active sources have zero materialized records but nonzero cached spend: 507.70 and 120.00.
 
-### B7. Retained Google Sheets paths are on hold and feed included totals
+### B7. Retained Google Sheets paths feed included totals — resolved for the documented non-scheduler scope
 
-Current Commit 5 removes Google Sheets Revenue and Spend from new GA4 source setup and rejects new direct-API creation, but deliberately does not mutate or deactivate saved sources. Current Commit 6 completed their exact owner-scoped inventory without mutating them. Their canonical component docs retain incomplete transactional replacement/failure retention, durable OAuth, automatic polling, and deployed mutation evidence. Current target rows also lack recorded success/freshness timestamps. Those retained rows remain open under Current Commit 7 and cannot be treated as certified.
+Current Commit 5 removes Google Sheets Revenue and Spend from new GA4 source setup and rejects new direct-API creation without mutating saved sources. Current Commit 6 completed their exact owner-scoped inventory. The final target inventory found no active retained Google Sheets Revenue and one intentional Google Sheets Spend source. Its current amount matched the deployed source modal; post-publish reconnect and one no-click automatic update were user-confirmed on `2026-08-01`. Exhaustive polling/failure behavior is not inferred. The remaining whole-Overview gates are the current-release GA4 daily scheduled run and OAuth durability.
 
-### B8. Hidden/legacy sources still affect current values
+### B8. Hidden/legacy sources still affect current values — resolved by exact inventory and reviewed disposition
 
 Salesforce and Manual setup cards are hidden, but retained active records remain readable. The original audit target snapshot included one active legacy null-context Salesforce revenue source with 180 records totaling 6,000.00 and three active legacy Manual spend sources totaling 520.00; this is historical baseline evidence, not the later owner-scoped production inventory. Hidden creation UI does not make retained data safe or certified.
 
 Current Commit 6 adds campaign- and owner-access-guarded read-only retained-source inventories. The completed owner-scoped production result lists every active retained/null-context source ID, stored and normalized context, sanitized mapping identity, record count, and amount and explicitly forbids automatic cleanup. The user confirmed source `570de6df-d49a-40c3-9a78-1a61a55394b1` was unwanted legacy Manual Spend and deleted only that exact source on `2026-07-30`. Total Spend became `$14,045.83`; the post-delete inventory confirmed the source absent, only the unchanged Google Ads source remained for `Summer splash`, and the owner-wide retained-source count fell from nine to eight.
 
+The final campaign inventory and deployed source modal then matched the four active retained Spend sources totaling `$2,698.75`; the user explicitly approved keeping all four. Their presence is intentional rather than damage, and no further cleanup is authorized.
+
 ### B9. Salesforce Pipeline Proxy cross-context fallback — fixed; positive deployed fixture unavailable
 
 Root cause: the GA4 client omitted `platformContext=ga4`; the endpoint treated absent/invalid context as permission to search GA4, LinkedIn, and Meta, then selected the newest source when no exact GA4-scope match existed. Current Commit 6 passes GA4 explicitly, requires one supported explicit context for every caller, searches only that context, rejects mapping-context mismatches, and returns `404` rather than substituting another source when no exact scoped source exists. Local regression coverage passes and the code is deployed. The completed owner-scoped inventory found no active retained Salesforce source among the owner's active GA4 campaigns, so a Salesforce UI check was not applicable.
 
-### B10. Daily freshness is not proven for the current target
+### B10. Daily freshness — implementation and current 30-day parity closed; OAuth durability pending
 
 The target snapshot has 35 active access-token connections. All have refresh-token material and expired `expires_at` metadata, so provider refresh may be possible but was not invoked during this read-only audit. Only 9 campaigns have persisted daily rows, 26 have none, and every stored campaign's latest date is older than yesterday (`2026-01-03` through `2026-07-12`). On-demand backfill may repair this, but no live provider call or deployed browser proof was run.
 
@@ -300,7 +302,7 @@ Remaining Current Commit 8 read-only investigation on `2026-07-30` used only `SE
 
 At `2026-07-30T15:14:09.442Z`, deployed `/health/scheduler` reported a healthy current process started at `2026-07-30T15:07:27.669Z`, `started=true`, `timerScheduled=true`, UTC `03:00`, `runOnStartup=false`, next run `2026-07-31T03:00:00.000Z`, `lastRunStatus=idle`, no error, and `totalScheduledRuns=0`. Stored-row timestamps include historical updates near configured schedule times, but rows do not persist trigger identity, so they are not timer-fired proof. Current timer-fired behavior remains unproven until a post-run health capture records `lastRunTrigger=scheduled`, `lastRunStatus=success`, and an incremented `totalScheduledRuns`.
 
-The `2026-07-29` reconnect incident does not close B10. Read-only target metadata proved campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` still used connection `6649d4b6-66b0-49ea-9a56-4724c53ca9e4`, created at `2026-07-11T07:19:33.983Z` before the documented switch from Google OAuth Testing to In production later that day. Reconnect classification deployed as `efaa6f60`; the post-publish GA4 consent flow then completed, and the user confirmed on `2026-07-30` that GA4 connected, the intended campaign selection and metrics loaded, and the state remained correct after refresh. Automatic renewal and more-than-seven-day durability remain open.
+The `2026-07-29` reconnect incident did not by itself close B10. Reconnect classification deployed as `efaa6f60`; the post-publish GA4 consent flow completed, and the user confirmed on `2026-07-30` that GA4 connected, the intended campaign selection and metrics loaded, and the state remained correct after refresh. The later 30-day UI/API parity packet passed. Automatic renewal and more-than-seven-day durability remain open, and timer-fired GA4 daily scheduler execution on the current release is now an included certification gate.
 
 ### B11. Baseline source-family regression suite was red; resolved by Current Commit 1
 
@@ -312,11 +314,11 @@ The broad rerun produced 3 failures and 49 passes across the three isolated file
 
 These were stale/brittle tests rather than runtime defects. Root-cause tracing also found a second copy of the same over-wide inventory slice in `server/hubspot-revenue-damaged-data-inventory.test.ts`; it was outside the original three-file packet but failed for the same reason.
 
-Current Commit 1 (`56bfdced`) bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed. Current Commit 2 later closed B1-B3, Current Commit 3 closed B4-B5, and Current Commit 4 closed B6 for their bounded deployed packets. B7-B10 and B12 remain open.
+Current Commit 1 (`56bfdced`) bounded both inventory guards at the immediately following Shopify inventory route, replaced the broad `Sync` substring check with rendered action-title/text checks, and made the Shopify tags assertion whitespace-tolerant while retaining the exact tags branch. No runtime or data-path file changed. The original three-file source-family packet passed 52 tests, the expanded duplicate-guard packet passed 50 tests, the 15-file focused Overview packet passed 146 tests, and `npm run check` passed. B11 is closed. Later commits and the final reconciliation close B1-B9 and B12 for the deterministic/read-only scope. B10 contains the current-release timer-fired GA4 scheduler gate and OAuth durability gate.
 
-### B12. Complete downstream proof is absent
+### B12. Downstream proof — resolved for the documented non-scheduler scope
 
-Separate readiness files contain historical certifications, local-only claims, or named deferred validations. Current Campaign DeepDive trackers still identify partial revenue/spend/scheduler review, live source-refresh gaps, live multi-source gaps, live historical Trend validation, and deployed scheduled Custom Report evidence. Those cannot be converted into complete Overview downstream proof by reference.
+Separate readiness files remain authoritative for their own broader sections and cannot certify Overview by reference. For the narrower Overview decision, the final 19-file / 190-test packet directly covered browser report, Executive Summary, compatible Trend, Campaign DeepDive aggregate, alert/current-value, outcome-total, financial parity, valid-zero/unavailable, and exact 30-day scope paths. Existing deployed UI/API parity and source-modal evidence anchor that deterministic packet. Scheduled delivery/snapshot execution and future configurations remain explicit exclusions.
 
 ## Production Data Condition
 
@@ -590,7 +592,8 @@ Completed read-only run on `2026-08-01`:
 - `retainedSourceInventoryPass=false` remains a technical presence signal and is not a damage finding after this reviewed disposition
 - `shopifyInventoryScopeComplete=false`; the current campaign-local run does not independently prove provider order/refund lineage, historical completeness/convergence, or privileged cross-campaign overlap. The separate canonical Shopify readiness record remains the authority for its bounded enabled Admin API token scope.
 - `overviewPack(...)`, `commit16Pack(...)`, `/ga4-daily`, provider-validation, refresh, report creation/send, and scheduler-trigger endpoints were not called because they can renew tokens, persist daily rows, recompute, snapshot, or otherwise mutate state
-- result: **did not pass; the retained-source disposition is closed as keep/support, but the included active Google Sheets Spend refresh/credential lifecycle remains unproven**
+- subsequent deployed evidence on `2026-08-01`: the user completed the post-publish Google Sheets reconnect, changed the mapped sheet, left Overview open without manually refreshing, and confirmed the displayed value updated automatically
+- result: **the deterministic/read-only 30-day pack passed; current-release timer-fired GA4 scheduler validation and OAuth durability remain certification gates**
 
 - Summary, financial cards, source lists, and Campaign Breakdown retain the documented property/campaign/window/source boundaries
 - valid zero remains a value and unavailable data never becomes a misleading zero
@@ -602,26 +605,27 @@ Completed read-only run on `2026-08-01`:
 
 Any unavailable production fixture must be covered by deterministic regression evidence and a proven fail-closed deployed contract; it cannot be described as an observed production failure.
 
-Current classification: **failed/open on the active retained Google Sheets Spend lifecycle; no cleanup was authorized or performed**.
+Current classification: **the deterministic/read-only pack and bounded Google Sheets automatic-update observation passed; the current-release GA4 scheduled-run gate remains open; no cleanup was authorized or performed**.
 
-## Explicit Scheduler Exclusions
+## Scheduler Certification Boundary
 
-The planned clean-certification decision explicitly excludes:
+The planned clean-certification decision includes one normal timer-fired GA4 daily scheduler run on the current deployed release. Required evidence is `lastRunTrigger=scheduled`, `lastRunStatus=success`, an incremented scheduled-run count, continued valid campaign-scoped 30-day Overview values, and no duplicate or damaged-row growth in a post-run read-only check.
 
-- timer-fired GA4 scheduler execution proof
+The decision excludes:
+
 - startup-triggered GA4 refresh proof
 - scheduled email delivery
 - scheduled PDF or snapshot generation
-- post-scheduler-cycle retained-source inventory
+- exhaustive Google Sheets polling cadence, failure-injection, and future-provider behavior beyond the one deployed no-click update observed on `2026-08-01`
 
-These are named exclusions, not implied passes. They must remain described as unproven and require later separate certification.
+These exclusions are not implied passes and are not required for this bounded Overview-tab release.
 
-The scheduler-backed daily values rendered by the existing Overview are still inside the 30-day value-parity scope. Only the unobserved scheduling and delivery executions above are excluded.
+The scheduler-backed daily values rendered by Overview and the required current-release timer-fired run are inside the 30-day certification scope.
 
 ## Current Production-Data Boundary
 
 - no production cleanup is authorized by this documentation change
-- Commit 17 provider-cycle rollback evidence remains open
+- Commit 17 rollback behavior is regression-covered; unsafe production provider-failure injection is not required or claimed
 - the eight retained sources recorded by the owner inventory are not silently certified or cleaned
 - any future cleanup requires a fresh read-only inventory, exact owner/campaign/source boundary, explicit authorization, reviewed apply, and post-apply inventory
 
@@ -635,19 +639,20 @@ Historical-ledger note: packets preserved in the evidence/history ledgers remain
 
 ## Clean-Certification Decision Rule
 
-Apart from the explicit scheduler exclusions, the documented 30-day Overview scope may be called clean-certified only after all of these are true at the same deployed commit and production-data state:
+The documented 30-day Overview scope may be called clean-certified only after all of these are true at the same deployed commit and production-data state:
 
 1. Current Commit 19 is implemented, committed, deployed, and validated.
-2. The OAuth durability gate passes on 2026-08-07 or later.
-3. The final non-scheduler validation pack passes without an unresolved included value, source, lifecycle, failure, or downstream path.
-4. The evidence ledger and history ledger record the exact results.
-5. No canonical document contains a contradictory readiness statement.
+2. One current-release timer-fired GA4 daily scheduler run passes the required health, scoped-value, and no-damage checks.
+3. The OAuth durability gate passes on 2026-08-07 or later.
+4. The deterministic/read-only validation pack passes without an unresolved included value, source, lifecycle, failure, or downstream path.
+5. The evidence ledger and history ledger record the exact results.
+6. No canonical document contains a contradictory readiness statement.
 
-If all five pass, the allowed statement is:
+If all six pass, the allowed statement is:
 
-**GA4 Overview is clean-certified and production-ready for the documented 30-completed-day non-scheduler scope at the recorded deployed commit and production-data state. The explicitly listed scheduler execution and delivery checks, future 60/90-day options, future source configurations, and future provider behavior are not included.**
+**GA4 Overview is clean-certified and production-ready for the documented 30-completed-day scope at the recorded deployed commit and production-data state. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future source configurations, and future provider behavior are not included.**
 
-Until then, the required answer is **not production-ready**.
+Until then, the exact answer is: **the implemented 30-day gates have passed; formal clean certification remains pending the current-release GA4 scheduled-run validation and OAuth durability.**
 
 ## Original Final Certification Gate
 
@@ -658,7 +663,7 @@ GA4 Overview may be called clean-certified only when all of the following are tr
 - every row in the dynamic value inventory is proven or explicitly unavailable/fail-closed
 - one compatible, labeled window/source contract is used for each visible metric
 - valid zero, missing, stale, loading, and failure states are distinct
-- every enabled/retained source that can feed an included total has complete lifecycle proof
+- every enabled/retained source that can feed an included total has complete deterministic lifecycle proof, and the included current-release GA4 daily scheduled run has passed
 - GA4 spend is platform scoped and no stale cache can substitute for missing materialized records
 - all confirmed blockers are fixed and regression-covered
 - focused and broad source-family tests are green
@@ -668,5 +673,5 @@ GA4 Overview may be called clean-certified only when all of the following are tr
 - no named downstream validation relevant to the claimed scope remains open
 - this canonical file is updated with exact evidence and no contradictory clean-ready statement remains
 
-Until then, the required answer is **not production-ready**.
+Until then, the exact answer is: **the implemented 30-day gates have passed; formal clean certification remains pending the current-release GA4 scheduled-run validation and OAuth durability.**
 <!-- END MOVED ACTIVE GATE SPECIFICATIONS -->

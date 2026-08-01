@@ -106,7 +106,7 @@ This scheduler now runs the GA4 daily refresh pipeline:
 
 Important meaning:
 
-- it keeps persisted GA4 daily facts current
+- it keeps persisted GA4 daily facts current, and those exact property/campaign-scoped rows feed the Overview Summary and Trends completed-day windows
 - GA4 native daily revenue remains native GA4 fact data in `ga4_daily_metrics`; this pipeline must not create synthetic imported `revenue_records` for `ga4_daily_metrics`
 - it is campaign-scoped and property-scoped
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
@@ -121,7 +121,8 @@ Runtime cadence:
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected `dataThroughDate`
 - an in-process overlap guard skips a second GA4 daily pipeline if one is already running
 - it fetches a lookback window controlled by `GA4_DAILY_LOOKBACK_DAYS`, defaulting to `90` days and bounded between `7` and `365`
-- daily facts are persisted by date; the Trends endpoint returns only completed daily rows through the campaign reporting timezone's latest completed day, so current-day intraday data is not a visible Trends history row
+- daily facts are persisted by date; Overview Summary and Trends use only completed daily rows through the campaign reporting timezone's latest completed day, so current-day intraday data is excluded
+- when compatible campaign attribution splits traffic from conversion/revenue, the provider query supplements only missing conversion/revenue fields on the exact affected daily rows and never overwrites populated traffic or outcome values
 - the Trends UI separates the completed-day cutoff from the latest imported row; if GA4 returns no row for a completed day, the app does not invent a zero row for that date
 
 ## Live GA4 UTM And Measurement Protocol Behavior

@@ -2076,7 +2076,8 @@ export default function GA4Metrics() {
   const hasBreakdownOverviewTotals = Boolean((ga4Breakdown as any)?.totals) ||
     (Array.isArray((ga4Breakdown as any)?.rows) && (ga4Breakdown as any).rows.length > 0);
   const hasBreakdownOverviewResponse = ga4Breakdown !== undefined;
-  const overviewTotalsSource = hasBreakdownOverviewTotals ? ga4BreakdownTotals : null;
+  const hasDailyOverviewResponse = ga4DailyResp !== undefined;
+  const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;
   const overviewSummaryAvailable = overviewTotalsSource !== null;
   const overviewEngagementRate = (() => {
     const rate = Number(overviewTotalsSource?.engagementRate ?? 0);
@@ -5469,7 +5470,7 @@ export default function GA4Metrics() {
     !!ga4Connection?.connected &&
     !!selectedGA4PropertyId &&
     !overviewSummaryAvailable &&
-    (ga4Loading || breakdownLoading);
+    ga4Loading;
   const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing
     ? <span className="block h-8 w-16 bg-muted rounded animate-pulse" />
     : overviewSummaryAvailable ? value : "Unavailable";
@@ -5910,7 +5911,7 @@ export default function GA4Metrics() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                  Unique GA4 users for the selected property, completed-day window, and campaign scope.
+                                  GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.
                                 </TooltipContent>
                               </UITooltip>
                             </div>

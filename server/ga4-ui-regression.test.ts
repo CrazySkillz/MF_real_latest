@@ -203,24 +203,24 @@ describe("GA4 UI regression guard", () => {
     expect(route).toContain("campaigns: applySavedCampaignScope(result.campaigns || [])");
   });
 
-  it("keeps GA4 Overview totals on the exact property aggregate instead of summing daily users", () => {
+  it("keeps GA4 Overview totals on the scheduler-backed daily property rows", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
 
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
-    expect(ga4Metrics).toContain("const hasBreakdownOverviewTotals =");
-    expect(ga4Metrics).toContain("const overviewTotalsSource = hasBreakdownOverviewTotals ? ga4BreakdownTotals : null;");
-    expect(ga4Metrics).not.toContain("const overviewTotalsSource = hasDailyOverviewTotals");
+    expect(ga4Metrics).toContain("const hasDailyOverviewResponse = ga4DailyResp !== undefined;");
+    expect(ga4Metrics).toContain("const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;");
+    expect(ga4Metrics).not.toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
+    expect(ga4Metrics).toMatch(/const ga4SummaryTotalsInitializing =[\s\S]*?!overviewSummaryAvailable &&\s*ga4Loading;/);
     expect(ga4Metrics).not.toContain("hasToDateOverviewTotals");
     expect(ga4Metrics).toContain("const rate = Number(overviewTotalsSource?.engagementRate ?? 0);");
     expect(ga4Metrics).toContain("sessions: Number(overviewTotalsSource?.sessions || 0)");
     expect(ga4Metrics).not.toContain("Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions, ga4BreakdownTotals.sessions)");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
 
-    expect(scheduledPdf).toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
-    expect(scheduledPdf).toContain("? { ...breakdownFinancialTotals, engagementRate: breakdownEngagementRate }");
-    expect(scheduledPdf).toContain(": null;");
-    expect(scheduledPdf).not.toContain("const overviewTotalsSource = hasDailyOverviewTotals");
+    expect(scheduledPdf).toContain('const hasDailyOverviewResponse = dailyRows.length > 0 || !failedParts.has("time series");');
+    expect(scheduledPdf).toContain("const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;");
+    expect(scheduledPdf).not.toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
     expect(scheduledPdf).not.toContain("hasToDateOverviewTotals");
     expect(scheduledPdf).toContain("engagementRate: Number(overviewTotalsSource?.engagementRate || 0)");
     expect(scheduledPdf).not.toContain("sessions: Math.max(Number((ga4ToDate as any)?.totals?.sessions || 0), Number(dailySummedTotals.sessions || 0))");
@@ -251,7 +251,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("const financialConversions = Number(breakdownTotals.conversions || 0);");
   });
 
-  it("waits for GA4 breakdown totals before rendering Overview Summary numbers", () => {
+  it("waits for GA4 daily totals before rendering Overview Summary numbers", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const summaryStart = ga4Metrics.indexOf("{/* Summary Cards */}");
     const revenueStart = ga4Metrics.indexOf("{/* Revenue & Financial */}", summaryStart);
@@ -261,14 +261,14 @@ describe("GA4 UI regression guard", () => {
     expect(revenueStart).toBeGreaterThan(summaryStart);
     expect(ga4Metrics).toContain("const ga4SummaryTotalsInitializing =");
     expect(ga4Metrics).toContain("!overviewSummaryAvailable");
-    expect(ga4Metrics).toContain("(ga4Loading || breakdownLoading);");
+    expect(ga4Metrics).toMatch(/!overviewSummaryAvailable &&\s*ga4Loading;/);
     expect(ga4Metrics).toContain("const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing");
     expect(ga4Metrics).toContain(': overviewSummaryAvailable ? value : "Unavailable";');
     expect(summarySection).toContain("renderSummaryValue(formatNumber(breakdownTotals.conversions || 0))");
     expect(summarySection).not.toContain("ga4Metrics?.conversions");
     expect(summarySection).toContain("Last {GA4_DAILY_LOOKBACK_DAYS} completed days");
-    expect(summarySection).toContain("Unique GA4 users for the selected property, completed-day window, and campaign scope.");
-    expect(summarySection).not.toContain("same user may appear on more than one day or breakdown row");
+    expect(summarySection).toContain("GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.");
+    expect(summarySection).not.toContain("Unique GA4 users for the selected property");
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
 

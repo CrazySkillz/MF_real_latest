@@ -142,19 +142,19 @@ Important meaning:
 - these are GA4-native campaign metrics
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
-- Summary cards use GA4's aggregate totals for the exact selected property, saved completed-day lookback, and campaign filter; they do not take per-metric maximum values or sum non-additive daily user rows
-- persisted selected-campaign daily facts remain the source for charts/history and an ordered financial fallback, not the Summary-card source
+- Summary cards use the persisted daily facts fetched by the GA4 daily pipeline for the exact selected property and saved campaign filter, sliced to the saved completed-day lookback; they do not switch to the live Campaign Breakdown response
+- the same selected-campaign daily facts feed Summary, charts, history, and the existing ordered financial fallback
 - campaign-to-date totals are not a Summary fallback because they are a different window
 - selected-campaign daily facts may combine `pageLocation` UTM traffic with `campaignName` conversion/revenue supplementation only for missing conversion/revenue fields; sessions, users, pageviews, and engagement remain from the traffic query
-- when live `pageLocation` UTM fallback is needed, the same GA4 aggregate response remains the Summary source so cards and scoped live table rows share one property/window/filter request
-- on initial page load or browser refresh, Summary card values should not briefly render stale fallback totals while the selected GA4 property's campaign breakdown query is still loading; show a stable skeleton for the card values until the breakdown-backed totals are ready
+- when `pageLocation` UTM fallback is needed, the daily pipeline retains traffic metrics and supplements only missing conversion/revenue fields for the exact compatible date
+- on initial page load or browser refresh, Summary card values show a stable skeleton until the scheduler-backed `/ga4-daily` response is available; Campaign Breakdown loading cannot replace or change Summary values
 
 Important `Users` rule:
 
-- the top `Users` card follows the same aggregate selected-property/campaign/window GA4 response as the other Summary cards
-- `Users` is GA4's aggregate `totalUsers` value for the full selected window, not a sum of daily or dimension-row user counts
+- the top `Users` card follows the same persisted daily property/campaign/window rows as the other Summary cards
+- `Users` is the sum of GA4 daily `totalUsers` values in the selected completed-day window; it is not a cross-day deduplicated user count
 - the top `Users` card may show a short clarification tooltip:
-  `Unique GA4 users for the selected property, completed-day window, and campaign scope.`
+  `GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.`
 
 ### Financial Cards
 

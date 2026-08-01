@@ -448,7 +448,7 @@ async function buildGA4ReportPayload(report: any) {
   }
   const overviewRequirements = getOverviewReportRequirements(report);
   const unavailableOverviewParts: string[] = [];
-  if (overviewRequirements.summary && failedParts.has("acquisition breakdown")) {
+  if (overviewRequirements.summary && dailyRows.length === 0 && failedParts.has("time series")) {
     unavailableOverviewParts.push("Summary");
   }
   if (overviewRequirements.revenue) {
@@ -519,9 +519,8 @@ async function buildGA4ReportPayload(report: any) {
   const breakdownEngagementRate = breakdownFinancialTotals.sessions > 0
     ? breakdownFinancialTotals.engagedSessions / breakdownFinancialTotals.sessions
     : 0;
-  const overviewTotalsSource = hasBreakdownOverviewTotals
-    ? { ...breakdownFinancialTotals, engagementRate: breakdownEngagementRate }
-    : null;
+  const hasDailyOverviewResponse = dailyRows.length > 0 || !failedParts.has("time series");
+  const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;
   const breakdownTotals = {
     sessions: Number(overviewTotalsSource?.sessions || 0),
     conversions: Number(overviewTotalsSource?.conversions || 0),

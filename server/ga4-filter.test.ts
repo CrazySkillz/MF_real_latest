@@ -347,6 +347,37 @@ describe("GA4 campaign value picker", () => {
     expect(supplementBody.dimensions).toEqual([{ name: "date" }]);
   });
 
+  it("supplements only missing daily conversion and revenue fields when another day already has values", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const metricNames = (body?.metrics || []).map((m: any) => String(m?.name || ""));
+      const isSupplement = metricNames.length === 2;
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isSupplement
+            ? [
+                { dimensionValues: [{ value: "20260618" }], metricValues: [{ value: "7" }, { value: "123.45" }] },
+                { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "5" }, { value: "80" }] },
+              ]
+            : [
+                { dimensionValues: [{ value: "20260618" }], metricValues: [{ value: "85" }, { value: "108" }, { value: "3" }, { value: "80" }, { value: "50" }, { value: "0.64" }] },
+                { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "40" }, { value: "55" }, { value: "0" }, { value: "38" }, { value: "0" }, { value: "0.5" }] },
+              ],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTimeSeriesWithToken("properties/123", "token", "2026-06-01", "summer_sale");
+
+    expect(result).toEqual([
+      expect.objectContaining({ date: "2026-06-18", sessions: 85, conversions: 3, revenue: 50 }),
+      expect.objectContaining({ date: "2026-06-19", sessions: 40, conversions: 5, revenue: 80 }),
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("uses pageLocation UTM fallback for acquisition rows when campaign dimensions are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));

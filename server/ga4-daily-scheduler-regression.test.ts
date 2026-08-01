@@ -61,4 +61,13 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
     expect(source).not.toContain("setInterval(() =>");
   });
+
+  it("fetches and persists daily values for the exact saved property and campaign scope", () => {
+    const source = schedulerSource();
+
+    expect(source).toContain("const campaignFilter = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);");
+    expect(source).toMatch(/getTimeSeriesData\([\s\S]*?String\(primary\.propertyId\),\s*campaignFilter\s*\)/);
+    expect(source).toContain("propertyId: String(primary.propertyId)");
+    expect(source).toContain("await storage.upsertGA4DailyMetrics(toUpsert as any);");
+  });
 });

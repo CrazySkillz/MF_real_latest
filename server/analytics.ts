@@ -2116,13 +2116,13 @@ export class GoogleAnalytics4Service {
         Number(r?.users || 0) > 0 ||
         Number(r?.pageviews || 0) > 0
       );
-      const hasConversionRevenue = timeSeriesData.some((r) =>
-        Number(r?.conversions || 0) > 0 ||
-        Number(r?.revenue || 0) > 0
+      const hasMissingConversionRevenue = timeSeriesData.some((r) =>
+        (Number(r?.sessions || 0) > 0 || Number(r?.users || 0) > 0 || Number(r?.pageviews || 0) > 0) &&
+        (Number(r?.conversions || 0) <= 0 || Number(r?.revenue || 0) <= 0)
       );
       const campaignNameConversionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
 
-      if (hasBaseTraffic && !hasConversionRevenue && campaignNameConversionFilter) {
+      if (hasBaseTraffic && hasMissingConversionRevenue && campaignNameConversionFilter) {
         const supplemental = await runConversionRevenueWithFallback(campaignNameConversionFilter).catch(() => null);
         const supplementalRows = Array.isArray(supplemental?.data?.rows) ? supplemental.data.rows : [];
         const conversionRevenueByDate = new Map<string, { conversions: number; revenue: number; revenueMetric: string }>();
@@ -2145,11 +2145,14 @@ export class GoogleAnalytics4Service {
           timeSeriesData = timeSeriesData.map((row) => {
             const supplementalRow = conversionRevenueByDate.get(String(row?.date || ''));
             if (!supplementalRow) return row;
+            const conversions = Number(row?.conversions || 0);
+            const revenue = Number(row?.revenue || 0);
+            if (conversions > 0 && revenue > 0) return row;
             return {
               ...row,
-              conversions: supplementalRow.conversions,
-              revenue: supplementalRow.revenue,
-              revenueMetric: supplementalRow.revenueMetric,
+              conversions: conversions > 0 ? conversions : supplementalRow.conversions,
+              revenue: revenue > 0 ? revenue : supplementalRow.revenue,
+              revenueMetric: revenue > 0 ? row.revenueMetric : supplementalRow.revenueMetric,
             };
           });
         }

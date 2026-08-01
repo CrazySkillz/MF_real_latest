@@ -32,6 +32,9 @@ const ga4KpiBenchmarkJobsFile = () =>
 const campaignCurrentValuesFile = () =>
   readFileSync(join(process.cwd(), "server", "utils", "campaign-current-values.ts"), "utf-8");
 
+const ga4KpiLiveValueFile = () =>
+  readFileSync(join(process.cwd(), "shared", "ga4-kpi-live-value.ts"), "utf-8");
+
 const hubspotWizardFile = () =>
   readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf-8");
 
@@ -732,6 +735,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
   it("keeps HubSpot-backed GA4 KPI and Benchmark live formulas aligned with Overview financial revenue", () => {
     const ga4Metrics = ga4MetricsFile();
+    const ga4KpiLiveValue = ga4KpiLiveValueFile();
     const financialBlock = sliceBetween(
       ga4Metrics,
       "const ga4FinancialCandidates = [",
@@ -770,10 +774,15 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(kpiCreateBlock).toContain("return spend > 0 ? (revenue / spend).toFixed(2) : \"0.00\";");
     expect(kpiCreateMutationBlock).toContain("revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0)");
     expect(kpiCreateMutationBlock).toContain("spend: Number(financialSpend || 0)");
-    expect(kpiLiveBlock).toContain('if (name === "Revenue") return Number(financialRevenue || 0).toFixed(2);');
-    expect(kpiLiveBlock).toContain('if (name === "ROAS") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);');
-    expect(kpiLiveBlock).toContain('if (name === "ROI") return Number(financialROI || 0).toFixed(2);');
-    expect(kpiLiveBlock).toContain('if (name === "CPA") return Number(financialCPA || 0).toFixed(2);');
+    expect(kpiLiveBlock).toContain("return resolveGA4KpiLiveValue({");
+    expect(kpiLiveBlock).toContain("financialRevenue,");
+    expect(kpiLiveBlock).toContain("financialSpend,");
+    expect(kpiLiveBlock).toContain("financialROI,");
+    expect(kpiLiveBlock).toContain("financialCPA,");
+    expect(ga4KpiLiveValue).toContain('if (metric === "revenue") return Number(financialRevenue || 0).toFixed(2);');
+    expect(ga4KpiLiveValue).toContain('if (metric === "roas") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);');
+    expect(ga4KpiLiveValue).toContain('if (metric === "roi") return Number(financialROI || 0).toFixed(2);');
+    expect(ga4KpiLiveValue).toContain('if (metric === "cpa") return Number(financialCPA || 0).toFixed(2);');
 
     expect(benchmarkLiveBlock).toContain("const revenue = Number(financialRevenue || 0);");
     expect(benchmarkLiveBlock).toContain("return Number(financialROAS || 0);");
@@ -799,7 +808,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const campaignTotalsBlock = sliceBetween(
       campaignCurrent,
       "async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false): Promise<CampaignMetricTotals | null> {",
-      "function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number {"
+      "function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number | null {"
     );
     const campaignConfigBlock = sliceBetween(
       campaignCurrent,
@@ -808,28 +817,35 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
 
     expect(computeBlock).toContain("const revenue = inputs.ga4Revenue + inputs.importedRevenue;");
-    expect(computeBlock).toContain('if (m === "revenue" || m === "totalrevenue") return round2(revenue);');
+    expect(computeBlock).toContain('if (m === "revenue") return round2(revenue);');
     expect(computeBlock).toContain('if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));');
     expect(computeBlock).toContain('if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));');
     expect(computeBlock).toContain('if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));');
     expect(jobInputBlock).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
-    expect(jobInputBlock).toContain("importedRevenue: round2(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0),");
+    expect(jobInputBlock).toContain('const [importedRevenueResult, spendTotalResult] = await Promise.allSettled([');
+    expect(jobInputBlock).toContain("const importedRevenueValue = importedRevenueResult.status === \"fulfilled\"");
+    expect(jobInputBlock).toContain("importedRevenue: round2(importedRevenueValue ?? 0),");
     expect(jobs).toContain("const isGA4FinancialKpiMetric = (metricOrName: string) => {");
-    expect(jobInputBlock).toContain("let financialInputs = { ...inputs };");
-    expect(jobInputBlock).toContain("const hasFinancialMetric = [");
-    expect(jobInputBlock).toContain("if (hasFinancialMetric && !isYesopMockProperty(propertyId)) {");
-    expect(jobInputBlock).toContain('ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, campaignFilter)');
-    expect(jobInputBlock).toContain("const inputsForMetric = (metric: string) => isGA4FinancialKpiMetric(metric) ? financialInputs : inputs;");
-    expect(jobs).toContain("const valueNum = computeKpiValue(metricOrName, inputsForMetric(metricOrName));");
-    expect(jobs).toContain("const currentValue = computeKpiValue(metricKey, inputsForMetric(metricKey));");
+    expect(jobInputBlock).toContain("const financialInputs = financialCandidateAvailable ? {");
+    expect(jobInputBlock).toContain("const dependencies = getGA4KpiMetricDependencies(metric);");
+    expect(jobInputBlock).toContain("if (dependencies.requiresRevenue && importedRevenueValue === null) return null;");
+    expect(jobs).toContain("const metricInputs = inputsForMetric(metricOrName);");
+    expect(jobs).toContain("if (!metricInputs) continue;");
+    expect(jobs).toContain("const valueNum = computeKpiValue(metricOrName, metricInputs);");
+    expect(jobs).toContain("const metricInputs = inputsForMetric(metricKey);");
+    expect(jobs).toContain("const currentValue = computeKpiValue(metricKey, metricInputs);");
     expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);');
     expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');
 
-    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => ({ totalRevenue: 0 }))');
-    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4").catch(() => [] as any[])');
+    expect(campaignTotalsBlock).toContain("await Promise.allSettled([");
+    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
+    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4")');
     expect(campaignTotalsBlock).toContain("revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),");
     expect(campaignTotalsBlock).toContain("selectGA4FinancialTotalsSource([");
-    expect(campaignConfigBlock).toContain('if (metric === "revenue") return round2(sumSelected("revenue", cfg?.inputs?.revenue, totals));');
+    expect(campaignTotalsBlock).toContain('revenueAvailable: revenueTotalsResult.status === "fulfilled" && (!primary?.propertyId || ga4RevenueAvailable),');
+    expect(campaignConfigBlock).toContain('if (["revenue", "spend", "conversions", "users", "sessions", "engagementRate"].includes(metric)) {');
+    expect(campaignConfigBlock).toContain("const value = sumSelected(metric, cfg?.inputs?.[metric], totals);");
+    expect(campaignConfigBlock).toContain("if (value === null) return null;");
     expect(campaignConfigBlock).toContain('if (metric === "roas") {');
     expect(campaignConfigBlock).toContain('const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);');
     expect(campaignConfigBlock).toContain('if (metric === "roi") {');

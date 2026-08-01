@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "b9c4ed15dbe5eee0e14efe361721005da90909c6c1af15f408393971001f2865",
+  "contractSha256": "9c6a4909301aa2480cf3a01b8e1e144a49d4c4464460337c59dd5620949ef885",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "5939b106a0e28a1d4e8bb3adcd997878563f2022",
+  "lastReviewedSha": "c9f474dc66d3e5e4ebf3c20203075d84b2b19126",
   "certifiedSha": null,
   "invalidationReason": "Current Commit 5 locally corrects the bounded financial source and producer-failure contract, but alert/email insufficiency, UI state, exact-result/report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
   "configurationBoundary": {
@@ -61,6 +61,7 @@
     { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": null },
     { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": null },
     { "path": "server/campaign-current-value-financial-source-regression.test.ts", "role": "campaign current-value financial precedence and unavailable preservation regression", "sha256": null },
+    { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "source-backed imported revenue KPI and Benchmark downstream regression", "sha256": null },
     { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": null },
     { "path": "server/ga4-kpi-reporting-window-regression.test.ts", "role": "campaign-timezone 30-completed-day and weighted Engagement Rate regression", "sha256": null },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": null },
@@ -151,7 +152,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 5: the checker passed after the financial-source dependency/test contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
+      "evidence": "August 1, 2026 Commit 5 validation closure: the checker passed after the closure test/dependency contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
     },
     {
       "id": "kpi_core_regressions",
@@ -181,7 +182,13 @@
       "id": "financial_source_failure_contract",
       "command": "npm test -- server/campaign-current-value-financial-source-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/campaign-current-value-calculation-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 5: 5 files / 27 tests passed for fixed provider-to-persisted-to-configured-breakdown precedence, authoritative zero, malformed-candidate rejection, native/revenue/spend unavailability, dependency-isolated persistence, and last-good preservation. The neighboring packet passed 110 of 114 tests; four pre-existing stale source-text guards remain explicitly uncorrected and are not clean evidence."
+      "evidence": "August 1, 2026 Current Commit 5: 5 files / 27 tests passed for fixed provider-to-persisted-to-configured-breakdown precedence, authoritative zero, malformed-candidate rejection, native/revenue/spend unavailability, dependency-isolated persistence, and last-good preservation. The validation-closure packet subsequently passed 9 files / 114 tests with test-only assertion updates and no runtime changes."
+    },
+    {
+      "id": "commit_5_validation_closure",
+      "command": "npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 1, 2026 Commit 5 validation closure: 9 files / 114 tests passed after four stale assertions were aligned to the shared KPI live resolver, current recompute/failure contract, and combined notification-attention behavior. No runtime code changed."
     },
     {
       "id": "typescript",

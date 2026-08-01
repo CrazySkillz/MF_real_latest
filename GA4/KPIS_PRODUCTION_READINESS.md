@@ -45,7 +45,7 @@ Current unproven or unsafe paths:
 - source recompute, KPI reads/updates, and alert reconciliation swallow failures; job results do not identify the exact KPI IDs updated, so report preflight cannot prove selected rows are fresh
 - `kpi_progress` remains `numeric(10,2)` and can fail after current value update; KPI child-row deletion is non-transactional and notification hiding is best-effort
 - the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
-- the Current Commit 5 focused financial packet passed 27/27 tests; the neighboring packet passed 110/114, retaining two pre-existing HubSpot formula/signature source-text failures and two pre-existing Notifications attention-indicator source-text failures
+- the Current Commit 5 focused financial packet passed 27/27 tests; the validation-closure packet now passes 114/114 after four stale source-text assertions were aligned to the already-intended shared resolver, failure contract, and combined notification-attention behavior without runtime changes
 
 External validation required after forward fixes: read-only target-data inventory (attempted August 1, 2026, but this environment has no `DATABASE_URL`; no data was read or changed); deployed valid-zero/unavailable/stale/provider-failure/source-mix/timezone parity; a timer-fired scheduler run with exact KPI update evidence; current GA4/token-refresh and email-provider evidence; and browser/direct/test/scheduled report, bell, Notifications, and Insights parity.
 
@@ -272,8 +272,10 @@ Files changed:
 
 Validation on August 1, 2026:
 
+- validation-closure root cause: the HubSpot live-value guard still searched the page wrapper for formulas that Current Commit 2 moved into `shared/ga4-kpi-live-value.ts`, while its server guard used an obsolete `sourceValue` return signature and pre-Commit-5 catch-to-zero/input-shape assertions; the Notifications guards still expected the old KPI-only indicator instead of the existing combined KPI/Benchmark-or-Shopify attention state
 - focused financial contract packet passed: 5 files / 27 tests
-- directly affected and neighboring scheduler/source/notification packet passed 110 of 114 tests; the four failures are pre-existing stale source-text guards: two HubSpot guards still expect pre-Commit-2/3 inline formulas/signatures, and two Notifications guards still expect the old KPI-only attention label instead of the existing combined attention behavior
+- directly affected and neighboring scheduler/source/notification packet passed 9 files / 114 tests after validation closure; two HubSpot assertions now inspect the shared live resolver and current Commit 5 recompute/failure contract, while two Notifications assertions now verify the existing combined KPI/Benchmark-or-Shopify attention state
+- validation closure changed only `server/hubspot-revenue-ga4-overview-regression.test.ts`, `server/notification-visibility-regression.test.ts`, and canonical certification evidence; no runtime code or behavior changed
 - `npm test -- server/ga4-kpi-certification-gate.test.ts` passed: 1 file / 9 tests; `npm run check:ga4-kpi-certification` passed
 - `npm run check` passed
 

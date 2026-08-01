@@ -361,7 +361,7 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).toContain('aria-current={isNotificationsPage ? "page" : undefined}');
     expect(navigationFile).toContain('<Bell className="w-4 h-4" />');
     expect(navigationFile).not.toContain("text-green-600");
-    expect(navigationFile).toContain('aria-label={hasActiveKpiBenchmarkBreach ? "Open Notifications, active KPI or Benchmark breach" : "Open Notifications"}');
+    expect(navigationFile).toContain('aria-label={hasActiveNotificationAttention ? "Open Notifications, active alert" : "Open Notifications"}');
     expect(navigationFile).not.toContain("PopoverTrigger");
     expect(navigationFile).not.toContain("PopoverContent");
     expect(navigationFile).not.toContain("navigateFromBell");
@@ -383,7 +383,10 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).toContain('if (notification.type !== "performance-alert") return false;');
     expect(navigationFile).toContain('const itemType = String(metadata?.itemType || "").toLowerCase();');
     expect(navigationFile).toContain('return itemType === "kpi" || itemType === "benchmark" || Boolean(metadata?.kpiId || metadata?.benchmarkId);');
-    expect(navigationFile).toContain("{hasActiveKpiBenchmarkBreach && (");
+    expect(navigationFile).toContain("const hasActiveShopifyRefreshFailure = notifications.some((notification) => {");
+    expect(navigationFile).toContain('return metadata?.kind === "shopify_revenue_refresh_failure" && !metadata?.resolvedAt && !metadata?.dismissedAt;');
+    expect(navigationFile).toContain("const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach || hasActiveShopifyRefreshFailure;");
+    expect(navigationFile).toContain("{hasActiveNotificationAttention && (");
     expect(navigationFile).toContain('<span className="relative inline-flex">');
     expect(navigationFile).toContain('className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-background"');
     expect(navigationFile).toContain('data-testid="notification-breach-indicator"');

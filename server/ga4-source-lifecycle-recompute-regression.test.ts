@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
 const scheduler = readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
+const jobs = readFileSync(join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"), "utf8");
 const ga4Page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf8");
 
 const sliceBetween = (source: string, start: string, end: string) => {
@@ -33,8 +34,11 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "const recomputeCampaignDerivedValues",
     );
     expect(scheduleHelper).toContain("setImmediate(() => {");
-    expect(scheduleHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
+    expect(scheduleHelper).toContain('const recomputeComplete = await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
+    expect(scheduleHelper).toContain("if (!recomputeComplete) return;");
     expect(scheduleHelper).toContain("await checkPerformanceAlerts();");
+    expect(routes).toContain("result.kpiIdsSkipped.length > 0");
+    expect(jobs).toContain("kpiIdsSkipped.size === 0");
 
     const revenueHelper = sliceBetween(
       routes,

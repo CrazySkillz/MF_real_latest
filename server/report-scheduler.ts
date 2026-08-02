@@ -256,11 +256,45 @@ function getGA4ReportSelectedBenchmarkIds(report: any): Set<string> {
   ].map((id: any) => String(id || "").trim()).filter(Boolean));
 }
 
+function reportIncludesGA4KPISection(report: any): boolean {
+  const reportType = String((report as any)?.reportType || "overview").trim().toLowerCase();
+  if (reportType === "kpis") return true;
+  if (reportType !== "custom") return false;
+  const cfg = parseReportConfiguration((report as any)?.configuration);
+  const selectedKpiIds = Array.isArray(cfg?.selectedKpiIds)
+    ? cfg.selectedKpiIds.map((id: any) => String(id || "").trim()).filter(Boolean)
+    : [];
+  return Boolean(cfg?.sections?.kpis || cfg?.subsections?.kpis?.items || selectedKpiIds.length > 0);
+}
+
+function getGA4ReportSelectedKPIIds(report: any): Set<string> {
+  const cfg = parseReportConfiguration((report as any)?.configuration);
+  return new Set((Array.isArray(cfg?.selectedKpiIds) ? cfg.selectedKpiIds : [])
+    .map((id: any) => String(id || "").trim())
+    .filter(Boolean));
+}
+
 export async function preflightGA4ReportKPIConsumers(report: any, date?: string, opts?: { suppressAlerts?: boolean }): Promise<{ ok: boolean; error?: string }> {
   if (String((report as any)?.platformType || "").trim().toLowerCase() !== "google_analytics") return { ok: true };
   const campaignId = String((report as any)?.campaignId || "").trim();
   if (!campaignId) return { ok: false, error: "GA4 report campaign is missing" };
   try {
+    let requiredKpiIds = new Set<string>();
+    if (reportIncludesGA4KPISection(report)) {
+      const selectedKpiIds = getGA4ReportSelectedKPIIds(report);
+      const reportKpis = await storage.getPlatformKPIs("google_analytics", campaignId);
+      const availableKpiIds = new Set((Array.isArray(reportKpis) ? reportKpis : [])
+        .map((row: any) => String(row?.id || "").trim())
+        .filter(Boolean));
+      if (selectedKpiIds.size > 0) {
+        const missingSelectedIds = Array.from(selectedKpiIds).filter((id) => !availableKpiIds.has(id));
+        if (missingSelectedIds.length > 0) return { ok: false, error: "GA4 report selected KPI rows are unavailable" };
+        requiredKpiIds = selectedKpiIds;
+      } else {
+        requiredKpiIds = availableKpiIds;
+      }
+    }
+
     let requiredBenchmarkIds = new Set<string>();
     if (reportIncludesGA4BenchmarkSection(report)) {
       const selectedBenchmarkIds = getGA4ReportSelectedBenchmarkIds(report);
@@ -275,6 +309,11 @@ export async function preflightGA4ReportKPIConsumers(report: any, date?: string,
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
     if (Number((result as any)?.campaignsProcessed || 0) <= 0) {
       return { ok: false, error: "GA4 KPI/Benchmark recompute skipped target campaign" };
+    }
+    if (requiredKpiIds.size > 0) {
+      const updatedKpiIds = new Set((Array.isArray((result as any)?.kpiIdsUpdated) ? (result as any).kpiIdsUpdated : []).map((id: any) => String(id || "").trim()).filter(Boolean));
+      const missing = Array.from(requiredKpiIds).filter((id) => !updatedKpiIds.has(id));
+      if (missing.length > 0) return { ok: false, error: "GA4 KPI recompute skipped or failed selected KPI rows" };
     }
     if (requiredBenchmarkIds.size > 0) {
       const updatedBenchmarkIds = new Set((Array.isArray((result as any)?.benchmarkIdsUpdated) ? (result as any).benchmarkIdsUpdated : []).map((id: any) => String(id || "").trim()).filter(Boolean));

@@ -241,6 +241,10 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   it("persists the same fixture through the actual GA4 daily job and exposes it through the KPI API", async () => {
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     expect(result.campaignsProcessed).toBe(1);
+    expect(result.campaignIdsProcessed).toEqual([campaign.id]);
+    expect(result.kpiIdsUpdated).toEqual(kpiRows.map((row) => row.id));
+    expect(result.kpiIdsSkipped).toEqual([]);
+    expect(result.kpiIdsFailed).toEqual([]);
     for (const row of kpiRows) expect(Number(row.currentValue)).toBe(Number(expectedByMetric[row.metric]));
 
     vi.useRealTimers();
@@ -410,5 +414,38 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(buffer?.length).toBeGreaterThan(100);
     expect(pdfTextCalls.join("\n")).toContain("totalRevenue KPI");
     expect(pdfTextCalls.join("\n")).toContain("200");
+  });
+
+  it("returns exact failed KPI IDs and blocks every shared report preflight when a selected write fails", async () => {
+    const failedId = kpiRows[0].id;
+    storageMock.updateKPI.mockImplementation(async (id: string, update: any) => {
+      if (id === failedId) throw new Error("simulated KPI write failure");
+      const row = kpiRows.find((item) => item.id === id);
+      if (row && update.currentValue !== undefined) row.currentValue = String(update.currentValue);
+      return row;
+    });
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    expect(result.kpiIdsFailed).toEqual([failedId]);
+    expect(result.kpiIdsUpdated).not.toContain(failedId);
+    expect(result.kpiIdsUpdated).toHaveLength(kpiRows.length - 1);
+
+    const preflight = await preflightGA4ReportKPIConsumers(report, "2026-07-31", { suppressAlerts: true });
+    expect(preflight).toEqual({ ok: false, error: "GA4 KPI recompute skipped or failed selected KPI rows" });
+  });
+
+  it("returns exact skipped KPI IDs and blocks preserved last-good financial rows from reports", async () => {
+    storageMock.getRevenueTotalForRange.mockRejectedValue(new Error("simulated imported revenue outage"));
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    const skippedIds = kpiRows
+      .filter((row) => ["revenue", "totalRevenue", "roas", "roi"].includes(row.metric))
+      .map((row) => row.id);
+    expect(result.kpiIdsSkipped).toEqual(skippedIds);
+    expect(result.kpiIdsFailed).toEqual([]);
+    for (const id of skippedIds) expect(storageMock.updateKPI).not.toHaveBeenCalledWith(id, expect.anything());
+
+    const preflight = await preflightGA4ReportKPIConsumers(report, "2026-07-31", { suppressAlerts: true });
+    expect(preflight).toEqual({ ok: false, error: "GA4 KPI recompute skipped or failed selected KPI rows" });
   });
 });

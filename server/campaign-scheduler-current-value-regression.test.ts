@@ -27,6 +27,10 @@ describe("campaign scheduler current-value regression guard", () => {
     const dailyScheduler = readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
 
     expect(autoRefresh).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch");
-    expect(dailyScheduler).toContain("await runGA4DailyKPIAndBenchmarkJobs();");
+    expect(autoRefresh).toContain("anyCampaignUpdated && !anyCampaignRecomputeFailed");
+    expect(autoRefresh).toContain("recomputeResult.kpiIdsSkipped.length > 0");
+    expect(dailyScheduler).toContain("const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);");
+    expect(dailyScheduler).toContain("recomputeResult.kpiIdsSkipped.length > 0");
+    expect(dailyScheduler).toContain("recomputeResult.kpiIdsFailed.length > 0");
   });
 });

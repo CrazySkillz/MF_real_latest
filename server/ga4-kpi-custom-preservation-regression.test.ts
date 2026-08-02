@@ -110,7 +110,7 @@ describe("GA4 custom KPI recompute preservation", () => {
   });
 
   it("does not overwrite custom or unsupported KPI rows during the shared GA4 recompute job", async () => {
-    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
 
     expect(storageMock.updateKPI).toHaveBeenCalledTimes(1);
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300" });
@@ -125,6 +125,9 @@ describe("GA4 custom KPI recompute preservation", () => {
       value: "1300",
       notes: "auto:ga4_daily:2026-06-27",
     }));
-    expect(checkPerformanceAlertsMock).toHaveBeenCalledTimes(1);
+    expect(result.kpiIdsUpdated).toEqual(["kpi-revenue"]);
+    expect(result.kpiIdsSkipped).toEqual(["kpi-custom-name", "kpi-custom-marker"]);
+    expect(result.kpiIdsFailed).toEqual([]);
+    expect(checkPerformanceAlertsMock).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "25f19e8af54c667f57bc015b24c8ee5660862b60354b160ae9c83a1f0c395f08",
+  "contractSha256": "d935f348e84cb76d8ac7a352afd55bcb4f01b58f83203681fd06c11eb9b90b33",
   "status": "UNVERIFIED",
   "lastReviewedSha": "5f087470b29b175988740b7bfcc2eea43a672118",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 7 locally unifies fail-closed KPI UI and browser-consumer states, but exact-result/report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
+  "invalidationReason": "Current Commit 8 locally adds exact recompute results and fail-closed selected-row report proof, but persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -23,6 +23,7 @@
       "Current Commit 5 locally applies provider-to-persisted-to-configured-breakdown precedence and preserves affected last-good stored values when required native, revenue, or spend inputs are unavailable.",
       "Current Commit 6 locally prevents blocked, insufficient, unavailable, or preserved-last-good values from being treated as verified breaches by backend alert, email, bell, and Notifications consumers.",
       "Current Commit 7 locally prevents loading, failed, unavailable, stale/last-good, blocked, or insufficient KPI values from being scored, pulsed, or described as verified performance by browser consumers.",
+      "Current Commit 8 locally requires exact KPI updated/skipped/failed results and selected-row freshness proof before source-lifecycle alert sweeps or report generation continue.",
       "Custom and unsupported KPI values must not be overwritten by guessed recomputation."
     ],
     "windowRules": [
@@ -162,19 +163,19 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 7: the updated dependency/test contract passed the standalone checker and 1 file / 9 certification regression tests, including unknown-Git-SHA and reduced-contract rejection."
+      "evidence": "August 2, 2026 Current Commit 8: the updated dependency/test contract passed the standalone checker and 1 file / 9 certification regression tests."
     },
     {
       "id": "kpi_core_regressions",
       "command": "npm test -- server/ga4-kpi-financial-window-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-damaged-data-cleanup-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-financial-rules.test.ts",
-      "status": "failed",
-      "evidence": "August 1 audit evidence is not a clean packet: the broader focused runs passed 431 of 436 tests and retained five stale exact-source guards."
+      "status": "passed",
+      "evidence": "August 2, 2026 Current Commit 8: 10 files / 60 KPI core regression tests passed."
     },
     {
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 5: 1 file / 10 tests passed through the actual shared live-card/browser-PDF resolver, persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and shared report preflight/PDF builder, including all three precedence branches, authoritative provider zero, dependency-isolated revenue/spend failures, and native-source unavailability preservation. Deployed UI, email delivery, timer execution, and production data remain external gates."
+      "evidence": "August 2, 2026 Current Commit 8: 1 file / 12 tests passed through the actual shared live-card/browser-PDF resolver, persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and shared report preflight/PDF builder, including exact successful, skipped, and failed KPI IDs plus selected-row fail-closed report proof. Deployed server-report behavior, timer execution, and production data remain external gates."
     },
     {
       "id": "metric_identity_contract",
@@ -192,7 +193,7 @@
       "id": "financial_source_failure_contract",
       "command": "npm test -- server/campaign-current-value-financial-source-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/campaign-current-value-calculation-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 5: 5 files / 27 tests passed for fixed provider-to-persisted-to-configured-breakdown precedence, authoritative zero, malformed-candidate rejection, native/revenue/spend unavailability, dependency-isolated persistence, and last-good preservation. The validation-closure packet subsequently passed 9 files / 114 tests with test-only assertion updates and no runtime changes."
+      "evidence": "August 2, 2026 Current Commit 8 rerun: 5 files / 29 tests passed for fixed provider-to-persisted-to-configured-breakdown precedence, authoritative zero, malformed-candidate rejection, native/revenue/spend unavailability, dependency-isolated persistence, last-good preservation, and exact skip/failure report blocking. The validation-closure packet passed 9 files / 114 tests."
     },
     {
       "id": "commit_5_validation_closure",
@@ -204,25 +205,31 @@
       "id": "alert_notification_contract",
       "command": "npm test -- server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-regression.test.ts server/alert-email-scheduler-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/alert-email-audit-regression.test.ts server/alert-email-retry-regression.test.ts server/alert-email-idempotency-regression.test.ts server/alert-email-delivery-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-benchmark-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 6: 14 files / 111 tests passed for source-resolved valid-zero, unavailable-last-good, and exact insufficiency decisions plus KPI/Benchmark in-app reconciliation, duplicate suppression, immediate/scheduled/retry email eligibility, bell/Notifications visibility, and real-path parity. Deployment, timer execution, provider behavior, inbox delivery, and production data remain external gates."
+      "evidence": "August 2, 2026 Current Commit 8 rerun: 14 files / 113 tests passed for source-resolved valid-zero, unavailable-last-good, exact insufficiency decisions, in-app reconciliation, email eligibility, bell/Notifications visibility, real-path parity, and exact skip/failure report blocking. Deployment, timer execution, provider behavior, inbox delivery, and production data remain external gates."
     },
     {
       "id": "ui_browser_consumer_states",
       "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 7: 10 files / 225 tests passed for the dynamic loading/failed/unavailable/stale/blocked/insufficient/verified matrix and real browser wiring through KPI cards, breach pulse, tracker, KPI-derived Insights, browser PDF, alert/notification parity, and standard/legacy reporting-window labels. Deployment and browser interaction remain external gates."
+      "evidence": "August 2, 2026 Current Commit 8 rerun: 10 files / 227 tests passed for the dynamic loading/failed/unavailable/stale/blocked/insufficient/verified matrix and browser wiring through KPI cards, breach pulse, tracker, KPI-derived Insights, browser PDF, alert/notification parity, reporting-window labels, and exact skip/failure report blocking. The user confirmed only the deployed Commit 7 browser-PDF download/open happy path; the deployed state matrix remains pending."
+    },
+    {
+      "id": "recompute_report_proof",
+      "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/report-email-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 2, 2026 Current Commit 8: the focused exact-result/source-lifecycle packet passed 3 files / 29 tests, and the direct snapshot/test-send/manual-send/scheduled-report plus scheduler packet passed 5 files / 41 tests. Dynamic failures prove exact failed or skipped selected KPI IDs cannot pass the shared report preflight; caller guards cover all four server-report entry points."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 7: TypeScript completed successfully."
+      "evidence": "August 2, 2026 Current Commit 8: TypeScript completed successfully."
     },
     {
       "id": "production_build",
       "command": "npm run build",
-      "status": "pending",
-      "evidence": "Required before final certification; not required to claim KPI runtime readiness in Commit 1."
+      "status": "passed",
+      "evidence": "August 2, 2026 Current Commit 8: the Vite client build and esbuild server bundle completed successfully."
     }
   ],
   "externalGates": [
@@ -254,7 +261,7 @@
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "Current Commit 7 locally covers KPI UI, tracker, KPI-derived Insights, and browser PDF state wiring. Deployed browser interaction plus bell, Notifications, direct snapshot, test-send, manual, and scheduled report parity must still be externally revalidated."
+      "evidence": "Current Commit 7 locally covers KPI UI, tracker, KPI-derived Insights, and browser PDF state wiring. After deployment, the user confirmed the KPI browser PDF downloaded, opened, and looked correct; this is only the happy path. The deployed non-verified state matrix plus bell, Notifications, direct snapshot, test-send, manual-send, and scheduled-report parity remain pending."
     }
   ]
 }

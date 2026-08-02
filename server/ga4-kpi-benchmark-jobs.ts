@@ -221,15 +221,36 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   let benchmarksRecorded = 0;
   let benchmarksUpdated = 0;
   const benchmarkIdsUpdated: string[] = [];
+  const campaignIdsProcessed = new Set<string>();
+  const campaignIdsSkipped = new Set<string>();
+  const campaignIdsFailed = new Set<string>();
+  const kpiIdsUpdated = new Set<string>();
+  const kpiIdsSkipped = new Set<string>();
+  const kpiIdsFailed = new Set<string>();
+  const alertReconciliationFailures: string[] = [];
 
   for (const campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "");
     if (!campaignId) continue;
+    let campaignKpis: any[] = [];
 
     try {
+      try {
+        campaignKpis = await storage.getPlatformKPIs("google_analytics", campaignId);
+      } catch (e: any) {
+        campaignIdsFailed.add(campaignId);
+        console.warn(`[GA4 KPI/Benchmarks] KPI rows failed to load for campaign ${campaignId}:`, e?.message || e);
+      }
       const connections = await storage.getGA4Connections(campaignId).catch(() => []);
       const primary = (connections as any[]).find((c: any) => c?.isPrimary) || (connections as any[])[0];
-      if (!primary?.propertyId) continue;
+      if (!primary?.propertyId) {
+        campaignIdsSkipped.add(campaignId);
+        for (const kpi of campaignKpis) {
+          const kpiId = String(kpi?.id || "").trim();
+          if (kpiId) kpiIdsSkipped.add(kpiId);
+        }
+        continue;
+      }
       const propertyId = String(primary.propertyId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone, requestedDate);
@@ -273,7 +294,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       if (!row) {
         row = await storage.getLatestGA4DailyMetric(campaignId, propertyId).catch(() => null as any);
       }
-      if (!row) continue;
+      if (!row) {
+        campaignIdsSkipped.add(campaignId);
+        for (const kpi of campaignKpis) {
+          const kpiId = String(kpi?.id || "").trim();
+          if (kpiId) kpiIdsSkipped.add(kpiId);
+        }
+        continue;
+      }
 
       // Build GA4 to-date totals (campaign lifetime) for accurate financial KPIs (ROAS/ROI/CPA).
       // Primary path: GA4 API totals (with automatic token refresh).
@@ -389,7 +417,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         spend: round2(spendValue ?? 0),
         engagementRate: Number(trafficTotals.engagementRate || 0) || 0,
       };
-      const kpis = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []);
+      const kpis = campaignKpis;
       const benchmarkStorage = storage as typeof storage & {
         getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
         updateBenchmark(id: string, benchmark: any): Promise<any>;
@@ -455,47 +483,55 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         if (!kpiId) continue;
 
         const metricOrName = resolveGA4KpiMetricIdentity((kpi as any)?.metric, (kpi as any)?.name);
-        if (!metricOrName) continue;
+        if (!metricOrName) {
+          kpiIdsSkipped.add(kpiId);
+          continue;
+        }
 
         const metricInputs = inputsForMetric(metricOrName);
-        if (!metricInputs) continue;
+        if (!metricInputs) {
+          kpiIdsSkipped.add(kpiId);
+          continue;
+        }
         const valueNum = computeKpiValue(metricOrName, metricInputs);
-        // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
-        // even if we skip writing another history point for the same date.
         try {
-          await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
-        } catch (_) { /* best-effort */ }
+          // A row is reported updated only after its current value and applicable daily progress write succeed.
+          const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
+          if (!updated) throw new Error("KPI current-value update did not change a row");
 
-        const existing = await storage.getKPIProgress(kpiId).catch(() => []);
-        const existingPts = (Array.isArray(existing) ? existing : [])
-          .map((p: any) => ({
-            value: Number(p?.value || 0) || 0,
-            recordedAt: p?.recordedAt ? new Date(p.recordedAt) : new Date(0),
-          }))
-          .filter((p) => Number.isFinite(p.recordedAt.getTime()))
-          .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
+          const existing = await storage.getKPIProgress(kpiId);
+          const existingPts = (Array.isArray(existing) ? existing : [])
+            .map((p: any) => ({
+              value: Number(p?.value || 0) || 0,
+              recordedAt: p?.recordedAt ? new Date(p.recordedAt) : new Date(0),
+            }))
+            .filter((p) => Number.isFinite(p.recordedAt.getTime()))
+            .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
 
-        const already = existingPts.some((p) => isoDateUTC(p.recordedAt) === date);
-        if (already) continue;
+          const already = existingPts.some((p) => isoDateUTC(p.recordedAt) === date);
+          if (!already) {
+            const prev = existingPts.length > 0 ? existingPts[0].value : null;
+            const newPoint = { value: valueNum, recordedAt };
+            const rolling7 = computeRollingAverage(existingPts, 7, newPoint);
+            const rolling30 = computeRollingAverage(existingPts, 30, newPoint);
+            const trendDirection = computeTrendDirection(prev, valueNum);
 
-        const prev = existingPts.length > 0 ? existingPts[0].value : null;
-
-        const newPoint = { value: valueNum, recordedAt };
-        const rolling7 = computeRollingAverage(existingPts, 7, newPoint);
-        const rolling30 = computeRollingAverage(existingPts, 30, newPoint);
-        const trendDirection = computeTrendDirection(prev, valueNum);
-
-        await storage.recordKPIProgress({
-          kpiId,
-          value: String(round2(valueNum)),
-          rollingAverage7d: String(round2(rolling7)),
-          rollingAverage30d: String(round2(rolling30)),
-          trendDirection,
-          recordedAt,
-          notes: `auto:ga4_daily:${date}`,
-        } as any);
-
-        kpisRecorded += 1;
+            await storage.recordKPIProgress({
+              kpiId,
+              value: String(round2(valueNum)),
+              rollingAverage7d: String(round2(rolling7)),
+              rollingAverage30d: String(round2(rolling30)),
+              trendDirection,
+              recordedAt,
+              notes: `auto:ga4_daily:${date}`,
+            } as any);
+            kpisRecorded += 1;
+          }
+          kpiIdsUpdated.add(kpiId);
+        } catch (e: any) {
+          kpiIdsFailed.add(kpiId);
+          console.warn(`[GA4 KPI/Benchmarks] KPI ${kpiId} failed for campaign ${campaignId}:`, e?.message || e);
+        }
       }
 
       // 2) Benchmark history points (daily)
@@ -540,27 +576,49 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       await refreshCampaignCurrentValuesForCampaign(campaignId);
 
       processed += 1;
+      campaignIdsProcessed.add(campaignId);
     } catch (e: any) {
+      campaignIdsFailed.add(campaignId);
+      for (const kpi of campaignKpis) {
+        const kpiId = String(kpi?.id || "").trim();
+        if (kpiId && !kpiIdsUpdated.has(kpiId) && !kpiIdsSkipped.has(kpiId)) kpiIdsFailed.add(kpiId);
+      }
       console.warn(`[GA4 KPI/Benchmarks] Failed for campaign ${campaignId}:`, e?.message || e);
     }
   }
 
-  if (opts?.campaignId && processed > 0 && !opts?.suppressAlerts) {
+  if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts) {
     try {
       const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
       await checkPerformanceAlerts();
     } catch (e: any) {
+      alertReconciliationFailures.push("kpi");
       console.warn("[GA4 KPI/Benchmarks] KPI alert reconciliation failed:", e?.message || e);
     }
     try {
       const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
       await checkBenchmarkPerformanceAlerts();
     } catch (e: any) {
+      alertReconciliationFailures.push("benchmark");
       console.warn("[GA4 KPI/Benchmarks] Benchmark alert reconciliation failed:", e?.message || e);
     }
   }
 
-  return { date: reportedDate, campaignsProcessed: processed, kpisRecorded, benchmarksRecorded, benchmarksUpdated, benchmarkIdsUpdated };
+  return {
+    date: reportedDate,
+    campaignsProcessed: processed,
+    campaignIdsProcessed: Array.from(campaignIdsProcessed),
+    campaignIdsSkipped: Array.from(campaignIdsSkipped),
+    campaignIdsFailed: Array.from(campaignIdsFailed),
+    kpisRecorded,
+    kpiIdsUpdated: Array.from(kpiIdsUpdated),
+    kpiIdsSkipped: Array.from(kpiIdsSkipped),
+    kpiIdsFailed: Array.from(kpiIdsFailed),
+    benchmarksRecorded,
+    benchmarksUpdated,
+    benchmarkIdsUpdated,
+    alertReconciliationFailures,
+  };
 }
 
 

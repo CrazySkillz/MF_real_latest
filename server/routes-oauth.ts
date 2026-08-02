@@ -3803,16 +3803,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recomputeGA4KPIAndBenchmarkValues = async (campaignId: string, logPrefix: string) => {
     try {
-      await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+      const targetFailed = (result.campaignIdsFailed || []).includes(campaignId);
+      const incomplete = Number(result.campaignsProcessed || 0) <= 0 || targetFailed || result.kpiIdsSkipped.length > 0 || result.kpiIdsFailed.length > 0 || result.alertReconciliationFailures.length > 0;
+      if (incomplete) {
+        console.warn(`[${logPrefix}] GA4 KPI/Benchmark recompute incomplete for campaign ${campaignId}:`, {
+          campaignIdsSkipped: result.campaignIdsSkipped,
+          campaignIdsFailed: result.campaignIdsFailed,
+          kpiIdsSkipped: result.kpiIdsSkipped,
+          kpiIdsFailed: result.kpiIdsFailed,
+          alertReconciliationFailures: result.alertReconciliationFailures,
+        });
+        return false;
+      }
+      return true;
     } catch (e) {
       console.warn(`[${logPrefix}] GA4 KPI/Benchmark recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+      return false;
     }
   };
 
   const scheduleGA4RevenuePostResponseRecompute = (campaignId: string) => {
     setImmediate(() => {
       void (async () => {
-        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+        const recomputeComplete = await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+        if (!recomputeComplete) return;
         try {
           await checkPerformanceAlerts();
         } catch (e) {

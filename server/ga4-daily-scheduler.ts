@@ -229,10 +229,11 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   try {
     await refreshAllGA4DailyMetrics({ campaignId });
 
-    try {
-      await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
-    } catch (e: any) {
-      console.warn("[GA4 Daily] KPI/Benchmark recompute failed:", e?.message || e);
+    const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
+    const recomputeFailed = recomputeResult.campaignIdsSkipped.length > 0 || recomputeResult.campaignIdsFailed.length > 0 || recomputeResult.kpiIdsSkipped.length > 0 || recomputeResult.kpiIdsFailed.length > 0;
+    const targetedCampaignSkipped = Boolean(campaignId) && Number(recomputeResult.campaignsProcessed || 0) <= 0;
+    if (recomputeFailed || targetedCampaignSkipped) {
+      throw new Error(`GA4 KPI/Benchmark recompute incomplete (failed KPI IDs: ${recomputeResult.kpiIdsFailed.join(", ") || "none"})`);
     }
 
     if (!campaignId && !opts.suppressAlerts) {

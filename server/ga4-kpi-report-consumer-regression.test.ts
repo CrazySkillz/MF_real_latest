@@ -14,10 +14,14 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(preflight).toContain('toLowerCase() !== "google_analytics"');
     expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
     expect(preflight).toContain("campaignsProcessed");
+    expect(preflight).toContain("reportIncludesGA4KPISection(report)");
+    expect(preflight).toContain('storage.getPlatformKPIs("google_analytics", campaignId)');
+    expect(preflight).toContain("kpiIdsUpdated");
     expect(preflight).toContain("reportIncludesGA4BenchmarkSection(report)");
     expect(preflight).toContain('storage.getPlatformBenchmarks("google_analytics", campaignId)');
     expect(preflight).toContain("benchmarkIdsUpdated");
     expect(preflight).toContain("GA4 KPI/Benchmark recompute skipped target campaign");
+    expect(preflight).toContain("GA4 KPI recompute skipped or failed selected KPI rows");
     expect(preflight).toContain("GA4 Benchmark recompute skipped selected Benchmark rows");
     expect(sendGuard).toContain("preflightGA4ReportKPIConsumers(report, windowEnd)");
     expect(sendGuard).toContain('status: "failed"');
@@ -96,7 +100,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     const sendStart = schedulerSource.indexOf("const ga4Preflight = await preflightGA4ReportKPIConsumers(report, windowEnd);");
     const testStart = schedulerSource.indexOf("preflightGA4ReportKPIConsumers(report, windowEnd, { suppressAlerts: true })");
 
-    expect(jobsSource).toContain("if (opts?.campaignId && processed > 0 && !opts?.suppressAlerts)");
+    expect(jobsSource).toContain("if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts)");
     expect(sendStart).toBeGreaterThan(-1);
     expect(testStart).toBeGreaterThan(-1);
     expect(routesSource).toContain("preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true })");

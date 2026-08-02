@@ -698,6 +698,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     let succeeded = 0;
     let skipped = 0;
     let anyCampaignUpdated = false;
+    let anyCampaignRecomputeFailed = false;
 
     for (const campaign of campaigns) {
       const campaignId = campaign.id;
@@ -904,9 +905,13 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         // If any upstream sources changed for this campaign, immediately recompute GA4 KPI/Benchmark series for Insights.
         if (anyUpdated) {
           anyCampaignUpdated = true;
-          await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch((e: any) => {
+          const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch((e: any) => {
             console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, e?.message || e);
+            return null;
           });
+          if (!recomputeResult || Number(recomputeResult.campaignsProcessed || 0) <= 0 || recomputeResult.campaignIdsSkipped.length > 0 || recomputeResult.campaignIdsFailed.length > 0 || recomputeResult.kpiIdsSkipped.length > 0 || recomputeResult.kpiIdsFailed.length > 0 || recomputeResult.alertReconciliationFailures.length > 0) {
+            anyCampaignRecomputeFailed = true;
+          }
         }
       } catch (e: any) {
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
@@ -914,7 +919,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     }
 
     // Run alert check once per refresh cycle (avoid N-times per campaign).
-    if (anyCampaignUpdated) {
+    if (anyCampaignUpdated && !anyCampaignRecomputeFailed) {
       await checkPerformanceAlerts().catch((e) => {
         console.warn("[Auto Refresh] Alert check failed after provider reprocess:", (e as any)?.message || e);
       });

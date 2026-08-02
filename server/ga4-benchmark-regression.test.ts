@@ -71,14 +71,40 @@ describe("GA4 Benchmark regression guard", () => {
     expect(reportEnd).toBeGreaterThan(reportStart);
     expect(trackerSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
     expect(trackerSection).toContain("insufficient += 1;");
-    expect(trackerSection).toContain("return { total: items.length, scored, onTrack, needsAttention, behind, blocked, insufficient, avgPct };");
+    expect(trackerSection).toContain("unavailable, stale, pending, avgPct");
     expect(cardSection).toContain("const isInsufficient = !sufficiency.sufficient;");
-    expect(cardSection).toContain("const isUnavailable = isBlocked || isInsufficient;");
+    expect(cardSection).toContain("const consumerState = getBenchmarkConsumerState(benchmark);");
     expect(cardSection).toContain("sufficiency.reason || \"This Benchmark needs more data before it can be scored.\"");
     expect(insightsSection).toContain("if (!getBenchmarkDataSufficiency(b).sufficient) continue;");
     expect(reportSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
     expect(reportSection).toContain("Insufficient data -");
     expect(ga4MetricsFile).toContain("Some Benchmarks Need More Data");
+  });
+
+  it("fails every Benchmark consumer closed on unavailable, stale, loading, or failed source state", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const trackerStart = ga4MetricsFile.indexOf("const benchmarkTracker = useMemo(() => {");
+    const trackerEnd = ga4MetricsFile.indexOf("// --- Rolling window rollups", trackerStart);
+    const trackerSection = ga4MetricsFile.slice(trackerStart, trackerEnd);
+    const reportStart = ga4MetricsFile.indexOf('sectionTitle("Performance Benchmarks"');
+    const reportEnd = ga4MetricsFile.indexOf("renderAdsSection();", reportStart);
+    const reportSection = ga4MetricsFile.slice(reportStart, reportEnd);
+    const insightsStart = ga4MetricsFile.indexOf("const blockedBenchmarks =");
+    const insightsEnd = ga4MetricsFile.indexOf("// 2b) Scheduler dependency", insightsStart);
+    const insightsSection = ga4MetricsFile.slice(insightsStart, insightsEnd);
+
+    expect(ga4MetricsFile).toContain("isError: benchmarksError");
+    expect(ga4MetricsFile).toContain("const benchmarkListState");
+    expect(ga4MetricsFile).toContain("const getBenchmarkConsumerState = (benchmark: any) =>");
+    expect(ga4MetricsFile).toContain("resolveGA4KpiLiveValue({");
+    expect(trackerSection).toContain("if (!consumerState.eligible) continue;");
+    expect(reportSection).toContain("const consumerState = getBenchmarkConsumerState(b);");
+    expect(reportSection).toContain("Last-good value (not verified)");
+    expect(insightsSection).toContain("const unverifiedBenchmarks");
+    expect(insightsSection).toContain("No Benchmark performance conclusion or breach is generated from this value.");
   });
 
   it("routes GA4 benchmark notifications to ga4-metrics benchmarks", () => {

@@ -148,6 +148,28 @@ const kpiRows = metricFixtures.map(({ metric, unit }, index) => ({
   alertCondition: "below",
   alertsEnabled: metric === "totalRevenue",
 }));
+const benchmarkRows = [
+  ...metricFixtures.map(({ metric, unit }, index) => ({
+    id: `benchmark-${index + 1}`,
+    campaignId: campaign.id,
+    platformType: "google_analytics",
+    name: `${metric} Benchmark`,
+    metric,
+    unit,
+    currentValue: "-1",
+    benchmarkValue: "250",
+  })),
+  {
+    id: "benchmark-custom",
+    campaignId: campaign.id,
+    platformType: "google_analytics",
+    name: "Manual quality score",
+    metric: "__custom__",
+    unit: "score",
+    currentValue: "77",
+    benchmarkValue: "80",
+  },
+];
 const report = {
   id: "ga4-parity-report",
   campaignId: campaign.id,
@@ -160,6 +182,16 @@ const report = {
     selectedKpiIds: kpiRows.map((row) => row.id),
   }),
 };
+const benchmarkReport = {
+  ...report,
+  id: "ga4-benchmark-parity-report",
+  name: "GA4 Benchmark parity report",
+  configuration: JSON.stringify({
+    sections: { overview: false, kpis: false, benchmarks: true, ads: false, insights: false },
+    subsections: { benchmarks: { items: true } },
+    selectedBenchmarkIds: benchmarkRows.slice(0, -1).map((row) => row.id),
+  }),
+};
 
 let server: ReturnType<ReturnType<typeof express>["listen"]>;
 let baseUrl = "";
@@ -169,6 +201,8 @@ function setAuthoritativeFixture() {
   for (const value of Object.values(ga4ServiceMock)) value.mockReset();
   pdfTextCalls.length = 0;
   for (const row of kpiRows) row.currentValue = "-1";
+  for (const row of benchmarkRows.slice(0, -1)) row.currentValue = "-1";
+  benchmarkRows[benchmarkRows.length - 1].currentValue = "77";
 
   storageMock.getCampaign.mockResolvedValue(campaign);
   storageMock.getCampaigns.mockResolvedValue([campaign]);
@@ -190,8 +224,14 @@ function setAuthoritativeFixture() {
   });
   storageMock.getKPIProgress.mockResolvedValue([]);
   storageMock.recordKPIProgress.mockResolvedValue({});
-  storageMock.getPlatformBenchmarks.mockResolvedValue([]);
+  storageMock.getPlatformBenchmarks.mockImplementation(async () => benchmarkRows);
+  storageMock.updateBenchmark.mockImplementation(async (id: string, update: any) => {
+    const row = benchmarkRows.find((item) => item.id === id);
+    if (row && update.currentValue !== undefined) row.currentValue = String(update.currentValue);
+    return row;
+  });
   storageMock.getBenchmarkHistory.mockResolvedValue([]);
+  storageMock.recordBenchmarkHistory.mockResolvedValue({});
   storageMock.getNotifications.mockResolvedValue([]);
   storageMock.getKPI.mockImplementation(async (id: string) => kpiRows.find((item) => item.id === id));
   storageMock.getLinkedInConnection.mockResolvedValue(undefined);
@@ -447,5 +487,70 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
     const preflight = await preflightGA4ReportKPIConsumers(report, "2026-07-31", { suppressAlerts: true });
     expect(preflight).toEqual({ ok: false, error: "GA4 KPI recompute skipped or failed selected KPI rows" });
+  });
+
+  it("persists every supported Benchmark alias through the actual daily job and preserves custom values", async () => {
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    const computedRows = benchmarkRows.slice(0, -1);
+
+    expect(result.benchmarkIdsUpdated).toEqual(computedRows.map((row) => row.id));
+    expect(result.benchmarkIdsSkipped).toEqual([]);
+    expect(result.benchmarkIdsFailed).toEqual([]);
+    for (const row of computedRows) expect(Number(row.currentValue)).toBe(Number(expectedByMetric[row.metric]));
+    expect(benchmarkRows[benchmarkRows.length - 1].currentValue).toBe("77");
+    expect(storageMock.updateBenchmark).not.toHaveBeenCalledWith("benchmark-custom", expect.anything());
+  });
+
+  it("preserves last-good traffic Benchmarks when the reporting-window read fails", async () => {
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId: string, _propertyId: string, startDate: string, endDate: string) => {
+      if (startDate === "2026-07-02" && endDate === "2026-07-31") throw new Error("reporting window read failed");
+      return [dailyRow];
+    });
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    const trafficRows = benchmarkRows.slice(0, -1).filter((row) => !["revenue", "totalRevenue", "roas", "roi", "cpa"].includes(row.metric));
+    expect(result.benchmarkIdsSkipped).toEqual(trafficRows.map((row) => row.id));
+    for (const row of trafficRows) expect(row.currentValue).toBe("-1");
+  });
+
+  it("returns exact failed Benchmark IDs and blocks report preflight when a selected write fails", async () => {
+    const failedId = benchmarkRows[0].id;
+    storageMock.updateBenchmark.mockImplementation(async (id: string, update: any) => {
+      if (id === failedId) throw new Error("simulated Benchmark write failure");
+      const row = benchmarkRows.find((item) => item.id === id);
+      if (row && update.currentValue !== undefined) row.currentValue = String(update.currentValue);
+      return row;
+    });
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    expect(result.benchmarkIdsFailed).toEqual([failedId]);
+    expect(result.benchmarkIdsUpdated).not.toContain(failedId);
+
+    const preflight = await preflightGA4ReportKPIConsumers(benchmarkReport, "2026-07-31", { suppressAlerts: true });
+    expect(preflight).toEqual({ ok: false, error: "GA4 Benchmark recompute skipped or failed selected Benchmark rows" });
+  });
+
+  it("fails report preflight closed when a selected Benchmark row no longer exists", async () => {
+    const missingReport = {
+      ...benchmarkReport,
+      configuration: JSON.stringify({
+        sections: { benchmarks: true },
+        subsections: { benchmarks: { items: true } },
+        selectedBenchmarkIds: [benchmarkRows[0].id, "missing-benchmark"],
+      }),
+    };
+    const preflight = await preflightGA4ReportKPIConsumers(missingReport, "2026-07-31", { suppressAlerts: true });
+    expect(preflight).toEqual({ ok: false, error: "GA4 report selected Benchmark rows are unavailable" });
+  });
+
+  it("fails the actual scheduled Benchmark PDF path closed when its Benchmark read fails", async () => {
+    storageMock.getPlatformBenchmarks.mockRejectedValue(new Error("Benchmark read failed"));
+    await expect(buildGA4ScheduledPdfAttachment({
+      report: benchmarkReport,
+      reportName: benchmarkReport.name,
+      windowStart: "2026-07-02",
+      windowEnd: "2026-07-31",
+      campaignName: campaign.name,
+    })).rejects.toThrow("Benchmark read failed");
   });
 });

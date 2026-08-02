@@ -8871,6 +8871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentValueStartDate = currentValueWindow.startDate;
       const currentValueEndDate = currentValueWindow.endDate;
       const simulateRefreshFailure = ["1", "true", "yes"].includes(String((req.query as any)?.simulateRefreshFailure || "").trim().toLowerCase());
+      const disableTokenRefresh = ["1", "true", "yes"].includes(String((req.query as any)?.disableTokenRefresh || "").trim().toLowerCase());
 
       const requestedPropertyId = String(req.query.propertyId || "").trim();
       const connectionCandidates = requestedPropertyId
@@ -8958,7 +8959,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           providerResult = await fetchProviderTotals(providerAccessToken);
           providerStatus = "live_provider_success";
         } catch (e: any) {
-          if (isGA4ProviderAuthError(e) && selectedConnection?.refreshToken && selectedConnection?.id) {
+          if (isGA4ProviderAuthError(e) && disableTokenRefresh) {
+            providerStatus = "live_provider_auth_error_refresh_disabled";
+            providerError = String(e?.message || e || "GA4 provider authentication failed");
+          } else if (isGA4ProviderAuthError(e) && selectedConnection?.refreshToken && selectedConnection?.id) {
             try {
               const refresh = await ga4Service.refreshAccessToken(
                 String(selectedConnection.refreshToken),
@@ -9104,12 +9108,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         certificationStatus: "validation_output_only",
         productionReadinessNote: "This Benchmark-read-only validation endpoint supports Current Commit 2 evidence capture. It is not clean certification by itself until live evidence is reviewed and recorded.",
         limitations: [
-          "Refreshes and persists GA4 OAuth token metadata only after a provider auth failure; it does not mutate Benchmark, source, alert, notification, report, or history rows.",
+          disableTokenRefresh
+            ? "Token refresh and token persistence are disabled for this request, including after a provider authentication failure."
+            : "Refreshes and persists GA4 OAuth token metadata only after a provider auth failure; it does not mutate Benchmark, source, alert, notification, report, or history rows.",
           "Does not call GA4 acquisition breakdown because that helper can refresh and persist tokens; capture /ga4-breakdown evidence separately if the visible UI is using breakdown fallback.",
           "A successful response is evidence to review, not production-readiness certification by itself.",
           ...(simulateRefreshFailure ? ["simulateRefreshFailure=1 is validation-only; no token refresh was attempted and no token metadata was changed."] : []),
         ],
-        simulation: { refreshFailure: simulateRefreshFailure },
+        simulation: { refreshFailure: simulateRefreshFailure, tokenRefreshDisabled: disableTokenRefresh },
         campaignId,
         propertyId,
         campaignFilter: campaignFilter || null,

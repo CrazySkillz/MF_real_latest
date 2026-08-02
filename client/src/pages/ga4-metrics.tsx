@@ -4000,7 +4000,7 @@ export default function GA4Metrics() {
             ["Above Target", String(kpiTracker.above || 0)],
             ["On Track", String(kpiTracker.near || 0)],
             ["Below Target", String(kpiTracker.below || 0)],
-            ["Avg. Progress", `${Number(kpiTracker.avgPct || 0).toFixed(1)}%`],
+            ["Avg. Progress", kpiTracker.scored > 0 ? `${Number(kpiTracker.avgPct || 0).toFixed(1)}%` : "—"],
           ];
           const trackerW = (CW - 8) / 3;
           for (let i = 0; i < kpiTrackerCards.length; i += 3) {
@@ -6817,7 +6817,7 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
                                       <p className="text-2xl font-bold text-foreground">
-                                        {kpiTracker.avgPct.toFixed(1)}%
+                                        {kpiTracker.scored > 0 ? `${kpiTracker.avgPct.toFixed(1)}%` : "—"}
                                       </p>
                                     </div>
                                     <TrendingUp className="w-8 h-8 text-violet-600" />

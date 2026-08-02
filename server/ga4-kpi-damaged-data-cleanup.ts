@@ -1,9 +1,10 @@
 import { fileURLToPath } from "url";
 import { resolve } from "path";
 import { and, eq, inArray } from "drizzle-orm";
+import { createHash } from "crypto";
 import { db, pool } from "./db";
 import { storage } from "./storage";
-import { emailAlertEvents, kpis, notifications } from "@shared/schema";
+import { campaigns, emailAlertEvents, kpiAlerts, kpiPeriods, kpiProgress, kpis, notifications } from "@shared/schema";
 import {
   computeKpiValue,
   getGA4KPIFinancialSourceWindow,
@@ -14,8 +15,8 @@ import {
   isLatestGA4KPIForDuplicateKey,
 } from "./utils/ga4-kpi-alert-dedupe";
 
-type CleanupMode = "dry-run" | "apply";
-type CandidateKind = "financial_source_window_drift" | "duplicate_notification_state";
+type CleanupMode = "dry-run" | "apply" | "apply-orphan-kpi-parents";
+type CandidateKind = "financial_source_window_drift" | "duplicate_notification_state" | "orphan_kpi_parent";
 type SkipKind = "financial_source_window_drift" | "custom_zero_overwrite" | "duplicate_email_audit_state";
 
 type SourceWindow = {
@@ -38,6 +39,13 @@ type CleanupCandidate = {
   oldValue?: number;
   newValue?: number;
   sourceWindow?: SourceWindow;
+  relatedRows?: {
+    progress: number;
+    alerts: number;
+    periods: number;
+    notifications: number;
+    activeNotifications: number;
+  };
   reasonCode: string;
 };
 
@@ -55,6 +63,8 @@ type CleanupSkip = {
 type CleanupOptions = {
   mode: CleanupMode;
   campaignId?: string;
+  expectedOrphanCount?: number;
+  expectedOrphanSetSha256?: string;
 };
 
 type CleanupResult = {
@@ -93,6 +103,19 @@ export const isUnprovenCustomZeroOverwrite = (row: any) => {
   if (isComputableGA4KpiMetric(String(row?.metric || row?.name || ""))) return false;
   return matches(parseNumber(row?.currentValue), 0);
 };
+
+export const findOrphanGA4KpiParents = (rows: any[], existingCampaignIds: Set<string>, campaignId?: string) =>
+  rows.filter((row) => {
+    if (String(row?.platformType || "").trim().toLowerCase() !== "google_analytics") return false;
+    const rowCampaignId = String(row?.campaignId || "").trim();
+    if (!rowCampaignId) return false;
+    if (campaignId && rowCampaignId !== campaignId) return false;
+    return !existingCampaignIds.has(rowCampaignId);
+  });
+
+export const hashSortedIds = (ids: string[]) => createHash("sha256")
+  .update([...ids].map(String).sort().join("\n"))
+  .digest("hex");
 
 const parseMetadata = (value: unknown): Record<string, any> | null => {
   if (!value) return null;
@@ -281,6 +304,104 @@ async function inspectCustomZeroOverwrites(result: CleanupResult, rows: any[]) {
   }
 }
 
+async function inspectOrphanKpiParents(result: CleanupResult, rows: any[], options: CleanupOptions) {
+  const campaignRows = await storage.getCampaigns().catch(() => [] as any[]);
+  const existingCampaignIds = new Set((Array.isArray(campaignRows) ? campaignRows : [])
+    .map((row: any) => String(row?.id || "").trim())
+    .filter(Boolean));
+  const orphanRows = findOrphanGA4KpiParents(rows, existingCampaignIds, options.campaignId);
+  const orphanIds = orphanRows.map((row) => String(row?.id || "").trim()).filter(Boolean);
+  if (orphanIds.length === 0) return;
+
+  const [progressRows, alertRows, periodRows, notificationRows] = await Promise.all([
+    db.select().from(kpiProgress).where(inArray(kpiProgress.kpiId, orphanIds)),
+    db.select().from(kpiAlerts).where(inArray(kpiAlerts.kpiId, orphanIds)),
+    db.select().from(kpiPeriods).where(inArray(kpiPeriods.kpiId, orphanIds)),
+    db.select().from(notifications).where(eq(notifications.type, "performance-alert")),
+  ]);
+  const linkedNotifications = (notificationRows as any[]).filter((row) => {
+    const meta = parseMetadata(row?.metadata);
+    return orphanIds.includes(String(meta?.kpiId || "").trim());
+  });
+
+  for (const row of orphanRows) {
+    const id = String(row?.id || "").trim();
+    const rowNotifications = linkedNotifications.filter((notification) =>
+      String(parseMetadata(notification?.metadata)?.kpiId || "").trim() === id);
+    const activeNotifications = rowNotifications.filter((notification) => {
+      const meta = parseMetadata(notification?.metadata);
+      return !meta?.resolved && !meta?.dismissedAt;
+    });
+    result.candidates.push({
+      kind: "orphan_kpi_parent",
+      id,
+      kpiId: id,
+      campaignId: String(row?.campaignId || "").trim(),
+      metric: String(row?.metric || row?.name || ""),
+      relatedRows: {
+        progress: (progressRows as any[]).filter((child) => String(child?.kpiId || "") === id).length,
+        alerts: (alertRows as any[]).filter((child) => String(child?.kpiId || "") === id).length,
+        periods: (periodRows as any[]).filter((child) => String(child?.kpiId || "") === id).length,
+        notifications: rowNotifications.length,
+        activeNotifications: activeNotifications.length,
+      },
+      reasonCode: "ga4_kpi_parent_missing_campaign",
+    });
+  }
+
+  if (options.mode !== "apply-orphan-kpi-parents") return;
+  if (!Number.isInteger(options.expectedOrphanCount) || Number(options.expectedOrphanCount) <= 0) {
+    throw new Error("Orphan KPI cleanup requires --expected-orphan-count with a positive integer.");
+  }
+  if (orphanIds.length !== options.expectedOrphanCount) {
+    throw new Error(`Orphan KPI count changed: expected ${options.expectedOrphanCount}, found ${orphanIds.length}.`);
+  }
+  const actualSetSha256 = hashSortedIds(orphanIds);
+  if (!/^[a-f0-9]{64}$/.test(String(options.expectedOrphanSetSha256 || "")) || actualSetSha256 !== options.expectedOrphanSetSha256) {
+    throw new Error(`Orphan KPI identity set changed: actual sha256=${actualSetSha256}.`);
+  }
+  if (result.candidates.some((candidate) => candidate.kind === "orphan_kpi_parent" && (
+    candidate.relatedRows?.progress || candidate.relatedRows?.alerts || candidate.relatedRows?.periods || candidate.relatedRows?.activeNotifications
+  ))) {
+    throw new Error("Orphan KPI cleanup refused because child rows or active notifications exist.");
+  }
+
+  await db.transaction(async (tx: any) => {
+    const currentRows = await tx.select().from(kpis).where(and(
+      eq(kpis.platformType, "google_analytics"),
+      inArray(kpis.id, orphanIds),
+    ));
+    if (currentRows.length !== options.expectedOrphanCount) {
+      throw new Error("Orphan KPI cleanup transaction saw a changed parent-row count.");
+    }
+    const campaignIds = Array.from(new Set<string>(currentRows
+      .map((row: any) => String(row?.campaignId || "").trim())
+      .filter(Boolean)));
+    const restoredCampaigns = campaignIds.length > 0
+      ? await tx.select({ id: campaigns.id }).from(campaigns).where(inArray(campaigns.id, campaignIds))
+      : [];
+    if (restoredCampaigns.length > 0 || currentRows.some((row: any) => !String(row?.campaignId || "").trim())) {
+      throw new Error("Orphan KPI cleanup transaction found a valid or null campaign boundary.");
+    }
+    const [currentProgress, currentAlerts, currentPeriods] = await Promise.all([
+      tx.select({ id: kpiProgress.id }).from(kpiProgress).where(inArray(kpiProgress.kpiId, orphanIds)),
+      tx.select({ id: kpiAlerts.id }).from(kpiAlerts).where(inArray(kpiAlerts.kpiId, orphanIds)),
+      tx.select({ id: kpiPeriods.id }).from(kpiPeriods).where(inArray(kpiPeriods.kpiId, orphanIds)),
+    ]);
+    if (currentProgress.length || currentAlerts.length || currentPeriods.length) {
+      throw new Error("Orphan KPI cleanup transaction found child rows.");
+    }
+    const deleted = await tx.delete(kpis).where(and(
+      eq(kpis.platformType, "google_analytics"),
+      inArray(kpis.id, orphanIds),
+    )).returning({ id: kpis.id });
+    if (deleted.length !== options.expectedOrphanCount) {
+      throw new Error("Orphan KPI cleanup transaction deleted an unexpected row count.");
+    }
+    result.applied += deleted.length;
+  });
+}
+
 async function inspectDuplicateAlertState(result: CleanupResult, rows: any[]) {
   const latestIdsByKey = getLatestGA4KPIIdsByDuplicateKey(rows);
   const supersededIds = rows
@@ -347,6 +468,7 @@ export async function inventoryGA4KPIDamagedData(options: CleanupOptions): Promi
   const result: CleanupResult = { mode: options.mode, candidates: [], skipped: [], applied: 0 };
   const allGA4Kpis = await getAllGA4Kpis();
 
+  await inspectOrphanKpiParents(result, allGA4Kpis, options);
   await inspectFinancialSourceWindowDrift(result, options);
   await inspectCustomZeroOverwrites(result, allGA4Kpis);
   await inspectDuplicateAlertState(result, allGA4Kpis);
@@ -356,9 +478,19 @@ export async function inventoryGA4KPIDamagedData(options: CleanupOptions): Promi
 
 export function parseArgs(argv: string[]): CleanupOptions {
   const campaignArg = argv.find((arg) => arg.startsWith("--campaign-id="));
+  const expectedOrphanCountArg = argv.find((arg) => arg.startsWith("--expected-orphan-count="));
+  const expectedOrphanSetArg = argv.find((arg) => arg.startsWith("--expected-orphan-set-sha256="));
   return {
-    mode: argv.includes("--apply") ? "apply" : "dry-run",
+    mode: argv.includes("--apply-orphan-kpi-parents")
+      ? "apply-orphan-kpi-parents"
+      : argv.includes("--apply") ? "apply" : "dry-run",
     campaignId: campaignArg ? campaignArg.slice("--campaign-id=".length).trim() || undefined : undefined,
+    expectedOrphanCount: expectedOrphanCountArg
+      ? Number(expectedOrphanCountArg.slice("--expected-orphan-count=".length))
+      : undefined,
+    expectedOrphanSetSha256: expectedOrphanSetArg
+      ? expectedOrphanSetArg.slice("--expected-orphan-set-sha256=".length).trim().toLowerCase() || undefined
+      : undefined,
   };
 }
 
@@ -371,6 +503,8 @@ export function printResult(result: CleanupResult) {
     ...result.candidates.map((row) => row.reasonCode),
     ...result.skipped.map((row) => row.reasonCode),
   ])).sort();
+  const orphanCandidates = result.candidates.filter((row) => row.kind === "orphan_kpi_parent");
+  const orphanSetSha256 = orphanCandidates.length > 0 ? hashSortedIds(orphanCandidates.map((row) => row.id)) : "none";
 
   console.log(`[GA4 KPI damaged-data inventory] mode=${result.mode}`);
   console.log(`[GA4 KPI damaged-data inventory] candidate count=${result.candidates.length}`);
@@ -379,9 +513,11 @@ export function printResult(result: CleanupResult) {
   console.log(`[GA4 KPI damaged-data inventory] sample row IDs=${sampleRowIds.join(", ") || "none"}`);
   console.log(`[GA4 KPI damaged-data inventory] source windows=${sourceWindows.join(" | ") || "none"}`);
   console.log(`[GA4 KPI damaged-data inventory] reason codes=${reasonCodes.join(", ") || "none"}`);
+  console.log(`[GA4 KPI damaged-data inventory] orphan parent count=${orphanCandidates.length}`);
+  console.log(`[GA4 KPI damaged-data inventory] orphan parent set sha256=${orphanSetSha256}`);
 
   for (const row of result.candidates) {
-    console.log(`${row.kind} id=${row.id} kpi=${row.kpiId || row.id} campaign=${row.campaignId || "none"} metric=${row.metric || "n/a"} ${row.oldValue ?? "n/a"} -> ${row.newValue ?? "n/a"} reason=${row.reasonCode}`);
+    console.log(`${row.kind} id=${row.id} kpi=${row.kpiId || row.id} campaign=${row.campaignId || "none"} metric=${row.metric || "n/a"} ${row.oldValue ?? "n/a"} -> ${row.newValue ?? "n/a"} related=${row.relatedRows ? JSON.stringify(row.relatedRows) : "n/a"} reason=${row.reasonCode}`);
   }
   for (const row of result.skipped) {
     console.log(`${row.kind} id=${row.id || "none"} kpi=${row.kpiId || "none"} campaign=${row.campaignId || "none"} metric=${row.metric || "n/a"} reason=${row.reasonCode}: ${row.reason}`);

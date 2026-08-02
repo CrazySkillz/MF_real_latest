@@ -42,8 +42,13 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).toContain("if (simulateRefreshFailure) {");
     expect(route).toContain('providerStatus = "live_provider_refresh_failed";');
     expect(route).toContain("no token refresh was attempted and no token metadata was changed");
-    expect(route).toContain("simulation: { refreshFailure: simulateRefreshFailure }");
+    expect(route).toContain("simulation: { refreshFailure: simulateRefreshFailure, tokenRefreshDisabled: disableTokenRefresh }");
     expect(route).toContain("Refreshes and persists GA4 OAuth token metadata only after a provider auth failure");
+    expect(route).toContain('const disableTokenRefresh = ["1", "true", "yes"].includes');
+    expect(route).toContain("if (isGA4ProviderAuthError(e) && disableTokenRefresh)");
+    expect(route).toContain('providerStatus = "live_provider_auth_error_refresh_disabled";');
+    expect(route).toContain("Token refresh and token persistence are disabled for this request");
+    expect(route).toContain("tokenRefreshDisabled: disableTokenRefresh");
 
     const simulationBranch = route.slice(route.indexOf("if (simulateRefreshFailure) {"), route.indexOf("} else if (isYesopMockProperty(propertyId))"));
     expect(simulationBranch).toContain('providerStatus = "live_provider_refresh_failed";');

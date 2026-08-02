@@ -230,6 +230,14 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     await refreshAllGA4DailyMetrics({ campaignId });
 
     const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
+    console.log(`[GA4 Daily] KPI/Benchmark recompute result ${JSON.stringify({
+      campaignIdsProcessed: recomputeResult.campaignIdsProcessed,
+      campaignIdsSkipped: recomputeResult.campaignIdsSkipped,
+      campaignIdsFailed: recomputeResult.campaignIdsFailed,
+      kpiIdsUpdated: recomputeResult.kpiIdsUpdated,
+      kpiIdsSkipped: recomputeResult.kpiIdsSkipped,
+      kpiIdsFailed: recomputeResult.kpiIdsFailed,
+    })}`);
     const recomputeFailed = recomputeResult.campaignIdsSkipped.length > 0 || recomputeResult.campaignIdsFailed.length > 0 || recomputeResult.kpiIdsSkipped.length > 0 || recomputeResult.kpiIdsFailed.length > 0;
     const targetedCampaignSkipped = Boolean(campaignId) && Number(recomputeResult.campaignsProcessed || 0) <= 0;
     if (recomputeFailed || targetedCampaignSkipped) {

@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { findOrphanGA4KpiParents, hashSortedIds, parseArgs } from "./ga4-kpi-damaged-data-cleanup";
 
 describe("GA4 KPI damaged-data cleanup boundary", () => {
   const readScript = () => readFileSync(join(process.cwd(), "server", "ga4-kpi-damaged-data-cleanup.ts"), "utf-8");
@@ -10,13 +11,47 @@ describe("GA4 KPI damaged-data cleanup boundary", () => {
     const parseArgsEnd = script.indexOf("export function printResult", parseArgsStart);
     const parseArgs = script.slice(parseArgsStart, parseArgsEnd);
 
-    expect(parseArgs).toContain('mode: argv.includes("--apply") ? "apply" : "dry-run"');
+    expect(parseArgs).toContain('argv.includes("--apply-orphan-kpi-parents")');
+    expect(parseArgs).toContain('argv.includes("--apply") ? "apply" : "dry-run"');
     expect(script).toContain("Dry run only. Re-run with --apply only after reviewing the candidate and skipped-row inventory.");
     expect(script).toContain("candidate count=");
     expect(script).toContain("skipped count=");
     expect(script).toContain("sample row IDs=");
     expect(script).toContain("source windows=");
     expect(script).toContain("reason codes=");
+  });
+
+  it("detects only GA4 parents whose non-null campaign no longer exists", () => {
+    const rows = [
+      { id: "orphan", platformType: "google_analytics", campaignId: "missing" },
+      { id: "valid", platformType: "google_analytics", campaignId: "present" },
+      { id: "platform", platformType: "google_analytics", campaignId: null },
+      { id: "other", platformType: "linkedin", campaignId: "missing" },
+    ];
+    expect(findOrphanGA4KpiParents(rows, new Set(["present"])).map((row) => row.id)).toEqual(["orphan"]);
+    expect(findOrphanGA4KpiParents(rows, new Set(["present"]), "different")).toEqual([]);
+    expect(hashSortedIds(["b", "a"])).toBe(hashSortedIds(["a", "b"]));
+  });
+
+  it("requires exact count and identity guards for the orphan-only apply mode", () => {
+    expect(parseArgs(["--apply-orphan-kpi-parents", "--expected-orphan-count=4", `--expected-orphan-set-sha256=${"a".repeat(64)}`])).toEqual({
+      mode: "apply-orphan-kpi-parents",
+      campaignId: undefined,
+      expectedOrphanCount: 4,
+      expectedOrphanSetSha256: "a".repeat(64),
+    });
+    const script = readScript();
+    const orphanStart = script.indexOf("async function inspectOrphanKpiParents");
+    const orphanEnd = script.indexOf("async function inspectDuplicateAlertState", orphanStart);
+    const orphan = script.slice(orphanStart, orphanEnd);
+    expect(orphan).toContain("candidate.relatedRows?.progress");
+    expect(orphan).toContain("candidate.relatedRows?.alerts");
+    expect(orphan).toContain("candidate.relatedRows?.periods");
+    expect(orphan).toContain("candidate.relatedRows?.activeNotifications");
+    expect(orphan).toContain("await db.transaction");
+    expect(orphan).toContain("restoredCampaigns.length > 0");
+    expect(orphan).toContain("deleted.length !== options.expectedOrphanCount");
+    expect(orphan).not.toContain("delete(notifications)");
   });
 
   it("limits financial source-window repair to rows that match the old formula exactly", () => {

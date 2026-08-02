@@ -32,6 +32,9 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(daily).toContain("nextRunAt: toIsoOrNull(ga4DailySchedulerStatus.nextRunAt)");
     expect(daily).toContain("totalScheduledRuns: ga4DailySchedulerStatus.totalScheduledRuns");
     expect(daily).toContain("lastRunStatus: ga4DailySchedulerStatus.lastRunStatus");
+    expect(daily).toContain("lastRecomputeRecordedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRecomputeRecordedAt)");
+    expect(daily).toContain("lastRecomputeEvidence: ga4DailySchedulerStatus.lastRecomputeEvidence");
+    expect(daily).toContain('createHash("sha256")');
     expectBefore(daily, "ga4DailySchedulerStatus.nextRunAt = nextRunAt;", "setTimeout(() => {");
   });
 

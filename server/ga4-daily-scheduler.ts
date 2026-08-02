@@ -4,6 +4,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getLatestCompleteReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { createHash } from "crypto";
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -37,9 +38,14 @@ const ga4DailySchedulerStatus = {
   totalScheduledRuns: 0,
   totalManualRuns: 0,
   totalSkippedRuns: 0,
+  lastRecomputeRecordedAt: null as Date | null,
+  lastRecomputeEvidence: null as null | Record<string, string[]>,
 };
 
 const toIsoOrNull = (value: Date | null) => value ? value.toISOString() : null;
+const hashEvidenceIds = (values: unknown[]) => values
+  .map((value) => createHash("sha256").update(String(value || "")).digest("hex").slice(0, 12))
+  .sort();
 
 const parseBoundedInt = (value: any, fallback: number, min: number, max: number) => {
   const parsed = parseInt(String(value ?? ""), 10);
@@ -230,6 +236,15 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     await refreshAllGA4DailyMetrics({ campaignId });
 
     const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
+    ga4DailySchedulerStatus.lastRecomputeRecordedAt = new Date();
+    ga4DailySchedulerStatus.lastRecomputeEvidence = {
+      campaignIdsProcessed: hashEvidenceIds(recomputeResult.campaignIdsProcessed),
+      campaignIdsSkipped: hashEvidenceIds(recomputeResult.campaignIdsSkipped),
+      campaignIdsFailed: hashEvidenceIds(recomputeResult.campaignIdsFailed),
+      kpiIdsUpdated: hashEvidenceIds(recomputeResult.kpiIdsUpdated),
+      kpiIdsSkipped: hashEvidenceIds(recomputeResult.kpiIdsSkipped),
+      kpiIdsFailed: hashEvidenceIds(recomputeResult.kpiIdsFailed),
+    };
     console.log(`[GA4 Daily] KPI/Benchmark recompute result ${JSON.stringify({
       campaignIdsProcessed: recomputeResult.campaignIdsProcessed,
       campaignIdsSkipped: recomputeResult.campaignIdsSkipped,
@@ -300,6 +315,8 @@ export function getGA4DailySchedulerStatus() {
     totalScheduledRuns: ga4DailySchedulerStatus.totalScheduledRuns,
     totalManualRuns: ga4DailySchedulerStatus.totalManualRuns,
     totalSkippedRuns: ga4DailySchedulerStatus.totalSkippedRuns,
+    lastRecomputeRecordedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRecomputeRecordedAt),
+    lastRecomputeEvidence: ga4DailySchedulerStatus.lastRecomputeEvidence,
   };
 }
 

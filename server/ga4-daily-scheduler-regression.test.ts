@@ -57,6 +57,10 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("kpiIdsUpdated: recomputeResult.kpiIdsUpdated");
     expect(source).toContain("kpiIdsSkipped: recomputeResult.kpiIdsSkipped");
     expect(source).toContain("kpiIdsFailed: recomputeResult.kpiIdsFailed");
+    expect(source).toContain("lastRecomputeRecordedAt = new Date()");
+    expect(source).toContain("kpiIdsUpdated: hashEvidenceIds(recomputeResult.kpiIdsUpdated)");
+    expect(source).toContain("kpiIdsSkipped: hashEvidenceIds(recomputeResult.kpiIdsSkipped)");
+    expect(source).toContain("kpiIdsFailed: hashEvidenceIds(recomputeResult.kpiIdsFailed)");
     expect(source).toContain("if (!campaignId && !opts.suppressAlerts) {");
     expect(source).toContain("Next scheduled run at");
     expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");

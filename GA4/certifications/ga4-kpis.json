@@ -268,22 +268,22 @@
     {
       "id": "timer_scheduler",
       "status": "pending",
-      "evidence": "Deployed 80a659b819f64868ff766490348e0e5cb93bef76 reports runOnStartup=false, totalRuns=0, lastRunStatus=idle, and nextRunAt=2026-08-03T03:00:00Z. No manual trigger was used. The deployed implementation now logs exact processed/skipped/failed campaign and KPI IDs. Shortest step: after the configured time, capture that natural-run log and health result."
+      "evidence": "Production scheduler health at 2026-08-02T10:23:06Z reports runOnStartup=false, totalRuns=0, lastRunStatus=idle, and nextRunAt=2026-08-03T03:00:00Z. No manual trigger was used. The scheduler logs exact processed/skipped/failed campaign and KPI IDs. A bounded local observability closure also retains SHA-256-prefixed ID arrays in scheduler health without exposing raw IDs or changing execution; 34/34 focused tests, the checker, and TypeScript pass, but deployment and the natural run remain pending."
     },
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "Refresh-disabled, non-persisting live success and simulated-failure evidence passed on deployed 80a659b8 for KPI hashes 7ed1d5c4d10f and ff24c717b842. Exact property/filter/Europe-Amsterdam scope and campaign-to-date provider window resolved Revenue 51405.93, matching stored values; simulated failure returned no provider totals and attempted no token refresh. KPI hashes 2f27f064cd32 and befd1e90d209 remain pending because their campaign owners have no active authenticated session. No token, connection, source, or KPI row was changed."
+      "evidence": "Refresh-disabled, non-persisting live success and simulated-failure evidence passed on deployed 80a659b8 for KPI hashes 7ed1d5c4d10f and ff24c717b842. Exact property/filter/Europe-Amsterdam scope and campaign-to-date provider window resolved Revenue 51405.93, matching stored values; simulated failure returned no provider totals and attempted no token refresh. A fresh read-only production/Clerk check proves KPI hashes 2f27f064cd32 and befd1e90d209 share one persisted owner ID that Clerk returns 404 for, so no temporary owner session can be created. Ownership, token, connection, source, and KPI rows were not changed. The natural owner-independent scheduler outcome is the next available evidence; a skip/failure would still require reauthorization or an explicit ownership/data-lifecycle decision."
     },
     {
       "id": "alert_email_delivery",
       "status": "pending",
-      "evidence": "Read-only audit aggregates include GA4 KPI delivered events through August 2, 2026, but they do not bind eligibility, payload, deployed SHA, or inbox receipt to this certification run. Shortest step: correlate one naturally eligible alert with its exact KPI decision, provider delivery event, and inbox receipt."
+      "evidence": "Read-only audit aggregates include historical GA4 KPI delivered events, but they do not bind eligibility, payload, deployed SHA, or inbox receipt to this certification run. The refreshed report inventory found no KPI-selected configured-recipient fixture and recent non-KPI scheduled report audits are predominantly pending_delivery. Shortest valid step: use one explicitly authorized exact-scope KPI report and correlate its decision/artifact to confirmed provider or inbox delivery; provider acceptance alone is insufficient."
     },
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "The complete mutation-proof deployed browser matrix now passes on 80a659b8, including browser PDFs for every required state. Server report/send parity remains pending: configured-recipient GA4 reports in production do not select KPIs, while the only existing custom report with sections.kpis=true has no recipients or schedule. The task forbids changing configuration. Shortest step: when a naturally configured selected-KPI report exists, validate direct snapshot, test-send, manual-send, natural scheduled send, exact selected IDs, and confirmed delivery on that unchanged fixture."
+      "evidence": "The complete mutation-proof deployed browser matrix passes on 80a659b8, including browser PDFs for every required state. Refreshed read-only inventory found nine GA4 reports: the only KPI-section custom report has zero selected IDs, recipients, schedule, snapshots, or send events; recipient-configured scheduled reports are Overview or Benchmark reports. Server report/send parity therefore remains pending. Shortest valid closure requires explicit authorization for one temporary exact-scope KPI report using an already configured recipient, direct snapshot/test-send/manual-send/natural scheduled-send validation, confirmed delivery, and guarded cleanup."
     }
   ]
 }

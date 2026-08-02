@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "70197b4912393e4eb78dffb2bf79bd0b85fa833535f5e40d48470951298b9c67",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "6755e6f369e98212f99a23d479aa88db92d8f8e5",
+  "lastReviewedSha": "797cc0411fb5cfa5b77f1269432cec1a613bac55",
   "certifiedSha": null,
-  "invalidationReason": "Gate 1 proves the deployed Commit 10 SHA and fully classifies the prior 17 skips, but 4 live-provider and 3 missing-property financial rows remain unverified. Repository CI is not clean, and the current deployed state, timer, provider/token, and report/browser external gates are incomplete. Historical certification is not current evidence.",
+  "invalidationReason": "Target-data Gate 1 is closed for exhaustive production-row inventory and classification only. Four current live-provider totals remain explicitly pending under provider_and_token, and three propertyless rows are proven unavailable rather than assigned invented numeric values. Repository CI is not clean, and the deployed state, timer, provider/token, and report/browser external gates remain incomplete. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -257,23 +257,23 @@
   "externalGates": [
     {
       "id": "target_data_inventory",
-      "status": "pending",
-      "evidence": "August 2, 2026 Gate 1: production /api/health returned exact deployed SHA 6755e6f369e98212f99a23d479aa88db92d8f8e5. Read-only inventory proved 0 candidates, 17 skipped items, and 0 applied: 10 financial KPIs plus 7 immutable duplicate-email audit rows, not 17 financial KPIs. Three simulated-property rows exactly match deterministic current values. Four live-provider rows remain unreadable without a refresh-disabled production credential path, and three rows lack a usable property boundary. Every row's owner, timezone/window, property, campaign filter, KPI binding, active revenue/spend source types, persisted row range, and available totals were inventoried. Focused inventory/certification tests passed 14/14 and the checker passed. Gate remains pending for those seven financial rows."
+      "status": "passed",
+      "evidence": "August 2, 2026 Commit 10A: production /api/health returned exact deployed SHA 797cc0411fb5cfa5b77f1269432cec1a613bac55. BEGIN TRANSACTION READ ONLY/ROLLBACK inventory and the existing dry run proved 0 candidates, 17 classified skips, and 0 applied: all 10 financial KPI rows plus 7 immutable duplicate-email audit rows. Every KPI row's owner, campaign, primary property or exact absence, campaign filter, reporting timezone/window, financial sources, persisted inputs, provider credential/expiry boundary, and stored/resolved-state classification was captured. Three simulated-property rows exactly match deterministic values. Three propertyless rows are proven unavailable under the fail-closed contract; their stored zero or imported-only value is not certified as current. Four live-property rows are fully inventoried, but their current live totals are intentionally not claimed here and remain pending under provider_and_token because all credentials are encrypted and the safe audit has no production decryption key. Target-data Gate 1 therefore passes for inventory completeness only; it does not pass provider behavior, current live totals, or production readiness. No provider, refresh, mutation, recompute, send, cleanup, or destructive path was called. The focused inventory/certification packet passed 2 files / 14 tests and the standalone checker passed."
     },
     {
       "id": "deployed_state_matrix",
       "status": "pending",
-      "evidence": "Focused real-path tests pass, but no current deployed valid-zero, unavailable, stale/last-good, blocked, insufficient-data, provider-failure, source-mix, property/filter, and timezone browser matrix was available. Shortest step: capture those read-only states on deployed revision fd6a011 without changing sources or data."
+      "evidence": "Focused real-path tests pass, but no current deployed valid-zero, unavailable, stale/last-good, blocked, insufficient-data, provider-failure, source-mix, property/filter, and timezone browser matrix was available. Shortest step: capture those read-only states on deployed revision 797cc0411fb5cfa5b77f1269432cec1a613bac55 without changing sources or data."
     },
     {
       "id": "timer_scheduler",
       "status": "pending",
-      "evidence": "No current deployed timer log bound to revision fd6a011 and containing exact campaign/property scope plus updated, skipped, and failed KPI IDs was available. Shortest step: capture the next naturally timer-fired run; do not trigger a production write solely for certification."
+      "evidence": "No current deployed timer log bound to revision 797cc0411fb5cfa5b77f1269432cec1a613bac55 and containing exact campaign/property scope plus updated, skipped, and failed KPI IDs was available. Shortest step: capture the next naturally timer-fired run; do not trigger a production write solely for certification."
     },
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "The target dry-run deliberately skipped live access-token totals, and no SHA-bound provider/token-refresh logs were available. Shortest step: capture a normal read-only provider success plus a naturally occurring refresh success/failure for the selected campaign/property without altering token metadata for validation."
+      "evidence": "Commit 10A fully inventories the four live-property rows, but all credentials are encrypted, all recorded access expiries have passed, and the audit environment has no production decryption key. No current refresh-disabled provider totals or SHA-bound token-refresh logs were available, and persisted/last-good values were not substituted as live proof. Shortest step: capture a normal read-only provider success plus a naturally occurring refresh success/failure for the selected campaign/property without altering token metadata for validation."
     },
     {
       "id": "alert_email_delivery",

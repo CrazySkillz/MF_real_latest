@@ -268,7 +268,7 @@
     {
       "id": "timer_scheduler",
       "status": "pending",
-      "evidence": "Production scheduler health at 2026-08-02T10:23:06Z reports runOnStartup=false, totalRuns=0, lastRunStatus=idle, and nextRunAt=2026-08-03T03:00:00Z. No manual trigger was used. The scheduler logs exact processed/skipped/failed campaign and KPI IDs. A bounded local observability closure also retains SHA-256-prefixed ID arrays in scheduler health without exposing raw IDs or changing execution; 34/34 focused tests, the checker, and TypeScript pass, but deployment and the natural run remain pending."
+      "evidence": "Revision 58d6542d46d1e99d68e67740ab8065672a508b13 is deployed. Scheduler health at 2026-08-02T10:51:38Z reports runOnStartup=false, totalRuns=0, lastRunStatus=idle, nextRunAt=2026-08-03T03:00:00Z, and the new lastRecomputeRecordedAt/lastRecomputeEvidence fields present and null before any run. No manual trigger was used. The scheduler retains SHA-256-prefixed exact result ID arrays without exposing raw IDs or changing execution; 34/34 focused tests, the checker, TypeScript, and production build pass. The natural run remains pending."
     },
     {
       "id": "provider_and_token",

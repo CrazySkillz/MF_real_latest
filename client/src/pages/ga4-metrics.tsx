@@ -39,6 +39,7 @@ import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } fro
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
+import { getGA4KpiReportingWindowLabel, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
 
 interface Campaign {
   id: string;
@@ -1594,7 +1595,7 @@ export default function GA4Metrics() {
   }, [availableGA4Properties, selectedGA4PropertyId]);
 
   // Fetch platform KPIs
-  const { data: platformKPIs = [], isLoading: kpisLoading } = useQuery({
+  const { data: platformKPIData, isLoading: kpisLoading, isError: kpisError } = useQuery({
     queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -1603,6 +1604,7 @@ export default function GA4Metrics() {
       return response.json();
     },
   });
+  const platformKPIs = Array.isArray(platformKPIData) ? platformKPIData : [];
 
   // Fetch campaign-scoped benchmarks only (new campaigns should start empty).
   const { data: benchmarks = [], isLoading: benchmarksLoading } = useQuery<Benchmark[]>({
@@ -2678,6 +2680,52 @@ export default function GA4Metrics() {
   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
+  const combineKpiInputStates = (...states: GA4KpiInputState[]): GA4KpiInputState => {
+    if (states.includes("unavailable")) return "unavailable";
+    if (states.includes("stale")) return "stale";
+    if (states.includes("loading")) return "loading";
+    return "ready";
+  };
+  const kpiListState: GA4KpiListState = kpisLoading && platformKPIData === undefined
+    ? "loading"
+    : kpisError
+      ? platformKPIData === undefined ? "failed" : "stale"
+      : "ready";
+  const trafficKpiInputState: GA4KpiInputState = (() => {
+    if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
+    if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
+    if (!ga4ConnectionUsable) return "unavailable";
+    if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
+    if (trendsRefreshIsStale) return "stale";
+    if (ga4Loading || ga4DailyResp === undefined) return "loading";
+    return "ready";
+  })();
+  const nativeRevenueKpiInputState: GA4KpiInputState = (() => {
+    if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
+    if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
+    if (!ga4ConnectionUsable) return "unavailable";
+    if (ga4ToDateResp !== undefined) return ga4ToDateError ? "stale" : "ready";
+    if (ga4DailyRows.length > 0) return ga4Error || trendsRefreshIsStale ? "stale" : "ready";
+    if (ga4Breakdown !== undefined) return breakdownError ? "stale" : "ready";
+    if (ga4ToDateLoading || ga4Loading || breakdownLoading) return "loading";
+    return ga4ToDateError || ga4Error || breakdownError ? "unavailable" : "loading";
+  })();
+  const importedRevenueKpiInputState: GA4KpiInputState = (() => {
+    if (revenueSourcesError) return revenueSourcesResp === undefined ? "unavailable" : "stale";
+    if (revenueSourceDefinitionsKnownEmpty) return "ready";
+    if (importedRevenueToDateResp !== undefined) return importedRevenueError ? "stale" : "ready";
+    if (importedRevenueLoading || revenueSourcesLoading) return "loading";
+    return importedRevenueError ? "unavailable" : "loading";
+  })();
+  const revenueKpiInputState = combineKpiInputStates(nativeRevenueKpiInputState, importedRevenueKpiInputState);
+  const spendKpiInputState: GA4KpiInputState = (() => {
+    if (spendSourcesError) return spendSourcesResp === undefined ? "unavailable" : "stale";
+    if (spendSourceDefinitionsKnownEmpty) return "ready";
+    if (spendBreakdownResp !== undefined) return spendBreakdownError ? "stale" : "ready";
+    if (spendToDateResp !== undefined) return spendToDateError ? "stale" : "ready";
+    if (spendBreakdownLoading || spendToDateLoading || spendSourcesLoading) return "loading";
+    return spendBreakdownError || spendToDateError ? "unavailable" : "loading";
+  })();
   // GA4 KPIs are evaluated on cumulative values — target is the absolute goal.
   const getKpiEffectiveTarget = (kpi: any) => {
     const rawTarget = parseFloat(String(kpi?.targetValue || "0"));
@@ -2706,6 +2754,21 @@ export default function GA4Metrics() {
       sessions: Number(breakdownTotals.sessions || 0),
       conversions: Number(financialConversions || 0),
       spend: Number(financialSpend || 0),
+    });
+  };
+
+  const getKpiConsumerState = (kpi: any) => {
+    const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
+    const sufficiency = getKpiDataSufficiency(kpi);
+    return resolveGA4KpiConsumerState({
+      metric: kpi?.metric,
+      name: kpi?.name,
+      listState: kpiListState,
+      trafficState: trafficKpiInputState,
+      revenueState: revenueKpiInputState,
+      spendState: spendKpiInputState,
+      missingDependencies: deps.missing,
+      sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
   };
 
@@ -3914,11 +3977,19 @@ export default function GA4Metrics() {
     // ========== KPIs ==========
     if (sections.kpis) {
       sectionTitle("Key Performance Indicators", C.kpis, 60);
+      doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+      doc.text("Traffic/rate: 30 completed reporting days in campaign timezone. Financial: campaign-to-date.", MX + 4, y); y += 7;
       const kpiSubsections = customSubsections.kpis || {};
       const includeKpiTracker = reportType !== "custom";
       const includeKpiItems = reportType !== "custom" || kpiSubsections.items === true;
       const items = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) => !selectedCustomKpiIds || selectedCustomKpiIds.has(String(k.id)));
-      if (items.length === 0 && !includeKpiTracker) {
+      if (kpiListState === "failed") {
+        doc.setFontSize(10); doc.setTextColor(...C.danger);
+        doc.text("KPI list failed to load — no KPI value is presented as current.", MX + 8, y); y += 12;
+      } else if (kpiListState === "stale" && items.length === 0) {
+        doc.setFontSize(10); doc.setTextColor(...C.danger);
+        doc.text("KPI list refresh failed — the retained empty list is not verified.", MX + 8, y); y += 12;
+      } else if (items.length === 0 && !includeKpiTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No KPIs selected for this report.", MX + 8, y); y += 12;
       } else {
@@ -3945,6 +4016,11 @@ export default function GA4Metrics() {
             }
             y += 22;
           }
+          const excluded = kpiTracker.blocked + kpiTracker.insufficient + kpiTracker.unavailable + kpiTracker.stale + kpiTracker.pending;
+          if (excluded > 0) {
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+            doc.text(`${excluded} KPI${excluded === 1 ? "" : "s"} excluded: blocked, insufficient, unavailable, loading, or last-good/unverified.`, MX + 4, y); y += 7;
+          }
           y += 2;
         }
         if (includeKpiItems && items.length === 0) {
@@ -3952,17 +4028,23 @@ export default function GA4Metrics() {
           doc.text("No KPIs selected for this report.", MX + 8, y); y += 12;
         }
         for (const k of includeKpiItems ? items : []) {
-          const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
-          if (deps.missing.length > 0) {
-            checkPage(20);
+          const consumerState = getKpiConsumerState(k);
+          if (!consumerState.eligible) {
+            const stateHeight = consumerState.code === "stale" ? 25 : 20;
+            checkPage(stateHeight + 4);
             doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-            doc.roundedRect(MX, y, CW, 16, 3, 3, "FD");
-            doc.setFillColor(...C.danger); doc.roundedRect(MX, y, 3, 16, 1, 1, "F");
+            doc.roundedRect(MX, y, CW, stateHeight, 3, 3, "FD");
+            doc.setFillColor(...C.danger); doc.roundedRect(MX, y, 3, stateHeight, 1, 1, "F");
             doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
             doc.text(String(k?.name || ""), MX + 8, y + 6);
             doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.danger);
-            doc.text(`Blocked \u2014 missing ${deps.missing.join(" + ")}`, MX + 8, y + 12);
-            y += 20;
+            doc.text(`${consumerState.label}: ${consumerState.detail}`, MX + 8, y + 12, { maxWidth: CW - 16 });
+            doc.setTextColor(...C.textSec);
+            doc.text(`Window: ${getGA4KpiReportingWindowLabel(k?.metric, k?.name)}`, MX + 8, y + 17, { maxWidth: CW - 16 });
+            if (consumerState.code === "stale") {
+              doc.text(`Last-good value (not verified): ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"))}`, MX + 8, y + 22);
+            }
+            y += stateHeight + 4;
             continue;
           }
 
@@ -4230,21 +4312,20 @@ export default function GA4Metrics() {
     let below = 0;
     let blocked = 0;
     let insufficient = 0;
+    let unavailable = 0;
+    let stale = 0;
+    let pending = 0;
     let sumPct = 0;
     const toleranceLabels = new Set<string>();
 
     for (const kpi of items) {
-      const metricKey = String((kpi as any)?.metric || (kpi as any)?.name || "");
-      const deps = getMissingDependenciesForMetric(metricKey);
-      if (deps.missing.length > 0) {
-        blocked += 1;
-        continue; // do NOT score blocked KPIs (missing inputs ≠ poor performance)
-      }
-      const sufficiency = getKpiDataSufficiency(kpi);
-      if (!sufficiency.sufficient) {
-        insufficient += 1;
-        continue; // do NOT score thin-data KPIs as strong or weak performance
-      }
+      const consumerState = getKpiConsumerState(kpi);
+      if (consumerState.code === "blocked") blocked += 1;
+      else if (consumerState.code === "insufficient_data") insufficient += 1;
+      else if (consumerState.code === "stale") stale += 1;
+      else if (consumerState.code === "loading") pending += 1;
+      else if (consumerState.code === "unavailable" || consumerState.code === "failed") unavailable += 1;
+      if (!consumerState.eligible) continue;
       const target = parseFloat(String((kpi as any)?.targetValue || "0"));
       if (!Number.isFinite(target) || target <= 0) continue; // can't score without a target
       const p = computeKpiProgress(kpi);
@@ -4264,9 +4345,9 @@ export default function GA4Metrics() {
     const toleranceTitle = scored > 0
       ? "Different KPI types can use different tolerances."
       : "No scored KPI tolerance available";
-    return { total: items.length, scored, above, near, below, blocked, insufficient, avgPct, toleranceSummary, toleranceTitle };
+    return { total: items.length, scored, above, near, below, blocked, insufficient, unavailable, stale, pending, avgPct, toleranceSummary, toleranceTitle };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, kpiListState, trafficKpiInputState, revenueKpiInputState, spendKpiInputState]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];
@@ -4569,9 +4650,13 @@ export default function GA4Metrics() {
       .map((k: any) => {
         const metricKey = String((k as any)?.metric || (k as any)?.name || "");
         const deps = getMissingDependenciesForMetric(metricKey);
-        return deps.missing.length > 0 ? { k, missing: deps.missing } : null;
+        return getKpiConsumerState(k).code === "blocked" ? { k, missing: deps.missing } : null;
       })
       .filter(Boolean) as Array<{ k: any; missing: Array<"Spend" | "Revenue"> }>;
+
+    const unverifiedKpis = (Array.isArray(platformKPIs) ? platformKPIs : [])
+      .map((k: any) => ({ k, consumerState: getKpiConsumerState(k) }))
+      .filter(({ consumerState }) => !consumerState.eligible && consumerState.code !== "blocked");
 
     const blockedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : [])
       .map((b: any) => {
@@ -4609,6 +4694,19 @@ export default function GA4Metrics() {
             : item.missing.includes("Revenue")
               ? "Add a GA4 revenue metric (if available) or import revenue (HubSpot/Sheets/CSV) to resume KPI evaluation."
               : "Add spend-to-date to resume KPI evaluation.",
+      });
+    }
+
+    for (const item of unverifiedKpis) {
+      const name = String(item.k?.name || item.k?.metric || "KPI");
+      out.push({
+        id: `integrity:kpi_${item.consumerState.code}:${String(item.k?.id || name)}`,
+        severity: item.consumerState.code === "loading" || item.consumerState.code === "insufficient_data" ? "medium" : "high",
+        title: `${name}: ${item.consumerState.label}`,
+        description: `${item.consumerState.detail} No KPI performance conclusion or breach is generated from this value.`,
+        recommendation: item.consumerState.code === "insufficient_data"
+          ? "Wait for the required denominator data before evaluating this KPI."
+          : "Refresh the KPI and required GA4, revenue, or spend source before using this value for decisions.",
       });
     }
 
@@ -4682,7 +4780,7 @@ export default function GA4Metrics() {
       });
     }
 
-    if (spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) <= 0) {
+    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) <= 0) {
       out.push({
         id: "financial:spend_no_revenue",
         severity: "high",
@@ -4694,7 +4792,7 @@ export default function GA4Metrics() {
       });
     }
 
-    if (spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) <= 0 && Number(financialRevenue || 0) > 0) {
+    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) <= 0 && Number(financialRevenue || 0) > 0) {
       out.push({
         id: "financial:revenue_no_spend",
         severity: "medium",
@@ -4704,7 +4802,7 @@ export default function GA4Metrics() {
       });
     }
 
-    if (Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) > 0) {
+    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) > 0) {
       const roi = Number(financialROI || 0);
       const roas = Number(financialROAS || 0);
       if (Number.isFinite(roi) && roi < 0) {
@@ -4741,10 +4839,8 @@ export default function GA4Metrics() {
 
     // 1) Actionable insights from KPI performance
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
-      const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
-      if (deps.missing.length > 0) continue; // blocked KPIs are handled in integrity checks above
+      if (!getKpiConsumerState(k).eligible) continue; // non-verified KPIs are handled in integrity checks above
       if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
-      if (!getKpiDataSufficiency(k).sufficient) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
       if (attPct >= KPI_NEEDS_ATTENTION_PCT) continue; // Only flag KPIs below attainment threshold
@@ -5129,7 +5225,7 @@ export default function GA4Metrics() {
     }
 
     // 4) Positive signals that don't depend on daily history
-    if (Number(financialROAS || 0) >= POSITIVE_ROAS_STRONG) {
+    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && Number(financialROAS || 0) >= POSITIVE_ROAS_STRONG) {
       out.push({
         id: "positive:roas:lifetime",
         severity: "low",
@@ -5140,10 +5236,8 @@ export default function GA4Metrics() {
     }
 
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
-      const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
-      if (deps.missing.length > 0) continue;
+      if (!getKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;
-      if (!getKpiDataSufficiency(k).sufficient) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 0;
       if (attPct >= POSITIVE_KPI_EXCEEDS_PCT) {
@@ -5212,7 +5306,7 @@ export default function GA4Metrics() {
     }
 
     // Revenue summary (fires when revenue exists, regardless of KPIs)
-    if (Number(financialRevenue || 0) > 0 && availDays >= 7) {
+    if (revenueKpiInputState === "ready" && Number(financialRevenue || 0) > 0 && availDays >= 7) {
       out.push({
         id: "info:revenue_summary",
         severity: "low",
@@ -5252,6 +5346,10 @@ export default function GA4Metrics() {
     benchmarkAnalyticsById,
     insightsRollups,
     channelAnalysis,
+    kpiListState,
+    trafficKpiInputState,
+    revenueKpiInputState,
+    spendKpiInputState,
   ]);
 
   const insightsActionDescription = useMemo(() => {
@@ -6636,7 +6734,7 @@ export default function GA4Metrics() {
                       <div>
                         <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
                         <p className="text-sm text-muted-foreground/70 mt-1">
-                          Track daily GA4 KPIs and progress toward targets (blocked items are excluded from scoring).
+                          Traffic and rate KPIs use 30 completed reporting days in the campaign reporting timezone; financial KPIs use campaign-to-date inputs. Unverified items are excluded from scoring.
                         </p>
                       </div>
                       <Button size="sm" onClick={openCreateKPI}>
@@ -6647,11 +6745,20 @@ export default function GA4Metrics() {
 
                     <Card>
                       <CardContent>
-                        {kpisLoading ? (
+                        {kpiListState === "loading" ? (
                           <div className="space-y-4">
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                             ))}
+                          </div>
+                        ) : kpiListState === "failed" ? (
+                          <div className="text-center py-8" role="alert">
+                            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-foreground mb-2">KPIs failed to load</h3>
+                            <p className="text-muted-foreground/70 mb-4">No KPI rows are being shown as current. Retry after the KPI request succeeds.</p>
+                            <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] })}>
+                              Retry
+                            </Button>
                           </div>
                         ) : (
                           <div className="space-y-4">
@@ -6743,7 +6850,38 @@ export default function GA4Metrics() {
                               </div>
                             ) : null}
 
-                            {platformKPIs.length === 0 ? (
+                            {kpiTracker.stale > 0 ? (
+                              <div className="rounded-lg border border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-900/20 p-4" role="status">
+                                <div className="font-semibold text-foreground">Last-good KPI values are not freshly verified</div>
+                                <div className="text-sm text-foreground/80 mt-1">
+                                  {kpiTracker.stale} KPI{kpiTracker.stale === 1 ? " is" : "s are"} showing retained data after a failed refresh. They are excluded from target scoring, breach indicators, and KPI performance Insights.
+                                </div>
+                              </div>
+                            ) : null}
+
+                            {kpiTracker.unavailable > 0 ? (
+                              <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 p-4" role="alert">
+                                <div className="font-semibold text-foreground">Some KPI values are unavailable</div>
+                                <div className="text-sm text-foreground/80 mt-1">
+                                  {kpiTracker.unavailable} KPI{kpiTracker.unavailable === 1 ? " cannot" : "s cannot"} be verified from required source inputs and {kpiTracker.unavailable === 1 ? "is" : "are"} excluded from scoring.
+                                </div>
+                              </div>
+                            ) : null}
+
+                            {kpiTracker.pending > 0 ? (
+                              <div className="rounded-lg border border-border bg-muted/40 p-4" role="status">
+                                <div className="font-semibold text-foreground">KPI source inputs are loading</div>
+                                <div className="text-sm text-muted-foreground mt-1">Pending KPI values are not scored until their required inputs finish loading.</div>
+                              </div>
+                            ) : null}
+
+                            {kpiListState === "stale" && platformKPIs.length === 0 ? (
+                              <div className="text-center py-8" role="alert">
+                                <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-foreground mb-2">KPI list is not freshly verified</h3>
+                                <p className="text-muted-foreground/70">The last loaded list was empty, but the refresh failed. This is not being presented as a verified empty state.</p>
+                              </div>
+                            ) : platformKPIs.length === 0 ? (
                               <div className="text-center text-muted-foreground/70 py-8">
                                 <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
                                 <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
@@ -6755,10 +6893,13 @@ export default function GA4Metrics() {
                               <div className="grid gap-4 md:grid-cols-2">
                                 {platformKPIs.map((kpi: any) => {
                                   const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
-                                  const isBlocked = deps.missing.length > 0;
                                   const sufficiency = getKpiDataSufficiency(kpi);
-                                  const isInsufficient = !sufficiency.sufficient;
-                                  const p = isBlocked || isInsufficient ? null : computeKpiProgress(kpi);
+                                  const consumerState = getKpiConsumerState(kpi);
+                                  const isBlocked = consumerState.code === "blocked";
+                                  const isInsufficient = consumerState.code === "insufficient_data";
+                                  const showRetainedValue = consumerState.code === "stale";
+                                  const showCurrentValue = consumerState.eligible || isInsufficient || showRetainedValue;
+                                  const p = consumerState.eligible ? computeKpiProgress(kpi) : null;
                                   const t = getKpiEffectiveTarget(kpi);
                                   const metricKey = String(kpi?.metric || kpi?.name || "");
                                   const { Icon, color } = getKpiIcon(metricKey);
@@ -6790,13 +6931,14 @@ export default function GA4Metrics() {
                                                       </div>
                                                     </TooltipTrigger>
                                                     <TooltipContent className="bg-slate-900 text-white border-slate-700">
-                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold ? `${kpi.alertCondition || "below"} ${Number(kpi.alertThreshold).toLocaleString()}` : "not set"}</p>
+                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold !== null && typeof kpi.alertThreshold !== "undefined" && String(kpi.alertThreshold).trim() ? `${kpi.alertCondition || "below"} ${Number(kpi.alertThreshold).toLocaleString()}` : "not set"}</p>
                                                     </TooltipContent>
                                                   </UITooltip>
                                                 )}
-                                                {kpi.alertsEnabled && !isBlocked && (() => {
+                                                {kpi.alertsEnabled && consumerState.eligible && (() => {
                                                   const currentVal = parseFloat(String(getLiveKpiValue(kpi) || "0"));
-                                                  const alertThresh = kpi.alertThreshold ? parseFloat(String(kpi.alertThreshold).replace(/,/g, "")) : null;
+                                                  const hasAlertThreshold = kpi.alertThreshold !== null && typeof kpi.alertThreshold !== "undefined" && String(kpi.alertThreshold).trim() !== "";
+                                                  const alertThresh = hasAlertThreshold ? parseFloat(String(kpi.alertThreshold).replace(/,/g, "")) : null;
                                                   const alertCond = kpi.alertCondition || "below";
                                                   if (alertThresh === null || !Number.isFinite(alertThresh)) return null;
 
@@ -6835,6 +6977,10 @@ export default function GA4Metrics() {
                                                 <p className="text-sm text-muted-foreground/70 mt-1">
                                                   {kpi.description}
                                                 </p>
+                                              ) : null}
+                                              <p className="text-xs text-muted-foreground mt-1">Window: {getGA4KpiReportingWindowLabel(kpi?.metric, kpi?.name)}</p>
+                                              {!consumerState.eligible ? (
+                                                <Badge variant="outline" className="mt-2 text-xs">{consumerState.label}</Badge>
                                               ) : null}
                                             </div>
                                           </div>
@@ -6890,7 +7036,7 @@ export default function GA4Metrics() {
                                           <div className="bg-muted rounded-lg p-3">
                                             <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
                                             <div className="text-xl font-bold text-foreground">
-                                              {isBlocked ? "—" : formatKpiCardValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
+                                              {showCurrentValue ? formatKpiCardValue(getLiveKpiValue(kpi) || "0", kpi.unit) : "—"}
                                             </div>
                                           </div>
                                           <div className="bg-muted rounded-lg p-3">
@@ -6902,7 +7048,7 @@ export default function GA4Metrics() {
                                         </div>
 
                                         {/* Progress bar */}
-                                        {!isBlocked && p && (
+                                        {p && (
                                           <div className="mt-4 space-y-2">
                                             <div className="flex items-center justify-between text-xs text-muted-foreground/70">
                                               <span>Progress</span>
@@ -6918,7 +7064,7 @@ export default function GA4Metrics() {
                                         )}
 
                                         {/* Delta vs target */}
-                                        {!isBlocked && p && p.effectiveDeltaPct !== null && (
+                                        {p && p.effectiveDeltaPct !== null && (
                                           <div className="mt-2 text-xs text-muted-foreground/70">
                                             {(() => {
                                               if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
@@ -6942,6 +7088,11 @@ export default function GA4Metrics() {
                                         {!isBlocked && isInsufficient ? (
                                           <div className="mt-4 text-sm text-muted-foreground/70">
                                             Insufficient data: <span className="font-medium">{sufficiency.reason}</span>
+                                          </div>
+                                        ) : null}
+                                        {!consumerState.eligible && !isBlocked && !isInsufficient ? (
+                                          <div className="mt-4 text-sm text-muted-foreground/70">
+                                            {consumerState.detail} This KPI is not treated as a current breach or included in performance scoring.
                                           </div>
                                         ) : null}
                                       </CardContent>

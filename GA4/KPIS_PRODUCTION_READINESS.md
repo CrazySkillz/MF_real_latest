@@ -26,7 +26,7 @@ The current UI, API, storage, refresh/scheduler, alert/email, notification, brow
 
 - Current Commit 4 locally aligns persisted Users, Sessions, Pageviews, Conversions, Conversion Rate, and Engagement Rate inputs plus notification enrichment to the same 30 completed reporting days in the campaign reporting timezone; Engagement Rate is session-weighted
 - Current Commit 5 locally applies the documented financial source order to persisted recompute, campaign current-value refresh, and notification enrichment; successful zero is authoritative, malformed or failed required reads are unavailable, and affected stored KPI/Benchmark values are not overwritten
-- metric identity, traffic/rate windows, the bounded financial producer/failure contract, and the alert/notification eligibility contract are locally corrected by Current Commits 3-6; UI-state, exact-result/report, persistence, deployed, and external-validation contracts remain unresolved
+- metric identity, traffic/rate windows, the bounded financial producer/failure contract, backend alert/notification eligibility, and browser-consumer state handling are locally corrected by Current Commits 3-7; exact-result/report, persistence, deployed, and external-validation contracts remain unresolved
 
 Locally proven, but not sufficient for certification:
 
@@ -37,12 +37,12 @@ Locally proven, but not sufficient for certification:
 - Current Commit 3 normalizes the supported standard and legacy-alias inventory through live values, dependency gating, persisted recompute, alert deduplication, notification enrichment, Insights recommendations, and report value consumers
 - Current Commit 4 resolves the persisted reporting window per campaign, clamps recompute dates to completed reporting dates, uses the exact 30-date daily-row query for traffic/count/rate values, and weights Engagement Rate from engaged sessions divided by sessions
 - Current Commit 6 routes in-app KPI/Benchmark reconciliation, immediate/scheduled/retry email eligibility, duplicate refresh, bell/Notifications filtering, and notification enrichment through one source-resolved, fail-closed alert decision
+- Current Commit 7 routes KPI cards, breach pulse, tracker scoring, KPI-derived Insights, and browser PDF rows through one browser state resolver that distinguishes loading, failed, unavailable, stale/last-good, blocked, insufficient-data, and verified states
 - TypeScript passed on August 1, 2026
 
 Current unproven or unsafe paths:
 
-- KPI list failure still renders as empty, and the KPI UI has no KPI-specific failed/stale/last-good state even though the corrected background producers now preserve affected stored financial values
-- card breach pulse, Insights, and browser PDF rows do not consistently expose or apply the same unavailable/stale presentation contract; those UI/browser consumers remain Current Commit 7
+- deployed/browser interaction has not yet validated the Current Commit 7 loading, failure, unavailable, stale/last-good, blocked, insufficient-data, valid-zero, and window labels against live source failures
 - source recompute, KPI reads/updates, and alert reconciliation swallow failures; job results do not identify the exact KPI IDs updated, so report preflight cannot prove selected rows are fresh
 - `kpi_progress` remains `numeric(10,2)` and can fail after current value update; KPI child-row deletion is non-transactional and notification hiding is best-effort
 - the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
@@ -59,7 +59,7 @@ External validation required after forward fixes: read-only target-data inventor
 4. **Authoritative window/date contract — implemented and locally validated in Current Commit 4; certification remains withdrawn.** Persisted traffic/count/rate inputs, notification enrichment, and the read-only Benchmark comparison resolver use 30 completed reporting days in the campaign reporting timezone; Engagement Rate is session-weighted. Deployment and external parity remain open.
 5. **Financial source/failure contract - implemented and locally validated in Current Commit 5; certification remains withdrawn.** Persisted recompute, campaign current-value refresh, and notification enrichment now use fixed provider-to-persisted-to-configured-breakdown precedence, keep valid zero authoritative, reject malformed values, and preserve affected last-good KPI/Benchmark values when required native/revenue/spend reads are unavailable.
 6. **Alert/notification contract - implemented and locally validated in Current Commit 6; certification remains withdrawn.** In-app KPI/Benchmark reconciliation, immediate/scheduled/retry alert-email eligibility, duplicate refresh, bell/Notifications visibility, and notification enrichment now share the same source-resolved blocked/insufficient/unavailable decision. Preserved last-good values are ineligible while their required source input is unavailable.
-7. **UI and browser-consumer states.** Distinguish empty from failed/stale in the KPI UI, state the window, and align card pulse, tracker, Insights, and browser PDF status.
+7. **UI and browser-consumer states — implemented and locally validated in Current Commit 7; certification remains withdrawn.** Empty is now distinct from loading, failed, and retained-empty/stale states; each KPI resolves one fail-closed browser state and reporting-window label before card breach display, tracker scoring, KPI-derived Insights, or browser PDF status.
 8. **Recompute/report proof.** Return exact KPI update/skip/failure IDs; make source lifecycle and all report preflights fail closed for selected KPI rows.
 9. **Persistence/destructive safety.** Widen KPI-progress numeric capacity, then make KPI child deletion atomic and notification hiding retryable without broadening scope.
 10. **Full validation and re-certification.** Restore/extend focused regressions, require the relevant suite/TypeScript/production build, run a read-only target inventory, design any cleanup separately, deploy, complete the external matrix, update the certification record to the final SHA, and only then re-certify.
@@ -343,7 +343,61 @@ What this proves:
 What this does not prove:
 
 - deployed behavior, a timer-fired scheduler run, live GA4/token-refresh behavior, provider acceptance or inbox delivery, or target production data
-- Commit 7 UI/card/Insights/browser-PDF unavailable and stale presentation, Commit 8 exact recompute/report freshness proof, Commit 9 persistence/destructive safety, or Commit 10 external re-certification
+- at the Current Commit 6 boundary, Commit 7 UI/card/Insights/browser-PDF unavailable and stale presentation was still open; Current Commit 7 is now implemented below, while Commits 8-10 remain open
+- GA4 KPI production readiness
+
+### Current Commit 7 - UI and browser-consumer states
+
+Status: implemented and locally validated. Certification remains withdrawn.
+
+Root cause:
+
+- the KPI list query defaulted missing data to `[]` and discarded its error state, so a failed read rendered the same empty state as a successful zero-row response
+- KPI cards, breach pulse, tracker scoring, KPI-derived Insights, and browser PDF rows independently consumed numeric values without a shared browser eligibility state
+- React Query can retain last-good response data after a refresh failure; those retained values could therefore look freshly verified even though Current Commits 5-6 correctly fail closed in backend producers and alert consumers
+- the KPI UI and browser PDF did not state that traffic/rate KPIs use 30 completed reporting days in the campaign reporting timezone while financial KPIs use campaign-to-date inputs
+
+Smallest safe implementation:
+
+- `shared/ga4-kpi-consumer-state.ts` resolves the standard/legacy metric dependency set to exactly one `loading`, `failed`, `unavailable`, `stale`, `blocked`, `insufficient_data`, or `verified` browser state and supplies the applicable reporting-window label
+- the existing KPI query now retains data presence separately from query failure; an initial failure is not empty, and a failed refresh of a retained empty list is not presented as a verified empty state
+- actual GA4 daily, connection, campaign-to-date revenue, imported-revenue, spend, and source-definition query results determine required input readiness without changing their fetches, response contracts, formulas, precedence, or scope
+- only `verified` KPI rows can enter tracker bands/average, display a breached-threshold pulse, or generate positive/negative KPI performance Insights; blocked, insufficient, unavailable, loading, failed, and stale rows remain fail-closed
+- stale rows may retain the last-good numeric value, but the card and browser PDF label it `Last-good — not verified`; unavailable/failed/loading/blocked rows do not present a numeric value as current
+- the browser PDF states the traffic/rate and financial windows, records excluded-state counts, and prints non-verified rows as state evidence rather than target-performance results
+
+Side-effect boundary:
+
+- no KPI formula, source precedence, reporting window, ownership/campaign/property/platform/source scope, API response, schema, persistence, scheduler, backend alert/notification/email, server-report, destructive, or production-data behavior changed
+- no production write, provider request, email send, cleanup, or target-data read was performed
+- Current Commits 8-10 were not implemented
+
+Files changed:
+
+- shared browser state/window resolver and the existing GA4 KPI page consumers
+- focused UI/browser state regression plus stale source-text assertions that no longer matched the shared identity/state path
+- canonical KPI status/evidence and machine-readable certification boundary
+
+Validation on August 1, 2026:
+
+- focused UI/browser state test passed: 1 file / 5 tests
+- KPI UI, tracker, Insights, browser PDF, alert/notification packet passed: 10 files / 225 tests
+- exact Commit 5 financial packet passed: 5 files / 27 tests
+- exact Commit 5 validation-closure packet passed: 9 files / 114 tests
+- exact Commit 6 alert/notification packet passed: 14 files / 111 tests
+- certification regression passed: 1 file / 9 tests; the standalone certification checker passed
+- TypeScript passed
+
+What this proves:
+
+- the locally exercised state matrix distinguishes successful empty, initial loading, list failure, retained-list staleness, required-source loading/unavailable/stale, missing-dependency blocking, insufficient denominator data, and verified values
+- standard and legacy traffic/rate aliases receive the 30-completed-day campaign-timezone label; Revenue/ROAS/ROI/CPA receive the campaign-to-date financial label; custom rows remain explicitly outside the standard GA4 window
+- every traced browser KPI performance consumer calls the same state resolver, and only its `verified` result can score, pulse, or create KPI performance guidance
+
+What this does not prove:
+
+- deployed rendering or browser interaction, live GA4/token refresh, a timer-fired scheduler run, actual provider/email delivery, or target production data
+- Commit 8 exact recompute/report freshness proof, Commit 9 persistence/destructive safety, Commit 10 external validation/re-certification, or server-generated report freshness
 - GA4 KPI production readiness
 
 ## Historical Status And Evidence (non-authoritative)

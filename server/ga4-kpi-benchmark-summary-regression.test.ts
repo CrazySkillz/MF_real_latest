@@ -77,9 +77,9 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).toContain("resolveKpiDataSufficiency");
     expect(ga4MetricsFile).toContain("const getKpiDataSufficiency = (kpi: any) => {");
     expect(ga4MetricsFile).toContain("let insufficient = 0;");
-    expect(ga4MetricsFile).toContain("if (!sufficiency.sufficient) {");
-    expect(ga4MetricsFile).toContain("continue; // do NOT score thin-data KPIs as strong or weak performance");
-    expect(ga4MetricsFile).toContain("const p = isBlocked || isInsufficient ? null : computeKpiProgress(kpi);");
+    expect(ga4MetricsFile).toContain('consumerState.code === "insufficient_data"');
+    expect(ga4MetricsFile).toContain("if (!consumerState.eligible) continue;");
+    expect(ga4MetricsFile).toContain("const p = consumerState.eligible ? computeKpiProgress(kpi) : null;");
     expect(ga4MetricsFile).toContain("Insufficient data:");
   });
 

@@ -115,13 +115,13 @@ describe("GA4 Insights regression guard", () => {
     const content = ga4MetricsFile();
     const helperStart = content.indexOf("const isBoundedRateMetric =");
     const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
-    const insightsEnd = content.indexOf("// Collect GA4 campaign names from all imported campaigns", insightsStart);
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names from the current campaign's saved GA4 scope.", insightsStart);
     const helperSection = content.slice(helperStart, insightsStart);
     const insightsSection = content.slice(insightsStart, insightsEnd);
 
     expect(helperStart).toBeGreaterThan(-1);
     expect(insightsEnd).toBeGreaterThan(insightsStart);
-    expect(helperSection).toContain('keys.includes("conversionrate") || keys.includes("engagementrate")');
+    expect(helperSection).toContain('metric === "conversion_rate" || metric === "engagement_rate"');
     expect(helperSection).toContain("value <= 0");
     expect(helperSection).toContain("value > 100");
     expect(helperSection).toContain("percentage rate metrics");
@@ -163,7 +163,7 @@ describe("GA4 Insights regression guard", () => {
   it("makes What to investigate next intro copy reflect available daily history", () => {
     const content = ga4MetricsFile();
     const copyStart = content.indexOf("const insightsActionDescription = useMemo(() => {");
-    const copyEnd = content.indexOf("// Collect GA4 campaign names from all imported campaigns", copyStart);
+    const copyEnd = content.indexOf("// Collect GA4 campaign names from the current campaign's saved GA4 scope.", copyStart);
     const copySection = content.slice(copyStart, copyEnd);
     const renderStart = content.indexOf('<CardTitle className="text-lg">What to investigate next</CardTitle>');
     const renderEnd = content.indexOf("</CardHeader>", renderStart);
@@ -185,7 +185,7 @@ describe("GA4 Insights regression guard", () => {
     const content = ga4MetricsFile();
     const pdfContent = ga4ScheduledReportPdfFile();
     const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
-    const insightsEnd = content.indexOf("// Collect GA4 campaign names from all imported campaigns", insightsStart);
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names from the current campaign's saved GA4 scope.", insightsStart);
     const insightsSection = content.slice(insightsStart, insightsEnd);
 
     expect(insightsStart).toBeGreaterThan(-1);

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "75510ce09fc370266bc14f39ad9d9ac59835fd979d6089d69eac5765241dcafe",
+  "contractSha256": "25f19e8af54c667f57bc015b24c8ee5660862b60354b160ae9c83a1f0c395f08",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "28ec57501ea46f9474e6f3558840f64f72500d8c",
+  "lastReviewedSha": "5f087470b29b175988740b7bfcc2eea43a672118",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 6 locally unifies the bounded backend alert and notification eligibility contract, but UI/browser state, exact-result/report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
+  "invalidationReason": "Current Commit 7 locally unifies fail-closed KPI UI and browser-consumer states, but exact-result/report, persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -22,12 +22,14 @@
       "Financial values must use fixed documented source precedence; valid zero is authoritative and unavailable must not become zero.",
       "Current Commit 5 locally applies provider-to-persisted-to-configured-breakdown precedence and preserves affected last-good stored values when required native, revenue, or spend inputs are unavailable.",
       "Current Commit 6 locally prevents blocked, insufficient, unavailable, or preserved-last-good values from being treated as verified breaches by backend alert, email, bell, and Notifications consumers.",
+      "Current Commit 7 locally prevents loading, failed, unavailable, stale/last-good, blocked, or insufficient KPI values from being scored, pulsed, or described as verified performance by browser consumers.",
       "Custom and unsupported KPI values must not be overwritten by guessed recomputation."
     ],
     "windowRules": [
       "The intended traffic and rate contract is 30 completed reporting days in the campaign reporting timezone.",
       "Engagement Rate must be weighted from authoritative inputs.",
-      "Current Commit 4 locally aligns persisted recompute, notification enrichment, and read-only comparison inputs to this contract; deployed and external parity remain pending."
+      "Current Commit 4 locally aligns persisted recompute, notification enrichment, and read-only comparison inputs to this contract; deployed and external parity remain pending.",
+      "Current Commit 7 labels traffic/rate KPI browser consumers as 30 completed reporting days in the campaign reporting timezone and financial KPI browser consumers as campaign-to-date."
     ],
     "ownershipRules": [
       "Every KPI read and mutation must prove actor, campaign, KPI owner, and exact platform scope.",
@@ -99,6 +101,7 @@
     { "path": "shared/kpi-math.ts", "role": "threshold, direction, progress, and sufficiency math", "sha256": null },
     { "path": "shared/metric-math.ts", "role": "shared financial and rate formulas", "sha256": null },
     { "path": "shared/ga4-kpi-live-value.ts", "role": "shared live-card and browser-PDF KPI value resolver", "sha256": null },
+    { "path": "shared/ga4-kpi-consumer-state.ts", "role": "shared fail-closed KPI UI and browser-consumer state/window resolver", "sha256": null },
     { "path": "shared/ga4-kpi-metric-identity.ts", "role": "canonical standard and legacy GA4 KPI metric identity inventory", "sha256": null },
     { "path": "shared/ga4-traffic-window.ts", "role": "shared persisted and notification traffic/rate window aggregation", "sha256": null },
     { "path": "shared/ga4-financial-source.ts", "role": "GA4 financial candidate precedence", "sha256": null },
@@ -122,6 +125,7 @@
     { "path": "server/alert-evaluation.test.ts", "role": "threshold evaluation regression", "sha256": null },
     { "path": "server/campaign-alert-current-value-regression.test.ts", "role": "alert current-value resolver regression", "sha256": null },
     { "path": "server/ga4-kpi-alert-contract-regression.test.ts", "role": "Commit 6 source, sufficiency, last-good, and cross-consumer alert contract regression", "sha256": null },
+    { "path": "server/ga4-kpi-ui-browser-state-regression.test.ts", "role": "Commit 7 UI, tracker, Insights, breach-pulse, and browser-PDF state regression", "sha256": null },
     { "path": "server/notification-visibility-regression.test.ts", "role": "notification and bell regression", "sha256": null },
     { "path": "server/alert-email-regression.test.ts", "role": "immediate and scheduled email alert decision wiring regression", "sha256": null },
     { "path": "server/alert-email-audit-regression.test.ts", "role": "email audit regression", "sha256": null },
@@ -158,7 +162,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 1, 2026 Commit 5 validation closure: the checker passed after the closure test/dependency contract update and the focused suite passed 1 file / 9 tests, including unknown-Git-SHA and reduced-contract rejection."
+      "evidence": "August 1, 2026 Current Commit 7: the updated dependency/test contract passed the standalone checker and 1 file / 9 certification regression tests, including unknown-Git-SHA and reduced-contract rejection."
     },
     {
       "id": "kpi_core_regressions",
@@ -203,10 +207,16 @@
       "evidence": "August 1, 2026 Current Commit 6: 14 files / 111 tests passed for source-resolved valid-zero, unavailable-last-good, and exact insufficiency decisions plus KPI/Benchmark in-app reconciliation, duplicate suppression, immediate/scheduled/retry email eligibility, bell/Notifications visibility, and real-path parity. Deployment, timer execution, provider behavior, inbox delivery, and production data remain external gates."
     },
     {
+      "id": "ui_browser_consumer_states",
+      "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 1, 2026 Current Commit 7: 10 files / 225 tests passed for the dynamic loading/failed/unavailable/stale/blocked/insufficient/verified matrix and real browser wiring through KPI cards, breach pulse, tracker, KPI-derived Insights, browser PDF, alert/notification parity, and standard/legacy reporting-window labels. Deployment and browser interaction remain external gates."
+    },
+    {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 1, 2026 Current Commit 6: TypeScript completed successfully."
+      "evidence": "August 1, 2026 Current Commit 7: TypeScript completed successfully."
     },
     {
       "id": "production_build",
@@ -244,7 +254,7 @@
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "Bell, Notifications, Insights, browser PDF, direct snapshot, test-send, manual, and scheduled report parity must be externally revalidated."
+      "evidence": "Current Commit 7 locally covers KPI UI, tracker, KPI-derived Insights, and browser PDF state wiring. Deployed browser interaction plus bell, Notifications, direct snapshot, test-send, manual, and scheduled report parity must still be externally revalidated."
     }
   ]
 }

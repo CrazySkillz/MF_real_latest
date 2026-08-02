@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "70197b4912393e4eb78dffb2bf79bd0b85fa833535f5e40d48470951298b9c67",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "fd6a011830133002855c87953fae852863b812c2",
+  "lastReviewedSha": "6755e6f369e98212f99a23d479aa88db92d8f8e5",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 10 proves the deployed KPI-progress migration and passing focused GA4 contracts, but the target inventory has 17 explicit skips, repository CI is not clean, and the current deployed state, timer, provider/token, and report/browser external gates are incomplete. Historical certification is not current evidence.",
+  "invalidationReason": "Gate 1 proves the deployed Commit 10 SHA and fully classifies the prior 17 skips, but 4 live-provider and 3 missing-property financial rows remain unverified. Repository CI is not clean, and the current deployed state, timer, provider/token, and report/browser external gates are incomplete. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -258,7 +258,7 @@
     {
       "id": "target_data_inventory",
       "status": "pending",
-      "evidence": "August 2, 2026 read-only dry-run connected to the target database: 0 candidates, 17 explicitly skipped, 0 applied. Schema inspection proved the three progress columns are numeric(18,2), 679 progress rows are within capacity, 23 GA4 KPI parents exist, and orphan progress/alert/period counts are zero. Gate remains pending because the 17 financial skips were not verifiable from local persisted data."
+      "evidence": "August 2, 2026 Gate 1: production /api/health returned exact deployed SHA 6755e6f369e98212f99a23d479aa88db92d8f8e5. Read-only inventory proved 0 candidates, 17 skipped items, and 0 applied: 10 financial KPIs plus 7 immutable duplicate-email audit rows, not 17 financial KPIs. Three simulated-property rows exactly match deterministic current values. Four live-provider rows remain unreadable without a refresh-disabled production credential path, and three rows lack a usable property boundary. Every row's owner, timezone/window, property, campaign filter, KPI binding, active revenue/spend source types, persisted row range, and available totals were inventoried. Focused inventory/certification tests passed 14/14 and the checker passed. Gate remains pending for those seven financial rows."
     },
     {
       "id": "deployed_state_matrix",

@@ -1,6 +1,6 @@
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { getGA4HistoricalImportStartDate, getReportingDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
@@ -398,12 +398,8 @@ async function buildGA4ReportPayload(report: any) {
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
   const configuredOverviewStartDate = String((connection as any)?.importStartDate || '').trim();
-  const derivedOverviewStartDate = getGA4HistoricalImportStartDate(
-    (connection as any)?.connectedAt,
-    lookbackDays,
-    (campaign as any)?.reportingTimeZone,
-  );
-  const overviewStartCandidate = configuredOverviewStartDate || derivedOverviewStartDate || dailyStart;
+  const overviewStartCandidate = configuredOverviewStartDate
+    || (lookbackDays === 30 ? GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : dailyStart);
   const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(overviewStartCandidate) && overviewStartCandidate <= dailyEnd
     ? overviewStartCandidate
     : dailyStart;

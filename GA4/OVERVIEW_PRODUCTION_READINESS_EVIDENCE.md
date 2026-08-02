@@ -4,7 +4,7 @@
 
 This ledger preserves the detailed audit scope, inventories, traces, blocker analyses, production-data findings, negative cases, and validation evidence moved from the canonical readiness index on `2026-08-01`.
 
-Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current certification decision and active gates. Use [`OVERVIEW_PRODUCTION_READINESS_HISTORY.md`](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md) for the chronological Commit 0-18 record.
+Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current certification decision and active gates. Use [`OVERVIEW_PRODUCTION_READINESS_HISTORY.md`](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md) for the chronological Commit 0-20 record.
 
 The moved content below is preserved verbatim so the documentation split does not discard or rewrite historical evidence.
 
@@ -30,7 +30,9 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**UNVERIFIED. Current Commit 20 is open because production behavior proved that the schema-defined 30-day historical-import depth had been reinterpreted as a rolling Summary window. Local correction and regression evidence exist, but deployed API/UI/Overview-report parity, a timer-fired no-drop run, and OAuth durability on or after `2026-08-07` remain required.**
+**UNVERIFIED. Commit `9c0ef7e8` restored cumulative Summary reads but failed deployed parity for a retained connection: missing `importStartDate` fell back to OAuth `connectedAt`, selecting `2026-06-29` instead of the validated `2026-07-02` boundary. The local corrective follow-up excludes the exact three extra days but still requires deployment/API/UI/Overview-report parity, a timer-fired no-drop run, and OAuth durability on or after `2026-08-07`.**
+
+Current Commit 20 corrective evidence: the 29 June, 30 June, and 1 July controlled packets total exactly 330 Sessions, 330 Users, and 42 Conversions. Those amounts exactly explain the deployed change from 866 / 867 / 110 to 1,196 / 1,197 / 152. The correction retains explicit `importStartDate` values, retains dynamic per-selection dates for new connections, carries the boundary through the existing draft-to-final campaign transfer, and applies the verified `2026-07-02` cutover only to pre-field retained connections. It changes no production fact or connection row. Eight focused/adjacent files pass 170/170 tests; TypeScript, the production build, and `git diff --check` pass. The numerical guard verifies 866 / 867 / 110 / 68.4% / 12.7%; deployment remains unproven.
 
 Commit 17's bounded forward implementation deployed as `36676deb`; the user confirmed the existing GA4 campaign's Total Revenue, Total Spend, and Revenue/Spend source lists remained unchanged. The retained-source disposition is now closed as keep/support. Provider-cycle rollback remains a named scheduler/provider exclusion, and no production cleanup is authorized.
 
@@ -141,12 +143,12 @@ This inventory was derived from current render code, query code, API routes, sto
 | --- | --- | --- |
 | Shopify Revenue | visible | Narrow Admin API token certification exists; shared Overview remains blocked. |
 | HubSpot Revenue | visible | Narrow certification history exists; current broad regression guard is red and shared Overview remains blocked. |
-| Google Sheets Revenue | hidden for new GA4 setup; deployed UI confirmed | Current Commit 5 blocks new UI and direct-API creation. Existing exact-source edit/continuity remains enabled and unproven. |
+| Google Sheets Revenue | restored locally; deployment required | Current Commit 21 restores the chooser and scoped process API through the existing atomic source/record path. Independent provider/lifecycle certification remains open. |
 | CSV Revenue | visible | Bounded dated-import certification exists; does not certify all Overview paths. |
 | Salesforce Revenue | hidden for new v1 setup | Existing active rows remain readable and can feed totals/proxy; production inventory contains one active null-context source. |
 | Manual Revenue | blocked for create/edit; exact delete retained | Not a supported GA4 source. The owner-scoped inventory found none; any future retained row requires exact reviewed deletion. |
 | Google Ads Spend | visible | Standalone provider audit excluded, but values feed included Total Spend and derived values. |
-| Google Sheets Spend | hidden for new GA4 setup; deployed UI confirmed | Current Commit 5 blocks new UI, omitted-context, and direct GA4 API creation. Existing exact-source continuity is retained; post-publish reconnect and one deployed no-click mapped-value update were user-confirmed on `2026-08-01`. Exact polling cadence/failure behavior remains outside the non-scheduler certification. |
+| Google Sheets Spend | restored locally; deployment required | Current Commit 21 restores the chooser and scoped process API. Omitted-context creation remains blocked. Retained-source reconnect and one deployed no-click mapped-value update were user-confirmed on `2026-08-01`. |
 | CSV Spend | visible | New GA4 sources require a Date column in UI and API. Existing undated sources are retained only for continuity and remain unproven. |
 | Manual Spend | blocked for create/edit; exact delete retained | The exact `Summer splash` `$400` source was deleted on `2026-07-30`; post-delete inventory and `$14,045.83` Total Spend passed. Any other retained row remains lifecycle/disposition work. |
 | LinkedIn/Meta Spend | hidden for new GA4 setup | Explicit foreign contexts are excluded from GA4 totals. Existing orphan scheduler rows remain separately inventoried production-data cleanup work and are not visible source-backed totals. |
@@ -222,8 +224,8 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 | --- | --- | --- |
 | GA4 connect/select | campaign access, selected property, one primary in current target snapshot; configured window parity fixed by Commit 2; deployed 30-day scope passed | future token/provider behavior; future 60/90-day options are excluded from this release |
 | GA4 refresh/on-demand backfill | route and scheduler logic, refresh-token material present, and deployed 30-day provider coverage/activity evidence | current timer-fired and on-demand trigger evidence |
-| Revenue add | guarded routes and active GA4-context joins | Google Sheets complete failure/rollback path; hidden legacy paths |
-| Revenue edit/refresh | HubSpot/Shopify/CSV have bounded evidence | Google Sheets is on hold; current HubSpot broad guard is red |
+| Revenue add | guarded routes and active GA4-context joins; Google Sheets chooser/API restored locally | Google Sheets deployed new-source and complete failure/rollback packet; hidden legacy paths |
+| Revenue edit/refresh | HubSpot/Shopify/CSV have bounded evidence; Google Sheets uses atomic exact-source replacement | Google Sheets deployed provider/idempotency packet; current HubSpot broad guard is red |
 | Revenue delete/deactivate | ownership and active-source exclusion tests | complete active-family browser/provider rerun not current |
 | Spend add | CSV/Google Sheets/Google Ads routes exist | Google Sheets and excluded provider correctness cannot be inferred; no-date CSV enabled |
 | Spend edit/refresh | stable-source tests plus Commit 4 context-write/self-heal guards | Google Sheets automatic mutation evidence remains incomplete |
@@ -501,7 +503,7 @@ The following pre-condensation active plan is preserved verbatim from `OVERVIEW_
 
 ## Active Commit Queue
 
-Historical Current Commits 0-19 remain in chronological order in the [history ledger](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md).
+Historical Current Commits 0-20 remain in chronological order in the [history ledger](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md).
 
 ### Current Commit 19 — Enforce The 30-Day-Only Production Scope — bounded implementation closed
 

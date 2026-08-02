@@ -606,7 +606,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZoneLabel}");
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
-    expect(pdf).toContain('import { getGA4HistoricalImportStartDate, getReportingDateWindow } from "./utils/reporting-timezone";');
+    expect(pdf).toContain('import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow } from "./utils/reporting-timezone";');
     expect(pdf).toContain("const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);");
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");
@@ -635,7 +635,7 @@ describe("GA4 UI regression guard", () => {
     expect(mapSection).not.toContain("Loading spreadsheet data");
   });
 
-  it("limits the v1 new spend source chooser without removing existing-source continuity code", () => {
+  it("limits the v1 spend chooser to supported sources including Google Sheets", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooserStart = spendModal.indexOf('{step === "select" && (');
     const chooserEnd = spendModal.indexOf('{step === "ad_platform" && (', chooserStart);
@@ -646,7 +646,8 @@ describe("GA4 UI regression guard", () => {
     expect(chooser).not.toContain("LinkedIn Ads");
     expect(chooser).not.toContain("Meta / Facebook");
     expect(chooser).toContain("Google Ads");
-    expect(chooser).toContain('{props.platformContext !== "ga4" && (');
+    expect(chooser).toContain("Google Sheets");
+    expect(chooser).not.toContain('{props.platformContext !== "ga4" && (');
     expect(chooser).toContain("Upload CSV");
     expect(spendModal).toContain('selectedPlatform === "linkedin"');
     expect(spendModal).toContain('selectedPlatform === "meta"');

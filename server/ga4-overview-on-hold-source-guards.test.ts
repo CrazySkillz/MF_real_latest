@@ -16,16 +16,18 @@ const routeSlice = (startMarker: string, endMarker: string) => {
   return routes.slice(start, end);
 };
 
-describe("GA4 Overview on-hold source guards", () => {
-  it("hides new Google Sheets revenue and spend choices only in GA4", () => {
-    expect(revenueModal).toContain('{platformContext !== "ga4" && (');
-    expect(spendModal).toContain('{props.platformContext !== "ga4" && (');
+describe("GA4 Overview source availability guards", () => {
+  it("offers Google Sheets revenue and spend choices in GA4", () => {
+    expect(revenueModal).not.toContain('{platformContext !== "ga4" && (');
+    expect(spendModal).not.toContain('{props.platformContext !== "ga4" && (');
     expect(dataSourcesTab).toContain('platformContext="ga4"');
+    expect(revenueModal).toContain('Import revenue from a connected Google Sheets tab');
+    expect(spendModal).toContain('Import spend from a connected Google Sheet tab.');
     expect(revenueModal).toContain('if (type === "google_sheets")');
     expect(spendModal).toContain('if (st === "google_sheets") return "sheets_map";');
   });
 
-  it("rejects forged new GA4 Google Sheets source creation before provider reads or mutation", () => {
+  it("allows scoped new GA4 Google Sheets creation while preserving required platform context", () => {
     const revenueRoute = routeSlice(
       'app.post("/api/campaigns/:id/revenue/sheets/process"',
       "const spendSourceMatchesPlatformContext",
@@ -35,15 +37,11 @@ describe("GA4 Overview on-hold source guards", () => {
       "// Salesforce PKCE support",
     );
 
-    expect(revenueRoute).toContain('platformContext === "ga4" && !mapping?.sourceId');
-    expect(revenueRoute.indexOf('platformContext === "ga4" && !mapping?.sourceId')).toBeLessThan(
-      revenueRoute.indexOf("storage.getGoogleSheetsConnections"),
-    );
-    expect(spendRoute).toContain('platformContext === "ga4" && !mapping?.sourceId');
+    expect(revenueRoute).not.toContain("temporarily unavailable for GA4 Overview");
+    expect(revenueRoute).toContain("replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'");
+    expect(spendRoute).not.toContain("temporarily unavailable for GA4 Overview");
     expect(spendRoute).toContain("!requestedPlatformContext && !mapping?.sourceId");
-    expect(spendRoute.indexOf('platformContext === "ga4" && !mapping?.sourceId')).toBeLessThan(
-      spendRoute.indexOf("storage.getGoogleSheetsConnections"),
-    );
+    expect(spendRoute).toContain("replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'");
   });
 
   it("requires a date for new GA4 CSV spend in both UI and API while retaining source-ID edits", () => {

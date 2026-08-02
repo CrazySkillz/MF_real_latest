@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is **UNVERIFIED** while Current Commit 20 corrects an escaped Summary-window regression. The 30-day setup value defines the fixed initial historical-import boundary; completed scheduler facts append after that boundary and must not drop the oldest imported day. Deployment/parity, a current-release timer-fired run, and OAuth durability on or after `2026-08-07` remain open.
+- GA4 Overview is **UNVERIFIED**. Current Commit 20's first deployment restored cumulative reads but used OAuth `connectedAt` as the fallback boundary for retained connections, adding three pre-window days. The local follow-up uses the verified `2026-07-02` cutover only where `importStartDate` is absent; new connections retain their exact selection boundary. Deployment/parity, a current-release timer-fired run, and OAuth durability on or after `2026-08-07` remain open.
 
 Whole-Overview Commit 16 deployed as `747192ff`: authenticated connection responses added sanitized saved-window metadata, and runner `2026-07-31.13` detected mismatches. The existing `GA4 single` / `ga4_mock` response returned `lookbackDays: 30`, closing that bounded correction. Commit 19 later narrowed the supported production contract to 30 days only; retained non-30 rows now fail closed. No scheduler cadence, provider query, formula, storage/schema, campaign scope, or production data changed. Timer-fired evidence, observed automatic renewal, and post-publish seven-day durability remain unproven.
 

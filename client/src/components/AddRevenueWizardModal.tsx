@@ -1832,23 +1832,21 @@ export function AddRevenueWizardModal(props: {
                   </Card>
                 )}
 
-                {platformContext !== "ga4" && (
-                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => {
-                    if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");
-                    setStep("sheets_choose");
-                  }}>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileSpreadsheet className="w-4 h-4" />
-                        Google Sheets
-                        {importSourceStatus.google_sheets && (
-                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
-                        )}
-                      </CardTitle>
-                      <CardDescription>Import revenue from a connected Google Sheets tab</CardDescription>
-                    </CardHeader>
-                  </Card>
-                )}
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => {
+                  if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");
+                  setStep("sheets_choose");
+                }}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Google Sheets
+                      {importSourceStatus.google_sheets && (
+                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                      )}
+                    </CardTitle>
+                    <CardDescription>Import revenue from a connected Google Sheets tab</CardDescription>
+                  </CardHeader>
+                </Card>
 
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
                   <CardHeader>

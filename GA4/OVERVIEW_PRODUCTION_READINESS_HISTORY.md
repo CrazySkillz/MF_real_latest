@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This ledger preserves the chronological Current Commit 0-18 queue and its UI-validation record moved from the canonical readiness index on `2026-08-01`.
+This ledger preserves the chronological Current Commit 0-20 queue and its UI-validation record moved from the canonical readiness index on `2026-08-01`.
 
 Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current certification decision and active Commit 19 gate. Use [`OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md) for detailed inventories, traces, blockers, and validation evidence.
 
@@ -332,10 +332,21 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 
 - Invalidating symptom: after the calendar advanced, unchanged GA4 property activity produced different Overview Summary values because the oldest day fell out of a rolling 30-day display window.
 - Root cause: commit `5cff21ad` reinterpreted `ga4_connections.lookbackDays` from its schema-defined historical-import depth into a rolling completed-day Summary contract. Later guards protected that wrong contract.
-- Smallest safe implementation: persist a fixed `importStartDate` for future property selections; derive the same boundary from `connectedAt` plus the saved 30-day import depth for retained connections; return additive `overviewStartDate` and `overviewTotals` fields from `/ga4-daily`; and route only Overview Summary and Overview report Summary through those cumulative persisted daily totals. Existing rolling daily rows remain unchanged for KPI, Trend, repair, and freshness consumers.
+- First implementation: persist a fixed `importStartDate` for future property selections; return additive `overviewStartDate` and `overviewTotals` fields from `/ga4-daily`; and route only Overview Summary and Overview report Summary through cumulative persisted daily totals. Existing rolling daily rows remain unchanged for KPI, Trend, repair, and freshness consumers.
 - No production campaign, connection, property, token, source, record, or metric was modified. No reconnect, cleanup, or provider write was performed.
 - Regression evidence: a controlled 30-day boundary proves that a later zero-activity day retains Sessions 887; the focused scheduler/Overview/report packet passes 55/55; `npm run check` passes; and `git diff --check` passes.
-- Status: local code path **proven**; deployment and authenticated API/UI/Overview-report parity **unproven**; current-release timer-fired no-drop behavior and OAuth durability **require external validation**.
+- First deployment: commit `9c0ef7e8` rendered 1,196 Sessions / 1,197 Users / 152 Conversions instead of the unchanged validated 866 / 867 / 110. The three extra controlled days, 29 June–1 July, total exactly 330 Sessions, 330 Users, and 42 Conversions.
+- Corrective root cause: the retained connection lacked the new field, and OAuth `connectedAt` reconstructed `2026-06-29`. OAuth/auth history is not property-selection or cumulative-cutover history; the verified pre-cutover window began `2026-07-02`.
+- Smallest corrective follow-up: retain all explicit `importStartDate` values and new per-selection boundaries; carry the saved boundary through the existing draft-to-final campaign transfer; use the verified `2026-07-02` compatibility cutover only for pre-field retained connections. The API, same-property reselection continuity, and server Overview report share that rule. No production fact or connection row is modified.
+- Corrective local validation: eight focused/adjacent files pass 170/170 tests; TypeScript, the production build, and `git diff --check` pass. The exact numerical regression produces 866 / 867 / 110 / 68.4% / 12.7% from the corrected boundary.
+- Status: corrective local code path **proven**; corrective deployment and authenticated API/UI/Overview-report parity **unproven**; current-release timer-fired no-drop behavior and OAuth durability **require external validation**.
+
+### Current Commit 21 — Restore Google Sheets financial-source setup — local implementation proven; deployment open
+
+- Root cause: whole-Overview Commit 5 intentionally wrapped both Google Sheets source cards in GA4-only exclusion conditions and rejected new GA4 Sheets processing in both APIs. The underlying mapped, scoped, atomic workflows remained implemented, but the temporary hold was never removed after the product requirement changed.
+- Smallest safe fix: remove only the two GA4 chooser exclusions and two new-source rejection branches. Preserve campaign access, explicit Spend `platformContext`, mapping validation, provider failure handling, exact-source edit/delete, atomic source/record replacement, recomputation, and existing refresh behavior.
+- Production-data boundary: no campaign, connection, source, record, mapping, token, total, or provider data was created, edited, deleted, reconnected, or refreshed.
+- Local evidence: the focused eight-file Google Sheets chooser/mapping/additivity/lifecycle/refresh packet passed 98/98 tests; TypeScript, the production build, and `git diff --check` passed. A broader source-safety run passed 86/87; its only failure is a pre-existing static assertion expecting direct Spend deletion instead of the existing transactional helper and is outside this change path. Deployment and chooser visibility remain unproven.
 
 ## UI Validation Requirement
 

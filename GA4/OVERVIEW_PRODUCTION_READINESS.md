@@ -5,7 +5,7 @@
 This is the concise canonical index for the current GA4 Overview readiness decision and active gates.
 
 - [Evidence ledger](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md): detailed inventories, traces, blockers, validation packets, and active-gate specifications
-- [History ledger](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md): chronological Current Commit 0-19 and UI-validation record
+- [History ledger](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md): chronological Current Commit 0-21 and UI-validation record
 - [Overview behavior](./OVERVIEW.md): implemented product contract
 - [Refresh contract](./REFRESH_AND_PROCESSING.md): completed-day, OAuth, and scheduler behavior
 
@@ -15,7 +15,7 @@ Only evidence from the same deployed commit, production-data state, and document
 
 ## Current Decision — Stable Cross-Session Answer
 
-**UNVERIFIED at the current revision. A deployed Summary regression showed that the 30-day setup value was incorrectly treated as a rolling display window. The prior claim that every other supported Overview requirement had passed is withdrawn. Current Commit 20 must restore initial-30-day import plus completed-day accumulation, prove UI/API/report parity, and then rerun the scheduler gate. OAuth durability remains due on or after 2026-08-07.**
+**UNVERIFIED at the current revision. Current Commit 20's local corrective follow-up restores the verified 2 July legacy cutover, and Current Commit 21 locally restores Google Sheets in both GA4 financial-source choosers and removes only the obsolete new-source API rejection. Both changes require deployment and bounded validation; OAuth durability remains due on or after 2026-08-07.**
 
 ## Intended Release Scope
 
@@ -34,7 +34,8 @@ Future 60/90-day options are outside this release and require later implementati
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |
-| Current Commit 20 | **Open — certification invalidated** | Restore the schema-defined historical-import meaning of `lookbackDays`. Overview Summary totals must retain the initial imported period and append later completed-day facts; a zero-activity new day must not reduce totals. Preserve the rolling daily response used by KPI/Trend consumers, exact property/campaign scope, fail-closed behavior, and production data. Add regression-first numerical coverage and prove UI/API/Overview-report parity. |
+| Current Commit 21 | **Local; deployment required** | Google Sheets is restored in GA4 `Add revenue source` and `Add spend source`; new requests use the existing campaign-access guard, GA4 platform context, mapping validation, and atomic exact-source persistence. Confirm both cards render after deployment; do not create production data solely for this visibility check. |
+| Current Commit 20 | **Corrective follow-up local; deployment required** | Commit `9c0ef7e8` exposed a legacy-boundary migration defect: OAuth `connectedAt` is not property-selection history. The correction excludes the exact extra 330 Sessions / 330 Users / 42 Conversions, uses the verified `2026-07-02` cutover only when a retained connection lacks `importStartDate`, and preserves persisted per-selection boundaries for new connections. API/UI/Overview-report parity remains externally unproven. |
 | Current Commit 19 | **Bounded implementation closed** | Runtime `ba2e4329` deployed; the existing `GA4 single` / `ga4_mock` page showed `Last 30 completed days` and loaded normally. Unsupported-write rejection is automated/code-path proven at this source, not production-injected. |
 | Current-release GA4 scheduled run | **Requires external validation** | After a normal timer-fired run, confirm scheduler health records `lastRunTrigger=scheduled`, `lastRunStatus=success`, and an incremented run count; then confirm the existing scoped 30-day Overview remains valid with no false zero, duplicate, or damaged-row growth. |
 | OAuth durability | **Requires external validation** | On 2026-08-07 or later, confirm the existing unreconnected GA4 connection and metrics still work; do not infer automatic renewal unless observed. |
@@ -65,7 +66,7 @@ The scheduler-backed Summary begins with the initial 30-day import and accumulat
 
 The documented initial-30-day-import scope may be clean-certified only when, at the same deployed commit and data state:
 
-1. Current Commit 20 is deployed and its Summary API/UI/Overview-report parity is validated.
+1. Current Commits 20 and 21 are deployed; Summary API/UI/Overview-report parity and both Google Sheets chooser cards are validated.
 2. One current-release timer-fired GA4 daily scheduler run proves that a zero-activity day does not drop the oldest imported day or change unchanged totals.
 3. OAuth durability passes on 2026-08-07 or later.
 4. The deterministic/read-only pack has no unresolved included value, source, lifecycle, failure, or downstream path.
@@ -75,7 +76,7 @@ Only then may the status say:
 
 **GA4 Overview is clean-certified and production-ready for the documented 30-completed-day scope. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future configurations, and future provider behavior are excluded.**
 
-Until then, the exact answer is: **GA4 Overview is unverified because the rolling-window Summary regression is open. Current Commit 20, a current-release scheduled run, and the 2026-08-07 OAuth durability check must pass before clean certification.**
+Until then, the exact answer is: **GA4 Overview is unverified because Current Commit 20's legacy-boundary correction and Current Commit 21's Google Sheets chooser restoration still require deployment validation. A current-release scheduled run and the 2026-08-07 OAuth durability check must then pass before clean certification.**
 
 ## Source Authority
 

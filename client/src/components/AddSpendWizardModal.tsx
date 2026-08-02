@@ -1531,17 +1531,15 @@ export function AddSpendWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                {props.platformContext !== "ga4" && (
-                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileSpreadsheet className="w-4 h-4" />
-                        Google Sheets
-                      </CardTitle>
-                      <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
-                    </CardHeader>
-                  </Card>
-                )}
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Google Sheets
+                    </CardTitle>
+                    <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
+                  </CardHeader>
+                </Card>
 
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
                   <CardHeader>

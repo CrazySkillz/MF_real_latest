@@ -1,4 +1,7 @@
 export const DEFAULT_REPORTING_TIME_ZONE = "UTC";
+// Fixed cutover boundary for 30-day connections created before import_start_date existed.
+// The last verified pre-cutover Overview window was 2026-07-02 through 2026-07-31.
+export const GA4_OVERVIEW_LEGACY_IMPORT_START_DATE = "2026-07-02";
 
 export function normalizeReportingTimeZone(value: any): string {
   const tz = String(value || "").trim();

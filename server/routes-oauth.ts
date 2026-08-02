@@ -47,7 +47,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -4713,10 +4713,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMapping = zRevenueMapping.safeParse(body.data.mapping || {});
       if (!parsedMapping.success) return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
       const mapping = parsedMapping.data as any;
-      if (platformContext === "ga4" && !mapping?.sourceId) {
-        return sendBadRequest(res, "New Google Sheets revenue sources are temporarily unavailable for GA4 Overview");
-      }
-
       const valueSource: "revenue" | "conversion_value" =
         platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
       const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
@@ -6065,10 +6061,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
       }
       const platformContext = requestedPlatformContext || null;
-      if (platformContext === "ga4" && !mapping?.sourceId) {
-        return res.status(400).json({ success: false, error: "New Google Sheets spend sources are temporarily unavailable for GA4 Overview" });
-      }
-
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.
@@ -8611,12 +8603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const latestStoredDailyDate = getLatestStoredDailyDate(stored);
       const configuredOverviewStartDate = String((selectedConnection as any)?.importStartDate || '').trim();
-      const derivedOverviewStartDate = getGA4HistoricalImportStartDate(
-        (selectedConnection as any)?.connectedAt,
-        (selectedConnection as any)?.lookbackDays || days,
-        reportingTimeZone,
-      );
-      const overviewStartCandidate = configuredOverviewStartDate || derivedOverviewStartDate || startDate;
+      const overviewStartCandidate = configuredOverviewStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
       const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(overviewStartCandidate) && overviewStartCandidate <= endDate
         ? overviewStartCandidate
         : startDate;
@@ -11793,7 +11780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sameProperty = String((existingConnection as any)?.propertyId || '') === String(propertyId);
         const importStartDate = sameProperty
           ? String((existingConnection as any)?.importStartDate || '').trim()
-            || getGA4HistoricalImportStartDate((existingConnection as any)?.connectedAt, lookbackDays, (ok as any)?.reportingTimeZone)
+            || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE
           : selectionImportStartDate;
         console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
         await storage.updateGA4Connection(existingConnection.id, {
@@ -14254,7 +14241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sameProperty = String((dbConnection as any)?.propertyId || '') === String(propertyId);
         const importStartDate = sameProperty
           ? String((dbConnection as any)?.importStartDate || '').trim()
-            || getGA4HistoricalImportStartDate((dbConnection as any)?.connectedAt, lookbackDays, (ok as any)?.reportingTimeZone)
+            || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE
           : selectionImportStartDate;
         // Update the existing DB connection with the selected property — use connection.id, NOT campaignId
         await storage.updateGA4Connection(dbConnection.id, {
@@ -30796,6 +30783,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         clientId: existingConnection.clientId,
         clientSecret: existingConnection.clientSecret,
+        lookbackDays: existingConnection.lookbackDays,
+        importStartDate: existingConnection.importStartDate,
         expiresAt: existingConnection.expiresAt
       });
 

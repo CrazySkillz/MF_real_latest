@@ -1226,6 +1226,7 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   clientId: true,
   clientSecret: true,
   importStartDate: true,
+  lookbackDays: true,
   expiresAt: true,
 });
 

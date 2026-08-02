@@ -8,12 +8,12 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of the August 1, 2026 fresh re-certification, the GA4 `KPIs` tab is **not production-ready** and its certification is `UNVERIFIED`.
+As of the August 2, 2026 Current Commit 10 re-certification, the GA4 `KPIs` tab is **not production-ready** and its certification is `UNVERIFIED`.
 
 The controlling source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Historical June validation remains evidence only. Later shared-input changes and newly traced gaps invalidated cards-to-persistence parity, alert/notification decisions, Insights/report consumers, failure states, scheduler dates, and destructive/persistence safety.
 Future sessions must not carry a readiness answer forward from prose. They must verify the certification record, certified SHA/dependency boundary, invalidation result, real-path parity suite, and remaining external gates. Until that mechanism and the current queue are complete, the answer remains not production-ready.
 
-The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. The current record is `UNVERIFIED`; Current Commits 1-9 implement the integrity gate, real-path parity guard, metric identity contract, authoritative traffic/rate window contract, bounded financial source/failure contract, alert/notification eligibility, fail-closed UI/browser-consumer states, exact recompute/report proof, and persistence/destructive safety. Current Commit 10, deployment/external validation, and re-certification remain open.
+The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. Current Commits 1-9 are implemented; Current Commit 10 proved the deployed KPI-progress migration and reran the local GA4 evidence, but clean re-certification remains blocked by the explicitly pending external gates and the non-clean repository suite.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -287,6 +287,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is not production-ready. Current Commits 4-8 locally align the traffic/rate window, financial valid-zero/failure contract, backend alert/notification eligibility, fail-closed UI/browser-consumer states, and exact recompute/report proof. Persistence safety, deployed behavior, and external validation remain open in Current Commits 9-10.
+The GA4 `KPIs` tab is not production-ready. Current Commits 1-9 and all applicable focused GA4 packets pass; Current Commit 10 proved the deployed KPI-progress numeric migration and found no orphan KPI child rows, but the complete deployed state/scheduler/provider/report matrix remains externally unproven.
 
 The controlling evidence boundary, prevention contract, external gates, and Current Commits 0-10 are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

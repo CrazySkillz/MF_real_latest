@@ -21,7 +21,7 @@ describe("GA4 reporting timezone contract", () => {
     expect(campaigns).toContain('const formatReportingTimeZoneOptionLabel = (value: string) => value.replace(/_/g, " ");');
     expect(timezoneUtil).toContain("export function normalizeReportingTimeZone(value: any): string");
     expect(timezoneUtil).toContain("new Intl.DateTimeFormat(\"en-US\", { timeZone: tz }).format(new Date(0));");
-    expect(routes).toContain('import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";');
+    expect(routes).toContain('getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness');
     expect(routes).toContain("sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);");
     expect(routes).toContain('Object.prototype.hasOwnProperty.call(sanitizedData, "reportingTimeZone")');
     expect(routes).toContain("reportingTimeZone: normalizeReportingTimeZone(campaign?.reportingTimeZone),");

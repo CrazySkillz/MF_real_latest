@@ -18,7 +18,7 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### Fresh re-certification — August 1, 2026 (controlling status)
+### Current Commit 10 re-certification — August 2, 2026 (controlling status)
 
 **Result: not production-ready. Clean certification is withdrawn.** This section supersedes every older production-ready or durable-future-chat answer below; those sections are historical evidence only.
 
@@ -46,12 +46,12 @@ Current unproven or unsafe paths:
 
 - deployed/browser interaction has not yet validated the Current Commit 7 loading, failure, unavailable, stale/last-good, blocked, insufficient-data, valid-zero, and window labels against live source failures; the user confirmed only the deployed browser-PDF happy path opens and looks correct
 - deployed and timer-fired execution has not yet proven Current Commit 8's exact update/skip/failure result or report fail-closed behavior against live GA4/token/source failures
-- the Current Commit 9 schema migration has not been applied or inspected on the deployed database; local tests prove the migration declaration and transactional code path, not deployed migration completion or target-data condition
-- the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
+- deployed read-only schema inspection proves all three `kpi_progress` value columns are `numeric(18,2)` at deployed Commit 9 revision `fd6a011830133002855c87953fae852863b812c2`; 679 rows fit the widened capacity and the current database contains 0 orphan progress, alert, or period rows
+- the Current Commit 10 dry-run found 0 cleanup candidates and applied 0 changes, but explicitly skipped 17 financial rows because live GA4 totals were not locally readable or no primary property was configured; those skips prevent the target-data gate from being complete
 - the final applicable Current Commit 5-7 packets pass 29/29, 114/114, 113/113, and 227/227 tests respectively; the combined Current Commit 8 packet passes 76/76 and the Current Commit 9 packet passes 59/59
-- the complete repository suite is not clean: 1,265/1,297 tests pass and 32 tests fail across 15 files. The failures remain in deferred Google Ads, Instagram, Meta, and TikTok work plus three pre-existing GA4 assertions and one shared spend-source assertion; the shared spend assertion targets a separate atomic spend delete path and does not exercise KPI deletion. These failures are not evidence for KPI readiness and are not fixed by Current Commit 9
+- the complete repository suite is not clean: 1,268/1,297 tests pass and 29 tests fail across 12 files. All GA4-specific failures are closed; 28 failures are deferred Google Ads, Instagram, Meta, or TikTok work and one is the unrelated shared spend-source assertion. These failures are not counted as passing KPI evidence and CI is not clean
 
-External validation required after forward fixes: read-only target-data inventory (attempted August 1, 2026, but this environment has no `DATABASE_URL`; no data was read or changed); deployed valid-zero/unavailable/stale/provider-failure/source-mix/timezone parity; a timer-fired scheduler run with exact KPI update evidence; current GA4/token-refresh and email-provider evidence; and direct snapshot/test-send/manual-send/scheduled-report, bell, Notifications, and Insights parity. The user-confirmed deployed Commit 7 browser-PDF download/open happy path is recorded, but it does not prove the missing state matrix or any server-report path.
+External validation still required: resolve the 17 explicitly skipped target rows without writing data; deployed valid-zero/unavailable/stale/provider-failure/source-mix/timezone parity; a current timer-fired scheduler run with exact updated/skipped/failed KPI IDs; SHA-bound GA4 provider/token-refresh evidence; and direct snapshot/test-send/manual-send/scheduled-report, bell, Notifications, Insights, and delivery parity. Read-only audit rows show historical/current email and snapshot activity but do not bind those events to this deployed revision or prove the selected KPI freshness contract. The user-confirmed Commit 7 browser-PDF happy path remains bounded evidence only.
 
 #### Chronological smallest-safe fix queue
 
@@ -65,7 +65,7 @@ External validation required after forward fixes: read-only target-data inventor
 7. **UI and browser-consumer states — implemented and locally validated in Current Commit 7; certification remains withdrawn.** Empty is now distinct from loading, failed, and retained-empty/stale states; each KPI resolves one fail-closed browser state and reporting-window label before card breach display, tracker scoring, KPI-derived Insights, or browser PDF status.
 8. **Recompute/report proof - implemented and locally validated, including validation closure, in Current Commit 8; certification remains withdrawn.** The shared job returns exact KPI updated/skipped/failed IDs. Source-lifecycle alert sweeps and the shared preflight used by direct snapshot download, test-send, manual-send, and scheduled reports fail closed unless every required KPI row is in the exact updated set. The one Commit-8-introduced full-suite failure was a stale auto-refresh assertion and is corrected without runtime changes.
 9. **Persistence/destructive safety — implemented and locally validated in Current Commit 9; certification remains withdrawn.** KPI progress value and rolling averages now match live KPI `numeric(18,2)` capacity. Exact campaign-and-KPI notification hides, progress rows, alert rows, period rows, and the KPI parent delete run in one transaction; any failure rolls back the operation for safe retry.
-10. **Full validation and re-certification.** Restore/extend focused regressions, require the relevant suite/TypeScript/production build, run a read-only target inventory, design any cleanup separately, deploy, complete the external matrix, update the certification record to the final SHA, and only then re-certify.
+10. **Full validation and re-certification — performed; certification remains withdrawn.** Local GA4 packets, TypeScript, build, deployed numeric migration, target dry-run, and read-only orphan inventory were completed. The certification record remains `UNVERIFIED` because the target dry-run has 17 explicit skips, repository CI is not clean, and the current deployed state/timer/provider/report matrix is not fully evidenced.
 
 Current Commit 1 is a release gate, not optional process cleanup. Functional Commits 3-9 must not be used to restore readiness if Commits 1-2 are absent or failing.
 
@@ -526,6 +526,41 @@ What this does not prove:
 - deployed database migration completion, current production column types/data bounds, production delete execution, or production notification retry behavior
 - live GA4/token behavior, timer-fired scheduler execution, provider/email delivery, deployed non-verified UI states, or production report paths
 - Current Commit 10 external validation/re-certification or GA4 KPI production readiness
+
+### Current Commit 10 - Full validation and re-certification
+
+Status: validation performed; certification remains withdrawn (`UNVERIFIED`). No production data was changed and no runtime functionality was implemented.
+
+Fresh root-cause classification:
+
+- the deployed Commit 9 revision was confirmation of deployment only; it did not close any behavioral external gate
+- the three GA4 failures in the prior full suite were stale source-shape assertions: reporting-timezone import ordering, inline versus shared engaged-session derivation, and the superseded campaign-lifetime Benchmark input window. The runtime paths already matched the documented freshness helper, shared weighted traffic helper, and 30-completed-day window, so only those assertions changed
+- no runtime GA4 KPI defect was found by the focused packets or read-only database checks
+
+Exact local and read-only evidence on August 2, 2026:
+
+- deployed schema: `kpi_progress.value`, `rolling_average_7d`, and `rolling_average_30d` are each `numeric(18,2)`; 679 rows were present, with maximum absolute values `384252.24`, `331863.10`, and `329829.74`
+- target inventory: dry-run mode, 0 candidates, 17 explicitly skipped rows, 0 applied; skip reasons were live financial totals not locally readable or no primary property. No `--apply` command or destructive production action was run
+- deployed child integrity: 23 GA4 KPI parents and 0 orphan KPI progress, alert, or period rows
+- metric/value contract: all ten canonical identities (Revenue, Conversions, Sessions, Users, Pageviews, Conversion Rate, Engagement Rate, ROAS, ROI, CPA), supported `total*` aliases, formulas, dependency gates, 30-completed-day traffic/rate window, campaign-to-date financial window, fixed source precedence, authoritative zero, and unavailable/last-good handling are covered by the current shared resolvers and focused real-path packets
+- lifecycle/consumer contract: actor/campaign/platform/property/source scope; add/edit/delete; refresh, recompute, scheduler wiring; thresholds; alerts/email eligibility; bell/Notifications; Insights; browser PDF; direct snapshot; test-send; manual-send; scheduled reports; and persistence rollback remain code-traced and regression-covered within the configuration boundary
+- focused results: core 60/60; real-path 12/12; identity/window/threshold 30/30; Commit 5 29/29 and 114/114; Commit 6 113/113; Commit 7 227/227; Commit 8 76/76; Commit 9 59/59; corrected GA4 closure guards 11/11
+- certification regression/checker, TypeScript, and production build passed
+- full repository suite: 146/158 files and 1,268/1,297 tests passed. The 29 failures are 28 deferred Google Ads/Instagram/Meta/TikTok tests and one unrelated shared spend-delete assertion; no GA4 test remains failed, but CI is not clean
+
+External evidence classification:
+
+- proven: Commit 9 revision `fd6a011830133002855c87953fae852863b812c2` deployed; the three widened columns and current row bounds are present on the target database; the user-confirmed Commit 7 browser PDF downloads, opens, and looks correct; read-only audit data contains GA4 KPI email delivery events and report/snapshot history
+- unproven: the 17 skipped target rows; current deployed valid-zero/unavailable/stale/failure/source-mix/timezone UI matrix; timer-fired exact updated/skipped/failed KPI IDs; live provider and token-refresh behavior bound to the deployed SHA; production notification retry after an injected failure; current direct snapshot/test-send/manual-send/scheduled-report freshness parity; and SHA-bound alert/report inbox delivery. Historical audit rows or provider acceptance are not inferred as current proof
+
+Chronological smallest-safe validation-closure queue (no implementation authorized by this commit):
+
+1. Re-run the read-only inventory with readable live GA4 totals and a proven primary property for each of the 17 skipped rows; require 0 unexplained skips and keep any cleanup as a separate reviewed plan.
+2. Capture one deployed read-only state matrix for valid zero, unavailable, stale/last-good, blocked, insufficient data, failure, source mix, property/campaign filter, timezone window, card/tracker, Insights, bell/Notifications, and browser PDF.
+3. Capture one timer-fired scheduler log from the deployed SHA containing campaign/property scope and exact updated, skipped, and failed KPI IDs; do not trigger a write solely for certification.
+4. Capture current read-only provider/token-refresh success and failure evidence without changing tokens or source configuration.
+5. Validate direct snapshot, test-send, manual-send, and scheduled-report freshness against the selected KPI IDs, and confirm actual inbox/provider-delivery evidence for alert and report emails.
+6. Rerun the certification checker and required tests on the final exact SHA. Only if every external gate is passed and repository policy permits the remaining deferred-source failures may the record be changed to `PRODUCTION_READY`; otherwise keep it `UNVERIFIED`.
 
 ## Historical Status And Evidence (non-authoritative)
 

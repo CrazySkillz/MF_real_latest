@@ -98,13 +98,14 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
 
   it("derives engagedSessions in the ga4-daily response from stored sessions and engagementRate", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const trafficWindow = readFileSync(join(process.cwd(), "shared", "ga4-traffic-window.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-daily"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("const addDerivedEngagedSessions = (row: any) =>");
-    expect(route).toContain("const rate = rawRate > 1 ? rawRate / 100 : rawRate;");
-    expect(route).toContain("Math.round(sessions * rate)");
+    expect(route).toContain("const addDerivedEngagedSessions = addDerivedGA4EngagedSessions;");
+    expect(trafficWindow).toContain("const rate = rawRate > 1 ? rawRate / 100 : rawRate;");
+    expect(trafficWindow).toContain("Math.round(sessions * rate)");
     expect(route).toContain("data: stored.map(addDerivedEngagedSessions)");
   });
 

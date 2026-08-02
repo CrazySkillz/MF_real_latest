@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "70197b4912393e4eb78dffb2bf79bd0b85fa833535f5e40d48470951298b9c67",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "bc0d0f73d2980ba16df71ae382546aa3d2974c09",
+  "lastReviewedSha": "80a659b819f64868ff766490348e0e5cb93bef76",
   "certifiedSha": null,
-  "invalidationReason": "Target-data Gate 1 is passed. Gate 2 is partially evidenced but pending: four legacy GA4 KPI parents reference a deleted campaign, current production contains no authoritative valid-zero, blocked, insufficient-data, or safely observable failure fixture, and no authenticated mutation-proof browser capture was available. Repository CI is not clean, and the timer, provider/token, alert-delivery, and report/browser external gates remain incomplete. Historical certification is not current evidence.",
+  "invalidationReason": "Gates 1 and 2 pass. Overall status remains UNVERIFIED: the exact deployed SHA has not yet had its configured natural timer run; two of four live-provider financial KPI rows lack an active owner session for authenticated read-only validation; no existing production report both selects KPIs and has configured recipients/scheduling; alert/report delivery is not bound to this SHA; and repository-wide CI remains red only from deferred-source and unrelated failures. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -239,19 +239,19 @@
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "failed",
-      "evidence": "August 2, 2026 Current Commit 10: 146/158 files and 1,268/1,297 tests passed; 29 tests failed across 12 files. All GA4 tests pass. Twenty-eight failures are deferred Google Ads, Instagram, Meta, or TikTok work and one is an unrelated shared spend-source assertion. CI is not clean."
+      "evidence": "August 2, 2026 Gate 6 on implementation SHA 80a659b8: 146/158 files and 1,270/1,299 tests passed; 29 tests failed across 12 files. All focused GA4 KPI packets pass. Twenty-eight failures are deferred Google Ads, Instagram, Meta, or TikTok work and one is an unrelated shared spend-source assertion. CI is not clean."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10: TypeScript completed successfully."
+      "evidence": "August 2, 2026 Gate 6 on implementation SHA 80a659b8: TypeScript completed successfully."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10: the Vite client build and esbuild server bundle completed successfully."
+      "evidence": "August 2, 2026 Gate 6 on implementation SHA 80a659b8: the Vite client build and esbuild server bundle completed successfully."
     }
   ],
   "externalGates": [
@@ -262,18 +262,18 @@
     },
     {
       "id": "deployed_state_matrix",
-      "status": "pending",
-      "evidence": "August 2, 2026 Commit 10B partially proved Gate 2 on exact deployed revision bc0d0f73d2980ba16df71ae382546aa3d2974c09. BEGIN TRANSACTION READ ONLY/ROLLBACK inventory found 23 GA4 KPI parents: 19 join to existing actor-owned campaigns and were checked for property-or-absence, filter, timezone/window, source mix, persisted values, thresholds, and linked notification state. Propertyless unavailable rows, stale/last-good candidates, verified mixed-source rows, UTC/Europe-Amsterdam windows, and filtered/unfiltered scopes exist. Thirty-six linked Summer splash unavailable-row notifications are resolved with zero unread; seven unresolved rows remain across five campaign-valid KPI identities. Four legacy parents reference deleted campaign hash 8460eb013897; all have zero progress/alert/period children, and their only notification history is 35 resolved Conversion Rate rows with zero visible candidates. Current campaign access/list paths fail closed and current campaign deletion is transactional, so no present exposure or forward-delete runtime defect was proven, but the orphan parents require separately authorized bounded cleanup evidence. Source and 227/227 browser-consumer regressions prove the contract excludes unverified states from breach pulse, tracker scoring, KPI performance Insights, and verified browser-PDF output; this is not an authenticated deployed visual capture. Gate remains pending because the target has no authoritative valid-zero, blocked, insufficient-data, or natural failure fixture, the orphan-parent boundary remains, and an authenticated mutation-proof browser capture was unavailable. The normal GA4 daily GET can backfill rows or refresh tokens, so it was not called. Shortest safe queue: add the exact orphan boundary to dry-run detection, separately authorize exact-row transactional cleanup while retaining resolved notification audit, then run authenticated browser automation against this deployed bundle with client-side intercepted state responses and every mutation/token-capable request blocked."
+      "status": "passed",
+      "evidence": "August 2, 2026 Gate 2 closure on deployed 80a659b819f64868ff766490348e0e5cb93bef76: exact dry-run detection found only the four documented non-null-campaign orphan GA4 parents; the explicitly authorized count-and-SHA256 guarded transaction deleted exactly those parents, retained 35 resolved notification audit rows, and post-check found zero orphans. Mutation-proof authenticated browser automation passed valid-zero, unavailable, stale/last-good, blocked, insufficient-data, and failed-list states across KPI cards, breach pulse, tracker, KPI Insights, bell/Notifications, and browser PDF. Non-GET application requests were blocked and none occurred. Unverified states produced no breach, bell attention, performance guidance, or score; every browser PDF had a valid %PDF header."
     },
     {
       "id": "timer_scheduler",
       "status": "pending",
-      "evidence": "No current deployed timer log bound to revision 797cc0411fb5cfa5b77f1269432cec1a613bac55 and containing exact campaign/property scope plus updated, skipped, and failed KPI IDs was available. Shortest step: capture the next naturally timer-fired run; do not trigger a production write solely for certification."
+      "evidence": "Deployed 80a659b819f64868ff766490348e0e5cb93bef76 reports runOnStartup=false, totalRuns=0, lastRunStatus=idle, and nextRunAt=2026-08-03T03:00:00Z. No manual trigger was used. The deployed implementation now logs exact processed/skipped/failed campaign and KPI IDs. Shortest step: after the configured time, capture that natural-run log and health result."
     },
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "Commit 10A fully inventories the four live-property rows, but all credentials are encrypted, all recorded access expiries have passed, and the audit environment has no production decryption key. No current refresh-disabled provider totals or SHA-bound token-refresh logs were available, and persisted/last-good values were not substituted as live proof. Shortest step: capture a normal read-only provider success plus a naturally occurring refresh success/failure for the selected campaign/property without altering token metadata for validation."
+      "evidence": "Refresh-disabled, non-persisting live success and simulated-failure evidence passed on deployed 80a659b8 for KPI hashes 7ed1d5c4d10f and ff24c717b842. Exact property/filter/Europe-Amsterdam scope and campaign-to-date provider window resolved Revenue 51405.93, matching stored values; simulated failure returned no provider totals and attempted no token refresh. KPI hashes 2f27f064cd32 and befd1e90d209 remain pending because their campaign owners have no active authenticated session. No token, connection, source, or KPI row was changed."
     },
     {
       "id": "alert_email_delivery",
@@ -283,7 +283,7 @@
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "The user confirmed only the deployed Commit 7 KPI browser PDF happy path. Read-only audit rows show historical GA4 snapshots and sends, not current selected-KPI freshness parity. Shortest step: validate card/tracker/Insights/bell/Notifications/browser PDF plus direct snapshot, test-send, manual-send, and one natural scheduled-report result against the same selected KPI IDs and windows."
+      "evidence": "The complete mutation-proof deployed browser matrix now passes on 80a659b8, including browser PDFs for every required state. Server report/send parity remains pending: configured-recipient GA4 reports in production do not select KPIs, while the only existing custom report with sections.kpis=true has no recipients or schedule. The task forbids changing configuration. Shortest step: when a naturally configured selected-KPI report exists, validate direct snapshot, test-send, manual-send, natural scheduled send, exact selected IDs, and confirmed delivery on that unchanged fixture."
     }
   ]
 }

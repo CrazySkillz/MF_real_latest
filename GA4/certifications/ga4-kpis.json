@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "70197b4912393e4eb78dffb2bf79bd0b85fa833535f5e40d48470951298b9c67",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "797cc0411fb5cfa5b77f1269432cec1a613bac55",
+  "lastReviewedSha": "bc0d0f73d2980ba16df71ae382546aa3d2974c09",
   "certifiedSha": null,
-  "invalidationReason": "Target-data Gate 1 is closed for exhaustive production-row inventory and classification only. Four current live-provider totals remain explicitly pending under provider_and_token, and three propertyless rows are proven unavailable rather than assigned invented numeric values. Repository CI is not clean, and the deployed state, timer, provider/token, and report/browser external gates remain incomplete. Historical certification is not current evidence.",
+  "invalidationReason": "Target-data Gate 1 is passed. Gate 2 is partially evidenced but pending: four legacy GA4 KPI parents reference a deleted campaign, current production contains no authoritative valid-zero, blocked, insufficient-data, or safely observable failure fixture, and no authenticated mutation-proof browser capture was available. Repository CI is not clean, and the timer, provider/token, alert-delivery, and report/browser external gates remain incomplete. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -215,7 +215,7 @@
       "id": "ui_browser_consumer_states",
       "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8 rerun: 10 files / 227 tests passed for the dynamic loading/failed/unavailable/stale/blocked/insufficient/verified matrix and browser wiring through KPI cards, breach pulse, tracker, KPI-derived Insights, browser PDF, alert/notification parity, reporting-window labels, and exact skip/failure report blocking. The user confirmed only the deployed Commit 7 browser-PDF download/open happy path; the deployed state matrix remains pending."
+      "evidence": "August 2, 2026 Commit 10B rerun: 10 files / 227 tests passed for the dynamic loading/failed/unavailable/stale/blocked/insufficient/verified matrix and browser wiring through KPI cards, breach pulse, tracker, KPI-derived Insights, browser PDF, alert/notification parity, reporting-window labels, and exact skip/failure report blocking. A broader focused Gate 2 subset also passed 10 files / 125 tests. The user previously confirmed only the deployed browser-PDF happy path; the complete deployed state matrix remains pending."
     },
     {
       "id": "recompute_report_proof",
@@ -263,7 +263,7 @@
     {
       "id": "deployed_state_matrix",
       "status": "pending",
-      "evidence": "Focused real-path tests pass, but no current deployed valid-zero, unavailable, stale/last-good, blocked, insufficient-data, provider-failure, source-mix, property/filter, and timezone browser matrix was available. Shortest step: capture those read-only states on deployed revision 797cc0411fb5cfa5b77f1269432cec1a613bac55 without changing sources or data."
+      "evidence": "August 2, 2026 Commit 10B partially proved Gate 2 on exact deployed revision bc0d0f73d2980ba16df71ae382546aa3d2974c09. BEGIN TRANSACTION READ ONLY/ROLLBACK inventory found 23 GA4 KPI parents: 19 join to existing actor-owned campaigns and were checked for property-or-absence, filter, timezone/window, source mix, persisted values, thresholds, and linked notification state. Propertyless unavailable rows, stale/last-good candidates, verified mixed-source rows, UTC/Europe-Amsterdam windows, and filtered/unfiltered scopes exist. Thirty-six linked Summer splash unavailable-row notifications are resolved with zero unread; seven unresolved rows remain across five campaign-valid KPI identities. Four legacy parents reference deleted campaign hash 8460eb013897; all have zero progress/alert/period children, and their only notification history is 35 resolved Conversion Rate rows with zero visible candidates. Current campaign access/list paths fail closed and current campaign deletion is transactional, so no present exposure or forward-delete runtime defect was proven, but the orphan parents require separately authorized bounded cleanup evidence. Source and 227/227 browser-consumer regressions prove the contract excludes unverified states from breach pulse, tracker scoring, KPI performance Insights, and verified browser-PDF output; this is not an authenticated deployed visual capture. Gate remains pending because the target has no authoritative valid-zero, blocked, insufficient-data, or natural failure fixture, the orphan-parent boundary remains, and an authenticated mutation-proof browser capture was unavailable. The normal GA4 daily GET can backfill rows or refresh tokens, so it was not called. Shortest safe queue: add the exact orphan boundary to dry-run detection, separately authorize exact-row transactional cleanup while retaining resolved notification audit, then run authenticated browser automation against this deployed bundle with client-side intercepted state responses and every mutation/token-capable request blocked."
     },
     {
       "id": "timer_scheduler",

@@ -22,7 +22,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(preflight).toContain("benchmarkIdsUpdated");
     expect(preflight).toContain("GA4 KPI/Benchmark recompute skipped target campaign");
     expect(preflight).toContain("GA4 KPI recompute skipped or failed selected KPI rows");
-    expect(preflight).toContain("GA4 Benchmark recompute skipped selected Benchmark rows");
+    expect(preflight).toContain("GA4 Benchmark recompute skipped or failed selected Benchmark rows");
     expect(sendGuard).toContain("preflightGA4ReportKPIConsumers(report, windowEnd)");
     expect(sendGuard).toContain('status: "failed"');
     expect(sendGuard).toContain("skipped scheduled report");
@@ -100,7 +100,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     const sendStart = schedulerSource.indexOf("const ga4Preflight = await preflightGA4ReportKPIConsumers(report, windowEnd);");
     const testStart = schedulerSource.indexOf("preflightGA4ReportKPIConsumers(report, windowEnd, { suppressAlerts: true })");
 
-    expect(jobsSource).toContain("if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts)");
+    expect(jobsSource).toContain("if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && benchmarkIdsSkipped.size === 0 && benchmarkIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts)");
     expect(sendStart).toBeGreaterThan(-1);
     expect(testStart).toBeGreaterThan(-1);
     expect(routesSource).toContain("preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true })");

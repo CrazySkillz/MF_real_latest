@@ -88,6 +88,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getKPIProgress.mockResolvedValue([]);
     storageMock.recordKPIProgress.mockResolvedValue({});
     storageMock.getPlatformBenchmarks.mockResolvedValue([]);
+    storageMock.updateBenchmark.mockResolvedValue({});
     refreshCampaignCurrentValuesForCampaignMock.mockResolvedValue(undefined);
     checkPerformanceAlertsMock.mockResolvedValue(undefined);
     checkBenchmarkPerformanceAlertsMock.mockResolvedValue(undefined);

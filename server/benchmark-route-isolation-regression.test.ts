@@ -79,8 +79,8 @@ describe("Benchmark route isolation regression guard", () => {
       "utf-8"
     );
 
-    expect(storageFile).toContain("async deleteBenchmark(id: string): Promise<boolean> {");
-    expect(storageFile).toContain("const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);");
+    expect(storageFile).toContain("async deleteBenchmark(id: string, notificationHides: KPINotificationHide[] = []): Promise<boolean> {");
+    expect(storageFile).toContain("const [existing] = await tx.select({ id: benchmarks.id, campaignId: benchmarks.campaignId }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);");
     expect(storageFile).toContain("await tx.delete(benchmarkHistory).where(eq(benchmarkHistory.benchmarkId, id));");
     expect(storageFile).toContain("const result = await tx.delete(benchmarks).where(eq(benchmarks.id, id));");
   });

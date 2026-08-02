@@ -192,6 +192,13 @@ const benchmarkReport = {
     selectedBenchmarkIds: benchmarkRows.slice(0, -1).map((row) => row.id),
   }),
 };
+const insightsReport = {
+  ...report,
+  id: "ga4-insights-benchmark-parity-report",
+  name: "GA4 Insights Benchmark parity report",
+  reportType: "insights",
+  configuration: null,
+};
 
 let server: ReturnType<ReturnType<typeof express>["listen"]>;
 let baseUrl = "";
@@ -552,5 +559,23 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       windowEnd: "2026-07-31",
       campaignName: campaign.name,
     })).rejects.toThrow("Benchmark read failed");
+  });
+
+  it("includes freshly recomputed Benchmark conclusions in the actual scheduled Insights PDF", async () => {
+    const preflight = await preflightGA4ReportKPIConsumers(insightsReport, "2026-07-31", { suppressAlerts: true });
+    expect(preflight).toEqual({ ok: true });
+
+    pdfTextCalls.length = 0;
+    await buildGA4ScheduledPdfAttachment({
+      report: insightsReport,
+      reportName: insightsReport.name,
+      windowStart: "2026-07-02",
+      windowEnd: "2026-07-31",
+      campaignName: campaign.name,
+    });
+    const text = pdfTextCalls.join("\n");
+    expect(text).toContain("revenue Benchmark: Needs Attention");
+    expect(text).toContain("Current USD 200.00 vs Benchmark USD 250.00");
+    expect(text).not.toContain("conversionRate Benchmark:");
   });
 });

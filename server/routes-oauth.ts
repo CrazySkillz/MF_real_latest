@@ -6533,6 +6533,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: dismissedNotificationMetadata(n, actorId, "kpi_deleted"),
       }));
   };
+  const prepareBenchmarkNotificationHides = async (benchmark: any, actorId: string) => {
+    const benchmarkId = String(benchmark?.id || "").trim();
+    const campaignId = String(benchmark?.campaignId || "").trim();
+    if (!benchmarkId || !campaignId) return [];
+    const rows = await storage.getNotifications();
+    return (Array.isArray(rows) ? rows : [])
+      .filter((n: any) => String(n?.id || "").trim()
+        && String(n?.campaignId || "").trim() === campaignId
+        && String(notificationMetadata(n?.metadata)?.benchmarkId || "") === benchmarkId)
+      .map((n: any) => ({
+        id: String(n.id),
+        campaignId,
+        metadata: dismissedNotificationMetadata(n, actorId, "benchmark_deleted"),
+      }));
+  };
 
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
@@ -27014,31 +27029,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
-      const deleted = await storage.deleteBenchmark(benchmarkId);
+      const notificationHides = await prepareBenchmarkNotificationHides(existing, getActorId(req as any) || "system");
+      const deleted = await storage.deleteBenchmark(benchmarkId, notificationHides);
       if (!deleted) {
         return res.status(404).json({ message: "Benchmark not found" });
-      }
-
-      // Cascade delete: remove any notifications tied to this Benchmark.
-      // Notifications store linkage via JSON metadata { benchmarkId, ... }.
-      try {
-        const notifs = await storage.getNotifications().catch(() => []);
-        await Promise.all(
-          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
-            const metaRaw = (n as any)?.metadata;
-            if (!metaRaw) return;
-            try {
-              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
-              if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
-                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
-              }
-            } catch {
-              // ignore non-JSON metadata
-            }
-          })
-        );
-      } catch (e) {
-        console.warn("[Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
       }
 
       res.json({ message: "Benchmark deleted successfully", success: true });
@@ -27275,27 +27269,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
-      const deleted = await storage.deleteBenchmark(benchmarkId);
+      const notificationHides = await prepareBenchmarkNotificationHides(existing, getActorId(req as any) || "system");
+      const deleted = await storage.deleteBenchmark(benchmarkId, notificationHides);
       if (!deleted) {
         return res.status(404).json({ message: "Benchmark not found" });
-      }
-
-      try {
-        const notifs = await storage.getNotifications().catch(() => []);
-        await Promise.all(
-          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
-            const metaRaw = (n as any)?.metadata;
-            if (!metaRaw) return;
-            try {
-              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
-              if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
-                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
-              }
-            } catch {}
-          })
-        );
-      } catch (e) {
-        console.warn("[Platform Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
       }
 
       res.json({ message: "Benchmark deleted successfully", success: true });
@@ -27943,28 +27920,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, id);
       if (!existing) return;
-      const success = await storage.deleteBenchmark(id);
+      const notificationHides = await prepareBenchmarkNotificationHides(existing, getActorId(req as any) || "system");
+      const success = await storage.deleteBenchmark(id, notificationHides);
 
       if (!success) {
         return res.status(404).json({ message: "Benchmark not found" });
-      }
-
-      try {
-        const notifs = await storage.getNotifications().catch(() => []);
-        await Promise.all(
-          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
-            const metaRaw = (n as any)?.metadata;
-            if (!metaRaw) return;
-            try {
-              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
-              if (String(meta?.benchmarkId || "") === String(id)) {
-                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
-              }
-            } catch {}
-          })
-        );
-      } catch (e) {
-        console.warn("[Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
       }
 
       res.json({ success: true, message: "Benchmark deleted successfully" });

@@ -69,13 +69,13 @@ describe("GA4 Benchmark regression guard", () => {
     expect(insightsEnd).toBeGreaterThan(insightsStart);
     expect(reportStart).toBeGreaterThan(-1);
     expect(reportEnd).toBeGreaterThan(reportStart);
-    expect(trackerSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
+    expect(trackerSection).toContain("const consumerState = getBenchmarkConsumerState(b);");
     expect(trackerSection).toContain("insufficient += 1;");
     expect(trackerSection).toContain("unavailable, stale, pending, avgPct");
-    expect(cardSection).toContain("const isInsufficient = !sufficiency.sufficient;");
+    expect(cardSection).toContain('const isInsufficient = consumerState.code === "insufficient_data";');
     expect(cardSection).toContain("const consumerState = getBenchmarkConsumerState(benchmark);");
     expect(cardSection).toContain("sufficiency.reason || \"This Benchmark needs more data before it can be scored.\"");
-    expect(insightsSection).toContain("if (!getBenchmarkDataSufficiency(b).sufficient) continue;");
+    expect(insightsSection).toContain("if (!getBenchmarkConsumerState(b).eligible) continue;");
     expect(reportSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
     expect(reportSection).toContain("Insufficient data -");
     expect(ga4MetricsFile).toContain("Some Benchmarks Need More Data");
@@ -288,7 +288,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(cardSection).toContain('aria-label="Edit Benchmark"');
     expect(cardSection).toContain('title="Delete Benchmark"');
     expect(cardSection).toContain('aria-label="Delete Benchmark"');
-    expect(cardSection).toContain("isUnavailable ?");
+    expect(cardSection).toContain("showCurrentValue ?");
     expect(cardSection).toContain("formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)");
 
     expect(ga4MetricsFile).toContain('case "ratio":');

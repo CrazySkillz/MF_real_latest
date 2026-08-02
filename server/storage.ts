@@ -404,7 +404,7 @@ export interface IStorage {
   getBenchmark(id: string): Promise<Benchmark | undefined>;
   createBenchmark(benchmark: InsertBenchmark): Promise<Benchmark>;
   updateBenchmark(id: string, benchmark: Partial<InsertBenchmark>): Promise<Benchmark | undefined>;
-  deleteBenchmark(id: string): Promise<boolean>;
+  deleteBenchmark(id: string, notificationHides?: KPINotificationHide[]): Promise<boolean>;
 
   // Benchmark History
   getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]>;
@@ -4394,13 +4394,24 @@ export class DatabaseStorage implements IStorage {
     return benchmark || undefined;
   }
 
-  async deleteBenchmark(id: string): Promise<boolean> {
+  async deleteBenchmark(id: string, notificationHides: KPINotificationHide[] = []): Promise<boolean> {
     return await db.transaction(async (tx: any) => {
-      const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);
+      const [existing] = await tx.select({ id: benchmarks.id, campaignId: benchmarks.campaignId }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);
       if (!existing) return false;
+      for (const hide of notificationHides) {
+        if (String(hide.campaignId) !== String(existing.campaignId || "")) {
+          throw new Error("Benchmark notification campaign scope mismatch");
+        }
+        const hidden = await tx.update(notifications)
+          .set({ read: true, metadata: hide.metadata })
+          .where(and(eq(notifications.id, hide.id), eq(notifications.campaignId, hide.campaignId)))
+          .returning({ id: notifications.id });
+        if (!hidden.length) throw new Error("Benchmark notification hide failed");
+      }
       await tx.delete(benchmarkHistory).where(eq(benchmarkHistory.benchmarkId, id));
       const result = await tx.delete(benchmarks).where(eq(benchmarks.id, id));
-      return (result.rowCount || 0) > 0;
+      if ((result.rowCount || 0) === 0) throw new Error("Benchmark parent delete failed");
+      return true;
     });
   }
 

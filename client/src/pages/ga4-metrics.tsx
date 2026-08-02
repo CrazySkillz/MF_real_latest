@@ -1199,7 +1199,7 @@ export default function GA4Metrics() {
     const metric = (benchmark as any).metric || "";
     const liveCurrentValue =
       metric && metric !== "__custom__"
-        ? String(getLiveBenchmarkCurrentValue(metric))
+        ? String(getLiveBenchmarkCurrentValue(metric, (benchmark as any)?.name, (benchmark as any)?.currentValue))
         : String(benchmark.currentValue ?? "");
     const normalizedType = "custom";
     setSelectedBenchmarkTemplate(metric ? { metric } : null);
@@ -1322,7 +1322,7 @@ export default function GA4Metrics() {
       const metric = (editingBenchmark as any).metric || "";
       const liveCurrentValue =
         metric && metric !== "__custom__"
-          ? String(getLiveBenchmarkCurrentValue(metric))
+          ? String(getLiveBenchmarkCurrentValue(metric, (editingBenchmark as any)?.name, (editingBenchmark as any)?.currentValue))
           : String((editingBenchmark as any).currentValue ?? "");
       const normalizedType = "custom";
       setSelectedBenchmarkTemplate(metric ? { metric } : null);
@@ -1607,7 +1607,7 @@ export default function GA4Metrics() {
   const platformKPIs = Array.isArray(platformKPIData) ? platformKPIData : [];
 
   // Fetch campaign-scoped benchmarks only (new campaigns should start empty).
-  const { data: benchmarks = [], isLoading: benchmarksLoading } = useQuery<Benchmark[]>({
+  const { data: benchmarkData, isLoading: benchmarksLoading, isError: benchmarksError } = useQuery<Benchmark[]>({
     queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -1616,6 +1616,7 @@ export default function GA4Metrics() {
       return response.json();
     },
   });
+  const benchmarks = Array.isArray(benchmarkData) ? benchmarkData : [];
   useLayoutEffect(() => {
     if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
     const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
@@ -1737,46 +1738,16 @@ export default function GA4Metrics() {
     return "performance";
   };
 
-  const getLiveBenchmarkCurrentValue = (metric: string): number => {
-    const m = String(metric || "");
-    const users =
-      Number(breakdownTotals?.users || 0) ||
-      Number((ga4Metrics as any)?.users || (ga4Metrics as any)?.totalUsers || (ga4Metrics as any)?.impressions || 0);
-    const sessions = Number(breakdownTotals?.sessions || 0) || Number((ga4Metrics as any)?.sessions || 0);
-    const pageviews = dailySummedTotals.pageviews || Number((ga4Metrics as any)?.pageviews || 0);
-    const conversions = Number(breakdownTotals?.conversions || 0) || Number((ga4Metrics as any)?.conversions || 0);
-    // Benchmarks should prefill from the same values shown in the Overview.
-    // Revenue is a to-date (lifetime) metric in this GA4 surface.
-    const revenue = Number(financialRevenue || 0);
-
-    switch (m) {
-      case "roas":
-        // ROAS as ratio (e.g., 48.91) to match Overview display
-        return Number(financialROAS || 0);
-      case "roi":
-        return Number(financialROI || 0);
-      case "cpa":
-        return Number(financialCPA || 0);
-      case "users":
-        return users;
-      case "sessions":
-        return sessions;
-      case "pageviews":
-        return pageviews;
-      case "conversions":
-        return conversions;
-      case "revenue":
-        return revenue;
-      case "conversionRate":
-        return sessions > 0 ? (conversions / sessions) * 100 : 0;
-      case "engagementRate": {
-        const er = overviewEngagementRate;
-        return Number.isFinite(er) && er > 0 ? normalizeRateToPercent(er) : 0;
-      }
-      default:
-        return 0;
-    }
-  };
+  const getLiveBenchmarkCurrentValue = (metric: string, name?: string, currentValue?: unknown): number =>
+    Number(resolveGA4KpiLiveValue({
+      kpi: { metric, name, currentValue },
+      breakdownTotals,
+      overviewEngagementRate,
+      financialRevenue,
+      financialSpend,
+      financialROI,
+      financialCPA,
+    })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
@@ -2706,6 +2677,11 @@ export default function GA4Metrics() {
     : kpisError
       ? platformKPIData === undefined ? "failed" : "stale"
       : "ready";
+  const benchmarkListState: GA4KpiListState = benchmarksLoading && benchmarkData === undefined
+    ? "loading"
+    : benchmarksError
+      ? benchmarkData === undefined ? "failed" : "stale"
+      : "ready";
   const trafficKpiInputState: GA4KpiInputState = (() => {
     if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
     if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
@@ -2796,6 +2772,22 @@ export default function GA4Metrics() {
       spend: Number(financialSpend || 0),
     });
 
+  const getBenchmarkConsumerState = (benchmark: any) => {
+    const deps = getMissingDependenciesForMetric(String(benchmark?.metric || benchmark?.name || ""));
+    const sufficiency = getBenchmarkDataSufficiency(benchmark);
+    return resolveGA4KpiConsumerState({
+      metric: benchmark?.metric,
+      name: benchmark?.name,
+      listState: benchmarkListState,
+      trafficState: trafficKpiInputState,
+      revenueState: revenueKpiInputState,
+      spendState: spendKpiInputState,
+      missingDependencies: deps.missing,
+      sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
+      entityLabel: "Benchmark",
+    });
+  };
+
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -2830,7 +2822,7 @@ export default function GA4Metrics() {
     const metric = String((benchmark as any)?.metric || "");
     const currentRaw = stripNumberFormatting(
       metric && metric !== "__custom__"
-        ? String(getLiveBenchmarkCurrentValue(metric))
+        ? String(getLiveBenchmarkCurrentValue(metric, (benchmark as any)?.name, (benchmark as any)?.currentValue))
         : String((benchmark as any)?.currentValue ?? "0")
     );
     const benchRaw = stripNumberFormatting(String((benchmark as any)?.benchmarkValue ?? "0"));
@@ -2865,7 +2857,7 @@ export default function GA4Metrics() {
   const getBenchmarkDisplayCurrentValue = (benchmark: any): string => {
     const metric = String((benchmark as any)?.metric || "");
     if (metric && metric !== "__custom__") {
-      return String(getLiveBenchmarkCurrentValue(metric));
+      return String(getLiveBenchmarkCurrentValue(metric, (benchmark as any)?.name, (benchmark as any)?.currentValue));
     }
     return String((benchmark as any)?.currentValue ?? "0");
   };
@@ -4173,6 +4165,11 @@ export default function GA4Metrics() {
             }
             y += 22;
           }
+          const excluded = benchmarkTracker.blocked + benchmarkTracker.insufficient + benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending;
+          if (excluded > 0) {
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+            doc.text(`${excluded} Benchmark${excluded === 1 ? "" : "s"} excluded: blocked, insufficient, unavailable, loading, or last-good/unverified.`, MX + 4, y); y += 7;
+          }
           y += 2;
         }
         if (includeBenchmarkItems && items.length === 0) {
@@ -4180,6 +4177,25 @@ export default function GA4Metrics() {
           doc.text("No benchmarks selected for this report.", MX + 8, y); y += 12;
         }
         for (const b of includeBenchmarkItems ? items : []) {
+          const consumerState = getBenchmarkConsumerState(b);
+          if (!consumerState.eligible) {
+            const stateHeight = consumerState.code === "stale" ? 25 : 20;
+            checkPage(stateHeight + 4);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(MX, y, CW, stateHeight, 3, 3, "FD");
+            doc.setFillColor(...C.danger); doc.roundedRect(MX, y, 3, stateHeight, 1, 1, "F");
+            doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(String((b as any)?.name || ""), MX + 8, y + 6);
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.danger);
+            doc.text(`${consumerState.label}: ${consumerState.detail}`, MX + 8, y + 12, { maxWidth: CW - 16 });
+            doc.setTextColor(...C.textSec);
+            doc.text(`Window: ${getGA4KpiReportingWindowLabel((b as any)?.metric, (b as any)?.name)}`, MX + 8, y + 17, { maxWidth: CW - 16 });
+            if (consumerState.code === "stale") {
+              doc.text(`Last-good value (not verified): ${formatBenchmarkValue(getBenchmarkDisplayCurrentValue(b), (b as any)?.unit)}`, MX + 8, y + 22);
+            }
+            y += stateHeight + 4;
+            continue;
+          }
           const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
           if (deps.missing.length > 0) {
             checkPage(20);
@@ -4372,20 +4388,19 @@ export default function GA4Metrics() {
     let behind = 0;
     let blocked = 0;
     let insufficient = 0;
+    let unavailable = 0;
+    let stale = 0;
+    let pending = 0;
     let sumPct = 0;
 
     for (const b of items) {
-      const metricKey = String((b as any)?.metric || "");
-      const deps = getMissingDependenciesForMetric(metricKey);
-      if (deps.missing.length > 0) {
-        blocked += 1;
-        continue; // do NOT score blocked benchmarks (missing inputs ≠ poor performance)
-      }
-      const sufficiency = getBenchmarkDataSufficiency(b);
-      if (!sufficiency.sufficient) {
-        insufficient += 1;
-        continue; // do NOT score thin-data Benchmarks as strong or weak performance
-      }
+      const consumerState = getBenchmarkConsumerState(b);
+      if (consumerState.code === "blocked") blocked += 1;
+      else if (consumerState.code === "insufficient_data") insufficient += 1;
+      else if (consumerState.code === "stale") stale += 1;
+      else if (consumerState.code === "loading") pending += 1;
+      else if (consumerState.code === "unavailable" || consumerState.code === "failed") unavailable += 1;
+      if (!consumerState.eligible) continue;
       const bench = parseFloat(stripNumberFormatting(String((b as any)?.benchmarkValue || "0")));
       if (!Number.isFinite(bench) || bench <= 0) continue;
       const p = computeBenchmarkProgress(b);
@@ -4397,7 +4412,7 @@ export default function GA4Metrics() {
     }
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
-    return { total: items.length, scored, onTrack, needsAttention, behind, blocked, insufficient, avgPct };
+    return { total: items.length, scored, onTrack, needsAttention, behind, blocked, insufficient, unavailable, stale, pending, avgPct };
     // benchmark progress depends on the same live inputs used by the individual benchmark cards.
   }, [
     benchmarks,
@@ -4412,6 +4427,10 @@ export default function GA4Metrics() {
     financialCPA,
     spendMetricAvailable,
     revenueMetricAvailable,
+    benchmarkListState,
+    trafficKpiInputState,
+    revenueKpiInputState,
+    spendKpiInputState,
   ]);
 
   // --- Rolling window rollups (moved above insights so insights can use them) ---
@@ -4677,9 +4696,13 @@ export default function GA4Metrics() {
       .map((b: any) => {
         const metricKey = String((b as any)?.metric || "");
         const deps = getMissingDependenciesForMetric(metricKey);
-        return deps.missing.length > 0 ? { b, missing: deps.missing } : null;
+        return getBenchmarkConsumerState(b).code === "blocked" ? { b, missing: deps.missing } : null;
       })
       .filter(Boolean) as Array<{ b: any; missing: Array<"Spend" | "Revenue"> }>;
+
+    const unverifiedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : [])
+      .map((b: any) => ({ b, consumerState: getBenchmarkConsumerState(b) }))
+      .filter(({ consumerState }) => !consumerState.eligible && consumerState.code !== "blocked");
 
     const invalidKpis = (Array.isArray(platformKPIs) ? platformKPIs : [])
       .map((k: any) => {
@@ -4739,6 +4762,19 @@ export default function GA4Metrics() {
             : item.missing.includes("Revenue")
               ? "Add a GA4 revenue metric (if available) or import revenue to resume benchmark tracking."
               : "Add spend-to-date to resume benchmark tracking.",
+      });
+    }
+
+    for (const item of unverifiedBenchmarks) {
+      const name = String(item.b?.name || item.b?.metric || "Benchmark");
+      out.push({
+        id: `integrity:bench_${item.consumerState.code}:${String(item.b?.id || name)}`,
+        severity: item.consumerState.code === "loading" || item.consumerState.code === "insufficient_data" ? "medium" : "high",
+        title: `${name}: ${item.consumerState.label}`,
+        description: `${item.consumerState.detail} No Benchmark performance conclusion or breach is generated from this value.`,
+        recommendation: item.consumerState.code === "insufficient_data"
+          ? "Wait for the required denominator data before evaluating this Benchmark."
+          : "Refresh the Benchmark and required GA4, revenue, or spend source before using this value for decisions.",
       });
     }
 
@@ -4944,9 +4980,7 @@ export default function GA4Metrics() {
 
     // 2) Actionable insights from Benchmark performance
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
-      const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
-      if (deps.missing.length > 0) continue; // blocked benchmarks are handled in integrity checks above
-      if (!getBenchmarkDataSufficiency(b).sufficient) continue; // insufficient benchmarks are handled on the Benchmark card
+      if (!getBenchmarkConsumerState(b).eligible) continue; // non-verified Benchmarks are handled in integrity checks above
       if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
       const p = computeBenchmarkProgress(b);
       const status = String(p?.status || "");
@@ -5365,6 +5399,7 @@ export default function GA4Metrics() {
     trafficKpiInputState,
     revenueKpiInputState,
     spendKpiInputState,
+    benchmarkListState,
   ]);
 
   const insightsActionDescription = useMemo(() => {
@@ -7545,7 +7580,7 @@ export default function GA4Metrics() {
                     <div className="space-y-4">
                       <Card>
                         <CardContent>
-                      {benchmarksLoading ? (
+                      {benchmarkListState === "loading" ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {[1, 2, 3].map((i) => (
                             <Card key={i} className="animate-pulse">
@@ -7556,6 +7591,18 @@ export default function GA4Metrics() {
                               </CardContent>
                             </Card>
                           ))}
+                        </div>
+                      ) : benchmarkListState === "failed" ? (
+                        <div className="text-center text-muted-foreground/70 py-8">
+                          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-foreground mb-2">Benchmark list unavailable</h3>
+                          <p>The campaign-scoped Benchmark list could not be loaded. No empty or performance state is inferred.</p>
+                        </div>
+                      ) : benchmarkListState === "stale" && benchmarks.length === 0 ? (
+                        <div className="text-center text-muted-foreground/70 py-8">
+                          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-foreground mb-2">Benchmark list is not freshly verified</h3>
+                          <p>The last loaded list was empty, but the refresh failed. This is not presented as a verified empty state.</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
@@ -7651,14 +7698,24 @@ export default function GA4Metrics() {
                             </div>
                           ) : null}
 
+                          {benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending > 0 ? (
+                            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
+                              <div className="font-semibold text-foreground">Some Benchmarks Are Not Freshly Verified</div>
+                              <div className="text-sm text-foreground/80/60 mt-1">
+                                {benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending} benchmark{benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending === 1 ? "" : "s"} are unavailable, loading, or retained last-good values and are excluded from scoring and breach conclusions.
+                              </div>
+                            </div>
+                          ) : null}
+
                           {benchmarks && benchmarks.length > 0 ? (
                             <div className="grid gap-4 md:grid-cols-2">
                               {benchmarks.map((benchmark) => {
                                 const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
-                                const isBlocked = deps.missing.length > 0;
                                 const sufficiency = getBenchmarkDataSufficiency(benchmark);
-                                const isInsufficient = !sufficiency.sufficient;
-                                const isUnavailable = isBlocked || isInsufficient;
+                                const consumerState = getBenchmarkConsumerState(benchmark);
+                                const isBlocked = consumerState.code === "blocked";
+                                const isInsufficient = consumerState.code === "insufficient_data";
+                                const showCurrentValue = consumerState.eligible || isInsufficient || consumerState.code === "stale";
                                 const isHighlightedBenchmark = String(highlightedItemId || "") === String(benchmark.id || "");
                                 return (
                                 <Card
@@ -7688,7 +7745,7 @@ export default function GA4Metrics() {
                                               </TooltipContent>
                                             </UITooltip>
                                           )}
-                                          {(benchmark as any).alertsEnabled && !isUnavailable && (() => {
+                                          {(benchmark as any).alertsEnabled && consumerState.eligible && (() => {
                                             const currentVal = parseFloat(String(getBenchmarkDisplayCurrentValue(benchmark) || "0").replace(/,/g, ""));
                                             const alertThresh = (benchmark as any).alertThreshold
                                               ? parseFloat(String((benchmark as any).alertThreshold).replace(/,/g, ""))
@@ -7732,6 +7789,9 @@ export default function GA4Metrics() {
                                             Industry: {benchmark.industry}
                                           </div>
                                         )}
+                                        {!consumerState.eligible ? (
+                                          <Badge variant="outline" className="mt-2 text-xs">{consumerState.label}</Badge>
+                                        ) : null}
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <Button
@@ -7782,7 +7842,7 @@ export default function GA4Metrics() {
                                       <div className="p-3 bg-muted rounded-lg">
                                         <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current Value</div>
                                         <div className="text-lg font-bold text-foreground">
-                                          {isUnavailable ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
+                                          {showCurrentValue ? formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit) : "—"}
                                         </div>
                                       </div>
                                       <div className="p-3 bg-muted rounded-lg">
@@ -7809,6 +7869,15 @@ export default function GA4Metrics() {
                                           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
                                             <div className="text-sm text-muted-foreground/70 mt-1">
                                               {sufficiency.reason || "This Benchmark needs more data before it can be scored."}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      if (!consumerState.eligible) {
+                                        return (
+                                          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
+                                            <div className="text-sm text-muted-foreground/70 mt-1">
+                                              {consumerState.detail} This Benchmark is not treated as a current breach or included in performance scoring.
                                             </div>
                                           </div>
                                         );

@@ -42,15 +42,17 @@ export function resolveGA4KpiConsumerState(input: {
   spendState: GA4KpiInputState;
   missingDependencies?: string[];
   sufficiencyReason?: string | null;
+  entityLabel?: "KPI" | "Benchmark";
 }): GA4KpiConsumerState {
+  const entityLabel = input.entityLabel || "KPI";
   if (input.listState === "loading") {
-    return state("loading", "Loading", "The KPI list is still loading.");
+    return state("loading", "Loading", `The ${entityLabel} list is still loading.`);
   }
   if (input.listState === "failed") {
-    return state("failed", "Failed", "The KPI list could not be loaded.");
+    return state("failed", "Failed", `The ${entityLabel} list could not be loaded.`);
   }
   if (input.listState === "stale") {
-    return state("stale", "Last-good — not verified", "The last loaded KPI row is visible, but its current state was not freshly verified.");
+    return state("stale", "Last-good — not verified", `The last loaded ${entityLabel} row is visible, but its current state was not freshly verified.`);
   }
 
   const identity = resolveGA4KpiMetricIdentity(input.metric, input.name);

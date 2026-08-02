@@ -9,6 +9,7 @@ import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
 import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
+import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 
 /**
@@ -238,14 +239,14 @@ function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
 
 function reportIncludesGA4BenchmarkSection(report: any): boolean {
   const reportType = String((report as any)?.reportType || "overview").trim().toLowerCase();
-  if (reportType === "benchmarks") return true;
+  if (reportType === "benchmarks" || reportType === "insights") return true;
   if (reportType !== "custom") return false;
   const cfg = parseReportConfiguration((report as any)?.configuration);
   const selectedBenchmarkIds = [
     ...(Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : []),
     ...(Array.isArray(cfg?.benchmarks) ? cfg.benchmarks : []),
   ].map((id: any) => String(id || "").trim()).filter(Boolean);
-  return Boolean(cfg?.sections?.benchmarks || cfg?.subsections?.benchmarks?.items || selectedBenchmarkIds.length > 0);
+  return Boolean(cfg?.sections?.benchmarks || cfg?.subsections?.benchmarks?.items || cfg?.sections?.insights || selectedBenchmarkIds.length > 0);
 }
 
 function getGA4ReportSelectedBenchmarkIds(report: any): Set<string> {
@@ -299,9 +300,16 @@ export async function preflightGA4ReportKPIConsumers(report: any, date?: string,
     if (reportIncludesGA4BenchmarkSection(report)) {
       const selectedBenchmarkIds = getGA4ReportSelectedBenchmarkIds(report);
       const reportBenchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId);
+      const availableBenchmarkIds = new Set((Array.isArray(reportBenchmarks) ? reportBenchmarks : [])
+        .map((row: any) => String(row?.id || "").trim())
+        .filter(Boolean));
+      if (selectedBenchmarkIds.size > 0) {
+        const missingSelectedIds = Array.from(selectedBenchmarkIds).filter((id) => !availableBenchmarkIds.has(id));
+        if (missingSelectedIds.length > 0) return { ok: false, error: "GA4 report selected Benchmark rows are unavailable" };
+      }
       requiredBenchmarkIds = new Set((Array.isArray(reportBenchmarks) ? reportBenchmarks : [])
         .filter((row: any) => selectedBenchmarkIds.size === 0 || selectedBenchmarkIds.has(String(row?.id || "")))
-        .filter((row: any) => String(row?.metric || "").trim())
+        .filter((row: any) => Boolean(resolveGA4KpiMetricIdentity(row?.metric, row?.name)))
         .map((row: any) => String(row?.id || "").trim())
         .filter(Boolean));
     }
@@ -318,7 +326,7 @@ export async function preflightGA4ReportKPIConsumers(report: any, date?: string,
     if (requiredBenchmarkIds.size > 0) {
       const updatedBenchmarkIds = new Set((Array.isArray((result as any)?.benchmarkIdsUpdated) ? (result as any).benchmarkIdsUpdated : []).map((id: any) => String(id || "").trim()).filter(Boolean));
       const missing = Array.from(requiredBenchmarkIds).filter((id) => !updatedBenchmarkIds.has(id));
-      if (missing.length > 0) return { ok: false, error: "GA4 Benchmark recompute skipped selected Benchmark rows" };
+      if (missing.length > 0) return { ok: false, error: "GA4 Benchmark recompute skipped or failed selected Benchmark rows" };
     }
     return { ok: true };
   } catch (e: any) {

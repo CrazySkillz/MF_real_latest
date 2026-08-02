@@ -221,6 +221,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   let benchmarksRecorded = 0;
   let benchmarksUpdated = 0;
   const benchmarkIdsUpdated: string[] = [];
+  const benchmarkIdsSkipped = new Set<string>();
+  const benchmarkIdsFailed = new Set<string>();
   const campaignIdsProcessed = new Set<string>();
   const campaignIdsSkipped = new Set<string>();
   const campaignIdsFailed = new Set<string>();
@@ -233,6 +235,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     const campaignId = String((campaign as any)?.id || "");
     if (!campaignId) continue;
     let campaignKpis: any[] = [];
+    let campaignBenchmarks: any[] = [];
 
     try {
       try {
@@ -241,6 +244,12 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         campaignIdsFailed.add(campaignId);
         console.warn(`[GA4 KPI/Benchmarks] KPI rows failed to load for campaign ${campaignId}:`, e?.message || e);
       }
+      try {
+        campaignBenchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId);
+      } catch (e: any) {
+        campaignIdsFailed.add(campaignId);
+        console.warn(`[GA4 KPI/Benchmarks] Benchmark rows failed to load for campaign ${campaignId}:`, e?.message || e);
+      }
       const connections = await storage.getGA4Connections(campaignId).catch(() => []);
       const primary = (connections as any[]).find((c: any) => c?.isPrimary) || (connections as any[])[0];
       if (!primary?.propertyId) {
@@ -248,6 +257,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         for (const kpi of campaignKpis) {
           const kpiId = String(kpi?.id || "").trim();
           if (kpiId) kpiIdsSkipped.add(kpiId);
+        }
+        for (const benchmark of campaignBenchmarks) {
+          const benchmarkId = String(benchmark?.id || "").trim();
+          if (benchmarkId) benchmarkIdsSkipped.add(benchmarkId);
         }
         continue;
       }
@@ -300,6 +313,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const kpiId = String(kpi?.id || "").trim();
           if (kpiId) kpiIdsSkipped.add(kpiId);
         }
+        for (const benchmark of campaignBenchmarks) {
+          const benchmarkId = String(benchmark?.id || "").trim();
+          if (benchmarkId) benchmarkIdsSkipped.add(benchmarkId);
+        }
         continue;
       }
 
@@ -315,9 +332,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       })();
 
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-      let trafficTotals = summarizeGA4TrafficRows(
-        await storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => []),
-      );
+      const reportingRows = await storage
+        .getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate)
+        .catch(() => null as any);
+      const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
+      let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
       if (isYesopMockProperty(propertyId)) {
         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue, 30);
         const baselineEngagedSessions = Math.round(baseline.sessions * baseline.engagementRate);
@@ -424,13 +443,13 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         getBenchmarkHistory(benchmarkId: string): Promise<any[]>;
         recordBenchmarkHistory(history: any): Promise<any>;
       };
-      const benchmarks = await benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []);
+      const benchmarks = campaignBenchmarks;
       const hasFinancialMetric =
         (Array.isArray(kpis) ? kpis : []).some((kpi: any) =>
           isGA4FinancialKpiMetric(resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name) || ""),
         ) ||
         (Array.isArray(benchmarks) ? benchmarks : []).some((benchmark: any) =>
-          isGA4FinancialKpiMetric(String(benchmark?.metric || "")),
+          isGA4FinancialKpiMetric(resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name) || ""),
         );
 
       const persistedFinancialCandidate = (Array.isArray(toDateRows) && toDateRows.length > 0) || isYesopMockProperty(propertyId) ? {
@@ -475,6 +494,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         if (dependencies.requiresRevenue && importedRevenueValue === null) return null;
         if (dependencies.requiresSpend && spendValue === null) return null;
         return financialInputs;
+      };
+      const benchmarkInputsForMetric = (metric: string) => {
+        if (!isGA4FinancialKpiMetric(metric) && !trafficInputsAvailable) return null;
+        return inputsForMetric(metric);
       };
 
       // 1) KPI progress points (daily)
@@ -538,39 +561,46 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
         const benchmarkId = String((b as any)?.id || "");
         if (!benchmarkId) continue;
-        const metricKey = String((b as any)?.metric || "").trim();
-        if (!metricKey) continue; // can't compute without a metric key
+        const metricKey = resolveGA4KpiMetricIdentity((b as any)?.metric, (b as any)?.name);
+        if (!metricKey) continue; // custom/unsupported Benchmarks retain their manually managed current value
 
-        const metricInputs = inputsForMetric(metricKey);
-        if (!metricInputs) continue;
+        const metricInputs = benchmarkInputsForMetric(metricKey);
+        if (!metricInputs) {
+          benchmarkIdsSkipped.add(benchmarkId);
+          continue;
+        }
         const currentValue = computeKpiValue(metricKey, metricInputs);
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {
-          await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+          const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+          if (!updated) throw new Error("Benchmark current-value update did not change a row");
+
+          const history = await benchmarkStorage.getBenchmarkHistory(benchmarkId);
+          const hist = Array.isArray(history) ? history : [];
+          const already = hist.some((h: any) => isoDateUTC(new Date((h as any)?.recordedAt || 0)) === date);
+          if (!already) {
+            const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
+            const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
+            const rating = computeBenchmarkRating(variance);
+
+            await benchmarkStorage.recordBenchmarkHistory({
+              benchmarkId,
+              currentValue: String(round2(currentValue)),
+              benchmarkValue: String(round2(benchmarkValue)),
+              variance: String(round2(variance)),
+              performanceRating: rating,
+              recordedAt,
+              notes: `auto:ga4_daily:${date}`,
+            } as any);
+            benchmarksRecorded += 1;
+          }
           benchmarksUpdated += 1;
           benchmarkIdsUpdated.push(benchmarkId);
-        } catch (_) { /* best-effort */ }
-
-        const history = await benchmarkStorage.getBenchmarkHistory(benchmarkId).catch(() => []);
-        const hist = Array.isArray(history) ? history : [];
-        const already = hist.some((h: any) => isoDateUTC(new Date((h as any)?.recordedAt || 0)) === date);
-        if (already) continue;
-
-        const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
-        const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
-        const rating = computeBenchmarkRating(variance);
-
-        await benchmarkStorage.recordBenchmarkHistory({
-          benchmarkId,
-          currentValue: String(round2(currentValue)),
-          benchmarkValue: String(round2(benchmarkValue)),
-          variance: String(round2(variance)),
-          performanceRating: rating,
-          recordedAt,
-          notes: `auto:ga4_daily:${date}`,
-        } as any);
-        benchmarksRecorded += 1;
+        } catch (e: any) {
+          benchmarkIdsFailed.add(benchmarkId);
+          console.warn(`[GA4 KPI/Benchmarks] Benchmark ${benchmarkId} failed for campaign ${campaignId}:`, e?.message || e);
+        }
       }
 
       await refreshCampaignCurrentValuesForCampaign(campaignId);
@@ -583,11 +613,15 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const kpiId = String(kpi?.id || "").trim();
         if (kpiId && !kpiIdsUpdated.has(kpiId) && !kpiIdsSkipped.has(kpiId)) kpiIdsFailed.add(kpiId);
       }
+      for (const benchmark of campaignBenchmarks) {
+        const benchmarkId = String(benchmark?.id || "").trim();
+        if (benchmarkId && !benchmarkIdsUpdated.includes(benchmarkId) && !benchmarkIdsSkipped.has(benchmarkId)) benchmarkIdsFailed.add(benchmarkId);
+      }
       console.warn(`[GA4 KPI/Benchmarks] Failed for campaign ${campaignId}:`, e?.message || e);
     }
   }
 
-  if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts) {
+  if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && benchmarkIdsSkipped.size === 0 && benchmarkIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts) {
     try {
       const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
       await checkPerformanceAlerts();
@@ -617,6 +651,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     benchmarksRecorded,
     benchmarksUpdated,
     benchmarkIdsUpdated,
+    benchmarkIdsSkipped: Array.from(benchmarkIdsSkipped),
+    benchmarkIdsFailed: Array.from(benchmarkIdsFailed),
     alertReconciliationFailures,
   };
 }

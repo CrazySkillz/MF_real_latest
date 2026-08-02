@@ -263,6 +263,10 @@ describe("notification visibility regression guard", () => {
       routesFile.indexOf("const prepareKPINotificationHides"),
       routesFile.indexOf("// Notifications routes", routesFile.indexOf("const prepareKPINotificationHides"))
     );
+    const benchmarkNotificationHides = routesFile.slice(
+      routesFile.indexOf("const prepareBenchmarkNotificationHides"),
+      routesFile.indexOf("// Notifications routes", routesFile.indexOf("const prepareBenchmarkNotificationHides"))
+    );
     const campaignKpiDelete = routesFile.slice(
       routesFile.indexOf('app.delete("/api/campaigns/:id/kpis/:kpiId"'),
       routesFile.indexOf("// Campaign-level Benchmark routes", routesFile.indexOf('app.delete("/api/campaigns/:id/kpis/:kpiId"'))
@@ -282,10 +286,11 @@ describe("notification visibility regression guard", () => {
     expect(platformKpiDelete).toContain("storage.deleteKPI(kpiId, notificationHides)");
     expect(campaignKpiDelete).toContain("const notificationHides = await prepareKPINotificationHides(okKpi");
     expect(campaignKpiDelete).toContain("storage.deleteKPI(kpiId, notificationHides)");
-    expect(campaignBenchmarkDelete).toContain('if (String(meta?.benchmarkId || "") === String(benchmarkId))');
-    expect(campaignBenchmarkDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");');
-    expect(platformBenchmarkDelete).toContain('if (String(meta?.benchmarkId || "") === String(benchmarkId))');
-    expect(platformBenchmarkDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");');
+    expect(benchmarkNotificationHides).toContain('String(notificationMetadata(n?.metadata)?.benchmarkId || "") === benchmarkId');
+    expect(campaignBenchmarkDelete).toContain("const notificationHides = await prepareBenchmarkNotificationHides(existing");
+    expect(campaignBenchmarkDelete).toContain("storage.deleteBenchmark(benchmarkId, notificationHides)");
+    expect(platformBenchmarkDelete).toContain("const notificationHides = await prepareBenchmarkNotificationHides(existing");
+    expect(platformBenchmarkDelete).toContain("storage.deleteBenchmark(benchmarkId, notificationHides)");
   });
 
   it("runs campaign-level Benchmark alert reconciliation before create/update responses", () => {

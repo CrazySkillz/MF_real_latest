@@ -5,6 +5,8 @@ import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
+import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -125,6 +127,14 @@ const reportIncludesKPISection = (report: any): boolean => {
   if (reportType !== "custom") return false;
   const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
   return Boolean(cfg.sections?.kpis || cfg.subsections?.kpis?.items || cfg.selectedKpiIds.length > 0);
+};
+
+const reportIncludesBenchmarkSection = (report: any): boolean => {
+  const reportType = String(report?.reportType || "overview").toLowerCase();
+  if (reportType === "benchmarks" || reportType === "insights") return true;
+  if (reportType !== "custom") return false;
+  const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
+  return Boolean(cfg.sections?.benchmarks || cfg.subsections?.benchmarks?.items || cfg.sections?.insights || cfg.selectedBenchmarkIds.length > 0);
 };
 
 const getOverviewReportRequirements = (report: any) => {
@@ -356,6 +366,43 @@ const buildInsightsItems = (payload: any) => {
       confidence: "Medium",
     });
   }
+  for (const benchmark of Array.isArray(payload.benchmarks) ? payload.benchmarks : []) {
+    const sufficiency = resolveBenchmarkDataSufficiency({
+      metric: benchmark?.metric,
+      name: benchmark?.name,
+      sessions: Number(payload.breakdownTotals?.sessions || 0),
+      conversions: Number(payload.financialConversions || 0),
+      spend: Number(payload.financialSpend || 0),
+    });
+    if (!sufficiency.sufficient) continue;
+    const current = Number(benchmark?.currentValue);
+    const target = Number(benchmark?.benchmarkValue);
+    const identity = resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name);
+    if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) continue;
+    if ((identity === "conversion_rate" || identity === "engagement_rate") && target > 100) continue;
+    const threshold = computeBenchmarkThresholdResult({
+      metric: benchmark?.metric,
+      name: benchmark?.name,
+      unit: benchmark?.unit,
+      current,
+      benchmarkValue: target,
+    });
+    if (threshold.status !== "behind" && threshold.status !== "needs_attention") continue;
+    const unit = String(benchmark?.unit || "").trim();
+    const formatValue = (value: number) =>
+      unit === "%" ? `${Number(value).toFixed(2)}%`
+        : unit === "$" || unit.toUpperCase() === String(payload.currency || "").toUpperCase() ? payload.formatMoney(value)
+          : `${Number(value).toFixed(2)}${unit === "ratio" || unit === "x" ? "x" : unit ? ` ${unit}` : ""}`;
+    items.push({
+      severity: threshold.status === "behind" ? "high" : "medium",
+      title: `${String(benchmark?.name || benchmark?.metric || "Benchmark")}: ${threshold.status === "behind" ? "Behind Benchmark" : "Needs Attention"}`,
+      description: `Current ${formatValue(current)} vs Benchmark ${formatValue(target)}.`,
+      recommendation: "Review the campaign inputs behind this Benchmark before changing budget, creative, or landing pages.",
+      category: "targets",
+      dataBasis: "Freshly recomputed saved Benchmark",
+      confidence: "Medium",
+    });
+  }
   if (items.length === 0) {
     items.push({
       severity: "info",
@@ -414,6 +461,9 @@ async function buildGA4ReportPayload(report: any) {
   const loadPlatformKPIs = reportIncludesKPISection(report)
     ? storage.getPlatformKPIs("google_analytics", campaignId)
     : storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]);
+  const loadPlatformBenchmarks = reportIncludesBenchmarkSection(report)
+    ? benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId)
+    : benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]);
 
   const [metrics, breakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
@@ -426,7 +476,7 @@ async function buildGA4ReportPayload(report: any) {
     storage.getRevenueBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
     storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
     loadPlatformKPIs,
-    benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
+    loadPlatformBenchmarks,
   ]);
 
   const ga4ToDate = await withTokenRefresh(connection, async (token) => {

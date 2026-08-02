@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "sectionId": "ga4-benchmarks",
+  "betaReadinessStatus": "BETA_READY",
+  "productionCertificationStatus": "UNVERIFIED",
+  "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
+  "reviewedImplementationGitSha": "14bb0d2892ca06e42ae019f7244280b6ff70bcb7",
+  "certifiedGitSha": null,
+  "reviewedAt": "2026-08-02",
+  "scope": "GA4 Benchmarks and documented Benchmark consumers only: cards, Tracker, Insights, browser and scheduled Reports, alerts, notifications, CRUD, refresh/recompute, schedulers, persistence, and destructive operations.",
+  "findings": {
+    "critical": 0,
+    "majorFound": 6,
+    "majorRemaining": 0,
+    "minorFound": 1,
+    "minorRemaining": 0
+  },
+  "dependencyBoundary": [
+    "client/src/pages/ga4-metrics.tsx",
+    "shared/ga4-kpi-consumer-state.ts",
+    "shared/ga4-kpi-live-value.ts",
+    "shared/ga4-kpi-metric-identity.ts",
+    "shared/kpi-math.ts",
+    "shared/metric-math.ts",
+    "server/ga4-kpi-benchmark-jobs.ts",
+    "server/ga4-daily-scheduler.ts",
+    "server/auto-refresh-scheduler.ts",
+    "server/benchmark-notifications.ts",
+    "server/ga4-scheduled-report-pdf.ts",
+    "server/report-scheduler.ts",
+    "server/routes-oauth.ts",
+    "server/storage.ts",
+    "shared/schema.ts",
+    "GA4/BENCHMARKS.md",
+    "GA4/BENCHMARKS_PRODUCTION_READINESS.md",
+    "GA4/BENCHMARK_THRESHOLDS_PRODUCTION_READINESS.md",
+    "GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md",
+    "GA4/INSIGHTS_PRODUCTION_READINESS.md",
+    "GA4/REPORTS_PRODUCTION_READINESS.md"
+  ],
+  "evidence": [
+    {
+      "command": "npm test -- --run <39 applicable GA4 Benchmark and consumer test files>",
+      "status": "passed",
+      "result": "39 files, 260 tests passed"
+    },
+    {
+      "command": "npm test -- --run server/ga4-benchmark-persistence-destructive-safety.test.ts server/benchmark-route-isolation-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts",
+      "status": "passed",
+      "result": "4 files, 55 tests passed"
+    },
+    {
+      "command": "npm run check",
+      "status": "passed",
+      "result": "TypeScript completed successfully"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "result": "Vite client and esbuild server production bundles completed successfully"
+    },
+    {
+      "command": "GET https://marketforensics.onrender.com/health and /health/scheduler",
+      "status": "passed_with_external_caveat",
+      "result": "Both returned 200; GA4 daily scheduler was started, timer-scheduled, and idle. An unrelated Mailgun daily-limit failure was reported."
+    },
+    {
+      "command": "npm test -- --run server/source-safety-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/benchmark-alert-email-delivery-validation-regression.test.ts",
+      "status": "unrelated_failure",
+      "result": "92 passed; one unrelated spend-source deletion source-text assertion failed. Every Benchmark assertion passed."
+    }
+  ],
+  "productionOnlyEvidenceOutstanding": [
+    "Authenticated read-only Benchmark inventory on the exact deployed reviewed revision",
+    "Live GA4 provider versus persisted current/history and all deployed Benchmark consumer parity",
+    "Natural timer-fired GA4 daily scheduler evidence",
+    "Fresh provider acceptance and inbox delivery evidence for any Benchmark email-delivery claim"
+  ],
+  "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
+}

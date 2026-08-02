@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `Benchmarks` tab is production-ready.
 > Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 Benchmarks are production-ready for the current GA4 code scope.
+> Current durable whole-tab answer: use the canonical file's revision-specific closed-beta assessment; production certification remains `UNVERIFIED`.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The confusion came from having three Benchmark files with overlapping readiness 
 - `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is the canonical whole-tab production-readiness source of truth.
 - this file is only the historical threshold/scoring slice record.
 
-This file must not override, narrow, or reopen the durable whole-tab production-ready answer in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+This file must not override the revision-specific whole-tab assessment in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 
 ## How To Reuse This Threshold Slice For A New Source
 
@@ -439,7 +439,7 @@ Status:
 - Marketing-readable validation examples were added for count, rate, revenue, ROAS, ROI, CPA, and custom lower-is-better benchmarks.
 - Whole-tab deployed UI validation is recorded in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`; exhaustive manual examples for every benchmark type remain useful future-platform evidence, not a GA4 Benchmark production blocker.
 - Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined.
-- `GA4/README.md` now points future readers to `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable production-ready answer.
+- `GA4/README.md` points future readers to `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the controlling revision-specific answer.
 
 ## Threshold-Slice Acceptance Criteria
 

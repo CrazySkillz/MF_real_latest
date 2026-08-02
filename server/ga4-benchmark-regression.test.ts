@@ -338,4 +338,26 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4MetricsFile).toContain('Create your first benchmark to start tracking performance against your targets');
     expect(ga4MetricsFile).toContain('chips: ["Targets", "Historical", "Goals"],');
   });
+
+  it("keeps closed-beta readiness separate from production certification", () => {
+    const record = JSON.parse(readFileSync(
+      join(process.cwd(), "GA4", "certifications", "ga4-benchmarks.json"),
+      "utf-8",
+    ));
+    const readiness = readFileSync(
+      join(process.cwd(), "GA4", "BENCHMARKS_PRODUCTION_READINESS.md"),
+      "utf-8",
+    );
+
+    expect(record).toMatchObject({
+      sectionId: "ga4-benchmarks",
+      betaReadinessStatus: "BETA_READY",
+      productionCertificationStatus: "UNVERIFIED",
+      reviewedBaseGitSha: "466dc2494b16b38a116b49a786039da251520520",
+      reviewedImplementationGitSha: "14bb0d2892ca06e42ae019f7244280b6ff70bcb7",
+      certifiedGitSha: null,
+    });
+    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
+    expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
+  });
 });

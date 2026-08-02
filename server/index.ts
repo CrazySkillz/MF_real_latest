@@ -300,6 +300,14 @@ process.on('uncaughtException', (error: Error) => {
             ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
           `);
 
+          // Migration: Keep KPI progress history at the same enterprise-scale capacity as live KPI values.
+          await db.execute(sql`
+            ALTER TABLE kpi_progress
+            ALTER COLUMN value TYPE DECIMAL(18, 2),
+            ALTER COLUMN rolling_average_7d TYPE DECIMAL(18, 2),
+            ALTER COLUMN rolling_average_30d TYPE DECIMAL(18, 2);
+          `);
+
           // Migration 2: Add notifications metadata column
           await db.execute(sql`
             ALTER TABLE notifications 

@@ -815,9 +815,9 @@ export const kpiPeriods = pgTable("kpi_periods", {
 export const kpiProgress = pgTable("kpi_progress", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   kpiId: text("kpi_id").notNull(),
-  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
-  rollingAverage7d: decimal("rolling_average_7d", { precision: 10, scale: 2 }), // 7-day rolling average
-  rollingAverage30d: decimal("rolling_average_30d", { precision: 10, scale: 2 }), // 30-day rolling average
+  value: decimal("value", { precision: 18, scale: 2 }).notNull(),
+  rollingAverage7d: decimal("rolling_average_7d", { precision: 18, scale: 2 }), // 7-day rolling average
+  rollingAverage30d: decimal("rolling_average_30d", { precision: 18, scale: 2 }), // 30-day rolling average
   trendDirection: text("trend_direction").default("neutral"), // 'up', 'down', 'neutral'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   notes: text("notes"),

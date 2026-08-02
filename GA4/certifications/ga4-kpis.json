@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "05b67b9cf56b69389e485f525ccf74c984ea49654dfb571888cbc7c3167cf37d",
+  "contractSha256": "8b431f046ffc1c6d50bd88a4841b8938d4578639438f5b909501a03702f08748",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "5f087470b29b175988740b7bfcc2eea43a672118",
+  "lastReviewedSha": "e442d575a813bdbbe6671f4f19a9267666f4318e",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 8 and its validation closure locally add exact recompute results and fail-closed selected-row report proof, but the repository-wide CI suite, persistence, deployed, and external-validation gates remain incomplete. Historical certification is not current evidence.",
+  "invalidationReason": "Current Commit 9 locally closes KPI-progress capacity and transactional KPI delete/notification retry safety, but the repository-wide CI suite, deployed migration, target-data, and external-validation gates remain incomplete. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -24,6 +24,7 @@
       "Current Commit 6 locally prevents blocked, insufficient, unavailable, or preserved-last-good values from being treated as verified breaches by backend alert, email, bell, and Notifications consumers.",
       "Current Commit 7 locally prevents loading, failed, unavailable, stale/last-good, blocked, or insufficient KPI values from being scored, pulsed, or described as verified performance by browser consumers.",
       "Current Commit 8 locally requires exact KPI updated/skipped/failed results and selected-row freshness proof before source-lifecycle alert sweeps or report generation continue.",
+      "Current Commit 9 locally aligns KPI progress capacity and makes exact notification hiding plus KPI child/parent deletion atomic and retryable.",
       "Custom and unsupported KPI values must not be overwritten by guessed recomputation."
     ],
     "windowRules": [
@@ -68,6 +69,7 @@
     { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "source-backed imported revenue KPI and Benchmark downstream regression", "sha256": null },
     { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": null },
     { "path": "server/ga4-kpi-reporting-window-regression.test.ts", "role": "campaign-timezone 30-completed-day and weighted Engagement Rate regression", "sha256": null },
+    { "path": "server/ga4-kpi-persistence-destructive-safety.test.ts", "role": "KPI progress capacity and transactional delete/retry scope regression", "sha256": null },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": null },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "financial revenue source lifecycle producer", "sha256": null },
     { "path": "client/src/components/AddSpendWizardModal.tsx", "role": "financial spend source lifecycle producer", "sha256": null },
@@ -163,7 +165,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8: the updated dependency/test contract passed the standalone checker and 1 file / 9 certification regression tests."
+      "evidence": "August 2, 2026 Current Commit 9: the updated dependency/test contract passed the standalone checker and 1 file / 9 certification regression tests."
     },
     {
       "id": "kpi_core_regressions",
@@ -220,22 +222,28 @@
       "evidence": "August 2, 2026 Current Commit 8 validation closure: the exact-result/source-lifecycle/auto-refresh packet passed 4 files / 42 tests, and the direct snapshot/test-send/manual-send/scheduled-report plus scheduler packet passed 5 files / 41 tests. Dynamic failures prove exact failed or skipped selected KPI IDs cannot pass the shared report preflight; the auto-refresh guard proves later alert sweeps require a complete recompute."
     },
     {
+      "id": "persistence_destructive_safety",
+      "command": "npm test -- server/ga4-kpi-persistence-destructive-safety.test.ts server/campaign-delete-cascade-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 2, 2026 Current Commit 9: 4 files / 59 tests passed for numeric(18,2) progress schema/migration declarations, exact campaign-and-KPI notification selection, transactional notification/progress/alert/period/parent deletion, injected rollback and retry behavior including a concurrent parent-delete race, campaign mismatch rejection, campaign cascade adjacency, and unchanged KPI route contracts. Deployed migration and production data remain external gates."
+    },
+    {
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "failed",
-      "evidence": "August 2, 2026 validation closure: 142/157 files and 1,258/1,290 tests passed; 32 tests failed across 15 files. Exact parent 6ed81dd45f6994dec779b67c109ddf8185746d69 failed 46/1,288 tests across 18 files, and every remaining failure is present in that parent baseline. The only Commit-8-introduced failure was the stale auto-refresh assertion corrected in this closure. CI is not clean."
+      "evidence": "August 2, 2026 Current Commit 9: 143/158 files and 1,265/1,297 tests passed; 32 tests failed across 15 files. The failures remain in deferred Google Ads, Instagram, Meta, and TikTok functionality plus three pre-existing GA4 assertions and one shared spend-source assertion. The spend assertion exercises a separate atomic spend delete method, not KPI deletion. CI is not clean."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8: TypeScript completed successfully."
+      "evidence": "August 2, 2026 Current Commit 9: TypeScript completed successfully."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8: the Vite client build and esbuild server bundle completed successfully."
+      "evidence": "August 2, 2026 Current Commit 9: the Vite client build and esbuild server bundle completed successfully."
     }
   ],
   "externalGates": [

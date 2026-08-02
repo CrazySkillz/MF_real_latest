@@ -259,6 +259,10 @@ describe("notification visibility regression guard", () => {
       routesFile.indexOf('app.delete("/api/platforms/:platformType/kpis/:kpiId"'),
       routesFile.indexOf('app.post("/api/campaigns/:id/kpis"', routesFile.indexOf('app.delete("/api/platforms/:platformType/kpis/:kpiId"'))
     );
+    const kpiNotificationHides = routesFile.slice(
+      routesFile.indexOf("const prepareKPINotificationHides"),
+      routesFile.indexOf("// Notifications routes", routesFile.indexOf("const prepareKPINotificationHides"))
+    );
     const campaignKpiDelete = routesFile.slice(
       routesFile.indexOf('app.delete("/api/campaigns/:id/kpis/:kpiId"'),
       routesFile.indexOf("// Campaign-level Benchmark routes", routesFile.indexOf('app.delete("/api/campaigns/:id/kpis/:kpiId"'))
@@ -272,10 +276,12 @@ describe("notification visibility regression guard", () => {
       routesFile.indexOf("// Platform Reports routes", routesFile.indexOf('app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId"'))
     );
 
-    expect(platformKpiDelete).toContain('if (String(meta?.kpiId || "") === String(kpiId))');
-    expect(platformKpiDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");');
-    expect(campaignKpiDelete).toContain('if (String(meta?.kpiId || "") === String(kpiId))');
-    expect(campaignKpiDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");');
+    expect(kpiNotificationHides).toContain('String(n?.campaignId || "").trim() === campaignId');
+    expect(kpiNotificationHides).toContain('String(notificationMetadata(n?.metadata)?.kpiId || "") === kpiId');
+    expect(platformKpiDelete).toContain("const notificationHides = await prepareKPINotificationHides(okKpi");
+    expect(platformKpiDelete).toContain("storage.deleteKPI(kpiId, notificationHides)");
+    expect(campaignKpiDelete).toContain("const notificationHides = await prepareKPINotificationHides(okKpi");
+    expect(campaignKpiDelete).toContain("storage.deleteKPI(kpiId, notificationHides)");
     expect(campaignBenchmarkDelete).toContain('if (String(meta?.benchmarkId || "") === String(benchmarkId))');
     expect(campaignBenchmarkDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");');
     expect(platformBenchmarkDelete).toContain('if (String(meta?.benchmarkId || "") === String(benchmarkId))');

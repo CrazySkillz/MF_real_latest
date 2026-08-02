@@ -6526,6 +6526,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       metadata: dismissedNotificationMetadata(n, actorId, reason),
     } as any);
   };
+  const prepareKPINotificationHides = async (kpi: any, actorId: string) => {
+    const kpiId = String(kpi?.id || "").trim();
+    const campaignId = String(kpi?.campaignId || "").trim();
+    if (!kpiId || !campaignId) return [];
+    const rows = await storage.getNotifications();
+    return (Array.isArray(rows) ? rows : [])
+      .filter((n: any) => String(n?.id || "").trim()
+        && String(n?.campaignId || "").trim() === campaignId
+        && String(notificationMetadata(n?.metadata)?.kpiId || "") === kpiId)
+      .map((n: any) => ({
+        id: String(n.id),
+        campaignId,
+        metadata: dismissedNotificationMetadata(n, actorId, "kpi_deleted"),
+      }));
+  };
 
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
@@ -26460,32 +26475,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (String((okKpi as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
         return res.status(404).json({ message: "KPI not found" });
       }
-      const deleted = await storage.deleteKPI(kpiId);
+      const notificationHides = await prepareKPINotificationHides(okKpi, getActorId(req as any) || "system");
+      const deleted = await storage.deleteKPI(kpiId, notificationHides);
 
       if (!deleted) {
         return res.status(404).json({ message: "KPI not found" });
-      }
-
-      // Cascade delete: remove any notifications tied to this KPI (alerts, reminders, etc).
-      // Notifications store linkage via JSON metadata { kpiId, ... }.
-      try {
-        const notifs = await storage.getNotifications().catch(() => []);
-        await Promise.all(
-          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
-            const metaRaw = (n as any)?.metadata;
-            if (!metaRaw) return;
-            try {
-              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
-              if (String(meta?.kpiId || "") === String(kpiId)) {
-                await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");
-              }
-            } catch {
-              // ignore non-JSON metadata
-            }
-          })
-        );
-      } catch (e) {
-        console.warn("[KPI Delete] Failed to cascade delete KPI notifications:", e);
       }
 
       res.setHeader('Content-Type', 'application/json');
@@ -26628,27 +26622,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!okCampaign) return;
 
-      const deleted = await storage.deleteKPI(kpiId);
+      const notificationHides = await prepareKPINotificationHides(okKpi, getActorId(req as any) || "system");
+      const deleted = await storage.deleteKPI(kpiId, notificationHides);
       if (!deleted) {
         return res.status(404).json({ message: "KPI not found" });
-      }
-
-      try {
-        const notifs = await storage.getNotifications().catch(() => []);
-        await Promise.all(
-          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
-            const metaRaw = (n as any)?.metadata;
-            if (!metaRaw) return;
-            try {
-              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
-              if (String(meta?.kpiId || "") === String(kpiId)) {
-                await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");
-              }
-            } catch {}
-          })
-        );
-      } catch (e) {
-        console.warn("[Campaign KPI Delete] Failed to cascade delete KPI notifications:", e);
       }
 
       res.json({ message: "KPI deleted successfully", success: true });

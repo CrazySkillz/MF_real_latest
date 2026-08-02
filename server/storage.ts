@@ -15,6 +15,7 @@ const devLog = (...args: any[]) => {
 
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
+export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 
 const spendPlatformContextPredicate = (platformContext?: SpendPlatformContext) => {
   if (!platformContext) return undefined;
@@ -373,7 +374,7 @@ export interface IStorage {
   getKPI(id: string): Promise<KPI | undefined>;
   createKPI(kpi: InsertKPI): Promise<KPI>;
   updateKPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
-  deleteKPI(id: string): Promise<boolean>;
+  deleteKPI(id: string, notificationHides?: KPINotificationHide[]): Promise<boolean>;
 
   // KPI Progress
   getKPIProgress(kpiId: string): Promise<KPIProgress[]>;
@@ -4176,20 +4177,33 @@ export class DatabaseStorage implements IStorage {
     return kpi || undefined;
   }
 
-  async deleteKPI(id: string): Promise<boolean> {
+  async deleteKPI(id: string, notificationHides: KPINotificationHide[] = []): Promise<boolean> {
     try {
-      // Delete related records first
-      await db.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
-      await db.delete(kpiAlerts).where(eq(kpiAlerts.kpiId, id));
+      return await db.transaction(async (tx: any) => {
+        const [existing] = await tx.select({ id: kpis.id, campaignId: kpis.campaignId })
+          .from(kpis)
+          .where(eq(kpis.id, id))
+          .limit(1);
+        if (!existing) return false;
 
-      // Delete the KPI itself
-      const result = await db
-        .delete(kpis)
-        .where(eq(kpis.id, id));
+        for (const hide of notificationHides) {
+          if (String(hide.campaignId) !== String(existing.campaignId || "")) {
+            throw new Error("KPI notification campaign scope mismatch");
+          }
+          const hidden = await tx.update(notifications)
+            .set({ read: true, metadata: hide.metadata })
+            .where(and(eq(notifications.id, hide.id), eq(notifications.campaignId, hide.campaignId)))
+            .returning({ id: notifications.id });
+          if (!hidden.length) throw new Error("KPI notification hide failed");
+        }
 
-      const deleted = (result.rowCount || 0) > 0;
-
-      return deleted;
+        await tx.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
+        await tx.delete(kpiAlerts).where(eq(kpiAlerts.kpiId, id));
+        await tx.delete(kpiPeriods).where(eq(kpiPeriods.kpiId, id));
+        const result = await tx.delete(kpis).where(eq(kpis.id, id));
+        if ((result.rowCount || 0) === 0) throw new Error("KPI parent delete failed");
+        return true;
+      });
     } catch (error) {
       console.error(`Error in DatabaseStorage.deleteKPI:`, error);
       throw error;

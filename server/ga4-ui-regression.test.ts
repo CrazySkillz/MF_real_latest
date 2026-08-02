@@ -212,6 +212,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
     expect(ga4Metrics).toContain("const hasDailyOverviewResponse = ga4DailyResp !== undefined;");
     expect(ga4Metrics).toContain("const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;");
+    expect(ga4Metrics).toContain("const overviewSummarySource = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, 'overviewTotals')");
+    expect(ga4Metrics).toContain("const overviewSummaryTotals = {");
     expect(ga4Metrics).not.toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
     expect(ga4Metrics).toMatch(/const ga4SummaryTotalsInitializing =[\s\S]*?!overviewSummaryAvailable &&\s*ga4Loading;/);
     expect(ga4Metrics).not.toContain("hasToDateOverviewTotals");
@@ -220,8 +222,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions, ga4BreakdownTotals.sessions)");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
 
-    expect(scheduledPdf).toContain('const hasDailyOverviewResponse = dailyRows.length > 0 || !failedParts.has("time series");');
-    expect(scheduledPdf).toContain("const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;");
+    expect(scheduledPdf).toContain('const hasDailyOverviewResponse = overviewDailyRows.length > 0');
+    expect(scheduledPdf).toContain("const overviewTotalsSource = hasDailyOverviewResponse ? overviewSummedTotals : null;");
     expect(scheduledPdf).not.toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
     expect(scheduledPdf).not.toContain("hasToDateOverviewTotals");
     expect(scheduledPdf).toContain("engagementRate: Number(overviewTotalsSource?.engagementRate || 0)");
@@ -266,10 +268,10 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toMatch(/!overviewSummaryAvailable &&\s*ga4Loading;/);
     expect(ga4Metrics).toContain("const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing");
     expect(ga4Metrics).toContain(': overviewSummaryAvailable ? value : "Unavailable";');
-    expect(summarySection).toContain("renderSummaryValue(formatNumber(breakdownTotals.conversions || 0))");
+    expect(summarySection).toContain("renderSummaryValue(formatNumber(overviewSummaryTotals.conversions || 0))");
     expect(summarySection).not.toContain("ga4Metrics?.conversions");
-    expect(summarySection).toContain("Last {GA4_DAILY_LOOKBACK_DAYS} completed days");
-    expect(summarySection).toContain("GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.");
+    expect(summarySection).toContain("Imported GA4 data, updated daily");
+    expect(summarySection).toContain("GA4 daily users summed from the initial historical import through the latest completed day; the same user may appear on more than one day.");
     expect(summarySection).not.toContain("Unique GA4 users for the selected property");
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
@@ -604,7 +606,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZoneLabel}");
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
-    expect(pdf).toContain('import { getReportingDateWindow } from "./utils/reporting-timezone";');
+    expect(pdf).toContain('import { getGA4HistoricalImportStartDate, getReportingDateWindow } from "./utils/reporting-timezone";');
     expect(pdf).toContain("const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);");
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");

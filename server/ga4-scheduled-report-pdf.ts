@@ -1,9 +1,10 @@
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { getReportingDateWindow } from "./utils/reporting-timezone";
+import { getGA4HistoricalImportStartDate, getReportingDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -396,6 +397,16 @@ async function buildGA4ReportPayload(report: any) {
   const financialEndDate = yesterdayUTC();
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
+  const configuredOverviewStartDate = String((connection as any)?.importStartDate || '').trim();
+  const derivedOverviewStartDate = getGA4HistoricalImportStartDate(
+    (connection as any)?.connectedAt,
+    lookbackDays,
+    (campaign as any)?.reportingTimeZone,
+  );
+  const overviewStartCandidate = configuredOverviewStartDate || derivedOverviewStartDate || dailyStart;
+  const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(overviewStartCandidate) && overviewStartCandidate <= dailyEnd
+    ? overviewStartCandidate
+    : dailyStart;
   const failedParts = new Set<string>();
   const logPartFailure = (label: string, error: any) => {
     failedParts.add(label);
@@ -446,9 +457,16 @@ async function buildGA4ReportPayload(report: any) {
       engagementRate: Number(row?.engagementRate || 0),
     }));
   }
+  let overviewDailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, overviewStartDate, dailyEnd).catch((e) => {
+    logPartFailure('persisted Overview Summary metrics', e);
+    return [] as any[];
+  });
+  if (overviewDailyRows.length === 0 && overviewStartDate === dailyStart) {
+    overviewDailyRows = dailyRows;
+  }
   const overviewRequirements = getOverviewReportRequirements(report);
   const unavailableOverviewParts: string[] = [];
-  if (overviewRequirements.summary && dailyRows.length === 0 && failedParts.has("time series")) {
+  if (overviewRequirements.summary && overviewDailyRows.length === 0 && (overviewStartDate < dailyStart || failedParts.has("time series"))) {
     unavailableOverviewParts.push("Summary");
   }
   if (overviewRequirements.revenue) {
@@ -494,6 +512,7 @@ async function buildGA4ReportPayload(report: any) {
   }, { sessions: 0, users: 0, conversions: 0, revenue: 0, engagedSessions: 0, pageviews: 0 });
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
+  const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
 
   const breakdownFinancialRows = Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : [];
   const breakdownFinancialSummed = breakdownFinancialRows.reduce(
@@ -519,8 +538,9 @@ async function buildGA4ReportPayload(report: any) {
   const breakdownEngagementRate = breakdownFinancialTotals.sessions > 0
     ? breakdownFinancialTotals.engagedSessions / breakdownFinancialTotals.sessions
     : 0;
-  const hasDailyOverviewResponse = dailyRows.length > 0 || !failedParts.has("time series");
-  const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;
+  const hasDailyOverviewResponse = overviewDailyRows.length > 0
+    || (overviewStartDate === dailyStart && !failedParts.has("time series"));
+  const overviewTotalsSource = hasDailyOverviewResponse ? overviewSummedTotals : null;
   const breakdownTotals = {
     sessions: Number(overviewTotalsSource?.sessions || 0),
     conversions: Number(overviewTotalsSource?.conversions || 0),

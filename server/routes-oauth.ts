@@ -47,7 +47,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
+import { getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -8470,6 +8470,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days,
           reportingTimeZone,
           data: merged,
+          overviewStartDate: startDate,
+          overviewTotals: summarizeGA4TrafficRows(merged),
           providerRefreshAttempted: false,
           providerRefreshOutcome: "simulated",
           providerRefreshRowCount: 0,
@@ -8608,6 +8610,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerCoverageThroughDate = dataThroughDate;
       }
       const latestStoredDailyDate = getLatestStoredDailyDate(stored);
+      const configuredOverviewStartDate = String((selectedConnection as any)?.importStartDate || '').trim();
+      const derivedOverviewStartDate = getGA4HistoricalImportStartDate(
+        (selectedConnection as any)?.connectedAt,
+        (selectedConnection as any)?.lookbackDays || days,
+        reportingTimeZone,
+      );
+      const overviewStartCandidate = configuredOverviewStartDate || derivedOverviewStartDate || startDate;
+      const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(overviewStartCandidate) && overviewStartCandidate <= endDate
+        ? overviewStartCandidate
+        : startDate;
+      const overviewRows = await storage.getGA4DailyMetrics(
+        campaignId,
+        String(selectedConnection.propertyId),
+        overviewStartDate,
+        endDate,
+      );
+      const overviewTotals = summarizeGA4TrafficRows(overviewRows);
 
       const lastUpdated =
         stored.length > 0
@@ -8629,6 +8648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         days,
         reportingTimeZone,
         data: stored.map(addDerivedEngagedSessions),
+        overviewStartDate,
+        overviewTotals,
         providerRefreshAttempted,
         providerRefreshOutcome,
         providerRefreshRowCount,
@@ -11740,6 +11761,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const lookbackDays = 30;
+      const selectionImportStartDate = getGA4HistoricalImportStartDate(
+        new Date(),
+        lookbackDays,
+        (ok as any)?.reportingTimeZone,
+      );
 
       // Try to update in-memory realGA4Client (may not have it if OAuth went through ga4:connect flow)
       realGA4Client.setPropertyId(campaignId, propertyId);
@@ -11764,11 +11790,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingConnections.length > 0) {
         // Update existing connection
         const existingConnection = existingConnections[0];
+        const sameProperty = String((existingConnection as any)?.propertyId || '') === String(propertyId);
+        const importStartDate = sameProperty
+          ? String((existingConnection as any)?.importStartDate || '').trim()
+            || getGA4HistoricalImportStartDate((existingConnection as any)?.connectedAt, lookbackDays, (ok as any)?.reportingTimeZone)
+          : selectionImportStartDate;
         console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
         await storage.updateGA4Connection(existingConnection.id, {
           propertyId,
           propertyName,
           lookbackDays,
+          importStartDate,
           isPrimary: true,
           isActive: true
         } as any);
@@ -11793,6 +11825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: 'access_token',
           propertyName,
           lookbackDays,
+          importStartDate: selectionImportStartDate,
           isPrimary: true,
           isActive: true,
           clientId: process.env.GOOGLE_CLIENT_ID || undefined,
@@ -14201,6 +14234,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lookbackDays = 30;
 
       console.log('[GA4 Select Property] Request:', { campaignId, propertyId, lookbackDays });
+      const selectionImportStartDate = getGA4HistoricalImportStartDate(
+        new Date(),
+        lookbackDays,
+        (ok as any)?.reportingTimeZone,
+      );
 
       // Look up the GA4 connection from the database by campaignId — use the LATEST connection
       const ga4Connections = await storage.getGA4Connections(campaignId);
@@ -14213,11 +14251,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyName = selectedProperty?.name || `Property ${propertyId}`;
 
       if (dbConnection) {
+        const sameProperty = String((dbConnection as any)?.propertyId || '') === String(propertyId);
+        const importStartDate = sameProperty
+          ? String((dbConnection as any)?.importStartDate || '').trim()
+            || getGA4HistoricalImportStartDate((dbConnection as any)?.connectedAt, lookbackDays, (ok as any)?.reportingTimeZone)
+          : selectionImportStartDate;
         // Update the existing DB connection with the selected property — use connection.id, NOT campaignId
         await storage.updateGA4Connection(dbConnection.id, {
           propertyId,
           propertyName,
           lookbackDays,
+          importStartDate,
         } as any);
         console.log('[GA4 Select Property] Updated DB connection:', { connectionId: dbConnection.id, propertyId, propertyName });
       } else {
@@ -14234,6 +14278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clientId: process.env.GOOGLE_CLIENT_ID || '',
           clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
           lookbackDays,
+          importStartDate: selectionImportStartDate,
           expiresAt: oauthData?.expiresAt ? new Date(oauthData.expiresAt) : new Date(Date.now() + 3600000),
         } as any);
         console.log('[GA4 Select Property] Created new DB connection:', { campaignId, propertyId, propertyName, lookbackDays });

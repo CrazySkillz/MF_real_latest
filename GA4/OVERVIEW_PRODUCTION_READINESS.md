@@ -15,13 +15,14 @@ Only evidence from the same deployed commit, production-data state, and document
 
 ## Current Decision — Stable Cross-Session Answer
 
-**The Overview tab is not yet clean-certified or production-ready for live users. Two mandatory tests remain: current-release GA4 scheduled-run validation, and OAuth durability validation on or after 2026-08-07. Every other supported 30-day Overview requirement has passed.**
+**UNVERIFIED at the current revision. A deployed Summary regression showed that the 30-day setup value was incorrectly treated as a rolling display window. The prior claim that every other supported Overview requirement had passed is withdrawn. Current Commit 20 must restore initial-30-day import plus completed-day accumulation, prove UI/API/report parity, and then rerun the scheduler gate. OAuth durability remains due on or after 2026-08-07.**
 
 ## Intended Release Scope
 
 The initial production target is:
 
-- exactly 30 completed GA4 reporting days
+- an initial import of the 30 completed GA4 reporting days preceding property setup
+- subsequent completed reporting days appended by the existing daily pipeline without dropping the oldest imported day
 - exact selected property and saved campaign-value scope
 - scheduler-backed persisted daily Summary values
 - independent Campaign Breakdown detail
@@ -33,6 +34,7 @@ Future 60/90-day options are outside this release and require later implementati
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |
+| Current Commit 20 | **Open — certification invalidated** | Restore the schema-defined historical-import meaning of `lookbackDays`. Overview Summary totals must retain the initial imported period and append later completed-day facts; a zero-activity new day must not reduce totals. Preserve the rolling daily response used by KPI/Trend consumers, exact property/campaign scope, fail-closed behavior, and production data. Add regression-first numerical coverage and prove UI/API/Overview-report parity. |
 | Current Commit 19 | **Bounded implementation closed** | Runtime `ba2e4329` deployed; the existing `GA4 single` / `ga4_mock` page showed `Last 30 completed days` and loaded normally. Unsupported-write rejection is automated/code-path proven at this source, not production-injected. |
 | Current-release GA4 scheduled run | **Requires external validation** | After a normal timer-fired run, confirm scheduler health records `lastRunTrigger=scheduled`, `lastRunStatus=success`, and an incremented run count; then confirm the existing scoped 30-day Overview remains valid with no false zero, duplicate, or damaged-row growth. |
 | OAuth durability | **Requires external validation** | On 2026-08-07 or later, confirm the existing unreconnected GA4 connection and metrics still work; do not infer automatic renewal unless observed. |
@@ -51,7 +53,7 @@ The Overview certification does not claim:
 - scheduled PDF/snapshot generation
 - exhaustive Google Sheets polling cadence, failure-injection, and future-provider behavior; one deployed no-click automatic update was observed, but it is not generalized beyond that event
 
-The scheduler-backed values rendered by Overview and the required current-release scheduled-run evidence remain inside the 30-day scope.
+The scheduler-backed Summary begins with the initial 30-day import and accumulates later completed days. The scheduler's rolling repair/lookback query is an operational fetch boundary, not the Summary display boundary.
 
 ## Production-Data Boundary
 
@@ -61,10 +63,10 @@ The scheduler-backed values rendered by Overview and the required current-releas
 
 ## Certification Rule
 
-The documented 30-day scope may be clean-certified only when, at the same deployed commit and data state:
+The documented initial-30-day-import scope may be clean-certified only when, at the same deployed commit and data state:
 
-1. Commit 19 is deployed and validated.
-2. One current-release timer-fired GA4 daily scheduler run passes the required health, scoped-value, and no-damage checks.
+1. Current Commit 20 is deployed and its Summary API/UI/Overview-report parity is validated.
+2. One current-release timer-fired GA4 daily scheduler run proves that a zero-activity day does not drop the oldest imported day or change unchanged totals.
 3. OAuth durability passes on 2026-08-07 or later.
 4. The deterministic/read-only pack has no unresolved included value, source, lifecycle, failure, or downstream path.
 5. All canonical documents record the same decision.
@@ -73,7 +75,7 @@ Only then may the status say:
 
 **GA4 Overview is clean-certified and production-ready for the documented 30-completed-day scope. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future configurations, and future provider behavior are excluded.**
 
-Until then, the exact answer is: **the implemented 30-day gates have passed; formal clean certification is pending the current-release GA4 scheduled-run validation and the 2026-08-07 OAuth durability check.**
+Until then, the exact answer is: **GA4 Overview is unverified because the rolling-window Summary regression is open. Current Commit 20, a current-release scheduled run, and the 2026-08-07 OAuth durability check must pass before clean certification.**
 
 ## Source Authority
 

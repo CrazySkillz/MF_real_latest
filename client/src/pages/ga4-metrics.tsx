@@ -2076,7 +2076,10 @@ export default function GA4Metrics() {
   const hasBreakdownOverviewResponse = ga4Breakdown !== undefined;
   const hasDailyOverviewResponse = ga4DailyResp !== undefined;
   const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;
-  const overviewSummaryAvailable = overviewTotalsSource !== null;
+  const overviewSummarySource = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, 'overviewTotals')
+    ? (ga4DailyResp as any).overviewTotals
+    : null;
+  const overviewSummaryAvailable = overviewSummarySource !== null;
   const overviewEngagementRate = (() => {
     const rate = Number(overviewTotalsSource?.engagementRate ?? 0);
     if (!Number.isFinite(rate)) return 0;
@@ -2093,6 +2096,18 @@ export default function GA4Metrics() {
     users: Number(overviewTotalsSource?.users || 0),
     pageviews: Number(overviewTotalsSource?.pageviews || 0),
   };
+  const overviewSummaryTotals = {
+    sessions: Number(overviewSummarySource?.sessions || 0),
+    conversions: Number(overviewSummarySource?.conversions || 0),
+    revenue: Number(overviewSummarySource?.revenue || 0),
+    users: Number(overviewSummarySource?.users || 0),
+    pageviews: Number(overviewSummarySource?.pageviews || 0),
+  };
+  const overviewSummaryEngagementRate = (() => {
+    const rate = Number(overviewSummarySource?.engagementRate ?? 0);
+    if (!Number.isFinite(rate)) return 0;
+    return Math.max(0, rate > 1 ? rate / 100 : rate);
+  })();
 
   const { data: importedRevenueToDateResp, isLoading: importedRevenueLoading, isError: importedRevenueError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`],
@@ -3106,10 +3121,10 @@ export default function GA4Metrics() {
       const spend = Number(financialSpend || 0);
       const rev = Number(financialRevenue || 0);
       const convTot = Number(financialConversions || 0);
-      const sess = Number(breakdownTotals?.sessions || 0);
-      const users = Number(breakdownTotals?.users || 0);
-      const conv = Number(breakdownTotals?.conversions || 0);
-      const engRate = normalizeRateToPercent(overviewEngagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
+      const sess = Number(overviewSummaryTotals?.sessions || 0);
+      const users = Number(overviewSummaryTotals?.users || 0);
+      const conv = Number(overviewSummaryTotals?.conversions || 0);
+      const engRate = normalizeRateToPercent(overviewSummaryEngagementRate);
       const roas = spend > 0 ? (rev / spend) * 100 : 0;
       const roi = spend > 0 ? ((rev - spend) / spend) * 100 : 0;
       const cpa = convTot > 0 ? spend / convTot : 0;
@@ -5957,14 +5972,14 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Summary</h3>
-                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days for this GA4 property and campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">Imported GA4 data, updated daily</p>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Sessions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(breakdownTotals.sessions || 0))}
+                              {renderSummaryValue(formatNumber(overviewSummaryTotals.sessions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5979,12 +5994,12 @@ export default function GA4Metrics() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                  GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.
+                                  GA4 daily users summed from the initial historical import through the latest completed day; the same user may appear on more than one day.
                                 </TooltipContent>
                               </UITooltip>
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(breakdownTotals.users || 0))}
+                              {renderSummaryValue(formatNumber(overviewSummaryTotals.users || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5992,7 +6007,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(breakdownTotals.conversions || 0))}
+                              {renderSummaryValue(formatNumber(overviewSummaryTotals.conversions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -6000,7 +6015,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Engagement Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatPercentage(rateToPercent(overviewEngagementRate)))}
+                              {renderSummaryValue(formatPercentage(rateToPercent(overviewSummaryEngagementRate)))}
                             </p>
                           </CardContent>
                         </Card>
@@ -6008,8 +6023,8 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conv. Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatPct((breakdownTotals.sessions || 0) > 0
-                                ? ((breakdownTotals.conversions || 0) / (breakdownTotals.sessions || 1)) * 100
+                              {renderSummaryValue(formatPct((overviewSummaryTotals.sessions || 0) > 0
+                                ? ((overviewSummaryTotals.conversions || 0) / (overviewSummaryTotals.sessions || 1)) * 100
                                 : 0))}
                             </p>
                           </CardContent>

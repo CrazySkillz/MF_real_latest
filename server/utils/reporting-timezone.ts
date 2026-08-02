@@ -87,6 +87,18 @@ export function getReportingDateWindow(days: number, reportingTimeZone: any, now
   };
 }
 
+export function getGA4HistoricalImportStartDate(
+  selectedAt: any,
+  lookbackDays: any,
+  reportingTimeZone: any,
+): string | null {
+  const selectedDate = selectedAt instanceof Date ? selectedAt : new Date(selectedAt);
+  if (Number.isNaN(selectedDate.getTime())) return null;
+  const boundedDays = Math.max(1, Math.floor(Number(lookbackDays) || 1));
+  const timeZone = normalizeReportingTimeZone(reportingTimeZone);
+  return addDaysToDateOnly(currentDateOnlyInTimeZone(selectedDate, timeZone), -boundedDays);
+}
+
 export function getNextDailyRunAt(now: Date, reportingTimeZone: any, hour: number, minute: number): Date {
   const tz = normalizeReportingTimeZone(reportingTimeZone);
   const nowParts = getZonedParts(now, tz);

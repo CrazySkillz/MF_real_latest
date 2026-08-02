@@ -90,6 +90,7 @@ export const ga4Connections = pgTable("ga4_connections", {
   clientId: text("client_id"), // OAuth client ID for automatic refresh
   clientSecret: text("client_secret"), // OAuth client secret for automatic refresh  
   // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  importStartDate: text("import_start_date"), // Fixed start of the initial historical import used by Overview Summary
   encryptedTokens: jsonb("encrypted_tokens"),
   lookbackDays: integer("lookback_days").notNull().default(90), // How many days of historical data to import (30, 60, or 90)
   expiresAt: timestamp("expires_at"), // Token expiration time
@@ -1224,6 +1225,7 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   isActive: true,
   clientId: true,
   clientSecret: true,
+  importStartDate: true,
   expiresAt: true,
 });
 

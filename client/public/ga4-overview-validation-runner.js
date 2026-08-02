@@ -705,6 +705,13 @@
         typeof dailyData.refreshIsStale === "boolean" &&
         typeof dailyData.providerRefreshAttempted === "boolean" &&
         ["not_needed", "rows_returned", "empty", "failed", "simulated"].indexOf(String(dailyData.providerRefreshOutcome || "")) >= 0,
+      overviewCumulativeContractPresent:
+        /^\d{4}-\d{2}-\d{2}$/.test(String(dailyData.overviewStartDate || "")) &&
+        dailyData.overviewTotals !== null &&
+        typeof dailyData.overviewTotals === "object" &&
+        ["sessions", "users", "conversions", "engagementRate"].every(function (field) {
+          return Number.isFinite(Number(dailyData.overviewTotals[field] || 0));
+        }),
       dailyNotStale: requireFreshDaily ? dailyData.refreshIsStale !== true : undefined,
       landingPagesEndpointPasses: !!(extraByName.ga4LandingPages && extraByName.ga4LandingPages.pass),
       conversionEventsEndpointPasses: !!(extraByName.ga4ConversionEvents && extraByName.ga4ConversionEvents.pass)
@@ -749,6 +756,8 @@
         breakdownRevenue: base.ga4 ? base.ga4.breakdownRevenue : null,
         dailyRowCount: dailyRows.length,
         dailyLatestDate: latestDateOf(dailyRows),
+        overviewStartDate: dailyData.overviewStartDate || null,
+        overviewTotals: dailyData.overviewTotals || null,
         dataThroughDate: dailyData.dataThroughDate || null,
         refreshIsStale: dailyData.refreshIsStale === true,
         expectedRefreshAt: dailyData.expectedRefreshAt || null,

@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Overview` tab and the GA4-specific scope rules that feed the rest of the GA4 experience.
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: the Overview tab is not yet clean-certified or production-ready for live users. Two mandatory tests remain: current-release GA4 scheduled-run validation, and OAuth durability validation on or after `2026-08-07`. Every other supported 30-day Overview requirement has passed. Use `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md` for detailed evidence and `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md` for the chronological Commit 0–19 record.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: **UNVERIFIED**. A deployed regression proved that the 30-day setup value was being used as a rolling Summary window instead of its schema-defined historical-import depth. Current Commit 20 must restore initial-30-day import plus completed-day accumulation and prove parity before certification can resume. OAuth durability remains due on or after `2026-08-07`.
 
 Commit 2 deployment record: commit `5cff21ad` was pushed to `main` and deployed on `2026-07-16`. The user-confirmed bounded UI smoke check passed for one configured campaign/window: the four visible configured-window labels agreed, the Users provenance tooltip was correct, Revenue & Financial was labeled campaign-to-date, and the downloaded Overview report matched the observed screen values. This does not prove all 30/60/90 live provider variants or close later Overview blockers.
 
@@ -62,9 +62,9 @@ They are not hard-coded values and they are not manually maintained UI state.
 
 Important clarification:
 
-- campaign creation does not permanently populate these cards with one-time imported values
-- during campaign setup, the system stores the GA4 property and campaign selection/filter for this app campaign
-- after that, the Overview tab fetches current GA4 data for that saved scope and computes the cards from those query results
+- during property setup, the system stores the GA4 property, campaign selection/filter, and the 30-day historical-import depth
+- Summary starts with those 30 completed historical days and appends later completed-day facts; it must not discard the oldest imported day merely because the calendar advances
+- the cards remain computed from current persisted facts for that fixed import boundary through the latest completed day; they are not frozen UI values
 - the GA4 daily scheduler persists completed-day daily facts, but it is not the only Overview fetch path
 - `Landing Pages` and `Conversion Events` are row-level live GA4 Data API views for the selected property, saved campaign scope, and selected Overview date range; they are not populated by allocating persisted daily totals into rows
 - for live GA4 properties, current tagged traffic may appear in `pageLocation` URLs before GA4 campaign attribution dimensions populate; the Overview query path may therefore use `pageLocation` `utm_campaign` as a fallback only when the primary campaign-dimension scoped result is empty
@@ -131,7 +131,7 @@ Daily records and endpoints may still exist for source validation, refresh, and 
 ### Summary Cards
 
 - `Sessions`
-  Populated from the selected supported 30-day connection's persisted GA4 daily facts for exactly 30 completed reporting days, with same-window live breakdown fallback only when daily facts are absent. Retained non-30 connections fail closed in this release.
+  Populated from the selected connection's persisted GA4 daily facts beginning at the initial 30-day historical-import boundary and continuing through the latest completed reporting day. A later zero-activity day does not remove an older imported day.
 - `Users`
   Populated from the same configured-lookback Summary source as Sessions.
 - `Conversions`
@@ -146,8 +146,8 @@ Important meaning:
 - these are GA4-native campaign metrics
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
-- Summary cards use the persisted daily facts fetched by the GA4 daily pipeline for the exact selected property and saved campaign filter, sliced to the saved completed-day lookback; they do not switch to the live Campaign Breakdown response
-- the same selected-campaign daily facts feed Summary, charts, history, and the existing ordered financial fallback
+- Summary cards use persisted daily facts for the exact selected property and saved campaign filter from the initial import boundary through the latest completed day; they do not switch to Campaign Breakdown or a rolling 30-day slice
+- rolling repair/history queries used by KPI and Trend consumers remain separate from the cumulative Overview Summary boundary
 - campaign-to-date totals are not a Summary fallback because they are a different window
 - selected-campaign daily facts may combine `pageLocation` UTM traffic with `campaignName` conversion/revenue supplementation only for missing conversion/revenue fields; sessions, users, pageviews, and engagement remain from the traffic query
 - when `pageLocation` UTM fallback is needed, the daily pipeline retains traffic metrics and supplements only missing conversion/revenue fields for the exact compatible date

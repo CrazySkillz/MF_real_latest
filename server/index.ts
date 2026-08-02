@@ -792,6 +792,11 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS lookback_days INTEGER NOT NULL DEFAULT 90;
           `).catch(() => null);
 
+          // Migration 17b: Persist the GA4 Overview initial historical-import boundary
+          await db.execute(sql`
+            ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS import_start_date TEXT;
+          `).catch(() => null);
+
           // Migration 18: Instagram connected platform foundation
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS instagram_connections (

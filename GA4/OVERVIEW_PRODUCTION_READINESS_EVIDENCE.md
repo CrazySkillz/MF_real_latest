@@ -30,7 +30,7 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**The Overview tab is not yet clean-certified or production-ready for live users. Two mandatory tests remain: current-release GA4 scheduled-run validation, and OAuth durability validation on or after `2026-08-07`. Every other supported 30-day Overview requirement has passed at the current deployed Commit 19 state.**
+**UNVERIFIED. Current Commit 20 is open because production behavior proved that the schema-defined 30-day historical-import depth had been reinterpreted as a rolling Summary window. Local correction and regression evidence exist, but deployed API/UI/Overview-report parity, a timer-fired no-drop run, and OAuth durability on or after `2026-08-07` remain required.**
 
 Commit 17's bounded forward implementation deployed as `36676deb`; the user confirmed the existing GA4 campaign's Total Revenue, Total Spend, and Revenue/Spend source lists remained unchanged. The retained-source disposition is now closed as keep/support. Provider-cycle rollback remains a named scheduler/provider exclusion, and no production cleanup is authorized.
 
@@ -639,10 +639,10 @@ Historical-ledger note: packets preserved in the evidence/history ledgers remain
 
 ## Clean-Certification Decision Rule
 
-The documented 30-day Overview scope may be called clean-certified only after all of these are true at the same deployed commit and production-data state:
+The documented initial-30-day-import Overview scope may be called clean-certified only after all of these are true at the same deployed commit and production-data state:
 
-1. Current Commit 19 is implemented, committed, deployed, and validated.
-2. One current-release timer-fired GA4 daily scheduler run passes the required health, scoped-value, and no-damage checks.
+1. Current Commit 20 is committed, deployed, and proves that Summary API, UI, and Overview report use one fixed initial-import boundary.
+2. One current-release timer-fired GA4 daily scheduler run proves that a zero-activity completed day does not drop the oldest imported day or reduce unchanged totals.
 3. The OAuth durability gate passes on 2026-08-07 or later.
 4. The deterministic/read-only validation pack passes without an unresolved included value, source, lifecycle, failure, or downstream path.
 5. The evidence ledger and history ledger record the exact results.
@@ -650,9 +650,9 @@ The documented 30-day Overview scope may be called clean-certified only after al
 
 If all six pass, the allowed statement is:
 
-**GA4 Overview is clean-certified and production-ready for the documented 30-completed-day scope at the recorded deployed commit and production-data state. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future source configurations, and future provider behavior are not included.**
+**GA4 Overview is clean-certified and production-ready for the documented initial-30-completed-day import plus completed-day accumulation scope at the recorded deployed commit and production-data state. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future source configurations, and future provider behavior are not included.**
 
-Until then, the exact answer is: **the implemented 30-day gates have passed; formal clean certification remains pending the current-release GA4 scheduled-run validation and OAuth durability.**
+Until then, the exact answer is: **GA4 Overview is unverified while Current Commit 20 deployment/parity, the current-release scheduled-run no-drop check, and OAuth durability remain open.**
 
 ## Original Final Certification Gate
 
@@ -673,5 +673,5 @@ GA4 Overview may be called clean-certified only when all of the following are tr
 - no named downstream validation relevant to the claimed scope remains open
 - this canonical file is updated with exact evidence and no contradictory clean-ready statement remains
 
-Until then, the exact answer is: **the implemented 30-day gates have passed; formal clean certification remains pending the current-release GA4 scheduled-run validation and OAuth durability.**
+Until then, the exact answer is: **GA4 Overview is unverified while Current Commit 20 deployment/parity, the current-release scheduled-run no-drop check, and OAuth durability remain open.**
 <!-- END MOVED ACTIVE GATE SPECIFICATIONS -->

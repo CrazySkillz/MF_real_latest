@@ -328,6 +328,15 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 - Outside this bounded Overview release: future 60/90-day options, startup-triggered refresh, scheduled report delivery, future configurations, and hypothetical future-provider behavior.
 - Documentation-only correction: no runtime code, scheduler configuration, provider request, token, campaign, source, financial value, or production row changed.
 
+### Current Commit 20 — Restore fixed historical-import Summary boundary — local implementation proven; deployment open
+
+- Invalidating symptom: after the calendar advanced, unchanged GA4 property activity produced different Overview Summary values because the oldest day fell out of a rolling 30-day display window.
+- Root cause: commit `5cff21ad` reinterpreted `ga4_connections.lookbackDays` from its schema-defined historical-import depth into a rolling completed-day Summary contract. Later guards protected that wrong contract.
+- Smallest safe implementation: persist a fixed `importStartDate` for future property selections; derive the same boundary from `connectedAt` plus the saved 30-day import depth for retained connections; return additive `overviewStartDate` and `overviewTotals` fields from `/ga4-daily`; and route only Overview Summary and Overview report Summary through those cumulative persisted daily totals. Existing rolling daily rows remain unchanged for KPI, Trend, repair, and freshness consumers.
+- No production campaign, connection, property, token, source, record, or metric was modified. No reconnect, cleanup, or provider write was performed.
+- Regression evidence: a controlled 30-day boundary proves that a later zero-activity day retains Sessions 887; the focused scheduler/Overview/report packet passes 55/55; `npm run check` passes; and `git diff --check` passes.
+- Status: local code path **proven**; deployment and authenticated API/UI/Overview-report parity **unproven**; current-release timer-fired no-drop behavior and OAuth durability **require external validation**.
+
 ## UI Validation Requirement
 
 Current Commit 1 does **not** require a separate UI validation pass. Commit `56bfdced` changed only static regression tests and this readiness document; it did not change the client bundle, server runtime, API behavior, calculations, persistence, schedulers, or rendered UI. Its proportionate validation is the green source-family packets, the 15-file focused packet, TypeScript, and staged/committed file-boundary review recorded above. A Render deployment of this commit has no new user-visible behavior to validate.

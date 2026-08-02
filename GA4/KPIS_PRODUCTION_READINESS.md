@@ -38,7 +38,7 @@ Locally proven, but not sufficient for certification:
 - Current Commit 4 resolves the persisted reporting window per campaign, clamps recompute dates to completed reporting dates, uses the exact 30-date daily-row query for traffic/count/rate values, and weights Engagement Rate from engaged sessions divided by sessions
 - Current Commit 6 routes in-app KPI/Benchmark reconciliation, immediate/scheduled/retry email eligibility, duplicate refresh, bell/Notifications filtering, and notification enrichment through one source-resolved, fail-closed alert decision
 - Current Commit 7 routes KPI cards, breach pulse, tracker scoring, KPI-derived Insights, and browser PDF rows through one browser state resolver that distinguishes loading, failed, unavailable, stale/last-good, blocked, insufficient-data, and verified states
-- Current Commit 8 returns exact KPI updated/skipped/failed IDs, blocks freshness-dependent source-lifecycle alert sweeps on any skipped/failed row, and requires every selected report KPI ID to appear in the exact updated set
+- Current Commit 8 returns exact KPI updated/skipped/failed IDs, blocks freshness-dependent source-lifecycle alert sweeps on any skipped/failed row, and requires every selected report KPI ID to appear in the exact updated set; its validation closure corrected the one stale assertion introduced by Commit 8
 - TypeScript and the production build passed on August 2, 2026
 
 Current unproven or unsafe paths:
@@ -47,7 +47,8 @@ Current unproven or unsafe paths:
 - deployed and timer-fired execution has not yet proven Current Commit 8's exact update/skip/failure result or report fail-closed behavior against live GA4/token/source failures
 - `kpi_progress` remains `numeric(10,2)` and can fail after current value update; KPI child-row deletion is non-transactional and notification hiding is best-effort
 - the June 29 target-data dry-run predates the current window/source divergence and does not bound affected KPI/progress/alert/report records
-- the final applicable Current Commit 5-7 packets pass 29/29, 114/114, 113/113, and 227/227 tests respectively; Commit 8's focused real-path/source-lifecycle and report/scheduler packets pass 29/29 and 41/41
+- the final applicable Current Commit 5-7 packets pass 29/29, 114/114, 113/113, and 227/227 tests respectively; Commit 8's exact-result/source-lifecycle/auto-refresh and report/scheduler packets pass 42/42 and 41/41
+- the complete repository suite is not clean: 1,258/1,290 tests pass and 32 tests fail across 15 files. An isolated run of Commit 8's exact parent failed 46/1,288 tests across 18 files, and every remaining failure is present in that parent baseline; the remaining failures are not evidence for KPI readiness and are not fixed in this closure
 
 External validation required after forward fixes: read-only target-data inventory (attempted August 1, 2026, but this environment has no `DATABASE_URL`; no data was read or changed); deployed valid-zero/unavailable/stale/provider-failure/source-mix/timezone parity; a timer-fired scheduler run with exact KPI update evidence; current GA4/token-refresh and email-provider evidence; and direct snapshot/test-send/manual-send/scheduled-report, bell, Notifications, and Insights parity. The user-confirmed deployed Commit 7 browser-PDF download/open happy path is recorded, but it does not prove the missing state matrix or any server-report path.
 
@@ -61,7 +62,7 @@ External validation required after forward fixes: read-only target-data inventor
 5. **Financial source/failure contract - implemented and locally validated in Current Commit 5; certification remains withdrawn.** Persisted recompute, campaign current-value refresh, and notification enrichment now use fixed provider-to-persisted-to-configured-breakdown precedence, keep valid zero authoritative, reject malformed values, and preserve affected last-good KPI/Benchmark values when required native/revenue/spend reads are unavailable.
 6. **Alert/notification contract - implemented and locally validated in Current Commit 6; certification remains withdrawn.** In-app KPI/Benchmark reconciliation, immediate/scheduled/retry alert-email eligibility, duplicate refresh, bell/Notifications visibility, and notification enrichment now share the same source-resolved blocked/insufficient/unavailable decision. Preserved last-good values are ineligible while their required source input is unavailable.
 7. **UI and browser-consumer states — implemented and locally validated in Current Commit 7; certification remains withdrawn.** Empty is now distinct from loading, failed, and retained-empty/stale states; each KPI resolves one fail-closed browser state and reporting-window label before card breach display, tracker scoring, KPI-derived Insights, or browser PDF status.
-8. **Recompute/report proof - implemented and locally validated in Current Commit 8; certification remains withdrawn.** The shared job returns exact KPI updated/skipped/failed IDs. Source-lifecycle alert sweeps and the shared preflight used by direct snapshot download, test-send, manual-send, and scheduled reports fail closed unless every required KPI row is in the exact updated set.
+8. **Recompute/report proof - implemented and locally validated, including validation closure, in Current Commit 8; certification remains withdrawn.** The shared job returns exact KPI updated/skipped/failed IDs. Source-lifecycle alert sweeps and the shared preflight used by direct snapshot download, test-send, manual-send, and scheduled reports fail closed unless every required KPI row is in the exact updated set. The one Commit-8-introduced full-suite failure was a stale auto-refresh assertion and is corrected without runtime changes.
 9. **Persistence/destructive safety.** Widen KPI-progress numeric capacity, then make KPI child deletion atomic and notification hiding retryable without broadening scope.
 10. **Full validation and re-certification.** Restore/extend focused regressions, require the relevant suite/TypeScript/production build, run a read-only target inventory, design any cleanup separately, deploy, complete the external matrix, update the certification record to the final SHA, and only then re-certify.
 
@@ -432,7 +433,7 @@ Files changed:
 
 Validation on August 2, 2026:
 
-- focused exact-result/source-lifecycle packet passed: 3 files / 29 tests
+- focused exact-result/source-lifecycle packet passed: 3 files / 29 tests; the focused auto-refresh guard passed: 1 file / 13 tests
 - direct snapshot/test-send/manual-send/scheduled-report and scheduler packet passed: 5 files / 41 tests
 - KPI core packet passed: 10 files / 60 tests
 - exact Current Commit 5 financial and validation-closure packets passed: 29/29 and 114/114
@@ -451,6 +452,30 @@ What this does not prove:
 - deployed Commit 8 behavior, a timer-fired scheduler run, live GA4/token refresh, provider acceptance or inbox delivery, direct/test/manual/scheduled report execution in production, or target production data
 - Commit 9 persistence/destructive safety or Commit 10 external validation/re-certification
 - GA4 KPI production readiness
+
+#### Current Commit 8 validation closure - August 2, 2026
+
+Root cause and boundary:
+
+- the pushed full CI workflow ran `npm run test`, while the implementation commit had run the required focused KPI packets but omitted that exact repository-wide command
+- Commit 8 changed the automatic-refresh alert condition from any upstream update to an upstream update with no skipped/failed KPI recompute; `server/ga4-auto-refresh-regression.test.ts` still asserted the old condition
+- an isolated full-suite run at exact parent `6ed81dd45f6994dec779b67c109ddf8185746d69` failed 46/1,288 tests across 18 files
+- after correcting the stale Commit 8 assertion, the current full suite passes 1,258/1,290 tests and fails 32 tests across 15 files; every remaining failed test is also in the parent baseline
+
+Smallest safe closure:
+
+- one test assertion now requires `anyCampaignUpdated && !anyCampaignRecomputeFailed`
+- no runtime, formula, source, window, API, schema, persistence, report, alert, notification, destructive, or production-data behavior changed
+- unrelated Google Ads, Instagram, TikTok, Meta, source-safety, and pre-existing GA4 failures were not changed
+
+Closure evidence:
+
+- Commit 8 exact-result/source-lifecycle/auto-refresh packet passed: 4 files / 42 tests
+- Commit 8 report/scheduler packet passed: 5 files / 41 tests
+- Commit 5 financial and validation-closure packets passed: 29/29 and 114/114
+- Commit 6 and Commit 7 packets passed: 113/113 and 227/227
+- certification regression/checker, TypeScript, and production build passed
+- full repository CI remains red from the exact 32-test parent-baseline subset; neither CI nor GA4 KPI production readiness is claimed clean
 
 ## Historical Status And Evidence (non-authoritative)
 

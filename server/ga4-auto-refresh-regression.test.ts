@@ -250,7 +250,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("if (anyUpdated) {");
     expect(content).toContain("anyCampaignUpdated = true;");
     expect(content).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch");
-    expect(content).toContain("if (anyCampaignUpdated) {");
+    expect(content).toContain("if (anyCampaignUpdated && !anyCampaignRecomputeFailed) {");
     expect(content).toContain("await checkPerformanceAlerts().catch");
     expect(content).toContain("await checkBenchmarkPerformanceAlerts().catch");
   });

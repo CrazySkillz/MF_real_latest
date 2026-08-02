@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "d935f348e84cb76d8ac7a352afd55bcb4f01b58f83203681fd06c11eb9b90b33",
+  "contractSha256": "05b67b9cf56b69389e485f525ccf74c984ea49654dfb571888cbc7c3167cf37d",
   "status": "UNVERIFIED",
   "lastReviewedSha": "5f087470b29b175988740b7bfcc2eea43a672118",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 8 locally adds exact recompute results and fail-closed selected-row report proof, but persistence, deployed, and external-validation gaps remain. Historical certification is not current evidence.",
+  "invalidationReason": "Current Commit 8 and its validation closure locally add exact recompute results and fail-closed selected-row report proof, but the repository-wide CI suite, persistence, deployed, and external-validation gates remain incomplete. Historical certification is not current evidence.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -215,9 +215,15 @@
     },
     {
       "id": "recompute_report_proof",
-      "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/report-email-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts",
+      "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/report-email-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8: the focused exact-result/source-lifecycle packet passed 3 files / 29 tests, and the direct snapshot/test-send/manual-send/scheduled-report plus scheduler packet passed 5 files / 41 tests. Dynamic failures prove exact failed or skipped selected KPI IDs cannot pass the shared report preflight; caller guards cover all four server-report entry points."
+      "evidence": "August 2, 2026 Current Commit 8 validation closure: the exact-result/source-lifecycle/auto-refresh packet passed 4 files / 42 tests, and the direct snapshot/test-send/manual-send/scheduled-report plus scheduler packet passed 5 files / 41 tests. Dynamic failures prove exact failed or skipped selected KPI IDs cannot pass the shared report preflight; the auto-refresh guard proves later alert sweeps require a complete recompute."
+    },
+    {
+      "id": "full_ci_suite",
+      "command": "npm run test",
+      "status": "failed",
+      "evidence": "August 2, 2026 validation closure: 142/157 files and 1,258/1,290 tests passed; 32 tests failed across 15 files. Exact parent 6ed81dd45f6994dec779b67c109ddf8185746d69 failed 46/1,288 tests across 18 files, and every remaining failure is present in that parent baseline. The only Commit-8-introduced failure was the stale auto-refresh assertion corrected in this closure. CI is not clean."
     },
     {
       "id": "typescript",

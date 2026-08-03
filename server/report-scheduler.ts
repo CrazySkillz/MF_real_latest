@@ -59,7 +59,7 @@ async function getLatestReportEmailError(reportId: string): Promise<string> {
   return error ? `${provider ? `${provider}: ` : ""}${error}` : "";
 }
 
-async function getLatestReportEmailAudit(reportId: string, success: boolean): Promise<{ id: string; provider: string; error: string; providerResponseId: string; deliveryStatus: string }> {
+async function getLatestReportEmailAudit(reportId: string, success: boolean): Promise<{ id: string; provider: string; error: string; providerResponseId: string; deliveryStatus: string; mailgunRegion: string }> {
   const rows = await db
     .select({
       id: emailAlertEvents.id,
@@ -80,13 +80,15 @@ async function getLatestReportEmailAudit(reportId: string, success: boolean): Pr
     .limit(1)
     .catch(() => []);
   const row = rows[0] as any;
+  let metadata: any = {};
+  try {
+    metadata = JSON.parse(String(row?.metadata || "{}"));
+  } catch {
+    metadata = {};
+  }
   let providerResponseId = String(row?.providerResponseId || "").trim();
   if (!providerResponseId) {
-    try {
-      providerResponseId = String(JSON.parse(String(row?.metadata || "{}"))?.providerResponseId || "").trim();
-    } catch {
-      providerResponseId = "";
-    }
+    providerResponseId = String(metadata?.providerResponseId || "").trim();
   }
   return {
     id: String(row?.id || "").trim(),
@@ -94,6 +96,7 @@ async function getLatestReportEmailAudit(reportId: string, success: boolean): Pr
     error: String(row?.error || "").trim(),
     providerResponseId,
     deliveryStatus: String(row?.deliveryStatus || "").trim(),
+    mailgunRegion: String(metadata?.mailgunRegion || "").trim(),
   };
 }
 
@@ -101,7 +104,10 @@ async function confirmScheduledReportEmailDelivery(reportId: string): Promise<{ 
   const audit = await getLatestReportEmailAudit(reportId, true);
   if (audit.provider !== "mailgun-api") return { sent: true, status: "sent", error: "" };
 
-  const delivery = await waitForMailgunDelivery(audit.providerResponseId);
+  const delivery = await waitForMailgunDelivery(
+    audit.providerResponseId,
+    audit.mailgunRegion ? { region: audit.mailgunRegion } : {},
+  );
   const deliveryStatus = delivery.status === "not_checked"
     ? "pending_delivery"
     : mapMailgunDeliveryToAlertEmailStatus(delivery.status);
@@ -119,6 +125,7 @@ async function confirmScheduledReportEmailDelivery(reportId: string): Promise<{ 
         providerResponseId: audit.providerResponseId,
         mailgunDeliveryStatus: delivery.status,
         mailgunDeliveryError: delivery.error,
+        mailgunRegion: audit.mailgunRegion || undefined,
       }),
     };
     if (delivery.status === "delivered") updates.deliveredAt = new Date();
@@ -2583,7 +2590,10 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     }
 
     if (audit.provider === "mailgun-api") {
-      const delivery = await waitForMailgunDelivery(audit.providerResponseId);
+      const delivery = await waitForMailgunDelivery(
+        audit.providerResponseId,
+        audit.mailgunRegion ? { region: audit.mailgunRegion } : {},
+      );
       console.log(`[Report Scheduler] Mailgun delivery status for test report "${report.name}": ${delivery.status}${delivery.error ? ` (${delivery.error})` : ""}`);
       if (delivery.status !== "delivered") {
         return {

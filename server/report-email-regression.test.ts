@@ -242,7 +242,9 @@ describe("scheduled report email regression guard", () => {
     const snapshotInsertIndex = source.indexOf(".insert(reportSnapshots)", deliveryConfirmIndex);
 
     expect(confirmationBlock).toContain('audit.provider !== "mailgun-api"');
-    expect(confirmationBlock).toContain("waitForMailgunDelivery(audit.providerResponseId)");
+    expect(confirmationBlock).toContain("waitForMailgunDelivery(");
+    expect(confirmationBlock).toContain("audit.providerResponseId,");
+    expect(confirmationBlock).toContain("audit.mailgunRegion ? { region: audit.mailgunRegion } : {}");
     expect(confirmationBlock).toContain('delivery.status === "delivered"');
     expect(confirmationBlock).toContain('"pending_delivery"');
     expect(sendIndex).toBeGreaterThan(-1);

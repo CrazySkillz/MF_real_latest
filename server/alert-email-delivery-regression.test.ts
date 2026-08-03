@@ -107,6 +107,9 @@ describe("alert email delivery status regression guard", () => {
     expect(emailService).toContain('error: args.success ? null : args.error');
     expect(emailService).not.toMatch(/alert email delivered/i);
     expect(reportScheduler).toContain("waitForMailgunDelivery");
+    expect(reportScheduler).toContain('mailgunRegion: String(metadata?.mailgunRegion || "").trim()');
+    expect(reportScheduler).toContain("audit.mailgunRegion ? { region: audit.mailgunRegion } : {}");
+    expect(reportScheduler).toContain("mailgunRegion: audit.mailgunRegion || undefined");
     expect(reportScheduler).toContain("Mailgun accepted the email, but delivery was not confirmed yet");
   });
 });

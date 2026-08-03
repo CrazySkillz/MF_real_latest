@@ -758,7 +758,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const benchmarkLiveBlock = sliceBetween(
       ga4Metrics,
-      "const getLiveBenchmarkCurrentValue = (metric: string): number => {",
+      "const getLiveBenchmarkCurrentValue = (metric: string, name?: string, currentValue?: unknown): number =>",
       "  const { data: ga4DailyResp"
     );
 
@@ -784,12 +784,12 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(ga4KpiLiveValue).toContain('if (metric === "roi") return Number(financialROI || 0).toFixed(2);');
     expect(ga4KpiLiveValue).toContain('if (metric === "cpa") return Number(financialCPA || 0).toFixed(2);');
 
-    expect(benchmarkLiveBlock).toContain("const revenue = Number(financialRevenue || 0);");
-    expect(benchmarkLiveBlock).toContain("return Number(financialROAS || 0);");
-    expect(benchmarkLiveBlock).toContain("return Number(financialROI || 0);");
-    expect(benchmarkLiveBlock).toContain("return Number(financialCPA || 0);");
-    expect(benchmarkLiveBlock).toContain('case "revenue":');
-    expect(benchmarkLiveBlock).toContain("return revenue;");
+    expect(benchmarkLiveBlock).toContain("Number(resolveGA4KpiLiveValue({");
+    expect(benchmarkLiveBlock).toContain("kpi: { metric, name, currentValue },");
+    expect(benchmarkLiveBlock).toContain("financialRevenue,");
+    expect(benchmarkLiveBlock).toContain("financialSpend,");
+    expect(benchmarkLiveBlock).toContain("financialROI,");
+    expect(benchmarkLiveBlock).toContain("financialCPA,");
   });
 
   it("keeps server GA4 KPI and Benchmark persisted/current-value formulas additive with HubSpot imported revenue", () => {
@@ -830,9 +830,10 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(jobInputBlock).toContain("const dependencies = getGA4KpiMetricDependencies(metric);");
     expect(jobInputBlock).toContain("if (dependencies.requiresRevenue && importedRevenueValue === null) return null;");
     expect(jobs).toContain("const metricInputs = inputsForMetric(metricOrName);");
-    expect(jobs).toContain("if (!metricInputs) continue;");
+    expect(jobs).toContain("kpiIdsSkipped.add(kpiId);");
     expect(jobs).toContain("const valueNum = computeKpiValue(metricOrName, metricInputs);");
-    expect(jobs).toContain("const metricInputs = inputsForMetric(metricKey);");
+    expect(jobs).toContain("const metricInputs = benchmarkInputsForMetric(metricKey);");
+    expect(jobs).toContain("benchmarkIdsSkipped.add(benchmarkId);");
     expect(jobs).toContain("const currentValue = computeKpiValue(metricKey, metricInputs);");
     expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);');
     expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');

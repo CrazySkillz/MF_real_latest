@@ -31,6 +31,27 @@
     },
     "limitations": "External GA4 campaign/property/source state must be revalidated in Current Commit 13. Email-provider configuration and delivery must be resolved in Current Commit 15. The final evidence-only descendant comparison remains required before production status can change from UNVERIFIED."
   },
+  "localCertificationGate": {
+    "status": "complete",
+    "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+    "validatedAt": "2026-08-03",
+    "applicableRegressionFilesPassed": 54,
+    "applicableRegressionTestsPassed": 536,
+    "typescriptCheck": "passed",
+    "productionBuild": "passed",
+    "productionRuntimeSourceChangesSinceReviewedImplementation": [],
+    "repositoryDeploymentConfigurationChangesSinceReviewedImplementation": [],
+    "minorFindingsFixed": [
+      "The GA4 UI source-text guard assumed LF line endings and false-failed on a clean Windows CRLF checkout; the assertion now accepts LF or CRLF.",
+      "The spend-source destructive-safety guard expected superseded split delete calls; it now proves the existing campaign/source/platform-scoped transactional helper and rejects the old non-atomic calls."
+    ],
+    "unrelatedSharedRegressionFailures": {
+      "file": "server/source-safety-regression.test.ts",
+      "passed": 80,
+      "failed": 7,
+      "scope": "Instagram-only route guards; outside GA4 Benchmarks and documented Benchmark consumers"
+    }
+  },
   "activeProductionCertificationCommits": [
     {
       "id": 11,
@@ -39,12 +60,12 @@
     },
     {
       "id": 12,
-      "status": "open",
+      "status": "complete",
       "name": "Run the final clean-revision local gate"
     },
     {
       "id": 13,
-      "status": "blocked_by_12",
+      "status": "open",
       "name": "Prove exact deployed Benchmark-consumer parity"
     },
     {
@@ -54,7 +75,7 @@
     },
     {
       "id": 15,
-      "status": "blocked_by_12_14_and_email_decision",
+      "status": "blocked_by_13_14_and_email_decision",
       "name": "Resolve email delivery and issue final certification"
     }
   ],
@@ -62,7 +83,7 @@
     "critical": 0,
     "majorFound": 7,
     "majorRemaining": 0,
-    "minorFound": 2,
+    "minorFound": 4,
     "minorRemaining": 0
   },
   "dependencyBoundary": [
@@ -126,7 +147,7 @@
       "result": "4 files, 31 tests passed; expected skips are nonfatal while real failures and targeted zero-processed runs remain fatal"
     },
     {
-      "command": "npm test -- --run server/ga4-benchmark-provider-validation-regression.test.ts server/ga4-financial-source-parity-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts",
+      "command": "npm test -- --run server/ga4-benchmark-provider-validation-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
       "result": "4 files, 32 tests passed; financial Benchmark validation uses the real campaign-to-date application window"
     },
@@ -149,6 +170,42 @@
       "command": "npm test -- --run server/ga4-benchmark-regression.test.ts",
       "status": "passed",
       "result": "1 file, 13 tests passed; the restricted sandbox first blocked pre-test esbuild process spawning with EPERM, and the authorized identical command passed"
+    },
+    {
+      "command": "PowerShell-generated documented/direct test inventory; & .\\node_modules\\.bin\\vitest.cmd run --pool forks $tests",
+      "status": "passed",
+      "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+      "result": "52 files, 499 tests passed; includes lifecycle, destructive safety, auth/tenant isolation, calculations, thresholds, alerts/notifications, Insights, Reports, refresh/recompute, schedulers, and the 13-test certification-integrity regression"
+    },
+    {
+      "command": "& .\\node_modules\\.bin\\vitest.cmd run --pool forks server/ga4-ui-regression.test.ts; then filter server/source-safety-regression.test.ts to the applicable spend-source destructive-safety test",
+      "status": "passed",
+      "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+      "result": "GA4 UI: 1 file, 36 tests passed. Applicable shared destructive-safety guard: 1 passed, 86 skipped by the exact filter."
+    },
+    {
+      "command": "& .\\node_modules\\.bin\\vitest.cmd run --pool forks server/source-safety-regression.test.ts",
+      "status": "unrelated_failure",
+      "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+      "result": "80 passed, 7 failed; every failure is an Instagram-only route guard outside GA4 Benchmarks and documented Benchmark consumers. The applicable spend-source destructive-safety guard passed."
+    },
+    {
+      "command": "npm run check",
+      "status": "passed",
+      "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+      "result": "TypeScript completed successfully on the exact clean validation revision"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+      "result": "Vite client and esbuild server production bundles completed successfully on the exact clean validation revision"
+    },
+    {
+      "command": "git diff --name-status 5366d0babc9550ecd408e55bc385e7024854f424..473c4e151b43aac33cb1d35a5c4b0fa85a85c36b plus production-source exclusions and repository deployment/configuration pathspecs",
+      "status": "passed",
+      "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+      "result": "Only canonical Benchmark evidence/tooling and regression files changed; no production runtime source or repository deployment/build configuration changed; validation worktree had no tracked changes"
     }
   ],
   "productionOnlyEvidenceOutstanding": [

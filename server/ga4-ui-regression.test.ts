@@ -304,7 +304,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Landing page data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Conversion event data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Campaign breakdown is unavailable. Refresh the page to try again.");
-    expect(ga4Metrics).toContain("const renderFinancialValue = (loading: boolean, available: boolean, value: string)");
+    expect(ga4Metrics).toContain("const renderFinancialValue = (loading: boolean, available: boolean, value: string, unavailableLabel = \"Unavailable\")");
     expect(ga4Metrics).toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))");
     expect(ga4Metrics).toContain('if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");');
     expect(ga4Metrics).toContain("financialRevenueAvailable && financialSpendAvailable && revenueMetricAvailable && spendMetricAvailable");
@@ -586,15 +586,16 @@ describe("GA4 UI regression guard", () => {
 
     expect(ga4Metrics).toContain("const availableMonths = new Set(");
     expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : insightsTrendMode === "30d" ? 60 : 0;');
-    expect(ga4Metrics).toContain('const hasRequiredHistory = insightsTrendMode === "monthly" ? availableMonths >= 2 : dailyRows.length >= minRequiredDays;');
+    expect(ga4Metrics).toContain('insightsRollups.last7.complete && insightsRollups.prior7.complete');
+    expect(ga4Metrics).toContain('insightsRollups.last30.complete && insightsRollups.prior30.complete');
     expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;');
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
     expect(ga4Metrics).toContain('const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
-    expect(ga4Metrics).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);");
+    expect(ga4Metrics).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);");
     expect(ga4Metrics).toContain("const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);");
     expect(ga4Metrics).not.toContain("const trendsRefreshScheduleTimeZone =");
-    expect(ga4Metrics).toContain("const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);");
-    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(ga4ReportDate || "").trim();');
+    expect(ga4Metrics).toContain("const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4InsightsDailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);");
+    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(ga4InsightsTimeSeries[ga4InsightsTimeSeries.length - 1]?.date || "").trim();');
     expect(ga4Metrics).toContain('const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";');
     expect(ga4Metrics).toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");

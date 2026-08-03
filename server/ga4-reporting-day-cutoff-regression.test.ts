@@ -85,8 +85,8 @@ describe("GA4 reporting-day cutoff", () => {
     expect(routes).toContain("getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))");
     expect(routes).toContain("Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.");
 
-    expect(page).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);");
-    expect(page).toContain("const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || \"\").trim();");
+    expect(page).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);");
+    expect(page).toContain("const trendsDataThroughDate = String(ga4InsightsDataThroughDate || \"\").trim();");
     expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
     expect(page).toContain("const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;");
     expect(page).toContain("Checked through ${ga4DailyProviderCoverageThroughDate}; latest activity ${ga4DailyLatestStoredDate");

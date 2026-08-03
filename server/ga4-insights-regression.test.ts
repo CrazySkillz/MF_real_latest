@@ -54,11 +54,11 @@ describe("GA4 Insights regression guard", () => {
 
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
-    expect(section).toContain("{formatMoney(Number(financialSpend || 0))}");
-    expect(section).toContain("{formatMoney(Number(financialRevenue || 0))}");
-    expect(section).toContain("{formatMoney(financialRevenue - financialSpend)}");
-    expect(section).toContain("{Number(financialROAS || 0).toFixed(2)}x");
-    expect(section).toContain("{formatPercentage(Number(financialROI || 0))}");
+    expect(section).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
+    expect(section).toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable");
+    expect(section).toContain("formatMoney(financialRevenue - financialSpend)");
+    expect(section).toContain("${Number(financialROAS || 0).toFixed(2)}x");
+    expect(section).toContain("formatPercentage(Number(financialROI || 0))");
     expect(section).not.toContain("pipelineProxyData.totalToDate");
   });
 
@@ -171,9 +171,9 @@ describe("GA4 Insights regression guard", () => {
 
     expect(copyStart).toBeGreaterThan(-1);
     expect(copyEnd).toBeGreaterThan(copyStart);
-    expect(copySection).toContain("availableDays < INSIGHTS_SHORT_WINDOW_DAYS");
+    expect(copySection).toContain("!insightsRollups.last3.complete || !insightsRollups.prior3.complete");
     expect(copySection).toContain("Trend and anomaly checks need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days");
-    expect(copySection).toContain("availableDays < INSIGHTS_MIN_HISTORY_DAYS");
+    expect(copySection).toContain("!insightsRollups.last7.complete || !insightsRollups.prior7.complete");
     expect(copySection).toContain("Short-window trend checks are active");
     expect(copySection).toContain("full 7-day vs prior 7-day analysis starts after ${INSIGHTS_MIN_HISTORY_DAYS} days");
     expect(copySection).toContain("We compare the last 7 days vs the previous 7 days");

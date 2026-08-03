@@ -8702,11 +8702,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       })();
 
-      // Prefer the most recent COMPLETE UTC day to avoid partial "today" rows.
-      const now = new Date();
-      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const endD = new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000);
-      const endDateUsed = `${endD.getUTCFullYear()}-${String(endD.getUTCMonth() + 1).padStart(2, "0")}-${String(endD.getUTCDate()).padStart(2, "0")}`;
+      // Keep lifetime financial totals on the same completed campaign-reporting
+      // day boundary used by daily facts, KPIs, Benchmarks, and Insights.
+      const endDateUsed = getReportingDateWindow(
+        1,
+        (campaign as any)?.reportingTimeZone,
+      ).dataThroughDate;
 
       // Simulated mode: reuse mock generator when property is yesop/test.
       const debug = String(req.query.debug || "").trim() === "1";
@@ -12264,6 +12265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
       let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
       let resolvedPropertyId = propertyId;
+      const completedDayWindow = windowMode === 'import-to-date'
+        ? null
+        : getReportingDateWindow(dateRangeToDays(dateRange), (campaign as any)?.reportingTimeZone);
 
       if (windowMode === 'import-to-date') {
         const connection = await storage.getGA4Connection(campaignId, propertyId);
@@ -12331,7 +12335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ga4DateRange = '30daysAgo';
       }
 
-      const providerStartDate = importToDateWindow?.startDate || ga4DateRange;
+      const providerStartDate = importToDateWindow?.startDate || completedDayWindow?.startDate || ga4DateRange;
+      const providerEndDate = importToDateWindow?.endDate || completedDayWindow?.endDate;
       const result = await ga4Service.getAcquisitionBreakdown(
         campaignId,
         storage,
@@ -12339,13 +12344,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resolvedPropertyId,
         limit,
         campaignFilter,
-        importToDateWindow?.endDate,
+        providerEndDate,
       );
 
       res.json({
         success: true,
         propertyId: resolvedPropertyId,
         dateRange,
+        ...(completedDayWindow || {}),
         ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
         totals: result.totals,
         rows: result.rows,

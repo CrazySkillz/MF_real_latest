@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "sectionId": "ga4-insights-live",
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "231afeb141d7c25caf1ca4a99144d651c70ddcfd",
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "Ten Major live-value defects were found and locally corrected; exact-SHA deployment, deterministic deployed scheduler, authenticated tenant/API/UI parity, and final dependency hashes are pending.",
+  "configurationBoundary": {
+    "scope": "live GA4 Insights tab only",
+    "includedSurfaces": [
+      "Executive Financials",
+      "Trends",
+      "Data Summary",
+      "tracker cards",
+      "What to investigate next"
+    ],
+    "excludedSurfaces": [
+      "Reports, PDF generation, report snapshots, scheduled reports, report schedulers, and email delivery"
+    ],
+    "sourceRules": [
+      "authorized campaign, selected active GA4 property, and saved campaign filter only",
+      "native GA4 plus GA4-context imported revenue and GA4-context spend with explicit provenance",
+      "raw channel rows only; no guessed or proportional allocation"
+    ],
+    "windowRules": [
+      "campaign-reporting-timezone completed days only",
+      "two exact complete calendar windows for comparisons",
+      "partial or incomplete months are not compared with full months",
+      "valid zero, unavailable, stale last-good, blocked, and insufficient data remain distinct"
+    ],
+    "ownershipRules": [
+      "all browser routes require campaign or item access",
+      "storage and provider reads bind campaign, property, platform context, and saved filter"
+    ]
+  },
+  "dependencies": [
+    { "path": "GA4/INSIGHTS.md", "role": "functional contract", "sha256": null },
+    { "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md", "role": "controlling status", "sha256": null },
+    { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial provenance contract", "sha256": null },
+    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh contract", "sha256": null },
+    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live renderer and query composition", "sha256": null },
+    { "path": "shared/ga4-insights.ts", "role": "calendar and monthly production calculations", "sha256": null },
+    { "path": "shared/ga4-financial-source.ts", "role": "native financial source precedence", "sha256": null },
+    { "path": "shared/metric-math.ts", "role": "financial metric math", "sha256": null },
+    { "path": "shared/ga4-kpi-consumer-state.ts", "role": "consumer state eligibility", "sha256": null },
+    { "path": "shared/ga4-kpi-live-value.ts", "role": "KPI and Benchmark live values", "sha256": null },
+    { "path": "server/routes-oauth.ts", "role": "API auth, scope, and window boundary", "sha256": null },
+    { "path": "server/storage.ts", "role": "persistence and ownership boundary", "sha256": null },
+    { "path": "server/analytics.ts", "role": "GA4 provider queries and pagination", "sha256": null },
+    { "path": "server/ga4-daily-scheduler.ts", "role": "direct daily input refresh", "sha256": null },
+    { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "direct KPI and Benchmark input recompute", "sha256": null },
+    { "path": "server/utils/reporting-timezone.ts", "role": "completed-day window resolver", "sha256": null },
+    { "path": "server/ga4-insights-certification-gate.ts", "role": "machine certification checker", "sha256": null },
+    { "path": "server/ga4-insights-certification-gate.test.ts", "role": "checker regression tests", "sha256": null },
+    { "path": "server/ga4-insights-production-path.test.ts", "role": "actual calculation tests", "sha256": null },
+    { "path": "server/ga4-insights-live-production-regression.test.ts", "role": "live boundary regression tests", "sha256": null },
+    { "path": "scripts/ga4-insights-live-readonly.ts", "role": "authenticated deployed parity validator", "sha256": null },
+    { "path": "scripts/ga4-insights-scheduler-validation.ts", "role": "deterministic deployed scheduler validator", "sha256": null },
+    { "path": "package.json", "role": "validation and build configuration", "sha256": null },
+    { "path": "render.yaml", "role": "production deployment configuration", "sha256": null }
+  ],
+  "statusDocument": {
+    "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md",
+    "startMarker": "<!-- ga4-insights-current-status -->",
+    "endMarker": "<!-- /ga4-insights-current-status -->"
+  },
+  "requiredTests": [
+    { "id": "focused_live", "status": "passed", "evidence": "11 files and 82 tests passed on the final local boundary." },
+    { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "13 files and 298 tests passed." },
+    { "id": "typescript", "status": "passed", "evidence": "npm run check passed." },
+    { "id": "build", "status": "passed", "evidence": "npm run build passed: Vite transformed 3,466 modules and esbuild produced dist/index.js." },
+    { "id": "machine_gate", "status": "passed", "evidence": "5 checker tests passed and npm run check:ga4-insights-certification passed with internally consistent UNVERIFIED status." }
+  ],
+  "externalGates": [
+    { "id": "exact_sha_deployment", "status": "pending", "evidence": "Corrected revision is not yet pushed and deployed." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "pending", "evidence": "Authenticated deployed API/UI parity has not yet run." },
+    { "id": "tenant_isolation", "status": "pending", "evidence": "Deployed non-owner fail-closed check has not yet run." },
+    { "id": "deterministic_scheduler", "status": "pending", "evidence": "Deployed campaign-scoped scheduler validation has not yet run." },
+    { "id": "dependency_hashes", "status": "pending", "evidence": "Final dependency hashes are recorded only after external evidence passes." }
+  ]
+}

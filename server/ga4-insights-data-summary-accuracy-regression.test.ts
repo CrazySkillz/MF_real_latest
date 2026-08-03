@@ -34,9 +34,12 @@ describe("GA4 Insights Data Summary accuracy", () => {
 
     for (const section of [liveSection, downloadSection, scheduledSection]) {
       expect(section).toContain("Total across revenue sources");
-      expect(section).toContain("Current GA4 total");
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
+    }
+    expect(liveSection).toContain("Exact completed-day window");
+    for (const section of [downloadSection, scheduledSection]) {
+      expect(section).toContain("Current GA4 total");
     }
     expect(page).not.toContain("const avgDailyRev = Number(financialRevenue) / Math.max(availDays, 1);");
     expect(page).not.toContain("Averaging ~${formatMoney(avgDailyRev)}/day over ${availDays} days.");

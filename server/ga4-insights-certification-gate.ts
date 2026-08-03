@@ -1,0 +1,197 @@
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, join, normalize } from "node:path";
+import { pathToFileURL } from "node:url";
+
+export const GA4_INSIGHTS_CERTIFICATION_RECORD = "GA4/certifications/ga4-insights.json";
+export const GA4_INSIGHTS_REQUIRED_DEPENDENCIES = [
+  "GA4/INSIGHTS.md",
+  "GA4/INSIGHTS_PRODUCTION_READINESS.md",
+  "GA4/FINANCIAL_SOURCES.md",
+  "GA4/REFRESH_AND_PROCESSING.md",
+  "client/src/pages/ga4-metrics.tsx",
+  "shared/ga4-insights.ts",
+  "shared/ga4-financial-source.ts",
+  "shared/metric-math.ts",
+  "shared/ga4-kpi-consumer-state.ts",
+  "shared/ga4-kpi-live-value.ts",
+  "server/routes-oauth.ts",
+  "server/storage.ts",
+  "server/analytics.ts",
+  "server/ga4-daily-scheduler.ts",
+  "server/ga4-kpi-benchmark-jobs.ts",
+  "server/utils/reporting-timezone.ts",
+  "server/ga4-insights-certification-gate.ts",
+  "server/ga4-insights-certification-gate.test.ts",
+  "server/ga4-insights-production-path.test.ts",
+  "server/ga4-insights-live-production-regression.test.ts",
+  "scripts/ga4-insights-live-readonly.ts",
+  "scripts/ga4-insights-scheduler-validation.ts",
+  "package.json",
+  "render.yaml",
+] as const;
+
+type Context = {
+  exists: (path: string) => boolean;
+  readText: (path: string) => string;
+  sha256: (path: string) => string;
+  commitExists: (sha: string) => boolean;
+  commitIsAncestor: (sha: string) => boolean;
+};
+export type GA4InsightsCertificationGateResult = { ok: boolean; errors: string[] };
+
+const fullSha = /^[0-9a-f]{40}$/i;
+const fileHash = /^[0-9a-f]{64}$/i;
+const isObject = (value: unknown): value is Record<string, any> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const isSafePath = (path: string) => {
+  if (!path || isAbsolute(path) || path.includes("\\") || /[*?]/.test(path)) return false;
+  const resolved = normalize(path).replace(/\\/g, "/");
+  return resolved !== ".." && !resolved.startsWith("../");
+};
+export const hashGA4InsightsCertificationText = (value: string) =>
+  createHash("sha256").update(value.replace(/\r\n?/g, "\n")).digest("hex");
+
+const checkEvidence = (label: string, evidence: any, ready: boolean, errors: string[]) => {
+  if (!Array.isArray(evidence) || evidence.length === 0) {
+    errors.push(`${label} must contain evidence`);
+    return;
+  }
+  const ids = new Set<string>();
+  for (const item of evidence) {
+    if (!item || typeof item.id !== "string" || !item.id.trim()) {
+      errors.push(`${label} contains an entry without an id`);
+      continue;
+    }
+    if (ids.has(item.id)) errors.push(`${label} contains duplicate id ${item.id}`);
+    ids.add(item.id);
+    if (!["passed", "failed", "pending", "not_applicable"].includes(item.status)) {
+      errors.push(`${label} ${item.id} has invalid status`);
+    }
+    if (typeof item.evidence !== "string" || !item.evidence.trim()) {
+      errors.push(`${label} ${item.id} has no evidence`);
+    }
+    if (ready && !["passed", "not_applicable"].includes(item.status)) {
+      errors.push(`${label} ${item.id} is ${item.status} while status claims ready`);
+    }
+  }
+};
+
+export function evaluateGA4InsightsCertification(
+  value: unknown,
+  context: Context,
+): GA4InsightsCertificationGateResult {
+  const errors: string[] = [];
+  if (!isObject(value)) return { ok: false, errors: ["record must be a JSON object"] };
+  if (value.schemaVersion !== 1) errors.push("schemaVersion must be 1");
+  if (value.sectionId !== "ga4-insights-live") errors.push("invalid sectionId");
+  if (!["UNVERIFIED", "PRODUCTION_READY"].includes(value.status)) errors.push("invalid status");
+  const ready = value.status === "PRODUCTION_READY";
+
+  if (!fullSha.test(value.lastReviewedSha || "")) errors.push("lastReviewedSha must be a full Git SHA");
+  else if (!context.commitExists(value.lastReviewedSha)) errors.push("lastReviewedSha is not a commit");
+  else if (!context.commitIsAncestor(value.lastReviewedSha)) errors.push("lastReviewedSha is not an ancestor of HEAD");
+  if (ready) {
+    if (!fullSha.test(value.certifiedSha || "")) errors.push("certifiedSha must be a full Git SHA");
+    if (value.certifiedSha !== value.lastReviewedSha) errors.push("certifiedSha must equal lastReviewedSha");
+    if (value.deployedSha !== value.certifiedSha) errors.push("deployedSha must equal certifiedSha");
+    if (value.invalidationReason !== null) errors.push("ready status requires null invalidationReason");
+  } else {
+    if (value.certifiedSha !== null || value.deployedSha !== null) errors.push("UNVERIFIED cannot carry certified/deployed SHAs");
+    if (typeof value.invalidationReason !== "string" || !value.invalidationReason.trim()) {
+      errors.push("UNVERIFIED requires invalidationReason");
+    }
+  }
+
+  const boundary = value.configurationBoundary;
+  if (!isObject(boundary)) errors.push("configurationBoundary must be an object");
+  else {
+    if (boundary.scope !== "live GA4 Insights tab only") errors.push("scope must be live GA4 Insights tab only");
+    for (const field of ["includedSurfaces", "sourceRules", "windowRules", "ownershipRules", "excludedSurfaces"]) {
+      if (!Array.isArray(boundary[field]) || boundary[field].length === 0) errors.push(`empty boundary ${field}`);
+    }
+    const excluded = Array.isArray(boundary.excludedSurfaces) ? boundary.excludedSurfaces.join(" ").toLowerCase() : "";
+    for (const required of ["reports", "pdf", "scheduled reports", "email delivery"]) {
+      if (!excluded.includes(required)) errors.push(`excludedSurfaces must name ${required}`);
+    }
+  }
+
+  const dependencies = Array.isArray(value.dependencies) ? value.dependencies : [];
+  const byPath = new Map(dependencies.map((item: any) => [item?.path, item]));
+  for (const required of GA4_INSIGHTS_REQUIRED_DEPENDENCIES) {
+    if (!byPath.has(required)) errors.push(`missing required dependency ${required}`);
+  }
+  const seen = new Set<string>();
+  for (const dependency of dependencies) {
+    const path = dependency?.path;
+    if (typeof path !== "string" || !isSafePath(path)) {
+      errors.push("unsafe dependency path");
+      continue;
+    }
+    if (/ga4\/reports|scheduled-report|report-scheduler|pdf|email/i.test(path)) {
+      errors.push(`${path}: Reports-owned dependency is outside the Insights boundary`);
+    }
+    if (seen.has(path)) errors.push(`duplicate dependency ${path}`);
+    seen.add(path);
+    if (!context.exists(path)) errors.push(`${path}: missing`);
+    else if (ready && !fileHash.test(dependency.sha256 || "")) errors.push(`${path}: certified hash missing`);
+    else if (ready && context.sha256(path) !== dependency.sha256) errors.push(`${path}: changed since certification`);
+    else if (!ready && dependency.sha256 !== null && !fileHash.test(dependency.sha256 || "")) errors.push(`${path}: invalid hash`);
+  }
+
+  const doc = value.statusDocument;
+  if (!doc || !byPath.has(doc.path) || !context.exists(doc.path)) errors.push("statusDocument must be an existing dependency");
+  else {
+    const content = context.readText(doc.path);
+    const start = content.indexOf(doc.startMarker);
+    const end = start < 0 ? -1 : content.indexOf(doc.endMarker, start + doc.startMarker.length);
+    if (start < 0 || end < 0) errors.push("statusDocument markers are missing");
+    else {
+      const current = content.slice(start, end);
+      if (!current.includes(`<!-- ga4-insights-certification-status: ${value.status} -->`)) errors.push("status marker does not match record");
+      if (!ready && /Status:\s*\*\*PRODUCTION_READY\*\*/i.test(current)) errors.push("current status contradicts UNVERIFIED record");
+    }
+  }
+  checkEvidence("requiredTests", value.requiredTests, ready, errors);
+  checkEvidence("externalGates", value.externalGates, ready, errors);
+  return { ok: errors.length === 0, errors };
+}
+
+function repositoryContext(root: string): Context {
+  const resolve = (path: string) => join(root, ...path.split("/"));
+  const gitOk = (args: string[]) => spawnSync("git", args, { cwd: root, stdio: "ignore" }).status === 0;
+  return {
+    exists: (path) => existsSync(resolve(path)),
+    readText: (path) => readFileSync(resolve(path), "utf8"),
+    sha256: (path) => hashGA4InsightsCertificationText(readFileSync(resolve(path), "utf8")),
+    commitExists: (sha) => gitOk(["cat-file", "-e", `${sha}^{commit}`]),
+    commitIsAncestor: (sha) => gitOk(["merge-base", "--is-ancestor", sha, "HEAD"]),
+  };
+}
+
+export function runGA4InsightsCertificationGate(root = process.cwd()) {
+  const context = repositoryContext(root);
+  if (!context.exists(GA4_INSIGHTS_CERTIFICATION_RECORD)) {
+    return { ok: false, errors: [`${GA4_INSIGHTS_CERTIFICATION_RECORD}: certification record is missing`] };
+  }
+  try {
+    return evaluateGA4InsightsCertification(
+      JSON.parse(context.readText(GA4_INSIGHTS_CERTIFICATION_RECORD)),
+      context,
+    );
+  } catch (error) {
+    return { ok: false, errors: [`invalid certification JSON: ${String(error)}`] };
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const result = runGA4InsightsCertificationGate();
+  if (!result.ok) {
+    console.error("[GA4 Insights certification] FAILED");
+    for (const error of result.errors) console.error(`- ${error}`);
+    process.exitCode = 1;
+  } else {
+    console.log("[GA4 Insights certification] PASS: status is internally consistent.");
+  }
+}

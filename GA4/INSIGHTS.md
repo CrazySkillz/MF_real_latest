@@ -1,10 +1,25 @@
-# GA4 Insights
+﻿# GA4 Insights
 
 ## Purpose
 
-This file defines the GA4 `Insights` tab.
+This file is the short functional overview for the GA4 `Insights` tab.
 
-This tab is the "so what / what should I do next" layer for the GA4 campaign.
+Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness answer, validation evidence, and future-platform template guidance.
+
+Current controlling answer:
+
+`GA4 Insights is UNVERIFIED at the current working revision. The strict whole-tab audit found and locally corrected live value-path defects; clean certification remains blocked until the corrected SHA is deployed and the required authenticated production evidence passes.`
+
+## Document Ownership
+
+The Insights documentation is intentionally split into two files:
+
+- `GA4/INSIGHTS.md`
+  Functional overview of the current GA4 Insights tab.
+- `GA4/INSIGHTS_PRODUCTION_READINESS.md`
+  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for Meta, Google Ads, LinkedIn, and other future platform sources.
+
+There is no separate `What to investigate next` production-readiness tracker anymore. That subsection is covered inside `GA4/INSIGHTS_PRODUCTION_READINESS.md` with the rest of the tab.
 
 ## Current Tab Structure
 
@@ -13,17 +28,32 @@ The current tab contains:
 - `Executive financials`
 - `Trends`
 - `Data Summary`
-- an executive summary tracker panel
+- executive summary tracker cards
 - `What to investigate next`
 
 Important meaning:
 
-- this tab combines summary, diagnostics, trend context, and action guidance
-- it is not just a charting or anomaly surface
+- this tab is the GA4 campaign's executive interpretation layer
+- it combines financial health, daily-history trends, operational summary, and prioritized investigation guidance
+- it is not only a charting surface and not only an anomaly detector
 
-## Executive Financials
+## Scope Contract
 
-The `Executive financials` section summarizes:
+GA4 Insights must remain scoped to:
+
+- the selected campaign
+- the selected client
+- the connected GA4 property
+- the saved GA4 campaign/source selection for that campaign
+- the campaign reporting timezone when deciding completed daily history
+
+Insights must not silently broaden to unrelated GA4 properties, campaigns, clients, or unselected source data.
+
+## Section Summary
+
+### Executive Financials
+
+Shows:
 
 - `Spend`
 - `Revenue`
@@ -31,266 +61,104 @@ The `Executive financials` section summarizes:
 - `ROAS`
 - `ROI`
 
-It also shows source provenance.
-
-Important meaning:
-
-- it is built from the same financial model as the Overview cards
-- it is the executive-facing campaign finance summary
-- provenance belongs in the shared `Sources used` footer for the section, not as repeated microcopy under each individual `Spend`, `Revenue`, `Profit`, `ROAS`, or `ROI` card
-- the Revenue provenance line should list the full active revenue-source set used in the totals, including the GA4-native revenue row when GA4 native revenue exists
-
-## Data Integrity And Configuration Checks
-
-The current Insights engine already checks for:
-
-- missing GA4 totals
-- missing revenue
-- missing spend
-- spend without revenue
-- revenue without spend
-- blocked KPIs
-- blocked benchmarks
-
-These checks are actionable and should remain part of the tab.
-
-## Performance / Anomaly Signals
-
-The current Insights engine includes:
-
-- KPI performance context
-- benchmark performance context
-- week-over-week anomaly checks
-- short-window anomaly checks
-- positive momentum signals
-- channel and campaign observations
-
-## Executive-Friendly Summary
-
-The current tracker panel shows:
-
-- `Total insights`
-- `High priority`
-- `Needs attention`
-
 Current meaning:
 
-- `Total insights`
-  Count of all generated insight items currently shown by the findings engine.
-- `High priority`
-  Count of insight items currently classified as high severity.
-- `Needs attention`
-  Count of insight items currently classified as medium severity.
+- spend comes from active spend-source totals
+- revenue is GA4 native revenue plus imported revenue sources when present
+- source provenance is shown in the shared `Sources used` footer
+- the copy is conditional on actual connected spend and revenue sources
+- this section does not show Trends date-range or freshness metadata
 
-Important meaning:
+### Trends
 
-- positive and informational items may exist in the findings list without contributing to `High priority` or `Needs attention`
-- the summary cards are derived from the current findings list, not a separate source of truth
-
-## Trends
-
-The current `Trends` section supports:
+Shows completed daily-history views:
 
 - `Daily`
 - `7d`
 - `30d`
 - `Monthly`
 
-Users can switch the viewed metric and see:
+Current meaning:
 
-- a chart
-- a comparison table
+- Trends uses persisted GA4 daily facts for the selected campaign/property/scope
+- Insights fetches 60 completed days through an isolated query so two exact 30-day windows can be evaluated without changing Overview or KPI windows
+- today's intraday data is excluded until it becomes a completed reporting day
+- `Completed-day cutoff`, `Latest imported day`, `Reporting timezone`, `Last refreshed`, and `Expected refresh` explain freshness
+- `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
+- missing GA4 rows are not synthesized as zero-value days and do not widen a comparison window
 
-Important meaning:
+History gates:
 
-- trends depend on enough daily history being available
-- some trend modes need more history than others
-- `Users` is currently only available in `Daily` mode in the present implementation
-- history gating is mode-specific:
-  - `Daily` requires at least 2 daily rows
-  - `7d` requires at least 14 daily rows
-  - `30d` requires at least 60 daily rows
-  - `Monthly` requires at least 2 calendar months
+- `Daily`: at least 2 completed daily rows; a delta is shown only when the actual prior calendar day exists
+- `7d`: two complete adjacent 7-calendar-day windows
+- `30d`: two complete adjacent 30-calendar-day windows
+- `Monthly`: at least 2 calendar months; partial or incomplete months are labeled and are not compared with full months
 
-## Trends Current-State Observation
+### Data Summary
 
-The current `Trends` implementation is not just a test-mode chart.
-
-Current code-path meaning:
-
-- in test mode, the tab can render from simulated GA4 daily data
-- in production mode, the tab is intended to render from persisted GA4 daily facts for the selected GA4 property and the campaign's selected GA4 campaign scope
-- if persisted daily rows are missing for the requested campaign/property window, the current backend attempts an on-demand backfill from the real GA4 Data API and then persists those rows
-- daily backfill queries `sessionCampaignName` first, then falls back to `pageLocation` `utm_campaign` only when the primary campaign-dimension daily result returns no rows
-- the chart and comparison tables are then built from those persisted daily rows
-- visible Trends daily rows are completed-day history rows through the campaign reporting timezone's latest completed day; today's intraday GA4 data is excluded from Trends history until it becomes a completed reporting day
-
-Important meaning:
-
-- this should populate accurately in production if the GA4 connection is valid and daily facts are being ingested/persisted correctly
-- this is not a mock-only design
-- the main production risk is operational freshness and history availability, not that the Trends UI is hardwired to simulated data
-- a same-day live GA4 seed run can populate current Overview metrics before it creates enough persisted daily history for Trends; 7d, 30d, and Monthly views require repeated daily history, not only more events on the same day
-- one completed daily row should show as one available day, but the Daily trend chart still requires two completed daily rows for comparison
-
-## Trends Freshness Labels
-
-The Trends section should make daily-history freshness explicit.
-
-Visible labels:
-
-- `Data through`
-  The latest completed reporting day included in Trends.
-- `Reporting timezone`
-  The campaign reporting timezone used to decide which GA4 day is complete. Missing or invalid values fall back to `UTC`. Location labels should be readable, such as `New York`, not underscored values such as `New_York`.
-- `Last refreshed`
-  The latest stored GA4 daily-row refresh timestamp returned by `/api/campaigns/:id/ga4-daily`.
-- `Expected refresh`
-  The scheduled GA4 daily refresh time for the current `Data through` day, displayed in the campaign reporting timezone.
-
-Stale warning rule:
-
-- show a factual stale warning only when the expected refresh time has passed and the latest completed refresh is missing or older than that expected refresh
-- do not change metric values when showing the warning
-- do not treat today's intraday GA4 activity as a completed Trends day
-- generated GA4 Insights reports should include the same data-through, reporting-timezone, and last-refreshed context as the live Trends section
-
-## GA4 Insights Trends Production-Readiness Checklist
-
-Use this checklist after the full GA4 manual-user-journey pass is complete.
-
-Reporting timezone readiness is tracked separately in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. Trends daily rows use the campaign reporting timezone for the completed-day cutoff; scheduler timing, stale-state warnings, and report-output timezone metadata remain tracked in that plan.
-
-Data availability:
-
-- confirm the campaign has a valid GA4 access-token connection
-- confirm the correct GA4 property is selected
-- confirm the campaign's GA4 campaign filter/scope is correct
-- confirm persisted GA4 daily rows exist for the campaign/property
-
-History sufficiency:
-
-- confirm `Daily` has at least `2` days of history
-- confirm `7d` has at least `14` days of history
-- confirm `30d` has at least `60` days of history
-- confirm `Monthly` has at least `2` calendar months if month-over-month comparison is expected
-
-Metric integrity:
-
-- confirm daily rows contain expected values for `sessions`, `users`, `pageviews`, `conversions`, `revenue`, and `engagementRate`
-- confirm `Users` is only exposed in `Daily` mode
-- confirm `7d`, `30d`, and `Monthly` values are coherent with the daily rows they summarize
-
-Refresh/freshness:
-
-- confirm the GA4 daily scheduler is running in the deployed environment
-- confirm an empty daily-facts table can be backfilled on demand from the real GA4 Data API
-- confirm live UTM-only daily history can backfill through `pageLocation` `utm_campaign` when GA4 campaign attribution dimensions return no daily rows
-- confirm normal refetch paths do not leave Trends stale relative to refreshed GA4 daily rows
-
-Error handling:
-
-- confirm expired or invalid GA4 tokens surface a reconnect/reauthorization path
-- confirm missing-history states show mode-specific guidance rather than misleading zeroes:
-  - `Daily`: `2 days`
-  - `7d`: `14 days`
-  - `30d`: `60 days`
-  - `Monthly`: `2 calendar months`
-
-Cross-tab consistency:
-
-- confirm Insights `Trends` uses the same persisted GA4 daily facts as other daily-value GA4 surfaces
-- confirm Insights trend totals remain coherent with Overview and KPI/Benchmark context after refresh
-
-## What To Investigate Next
-
-Production-readiness hardening for this section is tracked in `GA4/INSIGHTS_WHAT_TO_INVESTIGATE_NEXT_PRODUCTION_READINESS.md`.
-
-Each current finding includes:
-
-- severity or priority
-- title
-- supporting description or evidence
-- suggested next step when available
-
-Important meaning:
-
-- the findings list is a merged output from one insights engine
-- it combines integrity/config checks, KPI context, benchmark context, anomaly signals, and financial/performance context
-- not every item is a negative alert; the list can also contain positive or informational items
-- live UI findings are grouped by investigation type so setup problems, off-track targets, trend signals, revenue/spend checks, and informational context are easier to scan
-- invalid saved KPI or Benchmark targets should appear as configuration findings before performance conclusions; invalid items must not also create normal behind-target or behind-benchmark guidance
-- live UI findings should show display-only data-basis and confidence metadata so executives can see whether a card is based on saved KPI/Benchmark configuration, GA4 completed daily history, GA4 to-date values, imported revenue, or revenue/spend totals
-- the `What to investigate next` intro should be history-aware: fewer than 6 completed daily rows should explain that trend/anomaly checks need more history, 6 to 13 rows should explain that short-window checks are active, and 14 or more rows may describe the full 7-day vs prior 7-day comparison
-- recommendation text should be phrased as checks and investigation starting points, not causal conclusions, unless the rule directly proves a setup or configuration issue
-- GA4 Insights report output should preserve the same action intro, finding groups, `Recommended check:` label, and data-basis/confidence metadata as the live `What to investigate next` section
-
-## Current Limits Of Recommendations
-
-The current `What to investigate next` section is rule-based and logically grounded, but it should be treated as executive directional guidance rather than a fully causal diagnostic engine.
+Shows compact operational context from currently available campaign values.
 
 Current meaning:
 
-- findings are generated from explicit rules, thresholds, KPI/Benchmark state, GA4 daily history, and simple channel heuristics
-- recommendations are intended to suggest recommended checks and sensible starting points for investigation
-- recommendations do not prove root cause
+- financial values use the same revenue and spend model as Executive Financials
+- traffic values use the exact current 30-calendar-day completed-day window and remain visible for verified zero
+- mixed-source financial values are shown as totals, not exact daily averages
+- channel rows show the raw property/filter-scoped GA4 breakdown values and their own shares; values are never proportionally allocated to another total
 
-Important current limits:
+### Tracker Cards
 
-- revenue-related recommendations are only partially aligned with the app's full financial model when imported revenue is important
-- GA4 channel/revenue observations are based on GA4-attributed campaign/channel data, not a full attributed allocation of all imported external revenue
-- if a campaign relies heavily on imported revenue, executive financial totals may still be correct while some revenue-change guidance remains more GA4-specific than full-funnel
-- informational revenue averages are directionally useful, but less rigorous when imported revenue is snapshot-style rather than true daily history
+Shows:
 
-Practical interpretation:
+- `Total insights`
+- `High priority`
+- `Needs attention`
 
-- trust the section as a consistent rule-driven summary layer
-- use it to prioritize what to inspect next
-- do not treat it as definitive causal attribution
+Current meaning:
 
-## Data Summary
+- tracker cards are derived from generated findings
+- hidden findings must be disclosed when the visible list is capped
 
-The current `Data Summary` section is a supporting context block.
+### What To Investigate Next
 
-Its purpose is to give a quick at-a-glance performance summary using currently available campaign data before the user reads the deeper findings list.
+Shows grouped, rule-based executive guidance.
 
-Important meaning:
+Current meaning:
 
-- `Executive financials` focuses on financial health
-- `Data Summary` gives compact operational context
-- `What to investigate next` is the action-oriented interpretation layer
+- findings are grouped by investigation type
+- invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
+- cards include data-basis and confidence labels
+- intro copy is history-aware
+- recommendations are phrased as checks, not proven causal conclusions
 
-## Budget / Pacing Prompt Pattern
+## Certification Boundary
 
-The intended pattern includes a campaign-budget nudge when:
+This document and the Insights certification cover only the live GA4 Insights tab. Reports, PDFs, report snapshots, scheduled reports, and email delivery belong to the Reports audit and are not Insights criteria, evidence, limitations, or deferred Insights work.
 
-- campaign budget is not set
-- enough spend and history exist to support pacing-style warnings
+## Refresh Pattern
 
-Purpose:
+Insights is downstream of the GA4 refresh pipeline.
 
-- prompt the user to add a budget
-- unlock pacing-style executive warnings and alerts
-
-## Current-State Note
-
-- campaign budget already exists as campaign configuration upstream of Insights
-- the campaign setup flow describes budget as enabling spend tracking and pacing alerts in Insights
-- the current GA4 Insights tab does not clearly surface a dedicated GA4-specific budget-entry or pacing-unlock prompt yet
-
-## Insights Refresh Pattern
-
-Insights is downstream of the GA4 data-refresh pipeline.
-
-Its inputs include:
+Inputs include:
 
 - refreshed GA4 daily facts
 - refreshed GA4 to-date values
 - refreshed spend and revenue inputs
 - refreshed KPI context
-- refreshed benchmark context
+- refreshed Benchmark context
 
 Important meaning:
 
 - if Overview-driving values become fresher, Insights should become fresher on refetch or rerender
-- GA4 reporting can finish processing already-sent Measurement Protocol events after the script or live traffic event occurred, so Insights values may increase on a later refetch even when the script was not rerun
+- GA4 can process Measurement Protocol events after the script or traffic event occurred, so values may increase later even when the seed script was not rerun
+- Trends requires completed daily facts; same-day Overview changes do not automatically create a completed Trends row
+
+## Production-Readiness Reference
+
+For any future question such as:
+
+- is Insights production-ready?
+- is this section accurate?
+- can this be used as a template for Meta or Google Ads?
+- what must another platform implement before copying this pattern?
+
+Use `GA4/INSIGHTS_PRODUCTION_READINESS.md`.

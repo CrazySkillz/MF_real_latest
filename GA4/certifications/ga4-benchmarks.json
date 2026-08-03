@@ -4,15 +4,15 @@
   "betaReadinessStatus": "BETA_READY",
   "productionCertificationStatus": "UNVERIFIED",
   "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
-  "reviewedImplementationGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+  "reviewedImplementationGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
   "certifiedGitSha": null,
   "reviewedAt": "2026-08-03",
   "scope": "GA4 Benchmarks and documented Benchmark consumers only: cards, Tracker, Insights, browser and scheduled Reports, in-app alerts/notifications, email attempt/audit safety, CRUD, refresh/recompute, schedulers, persistence, and destructive operations. External Benchmark email delivery is excluded from the initial beta.",
   "revisionBoundary": {
     "status": "LOCKED_FOR_PRODUCTION_CERTIFICATION_QUEUE",
-    "runtimeGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
-    "deployedEvidenceGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
-    "capturedAt": "2026-08-03T07:33:55.375Z",
+    "runtimeGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+    "deployedEvidenceGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+    "capturedAt": "2026-08-03T09:08:12.791Z",
     "changedFilesSinceRuntime": [
       "GA4/BENCHMARKS_PRODUCTION_READINESS.md",
       "GA4/certifications/ga4-benchmarks.json",
@@ -31,14 +31,14 @@
       "ga4DailyRunOnStartup": false,
       "ga4DailyNextRunAt": "2026-08-04T03:00:00.000Z"
     },
-    "limitations": "Current Commit 13 exact deployed parity and controlled artifact validation are complete. Both scheduled report types correctly remained pending_delivery without false snapshots because Mailgun Events API confirmation was unavailable. Current Commit 14 natural-run evidence and Current Commit 15 provider-confirmed/inbox delivery evidence remain required before production status can change from UNVERIFIED."
+    "limitations": "Current Commit 15 provider confirmation and immutable scheduled Benchmark/Insights snapshots are complete. Current Commit 14 natural-run evidence and approved-inbox receipt confirmation remain required before production status can change from UNVERIFIED."
   },
   "localCertificationGate": {
     "status": "complete",
-    "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+    "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
     "validatedAt": "2026-08-03",
     "applicableRegressionFilesPassed": 54,
-    "applicableRegressionTestsPassed": 624,
+    "applicableRegressionTestsPassed": 615,
     "typescriptCheck": "passed",
     "productionBuild": "passed",
     "productionRuntimeSourceChangesSinceReviewedImplementation": [],
@@ -48,12 +48,14 @@
       "The spend-source destructive-safety guard expected superseded split delete calls; it now proves the existing campaign/source/platform-scoped transactional helper and rejects the old non-atomic calls.",
       "The deployed validator captured traffic-backed consumers before their browser input reached a terminal state.",
       "The authorized artifact validator initially selected unrelated GA4 Benchmark reports instead of requiring the campaign with both an active property and active GA4 Benchmarks."
+      ,"The authorized validator used a timezone-sensitive database timestamp cutoff and falsely counted zero fresh delivered audits; it now compares provider response IDs with a pre-run baseline."
+      ,"The read-only delivery inspector initially joined UUID and text snapshot identifiers without an explicit cast."
     ],
     "unrelatedSharedRegressionFailures": null
   },
   "deployedConsumerParityGate": {
     "status": "complete",
-    "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+    "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
     "validatedAt": "2026-08-03",
     "mode": "read_only_application_data",
     "campaignCount": 2,
@@ -68,16 +70,16 @@
     "noPropertyFailClosedParity": "passed",
     "manualBenchmarkArtifactParity": "passed_exact_immutable_values_and_pdf",
     "manualInsightsArtifactParity": "passed_exact_immutable_values_and_pdf",
-    "scheduledBenchmarkArtifactParity": "correctly_fail_closed_pending_delivery_without_snapshot",
-    "scheduledInsightsArtifactParity": "correctly_fail_closed_pending_delivery_without_snapshot",
-    "productionDeliveryCertification": "UNVERIFIED",
+    "scheduledBenchmarkArtifactParity": "passed_provider_confirmed_sent_with_immutable_snapshot",
+    "scheduledInsightsArtifactParity": "passed_provider_confirmed_sent_with_immutable_snapshot",
+    "productionDeliveryCertification": "PROVIDER_CONFIRMED_INBOX_UNVERIFIED",
     "productionConfigurationRestored": true,
     "originalConfigurationHash": "fd95883d1e7f",
     "restoredConfigurationHash": "fd95883d1e7f",
     "limitations": [
-      "Mailgun accepted both controlled scheduled messages, but its Events API did not confirm delivery.",
-      "No sent snapshot was created for either pending-delivery event; this is the required fail-closed behavior.",
-      "Provider-confirmed delivery, fresh sent-snapshot evidence, and inbox receipt remain Current Commit 15 evidence."
+      "Two distinct Mailgun eu-region audits are provider-confirmed delivered with delivered timestamps.",
+      "Benchmark and Insights each have one sent event and one immutable snapshot containing 2 Benchmark rows.",
+      "Actual approved-inbox receipt remains unverified."
     ]
   },
   "activeProductionCertificationCommits": [
@@ -103,15 +105,15 @@
     },
     {
       "id": 15,
-      "status": "blocked_by_14_and_provider_delivery",
+      "status": "waiting_for_14_and_inbox_receipt",
       "name": "Resolve email delivery and issue final certification"
     }
   ],
   "findings": {
     "critical": 0,
     "majorFound": 9,
-    "majorRemaining": 1,
-    "minorFound": 7,
+    "majorRemaining": 0,
+    "minorFound": 9,
     "minorRemaining": 0
   },
   "dependencyBoundary": [
@@ -317,11 +319,53 @@
       "status": "passed_with_natural_run_outstanding",
       "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
       "result": "At 2026-08-03T08:15:12Z production returned 200 on exact SHA 9ed32290b32773af543b7a927ef5e197c4e3b761. The GA4 daily scheduler was healthy, started, timer-scheduled, and idle with zero corrected-revision runs; next run was 2026-08-04T03:00:00.000Z."
+    },
+    {
+      "command": "npx tsx --env-file=.env scripts/ga4-benchmark-commit13-delivery-readonly.ts",
+      "status": "failed_root_cause_proven",
+      "validatedGitSha": "3f9fb7361c8ba93a73696fae2d166f25cab369dd",
+      "result": "The persisted Mailgun confirmation response was domain not found and mailgunRegion was null because report confirmation discarded the eu region recorded at provider acceptance."
+    },
+    {
+      "command": "& .\\node_modules\\.bin\\vitest.cmd run --pool forks server/alert-email-delivery-regression.test.ts",
+      "status": "failed_then_fixed_and_passed",
+      "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+      "result": "The new region-preservation guard failed 1 of 5 tests before the runtime fix and passed all 5 afterward."
+    },
+    {
+      "command": "GET https://marketforensics.onrender.com/api/health",
+      "status": "passed",
+      "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+      "result": "Production returned 200 with exact Current Commit 15 runtime fix SHA b42c51e9ebcc12d74851cc640c86038513a57828."
+    },
+    {
+      "command": "Authorized controlled scheduled Benchmark and Insights validation to the approved recipient",
+      "status": "provider_confirmed_snapshots_passed_inbox_unverified",
+      "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+      "result": "Two distinct eu-region Mailgun audits reached delivered with delivered timestamps. Benchmark and Insights each reached sent and created exactly one immutable snapshot containing 2 Benchmark rows. Original report configuration was restored. Inbox receipt is not claimed."
+    },
+    {
+      "command": "PowerShell-generated 54-file documented and directly affected inventory; direct Vitest invocation",
+      "status": "passed",
+      "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+      "result": "54 files and 615 tests passed, including source-safety-regression.test.ts 87 of 87."
+    },
+    {
+      "command": "npm run check and npm run build",
+      "status": "passed",
+      "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+      "result": "TypeScript and Vite/esbuild production bundles completed successfully after the region fix and validation-tool corrections."
+    },
+    {
+      "command": "GET https://marketforensics.onrender.com/api/health and GET https://marketforensics.onrender.com/health/scheduler",
+      "status": "passed_with_current_14_outstanding",
+      "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
+      "result": "At 2026-08-03T09:33:27Z production returned exact SHA b42c51e9ebcc12d74851cc640c86038513a57828. Report scheduler metrics recorded totalSent 2, totalFailed 0, and 100.00% success. The GA4 daily scheduler remained healthy and idle with zero scheduled runs and next run 2026-08-04T03:00:00.000Z."
     }
   ],
   "productionOnlyEvidenceOutstanding": [
     "A successful natural timer-fired GA4 daily run on the corrected revision",
-    "Working Mailgun Events API confirmation plus a fresh provider-confirmed scheduled snapshot and inbox receipt before Benchmark email delivery is enabled or claimed"
+    "Approved-inbox receipt confirmation for the controlled Benchmark and Insights messages"
   ],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
 }

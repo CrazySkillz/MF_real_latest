@@ -62,6 +62,7 @@ let original: any;
 let temporary: any;
 let temporaryApplied = false;
 let restored = false;
+let existingProviderResponseIds = new Set<string>();
 let clerkSessionId = "";
 let signInTokenId = "";
 const startedAt = new Date();
@@ -393,6 +394,14 @@ try {
   const benchmarkIds = benchmarks.rows.map((row: any) => String(row.id));
   if (benchmarkIds.length === 0) throw new Error("The target report campaign has no active GA4 Benchmarks");
   original = configurationBoundary(report);
+  const existingAudits = await client.query(`
+    SELECT provider_response_id
+    FROM email_alert_events
+    WHERE kind = 'report' AND entity_type = 'report' AND entity_id = $1
+  `, [report.id]);
+  existingProviderResponseIds = new Set(
+    existingAudits.rows.map((row: any) => String(row.provider_response_id || "")).filter(Boolean),
+  );
   await client.query("ROLLBACK");
 
   const tokenResponse = await clerkPost("/sign_in_tokens", {
@@ -436,9 +445,9 @@ try {
   const deliveryRows = await client.query(`
     SELECT success, delivery_status, provider_response_id, delivered_at
     FROM email_alert_events
-    WHERE kind = 'report' AND entity_type = 'report' AND entity_id = $1 AND created_at >= $2
+    WHERE kind = 'report' AND entity_type = 'report' AND entity_id = $1
     ORDER BY created_at
-  `, [report.id, startedAt]);
+  `, [report.id]);
   await client.query("ROLLBACK");
   if (verification.rows.length !== 1) throw new Error("Restored report is missing");
   const originalHash = boundaryHash(original);
@@ -450,7 +459,8 @@ try {
     row.success === true
     && row.delivery_status === "delivered"
     && row.delivered_at
-    && row.provider_response_id);
+    && row.provider_response_id
+    && !existingProviderResponseIds.has(String(row.provider_response_id)));
   if (!MANUAL_ONLY && !ALLOW_PENDING_DELIVERY && delivered.length < REPORT_TYPES.length) {
     throw new Error(`Expected ${REPORT_TYPES.length} provider-confirmed deliveries; found ${delivered.length}`);
   }

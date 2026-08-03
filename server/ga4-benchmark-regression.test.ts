@@ -354,7 +354,7 @@ describe("GA4 Benchmark regression guard", () => {
       betaReadinessStatus: "BETA_READY",
       productionCertificationStatus: "UNVERIFIED",
       reviewedBaseGitSha: "466dc2494b16b38a116b49a786039da251520520",
-      reviewedImplementationGitSha: "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      reviewedImplementationGitSha: "b42c51e9ebcc12d74851cc640c86038513a57828",
       certifiedGitSha: null,
     });
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
@@ -394,6 +394,8 @@ describe("GA4 Benchmark regression guard", () => {
     expect(validator).toContain("waitForScheduledArtifact");
     expect(validator).toContain('scheduledDeliveryState: "pending_delivery"');
     expect(validator).toContain("productionConfigurationRestored: true");
+    expect(validator).toContain("existingProviderResponseIds");
+    expect(validator).not.toContain("created_at >= $2");
     expect(validator).toContain("restoreViaDatabaseIfStillTemporary");
     expect(validator).toContain("Restored configuration hash mismatch");
   });

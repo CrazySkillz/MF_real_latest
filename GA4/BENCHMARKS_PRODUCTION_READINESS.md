@@ -32,14 +32,14 @@ Current dependency queue:
 5. **Benchmark Current Commit 12 — run the final clean-revision local gate:** complete at clean validation SHA `473c4e151b43aac33cb1d35a5c4b0fa85a85c36b`.
 6. **Benchmark Current Commit 13 — prove exact deployed Benchmark-consumer parity:** complete at deployed runtime SHA `9ed32290b32773af543b7a927ef5e197c4e3b761`. Both manual artifacts passed exact parity; both scheduled types correctly failed closed at `pending_delivery` without false snapshots.
 7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** waiting for the next unchanged-revision natural run.
-8. **Benchmark Current Commit 15 — resolve email delivery and issue the final certification:** blocked by Current Commit 14 and the Mailgun Events API/provider-confirmed/inbox evidence below.
+8. **Benchmark Current Commit 15 — resolve email delivery and issue the final certification:** runtime/provider/snapshot validation is complete at `b42c51e9ebcc12d74851cc640c86038513a57828`; waiting for Current Commit 14 and approved-inbox receipt confirmation.
 
 ### August 2-3, 2026 Closed-Beta Validation Evidence
 
 - Critical findings: 0.
-- Major findings: 9 total. Eight are fixed: the seven previously listed defects plus scheduled/manual snapshots omitting the preflighted Benchmark values needed to prove immutable artifact parity. One production blocker remains: Mailgun accepts scheduled report messages, but its Events API cannot currently prove delivery, so both controlled sends remain `pending_delivery` and no sent snapshots are created.
-- Minor findings: 7, all fixed: the five previously listed defects, the authorized validator initially selecting three unrelated GA4 Benchmark reports instead of requiring the campaign with both an active property and active GA4 Benchmarks, and the certification guard retaining the pre-fix implementation SHA after the canonical record moved to `9ed32290b32773af543b7a927ef5e197c4e3b761`.
-- Applicable/affected regressions: the final post-fix inventory passed `54` files and `624` tests.
+- Major findings: 9 total, all fixed. The final Major defect was the report confirmation path discarding the Mailgun region recorded at provider acceptance and querying the default region, which returned `domain not found` and permanently prevented delivery confirmation and sent-snapshot creation.
+- Minor findings: 9, all fixed: the seven previously listed defects, the authorized validator using a timezone-sensitive database timestamp cutoff that falsely counted zero fresh delivered audits, and the read-only inspector initially joining UUID/text snapshot identifiers without the required cast.
+- Applicable/affected regressions: the final Current Commit 15 inventory passed `54` files and `615` tests.
 - Focused destructive/route/notification packet: `4` files and `55` tests passed.
 - TypeScript: `npm run check` passed.
 - Production build: `npm run build` passed; the restricted sandbox first blocked esbuild process spawning with `EPERM`, and the authorized identical command then passed.
@@ -57,8 +57,13 @@ Current dependency queue:
 - The controlled scheduled Benchmark and Insights sends both reached `pending_delivery` after Mailgun API acceptance. Delivery was not confirmed, `sentAt` and `snapshotId` remained null, and no false sent/downloadable snapshot was created. The original report schedule (`09:00 Europe/Amsterdam`, one original recipient) and configuration hash were restored. This proves correct fail-closed scheduled-consumer behavior but does not prove delivery.
 - The post-fix applicable inventory passed `54` files and `624` tests, including the `15`-test certification guard; `npm run check` and `npm run build` passed. The initial npm/PowerShell array invocation executed no tests and is not counted; the direct Vitest invocation is the recorded passing evidence.
 - The final focused certification-guard rerun initially failed only because its expected implementation SHA still named the pre-fix revision. The one-line fixture was corrected to `9ed32290b32773af543b7a927ef5e197c4e3b761`; the rerun passed all `15` tests. A final read-only health check at `2026-08-03T08:15:12Z` confirmed the same deployed SHA. Scheduler health remained `200`, started, timer-scheduled, and idle with zero corrected-revision runs and next run `2026-08-04T03:00:00.000Z`.
+- Current Commit 15 production audit inspection found the exact remaining Major root cause: the stored Mailgun confirmation response was `domain not found` and the audit metadata had lost the successful send region. The failing guard was added first. Runtime commit `b42c51e9ebcc12d74851cc640c86038513a57828` now reads the persisted region for scheduled and test-report Events API queries and preserves it across confirmation updates.
+- Production `GET /api/health` confirmed exact deployed SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. Two authorized controlled report events then reached `sent`. The Benchmark and Insights snapshots each contain `2` immutable Benchmark rows; both have non-null sent state. Two distinct Mailgun audits are `delivered` with delivered timestamps and exact region `eu`. The report configuration was restored to `benchmarks`, `09:00`, `Europe/Amsterdam`, and one original recipient.
+- The controlled validator's final delivery-count assertion initially false-failed because it compared application UTC with a database `timestamp without time zone` cutoff. It now identifies fresh audits by provider-response-ID baseline. The read-only inspector also required an explicit UUID/text snapshot join cast. Both validation-only defects are fixed and guarded; neither affected application delivery or snapshots.
+- The final Current Commit 15 gate passed `54` files and `615` tests, including `source-safety-regression.test.ts` `87/87`; `npm run check` and `npm run build` passed. Inbox receipt is not visible to the repository tools and is not claimed.
+- Final read-only health at `2026-08-03T09:33:27Z` returned exact SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. Report scheduler metrics recorded `totalSent = 2`, `totalFailed = 0`, and `successRate = 100.00%`. The separate GA4 daily scheduler remained healthy but idle with `totalScheduledRuns = 0` and next run `2026-08-04T03:00:00.000Z`, so Current Commit 14 remains outstanding without contradiction.
 
-Remaining production-only evidence, without adding new local gates: observe a successful natural timer-fired daily run on the corrected revision; restore working Mailgun Events API delivery confirmation, capture a fresh provider-confirmed scheduled snapshot, and confirm inbox receipt before enabling or claiming Benchmark email delivery. Until then, machine-readable production status stays `UNVERIFIED`.
+Remaining production-only evidence, without adding new local gates: observe a successful natural timer-fired daily run on the corrected revision and confirm receipt of the two controlled messages in the approved Outlook inbox. Mailgun provider confirmation and fresh Benchmark/Insights sent snapshots are complete. Until Current Commit 14 and inbox receipt are recorded, machine-readable production status stays `UNVERIFIED`.
 
 ### Active Production-Certification Commit Queue
 
@@ -179,7 +184,7 @@ Complete on August 3, 2026 for deployed consumer parity and correct fail-closed 
 - Authorized scheduled production validation exercised one Benchmark event and one Insights event against one approved recipient. Both reached `pending_delivery` after Mailgun acceptance; neither had `sentAt` or `snapshotId`, so the app correctly created no false sent snapshot. The read-only Mailgun check returned `not_checked`, leaving provider delivery and inbox receipt unproven.
 - After every controlled path, the original report type, configuration, schedule, timezone, and recipients were restored. The pre/post configuration hashes both equal `fd95883d1e7f`; the final read-only inventory confirmed `benchmarks`, `09:00`, `Europe/Amsterdam`, and one original recipient.
 - `& .\node_modules\.bin\vitest.cmd run --pool forks $tests` passed `54` files and `624` tests. `npm run check` and `npm run build` passed. The restricted parallel launch and the npm PowerShell-array invocation did not execute the intended test packet and are not counted as passing evidence. A final restricted-token focused rerun was also blocked before test loading by Windows `spawn EPERM`; the authorized identical command passed all `15` tests.
-- Findings for Current Commit 13: Critical `0`; Major `2` found here—immutable snapshot values missing (fixed) and production delivery confirmation unavailable (remaining for Current Commit 15); Minor `3`, all fixed: early terminal-state capture, over-broad authorized report selection, and the stale implementation-SHA assertion. Current Commit 13 is complete because exact artifacts passed and both scheduled consumer states were proven correctly fail-closed. Production certification remains `UNVERIFIED` and is not production-ready while the remaining Major delivery blocker and Current Commit 14 evidence remain.
+- Findings at Current Commit 13 completion: Critical `0`; Major `2` found there—immutable snapshot values missing (fixed there) and production delivery confirmation unavailable (subsequently fixed in Current Commit 15); Minor `3`, all fixed: early terminal-state capture, over-broad authorized report selection, and the stale implementation-SHA assertion. Current Commit 13 was complete because exact artifacts passed and both scheduled consumer states were proven correctly fail-closed. Production certification remains `UNVERIFIED` only for Current Commit 14 and approved-inbox receipt evidence.
 
 #### Benchmark Current Commit 14 — Capture A Successful Natural Daily Scheduler Run
 
@@ -209,7 +214,7 @@ Complete only after one successful natural timer-fired run on the locked correct
 
 Root cause:
 
-External Benchmark email delivery was deliberately excluded from the closed beta. Controlled Current Commit 13 report sends also proved that production Mailgun acceptance currently remains `pending_delivery` because Events API confirmation is unavailable. A strict whole-section production claim cannot imply either alert-email or scheduled-report delivery while the current exact revision lacks provider-confirmed delivery, a sent snapshot, and inbox evidence.
+External Benchmark email delivery was deliberately excluded from the closed beta. The remaining report-delivery defect was that Mailgun acceptance recorded the successful `eu` region, but report confirmation discarded it, queried the default region, received `domain not found`, and therefore left valid sends at `pending_delivery` without snapshots.
 
 Expected files:
 
@@ -231,6 +236,10 @@ Required behavior and evidence:
 Completion rule:
 
 Complete only when email behavior is either freshly delivery-proven or provably disabled, every earlier active commit remains valid, the final certification record is internally consistent, and production certification is no longer `UNVERIFIED`.
+
+Implementation status:
+
+Runtime/provider/snapshot portion complete on August 3, 2026 at exact deployed SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. The smallest fix preserves the accepted Mailgun region through report delivery confirmation. Two distinct controlled `eu` audits are provider-confirmed `delivered` with delivered timestamps; the corresponding Benchmark and Insights send events are `sent` and each owns one immutable two-row Benchmark snapshot. Original report configuration is restored. Current Commit 15 remains open only for approved-inbox receipt confirmation and the final certification transition after Current Commit 14.
 
 Stop immediately after Current Commits 11-15 are complete and no Critical or Major finding remains. Minor non-core issues may be recorded without extending this queue.
 

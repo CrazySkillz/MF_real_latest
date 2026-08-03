@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "08ea74af0344538259cd34ff1d8487492f4c8253",
+  "lastReviewedSha": "139315935603e66c4ff00266b54a80194b869f78",
   "certifiedSha": null,
-  "invalidationReason": "All identified Critical and Major implementation findings are closed locally, but production runs an earlier SHA and live provider/source/direct-consumer parity evidence is pending.",
+  "invalidationReason": "All identified Critical and Major findings are closed and the exact deployed revision, live provider, source inventory, UI, and browser PDF passed; production scheduled/server PDF parity remains unverified because no safe read-only deployed generation path exists.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level Ad Comparison for one authorized campaign, selected active property, saved campaign filter, and direct live/browser/scheduled PDF consumers",
@@ -98,23 +98,23 @@
   "externalGates": [
     {
       "id": "deployed_revision",
-      "status": "failed",
-      "evidence": "2026-08-03 /api/health returned HTTP 200 but commit b91d096831bc04504ca7a3cae4191d28c8fa89ee, not reviewed SHA 08ea74af0344538259cd34ff1d8487492f4c8253."
+      "status": "passed",
+      "evidence": "2026-08-03 local HEAD, GitHub main, and production /api/health all resolved to 139315935603e66c4ff00266b54a80194b869f78."
     },
     {
       "id": "live_ga4_provider",
-      "status": "pending",
-      "evidence": "Read-only exact property/filter/window evidence must prove complete paged acquisition rows and states."
+      "status": "passed",
+      "evidence": "Read-only authenticated packet for campaign hash fc734ddaf728 proved property 542352127, Europe/Amsterdam, the exact three-campaign saved filter, totalRevenue, seven acquisition dimensions, complete 21-row provider response, exact row values, and unauthenticated HTTP 401."
     },
     {
       "id": "production_source_inventory",
-      "status": "pending",
-      "evidence": "Read-only active-source/materialization/window/currency inventory is required."
+      "status": "passed",
+      "evidence": "Read-only inventory proved five active GA4-context USD sources, record date boundaries, valid zero, exact materialized values, and paired aggregate/sub-campaign records that the production storage path does not double-count."
     },
     {
       "id": "deployed_direct_consumer_parity",
       "status": "pending",
-      "evidence": "Live, browser PDF, and deterministic scheduled/server PDF must match on the exact deployed revision."
+      "evidence": "Live UI and supplied two-page browser PDF matched all campaign and revenue values on the exact deployed revision. Scheduled/server PDF remains production-only pending: local production-input generation failed closed because this workstation lacks Render's TOKEN_ENCRYPTION_KEY, and no safe read-only deployed generation route exists."
     }
   ]
 }

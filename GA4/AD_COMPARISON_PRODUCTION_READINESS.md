@@ -25,11 +25,14 @@ Final local review:
 
 - reviewed implementation SHA:
   `08ea74af0344538259cd34ff1d8487492f4c8253`
+- exact deployed and production-evidence SHA:
+  `139315935603e66c4ff00266b54a80194b869f78`
 - assessment: all identified Critical and Major implementation findings are
   closed locally; Minor AC-06 is also closed
-- certification: `UNVERIFIED`, because production health reports
-  `b91d096831bc04504ca7a3cae4191d28c8fa89ee`, not the reviewed revision,
-  and no deployed live/provider/source/direct-consumer parity packet exists
+- certification: `UNVERIFIED`; deployed revision, live provider, source
+  inventory, UI, and browser-PDF parity now pass, but no safe read-only deployed
+  entry point exists to generate the scheduled/server Ads PDF with Render's
+  token-encryption key
 - production-ready wording is prohibited until every external gate below passes
 
 ### Finite validation plan
@@ -245,14 +248,28 @@ Broader repository run:
 
 ### Production-only gates
 
-- deployed revision: failed on 2026-08-03; `/api/health` returned HTTP 200
-  with commit `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
+- deployed revision: passed on 2026-08-03; local, GitHub `main`, and
+  `/api/health` all resolved to
+  `139315935603e66c4ff00266b54a80194b869f78`
 - scheduler health: HTTP 200/healthy, but this proves process health only, not
   an Ad Comparison artifact or parity
-- live GA4 provider pagination/property/filter/window packet: pending
-- active production source/materialization/currency/window inventory: pending
-- deployed live/browser/scheduled Ads PDF parity on the exact reviewed
-  revision: pending
+- live GA4 provider packet: passed read-only for campaign hash `fc734ddaf728`;
+  authenticated property `542352127`, `Europe/Amsterdam`, the exact three-value
+  saved campaign filter, `totalRevenue`, seven acquisition dimensions, and all
+  21 provider rows matched the live values; unauthenticated access returned 401
+- active source inventory: passed read-only for five active GA4-context sources;
+  source and record currencies are USD, dates and materialized aggregate versus
+  sub-campaign rows were inventoried, valid zero was retained, and the storage
+  path correctly avoided double-counting paired aggregate/sub-campaign records
+- live/browser parity: passed; the supplied two-page PDF matched all three rows,
+  95 sessions, three campaigns, USD 16,088.36 native GA4 revenue, and imported
+  USD 0/600/4,000/5,100/7,000 source-to-date values
+- scheduled/server PDF parity: pending production-only evidence; the exact
+  builder's local production-input attempt failed closed with
+  `GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE` because this workstation cannot
+  decrypt Render's OAuth token without `TOKEN_ENCRYPTION_KEY`. No report was
+  scheduled, sent, snapshotted, or persisted, and that environmental failure is
+  not evidence that the deployed builder is defective
 
 No clean certification is permitted until all production-only gates pass.
 The machine status remains `UNVERIFIED`.

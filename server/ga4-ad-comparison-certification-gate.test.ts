@@ -22,7 +22,14 @@ const statusDocument = [
 const content = Object.fromEntries(
   GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES.map((path) => [
     path,
-    path === statusPath ? statusDocument : 'dependency:' + path,
+    path === statusPath ? statusDocument : [
+      'dependency:' + path,
+      path === 'server/routes-oauth.ts' ? "windowMode === 'import-to-date' resolveGA4ImportToDateWindow importToDateWindow?.endDate" : '',
+      path === 'server/analytics.ts' ? "endDateOverride: string = endDate || 'yesterday'" : '',
+      path === 'server/utils/reporting-timezone.ts' ? 'export function resolveGA4ImportToDateWindow' : '',
+      path === 'client/src/pages/ga4-metrics.tsx' ? 'window=import-to-date campaignBreakdownAgg={adComparisonBreakdownAgg}' : '',
+      path === 'client/src/pages/ga4-ad-comparison.tsx' ? 'initial-import-to-latest-completed-day comparison window' : '',
+    ].filter(Boolean).join('\n'),
   ]),
 );
 
@@ -109,6 +116,20 @@ describe('GA4 Ad Comparison certification gate', () => {
     const result = evaluateGA4AdComparisonCertification(record, gateContext());
     expect(result.errors).toContain(
       'windowRules must require the fixed initial-import accumulation boundary',
+    );
+  });
+
+  it('rejects removal of the production accumulation wiring', () => {
+    const changed = {
+      ...content,
+      'client/src/pages/ga4-metrics.tsx': 'dependency without cumulative query',
+    };
+    const result = evaluateGA4AdComparisonCertification(
+      baseRecord(),
+      gateContext(changed),
+    );
+    expect(result.errors.join('\n')).toContain(
+      'missing accumulation-path marker window=import-to-date',
     );
   });
 

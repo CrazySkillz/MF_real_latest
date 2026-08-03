@@ -25,11 +25,13 @@ export const GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES = [
   'server/auto-refresh-scheduler.ts',
   'server/ga4-ad-comparison-certification-gate.ts',
   'server/ga4-ad-comparison-certification-gate.test.ts',
+  'server/ga4-ad-comparison-accumulation-regression.test.ts',
   'server/routes-oauth.ts',
   'server/storage.ts',
   'server/utils/data-transformation.ts',
   'server/utils/hubspot-pagination.ts',
   'server/utils/shopify-provider.ts',
+  'server/utils/reporting-timezone.ts',
   'package.json',
   'render.yaml',
 ] as const;
@@ -171,6 +173,22 @@ export function evaluateGA4AdComparisonCertification(
       errors.push(dependency.path + ': changed since certification');
     } else if (!ready && dependency.sha256 !== null && !fileHash.test(dependency.sha256)) {
       errors.push(dependency.path + ': invalid hash');
+    }
+  }
+
+  const runtimeMarkers: Array<[string, string]> = [
+    ['server/routes-oauth.ts', "windowMode === 'import-to-date'"],
+    ['server/routes-oauth.ts', 'resolveGA4ImportToDateWindow'],
+    ['server/routes-oauth.ts', 'importToDateWindow?.endDate'],
+    ['server/analytics.ts', 'endDateOverride: string = endDate ||'],
+    ['server/utils/reporting-timezone.ts', 'export function resolveGA4ImportToDateWindow'],
+    ['client/src/pages/ga4-metrics.tsx', 'window=import-to-date'],
+    ['client/src/pages/ga4-metrics.tsx', 'campaignBreakdownAgg={adComparisonBreakdownAgg}'],
+    ['client/src/pages/ga4-ad-comparison.tsx', 'initial-import-to-latest-completed-day comparison window'],
+  ];
+  for (const [path, marker] of runtimeMarkers) {
+    if (context.exists(path) && !context.readText(path).includes(marker)) {
+      errors.push(path + ': missing accumulation-path marker ' + marker);
     }
   }
 

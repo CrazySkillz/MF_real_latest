@@ -1904,6 +1904,34 @@ export default function GA4Metrics() {
     },
   });
 
+  const {
+    data: adComparisonBreakdown,
+    isLoading: adComparisonBreakdownLoading,
+    isError: adComparisonBreakdownError,
+    isPlaceholderData: adComparisonBreakdownPlaceholder,
+  } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-ad-comparison-breakdown", "import-to-date", selectedGA4PropertyId],
+    enabled: activeTab === "campaigns" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${campaignId}/ga4-breakdown?window=import-to-date&propertyId=${encodeURIComponent(
+          String(selectedGA4PropertyId)
+        )}`
+      );
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json || json?.success === false) {
+        throw new Error(json?.message || json?.error || "Failed to fetch GA4 Ad Comparison breakdown");
+      }
+      return json as any;
+    },
+  });
+
   const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
@@ -2643,6 +2671,10 @@ export default function GA4Metrics() {
     !ga4ConnectionUsable ||
     breakdownPlaceholder ||
     (breakdownError && ga4Breakdown === undefined);
+  const adComparisonBreakdownUnavailable =
+    !ga4ConnectionUsable ||
+    adComparisonBreakdownPlaceholder ||
+    (adComparisonBreakdownError && adComparisonBreakdown === undefined);
   const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
@@ -5412,6 +5444,30 @@ export default function GA4Metrics() {
       .sort((a, b) => b.sessions - a.sessions);
   }, [breakdownPlaceholder, ga4Breakdown, importedGA4CampaignNames]);
 
+  const adComparisonBreakdownAgg = useMemo(() => {
+    const rows = Array.isArray(adComparisonBreakdown?.rows) ? adComparisonBreakdown.rows : [];
+    const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+    for (const r of rows) {
+      const name = String((r as any)?.campaign || "(not set)").trim();
+      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      existing.sessions += Number((r as any)?.sessions || 0);
+      existing.users += Number((r as any)?.users || 0);
+      existing.conversions += Number((r as any)?.conversions || 0);
+      existing.revenue += Number((r as any)?.revenue || 0);
+      byName.set(name, existing);
+    }
+
+    return Array.from(byName.values())
+      .filter((row) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(row.name)))
+      .map((row) => ({
+        ...row,
+        revenue: Number(Number(row.revenue || 0).toFixed(2)),
+        conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
+        revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
+      }))
+      .sort((a, b) => b.sessions - a.sessions);
+  }, [adComparisonBreakdown, adComparisonBreakdownPlaceholder, importedGA4CampaignNames]);
+
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
     const rowCounts = new Map<string, number>();
     const rowNameByKey = new Map<string, string>();
@@ -8057,10 +8113,12 @@ export default function GA4Metrics() {
 
                 <TabsContent value="campaigns" className="fade-in">
                   <GA4AdComparison
-                    campaignBreakdownAgg={campaignBreakdownAgg}
-                    breakdownLoading={breakdownLoading || breakdownPlaceholder}
-                    breakdownUnavailable={campaignBreakdownUnavailable}
-                    breakdownStale={Boolean(breakdownError && ga4Breakdown !== undefined)}
+                    campaignBreakdownAgg={adComparisonBreakdownAgg}
+                    breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
+                    breakdownUnavailable={adComparisonBreakdownUnavailable}
+                    breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}
+                    comparisonStartDate={String(adComparisonBreakdown?.startDate || "")}
+                    comparisonEndDate={String(adComparisonBreakdown?.endDate || "")}
                     revenueState={adComparisonRevenueState}
                     selectedMetric={adComparisonMetric}
                     onMetricChange={setAdComparisonMetric}

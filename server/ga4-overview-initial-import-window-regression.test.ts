@@ -40,7 +40,7 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(((correctedTotals.conversions / correctedTotals.sessions) * 100).toFixed(1)).toBe('12.7');
   });
 
-  it('keeps rolling consumers separate and routes cumulative totals only to Overview Summary', () => {
+  it('keeps rolling Overview detail consumers separate while routing cumulative values to Summary and Ad Comparison', () => {
     const route = read('server/routes-oauth.ts');
     const page = read('client/src/pages/ga4-metrics.tsx');
     const scheduledReport = read('server/ga4-scheduled-report-pdf.ts');
@@ -51,6 +51,8 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(route).toContain('importStartDate: existingConnection.importStartDate');
     expect(page).toContain('overviewSummaryTotals');
     expect(page).toContain('Imported GA4 data, updated daily');
+    expect(page).toContain('window=import-to-date');
+    expect(page).toContain('campaignBreakdownAgg={adComparisonBreakdownAgg}');
     expect(scheduledReport).toContain('overviewStartDate');
     expect(scheduledReport).not.toContain('(connection as any)?.connectedAt');
   });

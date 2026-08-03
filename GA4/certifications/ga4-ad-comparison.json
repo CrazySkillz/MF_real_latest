@@ -4,7 +4,7 @@
   "status": "UNVERIFIED",
   "lastReviewedSha": "6ce94554076efbbecf22306e19a385bf410a393e",
   "certifiedSha": null,
-  "invalidationReason": "Critical AC-09: the live Ad Comparison path uses a rolling 30-day provider breakdown instead of the saved initial historical import boundary plus later completed-day accumulation. Re-certification requires the isolated cumulative path, focused regressions, deployed revision parity, and live value confirmation.",
+  "invalidationReason": "Critical AC-09 invalidated the rolling-window revision. The isolated cumulative implementation is under local validation; re-certification still requires the complete regression/build packet, deployed revision parity, and live value confirmation.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -114,6 +114,11 @@
       "sha256": "08b30be01f9cd2718a2a5d780dadf08b778a939d21b88d859f33264947885d4c"
     },
     {
+      "path": "server/ga4-ad-comparison-accumulation-regression.test.ts",
+      "role": "fixed-boundary and production-path regression tests",
+      "sha256": null
+    },
+    {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
       "sha256": "f05321fdf2b0320626c17775e86dca4bff22fee1f001266d990163ed847a601e"
@@ -137,6 +142,11 @@
       "path": "server/utils/shopify-provider.ts",
       "role": "Shopify completeness boundary",
       "sha256": "b49736e267ef8fa22afb2ed174bdb1ac47cf0b3738b98d958338e9f415206952"
+    },
+    {
+      "path": "server/utils/reporting-timezone.ts",
+      "role": "campaign-timezone accumulation-window resolver",
+      "sha256": null
     },
     {
       "path": "package.json",

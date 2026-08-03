@@ -90,6 +90,28 @@ export function getReportingDateWindow(days: number, reportingTimeZone: any, now
   };
 }
 
+export function resolveGA4ImportToDateWindow(
+  importStartDate: any,
+  reportingTimeZone: any,
+  now = new Date(),
+) {
+  const reportingWindow = getReportingDateWindow(1, reportingTimeZone, now);
+  const configuredStartDate = String(importStartDate || "").trim();
+  const startDate = configuredStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
+  const parsedStartDate = new Date(`${startDate}T00:00:00.000Z`);
+  const validStartDate = /^\d{4}-\d{2}-\d{2}$/.test(startDate)
+    && !Number.isNaN(parsedStartDate.getTime())
+    && formatDateOnlyUTC(parsedStartDate) === startDate;
+  if (!validStartDate || startDate > reportingWindow.endDate) return null;
+
+  const parsedEndDate = new Date(`${reportingWindow.endDate}T00:00:00.000Z`);
+  return {
+    ...reportingWindow,
+    startDate,
+    days: Math.floor((parsedEndDate.getTime() - parsedStartDate.getTime()) / 86_400_000) + 1,
+  };
+}
+
 export function getGA4HistoricalImportStartDate(
   selectedAt: any,
   lookbackDays: any,

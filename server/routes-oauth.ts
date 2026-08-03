@@ -47,7 +47,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -646,9 +646,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const dateRangeToDays = (dr: string): number => {
     const v = String(dr || "").toLowerCase();
-    if (v.includes("7")) return 7;
-    if (v.includes("60")) return 60;
-    if (v.includes("90")) return 90;
+    const exactDays = v.match(/^(\d+)days$/);
+    if (exactDays) return Math.max(1, Number(exactDays[1]) || 30);
     return 30;
   };
 
@@ -12255,6 +12254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const dateRange = String(req.query.dateRange || '30days');
+      const windowMode = String(req.query.window || '').trim().toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
@@ -12262,16 +12262,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
+      let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
+      let resolvedPropertyId = propertyId;
+
+      if (windowMode === 'import-to-date') {
+        const connection = await storage.getGA4Connection(campaignId, propertyId);
+        if (!connection) {
+          return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+        }
+        importToDateWindow = resolveGA4ImportToDateWindow(
+          (connection as any)?.importStartDate,
+          (campaign as any)?.reportingTimeZone,
+        );
+        if (!importToDateWindow) {
+          return res.status(409).json({
+            success: false,
+            error: 'GA4_IMPORT_WINDOW_UNAVAILABLE',
+            message: 'The saved GA4 initial-import boundary could not be verified.',
+          });
+        }
+        resolvedPropertyId = String((connection as any).propertyId);
+      }
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
-        const pid = requestedPropertyId || 'yesop';
+        const simulationDateRange = importToDateWindow ? `${importToDateWindow.days}days` : dateRange;
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: simulationDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const pid = resolvedPropertyId || requestedPropertyId || 'yesop';
         return res.json({
           success: true,
           propertyId: pid,
           dateRange,
+          ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
           totals: {
             sessions: sim.totals.sessions,
             sessionsRaw: sim.totals.sessionsRaw,
@@ -12282,7 +12305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             engagementRate: sim.totals.engagementRate,
           },
           rows: sim.breakdownRows.slice(0, limit),
-          ...(debug ? { meta: { isSimulated: true, seedKey: `${campaignId}:${pid}:${dateRange}`, days: dateRangeToDays(dateRange) } } : {}),
+          ...(debug ? { meta: { isSimulated: true, seedKey: `${campaignId}:${pid}:${simulationDateRange}`, days: dateRangeToDays(simulationDateRange) } } : {}),
           isSimulated: true,
           simulationReason: 'Simulated GA4 breakdown for demo/testing (propertyId yesop or ?mock=1).',
           lastUpdated: new Date().toISOString(),
@@ -12308,12 +12331,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ga4DateRange = '30daysAgo';
       }
 
-      const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
+      const providerStartDate = importToDateWindow?.startDate || ga4DateRange;
+      const result = await ga4Service.getAcquisitionBreakdown(
+        campaignId,
+        storage,
+        providerStartDate,
+        resolvedPropertyId,
+        limit,
+        campaignFilter,
+        importToDateWindow?.endDate,
+      );
 
       res.json({
         success: true,
-        propertyId,
+        propertyId: resolvedPropertyId,
         dateRange,
+        ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
         totals: result.totals,
         rows: result.rows,
         ...(debug ? { meta: result.meta } : {}),

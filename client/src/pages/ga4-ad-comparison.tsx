@@ -29,6 +29,8 @@ interface GA4AdComparisonProps {
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
   breakdownStale?: boolean;
+  comparisonStartDate?: string;
+  comparisonEndDate?: string;
   revenueState?: 'loading' | 'ready' | 'stale' | 'unavailable';
   selectedMetric: string;
   onMetricChange: (metric: string) => void;
@@ -58,6 +60,8 @@ export default function GA4AdComparison({
   breakdownLoading,
   breakdownUnavailable = false,
   breakdownStale = false,
+  comparisonStartDate = "",
+  comparisonEndDate = "",
   revenueState = 'ready',
   selectedMetric,
   onMetricChange,
@@ -136,7 +140,7 @@ export default function GA4AdComparison({
   }, [sortedByMetric, selectedMetric]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
-    ? "GA4 Revenue (30 Completed Days)"
+    ? "GA4 Revenue (Imported to Date)"
     : selectedMetric === "conversionRate"
       ? "Overall Conversion Rate"
       : `Total ${METRIC_LABELS[selectedMetric] || selectedMetric}`;
@@ -182,7 +186,11 @@ export default function GA4AdComparison({
       <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:items-end">
         <div className="md:col-span-2">
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
-          <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
+          <p className="text-sm text-muted-foreground/70">
+            {comparisonStartDate && comparisonEndDate
+              ? `Compare GA4 campaigns from the initial import (${comparisonStartDate}) through the latest completed day (${comparisonEndDate})`
+              : "Compare performance across your GA4 campaigns"}
+          </p>
         </div>
         <div className="min-w-[220px] sm:max-w-[280px] md:w-full md:justify-self-end">
           <Select value={selectedMetric} onValueChange={onMetricChange}>
@@ -377,7 +385,7 @@ export default function GA4AdComparison({
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
           <CardDescription>
-            GA4 revenue uses the 30 completed-day comparison window. Imported sources are source-to-date provenance and are excluded from campaign ranking.
+            GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources are source-to-date provenance and are excluded from campaign ranking.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -391,7 +399,7 @@ export default function GA4AdComparison({
               </thead>
               <tbody>
                 <tr className="border-b">
-                  <td className="px-3 py-2 text-foreground">GA4 Revenue (30 completed days)</td>
+                  <td className="px-3 py-2 text-foreground">GA4 Revenue (imported to date)</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
                 {(revenueState === 'ready' || revenueState === 'stale') && revenueDisplaySources.filter(s => s.revenue != null).map((s) => (

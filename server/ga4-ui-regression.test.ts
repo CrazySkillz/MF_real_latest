@@ -562,8 +562,10 @@ describe("GA4 UI regression guard", () => {
 
     expect(ga4Metrics).toContain("isPlaceholderData: breakdownPlaceholder");
     expect(ga4Metrics).toContain("!breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows)");
-    expect(ga4Metrics).toContain("breakdownPlaceholder ||");
-    expect(ga4Metrics).toContain("breakdownLoading={breakdownLoading || breakdownPlaceholder}");
+    expect(ga4Metrics).toContain("isPlaceholderData: adComparisonBreakdownPlaceholder");
+    expect(ga4Metrics).toContain("adComparisonBreakdownPlaceholder ||");
+    expect(ga4Metrics).toContain("breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}");
+    expect(ga4Metrics).toContain("breakdownUnavailable={adComparisonBreakdownUnavailable}");
   });
 
   it("derives imported Ad Comparison state from the source breakdown it renders", () => {

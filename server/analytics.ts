@@ -1042,7 +1042,8 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     propertyId?: string,
     limit: number = 2000,
-    campaignFilter?: CampaignFilter
+    campaignFilter?: CampaignFilter,
+    endDate?: string,
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
@@ -1150,7 +1151,7 @@ export class GoogleAnalytics4Service {
       dimensions: Array<{ name: string }>,
       preferredCampaignDim?: 'sessionCampaignName' | 'campaignName' | 'firstUserCampaignName',
       scopeFilter?: any,
-      endDateOverride: string = 'yesterday'
+      endDateOverride: string = endDate || 'yesterday'
     ) => {
       const requestBody = {
         dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
@@ -1317,7 +1318,7 @@ export class GoogleAnalytics4Service {
       return 'campaignName' as const;
     };
 
-    const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>, scopeFilter?: any, endDateOverride: string = 'yesterday') => {
+    const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>, scopeFilter?: any, endDateOverride: string = endDate || 'yesterday') => {
       const preferredCampaignDim = chooseCampaignFilterDim(dimensions);
       try {
         return { data: await fetchReport('totalRevenue', dimensions, preferredCampaignDim, scopeFilter, endDateOverride), revenueMetric: 'totalRevenue' as const };

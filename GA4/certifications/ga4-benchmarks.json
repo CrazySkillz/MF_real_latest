@@ -29,7 +29,7 @@
       "ga4DailyRunOnStartup": false,
       "ga4DailyNextRunAt": "2026-08-04T03:00:00.000Z"
     },
-    "limitations": "External GA4 campaign/property/source state must be revalidated in Current Commit 13. Email-provider configuration and delivery must be resolved in Current Commit 15. The final evidence-only descendant comparison remains required before production status can change from UNVERIFIED."
+    "limitations": "External GA4 campaign/property/source state and all available read-only deployed consumers were revalidated in Current Commit 13. Scheduled Benchmark and Insights artifacts still require an authorized controlled event. Email-provider configuration and delivery must be resolved in Current Commit 15. The final evidence-only descendant comparison remains required before production status can change from UNVERIFIED."
   },
   "localCertificationGate": {
     "status": "complete",
@@ -52,6 +52,29 @@
       "scope": "Instagram-only route guards; outside GA4 Benchmarks and documented Benchmark consumers"
     }
   },
+  "deployedConsumerParityGate": {
+    "status": "blocked_missing_authorized_report_artifacts",
+    "validatedGitSha": "f636b3c52cabc608566daa0c55432f6e4e5c4eb8",
+    "validatedAt": "2026-08-03",
+    "mode": "read_only_application_data",
+    "campaignCount": 2,
+    "benchmarkCount": 4,
+    "applicationMutationAttempts": 0,
+    "inventoryParity": "passed",
+    "liveProviderPersistedSchedulerUiParity": "passed",
+    "cardsTrackerParity": "passed",
+    "insightsParity": "passed",
+    "browserPdfParity": "passed",
+    "alertNotificationParity": "passed",
+    "noPropertyFailClosedParity": "passed",
+    "scheduledBenchmarkArtifactParity": "unverified_no_sent_event_or_snapshot",
+    "scheduledInsightsArtifactParity": "unverified_no_existing_artifact",
+    "limitations": [
+      "The existing scheduled Benchmark report has no sent event or snapshot to compare.",
+      "No deployed Insights report artifact exists to compare.",
+      "The snapshot PDF GET path performs persisted preflight recomputation, so the read-only validator did not call it."
+    ]
+  },
   "activeProductionCertificationCommits": [
     {
       "id": 11,
@@ -65,7 +88,7 @@
     },
     {
       "id": 13,
-      "status": "open",
+      "status": "blocked_requires_authorized_report_artifacts",
       "name": "Prove exact deployed Benchmark-consumer parity"
     },
     {
@@ -83,7 +106,7 @@
     "critical": 0,
     "majorFound": 7,
     "majorRemaining": 0,
-    "minorFound": 4,
+    "minorFound": 5,
     "minorRemaining": 0
   },
   "dependencyBoundary": [
@@ -206,11 +229,32 @@
       "status": "passed",
       "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
       "result": "Only canonical Benchmark evidence/tooling and regression files changed; no production runtime source or repository deployment/build configuration changed; validation worktree had no tracked changes"
+    },
+    {
+      "command": "$env:GA4_BENCHMARK_BETA_EXPECTED_SHA='f636b3c52cabc608566daa0c55432f6e4e5c4eb8'; npx tsx --env-file=.env scripts/ga4-benchmark-beta-clearance-readonly.ts",
+      "status": "blocked_missing_production_artifacts",
+      "validatedGitSha": "f636b3c52cabc608566daa0c55432f6e4e5c4eb8",
+      "result": "Authenticated read-only validation inspected 2 campaigns and 4 active GA4 Benchmarks with zero application mutation attempts. Inventory, live-provider/persisted/scheduler/UI values, cards, Tracker, Insights, downloaded browser PDF, alert/notification decisions, and the no-property fail-closed path all passed. The only blockers are the absence of a sent event/snapshot for the scheduled Benchmark report and the absence of a deployed Insights report artifact."
+    },
+    {
+      "command": "& .\\node_modules\\.bin\\vitest.cmd run --pool forks server/ga4-benchmark-regression.test.ts",
+      "status": "passed",
+      "result": "1 file, 14 tests passed after the deployed-consumer validator changes"
+    },
+    {
+      "command": "npm run check",
+      "status": "passed",
+      "result": "TypeScript completed successfully after the Current Commit 13 evidence-tool changes"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "result": "Vite client and esbuild server production bundles completed successfully after the Current Commit 13 evidence-tool changes"
     }
   ],
   "productionOnlyEvidenceOutstanding": [
+    "One authorized controlled scheduled Benchmark report artifact and one Insights report artifact, followed by exact value/state comparison",
     "A successful natural timer-fired GA4 daily run on the corrected revision",
-    "Exact deployed live parity for Insights, browser PDF, scheduled report artifacts, and existing alert/notification records; their real paths are locally parity-guarded",
     "Fresh provider-confirmed and inbox delivery evidence before Benchmark email delivery is enabled or claimed"
   ],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."

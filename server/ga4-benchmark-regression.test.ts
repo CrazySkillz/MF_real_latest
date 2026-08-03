@@ -360,4 +360,23 @@ describe("GA4 Benchmark regression guard", () => {
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
   });
+
+  it("keeps deployed consumer parity certification read-only and complete", () => {
+    const validator = readFileSync(
+      join(process.cwd(), "scripts", "ga4-benchmark-beta-clearance-readonly.ts"),
+      "utf-8",
+    );
+
+    expect(validator).toContain('await client.query("BEGIN TRANSACTION READ ONLY")');
+    expect(validator).toContain('if (route.request().method() !== "GET")');
+    expect(validator).toContain('await api(page, "/api/notifications")');
+    expect(validator).toContain('getByRole("tab", { name: "Insights", exact: true }).click()');
+    expect(validator).toContain("await pdfText(await downloadBuffer(download))");
+    expect(validator).toContain("/send-events");
+    expect(validator).toContain("/snapshots");
+    expect(validator).toContain("scheduledArtifactValueParity");
+    expect(validator).toContain("scheduledArtifactPdfFetchAttempted: false");
+    expect(validator).toContain("performs a persisted GA4 KPI/Benchmark recompute");
+    expect(validator).not.toContain('api(page, `/api/report-snapshots/');
+  });
 });

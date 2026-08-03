@@ -253,8 +253,9 @@ describe("source safety regression guards", () => {
     expect(route).toContain("storage.getSpendSources(campaignId)");
     expect(route).toContain("const requestedPlatformContextRaw = (req.query as any)?.platformContext;");
     expect(route).toContain("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)");
-    expect(route.indexOf("storage.deleteSpendSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)"));
-    expect(route.indexOf("storage.deleteSpendRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)"));
+    expect(route.indexOf("storage.deleteSpendSourceWithRecords(campaignId, sourceId, deletingSourcePlatformContext)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId, requestedPlatformContext || undefined)"));
+    expect(route).not.toContain("storage.deleteSpendSource(sourceId)");
+    expect(route).not.toContain("storage.deleteSpendRecordsBySource(sourceId)");
     expect(route).toContain("Spend source not found");
 
     const storageSource = readStorageSource();
@@ -265,6 +266,14 @@ describe("source safety regression guards", () => {
     expect(method).toContain("eq(spendSources.campaignId, campaignId)");
     expect(method).toContain("eq(spendSources.isActive, true)");
     expect(method).toContain("spendPlatformContextPredicate(platformContext)");
+
+    const deleteMethodStart = storageSource.indexOf("async deleteSpendSourceWithRecords(");
+    const deleteMethodEnd = storageSource.indexOf("async hardDeleteInactiveSpendSource", deleteMethodStart);
+    const deleteMethod = storageSource.slice(deleteMethodStart, deleteMethodEnd);
+    expect(deleteMethod).toContain("return await db.transaction(async (tx: any) => {");
+    expect(deleteMethod).toContain("eq(spendSources.campaignId, campaignId)");
+    expect(deleteMethod).toContain("eq(spendRecords.campaignId, campaignId)");
+    expect(deleteMethod).toContain("eq(spendRecords.spendSourceId, sourceId)");
   });
 
   it("CSV preview routes require campaign access before parsing uploaded files", () => {

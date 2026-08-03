@@ -246,7 +246,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
     expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
     expect(ga4Metrics).toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
-    expect(ga4Metrics).toContain("spendSourceDefinitionsKnownEmpty) &&\n    spendMetricAvailable;");
+    expect(ga4Metrics).toMatch(/spendSourceDefinitionsKnownEmpty\) &&\r?\n\s+spendMetricAvailable;/);
     expect(ga4Metrics).not.toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;");
     expect(ga4Metrics).not.toContain("      spendSourceDefinitionsKnownEmpty);");
     expect(ga4Metrics).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");

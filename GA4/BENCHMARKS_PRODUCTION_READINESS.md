@@ -28,11 +28,11 @@ Current dependency queue:
 1. **Benchmark Current Commit 8 — documentation invalidation:** complete.
 2. **Benchmark Current Commit 9 — certification integrity and real-path parity:** complete in `5b5df12f5e5a40202ff8ba17e697ed88979de62f` and `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
 3. **Benchmark Current Commit 10 — shared value-contract and lifecycle repair:** complete locally in `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
-4. **Benchmark Current Commit 11 — lock the exact production certification revision:** open.
-5. **Benchmark Current Commit 12 — run the final clean-revision local gate:** blocked by Current Commit 11.
-6. **Benchmark Current Commit 13 — prove exact deployed Benchmark-consumer parity:** blocked by Current Commits 11-12.
-7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** blocked by Current Commit 11 and the next unchanged-revision natural run.
-8. **Benchmark Current Commit 15 — resolve email delivery and issue the final certification:** blocked by Current Commits 11-14 and the email decision/evidence below.
+4. **Benchmark Current Commit 11 — lock the exact production certification revision:** complete. Runtime SHA `5366d0babc9550ecd408e55bc385e7024854f424`; deployed evidence SHA `fbc10e04f69f1d2709d3e2629f8c4818a7062c90`; intervening changes are validation/documentation/test-only.
+5. **Benchmark Current Commit 12 — run the final clean-revision local gate:** open.
+6. **Benchmark Current Commit 13 — prove exact deployed Benchmark-consumer parity:** blocked by Current Commit 12.
+7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** waiting for the next unchanged-revision natural run.
+8. **Benchmark Current Commit 15 — resolve email delivery and issue the final certification:** blocked by Current Commits 12-14 and the email decision/evidence below.
 
 ### August 2-3, 2026 Closed-Beta Validation Evidence
 
@@ -62,7 +62,7 @@ This is the complete finite queue for strict GA4 Benchmarks production certifica
 
 Root cause:
 
-The authenticated production clearance was captured against runtime revision `5366d0babc9550ecd408e55bc385e7024854f424`, while current pushed and deployed revision `aa9eb5a4e84fe4c62616c866de404c0911a664bb` adds validation tooling, documentation, and the certification assertion. Strict certification cannot silently carry evidence across revisions, even when the known diff is non-runtime.
+The authenticated production clearance was captured against runtime revision `5366d0babc9550ecd408e55bc385e7024854f424`, while deployed evidence revision `fbc10e04f69f1d2709d3e2629f8c4818a7062c90` adds validation tooling, documentation, and the certification assertion. Strict certification cannot silently carry evidence across revisions, even when the diff is non-runtime.
 
 Expected files:
 
@@ -81,6 +81,19 @@ Required evidence:
 Completion rule:
 
 Complete only when the reviewed implementation SHA, deployed SHA, dependency boundary, and machine-readable record agree and no unreviewed runtime or configuration change remains.
+
+Implementation status:
+
+Complete on August 3, 2026 for the code/deployment boundary required before Current Commit 12:
+
+- `GET https://marketforensics.onrender.com/api/health` returned `200`, `nodeEnv = production`, and exact deployed evidence SHA `fbc10e04f69f1d2709d3e2629f8c4818a7062c90` at `2026-08-03T04:14:21.146Z`.
+- `git diff --name-status 5366d0babc9550ecd408e55bc385e7024854f424..fbc10e04f69f1d2709d3e2629f8c4818a7062c90` returned only `GA4/BENCHMARKS_PRODUCTION_READINESS.md`, `GA4/certifications/ga4-benchmarks.json`, `scripts/ga4-benchmark-beta-clearance-readonly.ts`, and `server/ga4-benchmark-regression.test.ts`.
+- The production-source exclusion diff across `client`, `shared`, and `server` after excluding test files returned no files. No application runtime source changed after `5366d0babc9550ecd408e55bc385e7024854f424`.
+- The repository deployment/configuration diff for `render.yaml`, `package.json`, `package-lock.json`, Vite, TypeScript, Drizzle, Vitest, Playwright, and workflow configuration returned no files.
+- On exact deployed evidence SHA `fbc10e04f69f1d2709d3e2629f8c4818a7062c90`, `GET /health/scheduler` returned `200`, scheduler started/timer scheduled, GA4 reporting timezone `UTC`, time `03:00`, `runOnStartup = false`, and next run `2026-08-04T03:00:00.000Z`.
+- `npm test -- --run server/ga4-benchmark-regression.test.ts` passed `1` file and `13` tests after the restricted sandbox's pre-test `spawn EPERM` was bypassed by running the identical authorized command.
+- The locked implementation runtime SHA is `5366d0babc9550ecd408e55bc385e7024854f424`; `fbc10e04f69f1d2709d3e2629f8c4818a7062c90` is the exact deployed descendant used to prove the evidence-only boundary. External GA4 property/source state is deliberately revalidated in Current Commit 13, and email-provider configuration/delivery in Current Commit 15; Commit 11 does not overclaim either.
+- The documentation/machine-record commit that records this result is evidence-only. Current Commit 15 must perform the final descendant boundary comparison before changing production status from `UNVERIFIED`.
 
 #### Benchmark Current Commit 12 — Run The Final Clean-Revision Local Gate
 

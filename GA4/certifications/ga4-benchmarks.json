@@ -8,6 +8,56 @@
   "certifiedGitSha": null,
   "reviewedAt": "2026-08-03",
   "scope": "GA4 Benchmarks and documented Benchmark consumers only: cards, Tracker, Insights, browser and scheduled Reports, in-app alerts/notifications, email attempt/audit safety, CRUD, refresh/recompute, schedulers, persistence, and destructive operations. External Benchmark email delivery is excluded from the initial beta.",
+  "revisionBoundary": {
+    "status": "LOCKED_FOR_PRODUCTION_CERTIFICATION_QUEUE",
+    "runtimeGitSha": "5366d0babc9550ecd408e55bc385e7024854f424",
+    "deployedEvidenceGitSha": "fbc10e04f69f1d2709d3e2629f8c4818a7062c90",
+    "capturedAt": "2026-08-03T04:14:21.146Z",
+    "changedFilesSinceRuntime": [
+      "GA4/BENCHMARKS_PRODUCTION_READINESS.md",
+      "GA4/certifications/ga4-benchmarks.json",
+      "scripts/ga4-benchmark-beta-clearance-readonly.ts",
+      "server/ga4-benchmark-regression.test.ts"
+    ],
+    "productionRuntimeSourceChanges": [],
+    "repositoryDeploymentConfigurationChanges": [],
+    "publicRuntimeConfiguration": {
+      "nodeEnv": "production",
+      "ga4DailyReportingTimeZone": "UTC",
+      "ga4DailyHour": 3,
+      "ga4DailyMinute": 0,
+      "ga4DailyRunOnStartup": false,
+      "ga4DailyNextRunAt": "2026-08-04T03:00:00.000Z"
+    },
+    "limitations": "External GA4 campaign/property/source state must be revalidated in Current Commit 13. Email-provider configuration and delivery must be resolved in Current Commit 15. The final evidence-only descendant comparison remains required before production status can change from UNVERIFIED."
+  },
+  "activeProductionCertificationCommits": [
+    {
+      "id": 11,
+      "status": "complete",
+      "name": "Lock the exact production certification revision"
+    },
+    {
+      "id": 12,
+      "status": "open",
+      "name": "Run the final clean-revision local gate"
+    },
+    {
+      "id": 13,
+      "status": "blocked_by_12",
+      "name": "Prove exact deployed Benchmark-consumer parity"
+    },
+    {
+      "id": 14,
+      "status": "waiting_for_natural_run",
+      "name": "Capture a successful natural daily scheduler run"
+    },
+    {
+      "id": 15,
+      "status": "blocked_by_12_14_and_email_decision",
+      "name": "Resolve email delivery and issue final certification"
+    }
+  ],
   "findings": {
     "critical": 0,
     "majorFound": 7,
@@ -84,6 +134,21 @@
       "command": "npx tsx --env-file=.env scripts/ga4-benchmark-beta-clearance-readonly.ts",
       "status": "passed",
       "result": "Exact deployed SHA 5366d0babc9550ecd408e55bc385e7024854f424; 2 campaigns, 4 active Benchmarks, 0 failures, 0 application mutations; live-provider/persisted/scheduler/UI deltas were 0 for Conversions and Revenue; authenticated inventory and deployed card/Tracker parity passed"
+    },
+    {
+      "command": "git diff --name-status 5366d0babc9550ecd408e55bc385e7024854f424..fbc10e04f69f1d2709d3e2629f8c4818a7062c90 plus production-source exclusions and repository deployment/configuration pathspecs",
+      "status": "passed",
+      "result": "Only canonical readiness, machine certification, read-only validation tooling, and one regression assertion changed; no client/shared/server production source or repository deployment/build configuration changed"
+    },
+    {
+      "command": "GET https://marketforensics.onrender.com/api/health and /health/scheduler",
+      "status": "passed",
+      "result": "Exact deployed evidence SHA fbc10e04f69f1d2709d3e2629f8c4818a7062c90 returned 200 in production; GA4 scheduler was started and timer-scheduled for 03:00 UTC with runOnStartup false"
+    },
+    {
+      "command": "npm test -- --run server/ga4-benchmark-regression.test.ts",
+      "status": "passed",
+      "result": "1 file, 13 tests passed; the restricted sandbox first blocked pre-test esbuild process spawning with EPERM, and the authorized identical command passed"
     }
   ],
   "productionOnlyEvidenceOutstanding": [

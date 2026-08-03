@@ -4,10 +4,9 @@
 
 ## Controlling Current Status
 
-**Status: UNVERIFIED. The corrected local revision now uses the saved initial
-historical import boundary through the latest completed reporting day, but that
-exact revision has not yet been deployed and proven against authenticated live
-values.**
+**Status: UNVERIFIED pending the final dependency-hash certification envelope.
+The corrected revision is deployed and its authenticated API/live-tab parity
+packet has passed.**
 
 Critical finding AC-09 invalidated the prior certification. Root cause: the
 live component reused the Overview Campaign Breakdown's rolling `30daysAgo`
@@ -40,11 +39,12 @@ Final local review:
 
 - reviewed implementation SHA:
   `6a38cc4d76b4710a55c4c916e5119963ce6de169`
-- exact corrected deployed and production-evidence SHA: not yet available
-- assessment: AC-09 is fixed and regression-covered locally; no local Critical
-  or Major finding remains open
-- certification: `UNVERIFIED` until the corrected SHA is deployed and the
-  authenticated endpoint/window/value packet matches the live tab
+- exact corrected deployed and production-evidence SHA:
+  `73694e5dd831ade7d038209a83687178dac6843b`
+- assessment: AC-09 is fixed; no Critical or Major finding remains open in the
+  defined tab-only boundary
+- certification: production evidence passes; `UNVERIFIED` is retained only
+  until the final dependency hashes and positive machine envelope are verified
 
 ### Finite validation plan
 
@@ -232,6 +232,8 @@ Passed:
 - `npm run build` -> passed
 - `npm run check:ga4-ad-comparison-certification` -> passed with machine status
   intentionally `UNVERIFIED`
+- `GA4_AD_COMPARISON_EXPECTED_SHA=73694e5d... npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts`
+  -> passed against the deployed authenticated API and rendered live tab
 - final tab-only packet: 9 files, 294 tests
 - focused real paths: 7 files, 207 tests
 - affected HubSpot direct-consumer guards: 2 files, 8 tests
@@ -277,23 +279,31 @@ Broader repository run:
 
 ### Production-only gates
 
-- deployed corrected revision: pending; production must report exact SHA
-  `6a38cc4d76b4710a55c4c916e5119963ce6de169` or a later reviewed documentation-
-  only descendant with the identical runtime dependency boundary
-- live GA4 provider packet: pending for the server-returned saved start date
-  through the campaign-timezone latest completed day, exact property, and exact
-  three-value saved campaign filter
-- active source inventory: prior read-only five-source inventory remains useful
-  historical evidence, but it does not prove the changed native window
-- live tab parity: pending; endpoint rows/totals, UI table, summary, cards,
-  chart, visible start/end dates, valid zero, and stale/unavailable behavior must
-  match on the deployed corrected revision
-- tab-only boundary revision: local code proves Overview and Reports still use
-  their existing paths; deployed revision parity remains pending
+- deployed corrected revision: passed; `/api/health` returned exact SHA
+  `73694e5dd831ade7d038209a83687178dac6843b`
+- authentication boundary: passed; the cumulative endpoint returned `401`
+  without authentication
+- authenticated provider/window packet: passed for exact property `542352127`,
+  `Europe/Amsterdam`, saved start `2026-07-02`, latest completed day
+  `2026-08-02`, 32 inclusive days, and the exact three-value saved filter
+- provider completeness and values: passed; 24 acquisition rows aggregated to
+  `yesop_retargeting` 43 sessions / USD 7,380.11, `yesop_paid_social` 34 /
+  USD 5,637.46, and `yesop_email_nurture` 33 / USD 5,261.82
+- active source inventory: passed by the prior unchanged read-only five-source
+  packet; imported provenance remains separate and valid zero is retained
+- live tab parity: passed; the rendered tab showed the exact start/end labels,
+  every saved campaign row, and the import-to-date revenue label
+- persistence safety: passed; the validator used a read-only database
+  transaction and rolled it back; no source, campaign, report, scheduler, or
+  analytics row was changed
+- tab-only boundary revision: passed; Overview and Reports retain their existing
+  paths and remain outside this certification
 
-Therefore the machine status remains `UNVERIFIED`. Reports-owned PDFs,
-downloads, saved reports, snapshots, scheduling, delivery, and report-library
-paths belong to the Reports section and are not an Ad Comparison deferral.
+All functional and production gates now pass. Machine status remains
+`UNVERIFIED` only until the final normalized dependency hashes and positive
+certification envelope are verified together. Reports-owned PDFs, downloads,
+saved reports, snapshots, scheduling, delivery, and report-library paths belong
+to the Reports section and are not an Ad Comparison deferral.
 
 <!-- /ga4-ad-comparison-current-status -->
 

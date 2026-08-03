@@ -4,7 +4,7 @@
   "status": "UNVERIFIED",
   "lastReviewedSha": "6a38cc4d76b4710a55c4c916e5119963ce6de169",
   "certifiedSha": null,
-  "invalidationReason": "Critical AC-09 invalidated the rolling-window revision. The isolated cumulative implementation and local regression/build packet pass at 6a38cc4d76b4710a55c4c916e5119963ce6de169; re-certification still requires deployed revision parity and authenticated live value confirmation.",
+  "invalidationReason": "All local and deployed production gates pass for runtime 73694e5dd831ade7d038209a83687178dac6843b; UNVERIFIED is retained only until the final normalized dependency hashes and positive certification envelope are verified together.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -149,6 +149,11 @@
       "sha256": null
     },
     {
+      "path": "scripts/ga4-ad-comparison-live-readonly.ts",
+      "role": "authenticated deployed API and live-tab parity validator",
+      "sha256": null
+    },
+    {
       "path": "package.json",
       "role": "validation and build configuration",
       "sha256": "91b23906bf9cb517437216a1b38ebd148895e64a552287d570319e41a355899e"
@@ -194,18 +199,24 @@
       "command": "npm run build",
       "status": "passed",
       "evidence": "Production Vite and server esbuild completed successfully at corrected local runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169."
+    },
+    {
+      "id": "authenticated_production_parity",
+      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=73694e5dd831ade7d038209a83687178dac6843b npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
+      "status": "passed",
+      "evidence": "Deployed SHA, saved 2026-07-02 boundary, Europe/Amsterdam latest completed 2026-08-02, exact property/filter, 24 provider rows, three aggregates, UI window labels and saved campaigns all matched; database transaction was read only and rolled back."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
-      "status": "pending",
-      "evidence": "The corrected cumulative runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169 is not yet proven deployed."
+      "status": "passed",
+      "evidence": "Production /api/health returned exact deployed SHA 73694e5dd831ade7d038209a83687178dac6843b."
     },
     {
       "id": "live_ga4_provider",
-      "status": "pending",
-      "evidence": "The prior packet proves only the escaped rolling window. Rerun from the saved import boundary through the latest completed day."
+      "status": "passed",
+      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-02, 32 inclusive days, exact property 542352127, exact three-value filter, 24 rows, and the reviewed campaign aggregates."
     },
     {
       "id": "production_source_inventory",
@@ -214,13 +225,13 @@
     },
     {
       "id": "live_tab_parity",
-      "status": "pending",
-      "evidence": "The previous 95-session and USD 16,088.36 packet covered the escaped rolling revision. Rerun endpoint/UI parity for the server-returned fixed start and completed end dates."
+      "status": "passed",
+      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-02 window labels, every saved campaign, and the import-to-date revenue label; API aggregates were 43/34/33 sessions and USD 7,380.11/5,637.46/5,261.82."
     },
     {
       "id": "tab_boundary_revision",
-      "status": "pending",
-      "evidence": "The tab-only boundary remains separate from Reports, but the corrected cumulative revision is not yet deployed."
+      "status": "passed",
+      "evidence": "Committed regression and deployed UI packet confirm the isolated live-tab query; Overview and Reports retain their separate existing paths."
     }
   ]
 }

@@ -32,6 +32,7 @@ export const GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES = [
   'server/utils/hubspot-pagination.ts',
   'server/utils/shopify-provider.ts',
   'server/utils/reporting-timezone.ts',
+  'scripts/ga4-ad-comparison-live-readonly.ts',
   'package.json',
   'render.yaml',
 ] as const;

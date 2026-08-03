@@ -354,7 +354,7 @@ describe("GA4 Benchmark regression guard", () => {
       betaReadinessStatus: "BETA_READY",
       productionCertificationStatus: "UNVERIFIED",
       reviewedBaseGitSha: "466dc2494b16b38a116b49a786039da251520520",
-      reviewedImplementationGitSha: "14bb0d2892ca06e42ae019f7244280b6ff70bcb7",
+      reviewedImplementationGitSha: "5366d0babc9550ecd408e55bc385e7024854f424",
       certifiedGitSha: null,
     });
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");

@@ -16,12 +16,12 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-August 2, 2026 controlling assessment: GA4 Benchmarks are **Beta Ready** for a closed beta at implementation commit `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`. Production certification remains `UNVERIFIED` because the exact reviewed revision has not yet received the authenticated deployed Benchmark inventory/provider/consumer packet, a natural timer-fired GA4 daily run, or fresh external email-delivery evidence.
+August 3, 2026 controlling assessment: GA4 Benchmarks are **Beta Ready** for a closed beta at deployed implementation commit `5366d0babc9550ecd408e55bc385e7024854f424`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`. The initial beta excludes Benchmark email delivery; in-app alerts/notifications and email attempt/audit safety remain covered. Production certification remains `UNVERIFIED` pending the production-only evidence listed below.
 
 <!-- ga4-benchmark-production-certification-status: UNVERIFIED -->
 <!-- ga4-benchmark-beta-readiness-status: BETA_READY -->
 
-This closed-beta assessment is revision-specific. It covers GA4 Benchmark cards, Tracker, live Insights, browser PDF, scheduled Insights/Benchmark reports, alert/notification behavior, CRUD, refresh/recompute, deterministic daily/scheduled execution, persistence, destructive rollback, authentication, campaign/property/owner/timezone/window scope, and multi-tenant isolation. Any dependency-boundary change invalidates the assessment.
+This closed-beta assessment is revision-specific. It covers GA4 Benchmark cards, Tracker, live Insights, browser PDF, scheduled Insights/Benchmark reports, in-app alert/notification behavior, email attempt/audit safety, CRUD, refresh/recompute, deterministic daily/scheduled execution, persistence, destructive rollback, authentication, campaign/property/owner/timezone/window scope, and multi-tenant isolation. It does not claim external Benchmark email delivery. Any dependency-boundary change invalidates the assessment.
 
 Current dependency queue:
 
@@ -30,11 +30,11 @@ Current dependency queue:
 3. **Benchmark Current Commit 10 — shared value-contract and lifecycle repair:** complete locally in `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
 4. **Benchmark Current Commit 11 — production re-certification:** open only for the production-only evidence listed below. It does not block the bounded closed beta, but it does block production certification.
 
-### August 2, 2026 Closed-Beta Validation Evidence
+### August 2-3, 2026 Closed-Beta Validation Evidence
 
 - Critical findings: 0.
-- Major findings: 6, all fixed: fail-open browser state handling; legacy metric aliases resolving to zero; non-exact and fail-open recompute results; missing selected report rows and second-read failures; missing scheduled-Insights Benchmark parity; and non-atomic Benchmark/notification deletion.
-- Minor findings: 1 documentation contradiction in the historical threshold record, corrected with this evidence update.
+- Major findings: 7, all fixed: fail-open browser state handling; legacy metric aliases resolving to zero; non-exact and fail-open recompute results; missing selected report rows and second-read failures; missing scheduled-Insights Benchmark parity; non-atomic Benchmark/notification deletion; and the global daily scheduler treating expected unavailable/skipped rows as a fatal run, preventing the global alert sweep.
+- Minor findings: 2, both fixed: a documentation contradiction in the historical threshold record, and the read-only provider-validation route comparing campaign-to-date financial Benchmarks against a 30-day window instead of the real application financial window.
 - Applicable/affected regressions: `39` files and `260` tests passed.
 - Focused destructive/route/notification packet: `4` files and `55` tests passed.
 - TypeScript: `npm run check` passed.
@@ -42,8 +42,13 @@ Current dependency queue:
 - Deterministic scheduler evidence: real-path daily job, daily scheduler, auto-refresh, source-lifecycle recompute, scheduler observability, report-preflight, scheduled Insights, and scheduled Benchmark report tests passed without waiting for a natural timer.
 - Read-only deployed smoke: `GET /health` returned `200 ok`; `GET /health/scheduler` returned `200`, with the GA4 daily scheduler started, timer scheduled, idle, and next run `2026-08-03T03:00:00.000Z`. The same response reported a separate Mailgun daily-limit failure in report email delivery; that external failure is not counted as Benchmark-path evidence.
 - Unrelated/deferred failure: the shared `source-safety-regression.test.ts` spend-source deletion assertion failed because its expected call text is absent. The other `92` tests in that three-file authorization/alert command passed, including every Benchmark assertion. This unrelated spend-source failure is not counted as passing evidence and was not changed.
+- Scheduler guard/fix packet: `npm test -- --run server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts` passed `4` files and `31` tests. Expected skipped/unavailable rows are observable and nonfatal; actual failures and a targeted zero-processed campaign remain fatal; Benchmark updated/skipped/failed evidence is exposed.
+- Provider-window guard/fix packet: `npm test -- --run server/ga4-benchmark-provider-validation-regression.test.ts server/ga4-financial-source-parity-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts` passed `4` files and `32` tests. `npm run check` and `npm run build` passed after the runtime fixes.
+- Natural scheduler evidence on the predecessor revision was captured at `2026-08-03T03:00:00.001Z`: the timer fired naturally and exposed the false-fatal skip aggregation. The smallest fix was guarded in `8a0da039`, implemented in `eb442cd1`, and deployed. A corrected-revision natural timer result was intentionally not awaited.
+- Exact deployed revision evidence: production `GET /api/health` returned `5366d0babc9550ecd408e55bc385e7024854f424`. `npx tsx --env-file=.env scripts/ga4-benchmark-beta-clearance-readonly.ts` passed with `success = true`, `2` campaign inventories, `4` active Benchmarks, zero failures, and zero attempted application mutations. The configured campaign had exact live-provider/persisted/scheduler/UI parity for Conversions (`95`) and Revenue (`51405.93`), authenticated list parity, campaign/property/filter/owner/timezone evidence, and deployed card/Tracker render parity. The campaign with no active property correctly rendered the connect state and was classified not applicable for live consumer parity.
+- The same read-only pack proved every Benchmark email-audit endpoint was access-guarded and readable, but found no fresh delivered event. External Benchmark email delivery is therefore excluded from this initial beta and is not claimed.
 
-Remaining production-only evidence, without adding new local gates: authenticate against the exact deployed reviewed revision; capture the complete read-only GA4 Benchmark row/property/owner/filter/timezone/source inventory; compare live provider, persisted current/history, cards, Tracker, Insights, browser PDF, scheduled report PDF, alerts, and notifications; observe the configured natural daily timer result; and capture fresh provider/inbox delivery evidence for any claimed Benchmark email delivery. Until then, machine-readable production status stays `UNVERIFIED`.
+Remaining production-only evidence, without adding new local gates: observe a successful natural timer-fired daily run on the corrected revision; capture exact deployed live parity for Insights, browser PDF, scheduled report artifacts, and existing alert/notification records (their real paths are locally parity-guarded); and capture fresh provider-confirmed/inbox evidence before enabling or claiming Benchmark email delivery. Until then, machine-readable production status stays `UNVERIFIED`.
 
 ### Historical July 2026 Status And Evidence
 
@@ -106,7 +111,7 @@ Certification rule:
 
 ## Current Future-Chat Answer
 
-Answer that GA4 Benchmarks are closed-beta ready only for the exact August 2 reviewed revision and dependency boundary. Production certification remains `UNVERIFIED` until Benchmark Current Commit 11 production-only evidence is captured. Cite older packets only as historical bounded evidence.
+Answer that GA4 Benchmarks are closed-beta ready only for deployed implementation revision `5366d0babc9550ecd408e55bc385e7024854f424` and its recorded dependency boundary, with external Benchmark email delivery excluded. Production certification remains `UNVERIFIED` until Benchmark Current Commit 11 production-only evidence is captured. Cite older packets only as historical bounded evidence.
 
 Do not reopen closed current-scope GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified Benchmark scope.
 

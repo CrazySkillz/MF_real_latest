@@ -8,10 +8,10 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED`. Local implementation evidence is green at the reviewed revision,
-but production is still running an earlier revision and the required deployed
-provider/source/direct-consumer parity evidence does not exist. The canonical
-readiness file is the only current status source.
+`UNVERIFIED` while the final tab-only certification boundary is committed and
+deployed. The live production provider, source, authorization, calculation, and
+rendered-value packets pass. The canonical readiness file is the only current
+status source.
 
 ## Document Ownership
 
@@ -144,7 +144,7 @@ Breakdown with `source-to-date; excluded from ranking` provenance.
 
 Imported revenue may enter campaign rankings only after a future implementation
 proves exact campaign identity, active materialization, currency, timezone, and
-the identical comparison window across all three direct consumers.
+the identical comparison window across all live tab surfaces.
 
 ## Leader Cards
 
@@ -277,31 +277,19 @@ Rules:
   distinct from failure.
 - `stale`: last-good values may remain visible only with an explicit warning.
 - `unavailable`: no plausible zero or ranking is rendered.
-- previous-property placeholder rows are neither rendered nor exported.
-- browser and scheduled Ads PDFs fail closed when a required campaign breakdown
-  or selected Revenue Breakdown input is stale or unavailable.
+- previous-property placeholder rows are not rendered.
 
-## Reports
+## Reports Ownership Boundary
 
-Required parity paths:
+PDF generation, downloads, saved reports, snapshots, scheduling, and delivery
+belong to the Reports section. They are not part of the Ad Comparison tab
+certification boundary.
 
-- live tab: `client/src/pages/ga4-ad-comparison.tsx`
-- browser-generated report PDF: `client/src/pages/ga4-metrics.tsx`
-- scheduled/server report PDF: `server/ga4-scheduled-report-pdf.ts`
-
-Rules:
-
-- report output must use the same normalized row meaning as the live tab
-- all three paths use the same 30-completed-day native GA4 comparison boundary
-- report All Campaigns tables must keep stable campaign-row order and must not be controlled by the live metric dropdown
-- scheduled/server All Campaigns must not truncate the saved comparison set
-- report leader cards must use the shared selector
-- scheduled/server PDF currently uses `sessions` as the explicit default selected metric because scheduled report config does not persist the user's live dropdown selection
-- source-to-date imported amounts remain separate and excluded from ranking
-- required input failures must block Ads PDF generation
-- deployed direct-consumer parity remains unverified until production runs the
-  exact reviewed revision
-- if report config later persists an Ad Comparison selected metric, scheduled/server PDF must pass that saved value into the same selector
+The live tab path certified here is `client/src/pages/ga4-ad-comparison.tsx`,
+with its data preparation in `client/src/pages/ga4-metrics.tsx`. Any Reports
+output that presents Ad Comparison data must be validated under
+`GA4/REPORTS_PRODUCTION_READINESS.md` and cannot expand or invalidate the
+tab-only claim unless it changes a shared live-tab dependency.
 
 ## Refresh Pattern
 
@@ -313,7 +301,7 @@ It refreshes from the same refreshed inputs that power the GA4 page:
 2. Revenue source definitions and exact materialized breakdown rows are
    refetched.
 3. Normalized comparison rows are rebuilt.
-4. The live tab and report outputs render from those rows.
+4. The live tab renders from those rows.
 
 Do not add a separate Ad Comparison scheduler unless the product design explicitly changes.
 

@@ -34,7 +34,7 @@ const baseRecord = () => ({
   configurationBoundary: {
     platformType: 'google_analytics',
     scope: 'one campaign and property',
-    includedSurfaces: ['live', 'browser PDF', 'scheduled PDF'],
+    includedSurfaces: ['live Ad Comparison tab'],
     sourceRules: ['exact source only'],
     windowRules: ['30 completed days'],
     ownershipRules: ['campaign access required'],

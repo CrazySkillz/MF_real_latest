@@ -93,8 +93,9 @@ Important meaning:
   Canonical whole-tab Benchmarks production-readiness source of truth. Current status: Beta Ready and eligible for clean production certification after the single remaining Current Commit 14 natural-run gate. Reports generation/delivery is separate.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `UNVERIFIED`; local blockers are fixed, but deployed
-  revision/provider/source/direct-consumer parity gates remain open.
+  Current status: `UNVERIFIED` only while the corrected live-tab-only boundary
+  is committed, deployed, and pinned. All included implementation and
+  production value gates pass. Reports-owned PDFs are certified separately.
 - `GA4/INSIGHTS.md`
   Short functional overview of the GA4 Insights tab, including sections, scope contract, reports, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
@@ -184,11 +185,12 @@ These are now part of the GA4 template contract:
 - GA4 KPI whole-tab status is not production-ready and remains `UNVERIFIED`; `GA4/KPIS_PRODUCTION_READINESS.md` is controlling. Current Commits 1-9 and the focused Current Commit 10 local validation pass, and the deployed numeric migration is proven; the listed current external gates remain open.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is Beta Ready and remains `UNVERIFIED` only for Current Commit 14's natural timer-fired daily-run evidence. If that unchanged-revision gate passes and the final boundary comparison is clean, Benchmarks can be marked clean-certified and production-ready under its section-specific scope. Reports is certified separately.
-- GA4 `Ad Comparison` leader cards, live table, browser PDF, and scheduled PDF use the same native 30-completed-day campaign rows; source-to-date imported revenue remains separate provenance and cannot create or adjust ranked rows
+- GA4 `Ad Comparison` leader cards, chart, summary, live table, and Revenue Breakdown use the same native 30-completed-day campaign rows; source-to-date imported revenue remains separate provenance and cannot create or adjust ranked rows
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
-  blocks previous-property placeholders and required-input report failures,
-  retains valid source zero, and remains `UNVERIFIED` until the canonical
-  production-only gates pass
+  blocks previous-property placeholders, retains valid source zero, and remains
+  `UNVERIFIED` only until the corrected tab-only boundary is deployed and
+  pinned. All PDF, saved-report, snapshot, scheduler, delivery, and
+  report-library behavior belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
 - GA4 reporting timezone is a campaign-level setting. `Create New Campaign` and `Edit Campaign` both expose a `Reporting Timezone` select, default new campaigns from the browser timezone when available, fall back to `UTC`, and save the selected IANA timezone through the campaign create/update payload. Dropdown labels remove underscores for readability while preserving exact saved values such as `America/New_York`.

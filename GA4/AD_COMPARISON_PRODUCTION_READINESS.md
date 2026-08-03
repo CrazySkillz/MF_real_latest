@@ -29,23 +29,22 @@ Final local review:
   `139315935603e66c4ff00266b54a80194b869f78`
 - assessment: all identified Critical and Major implementation findings are
   closed locally; Minor AC-06 is also closed
-- certification: `UNVERIFIED`; deployed revision, live provider, source
-  inventory, UI, and browser-PDF parity now pass, but no safe read-only deployed
-  entry point exists to generate the scheduled/server Ads PDF with Render's
-  token-encryption key
+- certification: `UNVERIFIED` only while the corrected tab-only boundary is
+  committed, deployed, and pinned. Deployed revision, live provider, source
+  inventory, authorization, calculations, and rendered tab values pass
 - production-ready wording is prohibited until every external gate below passes
 
 ### Finite validation plan
 
 1. Freeze the revision, configuration, surface, source, and consumer boundary.
 2. Trace every value through provider/source query, persistence, API,
-   post-fetch transforms, live rendering, browser PDF, and scheduled PDF.
+   post-fetch transforms, and every live tab surface.
 3. Trace auth, tenant/property/platform isolation and every applicable source
    lifecycle, refresh, recompute, failure, and delete path.
 4. Fix all Critical and Major findings with the smallest safe changes and
    focused real-path regressions.
-5. Run focused and affected tests, TypeScript, production build, deterministic
-   scheduled-PDF validation, and safe read-only deployed checks.
+5. Run focused and affected tests, TypeScript, production build, and safe
+   read-only deployed checks.
 6. Record the final revision/dependency hashes, evidence, and production-only
    gates in the canonical and machine-readable records.
 7. Commit and push the minimum focused packets, then stop when the defined local
@@ -61,20 +60,19 @@ Included:
 - sessions, users, conversions, conversion rate, native GA4 revenue, imported
   revenue attribution, Revenue Breakdown, summary totals, leader cards, chart,
   and All Campaigns table
-- live UI, browser-generated GA4 Ads PDF, and scheduled/server GA4 Ads PDF
+- the live Ad Comparison tab only
 - active GA4/null-context HubSpot, Shopify, Google Sheets, CSV, retained
   Salesforce, and retained legacy revenue only where they directly supply Ad
   Comparison
 - connection/source add, edit, delete, refresh/reprocess, recompute, and
   scheduler behavior only where it changes an Ad Comparison input
-- report ownership/campaign consistency and scheduled generation only where
-  required to build the direct Ads PDF consumer
 
 Excluded:
 
 - Campaign DeepDive Platform Comparison and every non-GA4 Ad Comparison
-- Insights, KPI, Benchmark, alert, notification, general Report-library, email
-  delivery, and unrelated Overview surfaces except a shared direct producer
+- Insights, KPI, Benchmark, alert, notification, unrelated Overview surfaces,
+  and every Reports-owned PDF, download, saved-report, snapshot, scheduler,
+  delivery, and report-library path
 - spend, Profit, ROAS, ROI, CPA, Pipeline Proxy, landing pages, channels,
   devices, countries, and conversion-event detail
 - semantic native/imported business-revenue deduplication, which the product
@@ -93,7 +91,7 @@ Excluded:
 | Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
 | Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
 | Leader cards | `selectGA4AdComparisonLeaderCards` | Best uses selected metric; Efficient requires traffic; Attention requires volume |
-| Chart/table/totals | Normalized comparison rows | Same rows, metric, and state across direct consumers |
+| Chart/table/totals | Normalized comparison rows | Same rows, metric, and state across all live tab surfaces |
 | Revenue Breakdown | 30-day native row sum plus separate materialized source-to-date rows | Exact source ID/value; no same-type/config fallback or combined total |
 
 ### Route, storage, lifecycle, and consumer inventory
@@ -104,8 +102,6 @@ Direct reads:
 - `GET /api/campaigns/:id/ga4-breakdown`
 - `GET /api/campaigns/:id/revenue-sources`
 - `GET /api/campaigns/:id/revenue-breakdown`
-- direct report/snapshot PDF routes and the report scheduler only where they
-  invoke `buildGA4ScheduledPdfAttachment`
 
 Direct persistence:
 
@@ -113,47 +109,36 @@ Direct persistence:
 - campaign owner/client identity and `ga4CampaignFilter`
 - `revenue_sources` by campaign/active state/GA4-or-null context
 - `revenue_records` by campaign/source/date and optional sub-campaign identity
-- report/snapshot/send-event rows only for report/campaign consistency and
-  scheduled artifact generation
 
 Applicable lifecycle:
 
 - Ad Comparison persists no independent metric rows and has no independent
-  add/edit/delete/scheduler. It recomputes when the tab/report renders.
+  add/edit/delete/scheduler. It recomputes when the tab renders.
 - GA4 connection add/delete and campaign filter/property selection change native
   scope.
 - Each imported family can add, edit, delete/deactivate, and refresh/reprocess
   where supported. The exact campaign/context source and records must update
   atomically and retain last-good data on failure.
-- Browser PDF is an authenticated in-memory consumer. Scheduled PDF is a
-  deterministic server consumer of saved report/campaign configuration and must
-  fail closed before a successful snapshot/artifact is represented.
-
-Documented direct consumers:
+Documented live tab consumers:
 
 - `client/src/pages/ga4-ad-comparison.tsx`
-- browser Ads PDF rendering in `client/src/pages/ga4-metrics.tsx`
-- scheduled/server Ads PDF rendering in
-  `server/ga4-scheduled-report-pdf.ts`
+- live data preparation in `client/src/pages/ga4-metrics.tsx`
 
-No KPI, Benchmark, Insight, alert, notification, Campaign DeepDive, or general
-Report-library value is a documented direct Ad Comparison consumer.
+No KPI, Benchmark, Insight, alert, notification, Campaign DeepDive, or Reports
+value is inside the Ad Comparison tab certification boundary.
 
 ### Reviewed revision dependency boundary
 
 - `client/src/pages/ga4-ad-comparison.tsx`
 - `client/src/pages/ga4-metrics.tsx`
 - `GA4/README.md`, `GA4/FINANCIAL_SOURCES.md`,
-  `GA4/REFRESH_AND_PROCESSING.md`, `GA4/REPORTS.md`, and
-  `GA4/REPORTS_PRODUCTION_READINESS.md`
+  and `GA4/REFRESH_AND_PROCESSING.md`
 - `shared/ga4-ad-comparison-cards.ts`
 - `shared/ga4-financial-source.ts`
 - `shared/schema.ts`
 - `server/analytics.ts`
 - `server/routes-oauth.ts`
 - `server/storage.ts`
-- `server/ga4-scheduled-report-pdf.ts`
-- `server/report-scheduler.ts`
 - `package.json` and production deployment/revision configuration
 
 The machine record lists the complete post-fix boundary. Hashes remain null
@@ -166,12 +151,16 @@ hash. Any input change invalidates a later positive certification.
 |---|---|---|---|
 | AC-01 | Critical | GA4 acquisition requests ordered high-cardinality rows by sessions and applied a 2,000-row limit without paging. | Fixed: page to provider `rowCount`; fail closed on incomplete/changed/oversized pagination |
 | AC-02 | Major | 30-day GA4 rows were combined with source-to-date imported totals. | Fixed: ranking/table/chart/totals use native 30-day rows; imported values are separate source-to-date provenance |
-| AC-03 | Major | Failure/stale/unavailable inputs could render as plausible zero/normal output. | Fixed: explicit loading/ready/stale/unavailable states and fail-closed PDF preflight |
-| AC-04 | Major | Live/browser/scheduled consumers diverged on config fallback, window, row limit, and failure handling. | Fixed: shared meaning, scheduled 30-day acquisition, source-to-date provenance, no 20-row truncation, required-input blocking |
+| AC-03 | Major | Failure/stale/unavailable inputs could render as plausible zero/normal output. | Fixed: explicit loading/ready/stale/unavailable states |
 | AC-05 | Major | Positive-only/config/ambiguous Salesforce fallbacks could omit valid zero or invent allocation. | Fixed: exact materialized amounts, valid zero retained, no definition/config value fallback or invented allocation |
 | AC-06 | Minor | Static first/last table colors implied a ranking unrelated to the selected metric. | Fixed: misleading row colors removed |
-| AC-07 | Major | React Query previous-property placeholder rows could appear/export under a newly selected property. | Fixed: placeholder rows are excluded and export is blocked until current-property data is verified |
+| AC-07 | Major | React Query previous-property placeholder rows could appear under a newly selected property. | Fixed: placeholder rows are excluded until current-property data is verified |
 | AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
+
+Historical AC-04 concerned Reports-owned browser/scheduled PDF parity. It was
+fixed in the broader implementation commit but is outside this tab-only
+certification; it is neither an Ad Comparison blocker nor deferred Ad
+Comparison work.
 
 ### Focused audit commit sequence
 
@@ -190,11 +179,11 @@ certification. The controlling status remains `UNVERIFIED`.
      evidence fails automatically.
 3. **Commit 3 — make Ad Comparison fail closed**
    - `08ea74af0344538259cd34ff1d8487492f4c8253`
-   - Closed AC-01 through AC-08 with the minimum runtime and focused regression
-     changes: complete GA4 pagination, aligned 30-day/native versus
+   - Closed the live-tab findings with the minimum runtime and focused
+     regression changes: complete GA4 pagination, aligned 30-day/native versus
      source-to-date/imported semantics, exact valid-zero provenance, explicit
-     unavailable/stale states, current-property isolation, and live/browser/
-     scheduled PDF parity.
+     unavailable/stale states, and current-property isolation. The same commit
+     also changed Reports-owned PDF paths outside this certification boundary.
 4. **Commit 4 — record audit evidence and align documentation**
    - `82369cf5213887944a5b84fdd093f49892f373dd`
    - Recorded the reviewed SHA, dependency and consumer boundaries, commands and
@@ -207,6 +196,7 @@ certification. The controlling status remains `UNVERIFIED`.
 
 Passed:
 
+- final tab-only packet: 9 files, 293 tests
 - focused real paths: 7 files, 207 tests
 - affected HubSpot direct-consumer guards: 2 files, 8 tests
 - auth/property/source lifecycle/destructive-safety packet: 10 files,
@@ -214,13 +204,16 @@ Passed:
   then passed 10/10
 - `npm run check`
 - `npm run build`
-- deterministic scheduled PDF success and fail-closed acquisition/revenue
-  failure cases
 - certification checker and its 7-test gate packet after the final evidence
   update
 
+The broader audit also exercised Reports-owned PDF paths. Those results remain
+historical supporting evidence and are not part of this tab-only certification.
+
 Commands and exact results:
 
+- `vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts`
+  -> 9 files / 293 tests passed for the final live-tab-only boundary
 - `vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts`
   -> 7 files / 207 tests passed
 - `vitest run --pool forks server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/source-safety-regression.test.ts server/csv-revenue-downstream-propagation.test.ts server/google-sheets-revenue-validation.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/shopify-revenue-transaction.test.ts`
@@ -248,11 +241,9 @@ Broader repository run:
 
 ### Production-only gates
 
-- deployed revision: passed on 2026-08-03; local, GitHub `main`, and
-  `/api/health` all resolved to
-  `139315935603e66c4ff00266b54a80194b869f78`
-- scheduler health: HTTP 200/healthy, but this proves process health only, not
-  an Ad Comparison artifact or parity
+- deployed runtime revision: passed on 2026-08-03; production `/api/health`
+  resolved to `7a6761afc40414d4a74c11f2d3044f1a93f2c7aa`, which contains the
+  reviewed implementation and production-evidence changes
 - live GA4 provider packet: passed read-only for campaign hash `fc734ddaf728`;
   authenticated property `542352127`, `Europe/Amsterdam`, the exact three-value
   saved campaign filter, `totalRevenue`, seven acquisition dimensions, and all
@@ -261,18 +252,14 @@ Broader repository run:
   source and record currencies are USD, dates and materialized aggregate versus
   sub-campaign rows were inventoried, valid zero was retained, and the storage
   path correctly avoided double-counting paired aggregate/sub-campaign records
-- live/browser parity: passed; the supplied two-page PDF matched all three rows,
+- live tab parity: passed; leader cards, All Campaigns rows, Revenue Breakdown,
   95 sessions, three campaigns, USD 16,088.36 native GA4 revenue, and imported
-  USD 0/600/4,000/5,100/7,000 source-to-date values
-- scheduled/server PDF parity: pending production-only evidence; the exact
-  builder's local production-input attempt failed closed with
-  `GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE` because this workstation cannot
-  decrypt Render's OAuth token without `TOKEN_ENCRYPTION_KEY`. No report was
-  scheduled, sent, snapshotted, or persisted, and that environmental failure is
-  not evidence that the deployed builder is defective
+  USD 0/600/4,000/5,100/7,000 source-to-date values matched the authenticated
+  provider and storage packet
+- tab-only boundary revision: pending commit, deployment, and exact SHA pinning
 
-No clean certification is permitted until all production-only gates pass.
-The machine status remains `UNVERIFIED`.
+No clean certification is permitted until the tab-only boundary revision is
+deployed and pinned. The machine status remains `UNVERIFIED` until that step.
 
 <!-- /ga4-ad-comparison-current-status -->
 

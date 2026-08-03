@@ -4,14 +4,12 @@
   "status": "UNVERIFIED",
   "lastReviewedSha": "139315935603e66c4ff00266b54a80194b869f78",
   "certifiedSha": null,
-  "invalidationReason": "All identified Critical and Major findings are closed and the exact deployed revision, live provider, source inventory, UI, and browser PDF passed; production scheduled/server PDF parity remains unverified because no safe read-only deployed generation path exists.",
+  "invalidationReason": "All included implementation and production gates pass; the corrected live-tab-only certification boundary must be committed, deployed, and pinned before clean certification.",
   "configurationBoundary": {
     "platformType": "google_analytics",
-    "scope": "GA4 platform-level Ad Comparison for one authorized campaign, selected active property, saved campaign filter, and direct live/browser/scheduled PDF consumers",
+    "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
     "includedSurfaces": [
-      "live Ad Comparison tab",
-      "browser-generated Ads PDF section",
-      "scheduled/server-generated Ads PDF section"
+      "live Ad Comparison tab"
     ],
     "sourceRules": [
       "exact active campaign/property/filter only",
@@ -26,8 +24,7 @@
     ],
     "ownershipRules": [
       "all browser APIs require campaign access",
-      "storage reads bind campaign, source, property, and platform context",
-      "scheduled reports require a valid campaign and exact report consistency"
+      "storage reads bind campaign, source, property, and platform context"
     ]
   },
   "dependencies": [
@@ -36,20 +33,18 @@
     { "path": "GA4/FINANCIAL_SOURCES.md", "role": "imported revenue window and provenance contract", "sha256": null },
     { "path": "GA4/README.md", "role": "GA4 documentation status index", "sha256": null },
     { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and state contract", "sha256": null },
-    { "path": "GA4/REPORTS.md", "role": "direct PDF consumer contract", "sha256": null },
-    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "direct PDF consumer readiness boundary", "sha256": null },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "source lifecycle UI", "sha256": null },
     { "path": "client/src/components/HubSpotRevenueWizard.tsx", "role": "HubSpot input contract", "sha256": null },
     { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify input contract", "sha256": null },
     { "path": "client/src/pages/ga4-ad-comparison.tsx", "role": "live Ad Comparison renderer", "sha256": null },
-    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live producer and browser PDF", "sha256": null },
+    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live tab data producer", "sha256": null },
     { "path": "shared/ga4-ad-comparison-cards.ts", "role": "leader-card selector", "sha256": null },
     { "path": "shared/ga4-financial-source.ts", "role": "shared financial source rules", "sha256": null },
     { "path": "shared/schema.ts", "role": "persistence contract", "sha256": null },
     { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": null },
     { "path": "server/auto-refresh-scheduler.ts", "role": "imported-source refresh", "sha256": null },
-    { "path": "server/ga4-scheduled-report-pdf.ts", "role": "scheduled PDF producer", "sha256": null },
-    { "path": "server/report-scheduler.ts", "role": "scheduled report lifecycle", "sha256": null },
+    { "path": "server/ga4-ad-comparison-certification-gate.ts", "role": "machine certification checker", "sha256": null },
+    { "path": "server/ga4-ad-comparison-certification-gate.test.ts", "role": "certification checker regression tests", "sha256": null },
     { "path": "server/routes-oauth.ts", "role": "API and auth boundary", "sha256": null },
     { "path": "server/storage.ts", "role": "storage and destructive boundary", "sha256": null },
     { "path": "server/utils/data-transformation.ts", "role": "source materialization transform", "sha256": null },
@@ -72,9 +67,9 @@
     },
     {
       "id": "focused_real_paths",
-      "command": "vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts",
+      "command": "vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts",
       "status": "passed",
-      "evidence": "7 files and 207 tests passed; includes provider pagination and deterministic scheduled PDF success/failure paths."
+      "evidence": "Final live-tab-only packet passed 9 files and 293 tests, covering formulas, pagination, UI states, cross-tab source consistency, source lifecycle, authentication, property scope, source safety, and certification integrity."
     },
     {
       "id": "affected_shared_regressions",
@@ -99,7 +94,7 @@
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "2026-08-03 local HEAD, GitHub main, and production /api/health all resolved to 139315935603e66c4ff00266b54a80194b869f78."
+      "evidence": "2026-08-03 production /api/health resolved to 7a6761afc40414d4a74c11f2d3044f1a93f2c7aa, containing the reviewed implementation and production evidence."
     },
     {
       "id": "live_ga4_provider",
@@ -112,9 +107,14 @@
       "evidence": "Read-only inventory proved five active GA4-context USD sources, record date boundaries, valid zero, exact materialized values, and paired aggregate/sub-campaign records that the production storage path does not double-count."
     },
     {
-      "id": "deployed_direct_consumer_parity",
+      "id": "live_tab_parity",
+      "status": "passed",
+      "evidence": "Leader cards, All Campaigns rows, Revenue Breakdown, 95 sessions, three campaigns, USD 16,088.36 native revenue, and imported USD 0/600/4,000/5,100/7,000 values matched the authenticated provider and storage packet."
+    },
+    {
+      "id": "tab_boundary_revision",
       "status": "pending",
-      "evidence": "Live UI and supplied two-page browser PDF matched all campaign and revenue values on the exact deployed revision. Scheduled/server PDF remains production-only pending: local production-input generation failed closed because this workstation lacks Render's TOKEN_ENCRYPTION_KEY, and no safe read-only deployed generation route exists."
+      "evidence": "The corrected live-tab-only boundary must be committed, deployed, and pinned before clean certification."
     }
   ]
 }

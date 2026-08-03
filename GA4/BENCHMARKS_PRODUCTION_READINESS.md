@@ -28,7 +28,11 @@ Current dependency queue:
 1. **Benchmark Current Commit 8 — documentation invalidation:** complete.
 2. **Benchmark Current Commit 9 — certification integrity and real-path parity:** complete in `5b5df12f5e5a40202ff8ba17e697ed88979de62f` and `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
 3. **Benchmark Current Commit 10 — shared value-contract and lifecycle repair:** complete locally in `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
-4. **Benchmark Current Commit 11 — production re-certification:** open only for the production-only evidence listed below. It does not block the bounded closed beta, but it does block production certification.
+4. **Benchmark Current Commit 11 — lock the exact production certification revision:** open.
+5. **Benchmark Current Commit 12 — run the final clean-revision local gate:** blocked by Current Commit 11.
+6. **Benchmark Current Commit 13 — prove exact deployed Benchmark-consumer parity:** blocked by Current Commits 11-12.
+7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** blocked by Current Commit 11 and the next unchanged-revision natural run.
+8. **Benchmark Current Commit 15 — resolve email delivery and issue the final certification:** blocked by Current Commits 11-14 and the email decision/evidence below.
 
 ### August 2-3, 2026 Closed-Beta Validation Evidence
 
@@ -49,6 +53,136 @@ Current dependency queue:
 - The same read-only pack proved every Benchmark email-audit endpoint was access-guarded and readable, but found no fresh delivered event. External Benchmark email delivery is therefore excluded from this initial beta and is not claimed.
 
 Remaining production-only evidence, without adding new local gates: observe a successful natural timer-fired daily run on the corrected revision; capture exact deployed live parity for Insights, browser PDF, scheduled report artifacts, and existing alert/notification records (their real paths are locally parity-guarded); and capture fresh provider-confirmed/inbox evidence before enabling or claiming Benchmark email delivery. Until then, machine-readable production status stays `UNVERIFIED`.
+
+### Active Production-Certification Commit Queue
+
+This is the complete finite queue for strict GA4 Benchmarks production certification. Do not add gates unless new evidence exposes a defect, dependency-boundary change, or undocumented Benchmark consumer. Validation-only commits should change only the canonical evidence, machine-readable certification, focused guards, and validation tooling required by that commit. Any discovered Critical or Major defect must receive a failing guard before the smallest safe runtime fix, and the affected commit remains open until the fix is deployed and revalidated.
+
+#### Benchmark Current Commit 11 — Lock The Exact Production Certification Revision
+
+Root cause:
+
+The authenticated production clearance was captured against runtime revision `5366d0babc9550ecd408e55bc385e7024854f424`, while current pushed and deployed revision `aa9eb5a4e84fe4c62616c866de404c0911a664bb` adds validation tooling, documentation, and the certification assertion. Strict certification cannot silently carry evidence across revisions, even when the known diff is non-runtime.
+
+Expected files:
+
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+- `GA4/certifications/ga4-benchmarks.json`
+- an existing validation artifact only if needed to record the boundary comparison
+
+Required evidence:
+
+- Select and record one exact production certification SHA.
+- Compare that SHA with `5366d0babc9550ecd408e55bc385e7024854f424` across the complete Benchmark dependency boundary and relevant deployment configuration.
+- Prove that every intervening change is documentation/test/validation-only, or invalidate and re-run the affected runtime evidence.
+- Confirm production `GET /api/health` reports the selected SHA.
+- Record the exact diff command, files, deployment/configuration comparison, and result without including secrets or tenant identifiers.
+
+Completion rule:
+
+Complete only when the reviewed implementation SHA, deployed SHA, dependency boundary, and machine-readable record agree and no unreviewed runtime or configuration change remains.
+
+#### Benchmark Current Commit 12 — Run The Final Clean-Revision Local Gate
+
+Root cause:
+
+The applicable regressions, TypeScript check, and production build passed during the beta audit, but strict production certification requires one final run from an isolated clean checkout of the exact Commit 11 revision. The shared working tree contains unrelated user changes and cannot be treated as clean-revision evidence.
+
+Expected files:
+
+- no runtime file unless the clean gate exposes a proven Benchmark defect
+- focused regression guard and smallest safe fix only if a defect is found
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+- `GA4/certifications/ga4-benchmarks.json`
+
+Required evidence:
+
+- Run every applicable GA4 Benchmark and documented-consumer regression from the exact certification revision, including lifecycle, destructive safety, auth/tenant isolation, calculations, thresholds, alerts/notifications, Insights, browser/server Reports, refresh/recompute, and scheduler paths.
+- Run `npm run check`.
+- Run `npm run build`.
+- Run the Benchmark certification-integrity regression.
+- Record exact commands, file/test counts, and results. Clearly separate unrelated failures; no applicable Benchmark failure may be deferred.
+
+Completion rule:
+
+Complete only when all applicable tests, TypeScript, build, and certification-integrity checks pass on the exact clean revision with zero Critical or Major findings remaining.
+
+#### Benchmark Current Commit 13 — Prove Exact Deployed Benchmark-Consumer Parity
+
+Root cause:
+
+The exact deployed beta pack proved authenticated inventory plus live-provider, persisted, scheduler-candidate, card, and Tracker parity. Exact deployed evidence is still missing for Insights, browser PDF, scheduled Benchmark/Insights report artifacts, and existing alert/notification decisions.
+
+Expected files:
+
+- `scripts/ga4-benchmark-beta-clearance-readonly.ts` or the smallest existing validation artifact
+- focused regression only if validation tooling or a runtime path changes
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+- `GA4/certifications/ga4-benchmarks.json`
+
+Required evidence:
+
+- Authenticate against the exact Commit 11 deployed revision and verify complete campaign/property/owner/filter/timezone/window inventory.
+- Compare the same Benchmark IDs, metric identities, current values, targets, availability states, and threshold decisions across persisted rows, cards, Tracker, Insights, browser PDF, scheduled Benchmark/Insights report artifacts, alerts, and notifications.
+- Prove valid-zero, unavailable, stale/last-good, blocked, insufficient-data, and failure states do not create false conclusions or false breaches.
+- Keep production application data read-only. If no suitable existing report artifact or alert/notification record exists, stop that subpath and request authorization for one controlled production event rather than manufacturing evidence or silently mutating production.
+- Record zero application-data mutation attempts, all mismatches, and the exact root cause of any mismatch.
+
+Completion rule:
+
+Complete only when every documented deployed Benchmark consumer is either proven exactly consistent or correctly fail-closed for its state, with no unexplained mismatch and no unauthorized production mutation.
+
+#### Benchmark Current Commit 14 — Capture A Successful Natural Daily Scheduler Run
+
+Root cause:
+
+The predecessor revision's natural timer fired and exposed the false-fatal skipped-row defect. The corrected scheduler path is deterministic-regression covered, but the current corrected deployed revision has not yet recorded a successful natural timer-fired run.
+
+Expected files:
+
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+- `GA4/certifications/ga4-benchmarks.json`
+- no scheduler runtime file unless natural execution exposes a proven defect
+
+Required evidence:
+
+- Observe `/health/scheduler` after the configured timer fires naturally without using the manual trigger as a substitute.
+- Confirm `lastRunTrigger = scheduled`, `lastRunStatus = success`, the expected unchanged deployed SHA, and a completed run window/date.
+- Capture campaign, KPI, and Benchmark processed/updated/skipped/failed counts and hashed row evidence.
+- Confirm expected unavailable/skipped records remain observable but nonfatal, actual failures remain fatal, global alert evaluation is not suppressed by expected skips, and no cross-tenant/campaign processing is exposed.
+- If a deployment or relevant configuration change occurs before the run, return to Current Commit 11 and re-evaluate affected evidence.
+
+Completion rule:
+
+Complete only after one successful natural timer-fired run on the locked corrected revision with reviewed recompute and alert evidence.
+
+#### Benchmark Current Commit 15 — Resolve Email Delivery And Issue Final Certification
+
+Root cause:
+
+External Benchmark email delivery was deliberately excluded from the closed beta. A strict whole-section production claim cannot imply delivery while the current exact revision lacks fresh provider-confirmed delivery and inbox evidence.
+
+Expected files:
+
+- email-related runtime/UI files and focused tests only if the chosen path disables or fixes the feature
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+- `GA4/certifications/ga4-benchmarks.json`
+- the existing read-only email validation artifact
+
+Required behavior and evidence:
+
+- Choose exactly one production path.
+- **Delivery-enabled path:** with explicit authorization and known controlled recipients, trigger one unambiguous GA4 Benchmark alert; prove correct threshold eligibility, no false breach, one idempotent send, provider acceptance, provider-confirmed delivery with a delivered timestamp, and actual inbox receipt. Restore only explicitly authorized temporary validation state.
+- **Delivery-disabled path:** disable the production-facing Benchmark email option and server send path, prove users and schedulers cannot select or send it, preserve audit/history safely, and state the certified limitation without implying delivery.
+- Re-run affected email, alert, notification, auth, tenant-isolation, scheduler, TypeScript, and build checks after any code change.
+- Re-run any Commit 11-14 evidence invalidated by the selected email implementation.
+- Only after Current Commits 11-14 and the chosen email path pass, set the canonical and machine-readable production status to the project's verified production value, populate the exact certified SHA, record zero remaining Critical/Major findings, commit, push, deploy, and verify the final evidence-only boundary.
+
+Completion rule:
+
+Complete only when email behavior is either freshly delivery-proven or provably disabled, every earlier active commit remains valid, the final certification record is internally consistent, and production certification is no longer `UNVERIFIED`.
+
+Stop immediately after Current Commits 11-15 are complete and no Critical or Major finding remains. Minor non-core issues may be recorded without extending this queue.
 
 ### Historical July 2026 Status And Evidence
 
@@ -111,7 +245,7 @@ Certification rule:
 
 ## Current Future-Chat Answer
 
-Answer that GA4 Benchmarks are closed-beta ready only for deployed implementation revision `5366d0babc9550ecd408e55bc385e7024854f424` and its recorded dependency boundary, with external Benchmark email delivery excluded. Production certification remains `UNVERIFIED` until Benchmark Current Commit 11 production-only evidence is captured. Cite older packets only as historical bounded evidence.
+Answer that GA4 Benchmarks are closed-beta ready only for the recorded revision and dependency boundary, with external Benchmark email delivery excluded. Production certification remains `UNVERIFIED` until Benchmark Current Commits 11-15 are complete. Cite older packets only as historical bounded evidence.
 
 Do not reopen closed current-scope GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified Benchmark scope.
 
@@ -135,7 +269,7 @@ Read in this order:
 10. `Not Locally Verifiable / External Caveats`
 11. `Future Platform Template`
 
-Answer that GA4 Benchmarks are closed-beta ready only for the exact reviewed revision and remain production-certification `UNVERIFIED`. Read the controlling status and open Current Commit 11 evidence before the historical matrices. KPI fixes are dependencies, not Benchmark proof.
+Answer that GA4 Benchmarks are closed-beta ready only for the exact reviewed revision and remain production-certification `UNVERIFIED`. Read the controlling status and active Current Commits 11-15 before the historical matrices. KPI fixes are dependencies, not Benchmark proof.
 
 ## Future Source Reading Order
 
@@ -432,7 +566,7 @@ Known doc caveat:
 
 ## Historical Current Commit Queue (Commits 0-7)
 
-The queue below is historical evidence for the July certification packet. The only active item is Benchmark Current Commit 11 in the controlling status above.
+The queue below is historical evidence for the July certification packet. The only active queue is Benchmark Current Commits 11-15 in the controlling status above.
 
 - Current Commit 0 is implemented by this file rewrite and is required for clean future certification answers.
 - Current Commit 1 is implemented: the non-current create alias now awaits in-app Benchmark alert reconciliation before responding.
@@ -809,7 +943,7 @@ Provider/email wording rule:
 Production-readiness wording rule:
 
 - It is acceptable only to say GA4 Benchmarks were clean-certified for the controlled historical July packet.
-- It is not acceptable to describe the current whole tab as clean-certified until Benchmark Current Commit 11 production-only evidence and the revision-bound integrity check pass.
+- It is not acceptable to describe the current whole tab as clean-certified until Benchmark Current Commits 11-15 and the revision-bound integrity check pass.
 
 ## Future Platform Template
 

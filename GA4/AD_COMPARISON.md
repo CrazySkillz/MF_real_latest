@@ -8,10 +8,11 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED`. The local implementation now uses the saved initial historical
-import boundary through the latest completed reporting day, but the corrected
-revision still requires deployment and authenticated live-value parity before
-clean certification. The root cause, fix, and remaining production gates are recorded in
+`PRODUCTION_READY` for deployed runtime revision
+`83d124278647f3d2ccbe74b20f39c853dc0c8b44` and the recorded dependency and configuration boundary. The
+implementation uses the saved initial historical import boundary through the
+latest completed reporting day. The root cause, fix, and revision-specific
+production evidence are recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
 boundary.

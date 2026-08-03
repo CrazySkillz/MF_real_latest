@@ -1,12 +1,11 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
+<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
 
 ## Controlling Current Status
 
-**Status: UNVERIFIED pending the final dependency-hash certification envelope.
-The corrected revision is deployed and its authenticated API/live-tab parity
-packet has passed.**
+**Status: PRODUCTION_READY for exact deployed revision
+`83d124278647f3d2ccbe74b20f39c853dc0c8b44` and the recorded dependency/configuration boundary.**
 
 Critical finding AC-09 invalidated the prior certification. Root cause: the
 live component reused the Overview Campaign Breakdown's rolling `30daysAgo`
@@ -40,11 +39,11 @@ Final local review:
 - reviewed implementation SHA:
   `6a38cc4d76b4710a55c4c916e5119963ce6de169`
 - exact corrected deployed and production-evidence SHA:
-  `73694e5dd831ade7d038209a83687178dac6843b`
+  `83d124278647f3d2ccbe74b20f39c853dc0c8b44`
 - assessment: AC-09 is fixed; no Critical or Major finding remains open in the
   defined tab-only boundary
-- certification: production evidence passes; `UNVERIFIED` is retained only
-  until the final dependency hashes and positive machine envelope are verified
+- certification: `PRODUCTION_READY` for exact deployed revision
+  `83d124278647f3d2ccbe74b20f39c853dc0c8b44`
 
 ### Finite validation plan
 
@@ -232,7 +231,7 @@ Passed:
 - `npm run build` -> passed
 - `npm run check:ga4-ad-comparison-certification` -> passed with machine status
   intentionally `UNVERIFIED`
-- `GA4_AD_COMPARISON_EXPECTED_SHA=73694e5d... npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts`
+- `GA4_AD_COMPARISON_EXPECTED_SHA=83d12427... npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts`
   -> passed against the deployed authenticated API and rendered live tab
 - final tab-only packet: 9 files, 294 tests
 - focused real paths: 7 files, 207 tests
@@ -280,7 +279,7 @@ Broader repository run:
 ### Production-only gates
 
 - deployed corrected revision: passed; `/api/health` returned exact SHA
-  `73694e5dd831ade7d038209a83687178dac6843b`
+  `83d124278647f3d2ccbe74b20f39c853dc0c8b44`
 - authentication boundary: passed; the cumulative endpoint returned `401`
   without authentication
 - authenticated provider/window packet: passed for exact property `542352127`,
@@ -299,9 +298,9 @@ Broader repository run:
 - tab-only boundary revision: passed; Overview and Reports retain their existing
   paths and remain outside this certification
 
-All functional and production gates now pass. Machine status remains
-`UNVERIFIED` only until the final normalized dependency hashes and positive
-certification envelope are verified together. Reports-owned PDFs, downloads,
+All functional, production, revision, and normalized dependency-hash gates pass.
+The machine status is `PRODUCTION_READY` for exact deployed revision
+`83d124278647f3d2ccbe74b20f39c853dc0c8b44`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, delivery, and report-library paths belong
 to the Reports section and are not an Ad Comparison deferral.
 

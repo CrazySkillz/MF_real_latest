@@ -398,11 +398,11 @@ It refreshes because:
 - revenue-source inputs refresh
 - the derived comparison view rerenders from those refreshed inputs
 
-Readiness note: the local GA4 Ad Comparison fix uses an isolated provider query
-from the saved initial-import boundary through the campaign-timezone latest
-completed day. It remains `UNVERIFIED` until deployed parity and authenticated
-live values pass. It has no independent scheduler; Reports-owned generation and
-delivery remain outside the tab boundary.
+Readiness note: GA4 Ad Comparison uses an isolated provider query from the saved
+initial-import boundary through the campaign-timezone latest completed day. It
+is `PRODUCTION_READY` for exact deployed revision `83d12427` and the
+recorded boundary. It has no independent scheduler; Reports-owned generation
+and delivery remain outside the tab boundary.
 
 ## Insights Refresh
 

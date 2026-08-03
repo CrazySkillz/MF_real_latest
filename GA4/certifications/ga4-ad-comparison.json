@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
-  "status": "UNVERIFIED",
-  "lastReviewedSha": "6a38cc4d76b4710a55c4c916e5119963ce6de169",
-  "certifiedSha": null,
-  "invalidationReason": "All local and deployed production gates pass for runtime 73694e5dd831ade7d038209a83687178dac6843b; UNVERIFIED is retained only until the final normalized dependency hashes and positive certification envelope are verified together.",
+  "status": "PRODUCTION_READY",
+  "lastReviewedSha": "83d124278647f3d2ccbe74b20f39c853dc0c8b44",
+  "certifiedSha": "83d124278647f3d2ccbe74b20f39c853dc0c8b44",
+  "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -31,27 +31,27 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": null
+      "sha256": "e079dd5f2731f79b2982f8314362ca1e99bc497a4947c2c68dae27fc0011795c"
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": null
+      "sha256": "0d4e32cfbff83567c690086f07266dd313a214a771a504dabf376c3fa225855d"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
       "role": "imported revenue window and provenance contract",
-      "sha256": null
+      "sha256": "7188b0078bcef3333f650c5c456eec306e744a33ab325ded6435c8413e15f4f0"
     },
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": null
+      "sha256": "4b7230bb8d7f2ce6eb2c228683146d193b4ba312e63a4e67a4e8d2f9f1045661"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and state contract",
-      "sha256": null
+      "sha256": "78d7901c3252d92a1025e628f348e3481c09f772aeeea5c8b14e0a2393b82e2b"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -71,12 +71,12 @@
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
       "role": "live Ad Comparison renderer",
-      "sha256": null
+      "sha256": "60a1f45eaa5bbec0bb21d06dea03142ad985c1e38404b81ff86415f7d39a7fea"
     },
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "live tab data producer",
-      "sha256": null
+      "sha256": "b414093d987b9c4b3a9fc823babd943ef317ceaa8667a0663ca0bc39813186c3"
     },
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
@@ -96,7 +96,7 @@
     {
       "path": "server/analytics.ts",
       "role": "GA4 provider query path",
-      "sha256": null
+      "sha256": "15ef28b260b4bf3d83d92ad89cc073c02788e95a189c3719b0a639e5ac3d4f4b"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -106,22 +106,22 @@
     {
       "path": "server/ga4-ad-comparison-certification-gate.ts",
       "role": "machine certification checker",
-      "sha256": null
+      "sha256": "7aeaa0608dcd1375913ac9f88853b0a64f4f0fba74600ba8edf7dd694b313f68"
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.test.ts",
       "role": "certification checker regression tests",
-      "sha256": null
+      "sha256": "a292ea27ddea0c1394ceb2f978c5919512f1bddaf5eadebc8d8508ff4fd2825b"
     },
     {
       "path": "server/ga4-ad-comparison-accumulation-regression.test.ts",
       "role": "fixed-boundary and production-path regression tests",
-      "sha256": null
+      "sha256": "260723bbbdbe2b418ca584e92314fd68df43f425bd6aaa75c41f69edd2c9cdb6"
     },
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": null
+      "sha256": "cd44b4ec4882634af27e13b3f7ea41ba221cc31810b2330b0f73fddad20cd037"
     },
     {
       "path": "server/storage.ts",
@@ -146,12 +146,12 @@
     {
       "path": "server/utils/reporting-timezone.ts",
       "role": "campaign-timezone accumulation-window resolver",
-      "sha256": null
+      "sha256": "a122d1d4c2f6524f33681bdb1141849f9fb37a5561b1ae863032414dd1487268"
     },
     {
       "path": "scripts/ga4-ad-comparison-live-readonly.ts",
       "role": "authenticated deployed API and live-tab parity validator",
-      "sha256": null
+      "sha256": "81c2642e6fce049e17774fecdf8bef752a8aa27c9f227cf2b38641d5ecb62be0"
     },
     {
       "path": "package.json",
@@ -202,7 +202,7 @@
     },
     {
       "id": "authenticated_production_parity",
-      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=73694e5dd831ade7d038209a83687178dac6843b npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
+      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=83d124278647f3d2ccbe74b20f39c853dc0c8b44 npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
       "status": "passed",
       "evidence": "Deployed SHA, saved 2026-07-02 boundary, Europe/Amsterdam latest completed 2026-08-02, exact property/filter, 24 provider rows, three aggregates, UI window labels and saved campaigns all matched; database transaction was read only and rolled back."
     }
@@ -211,7 +211,7 @@
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact deployed SHA 73694e5dd831ade7d038209a83687178dac6843b."
+      "evidence": "Production /api/health returned exact deployed SHA 83d124278647f3d2ccbe74b20f39c853dc0c8b44."
     },
     {
       "id": "live_ga4_provider",

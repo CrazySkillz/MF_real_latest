@@ -8,10 +8,10 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`PRODUCTION_READY` for the live tab at deployed revision
-`1c410e271961638d80088b69a14eb874df90b881`. The dependency boundary uses
-line-ending-normalized committed-content hashes, so the certification is
-reproducible across clean checkouts. The exact boundary and evidence are in
+`UNVERIFIED`. The current implementation incorrectly uses a rolling
+30-day provider breakdown instead of retaining the saved initial historical
+import boundary and accumulating later completed days. The root cause and
+active fix gate are recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
 boundary.

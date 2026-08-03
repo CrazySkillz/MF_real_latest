@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   evaluateGA4AdComparisonCertification,
+  GA4_AD_COMPARISON_ACCUMULATION_WINDOW_RULE,
   GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES,
   runGA4AdComparisonCertificationGate,
   sha256NormalizedCertificationText,
@@ -37,7 +38,7 @@ const baseRecord = () => ({
     scope: 'one campaign and property',
     includedSurfaces: ['live Ad Comparison tab'],
     sourceRules: ['exact source only'],
-    windowRules: ['30 completed days'],
+    windowRules: [GA4_AD_COMPARISON_ACCUMULATION_WINDOW_RULE],
     ownershipRules: ['campaign access required'],
   },
   dependencies: GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES.map((path) => ({
@@ -100,6 +101,15 @@ describe('GA4 Ad Comparison certification gate', () => {
     record.dependencies.pop();
     const result = evaluateGA4AdComparisonCertification(record, gateContext());
     expect(result.errors.join('\n')).toContain('missing required dependency');
+  });
+
+  it('rejects a rolling-only window boundary before certification', () => {
+    const record = baseRecord();
+    record.configurationBoundary.windowRules = ['last 30 completed days'];
+    const result = evaluateGA4AdComparisonCertification(record, gateContext());
+    expect(result.errors).toContain(
+      'windowRules must require the fixed initial-import accumulation boundary',
+    );
   });
 
   it('rejects an invalid reviewed revision', () => {

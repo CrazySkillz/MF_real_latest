@@ -7,6 +7,9 @@ import { pathToFileURL } from 'node:url';
 export const GA4_AD_COMPARISON_CERTIFICATION_RECORD =
   'GA4/certifications/ga4-ad-comparison.json';
 
+export const GA4_AD_COMPARISON_ACCUMULATION_WINDOW_RULE =
+  'native comparison starts at the saved initial historical import boundary and accumulates through the latest completed reporting day';
+
 export const GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES = [
   'GA4/AD_COMPARISON.md',
   'GA4/AD_COMPARISON_PRODUCTION_READINESS.md',
@@ -135,6 +138,12 @@ export function evaluateGA4AdComparisonCertification(
       if (!Array.isArray(boundary[field]) || boundary[field].length === 0) {
         errors.push('empty boundary ' + field);
       }
+    }
+    if (
+      Array.isArray(boundary.windowRules) &&
+      !boundary.windowRules.includes(GA4_AD_COMPARISON_ACCUMULATION_WINDOW_RULE)
+    ) {
+      errors.push('windowRules must require the fixed initial-import accumulation boundary');
     }
   }
 

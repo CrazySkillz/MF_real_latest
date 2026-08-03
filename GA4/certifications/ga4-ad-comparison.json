@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "1c410e271961638d80088b69a14eb874df90b881",
-  "certifiedSha": "1c410e271961638d80088b69a14eb874df90b881",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "6ce94554076efbbecf22306e19a385bf410a393e",
+  "certifiedSha": null,
+  "invalidationReason": "Critical AC-09: the live Ad Comparison path uses a rolling 30-day provider breakdown instead of the saved initial historical import boundary plus later completed-day accumulation. Re-certification requires the isolated cumulative path, focused regressions, deployed revision parity, and live value confirmation.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -14,12 +14,12 @@
     "sourceRules": [
       "exact active campaign/property/filter only",
       "active GA4 or legacy-null revenue context only",
-      "source-to-date imported values are provenance only and excluded from 30-day ranking",
+      "source-to-date imported values are provenance only and excluded from native campaign ranking",
       "no guessed, ambiguous, stale, configuration-backed, or proportional imported allocation"
     ],
     "windowRules": [
-      "native comparison uses the last 30 completed GA4 days",
-      "row-level rankings use native GA4 values only until imported revenue has an identical proven window",
+      "native comparison starts at the saved initial historical import boundary and accumulates through the latest completed reporting day",
+      "row-level rankings use native GA4 values only until imported revenue has an identical proven accumulation boundary",
       "valid zero, verified empty or insufficient data, stale last-good, and unavailable or failed inputs are distinct; blocked auth/property inputs fail closed as unavailable"
     ],
     "ownershipRules": [
@@ -158,44 +158,44 @@
     {
       "id": "certification_gate",
       "command": "npm test -- server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
-      "status": "passed",
-      "evidence": "8 gate tests passed, including line-ending normalization; the final clean committed-revision checker follows the atomic manifest update."
+      "status": "pending",
+      "evidence": "The prevention-first gate must reject rolling-only window rules and pass again after the cumulative implementation boundary is recorded."
     },
     {
       "id": "focused_real_paths",
       "command": "vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts",
-      "status": "passed",
-      "evidence": "Final live-tab-only packet passed 9 files and 294 tests, covering formulas, pagination, UI states, cross-tab source consistency, source lifecycle, authentication, property scope, source safety, and certification integrity."
+      "status": "pending",
+      "evidence": "Prior rolling-window evidence is historical. The cumulative import-to-latest-completed path requires focused route, UI, property/filter, failure-state, and parity regressions."
     },
     {
       "id": "affected_shared_regressions",
       "command": "vitest affected source lifecycle/auth/scope/destructive packet plus HubSpot matrix/stale-authority guards",
-      "status": "passed",
-      "evidence": "Auth/property/source lifecycle/destructive packet passed 200 tests except one stale structural assertion, then corrected file passed 10/10; affected HubSpot guards passed 8/8."
+      "status": "pending",
+      "evidence": "Rerun the affected auth/property/source lifecycle/destructive and imported-provenance packet after the cumulative window fix."
     },
     {
       "id": "typescript",
       "command": "npm run check",
-      "status": "passed",
-      "evidence": "tsc completed with exit code 0."
+      "status": "pending",
+      "evidence": "Rerun after the cumulative window fix."
     },
     {
       "id": "production_build",
       "command": "npm run build",
-      "status": "passed",
-      "evidence": "Vite and server esbuild production build completed with exit code 0."
+      "status": "pending",
+      "evidence": "Rerun after the cumulative window fix."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
-      "status": "passed",
-      "evidence": "2026-08-03 local and GitHub main resolved to 1c410e271961638d80088b69a14eb874df90b881, and production /api/health returned the same exact SHA."
+      "status": "pending",
+      "evidence": "The corrected cumulative revision is not yet deployed."
     },
     {
       "id": "live_ga4_provider",
-      "status": "passed",
-      "evidence": "Read-only authenticated packet for campaign hash fc734ddaf728 proved property 542352127, Europe/Amsterdam, the exact three-campaign saved filter, totalRevenue, seven acquisition dimensions, complete 21-row provider response, exact row values, and unauthenticated HTTP 401."
+      "status": "pending",
+      "evidence": "The prior packet proves only the escaped rolling window. Rerun from the saved import boundary through the latest completed day."
     },
     {
       "id": "production_source_inventory",
@@ -204,13 +204,13 @@
     },
     {
       "id": "live_tab_parity",
-      "status": "passed",
+      "status": "pending",
       "evidence": "Leader cards, All Campaigns rows, Revenue Breakdown, 95 sessions, three campaigns, USD 16,088.36 native revenue, and imported USD 0/600/4,000/5,100/7,000 values matched the authenticated provider and storage packet."
     },
     {
       "id": "tab_boundary_revision",
-      "status": "passed",
-      "evidence": "The corrected live-tab-only boundary and normalized hash guard are committed and deployed at 1c410e271961638d80088b69a14eb874df90b881; all Reports-owned paths are excluded and owned by the Reports certification."
+      "status": "pending",
+      "evidence": "The tab-only boundary remains separate from Reports, but the corrected cumulative revision is not yet deployed."
     }
   ]
 }

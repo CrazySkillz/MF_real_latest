@@ -1,19 +1,19 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
+<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
 
 ## Controlling Current Status
 
-**Status: PRODUCTION_READY for the live GA4 Ad Comparison tab at deployed
-revision `1c410e271961638d80088b69a14eb874df90b881`.**
+**Status: UNVERIFIED. The live tab uses a rolling 30-day provider breakdown
+instead of the required fixed initial-import boundary plus later completed-day
+accumulation.**
 
-No analytics-value, authorization, tenant-isolation, persistence, or destructive
-workflow defect was found in this documentation/code comparison. The
-certification-integrity defect is closed: the checker normalizes CRLF and CR to
-LF before hashing, and a focused regression proves all three line-ending forms
-produce the same dependency hash. The complete normalized dependency hash set
-is recorded in the machine certificate and passes from a clean committed
-checkout.
+Critical finding AC-09 invalidates the prior certification. The 30-day property
+setup choice is an initial historical-import depth, not a permanent rolling
+display window. Overview Summary preserves that fixed boundary, but Ad
+Comparison independently requests `30daysAgo` through `yesterday` and drops
+older imported days as the calendar advances. No database deletion or
+cross-tenant defect was found; the defect is the Ad Comparison query boundary.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
@@ -25,7 +25,7 @@ Audit baseline:
 
 - audit opened: 2026-08-03
 - baseline Git SHA: `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
-- certification status: `PRODUCTION_READY`; exact certified and deployed SHA:
+- certification status: `UNVERIFIED`; escaped rolling-window runtime SHA:
   `1c410e271961638d80088b69a14eb874df90b881`
 - production writes, provider refreshes, report sends, and cleanup: not
   performed
@@ -37,11 +37,10 @@ Final local review:
   `08ea74af0344538259cd34ff1d8487492f4c8253`
 - exact corrected deployed and production-evidence SHA:
   `1c410e271961638d80088b69a14eb874df90b881`
-- assessment: all identified Critical and Major implementation findings are
-  closed locally; Minor AC-06 is also closed
-- certification: `PRODUCTION_READY`; the implementation/value boundary is
-  unchanged from the passed live provider and parity packet, and every pinned
-  dependency uses a reproducible line-ending-normalized content hash
+- assessment: Critical AC-09 is open; prior findings remain historically closed
+- certification: `UNVERIFIED` until the fixed import-to-latest-completed
+  boundary is implemented, regression-covered, deployed, and proven against the
+  live tab
 
 ### Finite validation plan
 
@@ -169,6 +168,7 @@ production-configuration change invalidates the certification.
 | AC-06 | Minor | Static first/last table colors implied a ranking unrelated to the selected metric. | Fixed: misleading row colors removed |
 | AC-07 | Major | React Query previous-property placeholder rows could appear under a newly selected property. | Fixed: placeholder rows are excluded until current-property data is verified |
 | AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
+| AC-09 | Critical | Ad Comparison conflated the 30-day initial import depth with a permanent rolling display window, so older valid campaign values fall out after day 30 and rankings/totals diverge from the campaign accumulation contract. | Open: implement a server-resolved saved-import-boundary query through the latest completed day without changing other GA4 consumers |
 
 Historical AC-04 concerned Reports-owned browser/scheduled PDF parity. It was
 fixed in the broader implementation commit but is outside this tab-only

@@ -92,11 +92,10 @@ Important clarification:
   combined `Total Revenue` or unallocated ranking row is rendered
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
-Production-readiness note: the live GA4 Ad Comparison tab is
-`PRODUCTION_READY` at deployed revision
-`1c410e271961638d80088b69a14eb874df90b881` under its normalized pinned
-dependency boundary. The behavior contract above matches the implementation.
-Reports-owned output remains outside the tab-only boundary.
+Production-readiness note: the live GA4 Ad Comparison tab is `UNVERIFIED`
+after Critical AC-09 proved its native rows use a rolling 30-day provider
+window instead of the saved initial-import boundary plus completed-day
+accumulation. Reports-owned output remains outside the tab-only boundary.
 
 ### Previous-Day Revenue Records
 

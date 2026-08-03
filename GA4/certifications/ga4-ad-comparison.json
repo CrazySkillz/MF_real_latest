@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
-  "status": "UNVERIFIED",
-  "lastReviewedSha": "139315935603e66c4ff00266b54a80194b869f78",
-  "certifiedSha": null,
-  "invalidationReason": "All included implementation and production gates pass; the corrected live-tab-only certification boundary must be committed, deployed, and pinned before clean certification.",
+  "status": "PRODUCTION_READY",
+  "lastReviewedSha": "635b65c1db35a39a6f1466cab0cc1dceab04db31",
+  "certifiedSha": "635b65c1db35a39a6f1466cab0cc1dceab04db31",
+  "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -28,30 +28,126 @@
     ]
   },
   "dependencies": [
-    { "path": "GA4/AD_COMPARISON.md", "role": "functional contract", "sha256": null },
-    { "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md", "role": "controlling readiness status", "sha256": null },
-    { "path": "GA4/FINANCIAL_SOURCES.md", "role": "imported revenue window and provenance contract", "sha256": null },
-    { "path": "GA4/README.md", "role": "GA4 documentation status index", "sha256": null },
-    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and state contract", "sha256": null },
-    { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "source lifecycle UI", "sha256": null },
-    { "path": "client/src/components/HubSpotRevenueWizard.tsx", "role": "HubSpot input contract", "sha256": null },
-    { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify input contract", "sha256": null },
-    { "path": "client/src/pages/ga4-ad-comparison.tsx", "role": "live Ad Comparison renderer", "sha256": null },
-    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live tab data producer", "sha256": null },
-    { "path": "shared/ga4-ad-comparison-cards.ts", "role": "leader-card selector", "sha256": null },
-    { "path": "shared/ga4-financial-source.ts", "role": "shared financial source rules", "sha256": null },
-    { "path": "shared/schema.ts", "role": "persistence contract", "sha256": null },
-    { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": null },
-    { "path": "server/auto-refresh-scheduler.ts", "role": "imported-source refresh", "sha256": null },
-    { "path": "server/ga4-ad-comparison-certification-gate.ts", "role": "machine certification checker", "sha256": null },
-    { "path": "server/ga4-ad-comparison-certification-gate.test.ts", "role": "certification checker regression tests", "sha256": null },
-    { "path": "server/routes-oauth.ts", "role": "API and auth boundary", "sha256": null },
-    { "path": "server/storage.ts", "role": "storage and destructive boundary", "sha256": null },
-    { "path": "server/utils/data-transformation.ts", "role": "source materialization transform", "sha256": null },
-    { "path": "server/utils/hubspot-pagination.ts", "role": "HubSpot completeness boundary", "sha256": null },
-    { "path": "server/utils/shopify-provider.ts", "role": "Shopify completeness boundary", "sha256": null },
-    { "path": "package.json", "role": "validation and build configuration", "sha256": null },
-    { "path": "render.yaml", "role": "production deployment configuration", "sha256": null }
+    {
+      "path": "GA4/AD_COMPARISON.md",
+      "role": "functional contract",
+      "sha256": "0183dde829a89575346e95e54754af2b77dd392677ca2bfe47fae577f4f48d8e"
+    },
+    {
+      "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
+      "role": "controlling readiness status",
+      "sha256": "ad98862099e186ceee00e45a80cd737aab74a3da718988f26002b741fd62e1fb"
+    },
+    {
+      "path": "GA4/FINANCIAL_SOURCES.md",
+      "role": "imported revenue window and provenance contract",
+      "sha256": "3878765b13a33769b319253a693f5ab228ae225c2c0ba4cc3fc539a66ae4260e"
+    },
+    {
+      "path": "GA4/README.md",
+      "role": "GA4 documentation status index",
+      "sha256": "ddb8485163ac47fa091b6937ba7e8da04709865a4f97c0a79fbf9702abd34817"
+    },
+    {
+      "path": "GA4/REFRESH_AND_PROCESSING.md",
+      "role": "refresh and state contract",
+      "sha256": "c7313b38f009a510973779d666e43ee075d198ca9d365c2e0645e652cf026a7a"
+    },
+    {
+      "path": "client/src/components/AddRevenueWizardModal.tsx",
+      "role": "source lifecycle UI",
+      "sha256": "f33779e6e32d789ec0a90b898cbc46dd7d5caa523ac9d82c0789c852e7576181"
+    },
+    {
+      "path": "client/src/components/HubSpotRevenueWizard.tsx",
+      "role": "HubSpot input contract",
+      "sha256": "6ce45235a65846ac0ae335c82bc0ff9b9365c250e8eac912f8a3fc23543ad837"
+    },
+    {
+      "path": "client/src/components/ShopifyRevenueWizard.tsx",
+      "role": "Shopify input contract",
+      "sha256": "b32e99010dc7928586f06efec610e1decad56c6029fb3c29be2a223e2b98ba79"
+    },
+    {
+      "path": "client/src/pages/ga4-ad-comparison.tsx",
+      "role": "live Ad Comparison renderer",
+      "sha256": "db62d3fa76fb67ed4d715f35416e3e33769049abfd0adb30b8fd27ecb2f51b60"
+    },
+    {
+      "path": "client/src/pages/ga4-metrics.tsx",
+      "role": "live tab data producer",
+      "sha256": "d2eccbdee135e4350059f982e7999731261c8fa9f48b0f9d271a03092acda2b8"
+    },
+    {
+      "path": "shared/ga4-ad-comparison-cards.ts",
+      "role": "leader-card selector",
+      "sha256": "1275ec7b8bbc5d2d60858e0b91216d97455f452ef1a6a8329f744fafcd79a7b9"
+    },
+    {
+      "path": "shared/ga4-financial-source.ts",
+      "role": "shared financial source rules",
+      "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3"
+    },
+    {
+      "path": "shared/schema.ts",
+      "role": "persistence contract",
+      "sha256": "4e0ad76762675eb95a855dec1a8ee41db70fc9f7fc8a480e761cdccfa08cfce4"
+    },
+    {
+      "path": "server/analytics.ts",
+      "role": "GA4 provider query path",
+      "sha256": "c3599615186171f13d481e4d7639bd0a306db134da43c79858a7238cf43cb9bc"
+    },
+    {
+      "path": "server/auto-refresh-scheduler.ts",
+      "role": "imported-source refresh",
+      "sha256": "7dce2db7a5197543dc66375fce044dea993c12af4ad2c6b84f113cac0fb27555"
+    },
+    {
+      "path": "server/ga4-ad-comparison-certification-gate.ts",
+      "role": "machine certification checker",
+      "sha256": "84e703ea7728398960eba0ccec108d1838cce68e4475886846d931102d7d4c9e"
+    },
+    {
+      "path": "server/ga4-ad-comparison-certification-gate.test.ts",
+      "role": "certification checker regression tests",
+      "sha256": "d26c00c9b337b6c30fd0fc3ab66f30fa7c805f531b3deed0cfad84ef5ee851f1"
+    },
+    {
+      "path": "server/routes-oauth.ts",
+      "role": "API and auth boundary",
+      "sha256": "f05321fdf2b0320626c17775e86dca4bff22fee1f001266d990163ed847a601e"
+    },
+    {
+      "path": "server/storage.ts",
+      "role": "storage and destructive boundary",
+      "sha256": "f806543b96a55f7e558f0f925d11481350cf4add952bfa0075ab2a7647e6388f"
+    },
+    {
+      "path": "server/utils/data-transformation.ts",
+      "role": "source materialization transform",
+      "sha256": "b3963210fd94fad338df649c576142032051583e18b9e78d429a393e60499541"
+    },
+    {
+      "path": "server/utils/hubspot-pagination.ts",
+      "role": "HubSpot completeness boundary",
+      "sha256": "5018dac15d5ec2263e3b646cc96d3c1f40a6a00548ae187fb12bb2f2ce4e4ce5"
+    },
+    {
+      "path": "server/utils/shopify-provider.ts",
+      "role": "Shopify completeness boundary",
+      "sha256": "b49736e267ef8fa22afb2ed174bdb1ac47cf0b3738b98d958338e9f415206952"
+    },
+    {
+      "path": "package.json",
+      "role": "validation and build configuration",
+      "sha256": "ed1220936a4dd8e2d9284e1dd3d8fa5710f72646108edb649dadcb678ff26834"
+    },
+    {
+      "path": "render.yaml",
+      "role": "production deployment configuration",
+      "sha256": "e4944724110c09bac309d9a4d784e77762da29eb52d0ac9450289852154462a1"
+    }
   ],
   "statusDocument": {
     "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
@@ -94,7 +190,7 @@
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "2026-08-03 production /api/health resolved to 7a6761afc40414d4a74c11f2d3044f1a93f2c7aa, containing the reviewed implementation and production evidence."
+      "evidence": "2026-08-03 local and GitHub main resolved to 635b65c1db35a39a6f1466cab0cc1dceab04db31, and production /api/health returned the same exact SHA."
     },
     {
       "id": "live_ga4_provider",
@@ -113,8 +209,8 @@
     },
     {
       "id": "tab_boundary_revision",
-      "status": "pending",
-      "evidence": "The corrected live-tab-only boundary must be committed, deployed, and pinned before clean certification."
+      "status": "passed",
+      "evidence": "The corrected live-tab-only boundary is committed and deployed at 635b65c1db35a39a6f1466cab0cc1dceab04db31; all Reports-owned paths are excluded and owned by the Reports certification."
     }
   ]
 }

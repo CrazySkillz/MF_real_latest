@@ -1,10 +1,10 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
+<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
 
 ## Controlling Current Status
 
-**Status: UNVERIFIED. Ad Comparison is not currently certified production-ready.**
+**Status: PRODUCTION_READY. The live GA4 Ad Comparison tab is clean-certified at `635b65c1db35a39a6f1466cab0cc1dceab04db31`.**
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
@@ -16,7 +16,8 @@ Audit baseline:
 
 - audit opened: 2026-08-03
 - baseline Git SHA: `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
-- certification status: `UNVERIFIED`; certified SHA: none
+- certification status: `PRODUCTION_READY`; certified SHA:
+  `635b65c1db35a39a6f1466cab0cc1dceab04db31`
 - production writes, provider refreshes, report sends, and cleanup: not
   performed
 - unrelated dirty worktree changes: excluded and preserved
@@ -26,13 +27,13 @@ Final local review:
 - reviewed implementation SHA:
   `08ea74af0344538259cd34ff1d8487492f4c8253`
 - exact deployed and production-evidence SHA:
-  `139315935603e66c4ff00266b54a80194b869f78`
+  `635b65c1db35a39a6f1466cab0cc1dceab04db31`
 - assessment: all identified Critical and Major implementation findings are
   closed locally; Minor AC-06 is also closed
-- certification: `UNVERIFIED` only while the corrected tab-only boundary is
-  committed, deployed, and pinned. Deployed revision, live provider, source
-  inventory, authorization, calculations, and rendered tab values pass
-- production-ready wording is prohibited until every external gate below passes
+- certification: `PRODUCTION_READY`; the exact deployed revision, live provider,
+  source inventory, authorization, calculations, rendered tab values, focused
+  tests, TypeScript, production build, dependency hashes, and certification gate
+  pass for the boundary below
 
 ### Finite validation plan
 
@@ -164,9 +165,9 @@ Comparison work.
 
 ### Focused audit commit sequence
 
-The August 3 audit was delivered to `main` as the following ordered, focused
-commits. This sequence is implementation history, not a production-ready
-certification. The controlling status remains `UNVERIFIED`.
+The initial August 3 audit was delivered to `main` as the following ordered,
+focused commits. This sequence is implementation history; the controlling
+status above supersedes the `UNVERIFIED` state recorded at that time.
 
 1. **Commit 1 — revoke the stale certification**
    - `9ee477d110b9b6a21876b9f1652ccbbfb93e6a43`
@@ -241,9 +242,9 @@ Broader repository run:
 
 ### Production-only gates
 
-- deployed runtime revision: passed on 2026-08-03; production `/api/health`
-  resolved to `7a6761afc40414d4a74c11f2d3044f1a93f2c7aa`, which contains the
-  reviewed implementation and production-evidence changes
+- deployed runtime and boundary revision: passed on 2026-08-03; local and
+  GitHub `main` resolved to `635b65c1db35a39a6f1466cab0cc1dceab04db31`,
+  and production `/api/health` returned the same exact SHA
 - live GA4 provider packet: passed read-only for campaign hash `fc734ddaf728`;
   authenticated property `542352127`, `Europe/Amsterdam`, the exact three-value
   saved campaign filter, `totalRevenue`, seven acquisition dimensions, and all
@@ -256,10 +257,13 @@ Broader repository run:
   95 sessions, three campaigns, USD 16,088.36 native GA4 revenue, and imported
   USD 0/600/4,000/5,100/7,000 source-to-date values matched the authenticated
   provider and storage packet
-- tab-only boundary revision: pending commit, deployment, and exact SHA pinning
+- tab-only boundary revision: passed; Reports-owned PDFs, downloads, saved
+  reports, snapshots, scheduling, delivery, and report-library paths are
+  excluded and owned by the Reports certification
 
-No clean certification is permitted until the tab-only boundary revision is
-deployed and pinned. The machine status remains `UNVERIFIED` until that step.
+All included tab-only gates pass. The machine status is `PRODUCTION_READY` for
+the exact certified SHA and pinned dependency hashes. Any listed dependency or
+production-configuration change invalidates this certification.
 
 <!-- /ga4-ad-comparison-current-status -->
 

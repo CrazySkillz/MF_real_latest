@@ -8,10 +8,11 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED` while the final tab-only certification boundary is committed and
-deployed. The live production provider, source, authorization, calculation, and
-rendered-value packets pass. The canonical readiness file is the only current
-status source.
+`PRODUCTION_READY`. The live Ad Comparison tab is clean-certified for the exact
+revision and dependency boundary recorded in
+`GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
+saved reports, snapshots, scheduling, and delivery are outside this tab-only
+certification.
 
 ## Document Ownership
 

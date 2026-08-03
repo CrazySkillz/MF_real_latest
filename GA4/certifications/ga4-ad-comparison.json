@@ -36,7 +36,7 @@
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "0d4e32cfbff83567c690086f07266dd313a214a771a504dabf376c3fa225855d"
+      "sha256": "28e3f3ec9f0b12b40bc24530530984e5dd88084740802a90b6f90d967b91c191"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
@@ -174,7 +174,7 @@
       "id": "certification_gate",
       "command": "vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
       "status": "passed",
-      "evidence": "10/10 gate tests passed and the repository checker passed while retaining UNVERIFIED status."
+      "evidence": "10/10 gate tests passed and the repository checker passed for the positive PRODUCTION_READY envelope."
     },
     {
       "id": "focused_real_paths",

@@ -229,8 +229,9 @@ Passed:
   structural assertion with the isolated query
 - `npm run check` -> passed
 - `npm run build` -> passed
-- `npm run check:ga4-ad-comparison-certification` -> passed with machine status
-  intentionally `UNVERIFIED`
+- `npm run check:ga4-ad-comparison-certification` -> passed before the positive
+  envelope while machine status was intentionally `UNVERIFIED`; the final
+  positive-envelope run also passed
 - `GA4_AD_COMPARISON_EXPECTED_SHA=83d12427... npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts`
   -> passed against the deployed authenticated API and rendered live tab
 - final tab-only packet: 9 files, 294 tests
@@ -241,7 +242,7 @@ Passed:
   then passed 10/10
 - `npm run check`
 - `npm run build`
-- certification checker and its 8-test gate packet after the final evidence
+- certification checker and its 10-test gate packet after the final evidence
   update
 
 The broader audit also exercised Reports-owned PDF paths. Those results remain
@@ -263,7 +264,7 @@ Commands and exact results:
 - `vitest run --pool forks --reporter=json --outputFile=C:\tmp\ga4-ad-comparison-full-suite.json`
   -> 1,303/1,333 tests passed; failure separation recorded below
 - `vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts`
-  -> 1 file / 8 tests passed
+  -> 1 file / 10 tests passed
 - `npm run check:ga4-ad-comparison-certification` -> passed after final
   machine-record update
 

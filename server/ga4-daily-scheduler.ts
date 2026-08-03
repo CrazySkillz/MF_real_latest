@@ -47,6 +47,22 @@ const hashEvidenceIds = (values: unknown[]) => values
   .map((value) => createHash("sha256").update(String(value || "")).digest("hex").slice(0, 12))
   .sort();
 
+type GA4DailyRecomputeResult = Awaited<ReturnType<typeof runGA4DailyKPIAndBenchmarkJobs>>;
+
+export function getGA4DailyRecomputeFailure(
+  result: Pick<GA4DailyRecomputeResult, "campaignsProcessed" | "campaignIdsFailed" | "kpiIdsFailed" | "benchmarkIdsFailed">,
+  targetedCampaign: boolean,
+): string | null {
+  if (targetedCampaign && Number(result.campaignsProcessed || 0) <= 0) {
+    return "GA4 KPI/Benchmark recompute skipped the target campaign";
+  }
+  const campaignFailures = result.campaignIdsFailed.length;
+  const kpiFailures = result.kpiIdsFailed.length;
+  const benchmarkFailures = result.benchmarkIdsFailed.length;
+  if (campaignFailures === 0 && kpiFailures === 0 && benchmarkFailures === 0) return null;
+  return `GA4 KPI/Benchmark recompute incomplete (${campaignFailures} campaign, ${kpiFailures} KPI, ${benchmarkFailures} Benchmark failures)`;
+}
+
 const parseBoundedInt = (value: any, fallback: number, min: number, max: number) => {
   const parsed = parseInt(String(value ?? ""), 10);
   const n = Number.isFinite(parsed) ? parsed : fallback;
@@ -244,6 +260,9 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
       kpiIdsUpdated: hashEvidenceIds(recomputeResult.kpiIdsUpdated),
       kpiIdsSkipped: hashEvidenceIds(recomputeResult.kpiIdsSkipped),
       kpiIdsFailed: hashEvidenceIds(recomputeResult.kpiIdsFailed),
+      benchmarkIdsUpdated: hashEvidenceIds(recomputeResult.benchmarkIdsUpdated),
+      benchmarkIdsSkipped: hashEvidenceIds(recomputeResult.benchmarkIdsSkipped),
+      benchmarkIdsFailed: hashEvidenceIds(recomputeResult.benchmarkIdsFailed),
     };
     console.log(`[GA4 Daily] KPI/Benchmark recompute result ${JSON.stringify({
       campaignIdsProcessed: recomputeResult.campaignIdsProcessed,
@@ -252,12 +271,12 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
       kpiIdsUpdated: recomputeResult.kpiIdsUpdated,
       kpiIdsSkipped: recomputeResult.kpiIdsSkipped,
       kpiIdsFailed: recomputeResult.kpiIdsFailed,
+      benchmarkIdsUpdated: recomputeResult.benchmarkIdsUpdated,
+      benchmarkIdsSkipped: recomputeResult.benchmarkIdsSkipped,
+      benchmarkIdsFailed: recomputeResult.benchmarkIdsFailed,
     })}`);
-    const recomputeFailed = recomputeResult.campaignIdsSkipped.length > 0 || recomputeResult.campaignIdsFailed.length > 0 || recomputeResult.kpiIdsSkipped.length > 0 || recomputeResult.kpiIdsFailed.length > 0;
-    const targetedCampaignSkipped = Boolean(campaignId) && Number(recomputeResult.campaignsProcessed || 0) <= 0;
-    if (recomputeFailed || targetedCampaignSkipped) {
-      throw new Error(`GA4 KPI/Benchmark recompute incomplete (failed KPI IDs: ${recomputeResult.kpiIdsFailed.join(", ") || "none"})`);
-    }
+    const recomputeFailure = getGA4DailyRecomputeFailure(recomputeResult, Boolean(campaignId));
+    if (recomputeFailure) throw new Error(recomputeFailure);
 
     if (!campaignId && !opts.suppressAlerts) {
       try {

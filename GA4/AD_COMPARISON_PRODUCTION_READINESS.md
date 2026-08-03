@@ -140,7 +140,6 @@ Report-library value is a documented direct Ad Comparison consumer.
 - `server/storage.ts`
 - `server/ga4-scheduled-report-pdf.ts`
 - `server/report-scheduler.ts`
-- `server/report-email-service.ts`
 - `package.json` and production deployment/revision configuration
 
 The final record must pin exact hashes for the post-fix boundary. Any change to

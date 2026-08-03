@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "check:ga4-kpi-certification": "tsx server/ga4-kpi-certification-gate.ts",
+    "check:ga4-ad-comparison-certification": "tsx server/ga4-ad-comparison-certification-gate.ts",
     "test": "vitest run --pool forks",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",

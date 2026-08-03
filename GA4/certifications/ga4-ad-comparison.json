@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "sectionId": "ga4-ad-comparison",
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "9ee477d110b9b6a21876b9f1652ccbbfb93e6a43",
+  "certifiedSha": null,
+  "invalidationReason": "The prior non-revision-specific claim was revoked; Critical and Major findings and production-only gates remain open.",
+  "configurationBoundary": {
+    "platformType": "google_analytics",
+    "scope": "GA4 platform-level Ad Comparison for one authorized campaign, selected active property, saved campaign filter, and direct live/browser/scheduled PDF consumers",
+    "includedSurfaces": [
+      "live Ad Comparison tab",
+      "browser-generated Ads PDF section",
+      "scheduled/server-generated Ads PDF section"
+    ],
+    "sourceRules": [
+      "exact active campaign/property/filter only",
+      "active GA4 or legacy-null revenue context only",
+      "no guessed, ambiguous, stale, or proportional imported allocation"
+    ],
+    "windowRules": [
+      "native comparison uses the last 30 completed GA4 days",
+      "row-level imported revenue requires the identical proven window",
+      "valid zero, stale, unavailable, blocked, and failure are distinct"
+    ],
+    "ownershipRules": [
+      "all browser APIs require campaign access",
+      "storage reads bind campaign, source, property, and platform context",
+      "scheduled reports require a valid campaign and exact report consistency"
+    ]
+  },
+  "dependencies": [
+    { "path": "GA4/AD_COMPARISON.md", "role": "functional contract", "sha256": null },
+    { "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md", "role": "controlling readiness status", "sha256": null },
+    { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "source lifecycle UI", "sha256": null },
+    { "path": "client/src/components/HubSpotRevenueWizard.tsx", "role": "HubSpot input contract", "sha256": null },
+    { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify input contract", "sha256": null },
+    { "path": "client/src/pages/ga4-ad-comparison.tsx", "role": "live Ad Comparison renderer", "sha256": null },
+    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live producer and browser PDF", "sha256": null },
+    { "path": "shared/ga4-ad-comparison-cards.ts", "role": "leader-card selector", "sha256": null },
+    { "path": "shared/ga4-financial-source.ts", "role": "shared financial source rules", "sha256": null },
+    { "path": "shared/schema.ts", "role": "persistence contract", "sha256": null },
+    { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": null },
+    { "path": "server/auto-refresh-scheduler.ts", "role": "imported-source refresh", "sha256": null },
+    { "path": "server/ga4-scheduled-report-pdf.ts", "role": "scheduled PDF producer", "sha256": null },
+    { "path": "server/report-scheduler.ts", "role": "scheduled report lifecycle", "sha256": null },
+    { "path": "server/routes-oauth.ts", "role": "API and auth boundary", "sha256": null },
+    { "path": "server/storage.ts", "role": "storage and destructive boundary", "sha256": null },
+    { "path": "server/utils/data-transformation.ts", "role": "source materialization transform", "sha256": null },
+    { "path": "server/utils/hubspot-pagination.ts", "role": "HubSpot completeness boundary", "sha256": null },
+    { "path": "server/utils/shopify-provider.ts", "role": "Shopify completeness boundary", "sha256": null },
+    { "path": "package.json", "role": "validation and build configuration", "sha256": null },
+    { "path": "render.yaml", "role": "production deployment configuration", "sha256": null }
+  ],
+  "statusDocument": {
+    "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
+    "startMarker": "# GA4 Ad Comparison Production Readiness",
+    "endMarker": "<!-- /ga4-ad-comparison-current-status -->"
+  },
+  "requiredTests": [
+    {
+      "id": "certification_gate",
+      "command": "npm test -- server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
+      "status": "pending",
+      "evidence": "Required before final audit status is recorded."
+    },
+    {
+      "id": "focused_real_paths",
+      "command": "npm test -- <final focused Ad Comparison test packet>",
+      "status": "pending",
+      "evidence": "Must exercise provider pagination and all three direct consumers."
+    },
+    {
+      "id": "affected_shared_regressions",
+      "command": "npm test -- <final affected shared test packet>",
+      "status": "pending",
+      "evidence": "Must cover source lifecycle, report safety, auth, and scoping."
+    },
+    {
+      "id": "typescript",
+      "command": "npm run check",
+      "status": "pending",
+      "evidence": "Required on the final reviewed revision."
+    },
+    {
+      "id": "production_build",
+      "command": "npm run build",
+      "status": "pending",
+      "evidence": "Required on the final reviewed revision."
+    }
+  ],
+  "externalGates": [
+    {
+      "id": "deployed_revision",
+      "status": "pending",
+      "evidence": "Production health must report the exact final reviewed SHA and matching configuration."
+    },
+    {
+      "id": "live_ga4_provider",
+      "status": "pending",
+      "evidence": "Read-only exact property/filter/window evidence must prove complete paged acquisition rows and states."
+    },
+    {
+      "id": "production_source_inventory",
+      "status": "pending",
+      "evidence": "Read-only active-source/materialization/window/currency inventory is required."
+    },
+    {
+      "id": "deployed_direct_consumer_parity",
+      "status": "pending",
+      "evidence": "Live, browser PDF, and deterministic scheduled/server PDF must match on the exact deployed revision."
+    }
+  ]
+}

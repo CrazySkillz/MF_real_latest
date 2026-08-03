@@ -100,7 +100,7 @@ Important meaning:
 - `GA4/INSIGHTS.md`
   Short functional overview of the GA4 Insights tab, including sections, scope contract, reports, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical live-tab Insights production-readiness source of truth. Current status: `UNVERIFIED` while the strict whole-tab corrections await the exact-SHA deployment, authenticated parity, and deterministic deployed scheduler gates recorded there. Reports-owned behavior is outside this certification.
+  Canonical live-tab Insights production-readiness source of truth. Current status: `UNVERIFIED`; the exact correction SHA, authenticated owner API/UI parity, and deterministic deployed scheduler gates pass, while production non-owner isolation and final dependency hashes remain open. Reports-owned behavior is outside this certification.
 - `GA4/REPORTS.md`
   Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats. Current status: not clean-certified as a whole section while KPI-bearing output is `UNVERIFIED`.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`

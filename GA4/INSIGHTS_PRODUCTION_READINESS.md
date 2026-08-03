@@ -11,9 +11,9 @@ Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
 
 Certified SHA: none
 
-Deployed SHA: pending
+Deployed correction SHA: `e34514c289cc353a4730d41cdd11ef9ca5fea29c`
 
-Reason: the strict live-tab audit found Major value-path defects. The fixes, focused local evidence, build, and machine gate pass in the working tree, but the corrected revision has not yet completed exact-SHA deployment, deterministic deployed scheduler validation, authenticated API/UI parity, and final dependency-hash comparison. Historical readiness wording is invalidated and is not evidence.
+Reason: the strict live-tab audit found and corrected ten Major value-path defects. The exact correction SHA is deployed; authenticated owner API/UI parity and deterministic scheduler validation pass. Production contains only one Clerk user, so a real authenticated non-owner request cannot be executed without explicit authority to create and delete an ephemeral production identity. That tenant-isolation gate and final dependency hashes remain pending. Historical readiness wording is invalidated and is not evidence.
 
 No Critical finding is open. No clean certification may be issued while any Major finding below is open or any production gate remains pending.
 
@@ -156,12 +156,14 @@ None found.
 9. **GA4 to-date and channel inputs used UTC/provider-relative yesterday.** Root cause: direct UTC and relative-date cutoffs. Fix: explicit campaign-reporting-timezone completed-day windows.
 10. **Data Summary hid verified zero and omitted failure state.** Root cause: positive-value render guards. Fix: stable card, exact window label, verified zero display, and unavailable message.
 
-All ten Major findings invalidate every earlier whole-tab readiness claim. Local fixes are present; closure requires the remaining gates below.
+All ten Major findings invalidate every earlier whole-tab readiness claim. Their fixes pass locally and on the deployed owner path; no Major finding remains open.
 
 ### Minor
 
 1. Some legacy mixed Insights regression files also assert Reports output. They may run as repository-wide compatibility checks, but those assertions are not Insights certification evidence.
 2. The daily table previously said vs prior while comparing the prior returned row. It now requires the actual prior calendar day.
+3. The first production validator compared API Sessions with the DOM before the isolated 60-day request reached its stable state. The validator now captures the exact page response and waits for the completed-day summary before comparison.
+4. The initial tenant fixture selected stale campaign owner IDs. The validator now checks Clerk's authoritative user inventory and fails explicitly when no second identity exists; owner-only evidence mode records tenant isolation as not run and cannot satisfy that gate.
 
 No Minor finding changes a visible numeric result after the fixes above.
 
@@ -180,7 +182,7 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 | Gate | Result |
 |---|---|
-| focused live Insights and affected UI/timezone suite | PASS: 11 files, 82 tests |
+| focused live Insights and affected UI/timezone suite | PASS: 11 files, 83 tests |
 | auth, isolation, source, parity, lifecycle, scheduler-consumer suite | PASS: 13 files, 298 tests |
 | focused production calendar/monthly functions | PASS: 5 tests |
 | TypeScript | PASS: `npm run check` |
@@ -189,9 +191,19 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
+## Production Evidence
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: health reported `e34514c289cc353a4730d41cdd11ef9ca5fea29c` |
+| authenticated owner API/UI parity | PASS: property `542352127`, `Europe/Amsterdam`, three saved filters, exact daily/breakdown windows, and API-derived 655 Sessions rendered |
+| incomplete-history state | PASS: 20/30 imported days remained incomplete and was not certified as a complete comparison window |
+| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-03T22:38:04.238Z`; global alerts were suppressed |
+| production identity inventory | BLOCKED: Clerk returned exactly one user, the campaign owner; tenant denial is not inferred from local tests |
+
 ## Required Production Gates
 
-The machine record must remain `UNVERIFIED` until all are recorded against one unchanged revision:
+The machine record must remain `UNVERIFIED` until all are recorded against one unchanged revision. Gates 1-4 and 6-8 pass for the deployed correction SHA; gates 5 and 9 remain open:
 
 1. production build passes
 2. machine certification checker passes

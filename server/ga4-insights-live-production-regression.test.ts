@@ -76,4 +76,19 @@ describe("live GA4 Insights production boundary", () => {
     expect(breakdown).toContain("campaignFilter");
     expect(breakdown).toContain("providerEndDate");
   });
+
+  it("compares the rendered summary only after the page's exact 60-day response is stable", () => {
+    const validator = read("scripts", "ga4-insights-live-readonly.ts");
+
+    expect(validator).toContain("const uiDailyResponsePromise = owner.page.waitForResponse");
+    expect(validator).toContain("url.searchParams.get(\"days\") === \"60\"");
+    expect(validator).toContain("getByText(\"Exact completed-day window\", { exact: true }).waitFor");
+    expect(validator).toContain("buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate)");
+    expect(validator).toContain("format(uiRollups.last30.sessions)");
+    expect(validator).toContain("clerkGet(\"/users?limit=100&order_by=-created_at\")");
+    expect(validator).toContain("String(candidate?.id || \"\") !== String(row.owner_id)");
+    expect(validator).toContain("allowMissing && tokenResponse.status === 404");
+    expect(validator).toContain("GA4_INSIGHTS_REQUIRE_TENANT_ISOLATION");
+    expect(validator).toContain("tenantIsolation = \"not run; no second production identity was authorized\"");
+  });
 });

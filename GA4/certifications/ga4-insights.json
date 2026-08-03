@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-insights-live",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "231afeb141d7c25caf1ca4a99144d651c70ddcfd",
+  "lastReviewedSha": "e34514c289cc353a4730d41cdd11ef9ca5fea29c",
   "certifiedSha": null,
   "deployedSha": null,
-  "invalidationReason": "Ten Major live-value defects were found and locally corrected; exact-SHA deployment, deterministic deployed scheduler, authenticated tenant/API/UI parity, and final dependency hashes are pending.",
+  "invalidationReason": "Ten Major live-value defects are corrected and the deployed owner/API/UI plus deterministic scheduler gates pass. Production has only one Clerk user, so authenticated non-owner isolation and final dependency hashes remain pending.",
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
     "includedSurfaces": [
@@ -66,17 +66,17 @@
     "endMarker": "<!-- /ga4-insights-current-status -->"
   },
   "requiredTests": [
-    { "id": "focused_live", "status": "passed", "evidence": "11 files and 82 tests passed on the final local boundary." },
+    { "id": "focused_live", "status": "passed", "evidence": "11 files and 83 tests passed on the current local boundary." },
     { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "13 files and 298 tests passed." },
     { "id": "typescript", "status": "passed", "evidence": "npm run check passed." },
     { "id": "build", "status": "passed", "evidence": "npm run build passed: Vite transformed 3,466 modules and esbuild produced dist/index.js." },
     { "id": "machine_gate", "status": "passed", "evidence": "5 checker tests passed and npm run check:ga4-insights-certification passed with internally consistent UNVERIFIED status." }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "pending", "evidence": "Corrected revision is not yet pushed and deployed." },
-    { "id": "authenticated_owner_api_ui_parity", "status": "pending", "evidence": "Authenticated deployed API/UI parity has not yet run." },
-    { "id": "tenant_isolation", "status": "pending", "evidence": "Deployed non-owner fail-closed check has not yet run." },
-    { "id": "deterministic_scheduler", "status": "pending", "evidence": "Deployed campaign-scoped scheduler validation has not yet run." },
+    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render health reported e34514c289cc353a4730d41cdd11ef9ca5fea29c." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "passed", "evidence": "Authenticated owner APIs proved property/filter/window scope and the live page rendered the API-derived 30-day Sessions value on e34514c289cc353a4730d41cdd11ef9ca5fea29c." },
+    { "id": "tenant_isolation", "status": "pending", "evidence": "Clerk has exactly one production user; no real non-owner request can run without explicit temporary-identity authority." },
+    { "id": "deterministic_scheduler", "status": "passed", "evidence": "Campaign-scoped trigger completed successfully at 2026-08-03T22:38:04.238Z on e34514c289cc353a4730d41cdd11ef9ca5fea29c with global alerts suppressed." },
     { "id": "dependency_hashes", "status": "pending", "evidence": "Final dependency hashes are recorded only after external evidence passes." }
   ]
 }

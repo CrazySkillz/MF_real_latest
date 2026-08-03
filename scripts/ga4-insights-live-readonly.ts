@@ -9,6 +9,7 @@ const EXPECTED_SHA = String(process.env.GA4_INSIGHTS_EXPECTED_SHA || "").trim();
 const CAMPAIGN_ID = String(process.env.GA4_INSIGHTS_CAMPAIGN_ID || "8aa735ee-c02f-41e2-bb1f-7c3f43bb9458").trim();
 const requestedProperty = String(process.env.GA4_INSIGHTS_PROPERTY_ID || "").trim();
 const clerkSecret = String(process.env.CLERK_SECRET_KEY || "").trim();
+const requireTenantIsolation = String(process.env.GA4_INSIGHTS_REQUIRE_TENANT_ISOLATION || "1") !== "0";
 
 if (!pool) throw new Error("DATABASE_URL is required");
 if (!clerkSecret) throw new Error("CLERK_SECRET_KEY is required");
@@ -32,6 +33,9 @@ const clerkPost = async (path: string, body?: unknown) => fetch(`https://api.cle
   method: "POST",
   headers: { Authorization: `Bearer ${clerkSecret}`, "Content-Type": "application/json" },
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+});
+const clerkGet = async (path: string) => fetch(`https://api.clerk.com/v1${path}`, {
+  headers: { Authorization: `Bearer ${clerkSecret}` },
 });
 const request = async (page: Page, path: string, method = "GET") => page.evaluate(async ({ path, method }) => {
   const token = await (window as any).Clerk?.session?.getToken();
@@ -69,9 +73,10 @@ try {
   const health: any = await healthResponse.json();
   if (!healthResponse.ok || health?.commit !== EXPECTED_SHA) throw new Error(`Deployed SHA mismatch: ${String(health?.commit || "unavailable")}`);
 
-  const signIn = async (userId: string) => {
+  const signIn = async (userId: string, allowMissing = false) => {
     const tokenResponse = await clerkPost("/sign_in_tokens", { user_id: userId, expires_in_seconds: 600 });
     const token: any = await tokenResponse.json().catch(() => ({}));
+    if (allowMissing && tokenResponse.status === 404) return null;
     if (!tokenResponse.ok || !token?.token) throw new Error(`Clerk sign-in token failed (${tokenResponse.status})`);
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -82,6 +87,7 @@ try {
   };
 
   const owner = await signIn(String(row.owner_id));
+  if (!owner) throw new Error("Campaign owner is unavailable in Clerk");
   const paths = {
     daily: `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}`,
     breakdown: `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?dateRange=30days&propertyId=${encodeURIComponent(propertyId)}&debug=1`,
@@ -109,23 +115,46 @@ try {
   if (outsideScope.length > 0) throw new Error("Breakdown returned campaigns outside the saved filter");
 
   const rollups = buildGA4InsightsRollups(responses.daily.body?.data, responses.daily.body?.dataThroughDate);
+  const uiDailyResponsePromise = owner.page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === `/api/campaigns/${CAMPAIGN_ID}/ga4-daily`
+      && url.searchParams.get("days") === "60";
+  }, { timeout: 120000 });
   await owner.page.goto(`${BASE_URL}/campaigns/${CAMPAIGN_ID}/ga4-metrics?tab=insights`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const uiDailyResponse = await uiDailyResponsePromise;
+  if (!uiDailyResponse.ok()) throw new Error(`Live-page 60-day request failed (${uiDailyResponse.status()})`);
+  const uiDailyBody: any = await uiDailyResponse.json();
+  if (normalizeProperty(uiDailyBody?.propertyId) !== normalizeProperty(propertyId)) throw new Error("Live-page property parity failed");
+  if (uiDailyBody?.startDate !== expected60.startDate || uiDailyBody?.endDate !== expected60.endDate) throw new Error("Live-page 60-day window parity failed");
+  const uiRollups = buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
   await owner.page.getByRole("heading", { name: "Insights", exact: true }).waitFor({ timeout: 120000 });
   await owner.page.getByText("Executive Financials", { exact: true }).waitFor({ timeout: 120000 });
   await owner.page.getByText("Data Summary", { exact: true }).waitFor({ timeout: 120000 });
+  await owner.page.getByText("Exact completed-day window", { exact: true }).waitFor({ timeout: 120000 });
   const bodyText = await owner.page.locator("body").innerText();
   for (const required of ["Completed-day cutoff", "Latest imported day", "Reporting timezone", "What to investigate next"]) {
     if (!bodyText.includes(required)) throw new Error(`Live Insights text missing: ${required}`);
   }
-  if (!bodyText.includes(new Intl.NumberFormat("en-US").format(rollups.last30.sessions))) throw new Error("Rendered 30-day sessions do not match API rollup");
+  const expectedRenderedSessions = new Intl.NumberFormat("en-US").format(uiRollups.last30.sessions);
+  if (!bodyText.includes(expectedRenderedSessions)) {
+    const summaryIndex = bodyText.indexOf("Data Summary");
+    throw new Error(`Rendered 30-day sessions do not match API rollup (expected ${expectedRenderedSessions}; summary: ${bodyText.slice(summaryIndex, summaryIndex + 500).replace(/\s+/g, " ")})`);
+  }
   await owner.context.close();
 
-  const otherOwner = await client.query("SELECT owner_id FROM campaigns WHERE owner_id <> $1 LIMIT 1", [row.owner_id]);
-  if (otherOwner.rowCount !== 1) throw new Error("No non-owner account is available for the tenant-isolation gate");
-  const nonOwner = await signIn(String(otherOwner.rows[0].owner_id));
-  const denied = await request(nonOwner.page, paths.daily);
-  if (denied.ok || ![403, 404].includes(denied.status)) throw new Error(`Non-owner request did not fail closed (${denied.status})`);
-  await nonOwner.context.close();
+  let tenantIsolation = "not run; no second production identity was authorized";
+  if (requireTenantIsolation) {
+    const usersResponse = await clerkGet("/users?limit=100&order_by=-created_at");
+    const users: any[] = await usersResponse.json().catch(() => []);
+    if (!usersResponse.ok || !Array.isArray(users)) throw new Error(`Clerk user inventory failed (${usersResponse.status})`);
+    const otherUser = users.find((candidate) => String(candidate?.id || "") !== String(row.owner_id));
+    const nonOwner = otherUser ? await signIn(String(otherUser.id), true) : null;
+    if (!nonOwner) throw new Error("No valid non-owner Clerk account is available for the tenant-isolation gate");
+    const denied = await request(nonOwner.page, paths.daily);
+    if (denied.ok || ![403, 404].includes(denied.status)) throw new Error(`Non-owner request did not fail closed (${denied.status})`);
+    tenantIsolation = `failed closed with ${denied.status}`;
+    await nonOwner.context.close();
+  }
 
   console.log(JSON.stringify({
     status: "passed",
@@ -141,7 +170,7 @@ try {
     sourceCounts: { revenue: responses.revenue.body?.sourceCount ?? null, spend: responses.spend.body?.sourceCount ?? null },
     kpiCount: Array.isArray(responses.kpis.body) ? responses.kpis.body.length : 0,
     benchmarkCount: Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body.length : 0,
-    tenantIsolation: `failed closed with ${denied.status}`,
+    tenantIsolation,
     uiParity: "live headings, freshness labels, and API-derived 30-day sessions rendered",
     databaseTransaction: "read only and rolled back",
   }, null, 2));

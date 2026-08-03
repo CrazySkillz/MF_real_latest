@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "70197b4912393e4eb78dffb2bf79bd0b85fa833535f5e40d48470951298b9c67",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "80a659b819f64868ff766490348e0e5cb93bef76",
+  "lastReviewedSha": "be926476fabb79650eb35fad3354506d7796026e",
   "certifiedSha": null,
-  "invalidationReason": "Gates 1 and 2 pass. Overall status remains UNVERIFIED: the exact deployed SHA has not yet had its configured natural timer run; two of four live-provider financial KPI rows lack an active owner session for authenticated read-only validation; no existing production report both selects KPIs and has configured recipients/scheduling; alert/report delivery is not bound to this SHA; and repository-wide CI remains red only from deferred-source and unrelated failures. Historical certification is not current evidence.",
+  "invalidationReason": "UNVERIFIED on reviewed/deployed SHA be926476fabb79650eb35fad3354506d7796026e. Confirmed test-send and naturally scheduled report delivery pass and the report was exactly restored. Three blockers remain: the exact current-SHA natural daily scheduler has not completed, no delivered GA4 KPI alert audit exists after deployment, and two stale in-scope HubSpot GA4 parity assertions fail against the current helper signature and explicit skipped-ID block. Twenty-eight other full-suite failures are deferred non-GA4 sources.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -167,91 +167,91 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10: the updated dependency/test contract passed the standalone checker and 1 file / 9 certification regression tests."
+      "evidence": "August 3, 2026 on reviewed SHA be926476: 1 file / 9 tests passed and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
       "command": "npm test -- server/ga4-kpi-financial-window-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-damaged-data-cleanup-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-financial-rules.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10 rerun: 10 files / 60 KPI core regression tests passed."
+      "evidence": "August 3, 2026 final combined packet: 10 files / 62 tests passed."
     },
     {
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10 rerun: 1 file / 12 tests passed through the actual shared live-card/browser-PDF resolver, persisted GA4 daily job, KPI API, alert truth, notification enrichment API, Insights/scheduled GA4 PDF, and shared report preflight/PDF builder, including exact successful, skipped, and failed KPI IDs plus selected-row fail-closed report proof. Deployed server-report behavior and timer execution remain external gates."
+      "evidence": "August 3, 2026 final combined packet: 1 file / 18 tests passed through the shared production paths, including KPI and Benchmark exact updated/skipped/failed IDs."
     },
     {
       "id": "metric_identity_contract",
       "command": "npm test -- server/ga4-kpi-metric-identity-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10: the canonical identity test passed 4/4 and the real-path/deduplication guards passed in their required packets. The combined identity/window/threshold packet passed 4 files / 30 tests."
+      "evidence": "August 3, 2026 final combined packet: 3 files / 24 tests passed."
     },
     {
       "id": "authoritative_reporting_window",
       "command": "npm test -- server/ga4-kpi-reporting-window-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10: 1 file / 3 tests passed for campaign-timezone completed-day boundaries, incomplete-date clamping, exact 30-date persisted job inputs, session-weighted Engagement Rate, progress date, and separation of lifetime financial conversions; the combined identity/window/threshold packet passed 30/30."
+      "evidence": "August 3, 2026 final combined packet: 1 file / 3 tests passed."
     },
     {
       "id": "financial_source_failure_contract",
       "command": "npm test -- server/campaign-current-value-financial-source-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/campaign-current-value-calculation-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8 rerun: 5 files / 29 tests passed for fixed provider-to-persisted-to-configured-breakdown precedence, authoritative zero, malformed-candidate rejection, native/revenue/spend unavailability, dependency-isolated persistence, last-good preservation, and exact skip/failure report blocking. The validation-closure packet passed 9 files / 114 tests."
+      "evidence": "August 3, 2026 final combined packet: 5 files / 35 tests passed."
     },
     {
       "id": "commit_5_validation_closure",
       "command": "npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts",
-      "status": "passed",
-      "evidence": "August 1, 2026 Commit 5 validation closure: 9 files / 114 tests passed after four stale assertions were aligned to the shared KPI live resolver, current recompute/failure contract, and combined notification-attention behavior. No runtime code changed."
+      "status": "failed",
+      "evidence": "August 3, 2026 final combined packet: 9 files / 112 passed and 2 failed. Both failures are reproducible stale source assertions in hubspot-revenue-ga4-overview-regression.test.ts: the old Benchmark live-value signature and old one-line metric-input skip. The current code uses the expanded helper signature and explicit skipped-ID fail-closed blocks. No runtime change was made."
     },
     {
       "id": "alert_notification_contract",
       "command": "npm test -- server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-regression.test.ts server/alert-email-scheduler-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/alert-email-audit-regression.test.ts server/alert-email-retry-regression.test.ts server/alert-email-idempotency-regression.test.ts server/alert-email-delivery-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-benchmark-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8 rerun: 14 files / 113 tests passed for source-resolved valid-zero, unavailable-last-good, exact insufficiency decisions, in-app reconciliation, email eligibility, bell/Notifications visibility, real-path parity, and exact skip/failure report blocking. Deployment, timer execution, provider behavior, inbox delivery, and production data remain external gates."
+      "evidence": "August 3, 2026 final combined packet: 14 files / 123 tests passed."
     },
     {
       "id": "ui_browser_consumer_states",
       "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Commit 10B rerun: 10 files / 227 tests passed for the dynamic loading/failed/unavailable/stale/blocked/insufficient/verified matrix and browser wiring through KPI cards, breach pulse, tracker, KPI-derived Insights, browser PDF, alert/notification parity, reporting-window labels, and exact skip/failure report blocking. A broader focused Gate 2 subset also passed 10 files / 125 tests. The user previously confirmed only the deployed browser-PDF happy path; the complete deployed state matrix remains pending."
+      "evidence": "August 3, 2026 final combined packet: 10 files / 233 tests passed. The prior mutation-proof deployed state matrix remains exact revision-bound evidence."
     },
     {
       "id": "recompute_report_proof",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/report-email-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 8 validation closure: the exact-result/source-lifecycle/auto-refresh packet passed 4 files / 42 tests, and the direct snapshot/test-send/manual-send/scheduled-report plus scheduler packet passed 5 files / 41 tests. Dynamic failures prove exact failed or skipped selected KPI IDs cannot pass the shared report preflight; the auto-refresh guard proves later alert sweeps require a complete recompute."
+      "evidence": "August 3, 2026 final combined packet: 8 files / 83 tests passed. There is no separate GA4 manual-send endpoint."
     },
     {
       "id": "persistence_destructive_safety",
       "command": "npm test -- server/ga4-kpi-persistence-destructive-safety.test.ts server/campaign-delete-cascade-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026 Current Commit 10 rerun: 4 files / 59 tests passed. Read-only target inspection additionally proved all three progress columns are numeric(18,2), 679 rows remain within capacity, and orphan progress/alert/period counts are zero. Production failure injection was not performed."
+      "evidence": "August 3, 2026 final combined packet: 4 files / 59 tests passed. Prior read-only target inspection proved the numeric(18,2) and orphan-row boundaries."
     },
     {
       "id": "commit_10_ga4_closure_guards",
       "command": "npm test -- server/ga4-benchmark-provider-validation-regression.test.ts server/ga4-reporting-timezone-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts",
       "status": "passed",
-      "evidence": "August 2, 2026: 3 files / 11 tests passed after stale source-shape assertions were aligned with the already-implemented 30-completed-day Benchmark window, expanded reporting-timezone freshness import, and shared engaged-session derivation. Runtime behavior did not change."
+      "evidence": "August 3, 2026 final combined packet: 3 files / 11 tests passed."
     },
     {
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "failed",
-      "evidence": "August 2, 2026 Gate 6 on implementation SHA 80a659b8: 146/158 files and 1,270/1,299 tests passed; 29 tests failed across 12 files. All focused GA4 KPI packets pass. Twenty-eight failures are deferred Google Ads, Instagram, Meta, or TikTok work and one is an unrelated shared spend-source assertion. CI is not clean."
+      "evidence": "August 3, 2026: 335/359 files and 1,290/1,320 tests passed. Twenty-eight failures are deferred Google Ads, Instagram, Meta, or TikTok work. Two failures are the in-scope HubSpot GA4 parity assertions recorded in commit_5_validation_closure and block certification."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 2, 2026 Gate 6 on implementation SHA 80a659b8: TypeScript completed successfully."
+      "evidence": "August 3, 2026 on reviewed SHA be926476: TypeScript completed successfully."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "August 2, 2026 Gate 6 on implementation SHA 80a659b8: the Vite client build and esbuild server bundle completed successfully."
+      "evidence": "August 3, 2026 on reviewed SHA be926476: the Vite client build and esbuild server bundle completed successfully."
     }
   ],
   "externalGates": [
@@ -268,22 +268,22 @@
     {
       "id": "timer_scheduler",
       "status": "pending",
-      "evidence": "Revision 58d6542d46d1e99d68e67740ab8065672a508b13 is deployed. Scheduler health at 2026-08-02T10:51:38Z reports runOnStartup=false, totalRuns=0, lastRunStatus=idle, nextRunAt=2026-08-03T03:00:00Z, and the new lastRecomputeRecordedAt/lastRecomputeEvidence fields present and null before any run. No manual trigger was used. The scheduler retains SHA-256-prefixed exact result ID arrays without exposing raw IDs or changing execution; 34/34 focused tests, the checker, TypeScript, and production build pass. The natural run remains pending."
+      "evidence": "The monitor captured the superseded process starting a natural scheduled run at 2026-08-03T03:00:00.001Z with totalScheduledRuns=1, but status was still running and no exact recompute evidence had been recorded. Later deployments restarted the process. Current deployed SHA be926476 started at 2026-08-03T10:08:40Z, reports zero runs, and nextRunAt=2026-08-04T03:00:00Z. Exact current-SHA completion evidence remains pending."
     },
     {
       "id": "provider_and_token",
-      "status": "pending",
-      "evidence": "Refresh-disabled, non-persisting live success and simulated-failure evidence passed on deployed 80a659b8 for KPI hashes 7ed1d5c4d10f and ff24c717b842. Exact property/filter/Europe-Amsterdam scope and campaign-to-date provider window resolved Revenue 51405.93, matching stored values; simulated failure returned no provider totals and attempted no token refresh. A fresh read-only production/Clerk check proves KPI hashes 2f27f064cd32 and befd1e90d209 share one persisted owner ID that Clerk returns 404 for, so no temporary owner session can be created. Ownership, token, connection, source, and KPI rows were not changed. The natural owner-independent scheduler outcome is the next available evidence; a skip/failure would still require reauthorization or an explicit ownership/data-lifecycle decision."
+      "status": "passed",
+      "evidence": "August 2, 2026: refresh-disabled, non-persisting live success and simulated-failure evidence passed for KPI hashes 7ed1d5c4d10f and ff24c717b842. Exact property/filter/Europe-Amsterdam scope and campaign-to-date provider window resolved Revenue 51405.93, matching stored values. Direct read-only production credential inspection plus direct refresh-disabled GA4 calls for KPI hashes 2f27f064cd32 and befd1e90d209 returned exact 401 authentication failures from their expired access credentials. No token refresh or persistence was attempted. Their preserved values are therefore classified unavailable/last-good rather than current. The shared persisted owner no longer exists in Clerk; ownership was not changed."
     },
     {
       "id": "alert_email_delivery",
       "status": "pending",
-      "evidence": "Read-only audit aggregates include historical GA4 KPI delivered events, but they do not bind eligibility, payload, deployed SHA, or inbox receipt to this certification run. The refreshed report inventory found no KPI-selected configured-recipient fixture and recent non-KPI scheduled report audits are predominantly pending_delivery. Shortest valid step: use one explicitly authorized exact-scope KPI report and correlate its decision/artifact to confirmed provider or inbox delivery; provider acceptance alone is insufficient."
+      "evidence": "Read-only audit inventory found no delivered GA4 KPI alert after deployed SHA be926476 started at 2026-08-03T10:08:40Z. Historical delivered events are not carried forward. A current alert audit must record delivered status, provider response ID, and delivered timestamp."
     },
     {
       "id": "browser_and_report_parity",
-      "status": "pending",
-      "evidence": "The complete mutation-proof deployed browser matrix passes on 80a659b8, including browser PDFs for every required state. Refreshed read-only inventory found nine GA4 reports: the only KPI-section custom report has zero selected IDs, recipients, schedule, snapshots, or send events; recipient-configured scheduled reports are Overview or Benchmark reports. Server report/send parity therefore remains pending. Shortest valid closure requires explicit authorization for one temporary exact-scope KPI report using an already configured recipient, direct snapshot/test-send/manual-send/natural scheduled-send validation, confirmed delivery, and guarded cleanup."
+      "status": "passed",
+      "evidence": "The mutation-proof deployed browser matrix and PDFs remain exact revision-bound evidence. On deployed SHA be926476, authorized guarded validation selected live-provider KPI hash 7ed1d5c4d10f on report hash e322c0dbf3a6 with its one existing recipient. KPI preflight, manual snapshot, direct PDF, and the test endpoint's confirmed-delivery guard passed. Natural scheduled key 2026-08-03T10:18@UTC is sent with snapshot, and its Mailgun audit is delivered with provider response ID and delivered timestamp. Independent read-only inventory confirmed exact restoration to original configuration hash fcc0a0e68ad6."
     }
   ]
 }

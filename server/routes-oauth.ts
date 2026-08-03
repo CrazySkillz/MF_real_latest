@@ -9077,19 +9077,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentValueDailyInput = buildDailyInput(currentValueDailyTotals, currentValueLatestDailyRow);
       const providerInput = buildProviderInput(providerTotals, dailyInput);
       const currentValueProviderInput = buildProviderInput(currentValueProviderTotals, currentValueDailyInput);
-      const schedulerInputs = currentValueProviderInput || currentValueDailyInput;
+      const requestedWindowInputs = providerInput || dailyInput;
+      const currentValueWindowInputs = currentValueProviderInput || currentValueDailyInput;
+      const schedulerInputs = currentValueWindowInputs;
       const uiBaseInputs = (currentValueDailyInput.sessions > 0 || currentValueDailyInput.users > 0 || currentValueDailyInput.conversions > 0 || currentValueDailyInput.pageviews > 0 || currentValueDailyInput.ga4Revenue > 0)
         ? currentValueDailyInput
         : (currentValueProviderInput || currentValueDailyInput);
-      const uiFinancialProviderCandidate = currentValueProviderInput ? {
-        revenue: currentValueProviderInput.ga4Revenue,
-        conversions: currentValueProviderInput.conversions,
-        value: currentValueProviderInput,
+      const uiFinancialProviderCandidate = providerInput ? {
+        revenue: providerInput.ga4Revenue,
+        conversions: providerInput.conversions,
+        value: providerInput,
       } : null;
       const uiFinancialDailyCandidate = {
-        revenue: currentValueDailyInput.ga4Revenue,
-        conversions: currentValueDailyInput.conversions,
-        value: currentValueDailyInput,
+        revenue: dailyInput.ga4Revenue,
+        conversions: dailyInput.conversions,
+        value: dailyInput,
       };
       const uiFinancialBase = selectGA4FinancialTotalsSource(
         [uiFinancialProviderCandidate, uiFinancialDailyCandidate],
@@ -9110,7 +9112,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metricKey = String(benchmark?.metric || "").trim();
         const computable = !!metricKey && metricKey !== "__custom__" && isComputableGA4KpiMetric(metricKey);
         const storedCurrent = Number(String(benchmark?.currentValue ?? "").replace(/,/g, ""));
-        const schedulerCurrent = computable ? round2Local(computeKpiValue(metricKey, schedulerInputs)) : null;
+        const schedulerInputsForMetric = isGA4FinancialKpiMetricIdentity(metricKey)
+          ? requestedWindowInputs
+          : currentValueWindowInputs;
+        const schedulerCurrent = computable ? round2Local(computeKpiValue(metricKey, schedulerInputsForMetric)) : null;
         const uiCurrent = computable ? round2Local(computeUIValue(metricKey)) : null;
         return {
           id: benchmark?.id,

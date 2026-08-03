@@ -27710,6 +27710,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!ga4Preflight.ok) {
           return res.status(422).json({ success: false, error: `${ga4Preflight.error}; snapshot not created` });
         }
+        if (ga4Preflight.benchmarks) {
+          (payload as any).benchmarks = ga4Preflight.benchmarks;
+        }
         const buf = await buildPdfAttachmentForReport({
           report: existing,
           windowStart,

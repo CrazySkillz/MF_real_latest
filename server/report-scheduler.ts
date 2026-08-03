@@ -275,7 +275,22 @@ function getGA4ReportSelectedKPIIds(report: any): Set<string> {
     .filter(Boolean));
 }
 
-export async function preflightGA4ReportKPIConsumers(report: any, date?: string, opts?: { suppressAlerts?: boolean }): Promise<{ ok: boolean; error?: string }> {
+type GA4ReportBenchmarkSnapshot = {
+  id: string;
+  name: string;
+  metric: string | null;
+  unit: string;
+  currentValue: string | null;
+  benchmarkValue: string;
+  thresholdStatus: string | null;
+  updatedAt: string | null;
+};
+
+export async function preflightGA4ReportKPIConsumers(
+  report: any,
+  date?: string,
+  opts?: { suppressAlerts?: boolean },
+): Promise<{ ok: boolean; error?: string; benchmarks?: GA4ReportBenchmarkSnapshot[] }> {
   if (String((report as any)?.platformType || "").trim().toLowerCase() !== "google_analytics") return { ok: true };
   const campaignId = String((report as any)?.campaignId || "").trim();
   if (!campaignId) return { ok: false, error: "GA4 report campaign is missing" };
@@ -328,7 +343,32 @@ export async function preflightGA4ReportKPIConsumers(report: any, date?: string,
       const missing = Array.from(requiredBenchmarkIds).filter((id) => !updatedBenchmarkIds.has(id));
       if (missing.length > 0) return { ok: false, error: "GA4 Benchmark recompute skipped or failed selected Benchmark rows" };
     }
-    return { ok: true };
+    let benchmarkSnapshot: GA4ReportBenchmarkSnapshot[] | undefined;
+    if (reportIncludesGA4BenchmarkSection(report)) {
+      const selectedBenchmarkIds = getGA4ReportSelectedBenchmarkIds(report);
+      const freshBenchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId);
+      benchmarkSnapshot = (Array.isArray(freshBenchmarks) ? freshBenchmarks : [])
+        .filter((row: any) => selectedBenchmarkIds.size === 0 || selectedBenchmarkIds.has(String(row?.id || "")))
+        .map((row: any) => ({
+          id: String(row?.id || ""),
+          name: String(row?.name || ""),
+          metric: row?.metric == null ? null : String(row.metric),
+          unit: String(row?.unit || ""),
+          currentValue: row?.currentValue == null ? null : String(row.currentValue),
+          benchmarkValue: String(row?.benchmarkValue ?? ""),
+          thresholdStatus: computeBenchmarkThresholdResult({
+            metric: row?.metric,
+            name: row?.name,
+            unit: row?.unit,
+            current: Number(row?.currentValue),
+            benchmarkValue: Number(row?.benchmarkValue),
+          }).status,
+          updatedAt: row?.updatedAt instanceof Date
+            ? row.updatedAt.toISOString()
+            : (row?.updatedAt ? String(row.updatedAt) : null),
+        }));
+    }
+    return { ok: true, ...(benchmarkSnapshot ? { benchmarks: benchmarkSnapshot } : {}) };
   } catch (e: any) {
     return { ok: false, error: e?.message || "GA4 KPI/Benchmark recompute before report failed" };
   }
@@ -2270,6 +2310,9 @@ export async function checkScheduledReports(): Promise<void> {
           .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
           .catch(() => { });
         continue;
+      }
+      if (ga4Preflight.benchmarks) {
+        (snapshotPayload as any).benchmarks = ga4Preflight.benchmarks;
       }
 
       const pdfBuffer = await buildPdfAttachmentForReport({

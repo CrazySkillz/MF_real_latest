@@ -455,7 +455,8 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("feeds the fixture through the shared direct, test-send, manual, and scheduled report preflight/builder", async () => {
     const preflight = await preflightGA4ReportKPIConsumers(report, "2026-07-31", { suppressAlerts: true });
-    expect(preflight).toEqual({ ok: true });
+    expect(preflight.ok).toBe(true);
+    expect(preflight.benchmarks).toHaveLength(benchmarkRows.length);
     pdfTextCalls.length = 0;
     const buffer = await buildPdfAttachmentForReport({ report, windowStart: "2026-07-02", windowEnd: "2026-07-31", campaignName: campaign.name, isTest: true });
     expect(buffer?.length).toBeGreaterThan(100);
@@ -563,7 +564,15 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("includes freshly recomputed Benchmark conclusions in the actual scheduled Insights PDF", async () => {
     const preflight = await preflightGA4ReportKPIConsumers(insightsReport, "2026-07-31", { suppressAlerts: true });
-    expect(preflight).toEqual({ ok: true });
+    expect(preflight.ok).toBe(true);
+    expect(preflight.benchmarks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "benchmark-1",
+        currentValue: "200",
+        benchmarkValue: "250",
+        thresholdStatus: "needs_attention",
+      }),
+    ]));
 
     pdfTextCalls.length = 0;
     await buildGA4ScheduledPdfAttachment({

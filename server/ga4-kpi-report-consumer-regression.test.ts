@@ -20,10 +20,13 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(preflight).toContain("reportIncludesGA4BenchmarkSection(report)");
     expect(preflight).toContain('storage.getPlatformBenchmarks("google_analytics", campaignId)');
     expect(preflight).toContain("benchmarkIdsUpdated");
+    expect(preflight).toContain("const freshBenchmarks = await storage.getPlatformBenchmarks");
+    expect(preflight).toContain("thresholdStatus: computeBenchmarkThresholdResult");
     expect(preflight).toContain("GA4 KPI/Benchmark recompute skipped target campaign");
     expect(preflight).toContain("GA4 KPI recompute skipped or failed selected KPI rows");
     expect(preflight).toContain("GA4 Benchmark recompute skipped or failed selected Benchmark rows");
     expect(sendGuard).toContain("preflightGA4ReportKPIConsumers(report, windowEnd)");
+    expect(sendGuard).toContain("(snapshotPayload as any).benchmarks = ga4Preflight.benchmarks");
     expect(sendGuard).toContain('status: "failed"');
     expect(sendGuard).toContain("skipped scheduled report");
     expect(sendGuard).toContain("continue;");
@@ -57,6 +60,7 @@ describe("GA4 KPI report consumer regression guards", () => {
 
     expect(route).toContain('sourceBackedReportPlatform === "google_analytics"');
     expect(route).toContain("preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true })");
+    expect(route).toContain("(payload as any).benchmarks = ga4Preflight.benchmarks");
     expect(route).toContain("GA4");
     expect(route).toContain("snapshot not created");
     expect(route.indexOf("preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true })")).toBeLessThan(route.indexOf("const buf = await buildPdfAttachmentForReport"));

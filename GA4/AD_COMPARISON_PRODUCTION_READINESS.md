@@ -1,18 +1,19 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
+<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
 
 ## Controlling Current Status
 
-**Status: UNVERIFIED. The prior tab certification is invalidated until the
-dependency-hash guard is reproducible from committed content and the corrected
-revision is deployed and re-certified.**
+**Status: PRODUCTION_READY for the live GA4 Ad Comparison tab at deployed
+revision `1c410e271961638d80088b69a14eb874df90b881`.**
 
 No analytics-value, authorization, tenant-isolation, persistence, or destructive
 workflow defect was found in this documentation/code comparison. The
-invalidation is certification-integrity only: the checker hashed raw working
-files, so mixed Windows line endings could pass locally without matching a
-clean checkout of the recorded revision.
+certification-integrity defect is closed: the checker normalizes CRLF and CR to
+LF before hashing, and a focused regression proves all three line-ending forms
+produce the same dependency hash. The complete normalized dependency hash set
+is recorded in the machine certificate and passes from a clean committed
+checkout.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
@@ -24,8 +25,8 @@ Audit baseline:
 
 - audit opened: 2026-08-03
 - baseline Git SHA: `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
-- certification status: `UNVERIFIED`; prior runtime evidence SHA:
-  `635b65c1db35a39a6f1466cab0cc1dceab04db31`
+- certification status: `PRODUCTION_READY`; exact certified and deployed SHA:
+  `1c410e271961638d80088b69a14eb874df90b881`
 - production writes, provider refreshes, report sends, and cleanup: not
   performed
 - unrelated dirty worktree changes: excluded and preserved
@@ -34,13 +35,13 @@ Final local review:
 
 - reviewed implementation SHA:
   `08ea74af0344538259cd34ff1d8487492f4c8253`
-- exact deployed and production-evidence SHA:
-  `635b65c1db35a39a6f1466cab0cc1dceab04db31`
+- exact corrected deployed and production-evidence SHA:
+  `1c410e271961638d80088b69a14eb874df90b881`
 - assessment: all identified Critical and Major implementation findings are
   closed locally; Minor AC-06 is also closed
-- certification: `UNVERIFIED`; the prior deployed/provider/value evidence
-  remains historical support, but the dependency hashes are not reusable until
-  the checker is normalized, tested, deployed, and rerun
+- certification: `PRODUCTION_READY`; the implementation/value boundary is
+  unchanged from the passed live provider and parity packet, and every pinned
+  dependency uses a reproducible line-ending-normalized content hash
 
 ### Finite validation plan
 
@@ -208,7 +209,7 @@ status above supersedes the `UNVERIFIED` state recorded at that time.
 
 Passed:
 
-- final tab-only packet: 9 files, 293 tests
+- final tab-only packet: 9 files, 294 tests
 - focused real paths: 7 files, 207 tests
 - affected HubSpot direct-consumer guards: 2 files, 8 tests
 - auth/property/source lifecycle/destructive-safety packet: 10 files,
@@ -216,7 +217,7 @@ Passed:
   then passed 10/10
 - `npm run check`
 - `npm run build`
-- certification checker and its 7-test gate packet after the final evidence
+- certification checker and its 8-test gate packet after the final evidence
   update
 
 The broader audit also exercised Reports-owned PDF paths. Those results remain
@@ -225,7 +226,7 @@ historical supporting evidence and are not part of this tab-only certification.
 Commands and exact results:
 
 - `vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts`
-  -> 9 files / 293 tests passed for the final live-tab-only boundary
+  -> 9 files / 294 tests passed for the final live-tab-only boundary
 - `vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts`
   -> 7 files / 207 tests passed
 - `vitest run --pool forks server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/source-safety-regression.test.ts server/csv-revenue-downstream-propagation.test.ts server/google-sheets-revenue-validation.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/shopify-revenue-transaction.test.ts`
@@ -238,7 +239,7 @@ Commands and exact results:
 - `vitest run --pool forks --reporter=json --outputFile=C:\tmp\ga4-ad-comparison-full-suite.json`
   -> 1,303/1,333 tests passed; failure separation recorded below
 - `vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts`
-  -> 1 file / 7 tests passed
+  -> 1 file / 8 tests passed
 - `npm run check:ga4-ad-comparison-certification` -> passed after final
   machine-record update
 
@@ -254,7 +255,7 @@ Broader repository run:
 ### Production-only gates
 
 - deployed runtime and boundary revision: passed on 2026-08-03; local and
-  GitHub `main` resolved to `635b65c1db35a39a6f1466cab0cc1dceab04db31`,
+  GitHub `main` resolved to `1c410e271961638d80088b69a14eb874df90b881`,
   and production `/api/health` returned the same exact SHA
 - live GA4 provider packet: passed read-only for campaign hash `fc734ddaf728`;
   authenticated property `542352127`, `Europe/Amsterdam`, the exact three-value
@@ -272,10 +273,11 @@ Broader repository run:
   reports, snapshots, scheduling, delivery, and report-library paths are
   excluded and owned by the Reports certification
 
-The prior tab-only functional and production evidence passed, but the machine
-status is `UNVERIFIED` because the pinned hashes were not reproducible from a
-clean committed checkout. The corrected guard and a fresh deployed revision
-comparison are required before restoring a positive status.
+All tab-only functional, production, revision, and normalized dependency-hash
+gates pass. The machine status is `PRODUCTION_READY` for exact deployed revision
+`1c410e271961638d80088b69a14eb874df90b881`. Reports remain outside this
+certification because they are a separate product section, not an Ad Comparison
+deferral.
 
 <!-- /ga4-ad-comparison-current-status -->
 

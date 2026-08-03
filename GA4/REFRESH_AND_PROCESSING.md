@@ -398,9 +398,9 @@ It refreshes because:
 - revenue-source inputs refresh
 - the derived comparison view rerenders from those refreshed inputs
 
-Readiness note: the live GA4 Ad Comparison tab is `UNVERIFIED` while its
-dependency-hash guard is made reproducible from committed content and the
-corrected revision is re-certified. It has no independent scheduler;
+Readiness note: the live GA4 Ad Comparison tab is `PRODUCTION_READY` at exact
+deployed revision `1c410e271961638d80088b69a14eb874df90b881` under its
+normalized pinned dependency boundary. It has no independent scheduler;
 Reports-owned generation and delivery remain outside the tab boundary.
 
 ## Insights Refresh

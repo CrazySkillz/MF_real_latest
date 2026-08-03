@@ -8,10 +8,10 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED`. The implementation/value evidence remains unchanged, but the
-certification was invalidated after its raw file hashes proved dependent on
-local line endings rather than reproducible committed content. The exact repair
-and re-certification state is recorded in
+`PRODUCTION_READY` for the live tab at deployed revision
+`1c410e271961638d80088b69a14eb874df90b881`. The dependency boundary uses
+line-ending-normalized committed-content hashes, so the certification is
+reproducible across clean checkouts. The exact boundary and evidence are in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
 boundary.

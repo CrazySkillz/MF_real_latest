@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
-  "status": "UNVERIFIED",
-  "lastReviewedSha": "cbd9a66bcdcd2f93d39411bbccb1d51fdf3c527a",
-  "certifiedSha": null,
-  "invalidationReason": "Raw working-tree SHA-256 hashes were line-ending dependent and not reproducible from a clean checkout of the recorded revision. Normalize the certification checker to committed text content, deploy the corrected revision, and rerun all required gates before re-certifying.",
+  "status": "PRODUCTION_READY",
+  "lastReviewedSha": "1c410e271961638d80088b69a14eb874df90b881",
+  "certifiedSha": "1c410e271961638d80088b69a14eb874df90b881",
+  "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -31,47 +31,47 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": "6c4cf47ebe414c0713fc04ccc04ca30d804e318537be5fd5e9612214996a9d23"
+      "sha256": "30fa777a47b54cf76824688ecbb7e735a75c70fc49d76bd9cddacb8d2fbab34c"
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "b45ca56eccb01fe7e056245190c474613d6443f711d30a19b2ccbd5d22bbc932"
+      "sha256": "4323117cbf87c9decbc701acd78355c0ba3e7204b6987856786e6fdbb8cf3b15"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
       "role": "imported revenue window and provenance contract",
-      "sha256": "ceba43e8961569e6573e7b8a6f409f2453e602c0368b174ab08c03a1a4b0c533"
+      "sha256": "1e91a14f9f0e5d9847f6c9531826ddd05fe749687034784d4cbf77102615a048"
     },
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "9a73b88bea3b3c944ae0ffc5ac52503d4771f9d5b9efb902c8b0233c57c8ea54"
+      "sha256": "55de97f9a75f63d486d6986f9f744cb5a4c8ec3a26a5595937533562a814d6b2"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and state contract",
-      "sha256": "6bd47e275e4662a8983d9de6b8c43a5daa0e8b0a66cf66a5ba835931dcdfa9ff"
+      "sha256": "b940ef67d26091841e51b7f0732b68df7b2118c6b1c526f3adf4eb34585386fb"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
       "role": "source lifecycle UI",
-      "sha256": "f33779e6e32d789ec0a90b898cbc46dd7d5caa523ac9d82c0789c852e7576181"
+      "sha256": "92a453b77523d938b5e6151ae0a0aaac1cecaed955e119482a2d86e453f5eac4"
     },
     {
       "path": "client/src/components/HubSpotRevenueWizard.tsx",
       "role": "HubSpot input contract",
-      "sha256": "6ce45235a65846ac0ae335c82bc0ff9b9365c250e8eac912f8a3fc23543ad837"
+      "sha256": "41b004fb6d4e76302b21c09a1f001d4428cc79abd97162f071a879d20bbf8a6e"
     },
     {
       "path": "client/src/components/ShopifyRevenueWizard.tsx",
       "role": "Shopify input contract",
-      "sha256": "b32e99010dc7928586f06efec610e1decad56c6029fb3c29be2a223e2b98ba79"
+      "sha256": "9591dc04cb641ee2a5575691b5a4a1d932092adb9b5d74f5ab6db50fb3e0e784"
     },
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
       "role": "live Ad Comparison renderer",
-      "sha256": "db62d3fa76fb67ed4d715f35416e3e33769049abfd0adb30b8fd27ecb2f51b60"
+      "sha256": "df2c3a290c896087cd1963818b9cfa126e1ebe85cd606bd34747cc3fa7e2f699"
     },
     {
       "path": "client/src/pages/ga4-metrics.tsx",
@@ -81,7 +81,7 @@
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
       "role": "leader-card selector",
-      "sha256": "1275ec7b8bbc5d2d60858e0b91216d97455f452ef1a6a8329f744fafcd79a7b9"
+      "sha256": "b505e0cf298ffafb7f7bd07290200c07b64c0a38fb4b9cc0e0ed0dd3c2a24c4e"
     },
     {
       "path": "shared/ga4-financial-source.ts",
@@ -91,27 +91,27 @@
     {
       "path": "shared/schema.ts",
       "role": "persistence contract",
-      "sha256": "4e0ad76762675eb95a855dec1a8ee41db70fc9f7fc8a480e761cdccfa08cfce4"
+      "sha256": "87e1fdedfcbaaf604b7e4efd613876f7ff9be7e0c87688d24922cf5790f2900a"
     },
     {
       "path": "server/analytics.ts",
       "role": "GA4 provider query path",
-      "sha256": "c3599615186171f13d481e4d7639bd0a306db134da43c79858a7238cf43cb9bc"
+      "sha256": "3396cbe506d63f48b77a637fa21ba1e4cdf7f021c3045eebd6e1a4434e35d1f1"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
       "role": "imported-source refresh",
-      "sha256": "7dce2db7a5197543dc66375fce044dea993c12af4ad2c6b84f113cac0fb27555"
+      "sha256": "7310e0924c7768e221451ff62e1a753ed205487f8c62ab004d8736bd7b6430f8"
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.ts",
       "role": "machine certification checker",
-      "sha256": "84e703ea7728398960eba0ccec108d1838cce68e4475886846d931102d7d4c9e"
+      "sha256": "abcd10db8f4910c480e50056551cc6da37c9fe769cde8d5e6b66d8862caf4be0"
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.test.ts",
       "role": "certification checker regression tests",
-      "sha256": "d26c00c9b337b6c30fd0fc3ab66f30fa7c805f531b3deed0cfad84ef5ee851f1"
+      "sha256": "08b30be01f9cd2718a2a5d780dadf08b778a939d21b88d859f33264947885d4c"
     },
     {
       "path": "server/routes-oauth.ts",
@@ -121,12 +121,12 @@
     {
       "path": "server/storage.ts",
       "role": "storage and destructive boundary",
-      "sha256": "f806543b96a55f7e558f0f925d11481350cf4add952bfa0075ab2a7647e6388f"
+      "sha256": "e6823771fd207a161c6dac95cd2d63aca6e333297540e61a2b7236ddda0a2e3d"
     },
     {
       "path": "server/utils/data-transformation.ts",
       "role": "source materialization transform",
-      "sha256": "b3963210fd94fad338df649c576142032051583e18b9e78d429a393e60499541"
+      "sha256": "7a6db682f0bddc713fd520b04d12eb69aaae20097f6ec1c3820f6c0ad9194893"
     },
     {
       "path": "server/utils/hubspot-pagination.ts",
@@ -141,12 +141,12 @@
     {
       "path": "package.json",
       "role": "validation and build configuration",
-      "sha256": "ed1220936a4dd8e2d9284e1dd3d8fa5710f72646108edb649dadcb678ff26834"
+      "sha256": "91b23906bf9cb517437216a1b38ebd148895e64a552287d570319e41a355899e"
     },
     {
       "path": "render.yaml",
       "role": "production deployment configuration",
-      "sha256": "e4944724110c09bac309d9a4d784e77762da29eb52d0ac9450289852154462a1"
+      "sha256": "8cfcdc90e89555ffde031b9d0fc7ade309b999750e7ba3dd30bb63139cfc1a18"
     }
   ],
   "statusDocument": {
@@ -159,13 +159,13 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
       "status": "passed",
-      "evidence": "7 gate tests passed and check:ga4-ad-comparison-certification returned internally consistent after the final evidence update."
+      "evidence": "8 gate tests passed, including line-ending normalization; the final clean committed-revision checker follows the atomic manifest update."
     },
     {
       "id": "focused_real_paths",
       "command": "vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts",
       "status": "passed",
-      "evidence": "Final live-tab-only packet passed 9 files and 293 tests, covering formulas, pagination, UI states, cross-tab source consistency, source lifecycle, authentication, property scope, source safety, and certification integrity."
+      "evidence": "Final live-tab-only packet passed 9 files and 294 tests, covering formulas, pagination, UI states, cross-tab source consistency, source lifecycle, authentication, property scope, source safety, and certification integrity."
     },
     {
       "id": "affected_shared_regressions",
@@ -190,7 +190,7 @@
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "2026-08-03 local and GitHub main resolved to 635b65c1db35a39a6f1466cab0cc1dceab04db31, and production /api/health returned the same exact SHA."
+      "evidence": "2026-08-03 local and GitHub main resolved to 1c410e271961638d80088b69a14eb874df90b881, and production /api/health returned the same exact SHA."
     },
     {
       "id": "live_ga4_provider",
@@ -210,7 +210,7 @@
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "The corrected live-tab-only boundary is committed and deployed at 635b65c1db35a39a6f1466cab0cc1dceab04db31; all Reports-owned paths are excluded and owned by the Reports certification."
+      "evidence": "The corrected live-tab-only boundary and normalized hash guard are committed and deployed at 1c410e271961638d80088b69a14eb874df90b881; all Reports-owned paths are excluded and owned by the Reports certification."
     }
   ]
 }

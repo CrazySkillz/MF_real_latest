@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "9ee477d110b9b6a21876b9f1652ccbbfb93e6a43",
+  "lastReviewedSha": "08ea74af0344538259cd34ff1d8487492f4c8253",
   "certifiedSha": null,
-  "invalidationReason": "The prior non-revision-specific claim was revoked; Critical and Major findings and production-only gates remain open.",
+  "invalidationReason": "All identified Critical and Major implementation findings are closed locally, but production runs an earlier SHA and live provider/source/direct-consumer parity evidence is pending.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level Ad Comparison for one authorized campaign, selected active property, saved campaign filter, and direct live/browser/scheduled PDF consumers",
@@ -16,11 +16,12 @@
     "sourceRules": [
       "exact active campaign/property/filter only",
       "active GA4 or legacy-null revenue context only",
-      "no guessed, ambiguous, stale, or proportional imported allocation"
+      "source-to-date imported values are provenance only and excluded from 30-day ranking",
+      "no guessed, ambiguous, stale, configuration-backed, or proportional imported allocation"
     ],
     "windowRules": [
       "native comparison uses the last 30 completed GA4 days",
-      "row-level imported revenue requires the identical proven window",
+      "row-level rankings use native GA4 values only until imported revenue has an identical proven window",
       "valid zero, stale, unavailable, blocked, and failure are distinct"
     ],
     "ownershipRules": [
@@ -32,6 +33,11 @@
   "dependencies": [
     { "path": "GA4/AD_COMPARISON.md", "role": "functional contract", "sha256": null },
     { "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md", "role": "controlling readiness status", "sha256": null },
+    { "path": "GA4/FINANCIAL_SOURCES.md", "role": "imported revenue window and provenance contract", "sha256": null },
+    { "path": "GA4/README.md", "role": "GA4 documentation status index", "sha256": null },
+    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and state contract", "sha256": null },
+    { "path": "GA4/REPORTS.md", "role": "direct PDF consumer contract", "sha256": null },
+    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "direct PDF consumer readiness boundary", "sha256": null },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "source lifecycle UI", "sha256": null },
     { "path": "client/src/components/HubSpotRevenueWizard.tsx", "role": "HubSpot input contract", "sha256": null },
     { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify input contract", "sha256": null },
@@ -61,39 +67,39 @@
     {
       "id": "certification_gate",
       "command": "npm test -- server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
-      "status": "pending",
-      "evidence": "Required before final audit status is recorded."
+      "status": "passed",
+      "evidence": "7 gate tests passed and check:ga4-ad-comparison-certification returned internally consistent after the final evidence update."
     },
     {
       "id": "focused_real_paths",
-      "command": "npm test -- <final focused Ad Comparison test packet>",
-      "status": "pending",
-      "evidence": "Must exercise provider pagination and all three direct consumers."
+      "command": "vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts",
+      "status": "passed",
+      "evidence": "7 files and 207 tests passed; includes provider pagination and deterministic scheduled PDF success/failure paths."
     },
     {
       "id": "affected_shared_regressions",
-      "command": "npm test -- <final affected shared test packet>",
-      "status": "pending",
-      "evidence": "Must cover source lifecycle, report safety, auth, and scoping."
+      "command": "vitest affected source lifecycle/auth/scope/destructive packet plus HubSpot matrix/stale-authority guards",
+      "status": "passed",
+      "evidence": "Auth/property/source lifecycle/destructive packet passed 200 tests except one stale structural assertion, then corrected file passed 10/10; affected HubSpot guards passed 8/8."
     },
     {
       "id": "typescript",
       "command": "npm run check",
-      "status": "pending",
-      "evidence": "Required on the final reviewed revision."
+      "status": "passed",
+      "evidence": "tsc completed with exit code 0."
     },
     {
       "id": "production_build",
       "command": "npm run build",
-      "status": "pending",
-      "evidence": "Required on the final reviewed revision."
+      "status": "passed",
+      "evidence": "Vite and server esbuild production build completed with exit code 0."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
-      "status": "pending",
-      "evidence": "Production health must report the exact final reviewed SHA and matching configuration."
+      "status": "failed",
+      "evidence": "2026-08-03 /api/health returned HTTP 200 but commit b91d096831bc04504ca7a3cae4191d28c8fa89ee, not reviewed SHA 08ea74af0344538259cd34ff1d8487492f4c8253."
     },
     {
       "id": "live_ga4_provider",

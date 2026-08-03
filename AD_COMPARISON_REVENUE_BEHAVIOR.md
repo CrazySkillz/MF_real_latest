@@ -1,5 +1,11 @@
 # Ad Comparison Tab - Revenue Metrics Behavior
 
+> Scope: this is the legacy LinkedIn ad-level comparison contract implemented
+> in `client/src/pages/linkedin-analytics.tsx`. It is not a GA4 Ad Comparison
+> readiness document and does not govern GA4 campaign-row revenue, windows,
+> sources, or certification. Use `GA4/AD_COMPARISON.md` and
+> `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for GA4.
+
 ## Issue Identified
 
 When a campaign has **no conversion value** set, the Ad Comparison tab was incorrectly displaying revenue metrics. This has been fixed.

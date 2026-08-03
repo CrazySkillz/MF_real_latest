@@ -21,6 +21,17 @@ Audit baseline:
   performed
 - unrelated dirty worktree changes: excluded and preserved
 
+Final local review:
+
+- reviewed implementation SHA:
+  `08ea74af0344538259cd34ff1d8487492f4c8253`
+- assessment: all identified Critical and Major implementation findings are
+  closed locally; Minor AC-06 is also closed
+- certification: `UNVERIFIED`, because production health reports
+  `b91d096831bc04504ca7a3cae4191d28c8fa89ee`, not the reviewed revision,
+  and no deployed live/provider/source/direct-consumer parity packet exists
+- production-ready wording is prohibited until every external gate below passes
+
 ### Finite validation plan
 
 1. Freeze the revision, configuration, surface, source, and consumer boundary.
@@ -75,13 +86,12 @@ Excluded:
 | Conversions | Same acquisition rows | Same window/property/filter as sessions |
 | Conversion rate | conversions / sessions * 100 | Zero only for a proven zero denominator; unavailable otherwise |
 | Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same 30-day row scope; valid zero/negative retained |
-| Imported row revenue | Exact saved campaign-value totals | Compare only when identity, active materialization, currency, and window align |
-| Row total revenue | Native plus eligible imported amount | No ambiguity, stale fallback, or proportional allocation |
-| Unallocated revenue | Authoritative imported total minus eligible match | Non-negative residual; never guessed |
-| Revenue/session | Row total revenue / sessions | Rank only when numerator and denominator share scope |
-| Leader cards | `selectGA4AdComparisonCards` | Best uses selected metric; Efficient requires traffic; Attention requires volume |
+| Imported source revenue | Exact materialized source breakdown | Source-to-date provenance only; excluded from 30-day ranking |
+| Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
+| Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
+| Leader cards | `selectGA4AdComparisonLeaderCards` | Best uses selected metric; Efficient requires traffic; Attention requires volume |
 | Chart/table/totals | Normalized comparison rows | Same rows, metric, and state across direct consumers |
-| Revenue Breakdown | Native plus exact active materialized sources and residual | Exact source ID/config/value; no same-type config borrowing |
+| Revenue Breakdown | 30-day native row sum plus separate materialized source-to-date rows | Exact source ID/value; no same-type/config fallback or combined total |
 
 ### Route, storage, lifecycle, and consumer inventory
 
@@ -89,8 +99,6 @@ Direct reads:
 
 - authenticated GA4 connection/property resolution
 - `GET /api/campaigns/:id/ga4-breakdown`
-- `GET /api/campaigns/:id/ga4-to-date`
-- `GET /api/campaigns/:id/revenue-to-date`
 - `GET /api/campaigns/:id/revenue-sources`
 - `GET /api/campaigns/:id/revenue-breakdown`
 - direct report/snapshot PDF routes and the report scheduler only where they
@@ -128,10 +136,13 @@ Documented direct consumers:
 No KPI, Benchmark, Insight, alert, notification, Campaign DeepDive, or general
 Report-library value is a documented direct Ad Comparison consumer.
 
-### Revision dependency boundary at audit open
+### Reviewed revision dependency boundary
 
 - `client/src/pages/ga4-ad-comparison.tsx`
 - `client/src/pages/ga4-metrics.tsx`
+- `GA4/README.md`, `GA4/FINANCIAL_SOURCES.md`,
+  `GA4/REFRESH_AND_PROCESSING.md`, `GA4/REPORTS.md`, and
+  `GA4/REPORTS_PRODUCTION_READINESS.md`
 - `shared/ga4-ad-comparison-cards.ts`
 - `shared/ga4-financial-source.ts`
 - `shared/schema.ts`
@@ -142,23 +153,79 @@ Report-library value is a documented direct Ad Comparison consumer.
 - `server/report-scheduler.ts`
 - `package.json` and production deployment/revision configuration
 
-The final record must pin exact hashes for the post-fix boundary. Any change to
-an input invalidates a later positive certification until evidence is updated.
+The machine record lists the complete post-fix boundary. Hashes remain null
+while status is `UNVERIFIED`; a later positive certification must pin every
+hash. Any input change invalidates a later positive certification.
 
-### Initial finding queue
+### Audit findings
 
 | ID | Severity | Root cause and effect | Status |
 |---|---|---|---|
-| AC-01 | Critical | GA4 acquisition requests order high-cardinality rows by sessions and apply a 2,000-row default limit without paging. Aggregate totals can stay correct while lower-volume campaigns lose rows, revenue, conversions, and rank. | Confirmed; fix required |
-| AC-02 | Major | The UI is fixed to 30 completed GA4 days, but imported campaign totals are source-specific/to-date with no common-window proof. Adding them creates a misleading mixed-window comparison. | Confirmed; fail-closed fix required |
-| AC-03 | Major | Live Ad Comparison receives only loading state. Breakdown/revenue failures, stale values, unavailable sources, and missing native revenue can render as plausible zero/normal results. | Confirmed; fix required |
-| AC-04 | Major | Direct consumers diverge: live can borrow same-type mapping config; scheduled imported windows differ; scheduled All Campaigns stops at 20; Ads PDFs do not fail closed for required input failures. | Confirmed; fix required |
-| AC-05 | Major | Positive-only fallbacks discard valid zero/negative values; stale config can allocate without materialized evidence; live Salesforce can invent a subtotal absent from saved campaign totals. | Confirmed; fix required |
-| AC-06 | Minor | All Campaigns colors first/last session-sorted rows green/red even when another metric is selected, implying a ranking the table does not perform. | Confirmed; fix after blockers |
+| AC-01 | Critical | GA4 acquisition requests ordered high-cardinality rows by sessions and applied a 2,000-row limit without paging. | Fixed: page to provider `rowCount`; fail closed on incomplete/changed/oversized pagination |
+| AC-02 | Major | 30-day GA4 rows were combined with source-to-date imported totals. | Fixed: ranking/table/chart/totals use native 30-day rows; imported values are separate source-to-date provenance |
+| AC-03 | Major | Failure/stale/unavailable inputs could render as plausible zero/normal output. | Fixed: explicit loading/ready/stale/unavailable states and fail-closed PDF preflight |
+| AC-04 | Major | Live/browser/scheduled consumers diverged on config fallback, window, row limit, and failure handling. | Fixed: shared meaning, scheduled 30-day acquisition, source-to-date provenance, no 20-row truncation, required-input blocking |
+| AC-05 | Major | Positive-only/config/ambiguous Salesforce fallbacks could omit valid zero or invent allocation. | Fixed: exact materialized amounts, valid zero retained, no definition/config value fallback or invented allocation |
+| AC-06 | Minor | Static first/last table colors implied a ranking unrelated to the selected metric. | Fixed: misleading row colors removed |
+| AC-07 | Major | React Query previous-property placeholder rows could appear/export under a newly selected property. | Fixed: placeholder rows are excluded and export is blocked until current-property data is verified |
+| AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
 
-No clean certification is permitted until AC-01 through AC-05 are closed,
-validation passes, the final boundary is recorded, and production-only gates are
-passed. Otherwise the machine status remains `UNVERIFIED`.
+### Local validation evidence
+
+Passed:
+
+- focused real paths: 7 files, 207 tests
+- affected HubSpot direct-consumer guards: 2 files, 8 tests
+- auth/property/source lifecycle/destructive-safety packet: 10 files,
+  200 passed before one structural assertion was updated; that updated file
+  then passed 10/10
+- `npm run check`
+- `npm run build`
+- deterministic scheduled PDF success and fail-closed acquisition/revenue
+  failure cases
+- certification checker and its 7-test gate packet after the final evidence
+  update
+
+Commands and exact results:
+
+- `vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts server/shopify-downstream-content-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts`
+  -> 7 files / 207 tests passed
+- `vitest run --pool forks server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/source-safety-regression.test.ts server/csv-revenue-downstream-propagation.test.ts server/google-sheets-revenue-validation.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/shopify-revenue-transaction.test.ts`
+  -> 9 files passed; 1 file had one stale source assertion, which was updated
+  and then passed 10/10
+- `vitest run --pool forks server/hubspot-mapping-downstream-matrix.test.ts server/hubspot-stale-revenue-authority.test.ts`
+  -> 2 files / 8 tests passed
+- `npm run check` -> passed
+- `npm run build` -> passed
+- `vitest run --pool forks --reporter=json --outputFile=C:\tmp\ga4-ad-comparison-full-suite.json`
+  -> 1,303/1,333 tests passed; failure separation recorded below
+- `vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts`
+  -> 1 file / 7 tests passed
+- `npm run check:ga4-ad-comparison-certification` -> passed after final
+  machine-record update
+
+Broader repository run:
+
+- 361 suites / 1,333 tests
+- 335 suites and 1,303 tests passed; 26 suites / 30 tests failed
+- two affected HubSpot assertion failures were updated and passed separately
+  (8/8); the other 28 reported failures are in pre-existing unrelated Google
+  Ads, Meta, TikTok, and Instagram work visible in the dirty worktree and were
+  not modified
+
+### Production-only gates
+
+- deployed revision: failed on 2026-08-03; `/api/health` returned HTTP 200
+  with commit `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
+- scheduler health: HTTP 200/healthy, but this proves process health only, not
+  an Ad Comparison artifact or parity
+- live GA4 provider pagination/property/filter/window packet: pending
+- active production source/materialization/currency/window inventory: pending
+- deployed live/browser/scheduled Ads PDF parity on the exact reviewed
+  revision: pending
+
+No clean certification is permitted until all production-only gates pass.
+The machine status remains `UNVERIFIED`.
 
 <!-- /ga4-ad-comparison-current-status -->
 

@@ -6,11 +6,12 @@ This file is the short functional overview for the GA4 `Ad Comparison` tab.
 
 Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readiness answer, validation evidence, known blockers, and future-platform template guidance.
 
-Current durable answer:
+Current status:
 
-`GA4 Ad Comparison is production-ready for the current GA4 code scope, with one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured.`
-
-Future-reference rule: this functional document follows the readiness certification in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Treat the tab as production-ready except for that one Mailgun-dependent deployed scheduled/server PDF validation unless the readiness file is changed by a later audit, the deferred validation fails, deployed evidence contradicts it, product requirements change, or a new platform implementation is being assessed.
+`UNVERIFIED`. Local implementation evidence is green at the reviewed revision,
+but production is still running an earlier revision and the required deployed
+provider/source/direct-consumer parity evidence does not exist. The canonical
+readiness file is the only current status source.
 
 ## Document Ownership
 
@@ -23,11 +24,8 @@ The Ad Comparison documentation is intentionally split into two files:
 
 This file describes what the tab is. It is not the production-readiness certification.
 
-Production-readiness status:
-
-- current GA4 Ad Comparison code is production-ready for the current GA4 scope
-- all identified Ad Comparison code fixes are implemented and locally validated
-- the only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured
+Production-readiness status is revision-specific. Do not reuse a historical
+positive statement after any dependency changes.
 
 ## Current User-Facing Meaning
 
@@ -98,9 +96,8 @@ The tab is built from:
 
 - GA4 campaign-breakdown aggregate rows
 - selected GA4 campaign/property scope from campaign setup
-- normalized GA4 totals from the GA4 page parent
-- active revenue source rows for the same campaign and GA4 platform context
-- saved source mapping metadata for exact campaign-value revenue matching
+- active, exact materialized revenue source rows for the same campaign and GA4
+  platform context, shown as separate source-to-date provenance
 
 It must not use:
 
@@ -109,6 +106,8 @@ It must not use:
 - unscoped revenue or spend sources
 - guessed external attribution
 - proportional revenue allocation
+- source-to-date imported revenue in a 30-day campaign ranking
+- source definitions or saved configuration totals as a value fallback
 - display-only source labels as attribution keys when stable campaign identity is available
 
 ## Normalized Comparison Rows
@@ -129,34 +128,27 @@ Row rules:
 
 - aggregate GA4 breakdown rows by campaign name
 - apply saved campaign/property scope before rendering
+- use the last 30 completed GA4 days
 - calculate conversion rate as `conversions / sessions * 100`
-- include exact campaign-matched imported revenue in `revenue`
-- never infer or proportionally allocate unmatched external revenue
-- keep unmatched external revenue visible as `Unallocated External Revenue`
-- if imported revenue creates a campaign row that GA4 did not return directly, include that row with zero GA4 sessions/users/conversions unless refreshed GA4 data later supplies those metrics
+- use only native GA4 row revenue in `revenue`
+- never create a comparison row from imported-source configuration
+- never infer, merge, or proportionally allocate source-to-date revenue into the
+  30-day rows
 
-## Exact Revenue Matching
+## Revenue Window Boundary
 
-External revenue may be added to campaign rows only when source data saves real campaign-identifying values that match a normalized campaign row exactly.
+GA4 comparison rows and rankings use one common 30-completed-day provider
+window. Imported revenue currently has source-to-date materialization, not a
+proven identical 30-day boundary. It is therefore shown only in Revenue
+Breakdown with `source-to-date; excluded from ranking` provenance.
 
-Allowed:
-
-- exact normalized campaign-value match
-- explicit saved mapping from source campaign value to selected platform campaign value
-
-Not allowed:
-
-- proportional allocation by sessions
-- proportional allocation by conversions
-- matching by display label only when a stable campaign identity is available
-- matching to unrelated campaigns in the same account/property
-- matching external revenue into more than one ambiguous row
-
-If a revenue amount cannot be matched safely, it remains visible as `Unallocated External Revenue`.
+Imported revenue may enter campaign rankings only after a future implementation
+proves exact campaign identity, active materialization, currency, timezone, and
+the identical comparison window across all three direct consumers.
 
 ## Leader Cards
 
-The leader cards consume normalized comparison rows after exact imported revenue has been merged.
+The leader cards consume GA4-native normalized comparison rows.
 
 Shared selector:
 
@@ -171,7 +163,7 @@ Meaning:
 Rules:
 
 - changes when the dropdown metric changes
-- can be a zero-session mapped-revenue row when selected metric is `Revenue`
+- cannot be created by imported-only revenue
 - must show the selected metric value and exact card conversion rate to two decimals
 - must not add suffixes such as `(matched external included)` to the campaign label
 
@@ -185,7 +177,7 @@ Rules:
 
 - does not change when the selected metric changes
 - excludes zero-session rows
-- uses adjusted row revenue in the detail line
+- uses native GA4 row revenue in the detail line
 - shows exact card conversion rate to two decimals so close-rate decisions are explainable
 
 ### Needs Attention
@@ -202,8 +194,8 @@ Meaningful-volume rule:
 
 Display rule:
 
-- show exact card conversion rate to two decimals and sessions from the adjusted normalized row
-- never use pre-merge or stale row values
+- show exact card conversion rate to two decimals and sessions from the native normalized row
+- never use stale, previous-property, or unverified row values
 
 ### Validation Rule
 
@@ -227,7 +219,8 @@ The first summary card follows the selected dropdown metric.
 
 Rules:
 
-- `Revenue` renders as `Total Revenue (All Sources)` and uses the full GA4 plus imported-source financial total.
+- `Revenue` renders as `GA4 Revenue (30 Completed Days)` and sums the
+  normalized native comparison rows.
 - `Conversion Rate` renders as `Overall Conversion Rate`.
 - `Overall Conversion Rate` is calculated as total conversions divided by total sessions across comparison rows.
 - Do not average campaign-row conversion rates for the summary card unless the product explicitly changes the metric definition.
@@ -248,13 +241,10 @@ Rules:
 
 - keep a stable campaign-row order from the normalized GA4 breakdown; do not re-sort this table when the metric dropdown changes
 - when no revenue-provenance description is shown, the table should sit directly under the `All Campaigns` title without a blank descriptor gap
-- use adjusted normalized rows
-- revenue means GA4 campaign-row revenue plus exact campaign-matched imported revenue
+- use GA4-native normalized rows
+- revenue means GA4 campaign-row revenue for the common 30-day window
 - users remain directional because GA4 user counts are not perfectly additive across rows
-- show `Unallocated External Revenue` only for meaningful imported-source revenue that cannot be matched safely
-- compute unallocated external revenue from imported-source revenue minus exact matched external revenue
-- suppress a one-cent matched-source residual as rounding reconciliation
-- show `Total Revenue (All Sources)` as the final summary row
+- do not add imported, unallocated, or all-source financial rows
 
 ## Revenue Breakdown
 
@@ -267,15 +257,29 @@ Columns:
 
 Rules:
 
-- `GA4 Revenue` shows the source-level GA4-native financial total passed from the GA4 parent page.
-- `GA4 Revenue` must not be recomputed from the sum of rounded comparison rows.
-- active imported sources show their source amount.
+- `GA4 Revenue (30 completed days)` is the sum of the same native comparison
+  rows used by ranking, chart, summary, and All Campaigns.
+- active imported sources show exact materialized source-to-date amounts and
+  are explicitly excluded from ranking.
 - source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`.
 - subsection rows must use stored exact source values only.
 - do not invent or proportionally allocate subsection values.
-- do not duplicate a standalone `Unallocated External Revenue` row when that same amount is already represented in source subsections.
-- a one-cent difference between rounded campaign rows and source-level totals is not a separate source row.
-- `Total Revenue` renders as the final row and must reconcile to source-level GA4 revenue plus imported-source revenue.
+- preserve valid source zero values.
+- never fall back to stale source-definition/configuration totals when
+  materialized values are unavailable.
+- do not render a combined `Total Revenue`; its inputs do not share a proven
+  window.
+
+## State Contract
+
+- `loading`: no verified current-property rows are rendered.
+- `ready`: provider/source reads completed; valid zero and empty results remain
+  distinct from failure.
+- `stale`: last-good values may remain visible only with an explicit warning.
+- `unavailable`: no plausible zero or ranking is rendered.
+- previous-property placeholder rows are neither rendered nor exported.
+- browser and scheduled Ads PDFs fail closed when a required campaign breakdown
+  or selected Revenue Breakdown input is stale or unavailable.
 
 ## Reports
 
@@ -288,10 +292,15 @@ Required parity paths:
 Rules:
 
 - report output must use the same normalized row meaning as the live tab
+- all three paths use the same 30-completed-day native GA4 comparison boundary
 - report All Campaigns tables must keep stable campaign-row order and must not be controlled by the live metric dropdown
+- scheduled/server All Campaigns must not truncate the saved comparison set
 - report leader cards must use the shared selector
 - scheduled/server PDF currently uses `sessions` as the explicit default selected metric because scheduled report config does not persist the user's live dropdown selection
-- scheduled/server PDF revenue-provenance parity is implemented and locally validated; deployed artifact evidence is deferred until Mailgun is properly configured
+- source-to-date imported amounts remain separate and excluded from ranking
+- required input failures must block Ads PDF generation
+- deployed direct-consumer parity remains unverified until production runs the
+  exact reviewed revision
 - if report config later persists an Ad Comparison selected metric, scheduled/server PDF must pass that saved value into the same selector
 
 ## Refresh Pattern
@@ -300,11 +309,11 @@ The current tab has no dedicated Ad Comparison background job.
 
 It refreshes from the same refreshed inputs that power the GA4 page:
 
-1. Overview refresh updates GA4 daily and to-date values.
-2. GA4 campaign breakdown data is refetched.
-3. Revenue source rows are refetched.
-4. Normalized comparison rows are rebuilt.
-5. The live tab and report outputs render from those rows.
+1. GA4 campaign breakdown data is refetched from the provider.
+2. Revenue source definitions and exact materialized breakdown rows are
+   refetched.
+3. Normalized comparison rows are rebuilt.
+4. The live tab and report outputs render from those rows.
 
 Do not add a separate Ad Comparison scheduler unless the product design explicitly changes.
 

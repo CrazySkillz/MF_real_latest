@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getGA4DailySchedulerConfig, getNextGA4DailyRunAt } from "./ga4-daily-scheduler";
+import { getGA4DailyRecomputeFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt } from "./ga4-daily-scheduler";
 
 const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
 
@@ -61,6 +61,9 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("kpiIdsUpdated: hashEvidenceIds(recomputeResult.kpiIdsUpdated)");
     expect(source).toContain("kpiIdsSkipped: hashEvidenceIds(recomputeResult.kpiIdsSkipped)");
     expect(source).toContain("kpiIdsFailed: hashEvidenceIds(recomputeResult.kpiIdsFailed)");
+    expect(source).toContain("benchmarkIdsUpdated: hashEvidenceIds(recomputeResult.benchmarkIdsUpdated)");
+    expect(source).toContain("benchmarkIdsSkipped: hashEvidenceIds(recomputeResult.benchmarkIdsSkipped)");
+    expect(source).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeResult.benchmarkIdsFailed)");
     expect(source).toContain("if (!campaignId && !opts.suppressAlerts) {");
     expect(source).toContain("Next scheduled run at");
     expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
@@ -68,6 +71,25 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("__ga4DailyRefreshInProgress");
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
     expect(source).not.toContain("setInterval(() =>");
+  });
+
+  it("keeps expected unavailable skips observable without failing the global run", () => {
+    const base = {
+      campaignsProcessed: 1,
+      campaignIdsProcessed: ["campaign-ok"],
+      campaignIdsSkipped: ["campaign-unconfigured"],
+      campaignIdsFailed: [],
+      kpiIdsUpdated: ["kpi-ok"],
+      kpiIdsSkipped: ["kpi-unavailable"],
+      kpiIdsFailed: [],
+      benchmarkIdsUpdated: ["benchmark-ok"],
+      benchmarkIdsSkipped: ["benchmark-unavailable"],
+      benchmarkIdsFailed: [],
+    };
+
+    expect(getGA4DailyRecomputeFailure(base, false)).toBeNull();
+    expect(getGA4DailyRecomputeFailure({ ...base, benchmarkIdsFailed: ["benchmark-failed"] }, false)).toContain("1 Benchmark");
+    expect(getGA4DailyRecomputeFailure({ ...base, campaignsProcessed: 0 }, true)).toContain("target campaign");
   });
 
   it("fetches and persists daily values for the exact saved property and campaign scope", () => {

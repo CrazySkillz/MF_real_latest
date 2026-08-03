@@ -1095,6 +1095,56 @@ export class GoogleAnalytics4Service {
       );
     };
 
+    const pageSize = Math.min(Math.max(limit, 1), 10000);
+    const maxCompleteRows = 100000;
+    const incompletePaginationError = (message: string) =>
+      Object.assign(new Error('GA4_API_PAGINATION_INCOMPLETE: ' + message), {
+        isPaginationIncomplete: true,
+      });
+    const completeReportRows = async (firstPage: any, requestBody: any) => {
+      const expectedRows = Number(firstPage?.rowCount);
+      const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
+      if (!Number.isFinite(expectedRows) || expectedRows <= rows.length) {
+        return firstPage;
+      }
+      if (expectedRows > maxCompleteRows) {
+        throw incompletePaginationError(
+          'rowCount ' + expectedRows + ' exceeds safe maximum ' + maxCompleteRows,
+        );
+      }
+      while (rows.length < expectedRows) {
+        const response = await fetch(
+          `https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ...requestBody, offset: rows.length }),
+          },
+        );
+        if (!response.ok) {
+          throw incompletePaginationError(await response.text());
+        }
+        const page: any = await response.json();
+        const pageRows = Array.isArray(page?.rows) ? page.rows : [];
+        if (pageRows.length === 0) {
+          throw incompletePaginationError(
+            'provider returned an empty page at offset ' + rows.length,
+          );
+        }
+        if (Number.isFinite(Number(page?.rowCount)) && Number(page.rowCount) !== expectedRows) {
+          throw incompletePaginationError('rowCount changed during pagination');
+        }
+        rows.push(...pageRows);
+        if (rows.length > expectedRows) {
+          throw incompletePaginationError('provider returned more rows than rowCount');
+        }
+      }
+      return { ...firstPage, rows };
+    };
+
     const fetchReport = async (
       metricName: 'totalRevenue' | 'purchaseRevenue',
       dimensions: Array<{ name: string }>,
@@ -1102,29 +1152,31 @@ export class GoogleAnalytics4Service {
       scopeFilter?: any,
       endDateOverride: string = 'yesterday'
     ) => {
+      const requestBody = {
+        dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
+        dimensions,
+        ...(scopeFilter || this.buildCampaignDimensionFilter(
+          campaignFilter,
+          preferredCampaignDim || 'sessionCampaignName',
+        ) || {}),
+        metrics: [
+          { name: 'sessions' },
+          { name: 'totalUsers' },
+          { name: 'conversions' },
+          { name: metricName },
+          { name: 'engagedSessions' },
+        ],
+        metricAggregations: ['TOTAL'],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: pageSize,
+      };
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
-          dimensions,
-          ...(scopeFilter || this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName') || {}),
-          metrics: [
-            { name: 'sessions' },
-            // Use totalUsers as a compatible "base" metric for acquisition dimensions.
-            // (screenPageViews is often incompatible with channel/source/medium dimensions)
-            { name: 'totalUsers' },
-            { name: 'conversions' },
-            { name: metricName },
-            { name: 'engagedSessions' },
-          ],
-          metricAggregations: ['TOTAL'],
-          orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-          limit: Math.min(Math.max(limit, 1), 10000),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -1151,28 +1203,17 @@ export class GoogleAnalytics4Service {
                   'Authorization': `Bearer ${accessToken}`,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
-                  dimensions,
-                  ...(scopeFilter || this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName') || {}),
-                  metrics: [
-                    { name: 'sessions' },
-                    { name: 'totalUsers' },
-                    { name: 'conversions' },
-                    { name: metricName },
-                    { name: 'engagedSessions' },
-                  ],
-                  metricAggregations: ['TOTAL'],
-                  orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-                  limit: Math.min(Math.max(limit, 1), 10000),
-                }),
+                body: JSON.stringify(requestBody),
               });
               if (!retry.ok) {
                 const retryText = await retry.text();
                 throw new Error(`GA4 API Error: ${retryText}`);
               }
-              return retry.json();
+              return completeReportRows(await retry.json(), requestBody);
             } catch (refreshError: any) {
+              if (refreshError?.isPaginationIncomplete) {
+                throw refreshError;
+              }
               const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
               (autoRefreshError as any).isAutoRefreshNeeded = true;
               throw autoRefreshError;
@@ -1186,7 +1227,7 @@ export class GoogleAnalytics4Service {
 
         throw new Error(`GA4 API Error: ${errorText}`);
       }
-      return response.json();
+      return completeReportRows(await response.json(), requestBody);
     };
 
     const sessionScopedFull = [
@@ -1365,6 +1406,9 @@ export class GoogleAnalytics4Service {
         chosenDims = candidate.dims;
         chosenRevenueMetric = result.revenueMetric;
       } catch (e: any) {
+        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded) {
+          throw e;
+        }
         // Dimension/metric incompatibility, unknown dimensions, or other GA4 API errors.
         // Try the next candidate instead of failing the whole endpoint.
         lastError = e;
@@ -1387,7 +1431,10 @@ export class GoogleAnalytics4Service {
             chosenDims = pageLocationCore;
             chosenRevenueMetric = result.revenueMetric;
           }
-        } catch {
+        } catch (error: any) {
+          if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded) {
+            throw error;
+          }
           // Keep the original empty result if the URL fallback is not compatible for this property.
         }
       }

@@ -106,21 +106,23 @@ describe("scheduled report email regression guard", () => {
   });
   it("keeps GA4 scheduled Ad Comparison revenue provenance aligned with live output", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
-    const payloadStart = source.indexOf("const sourceRevenueBreakdowns = new Map<string, any[]>");
     const adsStart = source.indexOf("if (sections.ads)");
     const adsEnd = source.indexOf("if (sections.insights)", adsStart);
     const adsSection = source.slice(adsStart, adsEnd);
 
-    expect(payloadStart).toBeGreaterThan(-1);
     expect(adsStart).toBeGreaterThan(-1);
     expect(adsEnd).toBeGreaterThan(adsStart);
-    expect(source.slice(payloadStart, source.indexOf("const insightsRollups", payloadStart))).toContain("campaignValueRevenueTotals");
-    expect(adsSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((payload.importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));");
-    expect(adsSection).toContain("REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
-    expect(adsSection).toContain('allCampaignRows.push(["Unallocated External Revenue", "", "", "", formatMoney(unallocatedExternalRevenue)])');
-    expect(adsSection).toContain('allCampaignRows.push(["Total Revenue (All Sources)", "", "", "", formatMoney(payload.financialRevenue > 0 ? payload.financialRevenue : payload.ga4RevenueForFinancials)])');
+    expect(source).toContain("const acquisitionRange = adComparisonRequirements.included");
+    expect(source).toContain("? '30daysAgo'");
+    expect(source).toContain("const importedRevenueStartDate = '1900-01-01';");
+    expect(source).toContain("'GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: '");
+    expect(adsSection).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
+    expect(adsSection).toContain("const allCampaignRows = rows.map");
+    expect(adsSection).not.toContain("rows.slice(0, 20)");
+    expect(adsSection).not.toContain("Unallocated External Revenue");
+    expect(adsSection).not.toContain("Total Revenue (All Sources)");
+    expect(adsSection).toContain("source-to-date; excluded from ranking");
     expect(adsSection).toContain("payload.sourceRevenueBreakdowns.get(String(source?.sourceId || \"\"))");
-    expect(adsSection).toContain('revenueBreakdownRows.push(["Total Revenue", formatMoney(payload.financialRevenue)])');
   });
 
   it("keeps report test-send aligned with Mailgun HTTP API configuration", () => {

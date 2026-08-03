@@ -248,15 +248,73 @@ describe("Shopify downstream value/content regression guard", () => {
 
     const text = pdfTextCalls.join("\n");
     expect(buffer?.length).toBeGreaterThan(100);
-    expect(text).toContain("Total Revenue");
+    expect(text).toContain("TOTAL REVENUE");
     expect(text).toContain("USD 299.98");
     expect(text).toContain("Revenue Sources");
     expect(text).toContain("Shopify");
     expect(text).toContain("USD 199.98");
+    expect(text).toContain("GA4 REVENUE (30 DAYS)");
+    expect(text).toContain("Shopify (source-to-date; exclud");
     expect(text).toContain("shopify_campaign");
     expect(text).toContain("Revenue KPI");
     expect(text).toContain("Revenue Benchmark");
     expect(text).toContain("299.98");
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledWith(
+      campaign.id,
+      storageMock,
+      "30daysAgo",
+      "properties/123",
+      2000,
+      expect.anything(),
+    );
+    expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith(
+      campaign.id,
+      "1900-01-01",
+      "2026-07-05",
+      "ga4",
+    );
+  });
+
+  it("fails the deterministic scheduled Ad Comparison path closed when GA4 rows are unavailable", async () => {
+    ga4ServiceMock.getAcquisitionBreakdown.mockRejectedValue(new Error("provider unavailable"));
+
+    await expect(buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-ads-failure",
+        campaignId: campaign.id,
+        name: "Ad Comparison failure",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          sections: { ads: true },
+          subsections: { ads: { summary: true } },
+        }),
+      },
+      reportName: "Ad Comparison failure",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: Campaign breakdown");
+  });
+
+  it("fails the deterministic scheduled revenue provenance path closed when its read fails", async () => {
+    storageMock.getRevenueBreakdownBySource.mockRejectedValue(new Error("source unavailable"));
+
+    await expect(buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-ads-revenue-failure",
+        campaignId: campaign.id,
+        name: "Ad Comparison revenue failure",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          sections: { ads: true },
+          subsections: { ads: { revenueBreakdown: true } },
+        }),
+      },
+      reportName: "Ad Comparison revenue failure",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: Imported revenue provenance");
   });
 
   it("persists GA4 KPI and Benchmark row values from the Shopify imported revenue total", async () => {

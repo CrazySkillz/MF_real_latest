@@ -43,7 +43,7 @@ describe("GA4 HubSpot materialized revenue authority", () => {
   });
 
   it("keeps provenance visible but renders the missing value as unavailable", () => {
-    expect(ga4Page).toContain('source?.materializedRevenueStatus === "available" ? Number(source?.lastTotalRevenue || 0) : null');
+    expect(ga4Page).toContain('const getDefinitionRevenue = (_source: any) => null;');
     expect(ga4Page).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))');
     expect(ga4Page).toContain('materializedRevenueStatus: s.materializedRevenueStatus');
   });

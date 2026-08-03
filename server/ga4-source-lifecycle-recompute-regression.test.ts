@@ -256,7 +256,8 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(ga4Page).toContain('if (!ga4ConnectionUsable && !persistedFinancialSourceCleanupAvailable)');
     expect(ga4Page).toContain('data-testid="ga4-financial-cleanup-state"');
     expect(ga4Page).toContain('GA4 metrics are unavailable. Saved financial sources remain available below for review or removal.');
-    expect(ga4Page).toContain('const campaignBreakdownUnavailable = !ga4ConnectionUsable');
+    expect(ga4Page).toContain('const campaignBreakdownUnavailable =');
+    expect(ga4Page).toContain('breakdownPlaceholder ||');
     expect(ga4Page).toContain('const landingPagesUnavailable = !ga4ConnectionUsable');
     expect(ga4Page).toContain('const conversionEventsUnavailable = !ga4ConnectionUsable');
     expect(ga4Page).toContain('{ga4ConnectionUsable && <button');

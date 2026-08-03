@@ -43,7 +43,7 @@ describe('HubSpot GA4 mapping and downstream variant matrix', () => {
     expect(scheduler).toContain('reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))');
   });
 
-  it('fails closed on ambiguous normalized rows and accumulates exact multi-value and multi-source matches', () => {
+  it('keeps exact imported matching out of mixed-window Ad Comparison rows', () => {
     const overview = read('client/src/pages/ga4-metrics.tsx');
     const comparison = read('client/src/pages/ga4-ad-comparison.tsx');
     const scheduled = read('server/ga4-scheduled-report-pdf.ts');
@@ -52,29 +52,25 @@ describe('HubSpot GA4 mapping and downstream variant matrix', () => {
       'const campaignBreakdownMatchedExternalRevenue = useMemo',
       'const sourceRevenueBreakdowns = useMemo'
     );
-    const comparisonAllocation = section(
-      comparison,
-      'const allocationSummary = useMemo',
-      'const sourceRevenueBreakdowns = useMemo'
-    );
     const scheduledAllocation = section(
       scheduled,
       'const rowCounts = new Map<string, number>();',
       'const sourceRevenueBreakdowns = new Map'
     );
 
-    for (const source of [overview, comparison, scheduled]) {
+    for (const source of [overview, scheduled]) {
       expect(source).toContain('normalizeGA4CampaignAllocationKey');
     }
-    expect(overview.split('const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;').length - 1).toBe(2);
-    for (const allocation of [overviewAllocation, comparisonAllocation, scheduledAllocation]) {
+    expect(comparison).not.toContain('normalizeGA4CampaignAllocationKey');
+    expect(comparison).not.toContain('allocationSummary');
+    expect(overview.split('const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;').length - 1).toBe(1);
+    for (const allocation of [overviewAllocation, scheduledAllocation]) {
       expect(allocation).toContain('rowCounts.set(key, (rowCounts.get(key) || 0) + 1)');
       expect(allocation).toContain('rowCounts.get(key) !== 1');
       expect(allocation).toContain('for (const source of revenueDisplaySources)');
       expect(allocation).toContain('for (const item of totals)');
     }
     expect(overviewAllocation).toContain('(matched.get(rowName) || 0) + revenue');
-    expect(comparisonAllocation).toContain('(matchedByRow.get(rowName) || 0) + revenue');
     expect(scheduledAllocation).toContain('(campaignBreakdownMatchedExternalRevenue.get(rowName) || 0) + revenue');
   });
 

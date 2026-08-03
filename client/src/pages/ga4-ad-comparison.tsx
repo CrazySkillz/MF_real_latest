@@ -10,7 +10,6 @@ import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
-import { normalizeGA4CampaignAllocationKey } from "@shared/ga4-financial-source";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
@@ -28,14 +27,14 @@ interface CampaignAgg {
 interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
   breakdownLoading: boolean;
+  breakdownUnavailable?: boolean;
+  breakdownStale?: boolean;
+  revenueState?: 'loading' | 'ready' | 'stale' | 'unavailable';
   selectedMetric: string;
   onMetricChange: (metric: string) => void;
   formatNumber: (n: number) => string;
   formatMoney: (n: number) => string;
-  totalRevenue?: number;
-  ga4RevenueTotal?: number;
   revenueDisplaySources?: Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number | null; mappingConfig?: any }>;
-  importedRevenue?: number;
 }
 
 const METRIC_OPTIONS = [
@@ -54,80 +53,20 @@ const METRIC_LABELS: Record<string, string> = {
   conversionRate: "Conversion Rate",
 };
 
-const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
-
 export default function GA4AdComparison({
   campaignBreakdownAgg,
   breakdownLoading,
+  breakdownUnavailable = false,
+  breakdownStale = false,
+  revenueState = 'ready',
   selectedMetric,
   onMetricChange,
   formatNumber,
   formatMoney,
-  totalRevenue = 0,
-  ga4RevenueTotal,
   revenueDisplaySources = [],
-  importedRevenue: importedRevenueTotal,
 }: GA4AdComparisonProps) {
-  const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
-
   const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
-  const ga4RevenueTotalValue = Number(ga4RevenueTotal);
-  const ga4RevenueForBreakdown = Number((Number.isFinite(ga4RevenueTotalValue) && ga4RevenueTotalValue > 0 ? ga4RevenueTotalValue : ga4Revenue).toFixed(2));
-  const importedRevenueInput = importedRevenueTotal ?? (totalRevenue - ga4RevenueForBreakdown);
-  const importedRevenueValue = Number(importedRevenueInput);
-  const importedRevenue = Math.max(0, Number.isFinite(importedRevenueValue) ? importedRevenueValue : 0);
-  const hasImportedRevenue = importedRevenue > 0;
-  const revenueBreakdownTotal = Number((totalRevenue > 0 ? totalRevenue : ga4RevenueForBreakdown + importedRevenue).toFixed(2));
-  const allocationSummary = useMemo(() => {
-    const rowCounts = new Map<string, number>();
-    const rowNameByKey = new Map<string, string>();
-    for (const row of campaignBreakdownAgg) {
-      const key = normalizeCampaignKey(row.name);
-      if (!key) continue;
-      rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
-      if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
-    }
-
-    const matchedByRow = new Map<string, number>();
-    let matchedExternalRevenue = 0;
-    for (const source of revenueDisplaySources) {
-      const rawCfg = (source as any)?.mappingConfig;
-      const cfg = typeof rawCfg === "string"
-        ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
-        : rawCfg;
-      const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
-      const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
-      const mappedCampaignByValue = new Map<string, string>();
-      for (const mapping of mappings) {
-        const valueKey = normalizeCampaignKey(mapping?.crmValue || "");
-        const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
-        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
-      }
-      for (const item of totals) {
-        const campaignValue = String(item?.campaignValue || "").trim();
-        const revenue = Number(item?.revenue || 0);
-        const valueKey = normalizeCampaignKey(campaignValue);
-        const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || campaignValue);
-        if (!key || !(revenue > 0) || rowCounts.get(key) !== 1) continue;
-        const rowName = rowNameByKey.get(key);
-        if (!rowName) continue;
-        matchedByRow.set(rowName, (matchedByRow.get(rowName) || 0) + revenue);
-        matchedExternalRevenue += revenue;
-      }
-    }
-
-    let unallocatedExternalRevenue = Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2)));
-    if (matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD) {
-      unallocatedExternalRevenue = 0;
-    }
-
-    return {
-      matchedByRow,
-      matchedExternalRevenue: Number(matchedExternalRevenue.toFixed(2)),
-      unallocatedExternalRevenue,
-    };
-  }, [campaignBreakdownAgg, importedRevenue, revenueDisplaySources]);
-
+  const ga4RevenueForBreakdown = Number(ga4Revenue.toFixed(2));
   const sourceRevenueBreakdowns = useMemo(() => {
     return new Map(
       revenueDisplaySources.map((source) => {
@@ -136,21 +75,10 @@ export default function GA4AdComparison({
           ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
           : rawCfg;
         const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
-          ? cfg.campaignValueRevenueTotals.filter((item: any) => Number(item?.revenue || 0) > 0)
+          ? cfg.campaignValueRevenueTotals.filter(
+              (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
+            )
           : [];
-        if (totals.length === 0 && String(source.sourceType || "").toLowerCase() === "salesforce" && Number(source.revenue || 0) > 0) {
-          const pipelineValues = new Set(
-            (Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [])
-              .map((item: any) => normalizeCampaignKey(String(item?.campaignValue || "")))
-              .filter(Boolean),
-          );
-          const confirmedCandidates = (Array.isArray(cfg?.selectedValues) ? cfg.selectedValues : [])
-            .map((value: any) => String(value || "").trim())
-            .filter((value: string) => value && !pipelineValues.has(normalizeCampaignKey(value)));
-          if (confirmedCandidates.length === 1) {
-            return [source.sourceId, [{ campaignValue: confirmedCandidates[0], revenue: Number(source.revenue || 0) }]] as const;
-          }
-        }
         return [source.sourceId, totals] as const;
       }),
     );
@@ -158,14 +86,10 @@ export default function GA4AdComparison({
 
   const comparisonRows = useMemo(() => {
     return campaignBreakdownAgg.map((row) => {
-      const matchedExternal = allocationSummary.matchedByRow.get(row.name) || 0;
-      const revenue = Number((row.revenue + matchedExternal).toFixed(2));
+      const revenue = Number(row.revenue.toFixed(2));
       return { ...row, revenue, revenuePerSession: row.sessions > 0 ? revenue / row.sessions : 0 };
     });
-  }, [allocationSummary.matchedByRow, campaignBreakdownAgg]);
-
-  const revenueModeWithImportedSources = selectedMetric === "revenue" && (hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0);
-  const tableRevenueSummaryVisible = hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0 || allocationSummary.unallocatedExternalRevenue > 0;
+  }, [campaignBreakdownAgg]);
 
   const sortedByMetric = useMemo(() => {
     return [...comparisonRows].sort((a, b) => {
@@ -176,19 +100,8 @@ export default function GA4AdComparison({
   }, [comparisonRows, selectedMetric]);
 
   const chartRows = useMemo(() => {
-    if (selectedMetric !== "revenue" || allocationSummary.unallocatedExternalRevenue <= 0) return sortedByMetric;
-    return [
-      ...sortedByMetric,
-      {
-        name: "Unallocated External Revenue",
-        sessions: 0,
-        users: 0,
-        conversions: 0,
-        conversionRate: 0,
-        revenue: allocationSummary.unallocatedExternalRevenue,
-      },
-    ].sort((a, b) => b.revenue - a.revenue);
-  }, [allocationSummary.unallocatedExternalRevenue, selectedMetric, sortedByMetric]);
+    return sortedByMetric;
+  }, [sortedByMetric]);
 
   const chartData = useMemo(() => {
     return chartRows.slice(0, 10).map(c => ({
@@ -219,27 +132,34 @@ export default function GA4AdComparison({
       const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
       return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
     }
-    // For revenue, use the full financial total (GA4 + imported sources) instead of
-    // just the breakdown sum, which only covers GA4 campaign-attributed revenue.
-    if (selectedMetric === "revenue" && totalRevenue > 0) {
-      return totalRevenue;
-    }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
-  }, [sortedByMetric, selectedMetric, totalRevenue]);
+  }, [sortedByMetric, selectedMetric]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
-    ? "Total Revenue (All Sources)"
+    ? "GA4 Revenue (30 Completed Days)"
     : selectedMetric === "conversionRate"
       ? "Overall Conversion Rate"
       : `Total ${METRIC_LABELS[selectedMetric] || selectedMetric}`;
 
-  if (breakdownLoading) {
+  if (breakdownLoading && campaignBreakdownAgg.length === 0) {
     return (
       <div className="space-y-6">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="h-32 bg-muted rounded animate-pulse" />
         ))}
       </div>
+    );
+  }
+
+  if (breakdownUnavailable) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-destructive">
+            Ad Comparison is unavailable because the campaign breakdown could not be verified. Refresh the page to try again.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -275,6 +195,14 @@ export default function GA4AdComparison({
           </Select>
         </div>
       </div>
+
+      {breakdownStale && (
+        <Card className="border-amber-300 dark:border-amber-700">
+          <CardContent className="p-4 text-sm text-amber-800 dark:text-amber-200">
+            Showing the last verified campaign breakdown. The latest refresh failed.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Performance Rankings */}
       {campaignBreakdownAgg.length >= 2 && (
@@ -336,7 +264,6 @@ export default function GA4AdComparison({
           <CardTitle className="text-lg">Top Campaigns by {METRIC_LABELS[selectedMetric] || selectedMetric}</CardTitle>
           <CardDescription>
             Up to 10 campaigns sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " (exact matched external revenue is included in rows; unmatched external revenue stays separate)." : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -391,13 +318,8 @@ export default function GA4AdComparison({
 
       {/* Full comparison table */}
       <Card>
-        <CardHeader className={revenueModeWithImportedSources ? undefined : "pb-3"}>
+        <CardHeader className="pb-3">
           <CardTitle className="text-lg">All Campaigns</CardTitle>
-          {revenueModeWithImportedSources && (
-            <CardDescription>
-              Exact matched external revenue is added to campaign rows; unmatched external revenue stays separate.
-            </CardDescription>
-          )}
         </CardHeader>
         <CardContent className="px-6 pb-6 pt-0">
           <div className="overflow-hidden border rounded-md">
@@ -428,12 +350,10 @@ export default function GA4AdComparison({
                 </thead>
                 <tbody>
                   {comparisonRows.map((c, idx) => {
-                    const isTop = idx === 0;
-                    const isBottom = idx === comparisonRows.length - 1 && comparisonRows.length > 1;
                     return (
                       <tr
                         key={c.name || idx}
-                        className={`border-b last:border-b-0 ${isTop ? "bg-emerald-50 dark:bg-emerald-900/10" : isBottom ? "bg-red-50 dark:bg-red-900/10" : ""}`}
+                        className="border-b last:border-b-0"
                       >
                         <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
                         <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
@@ -445,28 +365,6 @@ export default function GA4AdComparison({
                       </tr>
                     );
                   })}
-                  {tableRevenueSummaryVisible && allocationSummary.unallocatedExternalRevenue > 0 && (
-                    <tr className="border-b bg-amber-50/60 dark:bg-amber-900/10">
-                      <td className="px-2 py-2 text-muted-foreground tabular-nums"></td>
-                      <td className="px-2 py-2 font-medium text-foreground">Unallocated External Revenue</td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(allocationSummary.unallocatedExternalRevenue)}</td>
-                    </tr>
-                  )}
-                  {tableRevenueSummaryVisible && (
-                    <tr className="bg-muted/30 font-bold">
-                      <td className="px-2 py-2 text-muted-foreground tabular-nums"></td>
-                      <td className="px-2 py-2 font-medium text-foreground">Total Revenue (All Sources)</td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums"></td>
-                      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(totalRevenue)}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -478,7 +376,9 @@ export default function GA4AdComparison({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
-          <CardDescription>Total revenue across all sources</CardDescription>
+          <CardDescription>
+            GA4 revenue uses the 30 completed-day comparison window. Imported sources are source-to-date provenance and are excluded from campaign ranking.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-hidden border rounded-md">
@@ -491,10 +391,10 @@ export default function GA4AdComparison({
               </thead>
               <tbody>
                 <tr className="border-b">
-                  <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
+                  <td className="px-3 py-2 text-foreground">GA4 Revenue (30 completed days)</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
-                {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).map((s) => (
+                {(revenueState === 'ready' || revenueState === 'stale') && revenueDisplaySources.filter(s => s.revenue != null).map((s) => (
                   <Fragment key={s.sourceId}>
                     <tr key={s.sourceId} className="border-b">
                       <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
@@ -508,15 +408,26 @@ export default function GA4AdComparison({
                     ))}
                   </Fragment>
                 ))}
-                {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).length === 0 && !hasImportedRevenue && (
+                {revenueState === 'unavailable' && (
+                  <tr>
+                    <td colSpan={2} className="px-3 py-2 text-center text-destructive text-xs">Imported revenue provenance is unavailable.</td>
+                  </tr>
+                )}
+                {revenueState === 'loading' && (
+                  <tr>
+                    <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs">Imported revenue provenance is loading.</td>
+                  </tr>
+                )}
+                {revenueState === 'ready' && revenueDisplaySources.filter(s => s.revenue != null).length === 0 && (
                   <tr>
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>
                   </tr>
                 )}
-                <tr className="border-b font-bold bg-muted/30 last:border-b-0">
-                  <td className="px-3 py-2.5 text-foreground">Total Revenue</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{formatMoney(revenueBreakdownTotal)}</td>
-                </tr>
+                {revenueState === 'stale' && (
+                  <tr>
+                    <td colSpan={2} className="px-3 py-2 text-center text-amber-700 dark:text-amber-300 text-xs">Imported source amounts are last-good values; the latest refresh failed.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

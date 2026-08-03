@@ -152,8 +152,23 @@ const getOverviewReportRequirements = (report: any) => {
   };
 };
 
+const getAdComparisonReportRequirements = (report: any) => {
+  const reportType = String(report?.reportType || 'overview').toLowerCase();
+  const cfg = normalizeCustomReportConfig(
+    parseReportConfiguration(report?.configuration),
+  );
+  const included =
+    reportType === 'ads' || (reportType === 'custom' && cfg.sections?.ads);
+  const subsections = cfg.subsections?.ads || {};
+  return {
+    included: Boolean(included),
+    revenueBreakdown: Boolean(
+      included && (reportType !== 'custom' || subsections.revenueBreakdown === true),
+    ),
+  };
+};
+
 const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
-const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
 const parseMappingConfig = (value: any) => {
   if (typeof value === "string") {
@@ -439,9 +454,15 @@ async function buildGA4ReportPayload(report: any) {
   const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
   const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
   const reportLookbackRange = `${lookbackDays}daysAgo`;
+  const adComparisonRequirements = getAdComparisonReportRequirements(report);
+  const acquisitionRange = adComparisonRequirements.included
+    ? '30daysAgo'
+    : reportLookbackRange;
   const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);
   const financialStartDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
   const financialEndDate = yesterdayUTC();
+  const importedRevenueStartDate = '1900-01-01';
+  const importedRevenueEndDate = new Date().toISOString().slice(0, 10);
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
   const configuredOverviewStartDate = String((connection as any)?.importStartDate || '').trim();
@@ -467,13 +488,13 @@ async function buildGA4ReportPayload(report: any) {
 
   const [metrics, breakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
-    ga4Service.getAcquisitionBreakdown(campaignId, storage, reportLookbackRange, propertyId, 2000, campaignFilter).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    ga4Service.getAcquisitionBreakdown(campaignId, storage, acquisitionRange, propertyId, 2000, campaignFilter).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     ga4Service.getLandingPagesReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
     ga4Service.getConversionEventsReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
     ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
     storage.getRevenueSources(campaignId, "ga4").catch((e) => { logPartFailure("revenue sources", e); return [] as any[]; }),
     storage.getSpendSources(campaignId, "ga4").catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
-    storage.getRevenueBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
+    storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
     storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
     loadPlatformKPIs,
     loadPlatformBenchmarks,
@@ -538,6 +559,25 @@ async function buildGA4ReportPayload(report: any) {
   }
   if (unavailableOverviewParts.length > 0) {
     throw new Error(`GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: ${Array.from(new Set(unavailableOverviewParts)).join(", ")}`);
+  }
+  const unavailableAdComparisonParts: string[] = [];
+  if (
+    adComparisonRequirements.included &&
+    failedParts.has('acquisition breakdown')
+  ) {
+    unavailableAdComparisonParts.push('Campaign breakdown');
+  }
+  if (
+    adComparisonRequirements.revenueBreakdown &&
+    (failedParts.has('revenue sources') || failedParts.has('revenue breakdown'))
+  ) {
+    unavailableAdComparisonParts.push('Imported revenue provenance');
+  }
+  if (unavailableAdComparisonParts.length > 0) {
+    throw new Error(
+      'GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: '
+      + Array.from(new Set(unavailableAdComparisonParts)).join(', '),
+    );
   }
   const lastDailyRefreshAt = dailyRows.length > 0
     ? dailyRows.reduce((latest: string | null, row: any) => {
@@ -682,33 +722,6 @@ async function buildGA4ReportPayload(report: any) {
   }
   const filteredCampaignRows = Array.from(byCampaign.values())
     .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)));
-  const filteredCampaignRowsByKey = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
-  for (const row of filteredCampaignRows) {
-    const key = normalizeCampaignKey(row.name);
-    if (key) filteredCampaignRowsByKey.set(key, row);
-  }
-  for (const source of revenueDisplaySources) {
-    const cfg = parseMappingConfig((source as any)?.mappingConfig);
-    const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
-    const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
-    const mappedCampaignByValue = new Map<string, string>();
-    for (const mapping of mappings) {
-      const valueKey = normalizeCampaignKey(mapping?.crmValue);
-      const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
-      if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
-    }
-    for (const item of totals) {
-      if (!(Number(item?.revenue || 0) > 0)) continue;
-      const valueKey = normalizeCampaignKey(item?.campaignValue);
-      const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();
-      const key = normalizeCampaignKey(name);
-      if (!key || filteredCampaignRowsByKey.has(key)) continue;
-      if (importedCampaignNames.size > 0 && !importedCampaignNames.has(key)) continue;
-      const row = { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
-      filteredCampaignRows.push(row);
-      filteredCampaignRowsByKey.set(key, row);
-    }
-  }
   const campaignBreakdownAgg = filteredCampaignRows
     .map((row) => {
       const revenue = Number(Number(row.revenue || 0).toFixed(2));
@@ -756,7 +769,9 @@ async function buildGA4ReportPayload(report: any) {
     revenueDisplaySources.map((source: any) => {
       const cfg = parseMappingConfig(source?.mappingConfig);
       const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
-        ? cfg.campaignValueRevenueTotals.filter((item: any) => Number(item?.revenue || 0) > 0)
+        ? cfg.campaignValueRevenueTotals.filter(
+            (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
+          )
         : [];
       return [String(source?.sourceId || ""), totals];
     })
@@ -1107,36 +1122,24 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const includeRevenueBreakdown = reportType !== "custom" || s.revenueBreakdown === true;
     sectionTitle("Ad Comparison", COLORS.ads, 24);
     const rows = payload.campaignBreakdownAgg.map((row: any) => {
-      const adjustedRevenue = Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
-      return { ...row, revenue: adjustedRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? adjustedRevenue / Number(row?.sessions || 0) : 0 };
+      const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));
+      return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row?.sessions || 0) : 0 };
     });
-    const matchedExternalRevenue = Array.from(payload.campaignBreakdownMatchedExternalRevenue.values()).reduce((sum: number, value: any) => sum + Number(value || 0), 0);
-    let unallocatedExternalRevenue = Math.max(0, Number((payload.importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));
-    if (matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD) {
-      unallocatedExternalRevenue = 0;
-    }
-    const tableRevenueSummaryVisible = payload.importedRevenueForFinancials > 0 || matchedExternalRevenue > 0 || unallocatedExternalRevenue > 0;
     if (includeSummary) {
       metricCards([
         ["Campaigns", formatNumber(rows.length)],
         ["Total Sessions", formatNumber(rows.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0))],
-        ["Total Revenue", formatMoney(payload.financialRevenue)],
+        ["GA4 Revenue (30 Days)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
       ], 3);
     }
     if (includeAllCampaigns) {
-      const allCampaignRows = rows.slice(0, 20).map((row: any) => [
+      const allCampaignRows = rows.map((row: any) => [
         String(row?.name || "(not set)"),
         formatNumber(row?.sessions || 0),
         formatNumber(row?.conversions || 0),
         formatPct(row?.conversionRate || 0),
         formatMoney(Number(row?.revenue || 0)),
       ]);
-      if (tableRevenueSummaryVisible && unallocatedExternalRevenue > 0) {
-        allCampaignRows.push(["Unallocated External Revenue", "", "", "", formatMoney(unallocatedExternalRevenue)]);
-      }
-      if (tableRevenueSummaryVisible) {
-        allCampaignRows.push(["Total Revenue (All Sources)", "", "", "", formatMoney(payload.financialRevenue > 0 ? payload.financialRevenue : payload.ga4RevenueForFinancials)]);
-      }
       addSimpleTable(
         "All Campaigns",
         ["CAMPAIGN", "SESSIONS", "CONV", "CR", "REVENUE"],
@@ -1156,20 +1159,17 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     if (includeRevenueBreakdown) {
       const revenueBreakdownRows = [
-        ...(payload.ga4HasRevenueMetric ? [["GA4 Revenue", formatMoney(payload.ga4RevenueForFinancials)]] : []),
+        ["GA4 Revenue (30 completed days)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
         ...payload.revenueDisplaySources
-          .filter((source: any) => source?.revenue != null && Number(source?.revenue || 0) > 0)
+          .filter((source: any) => source?.revenue != null)
           .flatMap((source: any) => [
-            [String(source?.displayName || source?.sourceType || "Revenue"), formatMoney(Number(source?.revenue || 0))],
+            [`${String(source?.displayName || source?.sourceType || "Revenue")} (source-to-date; excluded from ranking)`, formatMoney(Number(source?.revenue || 0))],
             ...(payload.sourceRevenueBreakdowns.get(String(source?.sourceId || "")) || []).map((item: any) => [
               `  ${String(item?.campaignValue || "")}`,
               formatMoney(Number(item?.revenue || 0)),
             ]),
           ]),
       ];
-      if (payload.financialRevenue > 0 || revenueBreakdownRows.length > 0) {
-        revenueBreakdownRows.push(["Total Revenue", formatMoney(payload.financialRevenue)]);
-      }
       addSimpleTable(
         "Revenue Breakdown",
         ["SOURCE", "AMOUNT"],

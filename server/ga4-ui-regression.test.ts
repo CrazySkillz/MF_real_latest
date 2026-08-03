@@ -409,7 +409,7 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdfEventsSection).not.toContain("formatMoney(Number(row?.revenue || 0))");
   });
 
-  it("lets mapped GA4 revenue sources create campaign breakdown rows when GA4 rows are missing", () => {
+  it("does not invent Ad Comparison rows from source-to-date imported revenue", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const pdf = readServer("ga4-scheduled-report-pdf.ts");
     const aggStart = ga4Metrics.indexOf("const campaignBreakdownAgg = useMemo");
@@ -421,12 +421,9 @@ describe("GA4 UI regression guard", () => {
 
     expect(aggStart).toBeGreaterThan(-1);
     expect(matchStart).toBeGreaterThan(aggStart);
-    expect(clientAgg).toContain("for (const source of revenueDisplaySources)");
-    expect(clientAgg).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
-    expect(clientAgg).toContain('const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();');
-    expect(clientAgg).toContain("filteredRows.push(row);");
-    expect(clientAgg).toContain("filteredRowsByKey.set(key, row);");
-    expect(ga4Metrics).toContain("[ga4Breakdown, importedGA4CampaignNames, revenueDisplaySources]");
+    expect(clientAgg).not.toContain("for (const source of revenueDisplaySources)");
+    expect(clientAgg).not.toContain("filteredRows.push(row);");
+    expect(ga4Metrics).toContain("[breakdownPlaceholder, ga4Breakdown, importedGA4CampaignNames]");
     expect(clientAgg).not.toContain("scaleIntsExactly");
     expect(clientAgg).not.toContain("breakdownTotals.sessions");
     expect(clientAgg).not.toContain("breakdownTotals.conversions");
@@ -438,30 +435,25 @@ describe("GA4 UI regression guard", () => {
 
     expect(pdfStart).toBeGreaterThan(-1);
     expect(pdfMatchStart).toBeGreaterThan(pdfStart);
-    expect(pdfAgg).toContain("for (const source of revenueDisplaySources)");
-    expect(pdfAgg).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
-    expect(pdfAgg).toContain('const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();');
-    expect(pdfAgg).toContain("filteredCampaignRows.push(row);");
-    expect(pdfAgg).toContain("filteredCampaignRowsByKey.set(key, row);");
+    expect(pdfAgg).not.toContain("for (const source of revenueDisplaySources)");
+    expect(pdfAgg).not.toContain("filteredCampaignRows.push(row);");
     expect(pdfAgg).not.toContain("revenueScale");
     expect(pdfAgg).not.toContain("breakdownTotals.revenue / rawTotalRevenue");
   });
 
-  it("keeps GA4 Ad Comparison leader cards on one shared adjusted-row selector", () => {
+  it("keeps GA4 Ad Comparison leader cards on one shared GA4-native row selector", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
-    const allocationStart = adComparison.indexOf("const allocationSummary = useMemo(() => {");
-    const comparisonStart = adComparison.indexOf("const comparisonRows = useMemo(() => {", allocationStart);
+    const comparisonStart = adComparison.indexOf("const comparisonRows = useMemo(() => {");
     const cardSelectorStart = adComparison.indexOf("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)", comparisonStart);
-    const allocationSection = adComparison.slice(allocationStart, comparisonStart);
 
-    expect(allocationStart).toBeGreaterThan(-1);
-    expect(comparisonStart).toBeGreaterThan(allocationStart);
+    expect(comparisonStart).toBeGreaterThan(-1);
     expect(cardSelectorStart).toBeGreaterThan(comparisonStart);
-    expect(allocationSection).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
-    expect(allocationSection).toContain("const mappedCampaignByValue = new Map<string, string>();");
-    expect(allocationSection).toContain("const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || campaignValue);");
+    expect(adComparison).toContain("const revenue = Number(row.revenue.toFixed(2));");
+    expect(ga4Metrics).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
+    expect(scheduledPdf).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
+    expect(adComparison).not.toContain("allocationSummary");
     expect(adComparison).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
     expect(ga4Metrics).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
     expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(rows, selectedMetric)");
@@ -480,23 +472,17 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("[...campaignBreakdownAgg]");
   });
 
-  it("keeps GA4 Ad Comparison unallocated external revenue on imported-source residuals only", () => {
+  it("keeps source-to-date imported revenue out of 30-day Ad Comparison values", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
-    const allocationStart = adComparison.indexOf("const allocationSummary = useMemo(() => {");
-    const allocationEnd = adComparison.indexOf("const sourceRevenueBreakdowns = useMemo(() => {", allocationStart);
-    const allocationSection = adComparison.slice(allocationStart, allocationEnd);
-    const pdfAllocationStart = ga4Metrics.indexOf("let matchedExternalRevenue = 0;");
-    const pdfAllocationEnd = ga4Metrics.indexOf("const comparisonRows = rows.map", pdfAllocationStart);
-    const pdfAllocationSection = ga4Metrics.slice(pdfAllocationStart, pdfAllocationEnd);
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
 
-    expect(adComparison).toContain("importedRevenue?: number;");
-    expect(adComparison).toContain("const importedRevenueInput = importedRevenueTotal ?? (totalRevenue - ga4RevenueForBreakdown);");
-    expect(ga4Metrics).toContain("importedRevenue={importedRevenueForFinancials}");
-    expect(allocationSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2)));");
-    expect(allocationSection).toContain("matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
-    expect(pdfAllocationSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));");
-    expect(pdfAllocationSection).toContain("matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
+    expect(adComparison).not.toContain("importedRevenue?: number;");
+    expect(adComparison).not.toContain("Unallocated External Revenue");
+    expect(ga4Metrics).not.toContain("importedRevenue={importedRevenueForFinancials}");
+    expect(ga4Metrics).toContain("source-to-date; excluded from ranking");
+    expect(scheduledPdf).toContain("source-to-date; excluded from ranking");
+    expect(scheduledPdf).not.toContain('allCampaignRows.push(["Unallocated External Revenue"');
   });
 
   it("keeps GA4 Ad Comparison Revenue Breakdown on source-level GA4 totals", () => {
@@ -504,17 +490,16 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const breakdownStart = adComparison.indexOf("{/* Revenue Breakdown sub-table */}");
     const breakdownSection = adComparison.slice(breakdownStart);
-    const pdfBreakdownStart = ga4Metrics.indexOf("if (includeAdsRevenueBreakdown && tableRevenueSummaryVisible) {");
+    const pdfBreakdownStart = ga4Metrics.indexOf("if (includeAdsRevenueBreakdown) {");
     const pdfBreakdownSection = ga4Metrics.slice(pdfBreakdownStart, ga4Metrics.indexOf("sectionTitle(\"Revenue Breakdown\"", pdfBreakdownStart));
 
     expect(breakdownStart).toBeGreaterThan(-1);
-    expect(adComparison).toContain("ga4RevenueTotal?: number;");
-    expect(adComparison).toContain("const ga4RevenueForBreakdown = Number((Number.isFinite(ga4RevenueTotalValue) && ga4RevenueTotalValue > 0 ? ga4RevenueTotalValue : ga4Revenue).toFixed(2));");
-    expect(ga4Metrics).toContain("ga4RevenueTotal={ga4RevenueForFinancials}");
+    expect(adComparison).not.toContain("ga4RevenueTotal?: number;");
+    expect(adComparison).toContain("const ga4RevenueForBreakdown = Number(ga4Revenue.toFixed(2));");
     expect(breakdownSection).toContain("{formatMoney(ga4RevenueForBreakdown)}");
-    expect(breakdownSection).toContain("{formatMoney(revenueBreakdownTotal)}");
-    expect(breakdownSection).not.toContain("{formatMoney(ga4Revenue)}</td>");
-    expect(pdfBreakdownSection).toContain('{ label: "GA4 Revenue", amount: fC(ga4RevenueForFinancials) }');
+    expect(breakdownSection).not.toContain("Total Revenue</td>");
+    expect(pdfBreakdownSection).toContain('label: "GA4 Revenue (30 completed days)"');
+    expect(pdfBreakdownSection).toContain("comparisonRows.reduce");
   });
 
   it("keeps GA4 Ad Comparison All Campaigns independent from the metric dropdown", () => {
@@ -524,7 +509,7 @@ describe("GA4 UI regression guard", () => {
     const breakdownStart = adComparison.indexOf("{/* Revenue Breakdown sub-table */}", tableStart);
     const tableSection = adComparison.slice(tableStart, breakdownStart);
     const browserPdfTableStart = ga4Metrics.indexOf("// All Campaigns table");
-    const browserPdfTableEnd = ga4Metrics.indexOf("if (tableRevenueSummaryVisible && unallocatedExternalRevenue > 0)", browserPdfTableStart);
+    const browserPdfTableEnd = ga4Metrics.indexOf("if (includeAdsRevenueBreakdown)", browserPdfTableStart);
     const browserPdfTableSection = ga4Metrics.slice(browserPdfTableStart, browserPdfTableEnd);
 
     expect(tableStart).toBeGreaterThan(-1);
@@ -532,7 +517,7 @@ describe("GA4 UI regression guard", () => {
     expect(browserPdfTableStart).toBeGreaterThan(-1);
     expect(browserPdfTableEnd).toBeGreaterThan(browserPdfTableStart);
     expect(tableSection).not.toContain("Full comparison sorted by");
-    expect(tableSection).toContain("<CardHeader className={revenueModeWithImportedSources ? undefined : \"pb-3\"}>");
+    expect(tableSection).toContain('<CardHeader className="pb-3">');
     expect(tableSection).toContain("<CardContent className=\"px-6 pb-6 pt-0\">");
     expect(tableSection).not.toContain("<CardContent className=\"p-6\">");
     expect(tableSection).toContain("{comparisonRows.map((c, idx) => {");
@@ -570,6 +555,28 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison.indexOf("<Select value={selectedMetric}", rankingsStart)).toBe(-1);
     expect(headerSection).toContain("md:grid md:grid-cols-3");
     expect(headerSection).toContain("md:justify-self-end");
+  });
+
+  it("does not render or export previous-property placeholder rows in Ad Comparison", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain("isPlaceholderData: breakdownPlaceholder");
+    expect(ga4Metrics).toContain("!breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows)");
+    expect(ga4Metrics).toContain("breakdownPlaceholder ||");
+    expect(ga4Metrics).toContain("breakdownLoading={breakdownLoading || breakdownPlaceholder}");
+  });
+
+  it("derives imported Ad Comparison state from the source breakdown it renders", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const stateStart = ga4Metrics.indexOf("const adComparisonRevenueState:");
+    const stateEnd = ga4Metrics.indexOf("const spendKpiInputState:", stateStart);
+    const stateSection = ga4Metrics.slice(stateStart, stateEnd);
+
+    expect(stateStart).toBeGreaterThan(-1);
+    expect(stateSection).toContain("revenueBreakdownResp !== undefined");
+    expect(stateSection).toContain("revenueBreakdownError ? \"stale\" : \"ready\"");
+    expect(ga4Metrics).toContain("revenueState={adComparisonRevenueState}");
+    expect(ga4Metrics).toContain("needsRevenueBreakdown && adComparisonRevenueState !== 'ready'");
   });
 
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {

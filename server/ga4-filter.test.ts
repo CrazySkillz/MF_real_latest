@@ -422,6 +422,72 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.metricAggregations).toEqual(["TOTAL"]);
   });
 
+  it('paginates acquisition rows to the provider rowCount', async () => {
+    const row = (campaign: string, sessions: string) => ({
+      dimensionValues: ['20260618', 'Paid Search', 'google', 'cpc', campaign, 'desktop', 'NL']
+        .map((value) => ({ value })),
+      metricValues: [sessions, sessions, '1', '10', sessions]
+        .map((value) => ({ value })),
+    });
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || '{}'));
+      const offset = Number(body?.offset || 0);
+      return {
+        ok: true,
+        json: async () => ({
+          rowCount: 3,
+          rows: offset === 0
+            ? [row('campaign-a', '20'), row('campaign-b', '10')]
+            : [row('campaign-c', '5')],
+          totals: [{ metricValues: ['35', '35', '3', '30', '35'].map((value) => ({ value })) }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({
+      id: 'conn-1', propertyId: 'properties/123', accessToken: 'token',
+    })) };
+
+    const result = await ga4Service.getAcquisitionBreakdown(
+      'campaign-1', storage, '30daysAgo', '123', 2, 'summer_sale',
+    );
+
+    expect(result.rows.map((item) => item.campaign)).toEqual([
+      'campaign-a', 'campaign-b', 'campaign-c',
+    ]);
+    expect(result.meta.rowCount).toBe(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body || '{}')).offset).toBe(2);
+  });
+
+  it('fails closed when a required acquisition page is empty', async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const offset = Number(JSON.parse(String(init?.body || '{}'))?.offset || 0);
+      return {
+        ok: true,
+        json: async () => ({
+          rowCount: 2,
+          rows: offset === 0 ? [{
+            dimensionValues: ['20260618', 'Paid Search', 'google', 'cpc', 'campaign-a', 'desktop', 'NL']
+              .map((value) => ({ value })),
+            metricValues: ['20', '20', '1', '10', '20'].map((value) => ({ value })),
+          }] : [],
+        }),
+      } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({
+      id: 'conn-1', propertyId: 'properties/123', accessToken: 'token',
+    })) };
+
+    await expect(
+      ga4Service.getAcquisitionBreakdown(
+        'campaign-1', storage, '30daysAgo', '123', 1, 'summer_sale',
+      ),
+    ).rejects.toThrow('GA4_API_PAGINATION_INCOMPLETE');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("derives landing page source and medium from UTM URLs when GA4 attribution dimensions are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));

@@ -4,6 +4,7 @@ import {
   evaluateGA4AdComparisonCertification,
   GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES,
   runGA4AdComparisonCertificationGate,
+  sha256NormalizedCertificationText,
 } from './ga4-ad-comparison-certification-gate';
 
 const hash = (value: string) =>
@@ -66,6 +67,11 @@ const gateContext = (files = content) => ({
 });
 
 describe('GA4 Ad Comparison certification gate', () => {
+  it('hashes committed text independently of checkout line endings', () => {
+    expect(sha256NormalizedCertificationText('first\r\nsecond\rthird\n'))
+      .toBe(sha256NormalizedCertificationText('first\nsecond\nthird\n'));
+  });
+
   it('accepts a complete UNVERIFIED record with pending evidence', () => {
     expect(
       evaluateGA4AdComparisonCertification(baseRecord(), gateContext()),

@@ -42,6 +42,8 @@ export type CertificationGateResult = { ok: boolean; errors: string[] };
 
 const fullSha = /^[0-9a-f]{40}$/i;
 const fileHash = /^[0-9a-f]{64}$/i;
+export const sha256NormalizedCertificationText = (value: string) =>
+  createHash('sha256').update(value.replace(/\r\n?/g, '\n')).digest('hex');
 const isObject = (value: unknown): value is Record<string, any> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const isSafePath = (path: string) => {
@@ -198,7 +200,7 @@ function repositoryContext(root: string): GateContext {
     exists: (path) => existsSync(resolve(path)),
     readText: (path) => readFileSync(resolve(path), 'utf8'),
     sha256: (path) =>
-      createHash('sha256').update(readFileSync(resolve(path))).digest('hex'),
+      sha256NormalizedCertificationText(readFileSync(resolve(path), 'utf8')),
     gitCommitExists: (sha) => gitOk(['cat-file', '-e', sha + '^{commit}']),
     gitCommitIsAncestor: (sha) =>
       gitOk(['merge-base', '--is-ancestor', sha, 'HEAD']),

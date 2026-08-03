@@ -80,22 +80,22 @@ Important clarification:
 - Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all active revenue-source records to date.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - GA4 `Ad Comparison` campaign rows, rankings, chart, and totals use only
-  GA4-native revenue from the fixed 30-completed-day comparison window;
+  GA4-native revenue from the fixed initial-import-to-latest-completed-day window;
   source-to-date imported revenue is separate provenance and is excluded from
   ranking
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
 - `Overview -> Landing Pages` and `Overview -> Conversion Events` remain GA4-native row views and should keep the `GA4 Revenue` label
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
-- in the GA4 `Ad Comparison` Revenue Breakdown table, `GA4 Revenue (30 completed days)` is the sum of the same native rows used by the comparison
+- in the GA4 `Ad Comparison` Revenue Breakdown table, `GA4 Revenue (imported to date)` is the sum of the same native rows used by the comparison
 - exact materialized imported source amounts are labeled source-to-date and no
   combined `Total Revenue` or unallocated ranking row is rendered
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
-Production-readiness note: the live GA4 Ad Comparison tab is `UNVERIFIED`
-after Critical AC-09 proved its native rows use a rolling 30-day provider
-window instead of the saved initial-import boundary plus completed-day
-accumulation. Reports-owned output remains outside the tab-only boundary.
+Production-readiness note: the local GA4 Ad Comparison fix now resolves native
+rows from the saved initial-import boundary through the latest completed day.
+The tab remains `UNVERIFIED` until the corrected revision is deployed and live
+value parity passes. Reports-owned output remains outside the tab-only boundary.
 
 ### Previous-Day Revenue Records
 

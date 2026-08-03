@@ -398,11 +398,11 @@ It refreshes because:
 - revenue-source inputs refresh
 - the derived comparison view rerenders from those refreshed inputs
 
-Readiness note: the live GA4 Ad Comparison tab is `UNVERIFIED` after
-Critical AC-09 proved that it refetches a rolling 30-day provider breakdown
-instead of the saved initial-import boundary through the latest completed day.
-It has no independent scheduler; Reports-owned generation and delivery remain
-outside the tab boundary.
+Readiness note: the local GA4 Ad Comparison fix uses an isolated provider query
+from the saved initial-import boundary through the campaign-timezone latest
+completed day. It remains `UNVERIFIED` until deployed parity and authenticated
+live values pass. It has no independent scheduler; Reports-owned generation and
+delivery remain outside the tab boundary.
 
 ## Insights Refresh
 

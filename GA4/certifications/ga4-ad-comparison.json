@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "6ce94554076efbbecf22306e19a385bf410a393e",
+  "lastReviewedSha": "6a38cc4d76b4710a55c4c916e5119963ce6de169",
   "certifiedSha": null,
-  "invalidationReason": "Critical AC-09 invalidated the rolling-window revision. The isolated cumulative implementation is under local validation; re-certification still requires the complete regression/build packet, deployed revision parity, and live value confirmation.",
+  "invalidationReason": "Critical AC-09 invalidated the rolling-window revision. The isolated cumulative implementation and local regression/build packet pass at 6a38cc4d76b4710a55c4c916e5119963ce6de169; re-certification still requires deployed revision parity and authenticated live value confirmation.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -31,27 +31,27 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": "30fa777a47b54cf76824688ecbb7e735a75c70fc49d76bd9cddacb8d2fbab34c"
+      "sha256": null
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "4323117cbf87c9decbc701acd78355c0ba3e7204b6987856786e6fdbb8cf3b15"
+      "sha256": null
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
       "role": "imported revenue window and provenance contract",
-      "sha256": "1e91a14f9f0e5d9847f6c9531826ddd05fe749687034784d4cbf77102615a048"
+      "sha256": null
     },
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "55de97f9a75f63d486d6986f9f744cb5a4c8ec3a26a5595937533562a814d6b2"
+      "sha256": null
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and state contract",
-      "sha256": "b940ef67d26091841e51b7f0732b68df7b2118c6b1c526f3adf4eb34585386fb"
+      "sha256": null
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -71,12 +71,12 @@
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
       "role": "live Ad Comparison renderer",
-      "sha256": "df2c3a290c896087cd1963818b9cfa126e1ebe85cd606bd34747cc3fa7e2f699"
+      "sha256": null
     },
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "live tab data producer",
-      "sha256": "d2eccbdee135e4350059f982e7999731261c8fa9f48b0f9d271a03092acda2b8"
+      "sha256": null
     },
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
@@ -96,7 +96,7 @@
     {
       "path": "server/analytics.ts",
       "role": "GA4 provider query path",
-      "sha256": "3396cbe506d63f48b77a637fa21ba1e4cdf7f021c3045eebd6e1a4434e35d1f1"
+      "sha256": null
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -106,12 +106,12 @@
     {
       "path": "server/ga4-ad-comparison-certification-gate.ts",
       "role": "machine certification checker",
-      "sha256": "abcd10db8f4910c480e50056551cc6da37c9fe769cde8d5e6b66d8862caf4be0"
+      "sha256": null
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.test.ts",
       "role": "certification checker regression tests",
-      "sha256": "08b30be01f9cd2718a2a5d780dadf08b778a939d21b88d859f33264947885d4c"
+      "sha256": null
     },
     {
       "path": "server/ga4-ad-comparison-accumulation-regression.test.ts",
@@ -121,7 +121,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "f05321fdf2b0320626c17775e86dca4bff22fee1f001266d990163ed847a601e"
+      "sha256": null
     },
     {
       "path": "server/storage.ts",
@@ -167,40 +167,40 @@
   "requiredTests": [
     {
       "id": "certification_gate",
-      "command": "npm test -- server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
-      "status": "pending",
-      "evidence": "The prevention-first gate must reject rolling-only window rules and pass again after the cumulative implementation boundary is recorded."
+      "command": "vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
+      "status": "passed",
+      "evidence": "10/10 gate tests passed and the repository checker passed while retaining UNVERIFIED status."
     },
     {
       "id": "focused_real_paths",
-      "command": "vitest run --pool forks server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts",
-      "status": "pending",
-      "evidence": "Prior rolling-window evidence is historical. The cumulative import-to-latest-completed path requires focused route, UI, property/filter, failure-state, and parity regressions."
+      "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-filter.test.ts",
+      "status": "passed",
+      "evidence": "4 files / 38 tests passed, including fixed-date accumulation, campaign-timezone end date, invalid/future fail-closed behavior, exact property/filter, and actual GA4 request-body dates."
     },
     {
       "id": "affected_shared_regressions",
-      "command": "vitest affected source lifecycle/auth/scope/destructive packet plus HubSpot matrix/stale-authority guards",
-      "status": "pending",
-      "evidence": "Rerun the affected auth/property/source lifecycle/destructive and imported-provenance packet after the cumulative window fix."
+      "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts",
+      "status": "passed",
+      "evidence": "11 files / 305 tests passed after aligning one expected UI structural assertion with the isolated query."
     },
     {
       "id": "typescript",
       "command": "npm run check",
-      "status": "pending",
-      "evidence": "Rerun after the cumulative window fix."
+      "status": "passed",
+      "evidence": "TypeScript check passed at corrected local runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169."
     },
     {
       "id": "production_build",
       "command": "npm run build",
-      "status": "pending",
-      "evidence": "Rerun after the cumulative window fix."
+      "status": "passed",
+      "evidence": "Production Vite and server esbuild completed successfully at corrected local runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
       "status": "pending",
-      "evidence": "The corrected cumulative revision is not yet deployed."
+      "evidence": "The corrected cumulative runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169 is not yet proven deployed."
     },
     {
       "id": "live_ga4_provider",
@@ -215,7 +215,7 @@
     {
       "id": "live_tab_parity",
       "status": "pending",
-      "evidence": "Leader cards, All Campaigns rows, Revenue Breakdown, 95 sessions, three campaigns, USD 16,088.36 native revenue, and imported USD 0/600/4,000/5,100/7,000 values matched the authenticated provider and storage packet."
+      "evidence": "The previous 95-session and USD 16,088.36 packet covered the escaped rolling revision. Rerun endpoint/UI parity for the server-returned fixed start and completed end dates."
     },
     {
       "id": "tab_boundary_revision",

@@ -8,10 +8,10 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED`. The current implementation incorrectly uses a rolling
-30-day provider breakdown instead of retaining the saved initial historical
-import boundary and accumulating later completed days. The root cause and
-active fix gate are recorded in
+`UNVERIFIED`. The local implementation now uses the saved initial historical
+import boundary through the latest completed reporting day, but the corrected
+revision still requires deployment and authenticated live-value parity before
+clean certification. The root cause, fix, and remaining production gates are recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
 boundary.
@@ -109,7 +109,7 @@ It must not use:
 - unscoped revenue or spend sources
 - guessed external attribution
 - proportional revenue allocation
-- source-to-date imported revenue in a 30-day campaign ranking
+- source-to-date imported revenue in the native campaign ranking
 - source definitions or saved configuration totals as a value fallback
 - display-only source labels as attribution keys when stable campaign identity is available
 
@@ -131,18 +131,20 @@ Row rules:
 
 - aggregate GA4 breakdown rows by campaign name
 - apply saved campaign/property scope before rendering
-- use the last 30 completed GA4 days
+- start at the selected connection's saved initial historical import boundary
+- end at the latest completed reporting day in the campaign timezone
 - calculate conversion rate as `conversions / sessions * 100`
 - use only native GA4 row revenue in `revenue`
 - never create a comparison row from imported-source configuration
 - never infer, merge, or proportionally allocate source-to-date revenue into the
-  30-day rows
+  native rows
 
 ## Revenue Window Boundary
 
-GA4 comparison rows and rankings use one common 30-completed-day provider
-window. Imported revenue currently has source-to-date materialization, not a
-proven identical 30-day boundary. It is therefore shown only in Revenue
+GA4 comparison rows and rankings use one common provider window from the saved
+initial historical import boundary through the latest completed reporting day
+in the campaign timezone. Imported revenue currently has source-to-date
+materialization, not a proven identical boundary. It is therefore shown only in Revenue
 Breakdown with `source-to-date; excluded from ranking` provenance.
 
 Imported revenue may enter campaign rankings only after a future implementation
@@ -224,7 +226,7 @@ The first summary card follows the selected dropdown metric.
 
 Rules:
 
-- `Revenue` renders as `GA4 Revenue (30 Completed Days)` and sums the
+- `Revenue` renders as `GA4 Revenue (Imported to Date)` and sums the
   normalized native comparison rows.
 - `Conversion Rate` renders as `Overall Conversion Rate`.
 - `Overall Conversion Rate` is calculated as total conversions divided by total sessions across comparison rows.
@@ -248,7 +250,7 @@ Rules:
 - keep the normalized GA4 breakdown's stable sessions-descending order; do not re-sort this table when the metric dropdown changes
 - when no revenue-provenance description is shown, the table should sit directly under the `All Campaigns` title without a blank descriptor gap
 - use GA4-native normalized rows
-- revenue means GA4 campaign-row revenue for the common 30-day window
+- revenue means GA4 campaign-row revenue for the common import-to-latest-completed-day window
 - users remain directional because GA4 user counts are not perfectly additive across rows
 - do not add imported, unallocated, or all-source financial rows
 
@@ -263,7 +265,7 @@ Columns:
 
 Rules:
 
-- `GA4 Revenue (30 completed days)` is the sum of the same native comparison
+- `GA4 Revenue (imported to date)` is the sum of the same native comparison
   rows used by ranking, chart, summary, and All Campaigns.
 - active imported sources show exact materialized source-to-date amounts and
   are explicitly excluded from ranking.

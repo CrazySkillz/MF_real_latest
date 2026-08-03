@@ -4,16 +4,20 @@
 
 ## Controlling Current Status
 
-**Status: UNVERIFIED. The live tab uses a rolling 30-day provider breakdown
-instead of the required fixed initial-import boundary plus later completed-day
-accumulation.**
+**Status: UNVERIFIED. The corrected local revision now uses the saved initial
+historical import boundary through the latest completed reporting day, but that
+exact revision has not yet been deployed and proven against authenticated live
+values.**
 
-Critical finding AC-09 invalidates the prior certification. The 30-day property
-setup choice is an initial historical-import depth, not a permanent rolling
-display window. Overview Summary preserves that fixed boundary, but Ad
-Comparison independently requests `30daysAgo` through `yesterday` and drops
-older imported days as the calendar advances. No database deletion or
-cross-tenant defect was found; the defect is the Ad Comparison query boundary.
+Critical finding AC-09 invalidated the prior certification. Root cause: the
+live component reused the Overview Campaign Breakdown's rolling `30daysAgo`
+query even though the 30-day setup choice defines the initial import depth.
+Commit `6a38cc4d76b4710a55c4c916e5119963ce6de169` isolates Ad Comparison on
+`window=import-to-date`; the server resolves the active connection's saved
+`importStartDate`, the campaign-timezone latest completed day, exact property,
+and saved campaign filter. Invalid or future boundaries fail closed. No
+database deletion, data rewrite, cross-tenant defect, scheduler change, or
+Reports change was made.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
@@ -26,7 +30,8 @@ Audit baseline:
 - audit opened: 2026-08-03
 - baseline Git SHA: `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
 - certification status: `UNVERIFIED`; escaped rolling-window runtime SHA:
-  `1c410e271961638d80088b69a14eb874df90b881`
+  `1c410e271961638d80088b69a14eb874df90b881`; corrected local runtime SHA:
+  `6a38cc4d76b4710a55c4c916e5119963ce6de169`
 - production writes, provider refreshes, report sends, and cleanup: not
   performed
 - unrelated dirty worktree changes: excluded and preserved
@@ -34,13 +39,12 @@ Audit baseline:
 Final local review:
 
 - reviewed implementation SHA:
-  `08ea74af0344538259cd34ff1d8487492f4c8253`
-- exact corrected deployed and production-evidence SHA:
-  `1c410e271961638d80088b69a14eb874df90b881`
-- assessment: Critical AC-09 is open; prior findings remain historically closed
-- certification: `UNVERIFIED` until the fixed import-to-latest-completed
-  boundary is implemented, regression-covered, deployed, and proven against the
-  live tab
+  `6a38cc4d76b4710a55c4c916e5119963ce6de169`
+- exact corrected deployed and production-evidence SHA: not yet available
+- assessment: AC-09 is fixed and regression-covered locally; no local Critical
+  or Major finding remains open
+- certification: `UNVERIFIED` until the corrected SHA is deployed and the
+  authenticated endpoint/window/value packet matches the live tab
 
 ### Finite validation plan
 
@@ -64,7 +68,7 @@ Included:
 
 - GA4 platform-level Ad Comparison for one authorized app campaign, one selected
   active GA4 property, that campaign's saved GA4 campaign filter, and the fixed
-  last 30 completed GA4 days
+  initial-import start through the latest completed reporting day
 - sessions, users, conversions, conversion rate, native GA4 revenue, imported
   revenue provenance, Revenue Breakdown, summary totals, leader cards, chart,
   and All Campaigns table
@@ -94,8 +98,8 @@ Excluded:
 | Users | Same acquisition rows | Same window/property/filter as sessions |
 | Conversions | Same acquisition rows | Same window/property/filter as sessions |
 | Conversion rate | conversions / sessions * 100 | Zero only for a proven zero denominator; unavailable otherwise |
-| Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same 30-day row scope; valid zero/negative retained |
-| Imported source revenue | Exact materialized source breakdown | Source-to-date provenance only; excluded from 30-day ranking |
+| Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same import-to-latest-completed row scope; valid zero/negative retained |
+| Imported source revenue | Exact materialized source breakdown | Source-to-date provenance only; excluded from native ranking |
 | Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
 | Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
 | Leader cards | `selectGA4AdComparisonLeaderCards` | Render only with at least two rows; Best uses selected metric; Efficient requires traffic; Attention requires volume and avoids duplicating Best when another row ties the lowest exact rate |
@@ -103,7 +107,7 @@ Excluded:
 | Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate uses aggregate conversions / aggregate sessions |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
 | All Campaigns | Sessions-descending normalized rows | Same native row values regardless of dropdown selection |
-| Revenue Breakdown | 30-day native row sum plus separate materialized source-to-date rows | Exact source ID/value; no same-type/config fallback or combined total |
+| Revenue Breakdown | Import-to-latest-completed native row sum plus separate materialized source-to-date rows | Exact source ID/value; no same-type/config fallback or combined total |
 | Loading/empty/stale/unavailable | Query state plus current-property verification | Previous-property rows are blocked; verified empty differs from failure; last-good data requires an explicit stale warning |
 
 ### Route, storage, lifecycle, and consumer inventory
@@ -151,6 +155,8 @@ value is inside the Ad Comparison tab certification boundary.
 - `server/analytics.ts`
 - `server/routes-oauth.ts`
 - `server/storage.ts`
+- `server/utils/reporting-timezone.ts`
+- `server/ga4-ad-comparison-accumulation-regression.test.ts`
 - `package.json` and production deployment/revision configuration
 
 The machine record lists the complete post-fix boundary and pins every
@@ -162,13 +168,13 @@ production-configuration change invalidates the certification.
 | ID | Severity | Root cause and effect | Status |
 |---|---|---|---|
 | AC-01 | Critical | GA4 acquisition requests ordered high-cardinality rows by sessions and applied a 2,000-row limit without paging. | Fixed: page to provider `rowCount`; fail closed on incomplete/changed/oversized pagination |
-| AC-02 | Major | 30-day GA4 rows were combined with source-to-date imported totals. | Fixed: ranking/table/chart/totals use native 30-day rows; imported values are separate source-to-date provenance |
+| AC-02 | Major | Native GA4 rows were combined with source-to-date imported totals. | Fixed: ranking/table/chart/totals use native rows for one common window; imported values are separate source-to-date provenance |
 | AC-03 | Major | Failure/stale/unavailable inputs could render as plausible zero/normal output. | Fixed: explicit loading/ready/stale/unavailable states |
 | AC-05 | Major | Positive-only/config/ambiguous Salesforce fallbacks could omit valid zero or invent allocation. | Fixed: exact materialized amounts, valid zero retained, no definition/config value fallback or invented allocation |
 | AC-06 | Minor | Static first/last table colors implied a ranking unrelated to the selected metric. | Fixed: misleading row colors removed |
 | AC-07 | Major | React Query previous-property placeholder rows could appear under a newly selected property. | Fixed: placeholder rows are excluded until current-property data is verified |
 | AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
-| AC-09 | Critical | Ad Comparison conflated the 30-day initial import depth with a permanent rolling display window, so older valid campaign values fall out after day 30 and rankings/totals diverge from the campaign accumulation contract. | Open: implement a server-resolved saved-import-boundary query through the latest completed day without changing other GA4 consumers |
+| AC-09 | Critical | Ad Comparison conflated the 30-day initial import depth with a permanent rolling display window, so older valid campaign values fell out after day 30 and rankings/totals diverged from the campaign accumulation contract. | Fixed locally in `6a38cc4d`: isolated server-resolved saved-import-boundary query through the campaign-timezone latest completed day; deployment/live parity remains a certification gate |
 
 Historical AC-04 concerned Reports-owned browser/scheduled PDF parity. It was
 fixed in the broader implementation commit but is outside this tab-only
@@ -204,11 +210,28 @@ status above supersedes the `UNVERIFIED` state recorded at that time.
      gates across the canonical and machine-readable records. It deliberately
      retained `UNVERIFIED` because the deployed revision and live parity packet
      do not yet satisfy certification requirements.
+5. **Commit 5 — invalidate the escaped rolling-window certification**
+   - `ef5f089c`
+   - Added the fixed-boundary rule to the machine gate and marked AC-09 and the
+     controlling record `UNVERIFIED` before changing runtime behavior.
+6. **Commit 6 — isolate and fix the cumulative live-tab path**
+   - `6a38cc4d76b4710a55c4c916e5119963ce6de169`
+   - Added the server-resolved import-to-date window, exact completed end date,
+     isolated live-tab query, fail-closed states, UI provenance labels, and
+     focused production-path regressions without changing Overview or Reports.
 
 ### Local validation evidence
 
 Passed:
 
+- AC-09 focused packet: 4 files / 38 tests
+- affected security, source lifecycle, UI, cross-tab, property-scope, and
+  destructive-safety packet: 11 files / 305 tests after aligning one expected
+  structural assertion with the isolated query
+- `npm run check` -> passed
+- `npm run build` -> passed
+- `npm run check:ga4-ad-comparison-certification` -> passed with machine status
+  intentionally `UNVERIFIED`
 - final tab-only packet: 9 files, 294 tests
 - focused real paths: 7 files, 207 tests
 - affected HubSpot direct-consumer guards: 2 files, 8 tests
@@ -254,30 +277,23 @@ Broader repository run:
 
 ### Production-only gates
 
-- deployed runtime and boundary revision: passed on 2026-08-03; local and
-  GitHub `main` resolved to `1c410e271961638d80088b69a14eb874df90b881`,
-  and production `/api/health` returned the same exact SHA
-- live GA4 provider packet: passed read-only for campaign hash `fc734ddaf728`;
-  authenticated property `542352127`, `Europe/Amsterdam`, the exact three-value
-  saved campaign filter, `totalRevenue`, seven acquisition dimensions, and all
-  21 provider rows matched the live values; unauthenticated access returned 401
-- active source inventory: passed read-only for five active GA4-context sources;
-  source and record currencies are USD, dates and materialized aggregate versus
-  sub-campaign rows were inventoried, valid zero was retained, and the storage
-  path correctly avoided double-counting paired aggregate/sub-campaign records
-- live tab parity: passed; leader cards, All Campaigns rows, Revenue Breakdown,
-  95 sessions, three campaigns, USD 16,088.36 native GA4 revenue, and imported
-  USD 0/600/4,000/5,100/7,000 source-to-date values matched the authenticated
-  provider and storage packet
-- tab-only boundary revision: passed; Reports-owned PDFs, downloads, saved
-  reports, snapshots, scheduling, delivery, and report-library paths are
-  excluded and owned by the Reports certification
+- deployed corrected revision: pending; production must report exact SHA
+  `6a38cc4d76b4710a55c4c916e5119963ce6de169` or a later reviewed documentation-
+  only descendant with the identical runtime dependency boundary
+- live GA4 provider packet: pending for the server-returned saved start date
+  through the campaign-timezone latest completed day, exact property, and exact
+  three-value saved campaign filter
+- active source inventory: prior read-only five-source inventory remains useful
+  historical evidence, but it does not prove the changed native window
+- live tab parity: pending; endpoint rows/totals, UI table, summary, cards,
+  chart, visible start/end dates, valid zero, and stale/unavailable behavior must
+  match on the deployed corrected revision
+- tab-only boundary revision: local code proves Overview and Reports still use
+  their existing paths; deployed revision parity remains pending
 
-All tab-only functional, production, revision, and normalized dependency-hash
-gates pass. The machine status is `PRODUCTION_READY` for exact deployed revision
-`1c410e271961638d80088b69a14eb874df90b881`. Reports remain outside this
-certification because they are a separate product section, not an Ad Comparison
-deferral.
+Therefore the machine status remains `UNVERIFIED`. Reports-owned PDFs,
+downloads, saved reports, snapshots, scheduling, delivery, and report-library
+paths belong to the Reports section and are not an Ad Comparison deferral.
 
 <!-- /ga4-ad-comparison-current-status -->
 

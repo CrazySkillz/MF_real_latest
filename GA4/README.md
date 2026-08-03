@@ -93,10 +93,10 @@ Important meaning:
   Canonical whole-tab Benchmarks production-readiness source of truth. Current status: Beta Ready and eligible for clean production certification after the single remaining Current Commit 14 natural-run gate. Reports generation/delivery is separate.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `UNVERIFIED` after Critical AC-09 proved the live tab
-  uses a rolling 30-day provider breakdown instead of the required fixed
-  initial-import boundary plus completed-day accumulation. Reports-owned PDFs
-  and all other Reports behavior are separate.
+  Current status: `UNVERIFIED`. Critical AC-09 is fixed locally at
+  `6a38cc4d`: the live tab now uses the saved initial-import boundary through
+  the latest completed day. Deployment and authenticated live-value parity are
+  still required. Reports-owned PDFs and all other Reports behavior are separate.
 - `GA4/INSIGHTS.md`
   Short functional overview of the GA4 Insights tab, including sections, scope contract, reports, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`

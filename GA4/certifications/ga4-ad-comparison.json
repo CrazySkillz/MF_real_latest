@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "635b65c1db35a39a6f1466cab0cc1dceab04db31",
-  "certifiedSha": "635b65c1db35a39a6f1466cab0cc1dceab04db31",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "cbd9a66bcdcd2f93d39411bbccb1d51fdf3c527a",
+  "certifiedSha": null,
+  "invalidationReason": "Raw working-tree SHA-256 hashes were line-ending dependent and not reproducible from a clean checkout of the recorded revision. Normalize the certification checker to committed text content, deploy the corrected revision, and rerun all required gates before re-certifying.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",
@@ -20,7 +20,7 @@
     "windowRules": [
       "native comparison uses the last 30 completed GA4 days",
       "row-level rankings use native GA4 values only until imported revenue has an identical proven window",
-      "valid zero, stale, unavailable, blocked, and failure are distinct"
+      "valid zero, verified empty or insufficient data, stale last-good, and unavailable or failed inputs are distinct; blocked auth/property inputs fail closed as unavailable"
     ],
     "ownershipRules": [
       "all browser APIs require campaign access",
@@ -31,27 +31,27 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": "0183dde829a89575346e95e54754af2b77dd392677ca2bfe47fae577f4f48d8e"
+      "sha256": "6c4cf47ebe414c0713fc04ccc04ca30d804e318537be5fd5e9612214996a9d23"
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "ad98862099e186ceee00e45a80cd737aab74a3da718988f26002b741fd62e1fb"
+      "sha256": "b45ca56eccb01fe7e056245190c474613d6443f711d30a19b2ccbd5d22bbc932"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
       "role": "imported revenue window and provenance contract",
-      "sha256": "3878765b13a33769b319253a693f5ab228ae225c2c0ba4cc3fc539a66ae4260e"
+      "sha256": "ceba43e8961569e6573e7b8a6f409f2453e602c0368b174ab08c03a1a4b0c533"
     },
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "ddb8485163ac47fa091b6937ba7e8da04709865a4f97c0a79fbf9702abd34817"
+      "sha256": "9a73b88bea3b3c944ae0ffc5ac52503d4771f9d5b9efb902c8b0233c57c8ea54"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and state contract",
-      "sha256": "c7313b38f009a510973779d666e43ee075d198ca9d365c2e0645e652cf026a7a"
+      "sha256": "6bd47e275e4662a8983d9de6b8c43a5daa0e8b0a66cf66a5ba835931dcdfa9ff"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",

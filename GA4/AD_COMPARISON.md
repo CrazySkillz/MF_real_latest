@@ -8,11 +8,13 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`PRODUCTION_READY`. The live Ad Comparison tab is clean-certified for the exact
-revision and dependency boundary recorded in
+`UNVERIFIED`. The implementation/value evidence remains unchanged, but the
+certification was invalidated after its raw file hashes proved dependent on
+local line endings rather than reproducible committed content. The exact repair
+and re-certification state is recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
-saved reports, snapshots, scheduling, and delivery are outside this tab-only
-certification.
+saved reports, snapshots, scheduling, and delivery remain outside this tab-only
+boundary.
 
 ## Document Ownership
 
@@ -75,11 +77,11 @@ Ad Comparison must not silently broaden to:
 
 The current tab contains:
 
-- top leader-card row
+- top leader-card row when at least two comparison rows exist
 - metric dropdown in the header
 - metric-based ranking for leader cards, chart, and selected-metric summary
-- comparison chart
-- summary cards
+- comparison chart limited to the top 10 rows for the selected metric
+- selected-metric total and `Campaigns Compared` summary cards
 - `All Campaigns` table
 - `Revenue Breakdown` table
 
@@ -192,6 +194,8 @@ Meaningful-volume rule:
 - rows must have sessions
 - prefer rows at or above `max(25 sessions, 10% of the largest campaign row's sessions)`
 - if no row meets that floor, fall back to all rows with sessions
+- when the lowest-rate row is also `Best Performing` and another eligible row
+  has the same lowest exact rate, use the other tied row for `Needs Attention`
 
 Display rule:
 
@@ -226,6 +230,7 @@ Rules:
 - `Overall Conversion Rate` is calculated as total conversions divided by total sessions across comparison rows.
 - Do not average campaign-row conversion rates for the summary card unless the product explicitly changes the metric definition.
 - `Users` keeps a tooltip because GA4 user counts are non-additive across campaign rows.
+- `Campaigns Compared` is the count of normalized comparison rows.
 
 ## All Campaigns Table
 
@@ -240,7 +245,7 @@ The `All Campaigns` table includes:
 
 Rules:
 
-- keep a stable campaign-row order from the normalized GA4 breakdown; do not re-sort this table when the metric dropdown changes
+- keep the normalized GA4 breakdown's stable sessions-descending order; do not re-sort this table when the metric dropdown changes
 - when no revenue-provenance description is shown, the table should sit directly under the `All Campaigns` title without a blank descriptor gap
 - use GA4-native normalized rows
 - revenue means GA4 campaign-row revenue for the common 30-day window

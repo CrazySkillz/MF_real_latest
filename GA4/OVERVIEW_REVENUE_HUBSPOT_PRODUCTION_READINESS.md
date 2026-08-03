@@ -458,12 +458,14 @@ the current status is the mandatory status and final certification gate above.
 
 Current behavior:
 
-- exact normalized HubSpot campaign mapping names are joined through
-  `campaignValueRevenueTotals` and `campaignMappings`.
-- imported-only mapped campaigns may produce a zero-GA4 row rather than losing
-  the exact imported revenue.
-- unmatched values are not proportionally allocated.
-- Campaign Breakdown and Ad Comparison consume the same exact mapping totals.
+- Campaign Breakdown may join exact normalized HubSpot campaign mapping names
+  through `campaignValueRevenueTotals` and `campaignMappings`, and may create
+  an imported-only row under its own contract.
+- Live Ad Comparison does not consume those adjusted rows. It shows the exact
+  materialized HubSpot source amount and saved campaign-value subsections only
+  as separate source-to-date Revenue Breakdown provenance.
+- Ad Comparison never proportionally allocates HubSpot revenue and never merges
+  it into native 30-day ranking, chart, summaries, or All Campaigns rows.
 
 Bounded evidence:
 
@@ -698,7 +700,7 @@ particular:
 | transaction and failure retention | Certified in scope | H1/H3/H4 deterministic rollback, pagination, write, delete, and disconnect failures plus H10c clean last-good state cover the negative contract. |
 | source modal and provenance | Certified in scope | H5 removes stale fallback authority; H10b inventory and provenance pass across three active sources. |
 | Total Revenue, Profit, ROAS, ROI, CPA | Certified in scope | H5/H6 financial-source parity plus deployed H10b report and configured KPI/Benchmark value packets use the same confirmed-revenue source and exclude proxy. |
-| Campaign Breakdown and Ad Comparison | Certified in scope | Deployed 4.11 exact mapped-row transition plus H8 shared-key, ambiguity, accumulation, and residual tests cover both consumers. |
+| Campaign Breakdown and Ad Comparison | Certified in scope | Campaign Breakdown uses its exact mapped-row contract. Live Ad Comparison uses the exact materialized source total and saved campaign-value subsections only as separate source-to-date provenance, excluded from native 30-day ranking. |
 | KPI and Benchmark values | Certified in scope | H6/H8 current/persisted formula and recompute propagation guards plus deployed H10b configured-row packet pass. |
 | Campaign DeepDive/outcome | Certified in scope | H5/H6 canonical active-source/current-value parity and outcome/campaign-current formula tests cover the HubSpot contribution. |
 | Reports/snapshots/PDFs/emails | Certified in scope | Deployed 4.12 report/PDF, 4.14 received attachment/value packet, H7 proxy exclusion, and H10b report/PDF pass cover the configured report scope. |

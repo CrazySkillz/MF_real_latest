@@ -92,8 +92,11 @@ Important clarification:
   combined `Total Revenue` or unallocated ranking row is rendered
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
-Production-readiness note: GA4 Ad Comparison remains `UNVERIFIED` until the
-production-only gates in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` pass.
+Production-readiness note: the live GA4 Ad Comparison tab is `UNVERIFIED`
+while its dependency-hash guard is made reproducible from committed content and
+the corrected revision is re-certified. The current behavior contract above
+still matches the implementation. Reports-owned output remains outside the
+tab-only boundary.
 
 ### Previous-Day Revenue Records
 

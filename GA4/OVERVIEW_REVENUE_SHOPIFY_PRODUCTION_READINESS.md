@@ -216,7 +216,10 @@ Current matching behavior:
 - Tags are split by comma and matched as exact individual strings.
 - Selected values are compared case-sensitively and exactly.
 - For discount codes, only the first code on an order is considered.
-- Campaign Breakdown/Ad Comparison use `campaignValueRevenueTotals` plus optional exact campaign mappings; no proportional allocation is intended.
+- Campaign Breakdown may use `campaignValueRevenueTotals` plus optional exact
+  campaign mappings. Live Ad Comparison uses Shopify only as separate
+  source-to-date Revenue Breakdown provenance; it does not merge Shopify into
+  30-day ranked rows. No proportional allocation is intended.
 
 Findings:
 
@@ -330,7 +333,7 @@ A structurally valid, completely paginated empty result is treated as authoritat
 | ROI | Shopify affects revenue and profit | `(Total Revenue - Total Spend) / Total Spend * 100` | Proven with existing unavailable semantics when spend is absent |
 | CPA | Shopify does not affect conversion denominator | `Total Spend / selected GA4 conversions` | Formula proven; Shopify changes do not directly change CPA |
 | Campaign Breakdown Revenue | Exact imported campaign-value amount is added to one normalized matching GA4 row; imported-only row can be created | Native row revenue plus exact matched imported amount | Proven locally, including exact-match/no-allocation guards |
-| Ad Comparison | Uses the same matched imported-revenue map and reports unallocated residual | Exact matched rows plus unallocated imported residual | Proven locally, including residual and provenance guards |
+| Ad Comparison | Shows the exact materialized Shopify source amount and saved exact campaign-value subsections as separate source-to-date provenance | Excluded from native 30-day rows, ranking, chart, and summaries | Proven under the current tab contract |
 | Latest-day/internal daily revenue | Shopify is eligible because it materializes dated rows | Previous complete date in the campaign reporting timezone | Proven locally; refunds retain original order date |
 | Pipeline Proxy | No Shopify contribution | Not applicable | Proven excluded |
 
@@ -349,7 +352,7 @@ Zero/null semantics:
 | Overview live UI | `revenue-to-date`, `revenue-breakdown`, `revenue-sources` -> `financialRevenue` | Proven locally |
 | Source modal/provenance | Source definitions merged with breakdown and saved mappings | Proven locally for store, currency, refresh status, and last-good time |
 | Campaign Breakdown | Saved `campaignValueRevenueTotals` and exact mappings merged into GA4 rows | Proven locally |
-| Ad Comparison | Same mapping totals, exact row matching, unallocated residual | Proven locally |
+| Ad Comparison | Exact materialized source total plus saved campaign-value provenance; no ranked-row merge | Proven locally under the current tab contract |
 | GA4 KPI values | `ga4-kpi-benchmark-jobs` reads active GA4 revenue totals | Proven by executable Shopify-backed persistence test |
 | GA4 Benchmark values | Same source-backed financial input | Proven by executable Shopify-backed persistence test |
 | Campaign-level KPI/Benchmark | Shared outcome aggregate/current-value reconciliation | Proven locally |

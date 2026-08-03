@@ -4,19 +4,21 @@
   "betaReadinessStatus": "BETA_READY",
   "productionCertificationStatus": "UNVERIFIED",
   "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
-  "reviewedImplementationGitSha": "5366d0babc9550ecd408e55bc385e7024854f424",
+  "reviewedImplementationGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
   "certifiedGitSha": null,
   "reviewedAt": "2026-08-03",
   "scope": "GA4 Benchmarks and documented Benchmark consumers only: cards, Tracker, Insights, browser and scheduled Reports, in-app alerts/notifications, email attempt/audit safety, CRUD, refresh/recompute, schedulers, persistence, and destructive operations. External Benchmark email delivery is excluded from the initial beta.",
   "revisionBoundary": {
     "status": "LOCKED_FOR_PRODUCTION_CERTIFICATION_QUEUE",
-    "runtimeGitSha": "5366d0babc9550ecd408e55bc385e7024854f424",
-    "deployedEvidenceGitSha": "fbc10e04f69f1d2709d3e2629f8c4818a7062c90",
-    "capturedAt": "2026-08-03T04:14:21.146Z",
+    "runtimeGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+    "deployedEvidenceGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+    "capturedAt": "2026-08-03T07:33:55.375Z",
     "changedFilesSinceRuntime": [
       "GA4/BENCHMARKS_PRODUCTION_READINESS.md",
       "GA4/certifications/ga4-benchmarks.json",
       "scripts/ga4-benchmark-beta-clearance-readonly.ts",
+      "scripts/ga4-benchmark-commit13-authorized-validation.ts",
+      "scripts/ga4-benchmark-commit13-delivery-readonly.ts",
       "server/ga4-benchmark-regression.test.ts"
     ],
     "productionRuntimeSourceChanges": [],
@@ -29,32 +31,29 @@
       "ga4DailyRunOnStartup": false,
       "ga4DailyNextRunAt": "2026-08-04T03:00:00.000Z"
     },
-    "limitations": "External GA4 campaign/property/source state and all available read-only deployed consumers were revalidated in Current Commit 13. Scheduled Benchmark and Insights artifacts still require an authorized controlled event. Email-provider configuration and delivery must be resolved in Current Commit 15. The final evidence-only descendant comparison remains required before production status can change from UNVERIFIED."
+    "limitations": "Current Commit 13 exact deployed parity and controlled artifact validation are complete. Both scheduled report types correctly remained pending_delivery without false snapshots because Mailgun Events API confirmation was unavailable. Current Commit 14 natural-run evidence and Current Commit 15 provider-confirmed/inbox delivery evidence remain required before production status can change from UNVERIFIED."
   },
   "localCertificationGate": {
     "status": "complete",
-    "validatedGitSha": "473c4e151b43aac33cb1d35a5c4b0fa85a85c36b",
+    "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
     "validatedAt": "2026-08-03",
     "applicableRegressionFilesPassed": 54,
-    "applicableRegressionTestsPassed": 536,
+    "applicableRegressionTestsPassed": 624,
     "typescriptCheck": "passed",
     "productionBuild": "passed",
     "productionRuntimeSourceChangesSinceReviewedImplementation": [],
     "repositoryDeploymentConfigurationChangesSinceReviewedImplementation": [],
     "minorFindingsFixed": [
       "The GA4 UI source-text guard assumed LF line endings and false-failed on a clean Windows CRLF checkout; the assertion now accepts LF or CRLF.",
-      "The spend-source destructive-safety guard expected superseded split delete calls; it now proves the existing campaign/source/platform-scoped transactional helper and rejects the old non-atomic calls."
+      "The spend-source destructive-safety guard expected superseded split delete calls; it now proves the existing campaign/source/platform-scoped transactional helper and rejects the old non-atomic calls.",
+      "The deployed validator captured traffic-backed consumers before their browser input reached a terminal state.",
+      "The authorized artifact validator initially selected unrelated GA4 Benchmark reports instead of requiring the campaign with both an active property and active GA4 Benchmarks."
     ],
-    "unrelatedSharedRegressionFailures": {
-      "file": "server/source-safety-regression.test.ts",
-      "passed": 80,
-      "failed": 7,
-      "scope": "Instagram-only route guards; outside GA4 Benchmarks and documented Benchmark consumers"
-    }
+    "unrelatedSharedRegressionFailures": null
   },
   "deployedConsumerParityGate": {
-    "status": "blocked_missing_authorized_report_artifacts",
-    "validatedGitSha": "f636b3c52cabc608566daa0c55432f6e4e5c4eb8",
+    "status": "complete",
+    "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
     "validatedAt": "2026-08-03",
     "mode": "read_only_application_data",
     "campaignCount": 2,
@@ -67,12 +66,18 @@
     "browserPdfParity": "passed",
     "alertNotificationParity": "passed",
     "noPropertyFailClosedParity": "passed",
-    "scheduledBenchmarkArtifactParity": "unverified_no_sent_event_or_snapshot",
-    "scheduledInsightsArtifactParity": "unverified_no_existing_artifact",
+    "manualBenchmarkArtifactParity": "passed_exact_immutable_values_and_pdf",
+    "manualInsightsArtifactParity": "passed_exact_immutable_values_and_pdf",
+    "scheduledBenchmarkArtifactParity": "correctly_fail_closed_pending_delivery_without_snapshot",
+    "scheduledInsightsArtifactParity": "correctly_fail_closed_pending_delivery_without_snapshot",
+    "productionDeliveryCertification": "UNVERIFIED",
+    "productionConfigurationRestored": true,
+    "originalConfigurationHash": "fd95883d1e7f",
+    "restoredConfigurationHash": "fd95883d1e7f",
     "limitations": [
-      "The existing scheduled Benchmark report has no sent event or snapshot to compare.",
-      "No deployed Insights report artifact exists to compare.",
-      "The snapshot PDF GET path performs persisted preflight recomputation, so the read-only validator did not call it."
+      "Mailgun accepted both controlled scheduled messages, but its Events API did not confirm delivery.",
+      "No sent snapshot was created for either pending-delivery event; this is the required fail-closed behavior.",
+      "Provider-confirmed delivery, fresh sent-snapshot evidence, and inbox receipt remain Current Commit 15 evidence."
     ]
   },
   "activeProductionCertificationCommits": [
@@ -88,7 +93,7 @@
     },
     {
       "id": 13,
-      "status": "blocked_requires_authorized_report_artifacts",
+      "status": "complete",
       "name": "Prove exact deployed Benchmark-consumer parity"
     },
     {
@@ -98,15 +103,15 @@
     },
     {
       "id": 15,
-      "status": "blocked_by_13_14_and_email_decision",
+      "status": "blocked_by_14_and_provider_delivery",
       "name": "Resolve email delivery and issue final certification"
     }
   ],
   "findings": {
     "critical": 0,
-    "majorFound": 7,
-    "majorRemaining": 0,
-    "minorFound": 5,
+    "majorFound": 9,
+    "majorRemaining": 1,
+    "minorFound": 7,
     "minorRemaining": 0
   },
   "dependencyBoundary": [
@@ -124,6 +129,8 @@
     "server/report-scheduler.ts",
     "server/routes-oauth.ts",
     "scripts/ga4-benchmark-beta-clearance-readonly.ts",
+    "scripts/ga4-benchmark-commit13-authorized-validation.ts",
+    "scripts/ga4-benchmark-commit13-delivery-readonly.ts",
     "server/storage.ts",
     "shared/schema.ts",
     "GA4/BENCHMARKS.md",
@@ -250,12 +257,71 @@
       "command": "npm run build",
       "status": "passed",
       "result": "Vite client and esbuild server production bundles completed successfully after the Current Commit 13 evidence-tool changes"
+    },
+    {
+      "command": "npm test -- --run server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-benchmark-regression.test.ts",
+      "status": "passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "3 files, 39 tests passed; immutable preflighted Benchmark rows are persisted in scheduled/manual snapshot payloads"
+    },
+    {
+      "command": "GET https://marketforensics.onrender.com/api/health",
+      "status": "passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "Production returned 200 with exact deployed runtime SHA 9ed32290b32773af543b7a927ef5e197c4e3b761"
+    },
+    {
+      "command": "GA4_BENCHMARK_COMMIT13_MANUAL_ONLY=1 npx tsx --env-file=.env scripts/ga4-benchmark-commit13-authorized-validation.ts",
+      "status": "passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "Benchmark and Insights manual snapshots each contained 2 exact immutable rows. Parsed PDFs passed at 7968 and 31303 bytes. Original and restored report configuration hashes both equal fd95883d1e7f."
+    },
+    {
+      "command": "Controlled scheduled Benchmark and Insights validation to one approved recipient",
+      "status": "correctly_fail_closed_pending_delivery",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "Both report types reached pending_delivery after Mailgun acceptance. Neither event received sentAt or snapshotId, no false snapshot was created, and the original report configuration was restored."
+    },
+    {
+      "command": "npx tsx --env-file=.env scripts/ga4-benchmark-commit13-delivery-readonly.ts",
+      "status": "blocked_external_provider_confirmation",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "Persisted event and audit remained pending_delivery; provider response ID was present, but the live Mailgun Events API result was not_checked."
+    },
+    {
+      "command": "$env:GA4_BENCHMARK_BETA_EXPECTED_SHA='9ed32290b32773af543b7a927ef5e197c4e3b761'; npx tsx --env-file=.env scripts/ga4-benchmark-beta-clearance-readonly.ts",
+      "status": "passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "2 campaigns, 4 active Benchmarks, zero failures, zero application mutations; every value consumer passed and the scheduled pending-delivery state was correctly fail-closed."
+    },
+    {
+      "command": "PowerShell-generated 54-file inventory; & .\\node_modules\\.bin\\vitest.cmd run --pool forks $tests",
+      "status": "passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "54 files, 624 tests passed; the preceding npm PowerShell-array invocation found no files and is not counted."
+    },
+    {
+      "command": "npm run check and npm run build",
+      "status": "passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "TypeScript and Vite/esbuild production bundles completed successfully after the snapshot integrity fix."
+    },
+    {
+      "command": "& .\\node_modules\\.bin\\vitest.cmd run --pool forks server/ga4-benchmark-regression.test.ts",
+      "status": "failed_then_fixed_and_passed",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "The first rerun exposed one stale expected implementation SHA in the certification fixture. The one-line assertion was updated from the pre-fix revision to 9ed32290b32773af543b7a927ef5e197c4e3b761; the rerun passed 1 file and 15 tests. A later restricted-token attempt was blocked before test loading by Windows spawn EPERM; the authorized identical command again passed all 15 tests."
+    },
+    {
+      "command": "GET https://marketforensics.onrender.com/api/health and GET https://marketforensics.onrender.com/health/scheduler",
+      "status": "passed_with_natural_run_outstanding",
+      "validatedGitSha": "9ed32290b32773af543b7a927ef5e197c4e3b761",
+      "result": "At 2026-08-03T08:15:12Z production returned 200 on exact SHA 9ed32290b32773af543b7a927ef5e197c4e3b761. The GA4 daily scheduler was healthy, started, timer-scheduled, and idle with zero corrected-revision runs; next run was 2026-08-04T03:00:00.000Z."
     }
   ],
   "productionOnlyEvidenceOutstanding": [
-    "One authorized controlled scheduled Benchmark report artifact and one Insights report artifact, followed by exact value/state comparison",
     "A successful natural timer-fired GA4 daily run on the corrected revision",
-    "Fresh provider-confirmed and inbox delivery evidence before Benchmark email delivery is enabled or claimed"
+    "Working Mailgun Events API confirmation plus a fresh provider-confirmed scheduled snapshot and inbox receipt before Benchmark email delivery is enabled or claimed"
   ],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
 }

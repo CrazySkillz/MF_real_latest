@@ -529,6 +529,13 @@ try {
         const eventRows = Array.isArray(sendEvents.body?.events) ? sendEvents.body.events : [];
         const snapshotRows = Array.isArray(snapshots.body?.snapshots) ? snapshots.body.snapshots : [];
         const sentEvent = eventRows.find((event: any) => event?.status === "sent" && event?.sentAt && event?.snapshotId);
+        const latestEvent = eventRows[0] || null;
+        const scheduledArtifactCorrectlyFailClosed = Boolean(
+          latestEvent?.status === "pending_delivery"
+          && !latestEvent?.sentAt
+          && !latestEvent?.snapshotId
+          && String(latestEvent?.error || "").includes("delivery was not confirmed"),
+        );
         const sentSnapshot = sentEvent
           ? snapshotRows.find((snapshot: any) => String(snapshot?.id || "") === String(sentEvent.snapshotId))
           : null;
@@ -548,13 +555,18 @@ try {
             String(item?.id || "") === String(row.id)
             && Math.abs(Number(item?.currentValue) - Number(row.current_value)) <= 0.01
             && Math.abs(Number(item?.benchmarkValue) - Number(row.benchmark_value)) <= 0.01));
-        if (report?.scheduleEnabled && (!scheduledArtifactMetadataParity || !scheduledArtifactValueParity)) {
+        if (report?.scheduleEnabled
+          && !scheduledArtifactCorrectlyFailClosed
+          && (!scheduledArtifactMetadataParity || !scheduledArtifactValueParity)) {
           failures.push(`${sha(report?.id)}: existing scheduled report artifact lacks immutable Benchmark value parity evidence`);
         }
         reportEvidence.push({
           reportHash: sha(report?.id),
           reportType: type,
           scheduleEnabled: Boolean(report?.scheduleEnabled),
+          scheduleTime: report?.scheduleTime || null,
+          scheduleTimeZone: report?.scheduleTimeZone || null,
+          scheduleRecipientCount: Array.isArray(report?.scheduleRecipients) ? report.scheduleRecipients.length : 0,
           selectedBenchmarkCount: selectedRows.length,
           browserPdfParity: first.property_id ? browserPdfParity : "not_applicable_no_property",
           browserPdfRowEvidence,
@@ -564,8 +576,12 @@ try {
           snapshotInventoryAccessible: snapshots.ok,
           sentEventObserved: Boolean(sentEvent),
           sentSnapshotObserved: Boolean(sentSnapshot),
+          latestSendEventStatus: eventRows[0]?.status || null,
+          latestSendEventError: eventRows[0]?.error || null,
+          latestSendEventKey: eventRows[0]?.scheduledKey || null,
           scheduledArtifactMetadataParity,
           scheduledArtifactValueParity,
+          scheduledArtifactCorrectlyFailClosed,
           scheduledArtifactPdfFetchAttempted: false,
           scheduledArtifactPdfFetchReason: "The deployed snapshot-PDF GET path performs a persisted GA4 KPI/Benchmark recompute, so it is prohibited by this read-only production validation.",
         });

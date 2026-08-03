@@ -354,7 +354,7 @@ describe("GA4 Benchmark regression guard", () => {
       betaReadinessStatus: "BETA_READY",
       productionCertificationStatus: "UNVERIFIED",
       reviewedBaseGitSha: "466dc2494b16b38a116b49a786039da251520520",
-      reviewedImplementationGitSha: "5366d0babc9550ecd408e55bc385e7024854f424",
+      reviewedImplementationGitSha: "9ed32290b32773af543b7a927ef5e197c4e3b761",
       certifiedGitSha: null,
     });
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
@@ -375,8 +375,26 @@ describe("GA4 Benchmark regression guard", () => {
     expect(validator).toContain("/send-events");
     expect(validator).toContain("/snapshots");
     expect(validator).toContain("scheduledArtifactValueParity");
+    expect(validator).toContain("scheduledArtifactCorrectlyFailClosed");
+    expect(validator).toContain('latestEvent?.status === "pending_delivery"');
     expect(validator).toContain("scheduledArtifactPdfFetchAttempted: false");
     expect(validator).toContain("performs a persisted GA4 KPI/Benchmark recompute");
     expect(validator).not.toContain('api(page, `/api/report-snapshots/');
+  });
+
+  it("keeps authorized Commit 13 report validation scoped and reversible", () => {
+    const validator = readFileSync(
+      join(process.cwd(), "scripts", "ga4-benchmark-commit13-authorized-validation.ts"),
+      "utf-8",
+    );
+
+    expect(validator).toContain("GA4_BENCHMARK_AUTHORIZED_RECIPIENT");
+    expect(validator).toContain("GA4_BENCHMARK_BETA_EXPECTED_SHA");
+    expect(validator).toContain("createManualArtifact");
+    expect(validator).toContain("waitForScheduledArtifact");
+    expect(validator).toContain('scheduledDeliveryState: "pending_delivery"');
+    expect(validator).toContain("productionConfigurationRestored: true");
+    expect(validator).toContain("restoreViaDatabaseIfStillTemporary");
+    expect(validator).toContain("Restored configuration hash mismatch");
   });
 });

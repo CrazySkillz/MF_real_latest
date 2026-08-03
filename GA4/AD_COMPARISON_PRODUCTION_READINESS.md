@@ -1,5 +1,168 @@
 # GA4 Ad Comparison Production Readiness
 
+<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
+
+## Controlling Current Status
+
+**Status: UNVERIFIED. Ad Comparison is not currently certified production-ready.**
+
+This is the only reusable current-status answer in this document. The June 27,
+2026 conclusion below is historical and revoked. It had no exact certified Git
+SHA, complete dependency boundary, machine-readable invalidation gate, or
+complete current value/negative-state inventory. Direct dependencies changed
+after that review.
+
+Audit baseline:
+
+- audit opened: 2026-08-03
+- baseline Git SHA: `b91d096831bc04504ca7a3cae4191d28c8fa89ee`
+- certification status: `UNVERIFIED`; certified SHA: none
+- production writes, provider refreshes, report sends, and cleanup: not
+  performed
+- unrelated dirty worktree changes: excluded and preserved
+
+### Finite validation plan
+
+1. Freeze the revision, configuration, surface, source, and consumer boundary.
+2. Trace every value through provider/source query, persistence, API,
+   post-fetch transforms, live rendering, browser PDF, and scheduled PDF.
+3. Trace auth, tenant/property/platform isolation and every applicable source
+   lifecycle, refresh, recompute, failure, and delete path.
+4. Fix all Critical and Major findings with the smallest safe changes and
+   focused real-path regressions.
+5. Run focused and affected tests, TypeScript, production build, deterministic
+   scheduled-PDF validation, and safe read-only deployed checks.
+6. Record the final revision/dependency hashes, evidence, and production-only
+   gates in the canonical and machine-readable records.
+7. Commit and push the minimum focused packets, then stop when the defined local
+   criteria pass and no Critical or Major finding remains.
+
+### Certification boundary
+
+Included:
+
+- GA4 platform-level Ad Comparison for one authorized app campaign, one selected
+  active GA4 property, that campaign's saved GA4 campaign filter, and the fixed
+  last 30 completed GA4 days
+- sessions, users, conversions, conversion rate, native GA4 revenue, imported
+  revenue attribution, Revenue Breakdown, summary totals, leader cards, chart,
+  and All Campaigns table
+- live UI, browser-generated GA4 Ads PDF, and scheduled/server GA4 Ads PDF
+- active GA4/null-context HubSpot, Shopify, Google Sheets, CSV, retained
+  Salesforce, and retained legacy revenue only where they directly supply Ad
+  Comparison
+- connection/source add, edit, delete, refresh/reprocess, recompute, and
+  scheduler behavior only where it changes an Ad Comparison input
+- report ownership/campaign consistency and scheduled generation only where
+  required to build the direct Ads PDF consumer
+
+Excluded:
+
+- Campaign DeepDive Platform Comparison and every non-GA4 Ad Comparison
+- Insights, KPI, Benchmark, alert, notification, general Report-library, email
+  delivery, and unrelated Overview surfaces except a shared direct producer
+- spend, Profit, ROAS, ROI, CPA, Pipeline Proxy, landing pages, channels,
+  devices, countries, and conversion-event detail
+- semantic native/imported business-revenue deduplication, which the product
+  warns about but cannot prove from the stored records
+
+### Complete value and calculation inventory
+
+| Value | Production path | Required invariant |
+|---|---|---|
+| Sessions | GA4 acquisition rows -> campaign aggregation | Sum every exact-scope row; never silently truncate |
+| Users | Same acquisition rows | Same window/property/filter as sessions |
+| Conversions | Same acquisition rows | Same window/property/filter as sessions |
+| Conversion rate | conversions / sessions * 100 | Zero only for a proven zero denominator; unavailable otherwise |
+| Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same 30-day row scope; valid zero/negative retained |
+| Imported row revenue | Exact saved campaign-value totals | Compare only when identity, active materialization, currency, and window align |
+| Row total revenue | Native plus eligible imported amount | No ambiguity, stale fallback, or proportional allocation |
+| Unallocated revenue | Authoritative imported total minus eligible match | Non-negative residual; never guessed |
+| Revenue/session | Row total revenue / sessions | Rank only when numerator and denominator share scope |
+| Leader cards | `selectGA4AdComparisonCards` | Best uses selected metric; Efficient requires traffic; Attention requires volume |
+| Chart/table/totals | Normalized comparison rows | Same rows, metric, and state across direct consumers |
+| Revenue Breakdown | Native plus exact active materialized sources and residual | Exact source ID/config/value; no same-type config borrowing |
+
+### Route, storage, lifecycle, and consumer inventory
+
+Direct reads:
+
+- authenticated GA4 connection/property resolution
+- `GET /api/campaigns/:id/ga4-breakdown`
+- `GET /api/campaigns/:id/ga4-to-date`
+- `GET /api/campaigns/:id/revenue-to-date`
+- `GET /api/campaigns/:id/revenue-sources`
+- `GET /api/campaigns/:id/revenue-breakdown`
+- direct report/snapshot PDF routes and the report scheduler only where they
+  invoke `buildGA4ScheduledPdfAttachment`
+
+Direct persistence:
+
+- `ga4_connections` by exact campaign/property/active state
+- campaign owner/client identity and `ga4CampaignFilter`
+- `revenue_sources` by campaign/active state/GA4-or-null context
+- `revenue_records` by campaign/source/date and optional sub-campaign identity
+- report/snapshot/send-event rows only for report/campaign consistency and
+  scheduled artifact generation
+
+Applicable lifecycle:
+
+- Ad Comparison persists no independent metric rows and has no independent
+  add/edit/delete/scheduler. It recomputes when the tab/report renders.
+- GA4 connection add/delete and campaign filter/property selection change native
+  scope.
+- Each imported family can add, edit, delete/deactivate, and refresh/reprocess
+  where supported. The exact campaign/context source and records must update
+  atomically and retain last-good data on failure.
+- Browser PDF is an authenticated in-memory consumer. Scheduled PDF is a
+  deterministic server consumer of saved report/campaign configuration and must
+  fail closed before a successful snapshot/artifact is represented.
+
+Documented direct consumers:
+
+- `client/src/pages/ga4-ad-comparison.tsx`
+- browser Ads PDF rendering in `client/src/pages/ga4-metrics.tsx`
+- scheduled/server Ads PDF rendering in
+  `server/ga4-scheduled-report-pdf.ts`
+
+No KPI, Benchmark, Insight, alert, notification, Campaign DeepDive, or general
+Report-library value is a documented direct Ad Comparison consumer.
+
+### Revision dependency boundary at audit open
+
+- `client/src/pages/ga4-ad-comparison.tsx`
+- `client/src/pages/ga4-metrics.tsx`
+- `shared/ga4-ad-comparison-cards.ts`
+- `shared/ga4-financial-source.ts`
+- `shared/schema.ts`
+- `server/analytics.ts`
+- `server/routes-oauth.ts`
+- `server/storage.ts`
+- `server/ga4-scheduled-report-pdf.ts`
+- `server/report-scheduler.ts`
+- `server/report-email-service.ts`
+- `package.json` and production deployment/revision configuration
+
+The final record must pin exact hashes for the post-fix boundary. Any change to
+an input invalidates a later positive certification until evidence is updated.
+
+### Initial finding queue
+
+| ID | Severity | Root cause and effect | Status |
+|---|---|---|---|
+| AC-01 | Critical | GA4 acquisition requests order high-cardinality rows by sessions and apply a 2,000-row default limit without paging. Aggregate totals can stay correct while lower-volume campaigns lose rows, revenue, conversions, and rank. | Confirmed; fix required |
+| AC-02 | Major | The UI is fixed to 30 completed GA4 days, but imported campaign totals are source-specific/to-date with no common-window proof. Adding them creates a misleading mixed-window comparison. | Confirmed; fail-closed fix required |
+| AC-03 | Major | Live Ad Comparison receives only loading state. Breakdown/revenue failures, stale values, unavailable sources, and missing native revenue can render as plausible zero/normal results. | Confirmed; fix required |
+| AC-04 | Major | Direct consumers diverge: live can borrow same-type mapping config; scheduled imported windows differ; scheduled All Campaigns stops at 20; Ads PDFs do not fail closed for required input failures. | Confirmed; fix required |
+| AC-05 | Major | Positive-only fallbacks discard valid zero/negative values; stale config can allocate without materialized evidence; live Salesforce can invent a subtotal absent from saved campaign totals. | Confirmed; fix required |
+| AC-06 | Minor | All Campaigns colors first/last session-sorted rows green/red even when another metric is selected, implying a ranking the table does not perform. | Confirmed; fix after blockers |
+
+No clean certification is permitted until AC-01 through AC-05 are closed,
+validation passes, the final boundary is recorded, and production-only gates are
+passed. Otherwise the machine status remains `UNVERIFIED`.
+
+<!-- /ga4-ad-comparison-current-status -->
+
 ## Mandatory Anti-Overclaim Rule
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
@@ -12,34 +175,19 @@ Use this file when asked whether GA4 Ad Comparison is robust, accurate, logical,
 
 Use `GA4/AD_COMPARISON.md` for the functional description of what the tab is and how it should behave.
 
-## Future-Reference Rule
+## Historical Future-Reference Rule (Revoked)
 
-The settled production-readiness answer for GA4 Ad Comparison is production-ready for the current GA4 code scope, with exactly one deferred validation: `Deployed Scheduled/Server PDF Revenue-Provenance Evidence`.
+This section formerly instructed later audits to reuse the June 27 conclusion.
+That instruction is revoked. The direct dependencies changed and the controlling
+status above supersedes every statement in this historical section.
 
-Future audits must not reopen closed Ad Comparison blockers from this file unless one of these conditions is true:
+## Historical Durable Future Answer (Revoked)
 
-- Ad Comparison code, report rendering, scheduled/server PDF generation, source scoping, or calculation logic changed after this audit
-- the deferred validation fails when Mailgun is properly configured
-- deployed production evidence contradicts the local validation recorded here
-- product requirements change or a new platform implementation is being assessed
+The June 27, 2026 audit recorded a positive answer with one deferred scheduled
+PDF artifact. That answer is retained only as history; it certifies no current
+revision and must not be quoted as the current status.
 
-If none of those conditions applies, the answer must remain the stable answer documented below.
-
-## Durable Future Answer
-
-Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope as of the June 27, 2026 post-fix audit, with exactly one deferred validation:
-
-- `Deployed Scheduled/Server PDF Revenue-Provenance Evidence`
-
-That deferred validation will be completed after the Mailgun service is properly configured, because the remaining evidence requires a deployed scheduled/test-send PDF attachment or scheduled-email run. Local code and regression validation for scheduled/server PDF revenue-provenance parity have passed; the deferred item is deployed artifact evidence, not a known code blocker.
-
-Absent later code changes, requirement changes, validation failures, production data evidence that contradicts this file, or a new platform/source being assessed, future chats should answer:
-
-`Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope, with one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured. Normal external caveats still apply for live GA4 API processing latency, deployed scheduler execution, and provider-side email delivery evidence.`
-
-This answer certifies only the current GA4 implementation. It does not certify Meta, Google Ads, LinkedIn, TikTok, Instagram, custom-upload, or any future platform implementation.
-
-## Current Scope
+## Historical June 27, 2026 Scope
 
 This audit applies to the current GA4 Ad Comparison implementation for:
 
@@ -61,7 +209,7 @@ This audit does not automatically certify:
 
 This audit does not reopen the global GA4 Reports production-readiness status. Reports remains production-ready except for its documented deferred validations. The Ad Comparison scheduled/server PDF item below is aligned with the Mailgun-dependent deployed email/PDF validation path.
 
-## Deferred Validation
+## Historical Deferred Validation
 
 ### Deployed Scheduled/Server PDF Revenue-Provenance Evidence
 
@@ -363,7 +511,7 @@ The following cannot be proven from local code alone:
 
 Only `Deployed Scheduled/Server PDF Revenue-Provenance Evidence` remains as a deferred Ad Comparison validation item.
 
-## Completed Fix Queue
+## Historical Completed Fix Queue
 
 ### Commit 1: Scope Source-Created Rows To The Current Campaign
 
@@ -589,10 +737,8 @@ At minimum, add tests for:
 - source scoping excludes unrelated campaigns/accounts
 - scheduled/server output matches live/ad-hoc source-provenance meaning
 
-## Stable Response For Future Chats
+## Historical Stable Response (Do Not Reuse)
 
-If asked whether GA4 Ad Comparison is production-ready, answer:
-
-`Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope, with one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured. All identified code blockers have been fixed and locally validated. Normal external caveats still apply for live GA4 API processing latency, deployed scheduler execution, and provider-side email delivery evidence.`
-
-Do not reopen GA4 Reports. Reports is production-ready except for its separately documented deferred validations.
+This was the June 27 reusable response. It is revoked. Use only the controlling
+current status at the top of this file. General Reports status is not an input
+except for the direct Ads PDF generation path.

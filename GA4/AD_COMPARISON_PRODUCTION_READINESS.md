@@ -170,6 +170,36 @@ hash. Any input change invalidates a later positive certification.
 | AC-07 | Major | React Query previous-property placeholder rows could appear/export under a newly selected property. | Fixed: placeholder rows are excluded and export is blocked until current-property data is verified |
 | AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
 
+### Focused audit commit sequence
+
+The August 3 audit was delivered to `main` as the following ordered, focused
+commits. This sequence is implementation history, not a production-ready
+certification. The controlling status remains `UNVERIFIED`.
+
+1. **Commit 1 — revoke the stale certification**
+   - `9ee477d110b9b6a21876b9f1652ccbbfb93e6a43`
+   - Replaced the reusable historical production-ready claim with the current
+     revision-specific `UNVERIFIED` status before implementation work began.
+2. **Commit 2 — add the automated certification gate**
+   - `ce09149ca87cca15eabf989867ae109cee63959a`
+   - Added the machine-readable certification record, checker, package command,
+     and focused gate tests so stale or internally inconsistent certification
+     evidence fails automatically.
+3. **Commit 3 — make Ad Comparison fail closed**
+   - `08ea74af0344538259cd34ff1d8487492f4c8253`
+   - Closed AC-01 through AC-08 with the minimum runtime and focused regression
+     changes: complete GA4 pagination, aligned 30-day/native versus
+     source-to-date/imported semantics, exact valid-zero provenance, explicit
+     unavailable/stale states, current-property isolation, and live/browser/
+     scheduled PDF parity.
+4. **Commit 4 — record audit evidence and align documentation**
+   - `82369cf5213887944a5b84fdd093f49892f373dd`
+   - Recorded the reviewed SHA, dependency and consumer boundaries, commands and
+     results, finding disposition, production checks, and remaining external
+     gates across the canonical and machine-readable records. It deliberately
+     retained `UNVERIFIED` because the deployed revision and live parity packet
+     do not yet satisfy certification requirements.
+
 ### Local validation evidence
 
 Passed:

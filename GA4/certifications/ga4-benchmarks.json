@@ -7,7 +7,7 @@
   "reviewedImplementationGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
   "certifiedGitSha": null,
   "reviewedAt": "2026-08-03",
-  "scope": "GA4 Benchmarks and documented Benchmark consumers only: cards, Tracker, Insights, browser and scheduled Reports, in-app alerts/notifications, email attempt/audit safety, CRUD, refresh/recompute, schedulers, persistence, and destructive operations. External Benchmark email delivery is excluded from the initial beta.",
+  "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified and do not gate Benchmarks.",
   "revisionBoundary": {
     "status": "LOCKED_FOR_PRODUCTION_CERTIFICATION_QUEUE",
     "runtimeGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
@@ -31,7 +31,7 @@
       "ga4DailyRunOnStartup": false,
       "ga4DailyNextRunAt": "2026-08-04T03:00:00.000Z"
     },
-    "limitations": "Current Commit 15 provider confirmation and immutable scheduled Benchmark/Insights snapshots are complete. Current Commit 14 natural-run evidence and approved-inbox receipt confirmation remain required before production status can change from UNVERIFIED."
+    "limitations": "Current Commit 14 natural-run evidence is the only remaining Benchmark production-certification requirement. Completed report provider/snapshot evidence is bounded shared-infrastructure history for the later Reports audit and creates no Benchmark inbox requirement."
   },
   "localCertificationGate": {
     "status": "complete",
@@ -72,14 +72,14 @@
     "manualInsightsArtifactParity": "passed_exact_immutable_values_and_pdf",
     "scheduledBenchmarkArtifactParity": "passed_provider_confirmed_sent_with_immutable_snapshot",
     "scheduledInsightsArtifactParity": "passed_provider_confirmed_sent_with_immutable_snapshot",
-    "productionDeliveryCertification": "PROVIDER_CONFIRMED_INBOX_UNVERIFIED",
+    "productionDeliveryCertification": "OUT_OF_SCOPE_REPORTS_SUPPORTING_EVIDENCE",
     "productionConfigurationRestored": true,
     "originalConfigurationHash": "fd95883d1e7f",
     "restoredConfigurationHash": "fd95883d1e7f",
     "limitations": [
       "Two distinct Mailgun eu-region audits are provider-confirmed delivered with delivered timestamps.",
       "Benchmark and Insights each have one sent event and one immutable snapshot containing 2 Benchmark rows.",
-      "Actual approved-inbox receipt remains unverified."
+      "Actual approved-inbox receipt remains unverified and is not part of the Benchmark certification boundary."
     ]
   },
   "activeProductionCertificationCommits": [
@@ -105,8 +105,8 @@
     },
     {
       "id": 15,
-      "status": "waiting_for_14_and_inbox_receipt",
-      "name": "Resolve email delivery and issue final certification"
+      "status": "removed_from_benchmark_gate_reports_scope",
+      "name": "Historical Reports/shared-infrastructure delivery evidence"
     }
   ],
   "findings": {
@@ -114,7 +114,9 @@
     "majorFound": 9,
     "majorRemaining": 0,
     "minorFound": 9,
-    "minorRemaining": 0
+    "minorRemaining": 0,
+    "benchmarkBlockingRemaining": 0,
+    "scopeNote": "The broader review found and fixed Reports/shared-infrastructure defects. Those findings remain historical evidence but do not gate or certify the Benchmark section."
   },
   "dependencyBoundary": [
     "client/src/pages/ga4-metrics.tsx",
@@ -364,8 +366,7 @@
     }
   ],
   "productionOnlyEvidenceOutstanding": [
-    "A successful natural timer-fired GA4 daily run on the corrected revision",
-    "Approved-inbox receipt confirmation for the controlled Benchmark and Insights messages"
+    "A successful natural timer-fired GA4 daily run on the unchanged reviewed revision"
   ],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
 }

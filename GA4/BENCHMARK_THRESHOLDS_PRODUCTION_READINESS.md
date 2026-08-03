@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `Benchmarks` tab is production-ready.
 > Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: use the canonical file's revision-specific closed-beta assessment; production certification remains `UNVERIFIED`.
+> Current durable whole-tab answer: Beta Ready; production certification remains `UNVERIFIED` only for Benchmark Current Commit 14's natural timer-fired daily-run evidence. Reports delivery is a separate section gate.
 
 ## Purpose
 
@@ -471,7 +471,7 @@ Proven from local code:
 
 Historical partial-review notes:
 
-- Scheduled Campaign DeepDive report output includes benchmark risk wording, but live scheduled email/PDF behavior has not been validated for this benchmark threshold change.
+- Scheduled Campaign DeepDive report output includes benchmark risk wording, but live scheduled email/PDF behavior belongs to the separate Reports audit and is not a GA4 Benchmark threshold or whole-tab certification blocker.
 - Live GA4 UI behavior with each benchmark type has not yet been manually validated end to end.
 - Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined.
 - Other platform pages also contain similar benchmark thresholds; they are intentionally out of scope for the first GA4-specific plan unless a later implementation step explicitly broadens scope.

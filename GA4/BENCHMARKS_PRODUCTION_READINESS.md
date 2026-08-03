@@ -16,12 +16,12 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-August 3, 2026 controlling assessment: GA4 Benchmarks are **Beta Ready** for a closed beta at deployed implementation commit `9ed32290b32773af543b7a927ef5e197c4e3b761`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`. The initial beta excludes Benchmark email delivery; in-app alerts/notifications and email attempt/audit safety remain covered. Production certification remains `UNVERIFIED` pending the production-only evidence listed below.
+August 3, 2026 controlling assessment: GA4 Benchmarks are **Beta Ready** for a closed beta at deployed implementation commit `b42c51e9ebcc12d74851cc640c86038513a57828`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`. Production certification remains `UNVERIFIED` only until Benchmark Current Commit 14 captures one successful natural timer-fired GA4 daily run on the unchanged reviewed boundary.
 
 <!-- ga4-benchmark-production-certification-status: UNVERIFIED -->
 <!-- ga4-benchmark-beta-readiness-status: BETA_READY -->
 
-This closed-beta assessment is revision-specific. It covers GA4 Benchmark cards, Tracker, live Insights, browser PDF, scheduled Insights/Benchmark reports, in-app alert/notification behavior, email attempt/audit safety, CRUD, refresh/recompute, deterministic daily/scheduled execution, persistence, destructive rollback, authentication, campaign/property/owner/timezone/window scope, and multi-tenant isolation. It does not claim external Benchmark email delivery. Any dependency-boundary change invalidates the assessment.
+This assessment is revision-specific. The Benchmark certification boundary covers Benchmark cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, deterministic and natural GA4 daily execution, persistence, destructive rollback, authentication, campaign/property/owner/timezone/window scope, and multi-tenant isolation. Read-only propagation evidence into Insights and Reports is supporting cross-consumer evidence only; full Insights/Reports behavior, report generation, scheduling, delivery, attachments, and inbox receipt belong to their separate section audits and do not gate Benchmark certification. Any Benchmark dependency-boundary change invalidates the assessment.
 
 Current dependency queue:
 
@@ -30,15 +30,15 @@ Current dependency queue:
 3. **Benchmark Current Commit 10 — shared value-contract and lifecycle repair:** complete locally in `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
 4. **Benchmark Current Commit 11 — lock the exact production certification revision:** complete. Runtime SHA `5366d0babc9550ecd408e55bc385e7024854f424`; deployed evidence SHA `fbc10e04f69f1d2709d3e2629f8c4818a7062c90`; intervening changes are validation/documentation/test-only.
 5. **Benchmark Current Commit 12 — run the final clean-revision local gate:** complete at clean validation SHA `473c4e151b43aac33cb1d35a5c4b0fa85a85c36b`.
-6. **Benchmark Current Commit 13 — prove exact deployed Benchmark-consumer parity:** complete at deployed runtime SHA `9ed32290b32773af543b7a927ef5e197c4e3b761`. Both manual artifacts passed exact parity; both scheduled types correctly failed closed at `pending_delivery` without false snapshots.
+6. **Benchmark Current Commit 13 — prove exact deployed Benchmark value and bounded downstream propagation parity:** complete at deployed runtime SHA `9ed32290b32773af543b7a927ef5e197c4e3b761`.
 7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** waiting for the next unchanged-revision natural run.
-8. **Benchmark Current Commit 15 — resolve email delivery and issue the final certification:** runtime/provider/snapshot validation is complete at `b42c51e9ebcc12d74851cc640c86038513a57828`; waiting for Current Commit 14 and approved-inbox receipt confirmation.
+8. **Former Benchmark Current Commit 15 — scheduled report delivery:** removed from the Benchmark certification gate. Its completed runtime/provider/snapshot evidence is retained below as bounded Reports/shared-infrastructure history for the later Reports audit.
 
 ### August 2-3, 2026 Closed-Beta Validation Evidence
 
 - Critical findings: 0.
-- Major findings: 9 total, all fixed. The final Major defect was the report confirmation path discarding the Mailgun region recorded at provider acceptance and querying the default region, which returned `domain not found` and permanently prevented delivery confirmation and sent-snapshot creation.
-- Minor findings: 9, all fixed: the seven previously listed defects, the authorized validator using a timezone-sensitive database timestamp cutoff that falsely counted zero fresh delivered audits, and the read-only inspector initially joining UUID/text snapshot identifiers without the required cast.
+- Benchmark-scope findings: Critical `0`; no Critical or Major finding remains.
+- The broader validation also found and fixed Reports/shared-infrastructure defects. Those findings and their evidence remain recorded, but they do not certify Reports and do not gate the Benchmark section.
 - Applicable/affected regressions: the final Current Commit 15 inventory passed `54` files and `615` tests.
 - Focused destructive/route/notification packet: `4` files and `55` tests passed.
 - TypeScript: `npm run check` passed.
@@ -57,13 +57,13 @@ Current dependency queue:
 - The controlled scheduled Benchmark and Insights sends both reached `pending_delivery` after Mailgun API acceptance. Delivery was not confirmed, `sentAt` and `snapshotId` remained null, and no false sent/downloadable snapshot was created. The original report schedule (`09:00 Europe/Amsterdam`, one original recipient) and configuration hash were restored. This proves correct fail-closed scheduled-consumer behavior but does not prove delivery.
 - The post-fix applicable inventory passed `54` files and `624` tests, including the `15`-test certification guard; `npm run check` and `npm run build` passed. The initial npm/PowerShell array invocation executed no tests and is not counted; the direct Vitest invocation is the recorded passing evidence.
 - The final focused certification-guard rerun initially failed only because its expected implementation SHA still named the pre-fix revision. The one-line fixture was corrected to `9ed32290b32773af543b7a927ef5e197c4e3b761`; the rerun passed all `15` tests. A final read-only health check at `2026-08-03T08:15:12Z` confirmed the same deployed SHA. Scheduler health remained `200`, started, timer-scheduled, and idle with zero corrected-revision runs and next run `2026-08-04T03:00:00.000Z`.
-- Current Commit 15 production audit inspection found the exact remaining Major root cause: the stored Mailgun confirmation response was `domain not found` and the audit metadata had lost the successful send region. The failing guard was added first. Runtime commit `b42c51e9ebcc12d74851cc640c86038513a57828` now reads the persisted region for scheduled and test-report Events API queries and preserves it across confirmation updates.
+- Separate Reports/shared-infrastructure inspection found that the stored Mailgun confirmation response was `domain not found` and audit metadata had lost the successful send region. Runtime commit `b42c51e9ebcc12d74851cc640c86038513a57828` fixes that shared report path. This is retained evidence for the later Reports audit, not a Benchmark certification requirement.
 - Production `GET /api/health` confirmed exact deployed SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. Two authorized controlled report events then reached `sent`. The Benchmark and Insights snapshots each contain `2` immutable Benchmark rows; both have non-null sent state. Two distinct Mailgun audits are `delivered` with delivered timestamps and exact region `eu`. The report configuration was restored to `benchmarks`, `09:00`, `Europe/Amsterdam`, and one original recipient.
 - The controlled validator's final delivery-count assertion initially false-failed because it compared application UTC with a database `timestamp without time zone` cutoff. It now identifies fresh audits by provider-response-ID baseline. The read-only inspector also required an explicit UUID/text snapshot join cast. Both validation-only defects are fixed and guarded; neither affected application delivery or snapshots.
-- The final Current Commit 15 gate passed `54` files and `615` tests, including `source-safety-regression.test.ts` `87/87`; `npm run check` and `npm run build` passed. Inbox receipt is not visible to the repository tools and is not claimed.
+- The broader post-fix packet passed `54` files and `615` tests, including `source-safety-regression.test.ts` `87/87`; `npm run check` and `npm run build` passed. Report inbox receipt is not claimed and is not part of the Benchmark certification boundary.
 - Final read-only health at `2026-08-03T09:33:27Z` returned exact SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. Report scheduler metrics recorded `totalSent = 2`, `totalFailed = 0`, and `successRate = 100.00%`. The separate GA4 daily scheduler remained healthy but idle with `totalScheduledRuns = 0` and next run `2026-08-04T03:00:00.000Z`, so Current Commit 14 remains outstanding without contradiction.
 
-Remaining production-only evidence, without adding new local gates: observe a successful natural timer-fired daily run on the corrected revision and confirm receipt of the two controlled messages in the approved Outlook inbox. Mailgun provider confirmation and fresh Benchmark/Insights sent snapshots are complete. Until Current Commit 14 and inbox receipt are recorded, machine-readable production status stays `UNVERIFIED`.
+The only remaining Benchmark production evidence is one successful natural timer-fired GA4 daily run on the unchanged reviewed revision. If Current Commit 14 passes and the final revision/dependency comparison is clean, GA4 Benchmarks can be marked clean-certified and production-ready under this exact Benchmark boundary. Machine-readable production status stays `UNVERIFIED` until that evidence is recorded.
 
 ### Active Production-Certification Commit Queue
 
@@ -184,7 +184,7 @@ Complete on August 3, 2026 for deployed consumer parity and correct fail-closed 
 - Authorized scheduled production validation exercised one Benchmark event and one Insights event against one approved recipient. Both reached `pending_delivery` after Mailgun acceptance; neither had `sentAt` or `snapshotId`, so the app correctly created no false sent snapshot. The read-only Mailgun check returned `not_checked`, leaving provider delivery and inbox receipt unproven.
 - After every controlled path, the original report type, configuration, schedule, timezone, and recipients were restored. The pre/post configuration hashes both equal `fd95883d1e7f`; the final read-only inventory confirmed `benchmarks`, `09:00`, `Europe/Amsterdam`, and one original recipient.
 - `& .\node_modules\.bin\vitest.cmd run --pool forks $tests` passed `54` files and `624` tests. `npm run check` and `npm run build` passed. The restricted parallel launch and the npm PowerShell-array invocation did not execute the intended test packet and are not counted as passing evidence. A final restricted-token focused rerun was also blocked before test loading by Windows `spawn EPERM`; the authorized identical command passed all `15` tests.
-- Findings at Current Commit 13 completion: Critical `0`; Major `2` found there—immutable snapshot values missing (fixed there) and production delivery confirmation unavailable (subsequently fixed in Current Commit 15); Minor `3`, all fixed: early terminal-state capture, over-broad authorized report selection, and the stale implementation-SHA assertion. Current Commit 13 was complete because exact artifacts passed and both scheduled consumer states were proven correctly fail-closed. Production certification remains `UNVERIFIED` only for Current Commit 14 and approved-inbox receipt evidence.
+- Findings at Current Commit 13 completion: Critical `0`; Major `2` found there—immutable snapshot values missing (fixed there) and production delivery confirmation unavailable (subsequently fixed in the former Current Commit 15 Reports/shared-infrastructure packet); Minor `3`, all fixed: early terminal-state capture, over-broad authorized report selection, and the stale implementation-SHA assertion. Current Commit 13 was complete because exact artifacts passed and both scheduled consumer states were proven correctly fail-closed. Under the corrected section boundary, production certification remains `UNVERIFIED` only for Current Commit 14.
 
 #### Benchmark Current Commit 14 — Capture A Successful Natural Daily Scheduler Run
 
@@ -210,11 +210,11 @@ Completion rule:
 
 Complete only after one successful natural timer-fired run on the locked corrected revision with reviewed recompute and alert evidence.
 
-#### Benchmark Current Commit 15 — Resolve Email Delivery And Issue Final Certification
+#### Former Benchmark Current Commit 15 — Reports/Shared-Infrastructure Evidence, Not A Benchmark Gate
 
 Root cause:
 
-External Benchmark email delivery was deliberately excluded from the closed beta. The remaining report-delivery defect was that Mailgun acceptance recorded the successful `eu` region, but report confirmation discarded it, queried the default region, received `domain not found`, and therefore left valid sends at `pending_delivery` without snapshots.
+This queue item was created by expanding downstream Benchmark parity into full scheduled-report delivery certification. That boundary was too broad: report generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit. The completed evidence below is retained because it matches the implemented shared report code, but it is not required to certify the Benchmark section.
 
 Expected files:
 
@@ -223,25 +223,25 @@ Expected files:
 - `GA4/certifications/ga4-benchmarks.json`
 - the existing read-only email validation artifact
 
-Required behavior and evidence:
+Historical Reports/shared-infrastructure behavior and evidence:
 
-- Choose exactly one production path.
-- **Delivery-enabled path:** with explicit authorization and known controlled recipients, trigger one unambiguous GA4 Benchmark alert; prove correct threshold eligibility, no false breach, one idempotent send, provider acceptance, provider-confirmed delivery with a delivered timestamp, and actual inbox receipt. Restore only explicitly authorized temporary validation state.
-- **Delivery-disabled path:** disable the production-facing Benchmark email option and server send path, prove users and schedulers cannot select or send it, preserve audit/history safely, and state the certified limitation without implying delivery.
-- For scheduled Benchmark/Insights reports, restore working Mailgun Events API confirmation and prove one fresh event reaches `sent`, creates exactly one immutable snapshot containing the preflighted Benchmark rows, and arrives in the approved inbox. Provider acceptance or `pending_delivery` is not sufficient.
+- The delivery-enabled report path was selected under explicit authorization and known controlled recipients.
+- Scheduled Benchmark/Insights Reports reached provider-confirmed `sent` and created immutable snapshots containing the preflighted Benchmark rows.
+- Provider acceptance or `pending_delivery` was not treated as delivery.
+- Inbox receipt was not established and is left for the later Reports audit; it is not a Benchmark gate.
 - Re-run affected email, alert, notification, auth, tenant-isolation, scheduler, TypeScript, and build checks after any code change.
 - Re-run any Commit 11-14 evidence invalidated by the selected email implementation.
-- Only after Current Commits 11-14 and the chosen email path pass, set the canonical and machine-readable production status to the project's verified production value, populate the exact certified SHA, record zero remaining Critical/Major findings, commit, push, deploy, and verify the final evidence-only boundary.
+- Only after Current Commit 14 passes, set the canonical and machine-readable Benchmark status to the project's verified production value, populate the exact certified SHA, record zero remaining Benchmark Critical/Major findings, commit, push, deploy, and verify the final evidence-only boundary.
 
 Completion rule:
 
-Complete only when email behavior is either freshly delivery-proven or provably disabled, every earlier active commit remains valid, the final certification record is internally consistent, and production certification is no longer `UNVERIFIED`.
+Removed from the Benchmark completion rule. Reports delivery and inbox evidence must be assessed later under Reports readiness.
 
 Implementation status:
 
-Runtime/provider/snapshot portion complete on August 3, 2026 at exact deployed SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. The smallest fix preserves the accepted Mailgun region through report delivery confirmation. Two distinct controlled `eu` audits are provider-confirmed `delivered` with delivered timestamps; the corresponding Benchmark and Insights send events are `sent` and each owns one immutable two-row Benchmark snapshot. Original report configuration is restored. Current Commit 15 remains open only for approved-inbox receipt confirmation and the final certification transition after Current Commit 14.
+Bounded Reports/shared-infrastructure evidence is complete on August 3, 2026 at exact deployed SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. The smallest fix preserves the accepted Mailgun region through report delivery confirmation. Two distinct controlled `eu` audits are provider-confirmed `delivered`; the corresponding Benchmark and Insights report events are `sent` and each owns one immutable two-row snapshot. Original report configuration is restored. This does not certify Reports and creates no Benchmark inbox requirement.
 
-Stop immediately after Current Commits 11-15 are complete and no Critical or Major finding remains. Minor non-core issues may be recorded without extending this queue.
+Stop immediately after Current Commit 14 passes, the final Benchmark revision comparison is clean, and no Benchmark Critical or Major finding remains. Minor non-core issues may be recorded without extending this queue.
 
 ### Historical July 2026 Status And Evidence
 

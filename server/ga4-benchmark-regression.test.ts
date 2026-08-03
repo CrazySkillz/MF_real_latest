@@ -359,6 +359,15 @@ describe("GA4 Benchmark regression guard", () => {
     });
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
+    expect(record.productionOnlyEvidenceOutstanding).toEqual([
+      "A successful natural timer-fired GA4 daily run on the unchanged reviewed revision",
+    ]);
+    expect(record.activeProductionCertificationCommits).toContainEqual(expect.objectContaining({
+      id: 15,
+      status: "removed_from_benchmark_gate_reports_scope",
+    }));
+    expect(record.scope).toContain("Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified");
+    expect(readiness).toContain("The only remaining Benchmark production evidence is one successful natural timer-fired GA4 daily run");
   });
 
   it("keeps deployed consumer parity certification read-only and complete", () => {

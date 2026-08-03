@@ -32,7 +32,10 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).toContain("currentValueProvider");
     expect(route).toContain("currentValuePersistedDaily");
     expect(route).toContain("live_provider_current_value_window");
-    expect(route).toContain("computeKpiValue(metricKey, schedulerInputs)");
+    expect(route).toContain("const schedulerInputsForMetric = isGA4FinancialKpiMetricIdentity(metricKey)");
+    expect(route).toContain("? requestedWindowInputs");
+    expect(route).toContain(": currentValueWindowInputs");
+    expect(route).toContain("computeKpiValue(metricKey, schedulerInputsForMetric)");
     expect(route).toContain("uiCandidateCurrentValue");
     expect(route).toContain('certificationStatus: "validation_output_only"');
     expect(route).toContain("ga4Service.refreshAccessToken(");

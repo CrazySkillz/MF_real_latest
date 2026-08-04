@@ -90,5 +90,11 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("allowMissing && tokenResponse.status === 404");
     expect(validator).toContain("GA4_INSIGHTS_REQUIRE_TENANT_ISOLATION");
     expect(validator).toContain("tenantIsolation = \"not run; no second production identity was authorized\"");
+    expect(validator).toContain("GA4_INSIGHTS_ALLOW_TEMPORARY_USER");
+    expect(validator).toContain("temporary GA4 Insights tenant-isolation certification");
+    expect(validator).toContain("temporary user deletion failed");
+    expect(validator).toContain("temporary user still resolves");
+    expect(validator).toContain("if (deletedLookup?.status !== 404)");
+    expect(validator).toContain("console.log(JSON.stringify(output, null, 2))");
   });
 });

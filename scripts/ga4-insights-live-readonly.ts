@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { chromium, type Page } from "playwright";
 import { pool } from "../server/db";
 import { buildGA4InsightsRollups } from "../shared/ga4-insights";
@@ -10,6 +10,7 @@ const CAMPAIGN_ID = String(process.env.GA4_INSIGHTS_CAMPAIGN_ID || "8aa735ee-c02
 const requestedProperty = String(process.env.GA4_INSIGHTS_PROPERTY_ID || "").trim();
 const clerkSecret = String(process.env.CLERK_SECRET_KEY || "").trim();
 const requireTenantIsolation = String(process.env.GA4_INSIGHTS_REQUIRE_TENANT_ISOLATION || "1") !== "0";
+const allowTemporaryUser = String(process.env.GA4_INSIGHTS_ALLOW_TEMPORARY_USER || "0") === "1";
 
 if (!pool) throw new Error("DATABASE_URL is required");
 if (!clerkSecret) throw new Error("CLERK_SECRET_KEY is required");
@@ -37,6 +38,10 @@ const clerkPost = async (path: string, body?: unknown) => fetch(`https://api.cle
 const clerkGet = async (path: string) => fetch(`https://api.clerk.com/v1${path}`, {
   headers: { Authorization: `Bearer ${clerkSecret}` },
 });
+const clerkDelete = async (path: string) => fetch(`https://api.clerk.com/v1${path}`, {
+  method: "DELETE",
+  headers: { Authorization: `Bearer ${clerkSecret}` },
+});
 const request = async (page: Page, path: string, method = "GET") => page.evaluate(async ({ path, method }) => {
   const token = await (window as any).Clerk?.session?.getToken();
   if (!token) throw new Error("Clerk session token is unavailable");
@@ -50,6 +55,8 @@ const request = async (page: Page, path: string, method = "GET") => page.evaluat
 const client = await pool.connect();
 const browser = await chromium.launch({ headless: true });
 const sessions: string[] = [];
+let temporaryUserId = "";
+let output: Record<string, unknown> | null = null;
 try {
   await client.query("BEGIN TRANSACTION READ ONLY");
   const inventory = await client.query(`
@@ -147,7 +154,18 @@ try {
     const usersResponse = await clerkGet("/users?limit=100&order_by=-created_at");
     const users: any[] = await usersResponse.json().catch(() => []);
     if (!usersResponse.ok || !Array.isArray(users)) throw new Error(`Clerk user inventory failed (${usersResponse.status})`);
-    const otherUser = users.find((candidate) => String(candidate?.id || "") !== String(row.owner_id));
+    let otherUser = users.find((candidate) => String(candidate?.id || "") !== String(row.owner_id));
+    if (!otherUser && allowTemporaryUser) {
+      const createdResponse = await clerkPost("/users", {
+        email_address: [`ga4-insights-cert-${Date.now()}@example.com`],
+        password: `G4!${randomBytes(18).toString("base64url")}aA1!`,
+        private_metadata: { purpose: "temporary GA4 Insights tenant-isolation certification" },
+      });
+      const created: any = await createdResponse.json().catch(() => ({}));
+      if (!createdResponse.ok || !created?.id) throw new Error(`Temporary Clerk user creation failed (${createdResponse.status})`);
+      temporaryUserId = String(created.id);
+      otherUser = created;
+    }
     const nonOwner = otherUser ? await signIn(String(otherUser.id), true) : null;
     if (!nonOwner) throw new Error("No valid non-owner Clerk account is available for the tenant-isolation gate");
     const denied = await request(nonOwner.page, paths.daily);
@@ -156,7 +174,7 @@ try {
     await nonOwner.context.close();
   }
 
-  console.log(JSON.stringify({
+  output = {
     status: "passed",
     deployedSha: health.commit,
     campaignHash: hash(CAMPAIGN_ID),
@@ -171,13 +189,27 @@ try {
     kpiCount: Array.isArray(responses.kpis.body) ? responses.kpis.body.length : 0,
     benchmarkCount: Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body.length : 0,
     tenantIsolation,
+    tenantFixture: temporaryUserId ? "ephemeral Clerk-only user created and deleted" : "existing Clerk user",
     uiParity: "live headings, freshness labels, and API-derived 30-day sessions rendered",
     databaseTransaction: "read only and rolled back",
-  }, null, 2));
+  };
 } finally {
   await client.query("ROLLBACK").catch(() => null);
   client.release();
-  for (const session of sessions.filter(Boolean)) await clerkPost(`/sessions/${encodeURIComponent(session)}/revoke`).catch(() => null);
+  const cleanupErrors: string[] = [];
+  for (const session of sessions.filter(Boolean)) {
+    const revoked = await clerkPost(`/sessions/${encodeURIComponent(session)}/revoke`).catch(() => null);
+    if (!revoked?.ok) cleanupErrors.push(`session revoke failed (${revoked?.status || "unavailable"})`);
+  }
   await browser.close().catch(() => null);
+  if (temporaryUserId) {
+    const deletion = await clerkDelete(`/users/${encodeURIComponent(temporaryUserId)}`).catch(() => null);
+    if (!deletion?.ok) cleanupErrors.push(`temporary user deletion failed (${deletion?.status || "unavailable"})`);
+    const deletedLookup = await clerkGet(`/users/${encodeURIComponent(temporaryUserId)}`).catch(() => null);
+    if (deletedLookup?.status !== 404) cleanupErrors.push(`temporary user still resolves (${deletedLookup?.status || "unavailable"})`);
+  }
   await pool.end().catch(() => null);
+  if (cleanupErrors.length > 0) throw new Error(`Clerk cleanup failed: ${cleanupErrors.join("; ")}`);
 }
+if (!output) throw new Error("Production evidence packet was not produced");
+console.log(JSON.stringify(output, null, 2));

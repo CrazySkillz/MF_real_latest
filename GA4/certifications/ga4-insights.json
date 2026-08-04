@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-insights-live",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "65d1a5055e00e667e75046972c4e3da337874225",
-  "certifiedSha": "65d1a5055e00e667e75046972c4e3da337874225",
-  "deployedSha": "65d1a5055e00e667e75046972c4e3da337874225",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "ae66edb564feeb89ecb897bb6d37def71bd30959",
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "The production packet did not numerically compare every Executive Financial, Data Summary financial/channel value, tracker count, and rendered recommendation against authoritative live inputs.",
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
     "includedSurfaces": [
@@ -79,13 +79,14 @@
     { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "13 files and 298 tests passed." },
     { "id": "typescript", "status": "passed", "evidence": "npm run check passed." },
     { "id": "build", "status": "passed", "evidence": "npm run build passed: Vite transformed 3,466 modules and esbuild produced dist/index.js." },
-    { "id": "machine_gate", "status": "passed", "evidence": "5 checker tests passed and npm run check:ga4-insights-certification passed with the complete PRODUCTION_READY envelope." }
+    { "id": "machine_gate", "status": "passed", "evidence": "The checker now requires an explicit live_surface_value_parity gate before PRODUCTION_READY." }
   ],
   "externalGates": [
     { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render health reported 65d1a5055e00e667e75046972c4e3da337874225." },
-    { "id": "authenticated_owner_api_ui_parity", "status": "passed", "evidence": "Authenticated owner APIs proved property/filter/window scope and the live page rendered the API-derived 30-day Sessions value on 65d1a5055e00e667e75046972c4e3da337874225." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "passed", "evidence": "Authenticated owner APIs proved property/filter/window scope and the live page rendered the API-derived 30-day Sessions value on ae66edb564feeb89ecb897bb6d37def71bd30959." },
+    { "id": "live_surface_value_parity", "status": "pending", "evidence": "Every Executive Financial, Data Summary financial/channel value, tracker count, and rendered recommendation has not yet been compared with authoritative production inputs." },
     { "id": "tenant_isolation", "status": "passed", "evidence": "An authorized ephemeral Clerk-only user received 404 for the campaign daily endpoint; all sessions were revoked, the exact user was deleted, its lookup returned 404, and independent inventory returned to one user." },
     { "id": "deterministic_scheduler", "status": "passed", "evidence": "Campaign-scoped trigger completed successfully at 2026-08-04T02:55:37.581Z on 65d1a5055e00e667e75046972c4e3da337874225 with global alerts suppressed." },
-    { "id": "dependency_hashes", "status": "passed", "evidence": "Every recorded dependency hash matches the certification snapshot." }
+    { "id": "dependency_hashes", "status": "pending", "evidence": "Hashes must be regenerated after the strengthened production evidence boundary passes." }
   ]
 }

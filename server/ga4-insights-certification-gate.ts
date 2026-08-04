@@ -31,6 +31,14 @@ export const GA4_INSIGHTS_REQUIRED_DEPENDENCIES = [
   "package.json",
   "render.yaml",
 ] as const;
+export const GA4_INSIGHTS_REQUIRED_EXTERNAL_GATES = [
+  "exact_sha_deployment",
+  "authenticated_owner_api_ui_parity",
+  "live_surface_value_parity",
+  "tenant_isolation",
+  "deterministic_scheduler",
+  "dependency_hashes",
+] as const;
 
 type Context = {
   exists: (path: string) => boolean;
@@ -155,6 +163,10 @@ export function evaluateGA4InsightsCertification(
   }
   checkEvidence("requiredTests", value.requiredTests, ready, errors);
   checkEvidence("externalGates", value.externalGates, ready, errors);
+  const externalIds = new Set(Array.isArray(value.externalGates) ? value.externalGates.map((item: any) => item?.id) : []);
+  for (const required of GA4_INSIGHTS_REQUIRED_EXTERNAL_GATES) {
+    if (!externalIds.has(required)) errors.push(`missing required external gate ${required}`);
+  }
   return { ok: errors.length === 0, errors };
 }
 

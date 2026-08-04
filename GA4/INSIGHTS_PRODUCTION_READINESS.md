@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Status: **PRODUCTION_READY**
+Status: **UNVERIFIED**
 
 Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
 
-Certified SHA: `65d1a5055e00e667e75046972c4e3da337874225`
+Certified SHA: none
 
-Deployed and validated SHA: `65d1a5055e00e667e75046972c4e3da337874225`
+Last fully deployed evidence SHA: `ae66edb564feeb89ecb897bb6d37def71bd30959`
 
-Reason: the strict live-tab audit found and corrected ten Major value-path defects. All focused and affected local suites, TypeScript, production build, machine gate, exact-SHA Render deployment, authenticated owner API/UI parity, authenticated non-owner fail-closed isolation, deterministic scheduler, temporary-identity cleanup, and dependency-hash gates pass for the recorded boundary.
+Reason: the completion audit invalidated the August 4 certification. The production packet proved scope, windows, Data Summary Sessions, freshness labels, tenant isolation, cleanup, and scheduler behavior, but it did not numerically compare every Executive Financial, Data Summary financial/channel value, tracker count, and rendered recommendation against authoritative live inputs. Those paths remain unverified in production.
 
-No Critical or Major finding remains open. This certification is revision-specific and is invalidated by any dependency, configuration, contradictory production result, or newly discovered consumer change described in the repository-wide readiness contract.
+No Critical or Major implementation finding is currently open, but clean certification is prohibited until the complete per-surface production parity gate passes and final hashes are regenerated.
 
 <!-- /ga4-insights-current-status -->
 
@@ -187,7 +187,7 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | focused production calendar/monthly functions | PASS: 5 tests |
 | TypeScript | PASS: `npm run check` |
 | production build | PASS: Vite 3,466 modules and server bundle |
-| machine certification checker | PASS: 5 gate tests and repository checker |
+| machine certification checker | PASS: invalidation guard added; final result pending rerun |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
@@ -195,16 +195,17 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: health reported `65d1a5055e00e667e75046972c4e3da337874225` |
+| exact Render revision | PASS: health reported `ae66edb564feeb89ecb897bb6d37def71bd30959` |
 | authenticated owner API/UI parity | PASS: property `542352127`, `Europe/Amsterdam`, three saved filters, exact daily/breakdown windows, and API-derived 655 Sessions rendered |
 | incomplete-history state | PASS: 20/30 imported days remained incomplete and was not certified as a complete comparison window |
 | authenticated non-owner isolation | PASS: an explicitly authorized ephemeral Clerk-only user received 404 from the campaign daily endpoint |
 | temporary identity cleanup | PASS: both validation sessions were revoked, the exact user was deleted, its lookup returned 404, and independent inventory returned to one user |
-| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-04T02:55:37.581Z`; global alerts were suppressed |
+| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-04T03:11:18.946Z`; global alerts were suppressed |
+| every-surface numeric UI/API parity | PENDING: Executive Financials, all Data Summary financial/channel values, tracker counts, and rendered recommendation evidence require one authoritative production packet |
 
 ## Required Production Gates
 
-All nine gates pass for certified SHA `65d1a5055e00e667e75046972c4e3da337874225`:
+The machine record remains `UNVERIFIED` until all gates pass on one unchanged revision:
 
 1. production build passes
 2. machine certification checker passes
@@ -216,7 +217,7 @@ All nine gates pass for certified SHA `65d1a5055e00e667e75046972c4e3da337874225`
 8. the deterministic campaign-scoped daily pipeline completes and the post-run live inputs remain in parity
 9. dependency/configuration hashes match the reviewed boundary
 
-The machine record and status marker are `PRODUCTION_READY`. Any boundary change invalidates this result before reuse.
+The August 4 `PRODUCTION_READY` record is historical and invalid. A new clean result requires the mandatory every-surface parity gate plus regenerated dependency hashes.
 
 ## Historical Note
 

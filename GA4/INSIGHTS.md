@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is PRODUCTION_READY for the live-tab boundary certified at 65d1a5055e00e667e75046972c4e3da337874225. All local, exact-SHA deployment, authenticated owner/API/UI, non-owner isolation, cleanup, deterministic scheduler, and dependency-hash gates pass.`
+`GA4 Insights is UNVERIFIED. The August 4 certification was invalidated because its production packet did not numerically compare every live Insights surface with its authoritative inputs. Historical local, deployment, isolation, and scheduler evidence remains bounded evidence only.`
 
 ## Document Ownership
 

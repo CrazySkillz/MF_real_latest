@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateGA4InsightsCertification,
   GA4_INSIGHTS_REQUIRED_DEPENDENCIES,
+  GA4_INSIGHTS_REQUIRED_EXTERNAL_GATES,
 } from "./ga4-insights-certification-gate";
 
 const sha = "a".repeat(40);
@@ -29,7 +30,11 @@ const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
     endMarker: "<!-- /ga4-insights-current-status -->",
   },
   requiredTests: [{ id: "tests", status: "passed", evidence: "passed" }],
-  externalGates: [{ id: "deployment", status: status === "PRODUCTION_READY" ? "passed" : "pending", evidence: "exact SHA" }],
+  externalGates: GA4_INSIGHTS_REQUIRED_EXTERNAL_GATES.map((id) => ({
+    id,
+    status: status === "PRODUCTION_READY" ? "passed" : "pending",
+    evidence: "exact SHA",
+  })),
 });
 const context = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
   exists: () => true,
@@ -54,7 +59,15 @@ describe("GA4 Insights machine certification gate", () => {
     const value = record("PRODUCTION_READY");
     value.externalGates[0].status = "pending";
     expect(evaluateGA4InsightsCertification(value, context("PRODUCTION_READY")).errors).toContain(
-      "externalGates deployment is pending while status claims ready",
+      "externalGates exact_sha_deployment is pending while status claims ready",
+    );
+  });
+
+  it("rejects a record that omits live per-surface value parity", () => {
+    const value = record();
+    value.externalGates = value.externalGates.filter((item) => item.id !== "live_surface_value_parity");
+    expect(evaluateGA4InsightsCertification(value, context()).errors).toContain(
+      "missing required external gate live_surface_value_parity",
     );
   });
 

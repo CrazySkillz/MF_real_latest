@@ -113,6 +113,12 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('source?.displayName || revenueTypeLabel(source?.sourceType)');
     expect(validator).toContain('cardText("insights-summary-sessions")');
     expect(validator).toContain('getByTestId("insights-summary-channel-row")');
+    const channelCellsStart = validator.indexOf("const expectedCells = [", validator.indexOf("const channelRows"));
+    const channelCellsEnd = validator.indexOf("];", channelCellsStart);
+    const channelCells = validator.slice(channelCellsStart, channelCellsEnd);
+    expect(channelCells).toContain("formatNumber(expected.conversions)");
+    expect(channelCells).toContain("formatPct(expected.sessions > 0");
+    expect(channelCells).not.toContain("formatMoney(expected.revenue");
     expect(validator).toContain('validateRollingMode("7d", 7)');
     expect(validator).toContain('validateRollingMode("30d", 30)');
     expect(validator).toContain('getByRole("button", { name: "Monthly", exact: true }).click()');

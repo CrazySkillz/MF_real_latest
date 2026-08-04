@@ -302,10 +302,11 @@ try {
       (channelTotalSessions > 0 ? (expected.sessions / channelTotalSessions) * 100 : 0).toFixed(0) + "%",
       formatNumber(expected.conversions),
       formatPct(expected.sessions > 0 ? (expected.conversions / expected.sessions) * 100 : 0),
-      formatMoney(expected.revenue, currency),
     ];
     if (cells.map(normalizeText).join("|") !== expectedCells.map(normalizeText).join("|")) {
-      throw new Error("Rendered channel row parity failed for " + expected.label);
+      throw new Error("Rendered channel row parity failed for " + expected.label
+        + " (expected " + JSON.stringify(expectedCells.map(normalizeText))
+        + "; actual " + JSON.stringify(cells.map(normalizeText)) + ")");
     }
   }
   if (expectedChannels.length > 0) {

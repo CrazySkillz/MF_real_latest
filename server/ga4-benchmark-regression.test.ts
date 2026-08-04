@@ -12,7 +12,7 @@ describe("GA4 Benchmark regression guard", () => {
     const progressEnd = ga4MetricsFile.indexOf("const getBenchmarkDisplayCurrentValue", progressStart);
     const progressSection = ga4MetricsFile.slice(progressStart, progressEnd);
     const trackerStart = ga4MetricsFile.indexOf("const benchmarkTracker = useMemo(() => {");
-    const trackerEnd = ga4MetricsFile.indexOf("// --- Rolling window rollups", trackerStart);
+    const trackerEnd = ga4MetricsFile.indexOf("const insightsRollupRows", trackerStart);
     const trackerSection = ga4MetricsFile.slice(trackerStart, trackerEnd);
 
     expect(progressStart).toBeGreaterThan(-1);
@@ -48,7 +48,7 @@ describe("GA4 Benchmark regression guard", () => {
       "utf-8"
     );
     const trackerStart = ga4MetricsFile.indexOf("const benchmarkTracker = useMemo(() => {");
-    const trackerEnd = ga4MetricsFile.indexOf("// --- Rolling window rollups", trackerStart);
+    const trackerEnd = ga4MetricsFile.indexOf("const insightsRollupRows", trackerStart);
     const trackerSection = ga4MetricsFile.slice(trackerStart, trackerEnd);
     const cardStart = ga4MetricsFile.indexOf("{benchmarks.map((benchmark) => {");
     const cardEnd = ga4MetricsFile.indexOf("No Benchmarks Yet", cardStart);
@@ -87,7 +87,7 @@ describe("GA4 Benchmark regression guard", () => {
       "utf-8"
     );
     const trackerStart = ga4MetricsFile.indexOf("const benchmarkTracker = useMemo(() => {");
-    const trackerEnd = ga4MetricsFile.indexOf("// --- Rolling window rollups", trackerStart);
+    const trackerEnd = ga4MetricsFile.indexOf("const insightsRollupRows", trackerStart);
     const trackerSection = ga4MetricsFile.slice(trackerStart, trackerEnd);
     const reportStart = ga4MetricsFile.indexOf('sectionTitle("Performance Benchmarks"');
     const reportEnd = ga4MetricsFile.indexOf("renderAdsSection();", reportStart);

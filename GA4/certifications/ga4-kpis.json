@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "652000fff86228a269845ca2b37411c1b2633db491bd8d66bf8ef53eed302f20",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "79322c4bd9484b282e94d1ba8a434e0a2c85efb1",
+  "lastReviewedSha": "b4178415a1155dd2a411a0aa79d8fcd498394c0d",
   "certifiedSha": null,
-  "invalidationReason": "UNVERIFIED after Current Commit 11 exact-clean staged-patch validation on base 79322c4bd9484b282e94d1ba8a434e0a2c85efb1. The complete 1,366-test execution has exactly 3 blocking GA4 KPI failures reserved for Commits 12-13 and exactly 41 manifest-bound visible deferred failures. Current-SHA inventory/provider/browser/report revalidation, KPI-alert delivery, and natural scheduler completion remain pending for Commit 14.",
+  "invalidationReason": "UNVERIFIED after Current Commit 12 exact-clean staged-patch validation on base b4178415a1155dd2a411a0aa79d8fcd498394c0d. The obsolete Benchmark regression slice boundaries are aligned without runtime changes; the complete 1,366-test execution has exactly 1 blocking GA4 KPI Insights/report parity failure reserved for Commit 13 and exactly 41 manifest-bound visible deferred failures. Current-SHA inventory/provider/browser/report revalidation, KPI-alert delivery, and natural scheduler completion remain pending for Commit 14.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -170,7 +170,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "Current Commit 11 exact-clean validation: the certification regression passed 9/9 within the 2-file / 15-test focused packet, and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "Current Commit 12 exact-clean staged-patch validation: the certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -211,8 +211,8 @@
     {
       "id": "alert_notification_contract",
       "command": "npm test -- server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-regression.test.ts server/alert-email-scheduler-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/alert-email-audit-regression.test.ts server/alert-email-retry-regression.test.ts server/alert-email-idempotency-regression.test.ts server/alert-email-delivery-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-benchmark-regression.test.ts",
-      "status": "failed",
-      "evidence": "August 4, 2026 on exact clean 1166b9f2: this command is part of the combined applicable packet and two ga4-benchmark-regression tests failed because their removed Rolling-window slice end marker no longer bounds the still-present tracker eligibility/scoring logic. Test-only alignment and rerun are required."
+      "status": "passed",
+      "evidence": "Current Commit 12 exact-clean staged-patch validation on base b4178415: the focused Benchmark file passed 15/15 and this complete affected packet passed 14 files / 123 tests. Only the three obsolete tracker slice boundaries changed; runtime eligibility and scoring behavior did not change."
     },
     {
       "id": "ui_browser_consumer_states",
@@ -242,31 +242,31 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "failed",
-      "evidence": "Current Commit 11 exact-clean staged-patch validation on base 79322c4b executed all 1,366 tests: 1,322 passed; exactly 3 current-version GA4 KPI tests failed; exactly 41 manifest-bound deferred tests failed. The command exited nonzero on the 3 blocking tests as required. Commits 12-13 must make this gate green."
+      "evidence": "Current Commit 12 exact-clean staged-patch validation on base b4178415 executed all 1,366 tests: 1,324 passed; exactly 1 current-version GA4 KPI Insights/report parity test failed; exactly 41 manifest-bound deferred tests failed. The command exited nonzero on the remaining Commit 13 blocker as required."
     },
     {
       "id": "deferred_release_suites",
       "command": "npm run test:deferred",
       "status": "not_applicable",
-      "evidence": "Current Commit 11 exact-clean validation executed 41/41 retained identities and reported 41 failures: future platforms 21, Google Ads 19, GA4 Ad Comparison 1. The command exited nonzero and no deferred suite is represented as passed; this evidence is not applicable to GA4 KPI readiness."
+      "evidence": "Current Commit 12 exact-clean validation executed 41/41 retained identities and reported 41 failures: future platforms 21, Google Ads 19, GA4 Ad Comparison 1. The command exited nonzero and no deferred suite is represented as passed; this evidence is not applicable to GA4 KPI readiness."
     },
     {
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "failed",
-      "evidence": "The original npm run test command remains a comprehensive unclassified command and was not rerun separately for Commit 11. The new blocking runner invoked the same complete Vitest suite with JSON classification: 1,322/1,366 tests passed, with 3 current-version failures and 41 exact deferred failures. Repository-wide clean status is not claimed."
+      "evidence": "The original npm run test command remains a comprehensive unclassified command and was not rerun separately for Commit 12. The blocking runner invoked the same complete Vitest suite with JSON classification: 1,324/1,366 tests passed, with 1 current-version Commit 13 failure and 41 exact deferred failures. Repository-wide clean status is not claimed."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "Current Commit 11 exact-clean staged-patch validation on base 79322c4b: TypeScript completed successfully."
+      "evidence": "Current Commit 12 exact-clean staged-patch validation on base b4178415: TypeScript completed successfully."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Current Commit 11 exact-clean staged-patch validation on base 79322c4b: Vite transformed 3,466 modules and the esbuild server bundle completed successfully."
+      "evidence": "Current Commit 12 exact-clean staged-patch validation on base b4178415: Vite transformed 3,466 modules and the esbuild server bundle completed successfully."
     }
   ],
   "externalGates": [

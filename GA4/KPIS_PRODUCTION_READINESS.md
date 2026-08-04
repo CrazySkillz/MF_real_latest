@@ -47,16 +47,16 @@ Current blockers on exact deployed revision `1166b9f27b81a06bd5c8b43072f77379e46
 - both automatic `b91d0968` monitors failed closed at approximately `2026-08-03T13:01Z` because deployment changed to `82369cf5`; neither result is evidence for a later revision
 - later GA4 Insights, Reports, live UI, analytics, reporting-timezone, route, and shared-consumer changes touched the KPI dependency boundary, so the earlier clean 491-test result cannot be carried forward
 - because those changes include provider/window, browser-state, and report-output dependencies, the historical target inventory, provider, state-matrix, and browser/report external gates also require current-boundary revalidation
-- the exact clean `1166b9f2` applicable packet passes 44/46 files and 488/491 tests. Two Benchmark tests use a removed `// --- Rolling window rollups` slice end marker even though the current tracker still contains the guarded eligibility/scoring logic; these are stale structural assertions. The Insights/report parity test also fails because `Current GA4 total` is no longer present inside the live Executive Financials slice while it remains in report output; that boundary must be traced before deciding whether the implementation or assertion is wrong
-- Commit 11 exact-clean staged-patch validation passes TypeScript and the production build. Its complete underlying Vitest execution passes 1,322/1,366 tests; the required current-version gate fails only on the 3 applicable KPI tests and reports the exact 41 retained deferred failures separately
+- Current Commit 12 exact-clean staged-patch validation confirms the Benchmark tracker still applies the shared consumer-state eligibility gate before threshold scoring and counts insufficient rows separately. Its obsolete `// --- Rolling window rollups` slice ends now use the first post-tracker declaration, `const insightsRollupRows`; the focused file passes 15/15 and the affected shared packet passes 14 files / 123 tests without a runtime change
+- Current Commit 12's complete clean-boundary execution passes 1,324/1,366 tests. The required current-version gate now fails only on the one Commit 13 Insights/report parity test and reports the exact 41 retained deferred failures separately
 - current-version product scope explicitly excludes TikTok, Meta, LinkedIn, and Instagram; their 21 recorded failures remain retained, visible, deferred future-version evidence and are not represented as passing
 - Google Ads has no configured test account, so its 19 recorded failures and live production-standard validation are deferred; Google Ads is not certified by this GA4 KPI review
 - the remaining outside-scope failure is the separate GA4 Ad Comparison certification gate, which is not a KPI-tab consumer and must be closed by that feature's own readiness work
-- `npm run test` remains the comprehensive unclassified command and is not represented as clean. Commit 11 now supplies the blocking `npm run test:current-version` gate and the visible non-blocking `npm run test:deferred` evidence command; the current-version gate remains red only on the three Commit 12-13 KPI failures
+- `npm run test` remains the comprehensive unclassified command and is not represented as clean. Commit 11 supplies the blocking `npm run test:current-version` gate and the visible non-blocking `npm run test:deferred` evidence command; after Commit 12 the current-version gate remains red only on the one Commit 13 failure
 - the current production process started its GA4 daily scheduler at `2026-08-04T04:17:09.854Z`, after the 03:00 slot. It has zero runs and schedules the next natural execution for `2026-08-05T03:00:00Z`
 - current-SHA GA4 KPI alert attempts exist, but Mailgun rejects them with HTTP `429`; its latest response says the 100-email daily limit resets after `2026-08-04T19:34:00Z`. No current-SHA delivered KPI alert with provider response ID and delivered timestamp exists
 
-Current Commit 11 is implemented and locally validated. Closure now requires Current Commits 12-14: the three GA4 KPI failures must pass, the current-version required suite must become green, deferred tests must remain separately visible, and all listed GA4 external gates must pass on the final dependency boundary. Status remains `UNVERIFIED`.
+Current Commits 11-12 are implemented and locally validated. Closure now requires Current Commits 13-14: the remaining GA4 KPI failure must pass, the current-version required suite must become green, deferred tests must remain separately visible, and all listed GA4 external gates must pass on the final dependency boundary. Status remains `UNVERIFIED`.
 
 #### Chronological smallest-safe fix queue
 
@@ -72,10 +72,39 @@ Current Commit 11 is implemented and locally validated. Closure now requires Cur
 9. **Persistence/destructive safety — implemented and locally validated in Current Commit 9; certification remains withdrawn.** KPI progress value and rolling averages now match live KPI `numeric(18,2)` capacity. Exact campaign-and-KPI notification hides, progress rows, alert rows, period rows, and the KPI parent delete run in one transaction; any failure rolls back the operation for safe retry.
 10. **Full validation and re-certification — invalidated again by later dependency changes; certification remains withdrawn.** Exact deployed `1166b9f27b81a06bd5c8b43072f77379e46453f4` passes TypeScript and build, but its applicable KPI packet has three failures, current-SHA alert delivery is provider-rate-limited, and its process started after the natural 03:00 scheduler slot. The chronological queue above is controlling.
 
-11. **Current-version test boundary -- implemented and locally validated; required suite remains red on Commits 12-13.** The exact 41-test identity manifest and classifier execute every test, fail closed on any non-deferred failure or missing/renamed deferred identity, and keep the three deferred groups runnable and visible. CI blocks on `test:current-version` and records `test:deferred` with `continue-on-error`; no test or runtime behavior was changed.
-12. **KPI Benchmark regression alignment -- pending.** Update only the two obsolete Benchmark source-slice boundaries after confirming the guarded tracker eligibility and scoring logic remains present. No runtime change is justified by current evidence; both tests and the affected shared packet must pass.
+11. **Current-version test boundary -- implemented and locally validated; required suite remains red on Commit 13.** The exact 41-test identity manifest and classifier execute every test, fail closed on any non-deferred failure or missing/renamed deferred identity, and keep the three deferred groups runnable and visible. CI blocks on `test:current-version` and records `test:deferred` with `continue-on-error`; no test or runtime behavior was changed.
+12. **KPI Benchmark regression alignment -- implemented and locally validated.** Root-cause tracing confirmed the production tracker still applies shared eligibility, insufficient-data exclusion, and metric-aware scoring. All three uses of the removed slice terminator in the same regression file now end at `const insightsRollupRows`; two had failed explicitly and the third could otherwise overrun to end-of-file. The focused file and affected shared packet pass with test-only changes.
 13. **KPI Insights/report parity -- pending.** Trace the live Executive Financials, browser-PDF, and server-report copy paths, determine the authoritative contract, make only the smallest safe runtime or assertion correction, and require the parity regression plus the complete applicable KPI packet to pass.
 14. **Final GA4 KPI external validation and certification -- pending.** Deploy the final implementation SHA once, rerun the read-only inventory and refresh-disabled provider checks, rerun mutation-blocked browser/report validation, capture provider-confirmed KPI-alert delivery and natural scheduler completion, then update exact-SHA evidence. Mark `PRODUCTION_READY` only if every included test and external gate passes.
+### Current Commit 12 - KPI Benchmark regression alignment
+
+Status: implemented and locally validated on the exact clean staged-patch boundary based on `b4178415a1155dd2a411a0aa79d8fcd498394c0d`. Certification remains `UNVERIFIED`.
+
+Root cause and production-path trace:
+
+- `e34514c2` replaced the former rolling-window block and removed its `// --- Rolling window rollups` marker when Insights rollups moved to the shared production builder
+- the three tracker slices in `server/ga4-benchmark-regression.test.ts` still searched for that removed marker; two failed at the explicit end-boundary assertion, while the third sliced to end-of-file and could pass too broadly
+- the current `benchmarkTracker` calls `getBenchmarkConsumerState` first, counts blocked, insufficient, stale, loading, unavailable, and failed states, skips every ineligible row, and only then calls `computeBenchmarkProgress`
+- `getBenchmarkConsumerState` still combines the live source states, missing dependencies, and `resolveBenchmarkDataSufficiency` reason through the shared `resolveGA4KpiConsumerState` contract; threshold scoring still uses `computeBenchmarkThresholdResult`
+
+Smallest safe change:
+
+- only the three obsolete test slice ends now use the stable first declaration after the tracker, `const insightsRollupRows`
+- no runtime source, formula, value, tracker, card, Insight, report, API, schema, persistence, alert, notification, scheduler, configuration, or production-data behavior changed
+
+Exact-clean staged-patch validation:
+
+- focused Benchmark regression: 1 file / 15 tests passed
+- affected alert/notification/Benchmark packet: 14 files / 123 tests passed
+- `npm run test:current-version`: 1,366 total; 1,324 passed; 42 failed; exactly one blocking current-version failure remains in `ga4-insights-report-parity-regression.test.ts` for Current Commit 13, and exactly 41 deferred failures remain visible
+- `npm run test:deferred`: 41/41 retained identities executed and 41 failed (21 future-platform, 19 Google Ads, 1 GA4 Ad Comparison); the nonzero result is retained evidence, not a success or current-version release blocker
+- certification regression/checker, TypeScript, and production build results are recorded in the machine-readable evidence
+
+What remains:
+
+- Current Commit 13 must resolve the one Insights live/browser-PDF/server-report parity failure and make `npm run test:current-version` green
+- Current Commit 14 must complete the listed exact-final-SHA external gates; production readiness remains unproven
+
 ### Current Commit 11 - Current-version test boundary
 
 Status: implemented and locally validated. The current-version suite correctly remains failed on the three Commit 12-13 KPI regressions; certification remains `UNVERIFIED`.
@@ -603,9 +632,9 @@ Chronological smallest-safe validation-closure queue (current evidence status):
 3. **Timer scheduler Gate 3 — pending for exact current-SHA completion evidence.** Exact deployed `1166b9f27b81a06bd5c8b43072f77379e46453f4` started at `2026-08-04T04:17:09.854Z`, after the daily slot, has zero runs, and schedules the next natural execution for `2026-08-05T03:00:00Z`. Completion requires `lastRunFinishedAt` and exact recompute evidence for the final deployed SHA.
 4. **Provider Gate 4 — historical pass; current-boundary revalidation pending.** Later analytics and reporting-timezone changes touched the provider/window boundary. Rerun the refresh-disabled, non-persisting success and failure checks for the final SHA; no token refresh or persistence is permitted.
 5. **Report/delivery Gate 5 — historical report pass; current-boundary report parity and KPI-alert delivery pending.** Later live UI, Insights, Reports, scheduled-PDF, route, and reporting-timezone changes touched the report boundary, and the current Insights parity test fails. Current `1166b9f2` KPI alert attempts are also rejected by Mailgun HTTP `429`; retry is allowed only after `2026-08-04T19:34:00Z`, and no delivered audit with provider response ID and delivered timestamp exists.
-6. **Final regression Gate 6 — current-version boundary implemented; pending on three current in-scope failures.** Commit 11 exact-clean validation executed all 1,366 tests, classified exactly 41 manifest-bound deferred failures, and left exactly 3 blocking GA4 KPI failures. The two stale Benchmark slice guards require Commit 12; the Insights/report copy boundary requires Commit 13. TypeScript, production build, focused boundary regression, and certification checker pass.
+6. **Final regression Gate 6 -- current-version boundary implemented; pending on one current in-scope failure.** Commit 12 exact-clean validation executed all 1,366 tests, classified exactly 41 manifest-bound deferred failures, and left exactly 1 blocking GA4 KPI failure. The two explicitly failing Benchmark slice guards and the identical over-broad neighboring slice are aligned; the Insights/report copy boundary requires Commit 13. TypeScript, production build, the affected 123-test packet, and certification checks pass.
 
-**Final certification closure rule:** the included GA4 KPI scope may be changed to `PRODUCTION_READY` only when the current-version required suite is explicit and passes, all three GA4 KPI failures are closed and the complete applicable packet passes, deferred tests remain visible and are not represented as passed, Gates 1, 2, 4, and report parity are revalidated on the final dependency boundary, Gate 5 records provider-confirmed KPI-alert delivery for the exact final deployment, and Gate 3 records a completed natural timer run for that same SHA with updated/skipped/failed KPI hashes. Missing evidence, a SHA change, or a new in-scope defect keeps status `UNVERIFIED`.
+**Final certification closure rule:** the included GA4 KPI scope may be changed to `PRODUCTION_READY` only when the current-version required suite is explicit and passes, the remaining GA4 KPI failure is closed and the complete applicable packet passes, deferred tests remain visible and are not represented as passed, Gates 1, 2, 4, and report parity are revalidated on the final dependency boundary, Gate 5 records provider-confirmed KPI-alert delivery for the exact final deployment, and Gate 3 records a completed natural timer run for that same SHA with updated/skipped/failed KPI hashes. Missing evidence, a SHA change, or a new in-scope defect keeps status `UNVERIFIED`.
 
 #### August 4, 2026 invalidated closure evidence
 
@@ -613,6 +642,7 @@ Chronological smallest-safe validation-closure queue (current evidence status):
 - Production health then confirmed exact current deployed SHA `1166b9f27b81a06bd5c8b43072f77379e46453f4`. Its process started the GA4 daily scheduler at `2026-08-04T04:17:09.854Z`, has zero runs, and reports `nextRunAt=2026-08-05T03:00:00.000Z`.
 - Read-only current-SHA audit inspection found GA4 KPI alert attempts but no delivery. Mailgun returned HTTP `429` with reset after `2026-08-04T19:34:00Z`; provider acceptance, response ID, and delivered timestamp are absent.
 - Commit 11 exact-clean staged-patch validation on base `79322c4b`: the current-version command executed 1,366 tests, with 1,322 passed, exactly 3 blocking KPI failures, and exactly 41 visible deferred failures. The focused boundary/certification packet passed 15/15, the checker passed, TypeScript passed, and the production build passed.
+- Commit 12 exact-clean staged-patch validation on base `b4178415`: the focused Benchmark file passed 15/15, the affected packet passed 14 files / 123 tests, and the current-version command executed 1,366 tests with 1,324 passed, exactly 1 blocking Commit 13 failure, and exactly 41 visible deferred failures. The deferred command independently executed 41/41 and reported all 41 failed; TypeScript, production build, certification regression, and checker passed. Runtime behavior did not change.
 - Final status remains **UNVERIFIED**. No production-ready claim is made.
 
 #### August 3, 2026 final closure evidence

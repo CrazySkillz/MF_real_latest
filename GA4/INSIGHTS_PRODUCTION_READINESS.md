@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: UNVERIFIED -->
+<!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Status: **UNVERIFIED**
+Status: **PRODUCTION_READY**
 
 Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
 
-Certified SHA: none
+Certified SHA: `65d1a5055e00e667e75046972c4e3da337874225`
 
-Deployed correction SHA: `e34514c289cc353a4730d41cdd11ef9ca5fea29c`
+Deployed and validated SHA: `65d1a5055e00e667e75046972c4e3da337874225`
 
-Reason: the strict live-tab audit found and corrected ten Major value-path defects. The exact correction SHA is deployed; authenticated owner API/UI parity and deterministic scheduler validation pass. Production contains only one Clerk user, so a real authenticated non-owner request cannot be executed without explicit authority to create and delete an ephemeral production identity. That tenant-isolation gate and final dependency hashes remain pending. Historical readiness wording is invalidated and is not evidence.
+Reason: the strict live-tab audit found and corrected ten Major value-path defects. All focused and affected local suites, TypeScript, production build, machine gate, exact-SHA Render deployment, authenticated owner API/UI parity, authenticated non-owner fail-closed isolation, deterministic scheduler, temporary-identity cleanup, and dependency-hash gates pass for the recorded boundary.
 
-No Critical finding is open. No clean certification may be issued while any Major finding below is open or any production gate remains pending.
+No Critical or Major finding remains open. This certification is revision-specific and is invalidated by any dependency, configuration, contradictory production result, or newly discovered consumer change described in the repository-wide readiness contract.
 
 <!-- /ga4-insights-current-status -->
 
@@ -163,7 +163,7 @@ All ten Major findings invalidate every earlier whole-tab readiness claim. Their
 1. Some legacy mixed Insights regression files also assert Reports output. They may run as repository-wide compatibility checks, but those assertions are not Insights certification evidence.
 2. The daily table previously said vs prior while comparing the prior returned row. It now requires the actual prior calendar day.
 3. The first production validator compared API Sessions with the DOM before the isolated 60-day request reached its stable state. The validator now captures the exact page response and waits for the completed-day summary before comparison.
-4. The initial tenant fixture selected stale campaign owner IDs. The validator now checks Clerk's authoritative user inventory and fails explicitly when no second identity exists; owner-only evidence mode records tenant isolation as not run and cannot satisfy that gate.
+4. The initial tenant fixture selected stale campaign owner IDs. The validator now checks Clerk's authoritative inventory, requires explicit opt-in before creating an ephemeral Clerk-only identity, verifies the real non-owner request fails closed, revokes every validation session, deletes the exact user, confirms its lookup returns 404, and emits success only after cleanup.
 
 No Minor finding changes a visible numeric result after the fixes above.
 
@@ -195,15 +195,16 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: health reported `e34514c289cc353a4730d41cdd11ef9ca5fea29c` |
+| exact Render revision | PASS: health reported `65d1a5055e00e667e75046972c4e3da337874225` |
 | authenticated owner API/UI parity | PASS: property `542352127`, `Europe/Amsterdam`, three saved filters, exact daily/breakdown windows, and API-derived 655 Sessions rendered |
 | incomplete-history state | PASS: 20/30 imported days remained incomplete and was not certified as a complete comparison window |
-| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-03T22:38:04.238Z`; global alerts were suppressed |
-| production identity inventory | BLOCKED: Clerk returned exactly one user, the campaign owner; tenant denial is not inferred from local tests |
+| authenticated non-owner isolation | PASS: an explicitly authorized ephemeral Clerk-only user received 404 from the campaign daily endpoint |
+| temporary identity cleanup | PASS: both validation sessions were revoked, the exact user was deleted, its lookup returned 404, and independent inventory returned to one user |
+| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-04T02:55:37.581Z`; global alerts were suppressed |
 
 ## Required Production Gates
 
-The machine record must remain `UNVERIFIED` until all are recorded against one unchanged revision. Gates 1-4 and 6-8 pass for the deployed correction SHA; gates 5 and 9 remain open:
+All nine gates pass for certified SHA `65d1a5055e00e667e75046972c4e3da337874225`:
 
 1. production build passes
 2. machine certification checker passes
@@ -215,7 +216,7 @@ The machine record must remain `UNVERIFIED` until all are recorded against one u
 8. the deterministic campaign-scoped daily pipeline completes and the post-run live inputs remain in parity
 9. dependency/configuration hashes match the reviewed boundary
 
-Only after all nine gates pass with no Critical or Major issue may the status marker and machine record change to `PRODUCTION_READY`.
+The machine record and status marker are `PRODUCTION_READY`. Any boundary change invalidates this result before reuse.
 
 ## Historical Note
 

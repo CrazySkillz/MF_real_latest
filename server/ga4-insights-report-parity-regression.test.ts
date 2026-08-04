@@ -35,7 +35,6 @@ describe("GA4 Insights report parity", () => {
     const expectedCopy = [
       "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.",
       "Completed-day cutoff",
-      "Current GA4 total",
       "Total across revenue sources",
     ];
 
@@ -48,6 +47,10 @@ describe("GA4 Insights report parity", () => {
       expect(section).not.toContain("7d/30d show rolling daily averages");
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
+    }
+    expect(liveSection).toContain("Exact completed-day window");
+    for (const section of [reportSection, scheduledSection]) {
+      expect(section).toContain("Current GA4 total");
     }
     expect(page).toContain("if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;");
     expect(liveSection).toContain("{executiveFinancialsDescription}");

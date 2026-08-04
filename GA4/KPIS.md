@@ -8,12 +8,12 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of the August 4, 2026 Current Commit 12 validation, the GA4 `KPIs` tab is **not production-ready** and its certification is `UNVERIFIED`.
+As of the August 4, 2026 Current Commit 13 validation, the GA4 `KPIs` tab is **not production-ready** and its certification is `UNVERIFIED`.
 
 The controlling source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Historical June validation remains evidence only. Later shared-input changes and newly traced gaps invalidated cards-to-persistence parity, alert/notification decisions, Insights/report consumers, failure states, scheduler dates, and destructive/persistence safety.
 Future sessions must not carry a readiness answer forward from prose. They must verify the certification record, certified SHA/dependency boundary, invalidation result, real-path parity suite, and remaining external gates. Until that mechanism and the current queue are complete, the answer remains not production-ready.
 
-The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. Current Commits 1-9 and 11-12 are implemented. Commit 11 executes the complete test suite through an exact current-version/deferred identity boundary; it does not skip or weaken deferred tests. Commit 12 aligns only the obsolete Benchmark regression slice boundaries and leaves runtime behavior unchanged. The required current-version suite now remains failed on the one Commit 13 Insights/report parity regression, and Current Commit 14 external validation remains pending.
+The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. Current Commits 1-9 and 11-13 are implemented. Commit 11 executes the complete test suite through an exact current-version/deferred identity boundary; it does not skip or weaken deferred tests. Commits 12-13 align obsolete regression assertions with the traced production contracts and leave runtime behavior unchanged. The required current-version suite passes with zero blocking failures; Current Commit 14 external validation remains pending.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -294,6 +294,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is not production-ready. Current Commits 1-9 and all applicable focused GA4 packets pass; Current Commit 10 proved the deployed KPI-progress numeric migration and found no orphan KPI child rows, but the complete deployed state/scheduler/provider/report matrix remains externally unproven.
+The GA4 `KPIs` tab is not production-ready. Current Commits 1-9 and 11-13 plus all applicable focused GA4 packets pass; the required current-version suite has zero blocking failures, but Current Commit 14's exact-final-SHA external inventory, provider, browser/report, alert-delivery, and natural-scheduler evidence remains pending.
 
-The controlling evidence boundary, prevention contract, external gates, and Current Commits 0-10 are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The controlling evidence boundary, prevention contract, external gates, and chronological Current Commit queue are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

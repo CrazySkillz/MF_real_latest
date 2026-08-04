@@ -110,6 +110,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("getByText(\"Exact completed-day window\", { exact: true }).waitFor");
     expect(validator).toContain("buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate)");
     expect(validator).toContain('cardText("insights-financial-sources")');
+    expect(validator).toContain('source?.displayName || revenueTypeLabel(source?.sourceType)');
     expect(validator).toContain('cardText("insights-summary-sessions")');
     expect(validator).toContain('getByTestId("insights-summary-channel-row")');
     expect(validator).toContain('validateRollingMode("7d", 7)');

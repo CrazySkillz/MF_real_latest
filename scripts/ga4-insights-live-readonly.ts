@@ -250,10 +250,7 @@ try {
       )]
     : revenueDefinitions.filter((definition: any) => definition?.isActive !== false);
   const revenueLabels = revenueDisplaySources.map((source: any) => {
-    const raw = String(source?.displayName || revenueTypeLabel(source?.sourceType)).trim();
-    if (String(source?.sourceType || "").toLowerCase() === "ga4" || raw === "GA4 Revenue") return "Imported GA4 Revenue";
-    if (String(source?.sourceType || "").toLowerCase() === "shopify") return "Shopify";
-    return raw || "Revenue";
+    return String(source?.displayName || revenueTypeLabel(source?.sourceType)).trim() || "Revenue";
   });
   if (ga4HasRevenueMetric) revenueLabels.unshift("GA4 native revenue");
   const sourcesText = await cardText("insights-financial-sources");

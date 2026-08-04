@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: UNVERIFIED -->
+<!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Status: **UNVERIFIED**
+Status: **PRODUCTION_READY**
 
 Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
 
-Certified SHA: none
+Certified SHA: `d6a82a79e11e043154d993e439898c2645871cc9`
 
-Last fully deployed evidence SHA: `ae66edb564feeb89ecb897bb6d37def71bd30959`
+Deployed and validated SHA: `d6a82a79e11e043154d993e439898c2645871cc9`
 
-Reason: the completion audit invalidated the August 4 certification. The production packet proved scope, windows, Data Summary Sessions, freshness labels, tenant isolation, cleanup, and scheduler behavior, but it did not numerically compare every Executive Financial, Data Summary financial/channel value, tracker count, and rendered recommendation against authoritative live inputs. Those paths remain unverified in production.
+Reason: the strengthened production packet captured the exact API responses consumed by the live page and matched every rendered Executive Financial value and source label, every Data Summary value and raw channel row, all four Trends modes, all three tracker values, and every visible finding field. Authentication, non-owner isolation, temporary-identity cleanup, exact deployment, deterministic scheduler, post-scheduler parity, local tests, TypeScript, build, machine gate, and clean-boundary dependency hashes pass for the recorded revision.
 
-No Critical or Major implementation finding is currently open, but clean certification is prohibited until the complete per-surface production parity gate passes and final hashes are regenerated.
+No Critical or Major finding remains open. This certification is revision-specific and is invalidated by any dependency/configuration change, contradictory production result, or newly discovered direct consumer under the repository-wide readiness contract.
 
 <!-- /ga4-insights-current-status -->
 
@@ -160,10 +160,11 @@ All ten Major findings invalidate every earlier whole-tab readiness claim. Their
 
 ### Minor
 
-1. Some legacy mixed Insights regression files also assert Reports output. They may run as repository-wide compatibility checks, but those assertions are not Insights certification evidence.
-2. The daily table previously said vs prior while comparing the prior returned row. It now requires the actual prior calendar day.
-3. The first production validator compared API Sessions with the DOM before the isolated 60-day request reached its stable state. The validator now captures the exact page response and waits for the completed-day summary before comparison.
-4. The initial tenant fixture selected stale campaign owner IDs. The validator now checks Clerk's authoritative inventory, requires explicit opt-in before creating an ephemeral Clerk-only identity, verifies the real non-owner request fails closed, revokes every validation session, deletes the exact user, confirms its lookup returns 404, and emits success only after cleanup.
+1. The daily table previously said vs prior while comparing the prior returned row. It now requires the actual prior calendar day.
+2. The first production validator compared API Sessions with the DOM before the isolated 60-day request reached its stable state. The validator now captures the exact page response and waits for the completed-day summary before comparison.
+3. The initial tenant fixture selected stale campaign owner IDs. The validator now checks Clerk's authoritative inventory, requires explicit opt-in before creating an ephemeral Clerk-only identity, verifies the real non-owner request fails closed, revokes every validation session, deletes the exact user, confirms its lookup returns 404, and emits success only after cleanup.
+4. The strengthened validator initially collapsed the persisted Shopify display name to a generic label. It now follows the live source-label precedence exactly.
+5. The strengthened validator initially expected a channel Revenue cell that the five-column live table does not render. It now validates exactly Channel, Sessions, Share, Conversions, and Conversion Rate while retaining channel revenue as a non-table finding input.
 
 No Minor finding changes a visible numeric result after the fixes above.
 
@@ -182,8 +183,8 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 | Gate | Result |
 |---|---|
-| focused live Insights and affected UI/timezone suite | PASS: 11 files, 83 tests |
-| auth, isolation, source, parity, lifecycle, scheduler-consumer suite | PASS: 13 files, 298 tests |
+| focused live Insights and affected UI/timezone suite | PASS: 11 files, 85 tests |
+| auth, isolation, source, parity, lifecycle, scheduler-consumer suite | PASS: 13 files, 155 tests |
 | focused production calendar/monthly functions | PASS: 5 tests |
 | TypeScript | PASS: `npm run check` |
 | production build | PASS: Vite 3,466 modules and server bundle |
@@ -195,17 +196,18 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: health reported `ae66edb564feeb89ecb897bb6d37def71bd30959` |
-| authenticated owner API/UI parity | PASS: property `542352127`, `Europe/Amsterdam`, three saved filters, exact daily/breakdown windows, and API-derived 655 Sessions rendered |
+| exact Render revision | PASS: health reported `d6a82a79e11e043154d993e439898c2645871cc9` |
+| authenticated owner API/UI parity | PASS: property `542352127`, `Europe/Amsterdam`, USD, three saved filters, exact 60-day daily and 30-day breakdown windows, and page-consumed response parity |
 | incomplete-history state | PASS: 20/30 imported days remained incomplete and was not certified as a complete comparison window |
 | authenticated non-owner isolation | PASS: an explicitly authorized ephemeral Clerk-only user received 404 from the campaign daily endpoint |
 | temporary identity cleanup | PASS: both validation sessions were revoked, the exact user was deleted, its lookup returned 404, and independent inventory returned to one user |
-| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-04T03:11:18.946Z`; global alerts were suppressed |
-| every-surface numeric UI/API parity | PENDING: Executive Financials, all Data Summary financial/channel values, tracker counts, and rendered recommendation evidence require one authoritative production packet |
+| deterministic scheduler | PASS: campaign-scoped manual trigger finished successfully at `2026-08-04T04:03:42.140Z`; global alerts were suppressed; rows remained 20 before/after |
+| post-scheduler parity | PASS: the complete authenticated owner packet passed again after recompute with unchanged scoped values |
+| every-surface numeric UI/API parity | PASS: 5 Executive Financial values, source provenance, 8 Data Summary values, 3 raw channel rows, 4 Trends modes, 3 tracker values, and all 12 visible findings across id/category/severity/title/description/recommendation/basis/confidence matched the exact live-page inputs |
 
 ## Required Production Gates
 
-The machine record remains `UNVERIFIED` until all gates pass on one unchanged revision:
+The machine record is `PRODUCTION_READY` because all gates passed on the recorded unchanged functional revision:
 
 1. production build passes
 2. machine certification checker passes
@@ -217,7 +219,7 @@ The machine record remains `UNVERIFIED` until all gates pass on one unchanged re
 8. the deterministic campaign-scoped daily pipeline completes and the post-run live inputs remain in parity
 9. dependency/configuration hashes match the reviewed boundary
 
-The August 4 `PRODUCTION_READY` record is historical and invalid. A new clean result requires the mandatory every-surface parity gate plus regenerated dependency hashes.
+The earlier August 4 `PRODUCTION_READY` record remains historical and invalid. This certification supersedes it with the mandatory every-surface parity gate and regenerated dependency hashes.
 
 ## Historical Note
 

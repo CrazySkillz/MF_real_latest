@@ -98,9 +98,9 @@ Important meaning:
   saved initial-import boundary through the latest completed day. Reports-owned
   PDFs and all other Reports behavior are separate.
 - `GA4/INSIGHTS.md`
-  Short functional overview of the GA4 Insights tab, including sections, scope contract, reports, and refresh pattern.
+  Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical live-tab Insights production-readiness source of truth. Current status: `UNVERIFIED`; the August 4 certification was invalidated because the production packet did not numerically compare every live surface against its authoritative inputs. Reports-owned behavior is outside this certification.
+  Canonical live-tab Insights production-readiness source of truth. Current status: `PRODUCTION_READY` for certified functional SHA `d6a82a79e11e043154d993e439898c2645871cc9` and the recorded dependency/configuration boundary. Reports-owned behavior is outside this certification.
 - `GA4/REPORTS.md`
   Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats. Current status: not clean-certified as a whole section while KPI-bearing output is `UNVERIFIED`.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`
@@ -202,11 +202,10 @@ These are now part of the GA4 template contract:
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
 - GA4 reporting timezone is a campaign-level setting. `Create New Campaign` and `Edit Campaign` both expose a `Reporting Timezone` select, default new campaigns from the browser timezone when available, fall back to `UTC`, and save the selected IANA timezone through the campaign create/update payload. Dropdown labels remove underscores for readability while preserving exact saved values such as `America/New_York`.
 - GA4 live/mock property boundary is part of the template contract: numeric GA4 property IDs must use live GA4 import/query paths, while only explicit `yesop` demo connections or request-level `?mock=1` may use deterministic simulation. Commit `4074d282` fixed the prior leakage where property `498536418` was treated as the Yesop simulator; user validation passed.
-- GA4 Insights live-tab status is `UNVERIFIED`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` is the sole controlling source for the revision-specific boundary, invalidated evidence, and remaining per-surface production parity gate.
+- GA4 Insights live-tab status is `PRODUCTION_READY` for certified functional SHA `d6a82a79e11e043154d993e439898c2645871cc9`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` is the sole controlling source for the revision-specific boundary and passed production evidence.
 - GA4 Insights Executive Financials source copy is conditional on actual connected sources: it must not claim imported revenue or source-backed spend unless those sources are present, and it should not append date-range copy because Trends owns freshness/date context
 - GA4 Insights Trends uses `Completed-day cutoff` for the completed reporting-day boundary and `Latest imported day` for the latest actual persisted visible row; those can differ when GA4 returns no row for a completed day
-- GA4 Insights report-rendered Trends charts follow the live UI visual contract for the data rendered: zero-based y-axis, light gridlines, muted axes, blue line/bar styling, and readable date labels
-- GA4 Insights `What to investigate next` is validated as grouped, evidence-aware, history-aware, non-causal executive guidance; downloaded and scheduled report output preserves the same intro, finding groups, data basis, confidence, and `Recommended check:` wording as the live Insights tab
+- GA4 Insights `What to investigate next` is validated as grouped, evidence-aware, history-aware, non-causal executive guidance with explicit data basis, confidence, and `Recommended check:` wording
 
 Live GA4 processing caveat:
 

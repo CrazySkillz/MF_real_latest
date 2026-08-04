@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The August 4 certification was invalidated because its production packet did not numerically compare every live Insights surface with its authoritative inputs. Historical local, deployment, isolation, and scheduler evidence remains bounded evidence only.`
+`GA4 Insights is PRODUCTION_READY for certified functional SHA d6a82a79e11e043154d993e439898c2645871cc9 and the dependency/configuration boundary recorded in GA4/certifications/ga4-insights.json. Any boundary change invalidates this revision-specific certification.`
 
 ## Document Ownership
 

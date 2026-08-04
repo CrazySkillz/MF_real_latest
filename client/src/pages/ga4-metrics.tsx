@@ -8111,7 +8111,7 @@ export default function GA4Metrics() {
                       </p>
                     </div>
 
-                    <Card className="border-border">
+                    <Card className="border-border" data-testid="insights-executive-financials">
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                         <CardDescription>
@@ -8126,7 +8126,7 @@ export default function GA4Metrics() {
                           </div>
                         )}
                         <div className="grid gap-4 md:grid-cols-5">
-                          <Card>
+                          <Card data-testid="insights-financial-spend">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
                               <div className="text-2xl font-bold text-foreground">
@@ -8134,7 +8134,7 @@ export default function GA4Metrics() {
                               </div>
                             </CardContent>
                           </Card>
-                          <Card>
+                          <Card data-testid="insights-financial-revenue">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Revenue</div>
                               <div className="text-2xl font-bold text-foreground">
@@ -8142,7 +8142,7 @@ export default function GA4Metrics() {
                               </div>
                             </CardContent>
                           </Card>
-                          <Card>
+                          <Card data-testid="insights-financial-profit">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Profit</div>
                               <div className={`text-2xl font-bold ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -8154,7 +8154,7 @@ export default function GA4Metrics() {
                               </div>
                             </CardContent>
                           </Card>
-                          <Card>
+                          <Card data-testid="insights-financial-roas">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
                               <div className="text-2xl font-bold text-foreground">
@@ -8167,7 +8167,7 @@ export default function GA4Metrics() {
                               </div>
                             </CardContent>
                           </Card>
-                          <Card>
+                          <Card data-testid="insights-financial-roi">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
                               <div className="text-2xl font-bold text-foreground">
@@ -8183,7 +8183,7 @@ export default function GA4Metrics() {
                         </div>
 
                         {/* Sources used (provenance) */}
-                        <div className="mt-4 pt-3 border-t border-border text-xs text-muted-foreground/70">
+                        <div className="mt-4 pt-3 border-t border-border text-xs text-muted-foreground/70" data-testid="insights-financial-sources">
                           <div className="font-medium text-foreground/80/60 mb-1">Sources used</div>
                           <div className="grid gap-1">
                             <div>
@@ -8199,7 +8199,7 @@ export default function GA4Metrics() {
                     </Card>
 
                     {/* Trends card — replaces Performance Rollups with chart + metric selector */}
-                    <Card className="border-border">
+                    <Card className="border-border" data-testid="insights-trends">
                       <CardHeader>
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
@@ -8572,7 +8572,7 @@ export default function GA4Metrics() {
                     </Card>
 
                     {/* Data Summary — always visible when data exists */}
-                      <Card className="border-border">
+                      <Card className="border-border" data-testid="insights-data-summary">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg">Data Summary</CardTitle>
                           <CardDescription>
@@ -8588,7 +8588,7 @@ export default function GA4Metrics() {
                           )}
                           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             {ga4InsightsDailyResp !== undefined && (
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-sessions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(insightsDataSummaryTotals.sessions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
@@ -8597,7 +8597,7 @@ export default function GA4Metrics() {
                               </div>
                             )}
                             {ga4InsightsDailyResp !== undefined && (
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-conversions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Conversions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(insightsDataSummaryTotals.conversions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
@@ -8606,7 +8606,7 @@ export default function GA4Metrics() {
                               </div>
                             )}
                             {(financialRevenueAvailable || financialRevenueLoading) && (
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-revenue">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(financialRevenue))}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
@@ -8615,7 +8615,7 @@ export default function GA4Metrics() {
                               </div>
                             )}
                             {channelAnalysis && channelAnalysis.topSessionChannel && (
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-top-channel">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Top Channel</p>
                                 <p className="text-base font-bold text-foreground mt-1 truncate" title={channelAnalysis.topSessionChannel.label}>
                                   {channelAnalysis.topSessionChannel.label}
@@ -8628,12 +8628,12 @@ export default function GA4Metrics() {
                           </div>
                           {(financialSpendAvailable || financialSpendLoading) && (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4 pt-4 border-t">
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-spend">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Total Spend</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(financialSpend))}</p>
                               </div>
                               {(financialRevenueAvailable || financialRevenueLoading) && (
-                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-profit">
                                   <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Profit</p>
                                   <p className={`text-xl font-bold mt-1 ${(financialRevenue - financialSpend) >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
                                     {renderFinancialValue(financialRevenueLoading || financialSpendLoading, financialRevenueAvailable && financialSpendAvailable, formatMoney(financialRevenue - financialSpend))}
@@ -8641,7 +8641,7 @@ export default function GA4Metrics() {
                                 </div>
                               )}
                               {(financialRevenueAvailable || financialRevenueLoading) && (
-                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-roas">
                                   <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">ROAS</p>
                                   <p className={`text-xl font-bold mt-1 ${financialROAS >= 1 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
                                     {renderFinancialValue(
@@ -8654,7 +8654,7 @@ export default function GA4Metrics() {
                                 </div>
                               )}
                               {ga4FinancialNativeAvailable && (
-                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-cpa">
                                   <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA</p>
                                   <p className="text-xl font-bold text-foreground mt-1">{financialSpend > 0 && financialConversions > 0 ? formatMoney(financialCPA) : "—"}</p>
                                 </div>
@@ -8683,7 +8683,7 @@ export default function GA4Metrics() {
                                       const cr = ch.sessions > 0 ? (ch.conversions / ch.sessions * 100) : 0;
                                       const isLowestCR = channelAnalysis.channels.length > 1 && channelAnalysis.lowestCRChannel?.label === ch.label;
                                       return (
-                                        <tr key={ch.label} className="border-b last:border-b-0">
+                                        <tr key={ch.label} className="border-b last:border-b-0" data-testid="insights-summary-channel-row" data-channel-label={ch.label}>
                                           <td className="p-2 pl-3 text-foreground font-medium truncate max-w-[200px]" title={ch.label}>{ch.label}</td>
                                           <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.sessions)}</td>
                                           <td className="p-2 text-right tabular-nums text-muted-foreground/70">{share.toFixed(0)}%</td>
@@ -8702,8 +8702,14 @@ export default function GA4Metrics() {
                         </CardContent>
                       </Card>
 
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <Card>
+                    <div
+                      className="grid gap-4 md:grid-cols-3"
+                      data-testid="insights-trackers"
+                      data-total={insights.length}
+                      data-high={insights.filter((i) => i.severity === "high").length}
+                      data-medium={insights.filter((i) => i.severity === "medium").length}
+                    >
+                      <Card data-testid="insights-tracker-total">
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
@@ -8714,7 +8720,7 @@ export default function GA4Metrics() {
                           </div>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card data-testid="insights-tracker-high">
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
@@ -8727,7 +8733,7 @@ export default function GA4Metrics() {
                           </div>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card data-testid="insights-tracker-medium">
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
@@ -8742,7 +8748,7 @@ export default function GA4Metrics() {
                       </Card>
                     </div>
 
-                    <Card className="border-border">
+                    <Card className="border-border" data-testid="insights-findings">
                       <CardHeader>
                         <CardTitle className="text-lg">What to investigate next</CardTitle>
                         <CardDescription>{insightsActionDescription}</CardDescription>
@@ -8782,7 +8788,19 @@ export default function GA4Metrics() {
                                                     : "bg-muted text-foreground border-border dark:text-slate-200";
                                           const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : isInfo ? "Info" : "Low";
                                           return (
-                                            <div key={i.id} className="rounded-lg border border-border p-4">
+                                            <div
+                                              key={i.id}
+                                              className="rounded-lg border border-border p-4"
+                                              data-testid="insights-finding"
+                                              data-insight-id={i.id}
+                                              data-category={i.category}
+                                              data-severity={i.severity}
+                                              data-title={i.title}
+                                              data-description={i.description}
+                                              data-recommendation={i.recommendation || ""}
+                                              data-basis={i.dataBasis || ""}
+                                              data-confidence={i.confidence || ""}
+                                            >
                                               <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                   <div className="flex items-center gap-2 flex-wrap">
@@ -8817,7 +8835,7 @@ export default function GA4Metrics() {
                                   );
                                 })}
                                 {insights.length > visibleInsights.length ? (
-                                  <div className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground/80">
+                                  <div className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground/80" data-testid="insights-hidden-count">
                                     + {insights.length - visibleInsights.length} more insights not shown in this summary.
                                   </div>
                                 ) : null}

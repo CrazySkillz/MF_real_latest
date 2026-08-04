@@ -346,7 +346,7 @@ describe("GA4 UI regression guard", () => {
     const browserReportEnd = ga4Metrics.indexOf("if (!includeInsightsActions)", browserReportStart);
     const browserReportSection = ga4Metrics.slice(browserReportStart, browserReportEnd);
     const liveStart = ga4Metrics.indexOf("{/* Data Summary");
-    const liveEnd = ga4Metrics.indexOf("<div className=\"grid gap-4 md:grid-cols-3\">", liveStart);
+    const liveEnd = ga4Metrics.indexOf('data-testid="insights-trackers"', liveStart);
     const liveSection = ga4Metrics.slice(liveStart, liveEnd);
 
     expect(browserReportStart).toBeGreaterThan(-1);

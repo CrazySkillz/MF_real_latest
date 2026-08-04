@@ -12,6 +12,11 @@
     "check:ga4-ad-comparison-certification": "tsx server/ga4-ad-comparison-certification-gate.ts",
     "check:ga4-insights-certification": "tsx server/ga4-insights-certification-gate.ts",
     "test": "vitest run --pool forks",
+    "test:current-version": "tsx scripts/ga4-kpi-current-version-test-boundary.ts current",
+    "test:deferred": "tsx scripts/ga4-kpi-current-version-test-boundary.ts deferred",
+    "test:deferred:future-platforms": "tsx scripts/ga4-kpi-current-version-test-boundary.ts deferred future-platforms",
+    "test:deferred:google-ads": "tsx scripts/ga4-kpi-current-version-test-boundary.ts deferred google-ads",
+    "test:deferred:ga4-ad-comparison": "tsx scripts/ga4-kpi-current-version-test-boundary.ts deferred ga4-ad-comparison",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "db:push": "drizzle-kit push"

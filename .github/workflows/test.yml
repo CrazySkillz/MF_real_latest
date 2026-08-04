@@ -14,4 +14,7 @@ jobs:
           node-version: 22
       - run: npm ci --ignore-scripts
       - run: npm run check:ga4-kpi-certification
-      - run: npm run test
+      - run: npm run test:current-version
+      - name: Retained deferred-source evidence (non-blocking)
+        continue-on-error: true
+        run: npm run test:deferred

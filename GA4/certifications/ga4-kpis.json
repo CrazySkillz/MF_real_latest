@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "70197b4912393e4eb78dffb2bf79bd0b85fa833535f5e40d48470951298b9c67",
+  "contractSha256": "652000fff86228a269845ca2b37411c1b2633db491bd8d66bf8ef53eed302f20",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "1166b9f27b81a06bd5c8b43072f77379e46453f4",
+  "lastReviewedSha": "79322c4bd9484b282e94d1ba8a434e0a2c85efb1",
   "certifiedSha": null,
-  "invalidationReason": "UNVERIFIED on reviewed/deployed SHA 1166b9f27b81a06bd5c8b43072f77379e46453f4. Intervening GA4 Insights, Reports, live UI, analytics, reporting-timezone, route, and shared-consumer changes invalidated the b91d0968 evidence. The exact clean applicable packet passes 44/46 files and 488/491 tests, with two stale Benchmark slice assertions and one unproven Insights live/report copy-parity assertion. Current-SHA natural daily scheduler completion is absent because the process started after 03:00 UTC; the next run is 2026-08-05T03:00:00Z. Current-SHA KPI alert delivery is blocked by Mailgun HTTP 429 until after 2026-08-04T19:34:00Z.",
+  "invalidationReason": "UNVERIFIED after Current Commit 11 exact-clean staged-patch validation on base 79322c4bd9484b282e94d1ba8a434e0a2c85efb1. The complete 1,366-test execution has exactly 3 blocking GA4 KPI failures reserved for Commits 12-13 and exactly 41 manifest-bound visible deferred failures. Current-SHA inventory/provider/browser/report revalidation, KPI-alert delivery, and natural scheduler completion remain pending for Commit 14.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -61,7 +61,10 @@
     { "path": "GA4/REPORTS.md", "role": "downstream Reports contract", "sha256": null },
     { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "downstream Reports readiness dependency", "sha256": null },
     { "path": "package.json", "role": "checker and test command contract", "sha256": null },
-    { "path": ".github/workflows/test.yml", "role": "existing CI integration", "sha256": null },
+    { "path": ".github/workflows/test.yml", "role": "blocking current-version and non-blocking deferred CI integration", "sha256": null },
+    { "path": "scripts/ga4-kpi-current-version-test-boundary.json", "role": "exact retained deferred test identity and release-scope manifest", "sha256": null },
+    { "path": "scripts/ga4-kpi-current-version-test-boundary.ts", "role": "current-version failure classifier and deferred-suite runner", "sha256": null },
+    { "path": "server/ga4-kpi-current-version-test-boundary.test.ts", "role": "release-boundary inventory, fail-closed classification, and CI wiring regression", "sha256": null },
     { "path": "server/ga4-kpi-certification-gate.ts", "role": "certification invalidation checker", "sha256": null },
     { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": null },
     { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": null },
@@ -167,7 +170,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 4, 2026 after the current evidence update: 1 file / 9 tests passed and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "Current Commit 11 exact-clean validation: the certification regression passed 9/9 within the 2-file / 15-test focused packet, and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -236,22 +239,34 @@
       "evidence": "August 3, 2026 final combined packet: 3 files / 11 tests passed."
     },
     {
+      "id": "current_version_release_suite",
+      "command": "npm run test:current-version",
+      "status": "failed",
+      "evidence": "Current Commit 11 exact-clean staged-patch validation on base 79322c4b executed all 1,366 tests: 1,322 passed; exactly 3 current-version GA4 KPI tests failed; exactly 41 manifest-bound deferred tests failed. The command exited nonzero on the 3 blocking tests as required. Commits 12-13 must make this gate green."
+    },
+    {
+      "id": "deferred_release_suites",
+      "command": "npm run test:deferred",
+      "status": "not_applicable",
+      "evidence": "Current Commit 11 exact-clean validation executed 41/41 retained identities and reported 41 failures: future platforms 21, Google Ads 19, GA4 Ad Comparison 1. The command exited nonzero and no deferred suite is represented as passed; this evidence is not applicable to GA4 KPI readiness."
+    },
+    {
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "failed",
-      "evidence": "August 4, 2026 on exact clean 1166b9f2: 339/371 files and 1,316/1,360 tests passed. Three failures are in the applicable KPI packet; 41 failures are outside KPI scope, including deferred Google Ads, Instagram, Meta, and TikTok work. This command is not represented as clean."
+      "evidence": "The original npm run test command remains a comprehensive unclassified command and was not rerun separately for Commit 11. The new blocking runner invoked the same complete Vitest suite with JSON classification: 1,322/1,366 tests passed, with 3 current-version failures and 41 exact deferred failures. Repository-wide clean status is not claimed."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "August 4, 2026 on exact clean reviewed/deployed SHA 1166b9f2: TypeScript completed successfully."
+      "evidence": "Current Commit 11 exact-clean staged-patch validation on base 79322c4b: TypeScript completed successfully."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "August 4, 2026 on exact clean reviewed/deployed SHA 1166b9f2: the Vite client build and esbuild server bundle completed successfully."
+      "evidence": "Current Commit 11 exact-clean staged-patch validation on base 79322c4b: Vite transformed 3,466 modules and the esbuild server bundle completed successfully."
     }
   ],
   "externalGates": [

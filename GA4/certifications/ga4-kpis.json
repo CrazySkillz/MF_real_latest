@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "9b930d5406b0b9192338e091d56922d76c5458794adec7867fbbe795dd8603c0",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "06eb32038ed7d56759f0ac5f2effcfb326c5ef37",
+  "lastReviewedSha": "d5715867adf7e31279f52e1ebd806c3f4d3597fe",
   "certifiedSha": null,
-  "invalidationReason": "Commit 14A correction is implemented and locally validated on the working tree based on 06eb32038ed7d56759f0ac5f2effcfb326c5ef37 but is not deployed. Root cause: GA4 returned 378 dimensionless aggregate engaged sessions versus 377 exact date-dimension engaged sessions for the identical 30-completed-day scope. The documented KPI uses the exact completed-day rows, so their weighted numerator is authoritative; the unmatched aggregate session is diagnostic only and is not allocated into a day. The correction exposes both refresh-disabled query shapes, fixes the latest-row-rate validation defect, keeps alert/notification enrichment on the date-row numerator, and adds a mutation-free readOnly=1 daily browser-validation path. A newly authorized exact-campaign deployed recompute/parity check and Commit 14B external server-report proof remain pending.",
+  "invalidationReason": "Commit 14A correction is deployed on exact SHA d5715867adf7e31279f52e1ebd806c3f4d3597fe. One authorized recompute for campaign hash fc734ddaf728 proved 552 sessions / 377 exact date-dimension engaged sessions = 68.30 across persisted KPI/progress, API, live card, Tracker, Insights, and the one visible notification; the 378-session dimensionless aggregate remains diagnostic only. Browser state used readOnly=1 with zero mutation attempts. Status remains UNVERIFIED because the exact-SHA browser KPI PDF action was not authorized and Commit 14B external server-report proof remains pending.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -175,7 +175,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "Commit 14A correction working tree based on 06eb3203: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "Exact correction content committed as d5715867: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -265,13 +265,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on the Commit 14A correction working tree based on 06eb3203."
+      "evidence": "npm run check passed for the exact correction content committed as d5715867."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build passed on the Commit 14A correction working tree based on 06eb3203; 3,466 client modules transformed and the server bundle completed."
+      "evidence": "npm run build passed for the exact correction content committed as d5715867; 3,466 client modules transformed and the server bundle completed."
     }
   ],
   "externalGates": [
@@ -283,7 +283,7 @@
     {
       "id": "deployed_state_matrix",
       "status": "pending",
-      "evidence": "PENDING on the corrected revision. Historical mutation-blocked browser-state evidence passed on 4287871f, but the corrected daily read-only route and Engagement Rate alert boundary require deployed verification after the new SHA is available. Local real-path coverage proves readOnly=1 makes zero provider, token, backfill, or persistence calls."
+      "evidence": "PARTIAL PASS on exact deployed SHA d5715867. Mutation-proof browser validation made two readOnly=1 daily requests, blocked six provider/token-capable GETs, attempted zero mutations, and proved the Engagement Rate card, fresh Tracker, Insights, and the one visible notification use 68.30. The exact-SHA browser KPI PDF was not generated because that production action may persist report/snapshot state and was outside the recompute authorization."
     },
     {
       "id": "timer_scheduler",
@@ -293,17 +293,17 @@
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "PENDING deployment closure. Prior exact-SHA production evidence found 552 sessions / 377 exact date-dimension engaged sessions (68.30) versus 378 dimensionless aggregate engaged sessions (68.48). The local correction establishes the exact completed-day date rows as the authoritative KPI grain without allocating the unmatched aggregate session, exposes both refresh-disabled numerators, fixes weighted validation, aligns alert enrichment, and adds readOnly=1 browser state access. The correction is not deployed and no new exact-campaign recompute is authorized or claimed."
+      "evidence": "COMMIT 14A CORE PASS on exact deployed SHA d5715867. One authorized campaign-scoped refresh/recompute touched campaign hash fc734ddaf728 only. Refresh-disabled comparison proved 552 sessions / 377 exact date-dimension engaged sessions = 68.30 across persisted KPI/progress, API, card, Tracker, Insights, and visible notification; aggregate 378 remains diagnostic. Exact-SHA provider-auth failure behavior was not re-executed, so the broader external provider gate remains pending."
     },
     {
       "id": "alert_email_delivery",
       "status": "pending",
-      "evidence": "PENDING on the corrected revision because alert current-value resolution changed for Engagement Rate. Historical delivered Mailgun evidence remains bounded to 4287871f and is not carried forward as exact-SHA proof."
+      "evidence": "PENDING on exact SHA d5715867. The live in-app notification contract passed at 68.30, but no new alert email was authorized or delivered for this revision; historical delivery evidence is not carried forward."
     },
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "PENDING. Local real-path coverage proves mutation-free browser daily-state access and date-row Engagement Rate parity. Deployment, exact-campaign cross-consumer parity, and Commit 14B direct snapshot/test-send/manual-send/scheduled-send server PDF and confirmed delivery remain externally unproven."
+      "evidence": "PENDING. Exact-SHA live card, Tracker, Insights, notification, and mutation-proof browser-state parity passed. The browser KPI PDF was not generated because the production action may persist report/snapshot state; Commit 14B direct snapshot/test-send/manual-send/scheduled-send server PDF and confirmed delivery were not started."
     }
   ]
 }

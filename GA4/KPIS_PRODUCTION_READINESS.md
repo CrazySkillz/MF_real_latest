@@ -18,41 +18,37 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### Current Commit 14A correction — August 5, 2026 (controlling status)
+### Current Commit 14A deployed closure - August 5, 2026 (controlling status)
 
-**Result: UNVERIFIED.** The focused Commit 14A correction is implemented and locally validated on the working tree based on `06eb32038ed7d56759f0ac5f2effcfb326c5ef37`. It has not deployed, and this task performed no production recompute, token refresh, provider mutation, or production-data write.
+**Result: UNVERIFIED for exact deployed SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`.** The correction deployed and its authorized core production parity passed. Commit 14A remains open only for the exact-SHA browser KPI PDF action described below. Commit 14B was not started.
 
-Root cause:
+Root cause and authoritative contract:
 
-- the prior certification treated two different GA4 query shapes as if their `engagedSessions` totals were guaranteed additive: the dimensionless aggregate returned 378 while the exact date-dimension rows returned 377 for the same property, saved campaign filter, Europe/Amsterdam timezone, and completed window `2026-07-06..2026-08-04`
-- the documented KPI is the session-weighted result of the exact 30 completed reporting-day rows; those rows are the persisted production grain used by recompute, cards, Tracker, Insights, browser PDF, and reports. The unmatched dimensionless aggregate session cannot be assigned to a date without inventing or allocating data, so it is retained as diagnostic evidence rather than injected into persisted history
-- alert/notification enrichment could replace the authoritative date-row Engagement Rate with the dimensionless aggregate response
-- the validation endpoint selected the latest daily row's rate instead of the weighted completed-window total and did not expose a live exact date-dimension numerator
-- browser validation blocked non-GET mutations but called `GET /ga4-daily`, whose normal product path can backfill and persist missing rows
+- GA4's identically scoped dimensionless aggregate returns 378 engaged sessions while exact date-dimension rows return 377 for property hash `a3d79a4ad228`, campaign-filter hash `7cbbe7e2b10f`, timezone `Europe/Amsterdam`, and completed window `2026-07-06..2026-08-04`
+- the persisted KPI contract is the weighted result of the exact completed-day rows; the unmatched aggregate session cannot be assigned to a date without invention, so it remains diagnostic only
+- the corrected validation endpoint now exposes both numerators and uses the date-dimension numerator; alert/notification enrichment preserves the same value, and `GET /ga4-daily?readOnly=1` cannot refresh, backfill, refresh tokens, or persist
 
-Smallest safe correction implemented:
+Authorized production action and scope:
 
-- `getTimeSeriesWithToken` accepts an explicit end date, allowing a refresh-disabled validation call to compare the exact date-dimension and dimensionless aggregate query shapes over identical boundaries
-- the read-only validation response exposes aggregate and date-dimension `engagedSessions`, their delta, and the exact property/filter/timezone/start/end scope; its scheduler candidate uses the date-dimension numerator and its persisted candidate uses the weighted total, not the latest row rate
-- alert/notification enrichment keeps the exact completed-day row numerator authoritative and fails closed for Engagement Rate when those date rows are unavailable; it does not substitute the dimensionless aggregate
-- `GET /ga4-daily?readOnly=1` reads persisted state only and cannot call the provider, refresh/persist tokens, backfill, or upsert rows. Browser validation must intercept/rewrite the daily request to this mode or inject the state response client-side
-- no formula, campaign/property/owner/filter/window, financial precedence, API removal, schema, daily value, or production data was changed
+- public `/api/health` returned production SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`
+- exactly one authenticated `POST /api/campaigns/:id/ga4/refresh` was issued for campaign hash `fc734ddaf728`; normal token handling and persistence were authorized, and no second recompute was issued
+- the boundary was one owner hash `1900b95d7361`, one active primary connection hash `1c452570e8c9`, property hash `a3d79a4ad228`, the saved campaign filter, and the campaign timezone
+- the operation produced one target GA4 daily update at database timestamp `2026-08-05T12:30:20.759Z` and eight target KPI updates from `2026-08-05T12:38:19.437Z` through `2026-08-05T12:38:21.794Z`; the same bounded interval contained no KPI or GA4 daily writes for another campaign
 
-Exact local evidence:
+Passed exact-SHA evidence:
 
-- focused real-path parity: 1 file / 21 tests passed, including the 61-versus-60 fixture, notification enrichment parity, exact query-shape diagnostic, weighted persisted total, and mutation-free daily read-only route
-- focused affected packet: 5 files / 51 tests passed after correcting only the new test setup; GA4 filter 19, real-path parity 21, engaged-session persistence 4, alert contract 4, and reporting-window 3
-- `npm run test:current-version`: 1,373 total; 1,344 passed; exactly 29 visible deferred failures; zero blocking current-version failures
-- `npm run check`: passed
-- `npm run build`: passed; 3,466 client modules transformed and the server bundle completed
-- certification regression/checker results are recorded in the machine-readable record; status intentionally remains `UNVERIFIED`
+- refresh-disabled provider comparison: date-dimension 552 sessions / 377 engaged sessions = `68.30%`; dimensionless aggregate 378 engaged sessions = `68.48%`, delta 1; token refresh/persistence was disabled for the comparison request
+- persisted 30-day totals: 552 sessions / 377 engaged sessions; KPI current value `68.30`; latest progress `68.30`
+- API/browser consumers: KPI API `68.30`, progress API `68.30`, live KPI card exact, Tracker rendered as fresh, and the Engagement Rate Insights line did not expose `68.48`
+- in-app alert/notification: exactly one unresolved visible notification was returned for the KPI and its enriched current value was `68.30`; the first validation assertion incorrectly treated historical `kpi_alerts` email-send snapshots as current UI values, and the corrected live-consumer check passed without a runtime change
+- mutation-proof browser state: two daily requests were rewritten to `readOnly=1`, six token/provider-capable GETs were blocked, and mutation attempts were `[]`
+- local correction evidence remains clean: focused affected packet 51/51, certification regression 9/9, standalone checker, zero blocking current-version failures, TypeScript, and production build
 
-What remains:
+Precise remaining Commit 14A blocker:
 
-1. **Commit 14A deployed closure:** deploy the focused correction. After deployment, obtain fresh explicit authorization for one exact-campaign recompute limited to campaign hash `fc734ddaf728`. Use the refresh-disabled diagnostic to prove the exact live date-dimension numerator matches the persisted 30-day numerator, then prove the same value across KPI, progress, API, card, Tracker, Insights, alert/Notifications, browser PDF, and server-report consumer inputs. Browser capture must use `readOnly=1` or a fully intercepted state response. If any value differs, keep UNVERIFIED and stop before additional production mutation.
-2. **Commit 14B:** with explicit report-send authorization and an accessible existing owner/report, validate exact KPI selection and freshness through direct snapshot, test-send, manual-send, and scheduled-send, including server PDF and confirmed provider delivery; restore the original report boundary exactly.
+1. **Exact-SHA browser KPI PDF:** not executed. The production UI action may create a report or snapshot, so it was not covered by authorization for one campaign recompute. Shortest safe closure: explicitly authorize one unscheduled KPI browser-PDF generation for campaign hash `fc734ddaf728` on SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`, with every non-GET request blocked and before/after read-only report/snapshot inventory proving zero persistence. Validate that the PDF opens and contains Engagement Rate `68.30%`. Do not recompute again.
 
-No clean certification or production-readiness claim is made.
+After that one artifact passes, Commit 14A can close. Commit 14B remains the separate server direct-snapshot/test-send/manual-send/scheduled-send and confirmed-delivery task. No clean certification or production-readiness claim is made.
 
 ## Historical Status And Evidence (non-authoritative)
 

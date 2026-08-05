@@ -174,7 +174,7 @@ describe("notification visibility regression guard", () => {
     expect(alertMonitoringFile).toContain("const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);");
   });
 
-  it("keeps GA4 KPI create storage-only while update and Benchmark routes reconcile before responses", () => {
+  it("schedules GA4 KPI create reconciliation while update and Benchmark routes reconcile before responses", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
@@ -187,8 +187,9 @@ describe("notification visibility regression guard", () => {
     const kpiUpdateRoute = routesFile.slice(kpiCreateEnd, kpiUpdateEnd);
 
     expect(kpiCreateRoute).toContain("if (String(platformType || '').toLowerCase() === 'google_analytics')");
+    expect(kpiCreateRoute).toContain("scheduleGA4KpiCreatePostResponseProcessing(");
     expect(kpiCreateRoute).toContain("return res.json(responseKpi || kpi);");
-    expect(kpiCreateRoute.indexOf("return res.json(responseKpi || kpi);")).toBeLessThan(kpiCreateRoute.indexOf("checkPerformanceAlerts().catch"));
+    expect(kpiCreateRoute.indexOf("scheduleGA4KpiCreatePostResponseProcessing(")).toBeLessThan(kpiCreateRoute.indexOf("return res.json(responseKpi || kpi);"));
     expect(kpiUpdateRoute).toContain("if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics')");
     expect(kpiUpdateRoute).toContain("await checkPerformanceAlerts();");
     expect(kpiUpdateRoute.indexOf("await checkPerformanceAlerts();")).toBeLessThan(kpiUpdateRoute.indexOf("res.json(responseKPI || updatedKPI);"));

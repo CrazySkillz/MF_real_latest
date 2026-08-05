@@ -14,7 +14,7 @@ One explicitly authorized refresh/recompute ran only for campaign hash `fc734dda
 
 Commit 14B is the single combined remaining validation task; it is not split into another queue. Its local checks pass, but external closure is blocked because Mailgun cannot deliver before `2026-08-05T19:58:54Z`, the required server report paths necessarily run their normal persisted recompute while another recompute was explicitly prohibited, and the exact-SHA browser KPI PDF has not been executed. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
-GA4 KPI creation is deliberately storage-only: validate campaign access and input, persist the submitted KPI (including the visible Current Value), and return it immediately. It does not block on provider access, recompute, alert reconciliation, notification refresh, or report processing. Normal manual refresh, source refresh, and scheduler paths recompute the stored KPI afterward. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
+GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
 
 ## KPI Tab Structure
 
@@ -237,7 +237,7 @@ Expected behavior:
 - email delivery is optional
 - `Email addresses *` and `Alert Frequency` should appear only after `Send email notifications` is selected
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
-- GA4 KPI creation itself does not evaluate or send alerts; the first post-create recompute evaluates the stored KPI, while later KPI updates retain their existing immediate evaluation
+- the GA4 create request does not block on alert evaluation; its scheduled post-response recompute evaluates the stored KPI, while later KPI updates retain their existing synchronous evaluation
 - if a breached GA4 KPI has no active in-app notification row, the next GA4 KPI/Benchmark recompute or daily scheduler cycle should restore exactly one active bell / Notifications alert row
 - opening the bell, opening Notifications, or simply loading the GA4 page should not be relied on as the reconciliation trigger for restoring a missing GA4 in-app alert row
 - if the KPI unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
@@ -263,7 +263,7 @@ The executive snapshot tracker should also recompute whenever related inputs cha
 
 This includes:
 
-- when a newly created KPI is next processed by manual refresh, source refresh, or the scheduler
+- immediately after a new KPI is persisted through its scheduled post-response recompute
 - when an existing KPI is edited
 - when a KPI is deleted
 - when KPI current values change after GA4, revenue, or spend updates

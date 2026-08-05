@@ -40,7 +40,7 @@ function expectBefore(source: string, first: string, second: string): void {
 }
 
 describe("immediate alert email route durability regression guard", () => {
-  it("keeps GA4 platform creation storage-only while updates retain durable immediate attempts", () => {
+  it("schedules GA4 create processing before return while updates retain durable immediate attempts", () => {
     const routes = readRoutes();
     const createRoute = sliceBetween(
       routes,
@@ -55,8 +55,8 @@ describe("immediate alert email route durability regression guard", () => {
 
     expect(createRoute).toContain("if (String(platformType || '').toLowerCase() === 'google_analytics')");
     expect(updateRoute).toContain("toLowerCase() === 'google_analytics' && (okKpi as any)?.campaignId");
-    expectBefore(createRoute, "const kpi = await storage.createKPI(validatedKPI);", "return res.json(responseKpi || kpi);");
-    expectBefore(createRoute, "return res.json(responseKpi || kpi);", 'await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "KPI Create");');
+    expectBefore(createRoute, "const kpi = await storage.createKPI(validatedKPI);", "scheduleGA4KpiCreatePostResponseProcessing(");
+    expectBefore(createRoute, "scheduleGA4KpiCreatePostResponseProcessing(", "return res.json(responseKpi || kpi);");
     expectBefore(updateRoute, "const updatedKPI = await storage.updateKPI(kpiId, validated);", 'await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");');
     expectBefore(updateRoute, 'await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");', "res.json(responseKPI || updatedKPI);");
   });

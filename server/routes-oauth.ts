@@ -3846,6 +3846,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  const scheduleGA4KpiCreatePostResponseProcessing = (campaignId: string, kpiId: string) => {
+    setImmediate(() => {
+      void (async () => {
+        let kpiAlertReconciled = false;
+        try {
+          const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+          kpiAlertReconciled = refreshResult.kpiAlertReconciliationAttempted
+            && !refreshResult.alertReconciliationFailures.includes("kpi");
+        } catch (e: any) {
+          console.warn("[KPI Create] GA4 KPI refresh failed:", e?.message || e);
+        }
+        if (!kpiAlertReconciled) {
+          try {
+            await checkPerformanceAlerts();
+          } catch (e: any) {
+            console.warn("[KPI Create] Alert check failed:", e?.message || e);
+          }
+        }
+        await runImmediateKPIEmailAlertCheck(kpiId, "KPI Create");
+      })().catch((e) => {
+        console.warn("[KPI Create] Background processing failed:", (e as any)?.message || e);
+      });
+    });
+  };
+
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
       try {
@@ -26501,6 +26526,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : kpi;
 
       if (String(platformType || '').toLowerCase() === 'google_analytics') {
+        scheduleGA4KpiCreatePostResponseProcessing(
+          String(validatedKPI.campaignId),
+          String((kpi as any)?.id || ""),
+        );
         return res.json(responseKpi || kpi);
       }
 

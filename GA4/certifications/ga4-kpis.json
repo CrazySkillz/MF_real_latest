@@ -5,7 +5,7 @@
   "status": "UNVERIFIED",
   "lastReviewedSha": "249fc18787409fb5d3700a7f64e091822a99c2d3",
   "certifiedSha": null,
-  "invalidationReason": "The dependency boundary contains an undeployed GA4 KPI-create contract correction: create now validates, persists, and returns without blocking on provider, recompute, alerts, notifications, or reports; normal refresh and scheduler paths process the stored KPI later. Deployed timing remains unproven. Status also remains UNVERIFIED because the exact-SHA browser KPI PDF is unexecuted, required server report paths invoke persisted KPI/Benchmark recompute, and provider-confirmed delivery remains pending.",
+  "invalidationReason": "The dependency boundary contains an undeployed GA4 KPI-create correction: create validates and persists, schedules the complete existing recompute and downstream propagation lifecycle, then returns without waiting for it. Deployed timing and post-response completion remain unproven. Status also remains UNVERIFIED because the exact-SHA browser KPI PDF is unexecuted, required server report paths invoke persisted KPI/Benchmark recompute, and provider-confirmed delivery remains pending.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -248,7 +248,7 @@
       "id": "kpi_create_latency",
       "command": "npm test -- server/ga4-kpi-create-latency-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-regression.test.ts",
       "status": "passed",
-      "evidence": "August 5 storage-only correction: focused affected packet passed 6 files / 86 tests. GA4 creation returns immediately after the durable insert; current-version suite, TypeScript, production build, and certification checker also passed."
+      "evidence": "August 5 corrected boundary: focused propagation packet passed 8 files / 117 tests. Create returns after durable persistence while the established complete recompute/downstream lifecycle runs post-response; current-version suite, TypeScript, production build, and certification checker passed."
     },
     {
       "id": "current_version_release_suite",

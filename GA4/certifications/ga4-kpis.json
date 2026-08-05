@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "9b930d5406b0b9192338e091d56922d76c5458794adec7867fbbe795dd8603c0",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "d5715867adf7e31279f52e1ebd806c3f4d3597fe",
+  "lastReviewedSha": "249fc18787409fb5d3700a7f64e091822a99c2d3",
   "certifiedSha": null,
-  "invalidationReason": "Commit 14A correction is deployed on exact SHA d5715867adf7e31279f52e1ebd806c3f4d3597fe. One authorized recompute for campaign hash fc734ddaf728 proved 552 sessions / 377 exact date-dimension engaged sessions = 68.30 across persisted KPI/progress, API, live card, Tracker, Insights, and the one visible notification; the 378-session dimensionless aggregate remains diagnostic only. Browser state used readOnly=1 with zero mutation attempts. Status remains UNVERIFIED because the exact-SHA browser KPI PDF action was not authorized and Commit 14B external server-report proof remains pending.",
+  "invalidationReason": "Commit 14A is complete on runtime SHA d5715867adf7e31279f52e1ebd806c3f4d3597fe and evidence-only SHA 249fc18787409fb5d3700a7f64e091822a99c2d3 is deployed. Commit 14B local checks pass with zero blocking current-version failures. Status remains UNVERIFIED because the exact-SHA browser KPI PDF is unexecuted, all required server report paths necessarily invoke persisted KPI/Benchmark recompute while another recompute was explicitly prohibited, and Mailgun rejects current delivery with HTTP 429 until 2026-08-05T19:58:54Z. No report or production-data mutation was performed.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -175,7 +175,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "Exact correction content committed as d5715867: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "August 5 Commit 14B boundary: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -247,7 +247,7 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "Commit 14A correction: all 1,373 tests executed; 1,344 passed; zero blocking current-version failures; exactly 29 retained deferred failures remained visible."
+      "evidence": "August 5 Commit 14B boundary: all 1,373 tests executed; 1,344 passed; zero blocking current-version failures; exactly 29 retained deferred failures remained visible."
     },
     {
       "id": "deferred_release_suites",
@@ -265,13 +265,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed for the exact correction content committed as d5715867."
+      "evidence": "npm run check passed on the August 5 Commit 14B boundary."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build passed for the exact correction content committed as d5715867; 3,466 client modules transformed and the server bundle completed."
+      "evidence": "npm run build passed on the August 5 Commit 14B boundary; 3,466 client modules transformed and the server bundle completed."
     }
   ],
   "externalGates": [
@@ -283,7 +283,7 @@
     {
       "id": "deployed_state_matrix",
       "status": "pending",
-      "evidence": "PARTIAL PASS on exact deployed SHA d5715867. Mutation-proof browser validation made two readOnly=1 daily requests, blocked six provider/token-capable GETs, attempted zero mutations, and proved the Engagement Rate card, fresh Tracker, Insights, and the one visible notification use 68.30. The exact-SHA browser KPI PDF was not generated because that production action may persist report/snapshot state and was outside the recompute authorization."
+      "evidence": "PARTIAL PASS on runtime SHA d5715867 with evidence-only SHA 249fc187 deployed. Mutation-proof browser validation made two readOnly=1 daily requests, blocked six provider/token-capable GETs, attempted zero mutations, and proved the Engagement Rate card, fresh Tracker, Insights, and one visible notification use 68.30. The exact-SHA browser KPI PDF remains unexecuted."
     },
     {
       "id": "timer_scheduler",
@@ -298,12 +298,12 @@
     {
       "id": "alert_email_delivery",
       "status": "pending",
-      "evidence": "PENDING on exact SHA d5715867. The live in-app notification contract passed at 68.30, but no new alert email was authorized or delivered for this revision; historical delivery evidence is not carried forward."
+      "evidence": "PENDING on deployed SHA 249fc187. Read-only audit found current exact-campaign KPI alert events rejected by Mailgun HTTP 429 with no provider response ID or delivered timestamp; the provider says the daily limit resets after 2026-08-05T19:58:54Z. Historical delivery is not carried forward."
     },
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "PENDING. Exact-SHA live card, Tracker, Insights, notification, and mutation-proof browser-state parity passed. The browser KPI PDF was not generated because the production action may persist report/snapshot state; Commit 14B direct snapshot/test-send/manual-send/scheduled-send server PDF and confirmed delivery were not started."
+      "evidence": "PENDING on deployed SHA 249fc187. Live card, Tracker, Insights, notification, and mutation-proof browser-state parity passed at 68.30. The exact browser PDF remains unexecuted. Manual snapshot, direct PDF, test-send, and scheduled-send were not called because each necessarily invokes persisted GA4 KPI/Benchmark recompute and this task explicitly prohibited another recompute; Mailgun delivery is also unavailable until 2026-08-05T19:58:54Z. Pre-action inventory was report e322c0dbf3a6, campaign fc734ddaf728, owner 1900b95d7361, one recipient, configuration 635669498371, nine snapshots, and 40 send events; no production mutation occurred."
     }
   ]
 }

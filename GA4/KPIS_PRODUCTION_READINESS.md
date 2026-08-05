@@ -18,9 +18,9 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### Current Commit 14A deployed closure - August 5, 2026 (controlling status)
+### Current Commit 14B final-validation attempt - August 5, 2026 (controlling status)
 
-**Result: UNVERIFIED for exact deployed SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`.** The correction deployed and its authorized core production parity passed. Commit 14A remains open only for the exact-SHA browser KPI PDF action described below. Commit 14B was not started.
+**Result: UNVERIFIED for exact deployed SHA `249fc18787409fb5d3700a7f64e091822a99c2d3`.** Commit 14A is complete: its runtime boundary is `d5715867adf7e31279f52e1ebd806c3f4d3597fe`, and `249fc187` adds evidence only. Commit 14B was handled as one combined task and no runtime defect was found, but the external report/delivery evidence could not pass under the exact authorization and provider state below. No additional gate or implementation queue is created.
 
 Root cause and authoritative contract:
 
@@ -30,7 +30,7 @@ Root cause and authoritative contract:
 
 Authorized production action and scope:
 
-- public `/api/health` returned production SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`
+- public `/api/health` returned production SHA `249fc18787409fb5d3700a7f64e091822a99c2d3`
 - exactly one authenticated `POST /api/campaigns/:id/ga4/refresh` was issued for campaign hash `fc734ddaf728`; normal token handling and persistence were authorized, and no second recompute was issued
 - the boundary was one owner hash `1900b95d7361`, one active primary connection hash `1c452570e8c9`, property hash `a3d79a4ad228`, the saved campaign filter, and the campaign timezone
 - the operation produced one target GA4 daily update at database timestamp `2026-08-05T12:30:20.759Z` and eight target KPI updates from `2026-08-05T12:38:19.437Z` through `2026-08-05T12:38:21.794Z`; the same bounded interval contained no KPI or GA4 daily writes for another campaign
@@ -42,13 +42,15 @@ Passed exact-SHA evidence:
 - API/browser consumers: KPI API `68.30`, progress API `68.30`, live KPI card exact, Tracker rendered as fresh, and the Engagement Rate Insights line did not expose `68.48`
 - in-app alert/notification: exactly one unresolved visible notification was returned for the KPI and its enriched current value was `68.30`; the first validation assertion incorrectly treated historical `kpi_alerts` email-send snapshots as current UI values, and the corrected live-consumer check passed without a runtime change
 - mutation-proof browser state: two daily requests were rewritten to `readOnly=1`, six token/provider-capable GETs were blocked, and mutation attempts were `[]`
-- local correction evidence remains clean: focused affected packet 51/51, certification regression 9/9, standalone checker, zero blocking current-version failures, TypeScript, and production build
+- final local evidence on August 5 remains clean: `npm run test:current-version` executed 1,373 tests with 1,344 passing, exactly 29 visible deferred failures, and zero blocking current-version failures; certification regression passed 9/9; the standalone checker, TypeScript, and production build passed; the build transformed 3,466 client modules
 
-Precise remaining Commit 14A blocker:
+Precise Commit 14B blockers:
 
-1. **Exact-SHA browser KPI PDF:** not executed. The production UI action may create a report or snapshot, so it was not covered by authorization for one campaign recompute. Shortest safe closure: explicitly authorize one unscheduled KPI browser-PDF generation for campaign hash `fc734ddaf728` on SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`, with every non-GET request blocked and before/after read-only report/snapshot inventory proving zero persistence. Validate that the PDF opens and contains Engagement Rate `68.30%`. Do not recompute again.
+1. **Provider-confirmed delivery is currently impossible:** read-only audit found the exact campaign's current KPI alert events rejected by Mailgun HTTP `429`. The provider response states that domain `mimosaas.app` exceeded its 100-message daily limit and cannot send again before `2026-08-05T19:58:54Z`. The current events have no provider response ID or delivered timestamp, so neither alert nor report delivery can be claimed.
+2. **The authorized server report paths conflict with the explicit no-recompute boundary:** production tracing confirms manual snapshot, direct snapshot PDF, test-send, and scheduled-send all call `preflightGA4ReportKPIConsumers`, which runs the persisted GA4 KPI/Benchmark recompute before output. Because the task expressly prohibited another recompute, none of those mutation-capable report paths was called.
+3. **Exact-SHA browser KPI PDF remains unexecuted:** no browser report action or persistence occurred. The already-proven card, Tracker, Insights, notification, and mutation-proof browser state remain valid Commit 14A evidence, but they do not prove the downloaded PDF artifact.
 
-After that one artifact passes, Commit 14A can close. Commit 14B remains the separate server direct-snapshot/test-send/manual-send/scheduled-send and confirmed-delivery task. No clean certification or production-readiness claim is made.
+Production inventory before any Commit 14B action identified exactly report hash `e322c0dbf3a6` on campaign hash `fc734ddaf728`, owner hash `1900b95d7361`, one existing recipient, configuration hash `635669498371`, nine snapshots, and 40 send events. No report, snapshot, send-event, KPI, token, connection, source, recipient, schedule, or configuration mutation was performed. Certification can change to `PRODUCTION_READY` only after the browser artifact and the normal recompute-backed report paths complete on one exact deployed boundary and provider-confirmed delivery exists. No clean certification or production-readiness claim is made.
 
 ## Historical Status And Evidence (non-authoritative)
 

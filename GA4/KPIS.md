@@ -8,11 +8,11 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of August 5, 2026, the GA4 KPIs tab remains **UNVERIFIED** for exact deployed SHA `d5715867adf7e31279f52e1ebd806c3f4d3597fe`.
+As of August 5, 2026, the GA4 KPIs tab remains **UNVERIFIED** for exact deployed SHA `249fc18787409fb5d3700a7f64e091822a99c2d3`. Commit 14A is complete; its runtime implementation boundary is `d5715867adf7e31279f52e1ebd806c3f4d3597fe`, and `249fc187` adds evidence only.
 
 One explicitly authorized refresh/recompute ran only for campaign hash `fc734ddaf728`. The exact completed window `2026-07-06..2026-08-04` in `Europe/Amsterdam` produced 552 sessions and 377 date-dimension engaged sessions, so the authoritative Engagement Rate is `68.30%`. The dimensionless aggregate still represents 378 engaged sessions (`68.48%`) and is correctly retained only as diagnostic evidence. Persisted daily totals, KPI, progress, KPI API, live card, Tracker, Insights, and the one visible in-app notification all use `68.30%`. The browser made two `readOnly=1` daily requests, six mutation-capable provider GETs were blocked, and no browser mutation was attempted. Database timestamps in the operation window show eight KPI updates and one GA4 daily update only for the authorized campaign.
 
-Commit 14A is not yet closed because the exact-SHA browser KPI PDF was not generated: the production control may persist report or snapshot state, which was outside the recompute authorization. The shortest remaining step is explicit authorization for that one unscheduled KPI browser-PDF action under a hard non-GET request block and before/after report/snapshot inventory. Commit 14B server-report delivery proof remains separate. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
+Commit 14B is the single combined remaining validation task; it is not split into another queue. Its local checks pass, but external closure is blocked because Mailgun cannot deliver before `2026-08-05T19:58:54Z`, the required server report paths necessarily run their normal persisted recompute while another recompute was explicitly prohibited, and the exact-SHA browser KPI PDF has not been executed. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 ## KPI Tab Structure
 
@@ -284,6 +284,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPIs tab remains UNVERIFIED. Commit 14A is deployed but failed exact-campaign parity because GA4 aggregate and date-dimension Engagement Rate inputs disagree by one engaged session. Commit 14A correction must close that query-shape boundary before Commit 14B performs exact-SHA external server-report proof.
+The GA4 KPIs tab remains UNVERIFIED. Commit 14A is complete: exact date-dimension rows are authoritative and the unmatched aggregate engaged session remains diagnostic only. Commit 14B is one combined final-validation task and remains blocked only by the external conditions recorded in the controlling readiness document.
 
 The controlling evidence and chronological smallest-safe closure queue are documented in GA4/KPIS_PRODUCTION_READINESS.md.

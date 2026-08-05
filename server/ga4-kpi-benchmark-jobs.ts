@@ -230,6 +230,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   const kpiIdsSkipped = new Set<string>();
   const kpiIdsFailed = new Set<string>();
   const alertReconciliationFailures: string[] = [];
+  let kpiAlertReconciliationAttempted = false;
 
   for (const campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "");
@@ -624,6 +625,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
 
   if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && benchmarkIdsSkipped.size === 0 && benchmarkIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts) {
     try {
+      kpiAlertReconciliationAttempted = true;
       const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
       await checkPerformanceAlerts();
     } catch (e: any) {
@@ -654,6 +656,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     benchmarkIdsUpdated,
     benchmarkIdsSkipped: Array.from(benchmarkIdsSkipped),
     benchmarkIdsFailed: Array.from(benchmarkIdsFailed),
+    kpiAlertReconciliationAttempted,
     alertReconciliationFailures,
   };
 }

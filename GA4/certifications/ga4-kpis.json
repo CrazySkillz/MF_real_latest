@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "9b930d5406b0b9192338e091d56922d76c5458794adec7867fbbe795dd8603c0",
+  "contractSha256": "b0679ad0d8a8a7597eff62c118444bbb4136671014f558f389e18fab0c735279",
   "status": "UNVERIFIED",
   "lastReviewedSha": "249fc18787409fb5d3700a7f64e091822a99c2d3",
   "certifiedSha": null,
-  "invalidationReason": "Commit 14A is complete on runtime SHA d5715867adf7e31279f52e1ebd806c3f4d3597fe and evidence-only SHA 249fc18787409fb5d3700a7f64e091822a99c2d3 is deployed. Commit 14B local checks pass with zero blocking current-version failures. Status remains UNVERIFIED because the exact-SHA browser KPI PDF is unexecuted, all required server report paths necessarily invoke persisted KPI/Benchmark recompute while another recompute was explicitly prohibited, and Mailgun rejects current delivery with HTTP 429 until 2026-08-05T19:58:54Z. No report or production-data mutation was performed.",
+  "invalidationReason": "SHA 249fc18787409fb5d3700a7f64e091822a99c2d3 is deployed, but the local dependency boundary now contains an undeployed KPI-create latency correction in the GA4 UI, create route, and KPI/Benchmark job. Its focused, current-version, TypeScript, certification, and build checks pass, but deployment behavior is unproven. Status also remains UNVERIFIED because the exact-SHA browser KPI PDF is unexecuted, required server report paths invoke persisted KPI/Benchmark recompute, and provider-confirmed delivery remains pending.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -127,6 +127,7 @@
     { "path": "server/ga4-kpi-benchmark-summary-regression.test.ts", "role": "tracker and sufficiency regression", "sha256": null },
     { "path": "server/ga4-kpi-benchmark-roas-regression.test.ts", "role": "financial formula regression", "sha256": null },
     { "path": "server/ga4-kpi-regression.test.ts", "role": "KPI UI and route contract regression", "sha256": null },
+    { "path": "server/ga4-kpi-create-latency-regression.test.ts", "role": "KPI create duplicate-work and fail-closed fallback regression", "sha256": null },
     { "path": "server/ga4-cross-tab-consistency.test.ts", "role": "cross-tab structural consistency regression", "sha256": null },
     { "path": "server/ga4-daily-scheduler-regression.test.ts", "role": "daily scheduler regression", "sha256": null },
     { "path": "server/ga4-auto-refresh-regression.test.ts", "role": "automatic refresh regression", "sha256": null },
@@ -244,10 +245,16 @@
       "evidence": "August 3, 2026 final combined packet: 3 files / 11 tests passed."
     },
     {
+      "id": "kpi_create_latency",
+      "command": "npm test -- server/ga4-kpi-create-latency-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-regression.test.ts",
+      "status": "passed",
+      "evidence": "Local August 5 correction: 7 files / 90 tests passed. The successful recompute alert sweep is reused, the original fallback and immediate email ordering remain, and independent browser refetches run concurrently."
+    },
+    {
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "August 5 Commit 14B boundary: all 1,373 tests executed; 1,344 passed; zero blocking current-version failures; exactly 29 retained deferred failures remained visible."
+      "evidence": "Local KPI-create latency correction: all 1,375 tests executed; 1,346 passed; zero blocking current-version failures; exactly 29 retained deferred failures remained visible."
     },
     {
       "id": "deferred_release_suites",

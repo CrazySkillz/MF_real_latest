@@ -781,8 +781,10 @@ export default function GA4Metrics() {
       return response.json();
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
-      await refreshNotificationQueries();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] }),
+        refreshNotificationQueries(),
+      ]);
       setShowKPIDialog(false);
       kpiForm.reset();
       toast({ title: "KPI created successfully" });

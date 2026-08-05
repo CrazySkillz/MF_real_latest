@@ -18,7 +18,43 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### Current Commit 13 local validation - August 4, 2026 (controlling status)
+### Current Commit 14 external validation — August 5, 2026 (controlling status)
+
+**Result: UNVERIFIED for exact reviewed/deployed SHA 4287871f82a84afa70b50cd6cc0f1810040bb016.** Current Commits 0–13 remain implemented. Commit 14 passed target-data inventory, the deployed six-state browser matrix, natural scheduler evidence, GA4 KPI alert delivery, and the current-version regression boundary. Two evidence gaps prevent a clean production-ready claim.
+
+Proven on the exact SHA:
+
+- read-only production inventory: 19 GA4 KPI rows, all 19 campaign-valid, zero null-campaign rows, and zero orphan rows; the apparent zero-row contradiction came from incorrectly filtering the KPI performance status as if it were lifecycle status
+- mutation-blocked deployed valid-zero, unavailable, stale/last-good, blocked, insufficient-data, and list-failure browser states across cards, scoring, KPI Insights, bell/Notifications, and browser PDF/fail-closed no-download behavior; zero mutation attempts and the temporary session was revoked
+- natural scheduled run 2026-08-05T03:00:00.000Z–03:03:01.838Z: campaigns 7 processed/58 skipped/0 failed; KPIs 11 updated/8 skipped/0 failed; Benchmarks 2 updated/2 skipped/0 failed
+- refresh-disabled negative provider behavior: two expired-property campaigns returned GA4 401 without token refresh or persistence; simulated fixtures were not represented as live provider success
+- post-process-start GA4 KPI Mailgun audits with success=true, delivered status, provider response IDs, and delivered timestamps; redacted event hashes b1888bd70bd5, a87ee985dfa4, e4c67cf55c1c, and e9f355b3629e
+- npm run test:current-version: 1,366 executed, 1,325 passed, exactly 41 manifest-bound deferred failures, and zero blocking current-version failures
+- npm run test:deferred: 41/41 retained tests executed and all 41 remained failing/unverified
+- certification regression 9/9, standalone checker, TypeScript, and production build passed
+
+Exact scheduler hashes:
+
+- KPI updated: 318ffb63558f, 409889f93cb8, 43f6a77bb3c2, 7ed1d5c4d10f, 81b4f08b9921, a842bb0ae61a, b4a1159d5030, d6d06e6abefa, dbbc3b440972, fa279a6e77d3, ff24c717b842
+- KPI skipped: 2f27f064cd32, 3d0f126ef97f, 6b20ec6d5b3e, 85cf158ed54d, a75d2728fde4, befd1e90d209, c4cf8ccf2117, dd14fc00c0b8; KPI failed: none
+- Benchmark updated: 263affeee211, 58aa91a9bb2d; skipped: 948c6e2da9cf, 9fb3fc57dd6d; failed: none
+- Campaign processed: 19ad622687db, 1b824d65295c, 213c38df8cc3, 64d466c2b5e9, 895a3cf61f5e, f32d259ab595, fc734ddaf728; 58 additional campaign hashes were classified skipped and none failed
+
+Precise blockers:
+
+1. **Provider/current-value parity:** refresh-disabled live Engagement Rate was 68.48 while the 03:02 scheduler-persisted KPI row was 68.30. This may be expected late-arriving GA4 data, but timestamped post-recompute parity across persisted KPI, alert, Insights, and report consumers is unproven.
+2. **Exact-SHA server-report external parity:** the deployed browser KPI PDF passed and local real-path report regressions passed, but direct snapshot, test-send, manual-send, and scheduled-send were not externally re-proven with exact selected KPI IDs, current recompute freshness, server PDF, and confirmed delivery. No currently accessible existing production report combines KPI selection with recipients/scheduling.
+
+#### Chronological smallest-safe closure queue
+
+14A. Re-run a refresh-disabled live Engagement Rate read immediately after a natural or explicitly authorized exact-scope recompute; compare timestamped persisted KPI, alert resolver, Insights, and report-preflight values. Change runtime code only if tracing proves a defect.
+14B. With explicit report-send authorization and an accessible existing owner/report, validate exact KPI selection and freshness through direct snapshot, test-send, manual-send, and scheduled-send, confirm server PDF and provider delivery, then restore the original report boundary exactly. If no accessible existing fixture exists, keep this evidence pending.
+
+The 41 deferred tests are not passing: 21 cover unavailable future-version sources, 19 require a configured Google Ads test account, and 1 belongs to separate GA4 Ad Comparison certification.
+
+## Historical Status And Evidence (non-authoritative)
+
+### Current Commit 13 local validation - August 4, 2026 (historical)
 
 **Result: not production-ready. Clean certification is withdrawn.** This section supersedes every older production-ready or durable-future-chat answer below; those sections are historical evidence only.
 
@@ -743,7 +779,7 @@ Historical Gate 6 checkpoint on `80a659b8`: the focused new packet passed 6 file
 
 Final certification status: **UNVERIFIED**. Gate 2 and the GA4-local portion of Gate 6 pass. Gate 3 awaits the scheduled time, Gate 4 lacks authenticated access to two campaign owners, and Gate 5 has no existing selected-KPI report with configured recipients/schedule. These are the complete remaining blockers; no additional gate is created.
 
-## Historical Status And Evidence (non-authoritative)
+## Earlier Historical Status And Evidence (non-authoritative)
 
 Everything below this heading predates the August 1, 2026 controlling re-certification. It may be used as historical evidence for a specifically unchanged path, but it cannot supply the current status or bypass Current Commits 0-10 above.
 

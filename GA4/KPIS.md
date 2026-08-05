@@ -8,22 +8,11 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of the August 4, 2026 Current Commit 13 validation, the GA4 `KPIs` tab is **not production-ready** and its certification is `UNVERIFIED`.
+As of August 5, 2026, the GA4 KPIs tab remains UNVERIFIED for exact reviewed/deployed SHA 4287871f82a84afa70b50cd6cc0f1810040bb016.
 
-The controlling source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Historical June validation remains evidence only. Later shared-input changes and newly traced gaps invalidated cards-to-persistence parity, alert/notification decisions, Insights/report consumers, failure states, scheduler dates, and destructive/persistence safety.
-Future sessions must not carry a readiness answer forward from prose. They must verify the certification record, certified SHA/dependency boundary, invalidation result, real-path parity suite, and remaining external gates. Until that mechanism and the current queue are complete, the answer remains not production-ready.
+Current Commit 14 proved the exact-SHA inventory, deployed six-state browser matrix, natural scheduler completion, negative provider behavior, delivered KPI alerts, and zero blocking current-version test failures. Production readiness is not claimed because live Engagement Rate versus scheduler-persisted parity and exact-SHA server-report external parity remain unresolved.
 
-The machine-readable record is `GA4/certifications/ga4-kpis.json`. Run `npm run check:ga4-kpi-certification` before relying on this status. Current Commits 1-9 and 11-13 are implemented. Commit 11 executes the complete test suite through an exact current-version/deferred identity boundary; it does not skip or weaken deferred tests. Commits 12-13 align obsolete regression assertions with the traced production contracts and leave runtime behavior unchanged. The required current-version suite passes with zero blocking failures; Current Commit 14 external validation remains pending.
-
-For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
-
-Current-version certification scope:
-
-- TikTok, Meta, LinkedIn, and Instagram are unavailable in this platform version. Their tests remain retained future-version evidence and are not included in the current GA4 KPI readiness decision.
-- Google Ads has no configured test account. Its automated failures and production-standard external validation remain explicitly deferred; Google Ads is not certified by the GA4 KPI result.
-- The separate GA4 Ad Comparison certification gate is outside the KPI-tab scope.
-- Deferred tests remain runnable and visible through named non-blocking commands; they are not deleted, skipped, weakened, or described as passing.
-
+The controlling evidence and smallest-safe closure queue are in GA4/KPIS_PRODUCTION_READINESS.md. The 41 deferred tests remain visible, failing/unverified, and outside this GA4 KPI release boundary.
 ## KPI Tab Structure
 
 The GA4 `KPIs` tab contains:
@@ -294,6 +283,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is not production-ready. Current Commits 1-9 and 11-13 plus all applicable focused GA4 packets pass; the required current-version suite has zero blocking failures, but Current Commit 14's exact-final-SHA external inventory, provider, browser/report, alert-delivery, and natural-scheduler evidence remains pending.
+The GA4 KPIs tab remains UNVERIFIED. Commit 14 has two precise blockers: timestamped Engagement Rate parity after recompute and exact-SHA external server-report proof for direct snapshot, test-send, manual-send, and scheduled-send KPI selection/delivery.
 
-The controlling evidence boundary, prevention contract, external gates, and chronological Current Commit queue are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The controlling evidence and chronological smallest-safe closure queue are documented in GA4/KPIS_PRODUCTION_READINESS.md.

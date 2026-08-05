@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "652000fff86228a269845ca2b37411c1b2633db491bd8d66bf8ef53eed302f20",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "b017d290e820ae6df9a8598d1037eadb82347bb4",
+  "lastReviewedSha": "4287871f82a84afa70b50cd6cc0f1810040bb016",
   "certifiedSha": null,
-  "invalidationReason": "UNVERIFIED after Current Commit 13 exact-clean staged-patch validation on base b017d290e820ae6df9a8598d1037eadb82347bb4. The stale universal Insights/report copy assertion is aligned with the traced path-specific production contract without runtime changes; the complete 1,366-test execution has zero blocking current-version failures and exactly 41 manifest-bound visible deferred failures. Exact-final-SHA inventory/provider/browser/report revalidation, KPI-alert delivery, and natural scheduler completion remain pending for Commit 14.",
+  "invalidationReason": "Current Commit 14 exact-SHA validation passed target inventory, mutation-blocked deployed states/browser PDF, natural scheduler, delivered KPI alerts, and the current-version regression boundary. Certification remains UNVERIFIED because refresh-disabled Engagement Rate was 68.48 while the 03:02 scheduler-persisted row was 68.30 without timestamped post-recompute cross-consumer parity proof, and exact-SHA direct snapshot/test-send/manual-send/scheduled server-report KPI selection and delivery were not externally re-proven.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -170,7 +170,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "Current Commit 13 exact-clean staged-patch validation: the certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "Current Commit 14 exact-SHA validation: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -242,63 +242,63 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "Current Commit 13 exact-clean staged-patch validation on base b017d290 executed all 1,366 tests: 1,325 passed; exactly 41 manifest-bound deferred tests failed; zero current-version tests failed. The command exited zero with no blocking current-version failures."
+      "evidence": "Exact SHA 4287871f: all 1,366 tests executed; 1,325 passed; zero blocking current-version failures; exactly 41 manifest-bound deferred failures remained visible."
     },
     {
       "id": "deferred_release_suites",
       "command": "npm run test:deferred",
       "status": "not_applicable",
-      "evidence": "Current Commit 13 exact-clean validation executed 41/41 retained identities and reported 41 failures: future platforms 21, Google Ads 19, GA4 Ad Comparison 1. The command exited nonzero and no deferred suite is represented as passed; this evidence is not applicable to GA4 KPI readiness."
+      "evidence": "All 41/41 retained deferred tests executed separately and all 41 failed/unverified: 21 future-platform, 19 Google Ads without a configured test account, and 1 separate GA4 Ad Comparison gate. None is represented as passing or release-blocking."
     },
     {
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "failed",
-      "evidence": "The original npm run test command remains a comprehensive unclassified command and was not rerun separately for Commit 13. The blocking runner invoked the same complete Vitest suite with JSON classification: 1,325/1,366 tests passed, with zero current-version failures and 41 exact deferred failures. Repository-wide clean status is not claimed."
+      "evidence": "The comprehensive execution completed with 1,325/1,366 passing and exactly the 41 manifest-bound out-of-scope failures. This command is not represented as clean; npm run test:current-version has zero blocking failures."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "Current Commit 13 exact-clean staged-patch validation on base b017d290: TypeScript completed successfully."
+      "evidence": "npm run check passed on exact SHA 4287871f."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Current Commit 13 exact-clean staged-patch validation on base b017d290: Vite transformed 3,466 modules and the esbuild server bundle completed successfully."
+      "evidence": "npm run build passed on exact SHA 4287871f; 3,466 client modules transformed and the server bundle completed."
     }
   ],
   "externalGates": [
     {
       "id": "target_data_inventory",
-      "status": "pending",
-      "evidence": "The August 2 inventory remains historical evidence for its exact revision. Later analytics, reporting-timezone, and route changes touched its configuration and production-path boundary, so it cannot be carried to reviewed SHA 1166b9f2 without a fresh read-only inventory. No current-SHA inventory success is inferred."
+      "status": "passed",
+      "evidence": "PASSED on exact deployed SHA 4287871f. Transactionally read-only count: 19 GA4 KPI rows, 19 campaign-valid, zero null-campaign, zero orphan, status tracking. The damaged-data dry-run made no mutation and found zero orphan candidates."
     },
     {
       "id": "deployed_state_matrix",
-      "status": "pending",
-      "evidence": "The August 2 mutation-proof state matrix remains historical evidence for its exact revision. Later live GA4 UI and Insights changes touched the state-consumer boundary, so the matrix must be rerun against the final deployed SHA. No current-SHA browser-state result is inferred."
+      "status": "passed",
+      "evidence": "PASSED on exact deployed SHA 4287871f. Mutation-blocked browser automation covered valid-zero, unavailable, stale/last-good, blocked, insufficient-data, and list-failure states across cards, scoring, KPI Insights, bell/Notifications, and browser PDF/fail-closed no-download behavior. Zero mutation attempts; temporary session revoked."
     },
     {
       "id": "timer_scheduler",
-      "status": "pending",
-      "evidence": "Both b91d0968 automatic monitors failed closed after production changed to 82369cf5. Exact deployed 1166b9f2 started its GA4 daily scheduler at 2026-08-04T04:17:09.854Z, after the 03:00 slot, has zero runs, and reports nextRunAt=2026-08-05T03:00:00Z. Completion requires a natural run with lastRunFinishedAt and exact lastRecomputeEvidence on the final SHA."
+      "status": "passed",
+      "evidence": "PASSED on exact deployed SHA 4287871f. Natural scheduled run 2026-08-05T03:00:00.000Z–03:03:01.838Z: campaigns 7 processed/58 skipped/0 failed; KPIs 11 updated/8 skipped/0 failed; Benchmarks 2 updated/2 skipped/0 failed. Exact hashes are in the canonical document."
     },
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "The August 2 refresh-disabled provider checks remain historical evidence for their exact revision. Later server/analytics.ts and reporting-timezone changes touched the provider/window boundary, so refresh-disabled, non-persisting success and failure checks must be rerun for the final SHA. No current-SHA provider result is inferred."
+      "evidence": "PARTIAL on exact deployed SHA 4287871f. Refresh-disabled live success and two GA4 401 failure cases were observed with no token refresh/persistence. Engagement Rate was 68.48 live versus 68.30 persisted at 03:02; exact timestamped post-recompute parity across persisted, alert, Insights, and report consumers remains unproven."
     },
     {
       "id": "alert_email_delivery",
-      "status": "pending",
-      "evidence": "Both b91d0968 automatic monitors failed closed after production changed to 82369cf5. Read-only current-process inspection on exact deployed 1166b9f2 found GA4 KPI attempts but no provider delivery: Mailgun EU returned HTTP 429 because the domain exceeded its 100-email daily limit, with the latest response stating retry after 2026-08-04T19:34:00Z. Provider response ID and delivered timestamp are absent."
+      "status": "passed",
+      "evidence": "PASSED on exact deployed SHA 4287871f. Post-process-start GA4 KPI Mailgun audits have success=true, delivered status, provider response IDs, and delivery timestamps. Redacted event hashes: b1888bd70bd5, a87ee985dfa4, e4c67cf55c1c, e9f355b3629e."
     },
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "The prior browser/PDF/report-send evidence remains historical for exact revision be926476. Current Commit 13 locally closes the Insights copy parity regression without runtime changes, but later live UI, Insights, Reports, scheduled-PDF, routes, and reporting-timezone changes still require exact-final-SHA browser/report external revalidation. Historical delivery is not rebound."
+      "evidence": "PARTIAL on exact deployed SHA 4287871f. The mutation-blocked deployed browser/PDF matrix passed and local real-path report regressions passed. Exact selected KPI IDs, current recompute freshness, server PDF, and confirmed delivery were not externally re-proven through direct snapshot, test-send, manual-send, and scheduled-send paths because no accessible existing production report combines KPI selection with recipients/scheduling."
     }
   ]
 }

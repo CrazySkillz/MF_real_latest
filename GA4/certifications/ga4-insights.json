@@ -55,7 +55,7 @@
     { "path": "server/ga4-insights-certification-gate.ts", "role": "machine certification checker", "sha256": "1747739335bd9eabf8ed7a6db0839fadc58f9bfece8f85dcbd669074af9e3cd8" },
     { "path": "server/ga4-insights-certification-gate.test.ts", "role": "checker regression tests", "sha256": "554a1288c2c3537602ba2888e08d49bfed221ee3fa38405b5a6f8769269c6d88" },
     { "path": "server/ga4-insights-production-path.test.ts", "role": "actual calculation tests", "sha256": "1163c305d1b8b48c6ed99fba7a676167d91553345f07e15b3d81e847f57e8f5c" },
-    { "path": "server/ga4-insights-live-production-regression.test.ts", "role": "live boundary regression tests", "sha256": "23a720468f81b67c2f9908948345f0d2441c4898d0ddcad279a0d7d7dddac292" },
+    { "path": "server/ga4-insights-live-production-regression.test.ts", "role": "live boundary regression tests", "sha256": "07a7131937184cbd3c8cafb7fa41d2ba86fb892adbb4c0cffeebbb1391d808c0" },
     { "path": "server/ga4-insights-scheduler-validation-regression.test.ts", "role": "scheduler evidence regression tests", "sha256": "90dfb35ee06f2c0c63b57dff87c8fd1d08408f25aaf84fac55a6872ce8ef4658" },
     { "path": "server/ga4-insights-anomaly-location-regression.test.ts", "role": "anomaly source regression tests", "sha256": "0eaf5877ada0c7afc35ddf416867d064e5ceafbcee78e41818e43488c85d8a7c" },
     { "path": "server/ga4-insights-copy-accuracy-regression.test.ts", "role": "copy and state regression tests", "sha256": "1858f35871e300eaa8cacc9a83ceb717f782d45920c515ac22d43de89f7c1852" },
@@ -64,7 +64,7 @@
     { "path": "server/ga4-insights-regression.test.ts", "role": "live Insights regression tests", "sha256": "1cac33a1e67115072a1acf78aac559331b24179871fceb946e9919e7dc7b88ad" },
     { "path": "server/ga4-reporting-day-cutoff-regression.test.ts", "role": "completed-day cutoff regression tests", "sha256": "95a04ae7be57db0e86235303d2eb4310947e78b97bf8822534c95ea6c2891152" },
     { "path": "server/ga4-ui-regression.test.ts", "role": "shared UI regression tests", "sha256": "65c0dc39cfac0df9dae89381d72e67b41fcfc19f28b7d3c3bead6cc1678c40a0" },
-    { "path": "scripts/ga4-insights-live-readonly.ts", "role": "authenticated deployed parity validator", "sha256": "de3cc1bac14a6c624c91e46e7f011a4a17e07e52b0556a134de335b884413377" },
+    { "path": "scripts/ga4-insights-live-readonly.ts", "role": "authenticated deployed parity validator", "sha256": "6d26c151d39cac82d3ce98b04d55ede78c17657a2b922652cf1b2fcba0e3f592" },
     { "path": "scripts/ga4-insights-scheduler-validation.ts", "role": "deterministic deployed scheduler validator", "sha256": "6f3f20bae09f8be8ebb509b7809b20d0f835b42e7eb13d39073d09885b15774a" },
     { "path": "package.json", "role": "validation and build configuration", "sha256": "606264dfae8b2402aed252a41961732d2473645270ed49d67400b294b6981cf3" },
     { "path": "render.yaml", "role": "production deployment configuration", "sha256": "8cfcdc90e89555ffde031b9d0fc7ade309b999750e7ba3dd30bb63139cfc1a18" }

@@ -191,6 +191,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("for (const metric of allTrendMetrics)");
     expect(validator).toContain("for (const metric of nonUserTrendMetrics)");
     expect(validator).toContain('chooseTrendMetric(metric.label)');
+    expect(validator).toContain('formatMoney(value, currency)');
     expect(validator).toContain('await assertChartSeries(expectedChart, mode)');
     expect(validator).toContain('}), "Monthly")');
     expect(validator).toContain('current.days + "/" + current.expectedDays + " imported days"');

@@ -441,7 +441,7 @@ try {
     ? Number(row?.engagementRate || 0)
     : Number(row?.[key] || 0);
   const formatTrendValue = (key: string, value: number) => key === "revenue"
-    ? formatMoney(value)
+    ? formatMoney(value, currency)
     : key === "engagementRate" ? formatPct(value) : formatNumber(value);
 
   await trends.getByRole("button", { name: "Daily", exact: true }).click();

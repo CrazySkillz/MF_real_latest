@@ -354,7 +354,12 @@ try {
       assertIncludes(rendered, String(prior.startDate) + " \u2192 " + String(prior.endDate), mode + " prior range");
       assertIncludes(rendered, formatNumber(prior.sessions), mode + " prior value");
     } else {
-      assertIncludes(await trends.innerText(), "Need at least " + (days * 2) + " days", mode + " insufficient-history state");
+      const rendered = await trends.innerText();
+      assertIncludes(rendered, days + "-day comparison unavailable", mode + " insufficient-history state");
+      assertIncludes(rendered, "Current " + current.startDate + " → " + current.endDate + ": " + current.days + "/" + current.expectedDays + " imported days", mode + " current coverage");
+      assertIncludes(rendered, "Prior " + prior.startDate + " → " + prior.endDate + ": " + prior.days + "/" + prior.expectedDays + " imported days", mode + " prior coverage");
+      assertIncludes(rendered, "Total imported rows in the 60-day response: " + normalizedDailyRows.length, mode + " total imported rows");
+      assertIncludes(rendered, "Missing dates are not assumed to be zero.", mode + " missing-date policy");
     }
   };
   await validateRollingMode("7d", 7);

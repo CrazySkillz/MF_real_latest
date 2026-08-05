@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-insights-live",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "d6a82a79e11e043154d993e439898c2645871cc9",
-  "certifiedSha": "d6a82a79e11e043154d993e439898c2645871cc9",
-  "deployedSha": "d6a82a79e11e043154d993e439898c2645871cc9",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "ee067d3967794ec15d6ffad1337ec3cac6b26e5f",
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "The d6a82a79 certification boundary changed and a newly confirmed Major Trends state mislabeled scattered imported rows as complete reporting days. The corrected revision requires deployment and fresh production parity evidence.",
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
     "includedSurfaces": [
@@ -75,18 +75,18 @@
     "endMarker": "<!-- /ga4-insights-current-status -->"
   },
   "requiredTests": [
-    { "id": "focused_live", "status": "passed", "evidence": "11 files and 85 tests passed on the current local boundary." },
-    { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "13 files and 155 tests passed." },
+    { "id": "focused_live", "status": "passed", "evidence": "11 in-scope Insights and affected shared files passed 87 tests, including the production-helper sparse-date fixture." },
+    { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "13 authentication, isolation, source-scope, parity, and lifecycle files passed 161 tests." },
     { "id": "typescript", "status": "passed", "evidence": "npm run check passed." },
-    { "id": "build", "status": "passed", "evidence": "npm run build passed: Vite transformed 3,466 modules and esbuild produced dist/index.js." },
-    { "id": "machine_gate", "status": "passed", "evidence": "The checker requires explicit live_surface_value_parity and verifies the clean dependency hashes before PRODUCTION_READY." }
+    { "id": "build", "status": "passed", "evidence": "npm run build passed: Vite transformed 3,466 modules and esbuild produced the server bundle." },
+    { "id": "machine_gate", "status": "passed", "evidence": "The checker passed with the controlling status explicitly UNVERIFIED." }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render health reported d6a82a79e11e043154d993e439898c2645871cc9." },
-    { "id": "authenticated_owner_api_ui_parity", "status": "passed", "evidence": "The exact page-consumed property/filter/window/source responses matched the live owner UI on d6a82a79e11e043154d993e439898c2645871cc9, including a post-scheduler rerun." },
-    { "id": "live_surface_value_parity", "status": "passed", "evidence": "5 Executive Financial values plus provenance, 8 Data Summary values, 3 raw channel rows, 4 Trends modes, 3 tracker values, and all 12 visible finding records and fields matched exact live-page inputs." },
-    { "id": "tenant_isolation", "status": "passed", "evidence": "An authorized ephemeral Clerk-only user received 404 for the campaign daily endpoint; both sessions were revoked, the exact user was deleted, its lookup returned 404, and independent inventory returned to one user." },
-    { "id": "deterministic_scheduler", "status": "passed", "evidence": "Campaign-scoped trigger completed successfully at 2026-08-04T04:03:42.140Z on d6a82a79e11e043154d993e439898c2645871cc9 with global alerts suppressed; post-run parity passed." },
-    { "id": "dependency_hashes", "status": "passed", "evidence": "Normalized SHA-256 hashes were regenerated from the clean d6a82a79 functional tree plus the final controlling documentation boundary; unrelated dirty work was excluded." }
+    { "id": "exact_sha_deployment", "status": "pending", "evidence": "The corrected revision has not yet been confirmed on Render." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "pending", "evidence": "Required against the exact corrected deployed revision." },
+    { "id": "live_surface_value_parity", "status": "pending", "evidence": "Exact sparse-history coverage copy and all live surface values require deployed parity." },
+    { "id": "tenant_isolation", "status": "pending", "evidence": "Fresh evidence is required before a new whole-tab certification decision." },
+    { "id": "deterministic_scheduler", "status": "pending", "evidence": "Not required for this copy-only correction; required only for a future whole-tab certification because the scheduler directly updates Insights inputs." },
+    { "id": "dependency_hashes", "status": "pending", "evidence": "The corrected dependency boundary has not been frozen and hashed for certification." }
   ]
 }

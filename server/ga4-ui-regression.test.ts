@@ -585,10 +585,12 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain("const availableMonths = new Set(");
-    expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : insightsTrendMode === "30d" ? 60 : 0;');
+    expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;');
     expect(ga4Metrics).toContain('insightsRollups.last7.complete && insightsRollups.prior7.complete');
     expect(ga4Metrics).toContain('insightsRollups.last30.complete && insightsRollups.prior30.complete');
     expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;');
+    expect(ga4Metrics).toContain("Both adjacent calendar windows must contain every completed reporting day.");
+    expect(ga4Metrics).toContain("Missing dates are not assumed to be zero.");
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
     expect(ga4Metrics).toContain('const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
     expect(ga4Metrics).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);");
@@ -603,7 +605,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Last refreshed <span");
     expect(ga4Metrics).toContain("Expected refresh <span");
     expect(ga4Metrics).toContain("Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run.");
-    expect(ga4Metrics).toContain('`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day${dailyRows.length === 1 ? "" : "s"}`');
+    expect(ga4Metrics).toContain('`${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`');
+    expect(ga4Metrics).not.toContain('`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day${dailyRows.length === 1 ? "" : "s"}`');
     expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.");
   });
 

@@ -100,7 +100,7 @@ Important meaning:
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical live-tab Insights production-readiness source of truth. Current status: `PRODUCTION_READY` for certified functional SHA `d6a82a79e11e043154d993e439898c2645871cc9` and the recorded dependency/configuration boundary. Reports-owned behavior is outside this certification.
+  Canonical live-tab Insights production-readiness source of truth. Current status: `UNVERIFIED`; the prior revision-specific certification was invalidated. Reports-owned behavior is outside this certification.
 - `GA4/REPORTS.md`
   Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats. Current status: not clean-certified as a whole section while KPI-bearing output is `UNVERIFIED`.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`
@@ -199,10 +199,10 @@ These are now part of the GA4 template contract:
   snapshot, scheduler, delivery, and report-library behavior belongs to the
   Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.
-- GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
+- GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 imported daily rows; `7d` needs two complete adjacent 7-calendar-day windows; `30d` needs two complete adjacent 30-calendar-day windows; and `Monthly` needs 2 calendar months. Scattered rows outside the required rolling windows do not satisfy 7d/30d coverage.
 - GA4 reporting timezone is a campaign-level setting. `Create New Campaign` and `Edit Campaign` both expose a `Reporting Timezone` select, default new campaigns from the browser timezone when available, fall back to `UTC`, and save the selected IANA timezone through the campaign create/update payload. Dropdown labels remove underscores for readability while preserving exact saved values such as `America/New_York`.
 - GA4 live/mock property boundary is part of the template contract: numeric GA4 property IDs must use live GA4 import/query paths, while only explicit `yesop` demo connections or request-level `?mock=1` may use deterministic simulation. Commit `4074d282` fixed the prior leakage where property `498536418` was treated as the Yesop simulator; user validation passed.
-- GA4 Insights live-tab status is `PRODUCTION_READY` for certified functional SHA `d6a82a79e11e043154d993e439898c2645871cc9`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` is the sole controlling source for the revision-specific boundary and passed production evidence.
+- GA4 Insights live-tab status is `UNVERIFIED`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` is the sole controlling source for the current revision-specific boundary and required production evidence.
 - GA4 Insights Executive Financials source copy is conditional on actual connected sources: it must not claim imported revenue or source-backed spend unless those sources are present, and it should not append date-range copy because Trends owns freshness/date context
 - GA4 Insights Trends uses `Completed-day cutoff` for the completed reporting-day boundary and `Latest imported day` for the latest actual persisted visible row; those can differ when GA4 returns no row for a completed day
 - GA4 Insights `What to investigate next` is validated as grouped, evidence-aware, history-aware, non-causal executive guidance with explicit data basis, confidence, and `Recommended check:` wording

@@ -27,6 +27,17 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("if (!resp.ok) throw new Error(json?.message || json?.error || \"Failed to fetch KPI analytics history\")");
   });
 
+  it("reports exact rolling-window coverage instead of calling scattered rows complete days", () => {
+    const page = read("client", "src", "pages", "ga4-metrics.tsx");
+
+    expect(page).toContain("Both adjacent calendar windows must contain every completed reporting day.");
+    expect(page).toContain("{rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days");
+    expect(page).toContain("{rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days");
+    expect(page).toContain("Total imported rows in the 60-day response: {dailyRows.length}.");
+    expect(page).toContain("Missing dates are not assumed to be zero.");
+    expect(page).not.toContain("`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day");
+  });
+
   it("renders raw channel rows without proportional allocation", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
     const start = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
@@ -121,6 +132,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(channelCells).not.toContain("formatMoney(expected.revenue");
     expect(validator).toContain('validateRollingMode("7d", 7)');
     expect(validator).toContain('validateRollingMode("30d", 30)');
+    expect(validator).toContain('current.days + "/" + current.expectedDays + " imported days"');
+    expect(validator).toContain('prior.days + "/" + prior.expectedDays + " imported days"');
+    expect(validator).toContain('"Missing dates are not assumed to be zero."');
     expect(validator).toContain('getByRole("button", { name: "Monthly", exact: true }).click()');
     expect(validator).toContain('getByTestId("insights-trackers")');
     expect(validator).toContain('getByTestId("insights-finding")');

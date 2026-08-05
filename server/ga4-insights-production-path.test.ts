@@ -21,6 +21,26 @@ const rows = (start: string, days: number) => Array.from({ length: days }, (_, i
 });
 
 describe("GA4 Insights production calendar paths", () => {
+  it("does not treat scattered imported rows as two complete 7-day windows", () => {
+    const input = [
+      "2026-08-04", "2026-07-12", "2026-07-10", "2026-07-09", "2026-07-08",
+      "2026-07-06", "2026-07-05", "2026-07-04", "2026-07-03", "2026-07-02",
+      "2026-07-01", "2026-06-30", "2026-06-29", "2026-06-28", "2026-06-27",
+      "2026-06-26", "2026-06-25", "2026-06-24", "2026-06-23", "2026-06-22",
+      "2026-06-21",
+    ].map((date) => ({ date, sessions: 1 }));
+
+    const result = buildGA4InsightsRollups(input, "2026-08-04");
+
+    expect(input).toHaveLength(21);
+    expect(result.last7).toMatchObject({
+      startDate: "2026-07-29", endDate: "2026-08-04", days: 1, expectedDays: 7, complete: false,
+    });
+    expect(result.prior7).toMatchObject({
+      startDate: "2026-07-22", endDate: "2026-07-28", days: 0, expectedDays: 7, complete: false,
+    });
+  });
+
   it("uses exact calendar boundaries instead of the last N returned rows", () => {
     const input = rows("2026-06-03", 60).filter((row) => row.date !== "2026-07-27");
     const result = buildGA4InsightsRollups(input, "2026-08-01");

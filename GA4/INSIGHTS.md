@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is PRODUCTION_READY for certified functional SHA d6a82a79e11e043154d993e439898c2645871cc9 and the dependency/configuration boundary recorded in GA4/certifications/ga4-insights.json. Any boundary change invalidates this revision-specific certification.`
+`GA4 Insights is UNVERIFIED. The prior d6a82a79e11e043154d993e439898c2645871cc9 certification was invalidated by later dependency changes and a misleading sparse-history Trends message. GA4/certifications/ga4-insights.json records the controlling machine status.`
 
 ## Document Ownership
 

@@ -8276,7 +8276,7 @@ export default function GA4Metrics() {
                               .map((r: any) => String(r?.date || "").slice(0, 7))
                               .filter((ym: string) => /^\d{4}-\d{2}$/.test(ym))
                           ).size;
-                          const minRequiredDays = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : insightsTrendMode === "30d" ? 60 : 0;
+                          const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;
                           const hasRequiredHistory = insightsTrendMode === "monthly"
                             ? availableMonths >= 2
                             : insightsTrendMode === "daily"
@@ -8285,9 +8285,21 @@ export default function GA4Metrics() {
                                 ? insightsRollups.last7.complete && insightsRollups.prior7.complete
                                 : insightsRollups.last30.complete && insightsRollups.prior30.complete;
                           if (!hasRequiredHistory) {
-                            const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;
-                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day${dailyRows.length === 1 ? "" : "s"}`;
+                            const rollingWindow = insightsTrendMode === "7d"
+                              ? { label: "7-day", current: insightsRollups.last7, prior: insightsRollups.prior7 }
+                              : insightsTrendMode === "30d"
+                                ? { label: "30-day", current: insightsRollups.last30, prior: insightsRollups.prior30 }
+                                : null;
                             const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.`;
+                            if (rollingWindow) {
+                              return (
+                                <div className="text-sm text-muted-foreground/70 py-4">
+                                  {rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}
+                                </div>
+                              );
+                            }
+                            const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;
+                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`;
                             return (
                               <div className="text-sm text-muted-foreground/70 py-4">
                                 Need at least {requiredHistory} of GA4 daily history for {insightsTrendMode === "daily" ? "daily trend comparisons" : insightsTrendMode === "7d" ? "7-day rolling trends" : insightsTrendMode === "30d" ? "30-day rolling trends" : "monthly trends"}. Available: {availableHistory}.{intradayHistoryNote}

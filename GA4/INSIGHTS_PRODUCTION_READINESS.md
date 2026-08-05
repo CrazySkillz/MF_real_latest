@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Status: **PRODUCTION_READY**
+Status: **UNVERIFIED**
 
 Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
 
-Certified SHA: `d6a82a79e11e043154d993e439898c2645871cc9`
+Certified SHA: none
 
-Deployed and validated SHA: `d6a82a79e11e043154d993e439898c2645871cc9`
+Deployed and validated SHA: none
 
-Reason: the strengthened production packet captured the exact API responses consumed by the live page and matched every rendered Executive Financial value and source label, every Data Summary value and raw channel row, all four Trends modes, all three tracker values, and every visible finding field. Authentication, non-owner isolation, temporary-identity cleanup, exact deployment, deterministic scheduler, post-scheduler parity, local tests, TypeScript, build, machine gate, and clean-boundary dependency hashes pass for the recorded revision.
+Reason: the prior `d6a82a79e11e043154d993e439898c2645871cc9` certification was invalidated by later dependency changes and by a newly confirmed Major Trends state defect. The 7d/30d calculation correctly required two complete adjacent calendar windows, but the insufficient-history message mislabeled all scattered rows in the 60-day response as complete reporting days. The localized correction and regression coverage must be deployed and validated against an exact revision before any new certification decision.
 
-No Critical or Major finding remains open. This certification is revision-specific and is invalidated by any dependency/configuration change, contradictory production result, or newly discovered direct consumer under the repository-wide readiness contract.
+Open finding: **Major** — misleading sparse-history coverage on the live Trends surface. No current revision is certified while the corrected dependency boundary and production-only evidence remain pending.
 
 <!-- /ga4-insights-current-status -->
 
@@ -145,6 +145,12 @@ None found.
 
 ### Major
 
+Current production finding:
+
+1. **Sparse daily history was described as complete history.** Root cause: the insufficient-history renderer used the total number of returned rows across the 60-day response and labeled them complete days, while the production calculation correctly required every date in two adjacent calendar windows. Path: isolated `ga4-daily` response -> exact calendar rollups -> Trends insufficient-history UI. Effect: the page could say 21 complete days while correctly withholding a 7-day comparison whose current/prior coverage was only 1/7 and 0/7. Fix in the current working revision: render both exact date ranges and their imported-day coverage, label the total as imported rows, and state that missing dates are not zero. Deployment and authenticated parity remain pending.
+
+Historical remediated findings from the `d6a82a79e11e043154d993e439898c2645871cc9` audit:
+
 1. **Thirty-day Trends could never pass its own history gate.** Root cause: the live tab fetched 30 days but required 60. Path: daily route -> client query -> 30d chart/table. Fix: isolated 60-day Insights query.
 2. **Missing dates widened rolling periods.** Root cause: rollups sliced the last N returned rows. Path: persisted rows -> rollups -> charts/tables/findings. Fix: shared exact calendar-window production functions and completeness flags.
 3. **A property switch could render previous-property last-good rows.** Root cause: shared daily placeholder data was accepted in financial and KPI inputs. Fix: isolated non-placeholder Insights query, response property assertion, and fail-closed placeholder gates.
@@ -156,7 +162,7 @@ None found.
 9. **GA4 to-date and channel inputs used UTC/provider-relative yesterday.** Root cause: direct UTC and relative-date cutoffs. Fix: explicit campaign-reporting-timezone completed-day windows.
 10. **Data Summary hid verified zero and omitted failure state.** Root cause: positive-value render guards. Fix: stable card, exact window label, verified zero display, and unavailable message.
 
-All ten Major findings invalidate every earlier whole-tab readiness claim. Their fixes pass locally and on the deployed owner path; no Major finding remains open.
+Those ten historical Major findings were remediated and validated for `d6a82a79e11e043154d993e439898c2645871cc9`. That evidence does not certify the current revision or clear the current production finding above.
 
 ### Minor
 
@@ -183,16 +189,18 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 | Gate | Result |
 |---|---|
-| focused live Insights and affected UI/timezone suite | PASS: 11 files, 85 tests |
-| auth, isolation, source, parity, lifecycle, scheduler-consumer suite | PASS: 13 files, 155 tests |
-| focused production calendar/monthly functions | PASS: 5 tests |
+| focused live Insights and affected UI/timezone suite | PASS: 11 files, 87 tests |
+| auth, isolation, source, parity, lifecycle, scheduler-consumer suite | PASS: 13 files, 161 tests |
+| focused production calendar/monthly functions | PASS: 6 tests, including the reported 21-row sparse-date fixture |
 | TypeScript | PASS: `npm run check` |
 | production build | PASS: Vite 3,466 modules and server bundle |
-| machine certification checker | PASS: invalidation guard added; final result pending rerun |
+| machine certification checker | PASS: machine status is internally consistent as `UNVERIFIED` |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
-## Production Evidence
+## Historical Production Evidence — `d6a82a79e11e043154d993e439898c2645871cc9`
+
+The following packet is historical and cannot validate the corrected revision:
 
 | Gate | Result |
 |---|---|
@@ -205,9 +213,9 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 | post-scheduler parity | PASS: the complete authenticated owner packet passed again after recompute with unchanged scoped values |
 | every-surface numeric UI/API parity | PASS: 5 Executive Financial values, source provenance, 8 Data Summary values, 3 raw channel rows, 4 Trends modes, 3 tracker values, and all 12 visible findings across id/category/severity/title/description/recommendation/basis/confidence matched the exact live-page inputs |
 
-## Required Production Gates
+## Required Production Gates For A New Certification
 
-The machine record is `PRODUCTION_READY` because all gates passed on the recorded unchanged functional revision:
+The machine record remains `UNVERIFIED`. A future revision may be certified only after all of these gates pass on one frozen dependency/configuration boundary:
 
 1. production build passes
 2. machine certification checker passes
@@ -219,7 +227,7 @@ The machine record is `PRODUCTION_READY` because all gates passed on the recorde
 8. the deterministic campaign-scoped daily pipeline completes and the post-run live inputs remain in parity
 9. dependency/configuration hashes match the reviewed boundary
 
-The earlier August 4 `PRODUCTION_READY` record remains historical and invalid. This certification supersedes it with the mandatory every-surface parity gate and regenerated dependency hashes.
+The earlier `d6a82a79e11e043154d993e439898c2645871cc9` `PRODUCTION_READY` record is historical and invalid for the current tree. It cannot be carried forward without fresh evidence.
 
 ## Historical Note
 

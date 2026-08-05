@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The prior revision-specific certification is invalid, and the current whole-tab corrections require exact-revision deployment and production validation. GA4/certifications/ga4-insights.json records the controlling machine status.`
+`GA4 Insights is PRODUCTION_READY for exact deployed revision a158229e20b5416395f32395bd2e14039c765db8. GA4/certifications/ga4-insights.json records the controlling machine status and frozen boundary.`
 
 ## Document Ownership
 

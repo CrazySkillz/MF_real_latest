@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: UNVERIFIED -->
+<!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Status: **UNVERIFIED**
+Status: **PRODUCTION_READY**
 
 Audit baseline and deployed SHA: `deb368b16d7bd970a3f19dbac634eed199227b22`
 
-Certified SHA: none
+Certified SHA: `a158229e20b5416395f32395bd2e14039c765db8`
 
-Corrected candidate revision: not committed or deployed yet
+Deployed SHA: `a158229e20b5416395f32395bd2e14039c765db8`
 
-Reason: the prior `d6a82a79e11e043154d993e439898c2645871cc9` certification and the narrower `2a2dab20071bf4c2f7deb4362678151a98fc9b66` sparse-history correction evidence are historical. The current audit found additional Major live-value, fail-closed, stale-state, property-switch, chart-window, and parity-checker defects on deployed baseline `deb368b16d7bd970a3f19dbac634eed199227b22`. They are corrected locally and the dependency hashes are frozen, but the candidate is not yet committed, deployed, or production-validated.
+Reason: all twelve current-audit Major findings are fixed, the full dependency/configuration boundary is frozen, local gates pass, Render health reports the exact certified SHA, authenticated owner API/UI parity passes for every live surface and Trends metric, the authorized Clerk-only non-owner request fails closed with 404 and is cleaned up, the deterministic campaign-scoped scheduler passes, and owner parity passes again after recompute.
 
-No Critical or Major finding remains open in the local candidate. No current whole-tab revision is certified, and machine status must remain `UNVERIFIED` until every required production gate passes on the exact final deployed revision.
+No Critical or Major finding remains open. This certification applies only to the exact SHA and frozen boundary recorded here; any relevant dependency or configuration change invalidates it immediately.
 
 <!-- /ga4-insights-current-status -->
 
@@ -147,7 +147,7 @@ None found.
 
 ### Major
 
-Current audit findings, resolved only in the uncommitted local candidate:
+Current audit findings, resolved and production-validated on `a158229e20b5416395f32395bd2e14039c765db8`:
 
 1. **Sparse daily history was still described as a fixed row-count requirement outside the Trends card.** Root cause: `What to investigate next` used total rows in the 60-day response as completed-day history. Path: isolated daily response -> rollups -> action intro and short-window findings. Fix: every live explanation now reports the exact current/prior calendar ranges, imported-day coverage, and total imported rows.
 2. **A property switch could retain channel analysis from the prior property.** Root cause: the channel-analysis memo omitted the placeholder/property-transition dependency. Path: selected property -> cached breakdown -> channel analysis -> Data Summary and findings. Fix: invalidate the memo on placeholder transition.
@@ -162,7 +162,7 @@ Current audit findings, resolved only in the uncommitted local candidate:
 11. **Explicit zero engaged sessions could become nonzero.** Root cause: the shared rollup treated `engagedSessions > 0` as presence and derived `sessions × engagementRate` for explicit zero. Path: persisted daily row -> daily API -> shared normalization/rollup/monthly series -> visible Engagement Rate and findings. Fix: preserve null versus zero and derive only when the value is genuinely absent.
 12. **A mixed native/imported revenue provenance finding could use unready inputs.** Root cause: the informational finding checked cached values but not the combined revenue input state. Path: to-date/imported revenue cache -> provenance finding. Fix: require a fully ready combined revenue state.
 
-All twelve are Major because each could change a visible value, state, comparison, provenance assertion, or recommendation, or leave that output unproved. Local regression and build evidence is recorded below; deployed evidence is still pending.
+All twelve are Major because each could change a visible value, state, comparison, provenance assertion, or recommendation, or leave that output unproved. Local and deployed evidence is recorded below.
 
 Historical remediated findings from the `d6a82a79e11e043154d993e439898c2645871cc9` audit:
 
@@ -214,6 +214,18 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 80 passed and 7 failed, and all seven failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
+
+## Current Production Certification Evidence — `a158229e20b5416395f32395bd2e14039c765db8`
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: `/api/health` reported `a158229e20b5416395f32395bd2e14039c765db8` |
+| authenticated owner API/UI parity | PASS: selected property `542352127`, `Europe/Amsterdam`, USD, three saved filters, 21 daily rows, 15 breakdown rows, five financial values, eight Data Summary values, three raw channel rows, tracker values, 12 visible findings, and three hidden findings matched the exact page-consumed inputs |
+| every Trends metric and surface | PASS: Daily selected Sessions, Users, Conversions, Revenue, Page Views, and Engagement Rate; 7d/30d exact incomplete-window states passed; Monthly selected every eligible metric; every visible table row and chart series matched production functions |
+| tenant isolation and cleanup | PASS: one authorized ephemeral Clerk-only non-owner received 404; its session was revoked, the exact user was deleted, and cleanup completed before success |
+| deterministic scheduler | PASS: campaign-scoped manual run completed at `2026-08-05T19:04:33.463Z`, alerts were suppressed, property/timezone/cutoff stayed exact, and rows remained 21 |
+| post-scheduler parity | PASS: owner-only read-only parity passed again with temporary-user creation disabled and unchanged scoped values |
+| persistence safety | PASS: parity transactions were read-only and rolled back; only the authorized campaign-scoped daily refresh and direct KPI/Benchmark recompute mutated live inputs |
 
 ## Current Production Correction Evidence — `2a2dab20071bf4c2f7deb4362678151a98fc9b66`
 

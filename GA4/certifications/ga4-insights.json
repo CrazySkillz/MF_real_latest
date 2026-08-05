@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-insights-live",
-  "status": "UNVERIFIED",
-  "lastReviewedSha": "deb368b16d7bd970a3f19dbac634eed199227b22",
-  "certifiedSha": null,
-  "deployedSha": null,
-  "invalidationReason": "The current audit found twelve additional Major live-value, fail-closed, stale-state, property-switch, chart-window, and parity-checker defects on deployed baseline deb368b16d7bd970a3f19dbac634eed199227b22. They are corrected locally and the dependency hashes are frozen, but the candidate is not yet committed, deployed, or production-validated.",
+  "status": "PRODUCTION_READY",
+  "lastReviewedSha": "a158229e20b5416395f32395bd2e14039c765db8",
+  "certifiedSha": "a158229e20b5416395f32395bd2e14039c765db8",
+  "deployedSha": "a158229e20b5416395f32395bd2e14039c765db8",
+  "invalidationReason": null,
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
     "includedSurfaces": [
@@ -35,9 +35,9 @@
     ]
   },
   "dependencies": [
-    { "path": "GA4/INSIGHTS.md", "role": "functional contract", "sha256": "36b4f935804cafcb9ace1889e330f9ab4ddee63398b6eddb4e2786a805a6f500" },
-    { "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md", "role": "controlling status", "sha256": "831a02963884188f62fa9cbfc9e0175314477e675b6097c2a7979dfb87b8097a" },
-    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "fb326b1891668f20cb89a7d9da69f30482f339407613f158f5d2353abd3be228" },
+    { "path": "GA4/INSIGHTS.md", "role": "functional contract", "sha256": "16c8844f6796e801158fde4b674bc3668c8e8162d41b44c701cd1405fed3f102" },
+    { "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md", "role": "controlling status", "sha256": "d8eb3dbe4de3d0d6bd6a345f437d3627e3c5ee4244a7763050b5ecd06353beac" },
+    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "b7723dac0988be2810ea83d999bc104809d5a55d546c180421c77868c7275a2f" },
     { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial provenance contract", "sha256": "7188b0078bcef3333f650c5c456eec306e744a33ab325ded6435c8413e15f4f0" },
     { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh contract", "sha256": "78d7901c3252d92a1025e628f348e3481c09f772aeeea5c8b14e0a2393b82e2b" },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live renderer and query composition", "sha256": "9ba02dd4c8c626f17b89c5c93981802fcbaf8f31c4dd8d989c1829db6cf963bf" },
@@ -82,11 +82,11 @@
     { "id": "machine_gate", "status": "passed", "evidence": "The machine checker passed on the frozen boundary with controlling status explicitly UNVERIFIED." }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "pending", "evidence": "The corrected candidate has not been committed, pushed, or deployed." },
-    { "id": "authenticated_owner_api_ui_parity", "status": "pending", "evidence": "Owner API/UI parity must be rerun against the exact corrected deployed revision." },
-    { "id": "live_surface_value_parity", "status": "pending", "evidence": "Every visible value, state, finding, and all four Trends chart/table modes must be rerun against the exact corrected deployed revision." },
-    { "id": "tenant_isolation", "status": "pending", "evidence": "The authorized ephemeral Clerk-only non-owner check and immediate session/user cleanup must be rerun against the corrected deployed revision." },
-    { "id": "deterministic_scheduler", "status": "pending", "evidence": "The campaign-scoped scheduler refresh and post-refresh parity must be rerun against the corrected deployed revision." },
-    { "id": "dependency_hashes", "status": "pending", "evidence": "The corrected dependency boundary has not yet been committed and frozen for certification." }
+    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render health reported exact revision a158229e20b5416395f32395bd2e14039c765db8." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "passed", "evidence": "Every live owner financial, summary, channel, trend, tracker, and visible-finding value matched the exact page-consumed scoped inputs before and after recompute." },
+    { "id": "live_surface_value_parity", "status": "passed", "evidence": "All Daily metrics, every eligible Monthly metric, exact 7d/30d incomplete states, tables, chart series, source provenance, tracker counts, 12 visible findings, and three hidden findings passed." },
+    { "id": "tenant_isolation", "status": "passed", "evidence": "One authorized ephemeral Clerk-only non-owner received 404; its session was revoked and the exact user was deleted before success." },
+    { "id": "deterministic_scheduler", "status": "passed", "evidence": "Campaign-scoped manual run succeeded at 2026-08-05T19:04:33.463Z with alerts suppressed, followed by unchanged owner parity." },
+    { "id": "dependency_hashes", "status": "passed", "evidence": "Every declared dependency and production configuration file matches its normalized SHA-256 boundary hash." }
   ]
 }

@@ -822,7 +822,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(computeBlock).toContain('if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));');
     expect(computeBlock).toContain('if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));');
     expect(jobInputBlock).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
-    expect(jobInputBlock).toContain('const [importedRevenueResult, spendTotalResult] = await Promise.allSettled([');
+    expect(jobInputBlock).toContain("const financialInputsPromise = Promise.allSettled([");
+    expect(jobInputBlock).toContain("const [importedRevenueResult, spendTotalResult] = await financialInputsPromise;");
     expect(jobInputBlock).toContain("const importedRevenueValue = importedRevenueResult.status === \"fulfilled\"");
     expect(jobInputBlock).toContain("importedRevenue: round2(importedRevenueValue ?? 0),");
     expect(jobs).toContain("const isGA4FinancialKpiMetric = (metricOrName: string) => {");

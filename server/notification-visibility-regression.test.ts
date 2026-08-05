@@ -174,7 +174,7 @@ describe("notification visibility regression guard", () => {
     expect(alertMonitoringFile).toContain("const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);");
   });
 
-  it("waits for GA4 KPI and Benchmark in-app alert reconciliation before create/update responses", () => {
+  it("keeps GA4 KPI create storage-only while update and Benchmark routes reconcile before responses", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
@@ -187,8 +187,8 @@ describe("notification visibility regression guard", () => {
     const kpiUpdateRoute = routesFile.slice(kpiCreateEnd, kpiUpdateEnd);
 
     expect(kpiCreateRoute).toContain("if (String(platformType || '').toLowerCase() === 'google_analytics')");
-    expect(kpiCreateRoute).toContain("await checkPerformanceAlerts();");
-    expect(kpiCreateRoute.indexOf("await checkPerformanceAlerts();")).toBeLessThan(kpiCreateRoute.indexOf("res.json(responseKpi || kpi);"));
+    expect(kpiCreateRoute).toContain("return res.json(responseKpi || kpi);");
+    expect(kpiCreateRoute.indexOf("return res.json(responseKpi || kpi);")).toBeLessThan(kpiCreateRoute.indexOf("checkPerformanceAlerts().catch"));
     expect(kpiUpdateRoute).toContain("if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics')");
     expect(kpiUpdateRoute).toContain("await checkPerformanceAlerts();");
     expect(kpiUpdateRoute.indexOf("await checkPerformanceAlerts();")).toBeLessThan(kpiUpdateRoute.indexOf("res.json(responseKPI || updatedKPI);"));
@@ -205,7 +205,7 @@ describe("notification visibility regression guard", () => {
     expect(benchmarkUpdateRoute.indexOf("await checkBenchmarkPerformanceAlerts();")).toBeLessThan(benchmarkUpdateRoute.indexOf("res.json(benchmark);"));
   });
 
-  it("refreshes notifications after GA4 KPI and Benchmark create/update/delete mutations", () => {
+  it("refreshes notifications after GA4 KPI update/delete and Benchmark mutations", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
       "utf-8"
@@ -214,7 +214,7 @@ describe("notification visibility regression guard", () => {
     expect(ga4MetricsFile).toContain("const refreshNotificationQueries = useCallback(async () => {");
     expect(ga4MetricsFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"], refetchType: "none" });');
     expect(ga4MetricsFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
-    expect(ga4MetricsFile.match(/refreshNotificationQueries\(\)/g) || []).toHaveLength(10);
+    expect(ga4MetricsFile.match(/refreshNotificationQueries\(\)/g) || []).toHaveLength(9);
 
     const createKpi = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const createKPIMutation"), ga4MetricsFile.indexOf("const updateKPIMutation"));
     const updateKpi = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const updateKPIMutation"), ga4MetricsFile.indexOf("// Delete KPI mutation"));
@@ -223,7 +223,8 @@ describe("notification visibility regression guard", () => {
     const updateBenchmark = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const updateBenchmarkMutation"), ga4MetricsFile.indexOf("const deleteBenchmarkMutation"));
     const deleteBenchmark = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const deleteBenchmarkMutation"), ga4MetricsFile.indexOf("// Benchmark handlers"));
 
-    for (const mutation of [createKpi, updateKpi, deleteKpi, createBenchmark, updateBenchmark, deleteBenchmark]) {
+    expect(createKpi).not.toContain("refreshNotificationQueries()");
+    for (const mutation of [updateKpi, deleteKpi, createBenchmark, updateBenchmark, deleteBenchmark]) {
       expect(mutation).toContain("refreshNotificationQueries()");
     }
   });

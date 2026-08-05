@@ -11,11 +11,11 @@ Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
 
 Certified SHA: none
 
-Deployed and validated SHA: none
+Corrected deployed revision (not certified): `2a2dab20071bf4c2f7deb4362678151a98fc9b66`
 
-Reason: the prior `d6a82a79e11e043154d993e439898c2645871cc9` certification was invalidated by later dependency changes and by a newly confirmed Major Trends state defect. The 7d/30d calculation correctly required two complete adjacent calendar windows, but the insufficient-history message mislabeled all scattered rows in the 60-day response as complete reporting days. The localized correction and regression coverage must be deployed and validated against an exact revision before any new certification decision.
+Reason: the prior `d6a82a79e11e043154d993e439898c2645871cc9` certification was invalidated by later dependency changes and by a newly confirmed Major Trends state defect. The sparse-history message is corrected and authenticated production parity, tenant isolation, deterministic scheduler validation, and post-scheduler parity pass on `2a2dab20071bf4c2f7deb4362678151a98fc9b66`. Whole-tab certification remains unverified because the later dependency/configuration boundary has not been frozen, re-inventoried end to end, and hashed as a new certification boundary.
 
-Open finding: **Major** — misleading sparse-history coverage on the live Trends surface. No current revision is certified while the corrected dependency boundary and production-only evidence remain pending.
+The reported Major finding is fixed on the corrected deployed revision; no Critical or Major finding remains open for this correction. No current whole-tab revision is certified.
 
 <!-- /ga4-insights-current-status -->
 
@@ -145,9 +145,9 @@ None found.
 
 ### Major
 
-Current production finding:
+Current finding, resolved on `2a2dab20071bf4c2f7deb4362678151a98fc9b66`:
 
-1. **Sparse daily history was described as complete history.** Root cause: the insufficient-history renderer used the total number of returned rows across the 60-day response and labeled them complete days, while the production calculation correctly required every date in two adjacent calendar windows. Path: isolated `ga4-daily` response -> exact calendar rollups -> Trends insufficient-history UI. Effect: the page could say 21 complete days while correctly withholding a 7-day comparison whose current/prior coverage was only 1/7 and 0/7. Fix in the current working revision: render both exact date ranges and their imported-day coverage, label the total as imported rows, and state that missing dates are not zero. Deployment and authenticated parity remain pending.
+1. **Sparse daily history was described as complete history.** Root cause: the insufficient-history renderer used the total number of returned rows across the 60-day response and labeled them complete days, while the production calculation correctly required every date in two adjacent calendar windows. Path: isolated `ga4-daily` response -> exact calendar rollups -> Trends insufficient-history UI. Effect: the page could say 21 complete days while correctly withholding a 7-day comparison whose current/prior coverage was only 1/7 and 0/7. Fix: render both exact date ranges and their imported-day coverage, label the total as imported rows, and state that missing dates are not zero. Authenticated production parity passed on the exact deployed correction.
 
 Historical remediated findings from the `d6a82a79e11e043154d993e439898c2645871cc9` audit:
 
@@ -197,6 +197,21 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | machine certification checker | PASS: machine status is internally consistent as `UNVERIFIED` |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
+
+## Current Production Correction Evidence — `2a2dab20071bf4c2f7deb4362678151a98fc9b66`
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: `/api/health` reported `2a2dab20071bf4c2f7deb4362678151a98fc9b66` |
+| authenticated owner API/UI parity | PASS: property `542352127`, `Europe/Amsterdam`, USD, three saved filters, 21 daily rows, and four Trends modes matched the exact page-consumed response |
+| sparse 7-day coverage | PASS: the deployed surface withheld comparison and reported the exact incomplete current/prior calendar windows rather than treating 21 scattered response rows as complete history |
+| authenticated non-owner isolation | PASS: an authorized ephemeral Clerk-only user received 404 from the campaign daily endpoint |
+| temporary identity cleanup | PASS: validation sessions were revoked, the exact temporary user was deleted, and the validator emitted success only after cleanup |
+| deterministic scheduler | PASS: campaign-scoped manual trigger completed at `2026-08-05T17:39:58.341Z`; alerts were suppressed and rows remained 21 before/after |
+| post-scheduler parity | PASS: the authenticated owner packet passed again with unchanged scoped values |
+| database safety | PASS: read-only validation transaction was rolled back; only the explicitly authorized campaign scheduler refresh mutated analytics inputs |
+
+These results clear the reported defect but do not, by themselves, re-certify the later whole-tab dependency boundary.
 
 ## Historical Production Evidence — `d6a82a79e11e043154d993e439898c2645871cc9`
 

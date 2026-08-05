@@ -8377,6 +8377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const days = Math.min(Math.max(parseInt(String(req.query.days || "30"), 10) || 30, 7), 365);
       const propertyId = req.query.propertyId as string; // optional
       const forceMock = String((req.query as any)?.mock || "").toLowerCase() === "1" || String((req.query as any)?.mock || "").toLowerCase() === "true";
+      const readOnly = ["1", "true", "yes"].includes(String((req.query as any)?.readOnly || "").trim().toLowerCase());
       const requestedPropertyId = propertyId ? String(propertyId) : "";
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
@@ -8479,6 +8480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: merged,
           overviewStartDate: startDate,
           overviewTotals: summarizeGA4TrafficRows(merged),
+          validationReadOnly: readOnly,
           providerRefreshAttempted: false,
           providerRefreshOutcome: "simulated",
           providerRefreshRowCount: 0,
@@ -8557,7 +8559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Read from persisted store first
       let providerRefreshWarning: string | null = null;
       let providerRefreshAttempted = false;
-      let providerRefreshOutcome: "not_needed" | "rows_returned" | "empty" | "failed" = "not_needed";
+      let providerRefreshOutcome: "not_needed" | "read_only" | "rows_returned" | "empty" | "failed" = readOnly ? "read_only" : "not_needed";
       let providerRefreshRowCount = 0;
       let providerRefreshCompletedAt: string | null = null;
       let providerCoverageThroughDate: string | null = null;
@@ -8583,39 +8585,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerCoverageThroughDate = dataThroughDate;
       };
 
-      if (!stored || stored.length === 0) {
-        // Best-effort backfill on demand for empty daily history. Preserve existing behavior: surface provider errors.
-        await refreshFromProvider();
-      } else if (getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))) {
-        // Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.
-        try {
+      if (!readOnly) {
+        if (!stored || stored.length === 0) {
+          // Best-effort backfill on demand for empty daily history. Preserve existing behavior: surface provider errors.
           await refreshFromProvider();
-        } catch (e: any) {
-          providerRefreshOutcome = "failed";
-          providerRefreshWarning = e?.message || "Failed to refresh missing GA4 daily rows";
+        } else if (getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))) {
+          // Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.
+          try {
+            await refreshFromProvider();
+          } catch (e: any) {
+            providerRefreshOutcome = "failed";
+            providerRefreshWarning = e?.message || "Failed to refresh missing GA4 daily rows";
+          }
+        } else if (needsConversionRevenueRepair(stored)) {
+          providerRefreshAttempted = true;
+          const series = await ga4Service.getTimeSeriesData(
+            campaignId,
+            storage,
+            startDate,
+            String(selectedConnection.propertyId),
+            campaignFilter
+          );
+          const upserts = toDailyMetricUpserts(series);
+          providerRefreshRowCount = upserts.length;
+          providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
+          const recoveredConversionRevenue = upserts.some((r: any) =>
+            Number(r?.conversions || 0) > 0 ||
+            Number(r?.revenue || 0) > 0
+          );
+          if (recoveredConversionRevenue) {
+            await storage.upsertGA4DailyMetrics(upserts as any);
+            stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
+          }
+          providerRefreshCompletedAt = new Date().toISOString();
+          providerCoverageThroughDate = dataThroughDate;
         }
-      } else if (needsConversionRevenueRepair(stored)) {
-        providerRefreshAttempted = true;
-        const series = await ga4Service.getTimeSeriesData(
-          campaignId,
-          storage,
-          startDate,
-          String(selectedConnection.propertyId),
-          campaignFilter
-        );
-        const upserts = toDailyMetricUpserts(series);
-        providerRefreshRowCount = upserts.length;
-        providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
-        const recoveredConversionRevenue = upserts.some((r: any) =>
-          Number(r?.conversions || 0) > 0 ||
-          Number(r?.revenue || 0) > 0
-        );
-        if (recoveredConversionRevenue) {
-          await storage.upsertGA4DailyMetrics(upserts as any);
-          stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
-        }
-        providerRefreshCompletedAt = new Date().toISOString();
-        providerCoverageThroughDate = dataThroughDate;
       }
       const latestStoredDailyDate = getLatestStoredDailyDate(stored);
       const configuredOverviewStartDate = String((selectedConnection as any)?.importStartDate || '').trim();
@@ -8651,6 +8655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         days,
         reportingTimeZone,
         data: stored.map(addDerivedEngagedSessions),
+        validationReadOnly: readOnly,
         overviewStartDate,
         overviewTotals,
         providerRefreshAttempted,
@@ -9030,12 +9035,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      let currentValueDateDimensionProviderStatus = "not_attempted";
+      let currentValueDateDimensionProviderError: string | null = null;
+      let currentValueDateDimensionProviderRows: any[] = [];
+      if (providerAccessToken) {
+        try {
+          currentValueDateDimensionProviderRows = await ga4Service.getTimeSeriesWithToken(
+            propertyId,
+            providerAccessToken,
+            currentValueStartDate,
+            campaignFilter,
+            currentValueEndDate,
+          );
+          currentValueDateDimensionProviderStatus = "live_provider_success";
+        } catch (dateDimensionError: any) {
+          currentValueDateDimensionProviderStatus = "live_provider_error";
+          currentValueDateDimensionProviderError = String(dateDimensionError?.message || dateDimensionError || "Unknown GA4 date-dimension provider error");
+        }
+      }
+      const { dailyTotals: currentValueDateDimensionProviderTotals } = summarizeDailyRows(currentValueDateDimensionProviderRows);
+
       const formatProviderTotalsForValidation = (result: any) => result?.totals ? {
         users: Math.round(Number(result.totals.users || 0) || 0),
         sessions: Math.round(Number(result.totals.sessions || 0) || 0),
         pageviews: Math.round(Number(result.totals.pageviews || 0) || 0),
         conversions: Math.round(Number(result.totals.conversions || 0) || 0),
         ga4Revenue: round2Local(Number(result.totals.revenue || 0) || 0),
+        engagedSessions: Math.round(Number(result.totals.engagedSessions || 0) || 0),
         engagementRate: Number(result.totals.engagementRate || 0) || 0,
       } : null;
       const providerTotals = formatProviderTotalsForValidation(providerResult);
@@ -9055,32 +9081,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? spendBreakdownTotal
         : 0;
 
-      const buildDailyInput = (totals: any, latest: any) => ({
+      const buildDailyInput = (totals: any) => ({
         users: Math.round(Number(totals.users || 0) || 0),
         sessions: Math.round(Number(totals.sessions || 0) || 0),
         pageviews: Math.round(Number(totals.pageviews || 0) || 0),
         conversions: Math.round(Number(totals.conversions || 0) || 0),
         ga4Revenue: round2Local(Number(totals.ga4Revenue || 0) || 0),
+        engagedSessions: Math.round(Number(totals.engagedSessions || 0) || 0),
         importedRevenue,
         spend: schedulerSpend,
-        engagementRate: Number(latest?.engagementRate || totals.engagementRate || 0) || 0,
+        engagementRate: Number(totals.engagementRate || 0) || 0,
       });
-      const buildProviderInput = (totals: any, fallbackDailyInput: any) => totals ? {
+      const buildProviderInput = (totals: any) => totals ? {
         users: totals.users,
         sessions: totals.sessions,
         pageviews: totals.pageviews,
         conversions: totals.conversions,
         ga4Revenue: totals.ga4Revenue,
+        engagedSessions: totals.engagedSessions,
         importedRevenue,
         spend: schedulerSpend,
-        engagementRate: totals.engagementRate || fallbackDailyInput.engagementRate,
+        engagementRate: totals.engagementRate,
       } : null;
-      const dailyInput = buildDailyInput(dailyTotals, latestDailyRow);
-      const currentValueDailyInput = buildDailyInput(currentValueDailyTotals, currentValueLatestDailyRow);
-      const providerInput = buildProviderInput(providerTotals, dailyInput);
-      const currentValueProviderInput = buildProviderInput(currentValueProviderTotals, currentValueDailyInput);
+      const dailyInput = buildDailyInput(dailyTotals);
+      const currentValueDailyInput = buildDailyInput(currentValueDailyTotals);
+      const currentValueDateDimensionProviderInput = currentValueDateDimensionProviderStatus === "live_provider_success"
+        ? buildDailyInput(currentValueDateDimensionProviderTotals)
+        : null;
+      const providerInput = buildProviderInput(providerTotals);
+      const currentValueProviderInput = buildProviderInput(currentValueProviderTotals);
       const requestedWindowInputs = providerInput || dailyInput;
-      const currentValueWindowInputs = currentValueProviderInput || currentValueDailyInput;
+      const currentValueWindowInputs = currentValueDateDimensionProviderInput || currentValueDailyInput;
       const schedulerInputs = currentValueWindowInputs;
       const uiBaseInputs = (currentValueDailyInput.sessions > 0 || currentValueDailyInput.users > 0 || currentValueDailyInput.conversions > 0 || currentValueDailyInput.pageviews > 0 || currentValueDailyInput.ga4Revenue > 0)
         ? currentValueDailyInput
@@ -9166,6 +9197,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totals: currentValueProviderTotals,
           error: currentValueProviderError,
         },
+        currentValueDateDimensionProvider: {
+          status: currentValueDateDimensionProviderStatus,
+          rowCount: currentValueDateDimensionProviderRows.length,
+          totals: currentValueDateDimensionProviderInput,
+          error: currentValueDateDimensionProviderError,
+        },
+        engagementRateQueryShapeParity: {
+          authoritativeSource: "date_dimension_engaged_sessions",
+          aggregateEngagedSessions: currentValueProviderTotals?.engagedSessions ?? null,
+          dateDimensionEngagedSessions: currentValueDateDimensionProviderInput?.engagedSessions ?? null,
+          numeratorDelta: currentValueProviderTotals && currentValueDateDimensionProviderInput
+            ? currentValueProviderTotals.engagedSessions - currentValueDateDimensionProviderInput.engagedSessions
+            : null,
+          scope: {
+            propertyId,
+            campaignFilter: campaignFilter || null,
+            reportingTimeZone: currentValueWindow.reportingTimeZone,
+            startDate: currentValueStartDate,
+            endDate: currentValueEndDate,
+          },
+        },
         persistedDaily: {
           rowCount: Array.isArray(dailyRows) ? dailyRows.length : 0,
           latestDate: latestDailyRow?.date || null,
@@ -9188,7 +9240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inputSets: {
           requestedProviderInputSource: providerInput ? "live_provider_requested_window" : "not_available",
           requestedProviderInputs: providerInput,
-          schedulerInputSource: currentValueProviderInput ? "live_provider_current_value_window" : "persisted_daily_current_value_window_fallback",
+          schedulerInputSource: currentValueDateDimensionProviderInput ? "live_provider_date_dimension_current_value_window" : "persisted_daily_current_value_window_fallback",
           schedulerInputs,
           uiBaseInputSource: uiBaseInputs === currentValueDailyInput ? "persisted_daily_current_value_window" : "live_provider_current_value_window",
           uiBaseInputs,

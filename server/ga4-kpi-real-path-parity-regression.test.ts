@@ -36,6 +36,7 @@ const ga4ServiceMock = vi.hoisted(() => ({
   getLandingPagesReport: vi.fn(),
   getConversionEventsReport: vi.fn(),
   getTimeSeriesData: vi.fn(),
+  getTimeSeriesWithToken: vi.fn(),
   getTotalsWithRevenue: vi.fn(),
   refreshAccessToken: vi.fn(),
 }));
@@ -207,7 +208,11 @@ function setAuthoritativeFixture() {
   for (const value of Object.values(storageMock)) value.mockReset();
   for (const value of Object.values(ga4ServiceMock)) value.mockReset();
   pdfTextCalls.length = 0;
-  for (const row of kpiRows) row.currentValue = "-1";
+  for (const row of kpiRows) {
+    row.currentValue = "-1";
+    row.alertThreshold = row.metric === "totalRevenue" ? "250" : null;
+    row.alertsEnabled = row.metric === "totalRevenue";
+  }
   for (const row of benchmarkRows.slice(0, -1)) row.currentValue = "-1";
   benchmarkRows[benchmarkRows.length - 1].currentValue = "77";
 
@@ -250,7 +255,11 @@ function setAuthoritativeFixture() {
   ga4ServiceMock.getLandingPagesReport.mockResolvedValue({ rows: [] });
   ga4ServiceMock.getConversionEventsReport.mockResolvedValue({ rows: [] });
   ga4ServiceMock.getTimeSeriesData.mockResolvedValue([dailyRow]);
-  ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ revenueMetric: "purchaseRevenue", totals: { ...dailyRow, revenue: 150 } });
+  ga4ServiceMock.getTimeSeriesWithToken.mockResolvedValue([dailyRow]);
+  ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+    revenueMetric: "purchaseRevenue",
+    totals: { ...dailyRow, revenue: 150, engagedSessions: 61, engagementRate: 0.61 },
+  });
 }
 
 describe("GA4 KPI real-path cross-consumer parity", () => {
@@ -301,6 +310,75 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(body.map((row: any) => [row.metric, Number(row.currentValue)])).toEqual(
       kpiRows.map((row) => [row.metric, Number(expectedByMetric[row.metric])]),
     );
+  });
+
+  it("keeps date-dimension Engagement Rate authoritative when the dimensionless aggregate differs", async () => {
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+    const engagementKpi = kpiRows.find((row) => row.metric === "engagementRate")!;
+    engagementKpi.alertsEnabled = true;
+    engagementKpi.alertThreshold = "100";
+    expect(Number(engagementKpi.currentValue)).toBe(60);
+    storageMock.getNotifications.mockResolvedValue([{
+      id: "notification-engagement",
+      campaignId: campaign.id,
+      type: "performance-alert",
+      title: "stale title",
+      message: "stale message",
+      read: false,
+      createdAt: "2026-08-01T09:00:00.000Z",
+      metadata: JSON.stringify({ alertType: "performance-alert", kpiId: engagementKpi.id }),
+    }]);
+
+    vi.useRealTimers();
+    const response = await fetch(baseUrl + "/api/notifications");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(Number(JSON.parse(body[0].metadata).currentValue)).toBe(60);
+  });
+
+  it("exposes both exact provider numerators while using weighted date rows in read-only validation", async () => {
+    const dateRows = [
+      { ...dailyRow, date: "2026-07-30", sessions: 50, engagedSessions: 25, engagementRate: 0.5 },
+      { ...dailyRow, date: "2026-07-31", sessions: 50, engagedSessions: 35, engagementRate: 0.7 },
+    ];
+    storageMock.getGA4DailyMetrics.mockResolvedValue(dateRows);
+    ga4ServiceMock.getTimeSeriesWithToken.mockResolvedValue(dateRows);
+
+    vi.useRealTimers();
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-benchmark-provider-validation?propertyId=" + encodeURIComponent(connection.propertyId) + "&startDate=2026-07-02&endDate=2026-07-31&disableTokenRefresh=1");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.currentValueProvider.totals.engagedSessions).toBe(61);
+    expect(body.currentValueDateDimensionProvider.totals.engagedSessions).toBe(60);
+    expect(body.currentValuePersistedDaily.totals.engagementRate).toBe(0.6);
+    expect(body.engagementRateQueryShapeParity).toMatchObject({
+      authoritativeSource: "date_dimension_engaged_sessions",
+      aggregateEngagedSessions: 61,
+      dateDimensionEngagedSessions: 60,
+      numeratorDelta: 1,
+    });
+    expect(ga4ServiceMock.getTimeSeriesWithToken).toHaveBeenCalledWith(
+      connection.propertyId,
+      connection.accessToken,
+      body.engagementRateQueryShapeParity.scope.startDate,
+      campaign.ga4CampaignFilter,
+      body.engagementRateQueryShapeParity.scope.endDate,
+    );
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it("serves the browser daily-state validation path without provider or persistence mutations", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    vi.useRealTimers();
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-daily?days=30&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.validationReadOnly).toBe(true);
+    expect(body.providerRefreshAttempted).toBe(false);
+    expect(body.providerRefreshOutcome).toBe("read_only");
+    expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+    expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
   it("uses the same recomputed revenue for actual alert truth and notification enrichment", async () => {

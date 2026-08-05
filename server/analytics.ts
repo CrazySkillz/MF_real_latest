@@ -1980,7 +1980,8 @@ export class GoogleAnalytics4Service {
     propertyId: string,
     accessToken: string,
     dateRange = '30daysAgo',
-    campaignFilter?: CampaignFilter
+    campaignFilter?: CampaignFilter,
+    endDate = 'today',
   ): Promise<any[]> {
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
@@ -1999,7 +2000,7 @@ export class GoogleAnalytics4Service {
             dateRanges: [
               {
                 startDate: dateRange,
-                endDate: 'today',
+                endDate,
               },
             ],
             dimensions: [{ name: 'date' }],
@@ -2058,7 +2059,7 @@ export class GoogleAnalytics4Service {
             dateRanges: [
               {
                 startDate: dateRange,
-                endDate: 'today',
+                endDate,
               },
             ],
             dimensions: [{ name: 'date' }],
@@ -2111,7 +2112,7 @@ export class GoogleAnalytics4Service {
       
       console.log('GA4 Time Series API Response for property', normalizedPropertyId, ':', {
         totalRows: data.rows?.length || 0,
-        dateRange: `${dateRange} to today`,
+        dateRange: `${dateRange} to ${endDate}`,
         hasData: !!data.rows && data.rows.length > 0
       });
 

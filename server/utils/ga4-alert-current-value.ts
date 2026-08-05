@@ -83,6 +83,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const financialTotals = summarizeGA4TrafficRows(sourceRows);
     let ga4Inputs = toInputs(trafficTotals);
     let hasGA4SourceInput = trafficRows.length > 0;
+    let hasAuthoritativeEngagementInput = trafficRows.length > 0;
     const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
     const storedFinancialCandidate = sourceRows.length > 0 ? {
       ...toInputs(financialTotals),
@@ -116,6 +117,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         revenue: financialTotals.revenue + financialBaseline.revenue,
       };
       hasGA4SourceInput = true;
+      hasAuthoritativeEngagementInput = true;
     } else {
       const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
       if (connection?.method === "access_token" && connection?.accessToken) {
@@ -126,7 +128,9 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             pageviews: Math.round(Number(live?.totals?.pageviews || 0) || 0),
             conversions: Math.round(Number(live?.totals?.conversions || 0) || 0),
             ga4Revenue: Number((Number(live?.totals?.revenue || 0) || 0).toFixed(2)),
-            engagementRate: Number(live?.totals?.engagementRate || ga4Inputs.engagementRate) || 0,
+            // KPI Engagement Rate is defined by the exact completed-day rows. A
+            // dimensionless GA4 aggregate can differ and must not overwrite it.
+            engagementRate: ga4Inputs.engagementRate,
           };
           hasGA4SourceInput = true;
         };
@@ -228,7 +232,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         && (!dependencies.requiresRevenue || importedRevenueValue !== null)
         && (!dependencies.requiresSpend || spendValue !== null);
       if (!sourceVerified) return blockAlertDecision(resolved, "unavailable");
-    } else if (!hasGA4SourceInput) {
+    } else if (!hasGA4SourceInput || (metric === "engagement_rate" && !hasAuthoritativeEngagementInput)) {
       return blockAlertDecision(resolved, "unavailable");
     }
 

@@ -265,6 +265,7 @@ describe("GA4 campaign value picker", () => {
       "token",
       "2026-06-01",
       "summer_sale",
+      "2026-06-30",
     );
 
     expect(result).toEqual([{
@@ -283,7 +284,9 @@ describe("GA4 campaign value picker", () => {
     const primaryBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body || "{}"));
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(primaryBody.dimensionFilter)).toContain("sessionCampaignName");
+    expect(primaryBody.dateRanges).toEqual([{ startDate: "2026-06-01", endDate: "2026-06-30" }]);
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
+    expect(fallbackBody.dateRanges).toEqual([{ startDate: "2026-06-01", endDate: "2026-06-30" }]);
     expect(fallbackBody.dimensions).toEqual([{ name: "date" }]);
   });
 

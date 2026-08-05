@@ -8,11 +8,12 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of August 5, 2026, the GA4 KPIs tab remains UNVERIFIED for exact reviewed/deployed SHA 3e65bbb4033a2843462f0122a5ff5f015a69fc64. Commit 14A is deployed, but its authorized exact-campaign validation failed provider-versus-persisted Engagement Rate parity.
+As of August 5, 2026, the GA4 KPIs tab remains **UNVERIFIED**. The Commit 14A correction is implemented and locally validated on the working tree based on `06eb32038ed7d56759f0ac5f2effcfb326c5ef37`, but it is not deployed and no new production recompute is authorized by this commit.
 
-Current Commit 14 proved the exact-SHA inventory, deployed six-state browser matrix, natural scheduler completion, negative provider behavior, delivered KPI alerts, and zero blocking current-version test failures. Production readiness is not claimed because deployed Commit 14A still produces `68.48%` from the GA4 aggregate response versus `68.30%` from the exact daily rows and all persisted consumers, and exact-SHA server-report external parity remains unresolved.
+Root-cause tracing established that GA4's dimensionless aggregate returned 378 engaged sessions while the identically scoped date-dimension rows returned 377. The KPI contract uses the exact 30 completed reporting-day rows, so their weighted numerator is authoritative; the unmatched aggregate session is not assigned to a day or inserted into persisted history. Alert/notification enrichment now preserves that same date-row value. The read-only validation response exposes both numerators, uses the weighted persisted total instead of the latest row rate, and the daily browser-state route now supports `readOnly=1` without provider refresh, token refresh, backfill, or persistence.
 
-The controlling evidence and smallest-safe closure queue are in GA4/KPIS_PRODUCTION_READINESS.md. All 41 deferred tests remain visible and outside this GA4 KPI release boundary; the current retained-suite result is 12 passed and 29 failed, without treating the suite as production evidence.
+Commit 14A closes only after this correction deploys and a newly authorized exact-campaign recompute proves date-dimension provider, persisted KPI/progress/API, card, tracker, Insights, alert/Notifications, and report values agree. Commit 14B server-report external proof remains pending. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
+
 ## KPI Tab Structure
 
 The GA4 `KPIs` tab contains:

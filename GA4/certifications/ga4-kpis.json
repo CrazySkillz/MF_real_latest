@@ -3,9 +3,9 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "9b930d5406b0b9192338e091d56922d76c5458794adec7867fbbe795dd8603c0",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "3e65bbb4033a2843462f0122a5ff5f015a69fc64",
+  "lastReviewedSha": "06eb32038ed7d56759f0ac5f2effcfb326c5ef37",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 14 exact-SHA validation passed target inventory, mutation-blocked deployed states/browser PDF, natural scheduler, delivered KPI alerts, and the current-version regression boundary. Commit 14A deployed on SHA 3e65bbb4033a2843462f0122a5ff5f015a69fc64 and one authorized exact-campaign recompute proved the new nullable engagedSessions column is populated, but production parity still fails: the identical 30-day scope has 552 sessions and 377 date-dimension engaged sessions (68.30) while the GA4 aggregate Engagement Rate represents 378 (68.48). Persisted KPI, progress, API, alert resolver, and card consistently show 68.30. The query-shape boundary, validation endpoint latest-row-rate defect, and mutation-capable GET /ga4-daily browser-validation boundary require a focused Commit 14A correction. The provider/database comparisons were read-only, but the browser card capture refreshed the same target campaign's daily rows; no other campaign or configuration was touched. Exact-SHA report delivery also remains unproven.",
+  "invalidationReason": "Commit 14A correction is implemented and locally validated on the working tree based on 06eb32038ed7d56759f0ac5f2effcfb326c5ef37 but is not deployed. Root cause: GA4 returned 378 dimensionless aggregate engaged sessions versus 377 exact date-dimension engaged sessions for the identical 30-completed-day scope. The documented KPI uses the exact completed-day rows, so their weighted numerator is authoritative; the unmatched aggregate session is diagnostic only and is not allocated into a day. The correction exposes both refresh-disabled query shapes, fixes the latest-row-rate validation defect, keeps alert/notification enrichment on the date-row numerator, and adds a mutation-free readOnly=1 daily browser-validation path. A newly authorized exact-campaign deployed recompute/parity check and Commit 14B external server-report proof remain pending.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -175,7 +175,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "Commit 14A working tree based on d0123ca9: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "Commit 14A correction working tree based on 06eb3203: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -187,7 +187,7 @@
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "August 3, 2026 final combined packet: 1 file / 18 tests passed through the shared production paths, including KPI and Benchmark exact updated/skipped/failed IDs."
+      "evidence": "Commit 14A correction: 1 file / 21 tests passed, including a dimensionless-aggregate 61 versus date-dimension 60 engaged-session mismatch through persisted recompute, notification enrichment, exact read-only diagnostics, and mutation-free browser daily-state access."
     },
     {
       "id": "metric_identity_contract",
@@ -199,7 +199,7 @@
       "id": "authoritative_reporting_window",
       "command": "npm test -- server/ga4-kpi-reporting-window-regression.test.ts server/ga4-kpi-engaged-sessions-persistence-regression.test.ts server/ga4-filter.test.ts",
       "status": "passed",
-      "evidence": "Commit 14A working tree based on d0123ca9: exact engaged-session persistence/reporting-window/provider-contract coverage passed 3 files / 26 tests. The larger focused affected packet separately passed 6 files / 42 tests."
+      "evidence": "Commit 14A correction: GA4 filter, exact engaged-session persistence, and reporting-window coverage passed 3 files / 26 tests. The explicit-end-date provider request and weighted exact daily-row contract passed."
     },
     {
       "id": "financial_source_failure_contract",
@@ -247,7 +247,7 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "Commit 14A working tree based on d0123ca9: all 1,370 tests executed; 1,341 passed; zero blocking current-version failures; 29 retained deferred failures remained visible."
+      "evidence": "Commit 14A correction: all 1,373 tests executed; 1,344 passed; zero blocking current-version failures; exactly 29 retained deferred failures remained visible."
     },
     {
       "id": "deferred_release_suites",
@@ -265,13 +265,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on the Commit 14A working tree based on d0123ca9."
+      "evidence": "npm run check passed on the Commit 14A correction working tree based on 06eb3203."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build passed on the Commit 14A working tree based on d0123ca9; 3,466 client modules transformed and the server bundle completed."
+      "evidence": "npm run build passed on the Commit 14A correction working tree based on 06eb3203; 3,466 client modules transformed and the server bundle completed."
     }
   ],
   "externalGates": [
@@ -282,8 +282,8 @@
     },
     {
       "id": "deployed_state_matrix",
-      "status": "passed",
-      "evidence": "PASSED on exact deployed SHA 4287871f. Mutation-blocked browser automation covered valid-zero, unavailable, stale/last-good, blocked, insufficient-data, and list-failure states across cards, scoring, KPI Insights, bell/Notifications, and browser PDF/fail-closed no-download behavior. Zero mutation attempts; temporary session revoked."
+      "status": "pending",
+      "evidence": "PENDING on the corrected revision. Historical mutation-blocked browser-state evidence passed on 4287871f, but the corrected daily read-only route and Engagement Rate alert boundary require deployed verification after the new SHA is available. Local real-path coverage proves readOnly=1 makes zero provider, token, backfill, or persistence calls."
     },
     {
       "id": "timer_scheduler",
@@ -293,17 +293,17 @@
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "PENDING after failed validation on exact deployed SHA 3e65bbb4. The one authorized campaign-scoped pipeline for campaign hash fc734ddaf728 completed successfully at 2026-08-05T13:15:01.359Z with alerts suppressed and no other campaign touched. All five populated completed-window rows have non-null engagedSessions: 552 sessions / 377 engaged sessions = 68.30. Persisted KPI, progress, KPI API, alert resolver, and card all show 68.30. Refresh-disabled aggregate provider success returned the same users, sessions, pageviews, conversions, and revenue but Engagement Rate 68.47826086956522, representing 378 engaged sessions. Token refresh/persistence was disabled for the direct provider/database comparisons. The browser check blocked non-GET calls, but GET /ga4-daily can backfill and production timestamps confirm another exact-target daily refresh during that capture; no other campaign or configuration was touched. Commit 14A correction must prove and align the aggregate/date-dimension numerator boundary and make browser evidence mutation-proof; no further production recompute is authorized."
+      "evidence": "PENDING deployment closure. Prior exact-SHA production evidence found 552 sessions / 377 exact date-dimension engaged sessions (68.30) versus 378 dimensionless aggregate engaged sessions (68.48). The local correction establishes the exact completed-day date rows as the authoritative KPI grain without allocating the unmatched aggregate session, exposes both refresh-disabled numerators, fixes weighted validation, aligns alert enrichment, and adds readOnly=1 browser state access. The correction is not deployed and no new exact-campaign recompute is authorized or claimed."
     },
     {
       "id": "alert_email_delivery",
-      "status": "passed",
-      "evidence": "PASSED on exact deployed SHA 4287871f. Post-process-start GA4 KPI Mailgun audits have success=true, delivered status, provider response IDs, and delivery timestamps. Redacted event hashes: b1888bd70bd5, a87ee985dfa4, e4c67cf55c1c, e9f355b3629e."
+      "status": "pending",
+      "evidence": "PENDING on the corrected revision because alert current-value resolution changed for Engagement Rate. Historical delivered Mailgun evidence remains bounded to 4287871f and is not carried forward as exact-SHA proof."
     },
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "PARTIAL on exact deployed SHA 4287871f. The mutation-blocked deployed browser/PDF matrix passed and local real-path report regressions passed. Exact selected KPI IDs, current recompute freshness, server PDF, and confirmed delivery were not externally re-proven through direct snapshot, test-send, manual-send, and scheduled-send paths because no accessible existing production report combines KPI selection with recipients/scheduling."
+      "evidence": "PENDING. Local real-path coverage proves mutation-free browser daily-state access and date-row Engagement Rate parity. Deployment, exact-campaign cross-consumer parity, and Commit 14B direct snapshot/test-send/manual-send/scheduled-send server PDF and confirmed delivery remain externally unproven."
     }
   ]
 }

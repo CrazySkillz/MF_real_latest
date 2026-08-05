@@ -63,6 +63,26 @@ describe("GA4 Insights machine certification gate", () => {
     );
   });
 
+  it("rejects ready evidence that says the machine status is UNVERIFIED", () => {
+    const value = record("PRODUCTION_READY");
+    value.requiredTests[0].evidence = "The machine checker passed while the machine status remained UNVERIFIED.";
+    expect(evaluateGA4InsightsCertification(value, context("PRODUCTION_READY")).errors).toContain(
+      "requiredTests tests evidence contradicts ready status",
+    );
+  });
+
+  it("rejects a ready document with a contradictory status outside the controlling marker", () => {
+    const contradictory = {
+      ...context("PRODUCTION_READY"),
+      readText: (path: string) => path === "GA4/INSIGHTS_PRODUCTION_READINESS.md"
+        ? `<!-- ga4-insights-current-status -->\n<!-- ga4-insights-certification-status: PRODUCTION_READY -->\nStatus: **PRODUCTION_READY**\n<!-- /ga4-insights-current-status -->\n\nThe machine record remains UNVERIFIED.`
+        : "content",
+    };
+    expect(evaluateGA4InsightsCertification(record("PRODUCTION_READY"), contradictory).errors).toContain(
+      "statusDocument contradicts ready status outside the controlling marker",
+    );
+  });
+
   it("rejects a record that omits live per-surface value parity", () => {
     const value = record();
     value.externalGates = value.externalGates.filter((item) => item.id !== "live_surface_value_parity");

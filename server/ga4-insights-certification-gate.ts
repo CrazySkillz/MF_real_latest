@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 export const GA4_INSIGHTS_CERTIFICATION_RECORD = "GA4/certifications/ga4-insights.json";
 export const GA4_INSIGHTS_REQUIRED_DEPENDENCIES = [
+  "GA4/README.md",
   "GA4/INSIGHTS.md",
   "GA4/INSIGHTS_PRODUCTION_READINESS.md",
   "GA4/FINANCIAL_SOURCES.md",
@@ -79,6 +80,13 @@ const checkEvidence = (label: string, evidence: any, ready: boolean, errors: str
     }
     if (typeof item.evidence !== "string" || !item.evidence.trim()) {
       errors.push(`${label} ${item.id} has no evidence`);
+    }
+    if (
+      ready &&
+      typeof item.evidence === "string" &&
+      /(?:machine|controlling)\s+(?:record|status)[^.\n]*\bUNVERIFIED\b/i.test(item.evidence)
+    ) {
+      errors.push(`${label} ${item.id} evidence contradicts ready status`);
     }
     if (ready && !["passed", "not_applicable"].includes(item.status)) {
       errors.push(`${label} ${item.id} is ${item.status} while status claims ready`);
@@ -159,6 +167,12 @@ export function evaluateGA4InsightsCertification(
       const current = content.slice(start, end);
       if (!current.includes(`<!-- ga4-insights-certification-status: ${value.status} -->`)) errors.push("status marker does not match record");
       if (!ready && /Status:\s*\*\*PRODUCTION_READY\*\*/i.test(current)) errors.push("current status contradicts UNVERIFIED record");
+    }
+    if (
+      ready &&
+      /(?:machine|controlling)\s+(?:record|status)\s+(?:is\s+|remains\s+)?`?UNVERIFIED`?/i.test(content)
+    ) {
+      errors.push("statusDocument contradicts ready status outside the controlling marker");
     }
   }
   checkEvidence("requiredTests", value.requiredTests, ready, errors);

@@ -20,6 +20,7 @@
     ],
     "sourceRules": [
       "authorized campaign, selected active GA4 property, and saved campaign filter only",
+      "real access-token GA4 properties only; simulated yesop/test properties are outside the production certification",
       "native GA4 plus GA4-context imported revenue and GA4-context spend with explicit provenance",
       "raw channel rows only; no guessed or proportional allocation"
     ],
@@ -36,7 +37,7 @@
   },
   "dependencies": [
     { "path": "GA4/INSIGHTS.md", "role": "functional contract", "sha256": "16c8844f6796e801158fde4b674bc3668c8e8162d41b44c701cd1405fed3f102" },
-    { "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md", "role": "controlling status", "sha256": "d8eb3dbe4de3d0d6bd6a345f437d3627e3c5ee4244a7763050b5ecd06353beac" },
+    { "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md", "role": "controlling status", "sha256": "693befab19131b26e24e785a025d194c897d373e3445d6dba3d995e40091096a" },
     { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "b7723dac0988be2810ea83d999bc104809d5a55d546c180421c77868c7275a2f" },
     { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial provenance contract", "sha256": "7188b0078bcef3333f650c5c456eec306e744a33ab325ded6435c8413e15f4f0" },
     { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh contract", "sha256": "78d7901c3252d92a1025e628f348e3481c09f772aeeea5c8b14e0a2393b82e2b" },

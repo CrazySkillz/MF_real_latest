@@ -30,6 +30,7 @@ Included:
 - the three tracker cards
 - What to investigate next
 - only the GA4 daily, breakdown, to-date, financial-source, KPI, and Benchmark paths that directly supply those rendered values
+- real access-token GA4 properties; the built-in `yesop` simulation is test-only and is not certified as production analytics
 - the campaign-scoped GA4 daily pipeline only because it directly updates daily history and KPI/Benchmark context consumed by the live tab
 - authentication, tenant, client, campaign, property, saved-filter, reporting-timezone, persistence, and source-lifecycle boundaries for those inputs
 
@@ -42,6 +43,7 @@ Excluded from this certification:
 - report email generation or delivery
 - unrelated GA4 tabs, except a shared producer whose value is rendered by live Insights
 - alerts and notifications
+- simulated/test-only GA4 properties such as `yesop`
 
 The excluded items are outside the Insights certification definition. They are not deferred Insights validation and do not qualify or limit a future clean live-tab certification.
 
@@ -226,6 +228,8 @@ Separate repository result: the complete `server/source-safety-regression.test.t
 | deterministic scheduler | PASS: campaign-scoped manual run completed at `2026-08-05T19:04:33.463Z`, alerts were suppressed, property/timezone/cutoff stayed exact, and rows remained 21 |
 | post-scheduler parity | PASS: owner-only read-only parity passed again with temporary-user creation disabled and unchanged scoped values |
 | persistence safety | PASS: parity transactions were read-only and rolled back; only the authorized campaign-scoped daily refresh and direct KPI/Benchmark recompute mutated live inputs |
+
+The certified real-property production dataset has incomplete adjacent 7d/30d windows, so production evidence proves the exact unavailable/coverage state. Complete-window numeric totals, weighted rates, deltas, tables, and chart inputs are exercised through the actual shared production functions in the focused regression suite. The `yesop` simulation is excluded because its test-only breakdown window contract is not the real GA4 provider contract.
 
 ## Current Production Correction Evidence — `2a2dab20071bf4c2f7deb4362678151a98fc9b66`
 

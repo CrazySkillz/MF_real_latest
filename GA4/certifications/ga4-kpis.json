@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "652000fff86228a269845ca2b37411c1b2633db491bd8d66bf8ef53eed302f20",
+  "contractSha256": "9b930d5406b0b9192338e091d56922d76c5458794adec7867fbbe795dd8603c0",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "4287871f82a84afa70b50cd6cc0f1810040bb016",
+  "lastReviewedSha": "d0123ca97e8c01e2c3998e7e2c41926fb7e5b8d5",
   "certifiedSha": null,
-  "invalidationReason": "Current Commit 14 exact-SHA validation passed target inventory, mutation-blocked deployed states/browser PDF, natural scheduler, delivered KPI alerts, and the current-version regression boundary. Certification remains UNVERIFIED because refresh-disabled Engagement Rate was 68.48 while the 03:02 scheduler-persisted row was 68.30 without timestamped post-recompute cross-consumer parity proof, and exact-SHA direct snapshot/test-send/manual-send/scheduled server-report KPI selection and delivery were not externally re-proven.",
+  "invalidationReason": "Current Commit 14 exact-SHA validation passed target inventory, mutation-blocked deployed states/browser PDF, natural scheduler, delivered KPI alerts, and the current-version regression boundary. An explicitly authorized exact-campaign recompute on deployed SHA d0123ca97e8c01e2c3998e7e2c41926fb7e5b8d5 proved an Engagement Rate persistence defect: refresh-disabled live GA4 remained 68.48 while persisted KPI, progress, KPI API, and alert resolver remained 68.30 because exact daily engagedSessions was not stored. Commit 14A is locally implemented and validated, but deployment and exact-campaign cross-consumer revalidation remain pending. Exact-SHA direct snapshot/test-send/manual-send/scheduled server-report KPI selection and delivery also remain externally unproven.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -72,6 +72,8 @@
     { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "source-backed imported revenue KPI and Benchmark downstream regression", "sha256": null },
     { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": null },
     { "path": "server/ga4-kpi-reporting-window-regression.test.ts", "role": "campaign-timezone 30-completed-day and weighted Engagement Rate regression", "sha256": null },
+    { "path": "server/ga4-kpi-engaged-sessions-persistence-regression.test.ts", "role": "exact engaged-session provider, persistence, migration, valid-zero, and legacy-fallback regression", "sha256": null },
+    { "path": "server/ga4-filter.test.ts", "role": "GA4 provider response-order and campaign-filter regression", "sha256": null },
     { "path": "server/ga4-kpi-persistence-destructive-safety.test.ts", "role": "KPI progress capacity and transactional delete/retry scope regression", "sha256": null },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": null },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "financial revenue source lifecycle producer", "sha256": null },
@@ -84,6 +86,9 @@
     { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": null },
     { "path": "server/storage.ts", "role": "KPI, progress, source, notification, and delete persistence", "sha256": null },
     { "path": "server/real-ga4-client.ts", "role": "live GA4 provider query producer", "sha256": null },
+    { "path": "server/analytics.ts", "role": "live GA4 daily provider query and exact engaged-session producer", "sha256": null },
+    { "path": "server/index.ts", "role": "startup migration for existing and fresh GA4 daily tables", "sha256": null },
+    { "path": "migrations/0012_add_ga4_daily_engaged_sessions.sql", "role": "versioned nullable exact engaged-session migration", "sha256": null },
     { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "persisted KPI and Benchmark recomputation", "sha256": null },
     { "path": "server/ga4-daily-scheduler.ts", "role": "daily refresh and recompute trigger", "sha256": null },
     { "path": "server/auto-refresh-scheduler.ts", "role": "source refresh and recompute trigger", "sha256": null },
@@ -103,7 +108,7 @@
     { "path": "server/utils/reporting-timezone.ts", "role": "campaign reporting date calculation", "sha256": null },
     { "path": "server/ga4-scheduled-report-pdf.ts", "role": "scheduled server PDF KPI consumer", "sha256": null },
     { "path": "server/report-scheduler.ts", "role": "report preflight, snapshot, test-send, and scheduled consumer", "sha256": null },
-    { "path": "shared/schema.ts", "role": "KPI and progress persistence schema", "sha256": null },
+    { "path": "shared/schema.ts", "role": "KPI, progress, and nullable exact engaged-session persistence schema", "sha256": null },
     { "path": "shared/kpi-math.ts", "role": "threshold, direction, progress, and sufficiency math", "sha256": null },
     { "path": "shared/metric-math.ts", "role": "shared financial and rate formulas", "sha256": null },
     { "path": "shared/ga4-kpi-live-value.ts", "role": "shared live-card and browser-PDF KPI value resolver", "sha256": null },
@@ -170,7 +175,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "Current Commit 14 exact-SHA validation: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
+      "evidence": "Commit 14A working tree based on d0123ca9: certification regression passed 9/9 and the standalone checker passed with status intentionally UNVERIFIED."
     },
     {
       "id": "kpi_core_regressions",
@@ -192,9 +197,9 @@
     },
     {
       "id": "authoritative_reporting_window",
-      "command": "npm test -- server/ga4-kpi-reporting-window-regression.test.ts",
+      "command": "npm test -- server/ga4-kpi-reporting-window-regression.test.ts server/ga4-kpi-engaged-sessions-persistence-regression.test.ts server/ga4-filter.test.ts",
       "status": "passed",
-      "evidence": "August 3, 2026 final combined packet: 1 file / 3 tests passed."
+      "evidence": "Commit 14A working tree based on d0123ca9: exact engaged-session persistence/reporting-window/provider-contract coverage passed 3 files / 26 tests. The larger focused affected packet separately passed 6 files / 42 tests."
     },
     {
       "id": "financial_source_failure_contract",
@@ -242,13 +247,13 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "Exact SHA 4287871f: all 1,366 tests executed; 1,325 passed; zero blocking current-version failures; exactly 41 manifest-bound deferred failures remained visible."
+      "evidence": "Commit 14A working tree based on d0123ca9: all 1,370 tests executed; 1,341 passed; zero blocking current-version failures; 29 retained deferred failures remained visible."
     },
     {
       "id": "deferred_release_suites",
       "command": "npm run test:deferred",
       "status": "not_applicable",
-      "evidence": "All 41/41 retained deferred tests executed separately and all 41 failed/unverified: 21 future-platform, 19 Google Ads without a configured test account, and 1 separate GA4 Ad Comparison gate. None is represented as passing or release-blocking."
+      "evidence": "Commit 14A working tree: all 41/41 retained deferred tests executed separately; 12 passed and 29 failed. The suite remains outside the release boundary and is not represented as validated or release-blocking."
     },
     {
       "id": "full_ci_suite",
@@ -260,13 +265,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on exact SHA 4287871f."
+      "evidence": "npm run check passed on the Commit 14A working tree based on d0123ca9."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build passed on exact SHA 4287871f; 3,466 client modules transformed and the server bundle completed."
+      "evidence": "npm run build passed on the Commit 14A working tree based on d0123ca9; 3,466 client modules transformed and the server bundle completed."
     }
   ],
   "externalGates": [
@@ -288,7 +293,7 @@
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "PARTIAL on exact deployed SHA 4287871f. Refresh-disabled live success and two GA4 401 failure cases were observed with no token refresh/persistence. Engagement Rate was 68.48 live versus 68.30 persisted at 03:02; exact timestamped post-recompute parity across persisted, alert, Insights, and report consumers remains unproven."
+      "evidence": "PENDING on deployed SHA d0123ca9. One explicitly authorized exact-campaign recompute proved the defect: live Engagement Rate was 68.48 while persisted KPI, progress, KPI API, and alert resolver were 68.30; five populated rows/552 sessions reconstructed 377 engaged sessions while the provider aggregate represents 378. Commit 14A now locally persists the exact count and passed its regression boundary, but the fix is not yet deployed or revalidated by a new exact-campaign recompute."
     },
     {
       "id": "alert_email_delivery",

@@ -250,6 +250,7 @@ describe("GA4 campaign value picker", () => {
                   { value: "3" },
                   { value: "85" },
                   { value: "531.349929" },
+                  { value: "54" },
                   { value: "0.64" },
                 ],
               }]
@@ -275,6 +276,7 @@ describe("GA4 campaign value picker", () => {
       users: 85,
       revenue: 531.35,
       revenueMetric: "totalRevenue",
+      engagedSessions: 54,
       engagementRate: 0.64,
     }]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -311,6 +313,7 @@ describe("GA4 campaign value picker", () => {
                     { value: "0" },
                     { value: "85" },
                     { value: "0" },
+                    { value: "54" },
                     { value: "0.64" },
                   ],
                 },
@@ -336,6 +339,7 @@ describe("GA4 campaign value picker", () => {
       users: 85,
       revenue: 123.46,
       revenueMetric: "totalRevenue",
+      engagedSessions: 54,
       engagementRate: 0.64,
     }]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -361,8 +365,8 @@ describe("GA4 campaign value picker", () => {
                 { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "5" }, { value: "80" }] },
               ]
             : [
-                { dimensionValues: [{ value: "20260618" }], metricValues: [{ value: "85" }, { value: "108" }, { value: "3" }, { value: "80" }, { value: "50" }, { value: "0.64" }] },
-                { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "40" }, { value: "55" }, { value: "0" }, { value: "38" }, { value: "0" }, { value: "0.5" }] },
+                { dimensionValues: [{ value: "20260618" }], metricValues: [{ value: "85" }, { value: "108" }, { value: "3" }, { value: "80" }, { value: "50" }, { value: "54" }, { value: "0.64" }] },
+                { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "40" }, { value: "55" }, { value: "0" }, { value: "38" }, { value: "0" }, { value: "20" }, { value: "0.5" }] },
               ],
         }),
       } as any;

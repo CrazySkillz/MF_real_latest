@@ -7431,6 +7431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: dateStr,
             users: users,
             sessions: sessions,
+            engagedSessions: engagedSessions,
             pageviews: pageviews,
             conversions: conversions,
             revenue: String(metricsAny?.revenue || "0"),
@@ -8525,6 +8526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           date: String(r?.date || "").trim(),
           users: Number(r?.users || 0) || 0,
           sessions: Number(r?.sessions || 0) || 0,
+          engagedSessions: r?.engagedSessions == null ? null : Math.max(0, Math.round(Number(r.engagedSessions) || 0)),
           pageviews: Number(r?.pageviews || 0) || 0,
           conversions: Number(r?.conversions || 0) || 0,
           revenue: String(Number(r?.revenue || 0).toFixed(2)),
@@ -8940,7 +8942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pageviews: acc.pageviews + (Number(row?.pageviews || 0) || 0),
             conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
             ga4Revenue: acc.ga4Revenue + (Number(row?.revenue || 0) || 0),
-            engagedSessions: acc.engagedSessions + (Number(row?.engagedSessions || 0) || Math.round(sessions * rate)),
+            engagedSessions: acc.engagedSessions + addDerivedGA4EngagedSessions(row || {}).engagedSessions,
           };
         }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0, engagedSessions: 0 });
         dailyTotals.ga4Revenue = round2Local(dailyTotals.ga4Revenue);
@@ -9333,6 +9335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: d.date,
             users: d.users,
             sessions: d.sessions,
+            engagedSessions: d.engagedSessions,
             pageviews: d.pageviews,
             conversions: d.conversions,
             revenue: String(Number(d.revenue || 0).toFixed(2)),

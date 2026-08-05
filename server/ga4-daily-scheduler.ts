@@ -204,6 +204,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           date: String(r?.date || "").trim(),
           users: Number(r?.users || 0) || 0,
           sessions: Number(r?.sessions || 0) || 0,
+          engagedSessions: r?.engagedSessions == null ? null : Math.max(0, Math.round(Number(r.engagedSessions) || 0)),
           pageviews: Number(r?.pageviews || 0) || 0,
           conversions: Number(r?.conversions || 0) || 0,
           revenue: String(Number(r?.revenue || 0).toFixed(2)),

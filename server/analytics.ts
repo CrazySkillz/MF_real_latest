@@ -2010,6 +2010,7 @@ export class GoogleAnalytics4Service {
               { name: 'conversions' },
               { name: 'totalUsers' },
               { name: revenueMetric },
+              { name: 'engagedSessions' },
               // Available on most properties; if missing it will error (caught and surfaced).
               { name: 'engagementRate' },
             ],
@@ -2138,7 +2139,8 @@ export class GoogleAnalytics4Service {
             const conversions = parseInt(row.metricValues[2]?.value || '0');
             const users = parseInt(row.metricValues[3]?.value || '0');
             const revenue = Number.parseFloat(String(row.metricValues[4]?.value || '0')) || 0;
-            const engagementRate = Number.parseFloat(String(row.metricValues[5]?.value || '0')) || 0;
+            const engagedSessions = Number.parseInt(String(row.metricValues[5]?.value || '0'), 10) || 0;
+            const engagementRate = Number.parseFloat(String(row.metricValues[6]?.value || '0')) || 0;
             
             // IMPORTANT: return ISO date for downstream correctness (Insights WoW needs YYYY-MM-DD).
             // Keep a lightweight label available for charts.
@@ -2148,6 +2150,7 @@ export class GoogleAnalytics4Service {
               date: dateISO,
               dateLabel,
               sessions,
+              engagedSessions,
               pageviews,
               conversions,
               users,

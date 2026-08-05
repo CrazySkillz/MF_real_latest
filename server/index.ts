@@ -375,6 +375,7 @@ process.on('uncaughtException', (error: Error) => {
               date TEXT NOT NULL,
               users INTEGER NOT NULL DEFAULT 0,
               sessions INTEGER NOT NULL DEFAULT 0,
+              engaged_sessions INTEGER,
               pageviews INTEGER NOT NULL DEFAULT 0,
               conversions INTEGER NOT NULL DEFAULT 0,
               revenue DECIMAL(15, 2) NOT NULL DEFAULT 0,
@@ -385,6 +386,11 @@ process.on('uncaughtException', (error: Error) => {
               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
               UNIQUE (campaign_id, property_id, date)
             );
+          `);
+
+          await db.execute(sql`
+            ALTER TABLE ga4_daily_metrics
+            ADD COLUMN IF NOT EXISTS engaged_sessions INTEGER;
           `);
 
           await db.execute(sql`

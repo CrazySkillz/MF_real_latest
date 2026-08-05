@@ -20,7 +20,7 @@ This file defines whether the current implementation is production-ready, what h
 
 ### Current Commit 14 external validation — August 5, 2026 (controlling status)
 
-**Result: UNVERIFIED for exact reviewed/deployed SHA 4287871f82a84afa70b50cd6cc0f1810040bb016.** Current Commits 0–13 remain implemented. Commit 14 passed target-data inventory, the deployed six-state browser matrix, natural scheduler evidence, GA4 KPI alert delivery, and the current-version regression boundary. Two evidence gaps prevent a clean production-ready claim.
+**Result: UNVERIFIED for exact reviewed/deployed SHA d0123ca97e8c01e2c3998e7e2c41926fb7e5b8d5.** Current Commits 0–13 remain implemented. Commit 14 passed target-data inventory, the deployed six-state browser matrix, natural scheduler evidence, GA4 KPI alert delivery, and the current-version regression boundary. Commit 14A is locally implemented and validated, but deployment and exact-campaign revalidation are pending; Commit 14B external server-report evidence is also pending.
 
 Proven on the exact SHA:
 
@@ -30,7 +30,7 @@ Proven on the exact SHA:
 - refresh-disabled negative provider behavior: two expired-property campaigns returned GA4 401 without token refresh or persistence; simulated fixtures were not represented as live provider success
 - post-process-start GA4 KPI Mailgun audits with success=true, delivered status, provider response IDs, and delivered timestamps; redacted event hashes b1888bd70bd5, a87ee985dfa4, e4c67cf55c1c, and e9f355b3629e
 - npm run test:current-version: 1,366 executed, 1,325 passed, exactly 41 manifest-bound deferred failures, and zero blocking current-version failures
-- npm run test:deferred: 41/41 retained tests executed and all 41 remained failing/unverified
+- npm run test:deferred on the Commit 14A working tree: 41/41 retained tests executed; 12 passed and 29 failed, but the entire deferred suite remains outside the release boundary and is not represented as validated
 - certification regression 9/9, standalone checker, TypeScript, and production build passed
 
 Exact scheduler hashes:
@@ -42,15 +42,15 @@ Exact scheduler hashes:
 
 Precise blockers:
 
-1. **Provider/current-value parity:** refresh-disabled live Engagement Rate was 68.48 while the 03:02 scheduler-persisted KPI row was 68.30. This may be expected late-arriving GA4 data, but timestamped post-recompute parity across persisted KPI, alert, Insights, and report consumers is unproven.
+1. **Provider/current-value parity — defect proven August 5, 2026:** one explicitly authorized exact-campaign recompute on deployed SHA `d0123ca97e8c01e2c3998e7e2c41926fb7e5b8d5` refreshed the provider rows and completed successfully, but refresh-disabled live Engagement Rate remained `68.48` while persisted KPI, progress, KPI API, and alert resolver remained `68.30`. The exact 30-day boundary contained five populated daily rows and 552 sessions. The persisted path reconstructed 377 engaged sessions from rounded daily rates, while the provider aggregate represents 378. `ga4_daily_metrics` does not persist the provider's exact daily `engagedSessions`, so this is an implementation defect rather than late-arriving-data evidence.
 2. **Exact-SHA server-report external parity:** the deployed browser KPI PDF passed and local real-path report regressions passed, but direct snapshot, test-send, manual-send, and scheduled-send were not externally re-proven with exact selected KPI IDs, current recompute freshness, server PDF, and confirmed delivery. No currently accessible existing production report combines KPI selection with recipients/scheduling.
 
 #### Chronological smallest-safe closure queue
 
-14A. Re-run a refresh-disabled live Engagement Rate read immediately after a natural or explicitly authorized exact-scope recompute; compare timestamped persisted KPI, alert resolver, Insights, and report-preflight values. Change runtime code only if tracing proves a defect.
+14A. **Implementation locally complete; deployment/revalidation pending.** Exact daily `engagedSessions` now flows through the existing provider time series, nullable schema/storage/upsert, scheduler, backfill, and manual-refresh paths. Exact valid zero is authoritative; only legacy null/absent rows use rate-derived fallback. Local evidence: focused affected packet 6 files/42 tests passed; provider-contract plus persistence packet 2 files/23 tests passed; `npm run test:current-version` executed 1,370 tests with 1,341 passing, 29 deferred failures, and zero blocking failures; certification regression 9/9, checker, TypeScript, and production build passed. Deploy this focused fix, then rerun one exact-scope recompute and compare timestamped refresh-disabled provider, persisted KPI/progress, alert resolver, KPI API/card, Insights, and server-report values. Do not broaden any campaign, owner, property, filter, window, source, token, alert, report, or production-data boundary.
 14B. With explicit report-send authorization and an accessible existing owner/report, validate exact KPI selection and freshness through direct snapshot, test-send, manual-send, and scheduled-send, confirm server PDF and provider delivery, then restore the original report boundary exactly. If no accessible existing fixture exists, keep this evidence pending.
 
-The 41 deferred tests are not passing: 21 cover unavailable future-version sources, 19 require a configured Google Ads test account, and 1 belongs to separate GA4 Ad Comparison certification.
+The 41-test deferred suite is not a passing production boundary: 21 tests cover unavailable future-version sources, 19 require a configured Google Ads test account, and 1 belongs to separate GA4 Ad Comparison certification. The current execution produced 12 passes and 29 failures; none is used as GA4 KPI release evidence.
 
 ## Historical Status And Evidence (non-authoritative)
 

@@ -106,6 +106,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   date: text("date").notNull(), // YYYY-MM-DD (UTC)
   users: integer("users").notNull().default(0),
   sessions: integer("sessions").notNull().default(0),
+  engagedSessions: integer("engaged_sessions"),
   pageviews: integer("pageviews").notNull().default(0),
   conversions: integer("conversions").notNull().default(0),
   revenue: decimal("revenue", { precision: 15, scale: 2 }).notNull().default("0"),
@@ -1236,6 +1237,7 @@ export const insertGA4DailyMetricSchema = createInsertSchema(ga4DailyMetrics).pi
   date: true,
   users: true,
   sessions: true,
+  engagedSessions: true,
   pageviews: true,
   conversions: true,
   revenue: true,

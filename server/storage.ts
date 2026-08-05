@@ -964,6 +964,7 @@ export class DatabaseStorage implements IStorage {
 
       const users = Number((r as any)?.users || 0) || 0;
       const sessions = Number((r as any)?.sessions || 0) || 0;
+      const engagedSessions = (r as any)?.engagedSessions == null ? null : Math.max(0, Math.round(Number((r as any).engagedSessions) || 0));
       const pageviews = Number((r as any)?.pageviews || 0) || 0;
       const conversions = Number((r as any)?.conversions || 0) || 0;
       const revenue = String((r as any)?.revenue ?? "0");
@@ -973,13 +974,14 @@ export class DatabaseStorage implements IStorage {
 
       await db.execute(sql`
         INSERT INTO ga4_daily_metrics
-          (campaign_id, property_id, date, users, sessions, pageviews, conversions, revenue, engagement_rate, revenue_metric, is_simulated, updated_at)
+          (campaign_id, property_id, date, users, sessions, engaged_sessions, pageviews, conversions, revenue, engagement_rate, revenue_metric, is_simulated, updated_at)
         VALUES
-          (${campaignId}, ${propertyId}, ${date}, ${users}, ${sessions}, ${pageviews}, ${conversions}, ${revenue}, ${engagementRate}, ${revenueMetric}, ${isSimulated}, CURRENT_TIMESTAMP)
+          (${campaignId}, ${propertyId}, ${date}, ${users}, ${sessions}, ${engagedSessions}, ${pageviews}, ${conversions}, ${revenue}, ${engagementRate}, ${revenueMetric}, ${isSimulated}, CURRENT_TIMESTAMP)
         ON CONFLICT (campaign_id, property_id, date)
         DO UPDATE SET
           users = EXCLUDED.users,
           sessions = EXCLUDED.sessions,
+          engaged_sessions = EXCLUDED.engaged_sessions,
           pageviews = EXCLUDED.pageviews,
           conversions = EXCLUDED.conversions,
           revenue = EXCLUDED.revenue,

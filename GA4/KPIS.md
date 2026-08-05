@@ -8,11 +8,11 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of August 5, 2026, the GA4 KPIs tab remains UNVERIFIED for exact reviewed/deployed SHA 4287871f82a84afa70b50cd6cc0f1810040bb016.
+As of August 5, 2026, the GA4 KPIs tab remains UNVERIFIED for exact reviewed/deployed SHA d0123ca97e8c01e2c3998e7e2c41926fb7e5b8d5. Commit 14A is locally implemented and validated but is not yet deployed or externally revalidated.
 
-Current Commit 14 proved the exact-SHA inventory, deployed six-state browser matrix, natural scheduler completion, negative provider behavior, delivered KPI alerts, and zero blocking current-version test failures. Production readiness is not claimed because live Engagement Rate versus scheduler-persisted parity and exact-SHA server-report external parity remain unresolved.
+Current Commit 14 proved the exact-SHA inventory, deployed six-state browser matrix, natural scheduler completion, negative provider behavior, delivered KPI alerts, and zero blocking current-version test failures. Production readiness is not claimed because the locally repaired exact `engagedSessions` persistence path still needs deployed exact-campaign revalidation, and exact-SHA server-report external parity remains unresolved.
 
-The controlling evidence and smallest-safe closure queue are in GA4/KPIS_PRODUCTION_READINESS.md. The 41 deferred tests remain visible, failing/unverified, and outside this GA4 KPI release boundary.
+The controlling evidence and smallest-safe closure queue are in GA4/KPIS_PRODUCTION_READINESS.md. All 41 deferred tests remain visible and outside this GA4 KPI release boundary; the current retained-suite result is 12 passed and 29 failed, without treating the suite as production evidence.
 ## KPI Tab Structure
 
 The GA4 `KPIs` tab contains:
@@ -283,6 +283,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPIs tab remains UNVERIFIED. Commit 14 has two precise blockers: timestamped Engagement Rate parity after recompute and exact-SHA external server-report proof for direct snapshot, test-send, manual-send, and scheduled-send KPI selection/delivery.
+The GA4 KPIs tab remains UNVERIFIED. Commit 14A's exact daily `engagedSessions` repair is locally complete but requires deployment and exact-campaign revalidation. Commit 14B still requires exact-SHA external server-report proof for direct snapshot, test-send, manual-send, and scheduled-send KPI selection/delivery.
 
 The controlling evidence and chronological smallest-safe closure queue are documented in GA4/KPIS_PRODUCTION_READINESS.md.

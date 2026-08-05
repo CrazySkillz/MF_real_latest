@@ -1,7 +1,11 @@
 export const addDerivedGA4EngagedSessions = <T extends Record<string, any>>(row: T): T & { engagedSessions: number } => {
   const sessions = Number(row?.sessions || 0) || 0;
-  const existing = Number(row?.engagedSessions || 0) || 0;
-  if (existing > 0 || sessions <= 0) return { ...row, engagedSessions: existing };
+  const existingRaw = row?.engagedSessions;
+  const existing = Number(existingRaw);
+  if (existingRaw !== null && typeof existingRaw !== "undefined" && Number.isFinite(existing) && existing >= 0) {
+    return { ...row, engagedSessions: existing };
+  }
+  if (sessions <= 0) return { ...row, engagedSessions: 0 };
   const rawRate = Number(row?.engagementRate || 0) || 0;
   const rate = rawRate > 1 ? rawRate / 100 : rawRate;
   return { ...row, engagedSessions: Math.max(0, Math.round(sessions * rate)) };

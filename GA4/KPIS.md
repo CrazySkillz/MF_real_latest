@@ -14,7 +14,7 @@ One explicitly authorized refresh/recompute ran only for campaign hash `fc734dda
 
 Commit 14B is the single combined remaining validation task; it is not split into another queue. Its local checks pass, but external closure is blocked because Mailgun cannot deliver before `2026-08-05T19:58:54Z`, the required server report paths necessarily run their normal persisted recompute while another recompute was explicitly prohibited, and the exact-SHA browser KPI PDF has not been executed. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
-KPI creation keeps its correctness-critical campaign recompute and immediate alert/email ordering. After the recompute has already completed the global KPI alert sweep successfully, the create route reuses that result instead of repeating the same sweep; an unattempted or failed sweep still runs through the original synchronous fallback before the response. The browser refreshes the independent KPI and Notifications queries concurrently after success.
+KPI creation keeps its correctness-critical campaign recompute and immediate alert/email ordering. After the recompute has already completed the global KPI alert sweep successfully, the create route reuses that result instead of repeating the same sweep; an unattempted or failed sweep still runs through the original synchronous fallback before the response. Independent recompute reads run concurrently without changing source precedence or write order. After the server confirms the durable create, the browser closes the modal and shows success before refreshing KPI and Notifications caches, and Notifications performs one explicit refetch rather than an invalidation-triggered refetch followed by a duplicate explicit refetch.
 
 ## KPI Tab Structure
 

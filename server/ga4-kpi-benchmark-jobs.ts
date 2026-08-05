@@ -239,19 +239,24 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     let campaignBenchmarks: any[] = [];
 
     try {
-      try {
-        campaignKpis = await storage.getPlatformKPIs("google_analytics", campaignId);
-      } catch (e: any) {
+      const [campaignKpisResult, campaignBenchmarksResult, connectionsResult] = await Promise.allSettled([
+        storage.getPlatformKPIs("google_analytics", campaignId),
+        storage.getPlatformBenchmarks("google_analytics", campaignId),
+        storage.getGA4Connections(campaignId),
+      ]);
+      if (campaignKpisResult.status === "fulfilled") {
+        campaignKpis = campaignKpisResult.value;
+      } else {
         campaignIdsFailed.add(campaignId);
-        console.warn(`[GA4 KPI/Benchmarks] KPI rows failed to load for campaign ${campaignId}:`, e?.message || e);
+        console.warn(`[GA4 KPI/Benchmarks] KPI rows failed to load for campaign ${campaignId}:`, campaignKpisResult.reason?.message || campaignKpisResult.reason);
       }
-      try {
-        campaignBenchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId);
-      } catch (e: any) {
+      if (campaignBenchmarksResult.status === "fulfilled") {
+        campaignBenchmarks = campaignBenchmarksResult.value;
+      } else {
         campaignIdsFailed.add(campaignId);
-        console.warn(`[GA4 KPI/Benchmarks] Benchmark rows failed to load for campaign ${campaignId}:`, e?.message || e);
+        console.warn(`[GA4 KPI/Benchmarks] Benchmark rows failed to load for campaign ${campaignId}:`, campaignBenchmarksResult.reason?.message || campaignBenchmarksResult.reason);
       }
-      const connections = await storage.getGA4Connections(campaignId).catch(() => []);
+      const connections = connectionsResult.status === "fulfilled" ? connectionsResult.value : [];
       const primary = (connections as any[]).find((c: any) => c?.isPrimary) || (connections as any[])[0];
       if (!primary?.propertyId) {
         campaignIdsSkipped.add(campaignId);
@@ -334,9 +339,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       })();
 
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-      const reportingRows = await storage
-        .getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate)
-        .catch(() => null as any);
+      const [reportingRows, toDateRows] = await Promise.all([
+        storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => null as any),
+        storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => null as any),
+      ]);
       const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
       let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
       if (isYesopMockProperty(propertyId)) {
@@ -353,7 +359,6 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           engagementRate: sessions > 0 ? (trafficTotals.engagedSessions + baselineEngagedSessions) / sessions : 0,
         };
       }
-      const toDateRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => null as any);
       let sessionsToDate = 0;
       let usersToDate = 0;
       let conversionsToDate = 0;
@@ -367,6 +372,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         ga4RevenueToDate += Number((r as any)?.revenue || 0) || 0;
       }
 
+      const financialSourceWindow = getGA4KPIFinancialSourceWindow();
+      const financialInputsPromise = Promise.allSettled([
+        storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
+        storage.getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
+      ]);
       let providerFinancialCandidate: any = null;
       if (isYesopMockProperty(propertyId)) {
         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue);
@@ -416,11 +426,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
       }
 
-      const financialSourceWindow = getGA4KPIFinancialSourceWindow();
-      const [importedRevenueResult, spendTotalResult] = await Promise.allSettled([
-        storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
-        storage.getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
-      ]);
+      const [importedRevenueResult, spendTotalResult] = await financialInputsPromise;
       const importedRevenueValue = importedRevenueResult.status === "fulfilled"
         ? parseGA4FinancialNumber((importedRevenueResult.value as any)?.totalRevenue)
         : null;

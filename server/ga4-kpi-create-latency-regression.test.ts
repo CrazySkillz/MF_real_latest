@@ -24,7 +24,7 @@ describe("GA4 KPI create latency regression", () => {
     expect(createRoute).toContain('await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "KPI Create");');
   });
 
-  it("refreshes the independent KPI and notification queries concurrently", () => {
+  it("closes the successful create UI before refreshing independent queries", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");
     const createMutation = client.slice(
       client.indexOf("const createKPIMutation"),
@@ -34,7 +34,17 @@ describe("GA4 KPI create latency regression", () => {
     expect(createMutation).toContain("await Promise.all([");
     expect(createMutation).toContain("queryClient.invalidateQueries");
     expect(createMutation).toContain("refreshNotificationQueries(),");
-    expect(createMutation.indexOf("await Promise.all(["))
-      .toBeLessThan(createMutation.indexOf("setShowKPIDialog(false);"));
+    expect(createMutation.indexOf("setShowKPIDialog(false);"))
+      .toBeLessThan(createMutation.indexOf("await Promise.all(["));
+  });
+
+  it("parallelizes only independent recompute reads", () => {
+    const jobs = read("server/ga4-kpi-benchmark-jobs.ts");
+
+    expect(jobs).toContain("const [campaignKpisResult, campaignBenchmarksResult, connectionsResult] = await Promise.allSettled([");
+    expect(jobs).toContain("const [reportingRows, toDateRows] = await Promise.all([");
+    expect(jobs).toContain("const financialInputsPromise = Promise.allSettled([");
+    expect(jobs).toContain("const [importedRevenueResult, spendTotalResult] = await financialInputsPromise;");
+    expect(jobs).toContain("providerFinancialCandidate");
   });
 });

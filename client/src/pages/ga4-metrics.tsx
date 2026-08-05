@@ -473,7 +473,7 @@ export default function GA4Metrics() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const refreshNotificationQueries = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"], refetchType: "none" });
     await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
   }, [queryClient]);
 
@@ -781,13 +781,13 @@ export default function GA4Metrics() {
       return response.json();
     },
     onSuccess: async () => {
+      setShowKPIDialog(false);
+      kpiForm.reset();
+      toast({ title: "KPI created successfully" });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] }),
         refreshNotificationQueries(),
       ]);
-      setShowKPIDialog(false);
-      kpiForm.reset();
-      toast({ title: "KPI created successfully" });
     },
     onError: (error) => {
       console.error("KPI creation error:", error);

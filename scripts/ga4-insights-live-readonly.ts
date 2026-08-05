@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chromium, type Page } from "playwright";
 import { pool } from "../server/db";
-import { buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
+import { addGA4InsightsDateDays, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
 import { getReportingDateWindow } from "../server/utils/reporting-timezone";
 
 const BASE_URL = process.env.GA4_INSIGHTS_BASE_URL || "https://marketforensics.onrender.com";
@@ -319,6 +319,11 @@ try {
 
   const normalizedDailyRows = normalizeGA4InsightsDailyRows(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
   const trends = owner.page.getByTestId("insights-trends");
+  const assertChartSeries = async (expected: unknown[], label: string) => {
+    const raw = await trends.getByTestId("insights-trends-chart").getAttribute("data-chart-series");
+    const actual = JSON.parse(String(raw || "[]"));
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + " chart-series parity failed");
+  };
   const dailyExpected = normalizedDailyRows.slice(-14).reverse();
   const dailyRendered = trends.locator("tbody tr");
   if (dailyExpected.length >= 2) {
@@ -336,8 +341,22 @@ try {
       ];
       if (cells.map(normalizeText).join("|") !== expectedCells.map(normalizeText).join("|")) throw new Error("Daily trend parity failed for " + current.date);
     }
+    const byDate = new Map(normalizedDailyRows.map((row) => [row.date, row]));
+    const expectedChart: unknown[] = [];
+    const finalDate = String(uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date || "");
+    let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
+    while (cursor && cursor <= finalDate) {
+      const row = byDate.get(cursor);
+      expectedChart.push({ date: cursor.slice(5), value: row ? Number(row.sessions || 0) : null, idx: expectedChart.length });
+      cursor = addGA4InsightsDateDays(cursor, 1) || "";
+    }
+    const dailyCoverage = await trends.getByTestId("insights-daily-chart-coverage").innerText();
+    assertIncludes(dailyCoverage, "Daily chart " + addGA4InsightsDateDays(finalDate, -29) + " \u2192 " + finalDate, "daily chart range");
+    assertIncludes(dailyCoverage, expectedChart.filter((row: any) => row.value !== null).length + "/" + expectedChart.length + " imported days", "daily chart coverage");
+    assertIncludes(dailyCoverage, "Missing dates are shown as gaps, not zero.", "daily chart missing-date state");
+    await assertChartSeries(expectedChart, "Daily");
   } else {
-    assertIncludes(await trends.innerText(), "Need at least 2 days", "daily insufficient-history state");
+    assertIncludes(await trends.innerText(), "Need at least 2 imported daily rows", "daily insufficient-history state");
   }
 
   const validateRollingMode = async (mode: "7d" | "30d", days: 7 | 30) => {
@@ -353,6 +372,12 @@ try {
       assertIncludes(rendered, "Prior " + days + " days", mode + " prior label");
       assertIncludes(rendered, String(prior.startDate) + " \u2192 " + String(prior.endDate), mode + " prior range");
       assertIncludes(rendered, formatNumber(prior.sessions), mode + " prior value");
+      const expectedChart: unknown[] = [];
+      for (const row of normalizedDailyRows.slice(-(days * 2))) {
+        const rollup = buildGA4InsightsCalendarRollup(normalizedDailyRows, row.date, days);
+        if (rollup.complete) expectedChart.push({ date: row.date.slice(5), value: Number(rollup.sessions.toFixed(2)), idx: expectedChart.length });
+      }
+      await assertChartSeries(expectedChart, mode);
     } else {
       const rendered = await trends.innerText();
       assertIncludes(rendered, days + "-day comparison unavailable", mode + " insufficient-history state");
@@ -386,6 +411,131 @@ try {
         comparable && previous ? formatDelta(current.value, previous.value) : "Not comparable",
       ];
       if (cells.join("|") !== expectedCells.join("|")) throw new Error("Monthly trend parity failed for " + current.month);
+    }
+    await assertChartSeries(monthly.map((row, index) => {
+      const [year, month] = row.month.split("-");
+      const date = new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "short" }) + " '" + year.slice(2);
+      return { date, value: Number(row.value.toFixed(2)), idx: index, partial: row.partial };
+    }), "Monthly");
+  }
+
+  const allTrendMetrics = [
+    { key: "sessions", label: "Sessions" },
+    { key: "users", label: "Users" },
+    { key: "conversions", label: "Conversions" },
+    { key: "revenue", label: "Revenue" },
+    { key: "pageviews", label: "Page Views" },
+    { key: "engagementRate", label: "Engagement Rate" },
+  ] as const;
+  const nonUserTrendMetrics = allTrendMetrics.filter((metric) => metric.key !== "users");
+  const chooseTrendMetric = async (label: string) => {
+    const trigger = trends.getByTestId("insights-trend-metric");
+    await trigger.click();
+    await owner.page.getByRole("option", { name: label, exact: true }).click();
+    if (normalizeText(await trigger.innerText()) !== label) throw new Error("Trend metric selection failed for " + label);
+  };
+  const dailyTrendValue = (row: any, key: string) => key === "engagementRate"
+    ? Number(row?.engagementRate || 0) * 100
+    : Number(row?.[key] || 0);
+  const aggregateTrendValue = (row: any, key: string) => key === "engagementRate"
+    ? Number(row?.engagementRate || 0)
+    : Number(row?.[key] || 0);
+  const formatTrendValue = (key: string, value: number) => key === "revenue"
+    ? formatMoney(value)
+    : key === "engagementRate" ? formatPct(value) : formatNumber(value);
+
+  await trends.getByRole("button", { name: "Daily", exact: true }).click();
+  if (dailyExpected.length >= 2) {
+    const byDate = new Map(normalizedDailyRows.map((row) => [row.date, row]));
+    const finalDate = String(uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date || "");
+    for (const metric of allTrendMetrics) {
+      await chooseTrendMetric(metric.label);
+      const rows = trends.locator("tbody tr");
+      if (await rows.count() !== dailyExpected.length) throw new Error(metric.label + " Daily row count parity failed");
+      for (let index = 0; index < dailyExpected.length; index += 1) {
+        const current = dailyExpected[index];
+        const previousDate = addGA4InsightsDateDays(current.date, -1);
+        const previous = normalizedDailyRows.find((candidate) => candidate.date === previousDate);
+        const currentValue = dailyTrendValue(current, metric.key);
+        const expectedCells = [
+          current.date,
+          formatTrendValue(metric.key, currentValue),
+          previous ? formatDelta(currentValue, dailyTrendValue(previous, metric.key)) : "\u2014",
+        ].map(normalizeText);
+        const actualCells = (await rows.nth(index).locator("td").allInnerTexts()).map(normalizeText);
+        if (actualCells.join("|") !== expectedCells.join("|")) throw new Error(metric.label + " Daily parity failed for " + current.date);
+      }
+      const expectedChart: unknown[] = [];
+      let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
+      while (cursor && cursor <= finalDate) {
+        const row = byDate.get(cursor);
+        const raw = row ? dailyTrendValue(row, metric.key) : null;
+        expectedChart.push({ date: cursor.slice(5), value: raw === null ? null : metric.key === "engagementRate" ? Number(raw.toFixed(2)) : raw, idx: expectedChart.length });
+        cursor = addGA4InsightsDateDays(cursor, 1) || "";
+      }
+      await assertChartSeries(expectedChart, metric.label + " Daily");
+    }
+  }
+
+  const validateEveryRollingMetric = async (mode: "7d" | "30d", days: 7 | 30) => {
+    await trends.getByRole("button", { name: mode, exact: true }).click();
+    const current = days === 7 ? uiRollups.last7 : uiRollups.last30;
+    const prior = days === 7 ? uiRollups.prior7 : uiRollups.prior30;
+    if (!current.complete || !prior.complete) return;
+    for (const metric of nonUserTrendMetrics) {
+      await chooseTrendMetric(metric.label);
+      const currentValue = aggregateTrendValue(current, metric.key);
+      const priorValue = aggregateTrendValue(prior, metric.key);
+      const rows = trends.locator("tbody tr");
+      if (await rows.count() !== 2) throw new Error(metric.label + " " + mode + " row count parity failed");
+      const currentCells = (await rows.nth(0).locator("td").allInnerTexts()).map(normalizeText);
+      const priorCells = (await rows.nth(1).locator("td").allInnerTexts()).map(normalizeText);
+      if (currentCells.join("|") !== ["Last " + days + " days " + current.startDate + " \u2192 " + current.endDate, formatTrendValue(metric.key, currentValue), formatDelta(currentValue, priorValue)].map(normalizeText).join("|")) {
+        throw new Error(metric.label + " " + mode + " current-row parity failed");
+      }
+      if (priorCells.join("|") !== ["Prior " + days + " days " + prior.startDate + " \u2192 " + prior.endDate, formatTrendValue(metric.key, priorValue), "baseline"].map(normalizeText).join("|")) {
+        throw new Error(metric.label + " " + mode + " prior-row parity failed");
+      }
+      const expectedChart: unknown[] = [];
+      for (const row of normalizedDailyRows.slice(-(days * 2))) {
+        const rollup = buildGA4InsightsCalendarRollup(normalizedDailyRows, row.date, days);
+        if (rollup.complete) expectedChart.push({ date: row.date.slice(5), value: Number(aggregateTrendValue(rollup, metric.key).toFixed(2)), idx: expectedChart.length });
+      }
+      await assertChartSeries(expectedChart, metric.label + " " + mode);
+    }
+  };
+  await validateEveryRollingMetric("7d", 7);
+  await validateEveryRollingMetric("30d", 30);
+
+  await trends.getByRole("button", { name: "Monthly", exact: true }).click();
+  if (new Set(normalizedDailyRows.map((item) => item.date.slice(0, 7))).size >= 2) {
+    for (const metric of nonUserTrendMetrics) {
+      await chooseTrendMetric(metric.label);
+      const metricMonthly = buildGA4InsightsMonthlySeries(normalizedDailyRows, uiDailyBody?.dataThroughDate || null, metric.key);
+      const expectedRows = [...metricMonthly].reverse();
+      const rows = trends.locator("tbody tr");
+      if (await rows.count() !== expectedRows.length) throw new Error(metric.label + " Monthly row count parity failed");
+      for (let index = 0; index < expectedRows.length; index += 1) {
+        const current = expectedRows[index];
+        const previous = index < expectedRows.length - 1 ? expectedRows[index + 1] : null;
+        const [year, month] = current.month.split("-");
+        const label = new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "long", year: "numeric" });
+        const comparable = Boolean(previous && !current.partial && !previous?.partial);
+        const expectedCells = [
+          label + " " + (current.partial ? "partial, " + current.days + " days" : current.days + " days"),
+          formatTrendValue(metric.key, current.value),
+          comparable && previous ? formatDelta(current.value, previous.value) : "Not comparable",
+        ].map(normalizeText);
+        const actualCells = (await rows.nth(index).locator("td").allInnerTexts()).map(normalizeText);
+        if (actualCells.join("|") !== expectedCells.join("|")) throw new Error(metric.label + " Monthly parity failed for " + current.month);
+      }
+      await assertChartSeries(metricMonthly.map((row, index) => {
+        const [year, month] = row.month.split("-");
+        return {
+          date: new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "short" }) + " '" + year.slice(2),
+          value: Number(row.value.toFixed(2)), idx: index, partial: row.partial,
+        };
+      }), metric.label + " Monthly");
     }
   }
 

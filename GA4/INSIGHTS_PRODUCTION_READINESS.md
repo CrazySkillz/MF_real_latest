@@ -7,15 +7,15 @@
 
 Status: **UNVERIFIED**
 
-Audit baseline SHA: `231afeb141d7c25caf1ca4a99144d651c70ddcfd`
+Audit baseline and deployed SHA: `deb368b16d7bd970a3f19dbac634eed199227b22`
 
 Certified SHA: none
 
-Corrected deployed revision (not certified): `2a2dab20071bf4c2f7deb4362678151a98fc9b66`
+Corrected candidate revision: not committed or deployed yet
 
-Reason: the prior `d6a82a79e11e043154d993e439898c2645871cc9` certification was invalidated by later dependency changes and by a newly confirmed Major Trends state defect. The sparse-history message is corrected and authenticated production parity, tenant isolation, deterministic scheduler validation, and post-scheduler parity pass on `2a2dab20071bf4c2f7deb4362678151a98fc9b66`. Whole-tab certification remains unverified because the later dependency/configuration boundary has not been frozen, re-inventoried end to end, and hashed as a new certification boundary.
+Reason: the prior `d6a82a79e11e043154d993e439898c2645871cc9` certification and the narrower `2a2dab20071bf4c2f7deb4362678151a98fc9b66` sparse-history correction evidence are historical. The current audit found additional Major live-value, fail-closed, stale-state, property-switch, chart-window, and parity-checker defects on deployed baseline `deb368b16d7bd970a3f19dbac634eed199227b22`. They are corrected locally and the dependency hashes are frozen, but the candidate is not yet committed, deployed, or production-validated.
 
-The reported Major finding is fixed on the corrected deployed revision; no Critical or Major finding remains open for this correction. No current whole-tab revision is certified.
+No Critical or Major finding remains open in the local candidate. No current whole-tab revision is certified, and machine status must remain `UNVERIFIED` until every required production gate passes on the exact final deployed revision.
 
 <!-- /ga4-insights-current-status -->
 
@@ -63,7 +63,7 @@ This plan is finite. Certification stops at the live-tab boundary above.
 | Surface | Visible values | Authoritative live inputs and transforms |
 |---|---|---|
 | Executive Financials | Spend, Revenue, Profit, ROAS, ROI, source labels, loading/unavailable/not-connected/last-good state | GA4-context spend sources and totals; native GA4 to-date totals; GA4-context imported revenue; fixed native-source precedence; Revenue = native + imported; Profit = Revenue - Spend; ROAS = Revenue / Spend only when Spend > 0; ROI uses shared metric math only when Spend > 0 |
-| Trends | Sessions, Users in Daily only, Conversions, Revenue, Page Views, Engagement Rate; Daily, 7d, 30d, Monthly; cutoff/import/refresh/timezone labels | isolated 60-day `ga4-daily` response for the selected property; completed campaign-reporting days; shared calendar rollups; session-weighted engagement; prior-calendar-day deltas; partial/incomplete month labeling |
+| Trends | Sessions, Users in Daily only, Conversions, Revenue, Page Views, Engagement Rate; Daily, 7d, 30d, Monthly; cutoff/import/refresh/timezone labels | isolated 60-day `ga4-daily` response for the selected property; completed campaign-reporting days; exact 30-calendar-day Daily chart with null gaps; shared calendar rollups; session-weighted engagement preserving explicit zero engaged sessions; prior-calendar-day deltas; partial/incomplete month labeling |
 | Data Summary | 30-day Sessions, Conversions, conversion rate, total Revenue, Top Channel, Spend, Profit, ROAS, CPA, channel Sessions/Share/Conversions/CR | exact last 30 calendar days from the isolated daily response; the same financial totals as Executive Financials; raw 30-day GA4 acquisition breakdown for selected property/filter; no proportional allocation |
 | Tracker cards | Total insights, High priority, Needs attention | full generated finding list before the visible finding cap |
 | What to investigate next | grouped finding title, description, recommended check, severity, basis, confidence, hidden count | financial integrity rules; eligible KPI/Benchmark values and snapshot analytics; complete 3-day or 7-day calendar comparisons; raw channel context; explicit unavailable/stale/configuration findings |
@@ -82,6 +82,8 @@ This plan is finite. Certification stops at the live-tab boundary above.
 -> `normalizeGA4InsightsDailyRows`
 -> `buildGA4InsightsRollups`, `buildGA4InsightsCalendarRollup`, or `buildGA4InsightsMonthlySeries`
 -> Trends, Data Summary, tracker inputs, and trend findings.
+
+Daily charts iterate the exact 30 calendar dates ending at `dataThroughDate`; missing rows become `null` gaps and are not connected. Rollups use persisted `engagedSessions` whenever present, including zero, and derive it from that row's normalized engagement rate only for legacy absence.
 
 ### Channel values
 
@@ -145,9 +147,22 @@ None found.
 
 ### Major
 
-Current finding, resolved on `2a2dab20071bf4c2f7deb4362678151a98fc9b66`:
+Current audit findings, resolved only in the uncommitted local candidate:
 
-1. **Sparse daily history was described as complete history.** Root cause: the insufficient-history renderer used the total number of returned rows across the 60-day response and labeled them complete days, while the production calculation correctly required every date in two adjacent calendar windows. Path: isolated `ga4-daily` response -> exact calendar rollups -> Trends insufficient-history UI. Effect: the page could say 21 complete days while correctly withholding a 7-day comparison whose current/prior coverage was only 1/7 and 0/7. Fix: render both exact date ranges and their imported-day coverage, label the total as imported rows, and state that missing dates are not zero. Authenticated production parity passed on the exact deployed correction.
+1. **Sparse daily history was still described as a fixed row-count requirement outside the Trends card.** Root cause: `What to investigate next` used total rows in the 60-day response as completed-day history. Path: isolated daily response -> rollups -> action intro and short-window findings. Fix: every live explanation now reports the exact current/prior calendar ranges, imported-day coverage, and total imported rows.
+2. **A property switch could retain channel analysis from the prior property.** Root cause: the channel-analysis memo omitted the placeholder/property-transition dependency. Path: selected property -> cached breakdown -> channel analysis -> Data Summary and findings. Fix: invalidate the memo on placeholder transition.
+3. **A failed channel refresh could still drive recommendations.** Root cause: cached channel rows remained eligible for KPI, Benchmark, anomaly, and top-channel guidance. Path: breakdown error with last-good response -> channel analysis -> finding text. Fix: keep labeled last-good values visible but use a fail-closed recommendation-only channel input.
+4. **Financial integrity findings could remain stale after source or to-date state changed.** Root cause: the findings memo omitted to-date error and financial availability dependencies. Path: GA4/imported revenue/spend queries -> availability flags -> findings. Fix: add every directly consumed dependency.
+5. **Cached Data Summary values lacked local stale/unavailable labels.** Root cause: only the financial header exposed some refresh failures. Path: daily, breakdown, and financial query cache -> Data Summary. Fix: add explicit daily, channel, and financial unavailable/last-good messages while preserving verified zero.
+6. **The Daily chart altered observed history.** Root cause: leading verified zero rows were trimmed and missing calendar dates were compressed between returned rows. Path: normalized daily rows -> Daily chart. Fix: preserve zero, render exactly 30 calendar dates through the completed-day cutoff, insert `null` for missing dates, and disable line connection across gaps.
+7. **The production validator did not prove chart-series parity.** Root cause: it checked table text but not the Recharts input series. Path: page-consumed API response -> chart transform -> rendered chart. Fix: expose the chart series as read-only test metadata and compare Daily, 7d, 30d, and Monthly series against the actual shared production functions.
+8. **An initial GA4 to-date failure could substitute a 30-day daily/breakdown value for lifetime financials.** Root cause: the native financial consumer state accepted fallback responses with different windows. Path: failed `ga4-to-date` -> daily/breakdown fallback -> Executive Financials, Data Summary, CPA, KPI/Benchmark inputs, and findings. Fix: lifetime Insights availability now requires the actual selected-property `ga4-to-date` response; failure is unavailable and cached failure is stale.
+9. **Loading or failed source requests could be mislabeled as not connected.** Root cause: absence was inferred before both spend and revenue definition/input states were ready. Path: source query state -> missing-source findings and financial cards. Fix: emit Not connected only after ready source states prove absence; otherwise render unavailable/loading.
+10. **A cached GA4 to-date failure was described as fully unavailable.** Root cause: the finding did not distinguish no response from a last-good cached response. Path: query cache/error -> financial integrity finding. Fix: distinct unavailable and stale finding IDs, severity, basis, confidence, and copy; performance conclusions remain withheld.
+11. **Explicit zero engaged sessions could become nonzero.** Root cause: the shared rollup treated `engagedSessions > 0` as presence and derived `sessions × engagementRate` for explicit zero. Path: persisted daily row -> daily API -> shared normalization/rollup/monthly series -> visible Engagement Rate and findings. Fix: preserve null versus zero and derive only when the value is genuinely absent.
+12. **A mixed native/imported revenue provenance finding could use unready inputs.** Root cause: the informational finding checked cached values but not the combined revenue input state. Path: to-date/imported revenue cache -> provenance finding. Fix: require a fully ready combined revenue state.
+
+All twelve are Major because each could change a visible value, state, comparison, provenance assertion, or recommendation, or leave that output unproved. Local regression and build evidence is recorded below; deployed evidence is still pending.
 
 Historical remediated findings from the `d6a82a79e11e043154d993e439898c2645871cc9` audit:
 
@@ -166,11 +181,11 @@ Those ten historical Major findings were remediated and validated for `d6a82a79e
 
 ### Minor
 
-1. The daily table previously said vs prior while comparing the prior returned row. It now requires the actual prior calendar day.
-2. The first production validator compared API Sessions with the DOM before the isolated 60-day request reached its stable state. The validator now captures the exact page response and waits for the completed-day summary before comparison.
-3. The initial tenant fixture selected stale campaign owner IDs. The validator now checks Clerk's authoritative inventory, requires explicit opt-in before creating an ephemeral Clerk-only identity, verifies the real non-owner request fails closed, revokes every validation session, deletes the exact user, confirms its lookup returns 404, and emits success only after cleanup.
-4. The strengthened validator initially collapsed the persisted Shopify display name to a generic label. It now follows the live source-label precedence exactly.
-5. The strengthened validator initially expected a channel Revenue cell that the five-column live table does not render. It now validates exactly Channel, Sessions, Share, Conversions, and Conversion Rate while retaining channel revenue as a non-table finding input.
+1. An unreachable inner Trends fallback repeated the obsolete raw 14/60-row requirement. It was removed so no contradictory implementation text remains.
+2. Daily insufficient-history copy called returned records days. It now says imported daily rows.
+3. Unavailable Profit/ROAS values could inherit positive or negative color from hidden arithmetic. Unavailable values now use neutral styling.
+
+Historical Minor corrections for prior-calendar-day Daily deltas, validator timing, temporary Clerk-user selection and cleanup, Shopify label precedence, and channel table shape remain preserved in the regression boundary.
 
 No Minor finding changes a visible numeric result after the fixes above.
 
@@ -189,14 +204,16 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 | Gate | Result |
 |---|---|
-| focused live Insights and affected UI/timezone suite | PASS: 11 files, 87 tests |
-| auth, isolation, source, parity, lifecycle, scheduler-consumer suite | PASS: 13 files, 161 tests |
-| focused production calendar/monthly functions | PASS: 6 tests, including the reported 21-row sparse-date fixture |
+| focused live Insights and affected UI/timezone suite | PASS: 11 files, 91 tests |
+| affected auth, isolation, source, parity, lifecycle, and scheduler-consumer suite | PASS: 13 files, 110 tests; source-safety subsets separately PASS: revenue 12, spend 9, GA4 scope 2 |
+| focused production calendar/monthly functions | PASS: 8 tests, including the reported 21-row sparse-date fixture, every visible rollup metric, and explicit-zero versus absent engaged sessions |
 | TypeScript | PASS: `npm run check` |
 | production build | PASS: Vite 3,466 modules and server bundle |
-| machine certification checker | PASS: machine status is internally consistent as `UNVERIFIED` |
+| machine certification checker | PASS: the frozen boundary is internally consistent and machine status remains `UNVERIFIED` |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
+
+Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 80 passed and 7 failed, and all seven failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
 
 ## Current Production Correction Evidence — `2a2dab20071bf4c2f7deb4362678151a98fc9b66`
 

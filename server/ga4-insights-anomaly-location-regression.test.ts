@@ -19,7 +19,9 @@ describe("GA4 Insights anomaly location copy", () => {
     expect(categorySection).toContain('id.startsWith("anomaly:")');
     expect(categorySection).toContain(') return "trends";');
     expect(placeholderSection).toContain("Trend signals need more history");
-    expect(placeholderSection).toContain("This Trend signals section will show anomaly or positive momentum cards");
-    expect(placeholderSection).toContain("Full 7-day vs prior 7-day anomaly checks start after ${INSIGHTS_MIN_HISTORY_DAYS} days.");
+    expect(placeholderSection).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
+    expect(placeholderSection).toContain("Prior window ${insightsRollups.prior3.startDate}");
+    expect(placeholderSection).toContain("Both adjacent calendar windows must be complete before comparisons run");
+    expect(placeholderSection).not.toContain("Full 7-day vs prior 7-day anomaly checks start after");
   });
 });

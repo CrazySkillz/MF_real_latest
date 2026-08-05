@@ -87,6 +87,30 @@ describe("GA4 Insights production calendar paths", () => {
     expect(result.last3.complete).toBe(false);
   });
 
+  it("preserves explicit zero engaged sessions and derives only a genuinely missing value", () => {
+    const result = buildGA4InsightsCalendarRollup(normalizeGA4InsightsDailyRows([
+      { date: "2026-08-01", sessions: 100, engagedSessions: 0, engagementRate: 0.75 },
+      { date: "2026-08-02", sessions: 100, engagedSessions: null, engagementRate: 0.5 },
+    ], "2026-08-02"), "2026-08-02", 2);
+
+    expect(result.engagedSessions).toBe(50);
+    expect(result.engagementRate).toBe(25);
+    expect(result.complete).toBe(true);
+  });
+
+  it("calculates every visible rollup metric from the actual shared production function", () => {
+    const result = buildGA4InsightsCalendarRollup(normalizeGA4InsightsDailyRows([
+      { date: "2026-08-01", sessions: 100, users: 80, conversions: 5, revenue: 120, pageviews: 240, engagedSessions: 40 },
+      { date: "2026-08-02", sessions: 50, users: 45, conversions: 10, revenue: 80, pageviews: 60, engagedSessions: 30 },
+    ], "2026-08-02"), "2026-08-02", 2);
+
+    expect(result).toMatchObject({
+      sessions: 150, users: 125, conversions: 15, revenue: 200, pageviews: 300,
+      engagedSessions: 70, cr: 10, pvps: 2, engagementRate: 70 / 1.5,
+      days: 2, expectedDays: 2, complete: true,
+    });
+  });
+
   it("uses the completed-day cutoff for monthly completeness and comparisons", () => {
     const result = buildGA4InsightsMonthlySeries(rows("2026-06-03", 60), "2026-08-01", "sessions");
 

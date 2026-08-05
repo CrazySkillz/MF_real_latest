@@ -36,6 +36,50 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("Total imported rows in the 60-day response: {dailyRows.length}.");
     expect(page).toContain("Missing dates are not assumed to be zero.");
     expect(page).not.toContain("`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day");
+    expect(page).not.toContain("completed GA4 day${availableDays");
+    expect(page).not.toContain("Full 7-day week-over-week analysis will activate after");
+    expect(page).not.toContain("Full 7-day vs prior 7-day anomaly checks start after");
+    expect(page).not.toContain("Need at least {insightsTrendMode === \"7d\" ? 14 : 60} days of history");
+    expect(page).not.toContain("Number(insightsRollups?.availableDays || 0) < minDays");
+    expect(page).toContain("Current 7-day window ${insightsRollups.last7.startDate}");
+    expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
+    expect(page).toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");
+    expect(page).toContain("addGA4InsightsDateDays(finalDate, -29)");
+    expect(page).not.toContain("const dailyChartRows = sorted.slice(-30);");
+    expect(page).toContain('data-testid="insights-daily-chart-coverage"');
+    expect(page).toContain('data-testid="insights-trend-metric"');
+    expect(page).toContain("Missing dates are shown as gaps, not zero.");
+    expect(page).toContain("value: row ? (isRate");
+    expect(page).toContain(": null,");
+    expect(page).toContain("connectNulls={false}");
+  });
+
+  it("does not reuse prior-property or stale channel data for recommendations", () => {
+    const page = read("client", "src", "pages", "ga4-metrics.tsx");
+
+    expect(page).toContain("}, [ga4Breakdown, breakdownPlaceholder]);");
+    expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : channelAnalysis;");
+    expect(page).toContain("const ch = recommendationChannelAnalysis;");
+    expect(page).toContain("if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel");
+    expect(page).toContain("Showing last-good channel values; channel-based recommendations are withheld until refresh succeeds.");
+  });
+
+  it("recomputes financial integrity findings when source availability changes", () => {
+    const page = read("client", "src", "pages", "ga4-metrics.tsx");
+    const findingsStart = page.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const findingsEnd = page.indexOf("const insightsActionDescription", findingsStart);
+    const findings = page.slice(findingsStart, findingsEnd);
+
+    for (const dependency of [
+      "ga4ToDateError",
+      "ga4HasRevenueMetric",
+      "spendMetricAvailable",
+      "revenueMetricAvailable",
+    ]) {
+      expect(findings).toContain(dependency);
+      expect(findings.slice(findings.lastIndexOf("}, ["))).toContain(dependency);
+    }
+    expect(findings).toContain('revenueKpiInputState === "ready" && ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0');
   });
 
   it("renders raw channel rows without proportional allocation", () => {
@@ -60,9 +104,17 @@ describe("live GA4 Insights production boundary", () => {
     const section = page.slice(start, end);
 
     expect(section).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
-    expect(section).toContain('spendMetricAvailable ? "Unavailable" : "Not connected"');
-    expect(section).toContain('revenueMetricAvailable ? "Unavailable" : "Not connected"');
+    expect(section).toContain('spendKpiInputState === "ready" && !spendMetricAvailable ? "Not connected" : "Unavailable"');
+    expect(section).toContain('revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable"');
     expect(section).toContain("Showing last-good financial values");
+    expect(page).toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
+    expect(page).toContain("const financialRevenueAvailable = ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable;");
+    expect(page).toContain('if (ga4ToDateError) return "unavailable";');
+    expect(page).toContain('id: ga4ToDateResp === undefined ? "financial:ga4_to_date_unavailable" : "financial:ga4_to_date_stale"');
+    expect(page).toContain('title: ga4ToDateResp === undefined ? "GA4 lifetime totals are unavailable" : "GA4 lifetime totals are stale"');
+    expect(page).toContain("{ga4ToDateResp !== undefined && (");
+    expect(page).toContain('if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && !revenueMetricAvailable)');
+    expect(page).toContain('if (revenueKpiInputState === "ready" && spendKpiInputState === "ready" && revenueMetricAvailable && !spendMetricAvailable)');
     expect(section).toContain('financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable"');
   });
 
@@ -94,6 +146,7 @@ describe("live GA4 Insights production boundary", () => {
       "insights-executive-financials", "insights-financial-spend", "insights-financial-revenue",
       "insights-financial-profit", "insights-financial-roas", "insights-financial-roi",
       "insights-financial-sources", "insights-trends", "insights-data-summary",
+      "insights-trends-chart",
       "insights-summary-sessions", "insights-summary-conversions", "insights-summary-revenue",
       "insights-summary-top-channel", "insights-summary-spend", "insights-summary-profit",
       "insights-summary-roas", "insights-summary-cpa", "insights-summary-channel-row",
@@ -132,6 +185,14 @@ describe("live GA4 Insights production boundary", () => {
     expect(channelCells).not.toContain("formatMoney(expected.revenue");
     expect(validator).toContain('validateRollingMode("7d", 7)');
     expect(validator).toContain('validateRollingMode("30d", 30)');
+    expect(validator).toContain('getByTestId("insights-trends-chart").getAttribute("data-chart-series")');
+    expect(validator).toContain('await assertChartSeries(expectedChart, "Daily")');
+    expect(validator).toContain('getByTestId("insights-daily-chart-coverage")');
+    expect(validator).toContain("for (const metric of allTrendMetrics)");
+    expect(validator).toContain("for (const metric of nonUserTrendMetrics)");
+    expect(validator).toContain('chooseTrendMetric(metric.label)');
+    expect(validator).toContain('await assertChartSeries(expectedChart, mode)');
+    expect(validator).toContain('}), "Monthly")');
     expect(validator).toContain('current.days + "/" + current.expectedDays + " imported days"');
     expect(validator).toContain('prior.days + "/" + prior.expectedDays + " imported days"');
     expect(validator).toContain('"Missing dates are not assumed to be zero."');

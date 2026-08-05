@@ -245,7 +245,7 @@ describe("GA4 UI regression guard", () => {
     );
     expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
     expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
-    expect(ga4Metrics).toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
+    expect(ga4Metrics).toContain("const financialRevenueAvailable = ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable;");
     expect(ga4Metrics).toMatch(/spendSourceDefinitionsKnownEmpty\) &&\r?\n\s+spendMetricAvailable;/);
     expect(ga4Metrics).not.toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;");
     expect(ga4Metrics).not.toContain("      spendSourceDefinitionsKnownEmpty);");
@@ -588,7 +588,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;');
     expect(ga4Metrics).toContain('insightsRollups.last7.complete && insightsRollups.prior7.complete');
     expect(ga4Metrics).toContain('insightsRollups.last30.complete && insightsRollups.prior30.complete');
-    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;');
+    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} imported daily rows`;');
     expect(ga4Metrics).toContain("Both adjacent calendar windows must contain every completed reporting day.");
     expect(ga4Metrics).toContain("Missing dates are not assumed to be zero.");
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");

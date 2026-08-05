@@ -172,11 +172,13 @@ describe("GA4 Insights regression guard", () => {
     expect(copyStart).toBeGreaterThan(-1);
     expect(copyEnd).toBeGreaterThan(copyStart);
     expect(copySection).toContain("!insightsRollups.last3.complete || !insightsRollups.prior3.complete");
-    expect(copySection).toContain("Trend and anomaly checks need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days");
+    expect(copySection).toContain("Current 3-day window ${current3Coverage}; prior window ${prior3Coverage}");
     expect(copySection).toContain("!insightsRollups.last7.complete || !insightsRollups.prior7.complete");
-    expect(copySection).toContain("Short-window trend checks are active");
-    expect(copySection).toContain("full 7-day vs prior 7-day analysis starts after ${INSIGHTS_MIN_HISTORY_DAYS} days");
-    expect(copySection).toContain("We compare the last 7 days vs the previous 7 days");
+    expect(copySection).toContain("Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}");
+    expect(copySection).toContain("both adjacent 7-day calendar windows must be complete");
+    expect(copySection).toContain("Both windows are complete, so 7-day comparisons run");
+    expect(copySection).toContain("imported row${availableDays === 1 ? \"\" : \"s\"} in the 60-day response");
+    expect(copySection).not.toContain("completed GA4 day${availableDays");
     expect(renderSection).toContain("<CardDescription>{insightsActionDescription}</CardDescription>");
     expect(renderSection).not.toContain("when enough daily history exists");
   });

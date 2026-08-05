@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The prior d6a82a79e11e043154d993e439898c2645871cc9 certification was invalidated by later dependency changes and a misleading sparse-history Trends message. GA4/certifications/ga4-insights.json records the controlling machine status.`
+`GA4 Insights is UNVERIFIED. The prior revision-specific certification is invalid, and the current whole-tab corrections require exact-revision deployment and production validation. GA4/certifications/ga4-insights.json records the controlling machine status.`
 
 ## Document Ownership
 
@@ -81,15 +81,16 @@ Shows completed daily-history views:
 Current meaning:
 
 - Trends uses persisted GA4 daily facts for the selected campaign/property/scope
-- Insights fetches 60 completed days through an isolated query so two exact 30-day windows can be evaluated without changing Overview or KPI windows
+- Insights requests an isolated 60-calendar-day window through the latest completed reporting day so two exact 30-day windows can be evaluated without changing Overview or KPI windows; GA4 may return sparse rows, so returned row count is not treated as consecutive-day coverage
 - today's intraday data is excluded until it becomes a completed reporting day
 - `Completed-day cutoff`, `Latest imported day`, `Reporting timezone`, `Last refreshed`, and `Expected refresh` explain freshness
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
 - missing GA4 rows are not synthesized as zero-value days and do not widen a comparison window
+- explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
 
 History gates:
 
-- `Daily`: at least 2 completed daily rows; a delta is shown only when the actual prior calendar day exists
+- `Daily`: at least 2 imported daily rows; the chart covers exactly the last 30 calendar days through the completed-day cutoff, missing dates are gaps, valid zero remains zero, and a delta is shown only when the actual prior calendar day exists
 - `7d`: two complete adjacent 7-calendar-day windows
 - `30d`: two complete adjacent 30-calendar-day windows
 - `Monthly`: at least 2 calendar months; partial or incomplete months are labeled and are not compared with full months

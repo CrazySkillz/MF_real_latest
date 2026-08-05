@@ -6,7 +6,7 @@ export type GA4InsightsDailyRow = {
   revenue?: number;
   pageviews?: number;
   engagementRate?: number;
-  engagedSessions?: number;
+  engagedSessions?: number | null;
   [key: string]: unknown;
 };
 
@@ -56,7 +56,7 @@ export const normalizeGA4InsightsDailyRows = (
       revenue: Number(row.revenue || 0) || 0,
       pageviews: Number(row.pageviews || 0) || 0,
       engagementRate: Number(row.engagementRate || 0) || 0,
-      engagedSessions: Number(row.engagedSessions || 0) || 0,
+      engagedSessions: row.engagedSessions == null ? null : Number(row.engagedSessions || 0) || 0,
     });
   }
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -82,7 +82,7 @@ export const buildGA4InsightsCalendarRollup = (
       acc.conversions += Number(row.conversions || 0) || 0;
       acc.revenue += Number(row.revenue || 0) || 0;
       acc.pageviews += Number(row.pageviews || 0) || 0;
-      acc.engagedSessions += Number.isFinite(explicitEngaged) && explicitEngaged > 0
+      acc.engagedSessions += row.engagedSessions != null && Number.isFinite(explicitEngaged) && explicitEngaged >= 0
         ? explicitEngaged
         : sessions * (rate <= 1 ? rate : rate / 100);
       return acc;
@@ -175,7 +175,7 @@ export const buildGA4InsightsMonthlySeries = (
     const engagedSessions = monthRows.reduce((sum, row) => {
       const explicit = Number(row.engagedSessions);
       const rate = Number(row.engagementRate || 0) || 0;
-      return sum + (Number.isFinite(explicit) && explicit > 0
+      return sum + (row.engagedSessions != null && Number.isFinite(explicit) && explicit >= 0
         ? explicit
         : (Number(row.sessions || 0) || 0) * (rate <= 1 ? rate : rate / 100));
     }, 0);

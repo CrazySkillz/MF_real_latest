@@ -527,7 +527,7 @@ try {
     const dailyCoverage = await trends.getByTestId("insights-daily-chart-coverage").innerText();
     assertIncludes(dailyCoverage, "Daily chart " + addGA4InsightsDateDays(finalDate, -29) + " \u2192 " + finalDate, "daily chart range");
     assertIncludes(dailyCoverage, expectedChart.filter((row: any) => row.value !== null).length + "/" + expectedChart.length + " imported days", "daily chart coverage");
-    assertIncludes(dailyCoverage, "Missing dates are shown as gaps, not zero.", "daily chart missing-date state");
+    assertIncludes(dailyCoverage, "Missing dates are skipped, not treated as zero.", "daily chart missing-date state");
     await assertChartSeries(expectedChart, "Daily");
   } else {
     assertIncludes(await trends.innerText(), "Need at least 2 imported daily rows", "daily insufficient-history state");

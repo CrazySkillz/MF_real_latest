@@ -99,7 +99,7 @@ Current meaning:
 
 History gates:
 
-- `Daily`: at least 2 imported daily rows; the chart covers exactly the last 30 calendar days through the latest imported day, missing dates are gaps, valid zero remains zero, and a delta is shown only when the actual prior calendar day exists
+- `Daily`: at least 2 imported daily rows; the chart covers exactly the last 30 calendar days through the latest imported day, connects observed values across missing dates without treating those dates as zero, preserves valid zero, and shows a delta only when the actual prior calendar day exists
 - `7d`: two complete adjacent 7-calendar-day windows
 - `30d`: two complete adjacent 30-calendar-day windows
 - `Monthly`: at least 2 calendar months; partial or incomplete months are labeled and are not compared with full months

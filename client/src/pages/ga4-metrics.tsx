@@ -8495,7 +8495,7 @@ export default function GA4Metrics() {
                             <>
                               {insightsTrendMode === "daily" && (
                                 <div className="mb-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
-                                  Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are shown as gaps, not zero.
+                                  Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are skipped, not treated as zero.
                                 </div>
                               )}
                               <div className="h-64" data-testid="insights-trends-chart" data-chart-series={JSON.stringify(chartData)}>
@@ -8540,7 +8540,7 @@ export default function GA4Metrics() {
                                           return `${periodLabel} period ending: ${dateLabel}`;
                                         }}
                                       />
-                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : false} connectNulls={false} name={trendMetricLabels[metric] || metric} />
+                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : false} connectNulls={insightsTrendMode === "daily"} name={trendMetricLabels[metric] || metric} />
                                     </LineChart>
                                   )}
                                 </ResponsiveContainer>

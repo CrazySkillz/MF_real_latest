@@ -55,12 +55,12 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain("const dailyChartRows = sorted.slice(-30);");
     expect(page).toContain('data-testid="insights-daily-chart-coverage"');
     expect(page).toContain('data-testid="insights-trend-metric"');
-    expect(page).toContain("Missing dates are shown as gaps, not zero.");
+    expect(page).toContain("Missing dates are skipped, not treated as zero.");
     expect(page).toContain("value: row ? (isRate");
     expect(page).toContain(": null,");
-    expect(page).toContain("connectNulls={false}");
+    expect(page).toContain('connectNulls={insightsTrendMode === "daily"}');
+    expect(page).not.toContain("connectNulls={false}");
     expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : false}');
-    expect(page).not.toContain("dot={false} connectNulls={false}");
   });
 
   it("does not reuse prior-property or stale channel data for recommendations", () => {

@@ -885,9 +885,12 @@ export class GoogleAnalytics4Service {
     accessToken: string,
     startDate: string,
     endDate: string,
-    campaignFilter?: CampaignFilter
+    campaignFilter?: CampaignFilter,
+    currencyCode?: string,
   ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+    const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
+    if (requestedCurrencyCode && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) throw new Error('GA4 report currency is invalid');
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
@@ -900,6 +903,7 @@ export class GoogleAnalytics4Service {
         },
         body: JSON.stringify({
           dateRanges: [{ startDate, endDate: endDateOverride }],
+          ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [
             { name: 'sessions' },
@@ -953,6 +957,7 @@ export class GoogleAnalytics4Service {
         },
         body: JSON.stringify({
           dateRanges: [{ startDate, endDate }],
+          ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [
             { name: 'conversions' },

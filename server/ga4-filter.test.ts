@@ -156,7 +156,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
-          metadata: { currencyCode: "EUR" },
+          metadata: { currencyCode: "USD" },
           rows: isPageLocationScope
             ? [{ metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "108" }, { value: "531.349929" }] }]
             : [{ metricValues: [{ value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }] }],
@@ -171,6 +171,7 @@ describe("GA4 campaign value picker", () => {
       "2026-06-01",
       "2026-06-17",
       "summer_sale",
+      "USD",
     );
 
     expect(result.totals).toEqual({
@@ -182,8 +183,9 @@ describe("GA4 campaign value picker", () => {
       engagedSessions: 0,
       engagementRate: 0,
     });
-    expect(result.currencyCode).toBe("EUR");
+    expect(result.currencyCode).toBe("USD");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
     expect(fallbackBody.dateRanges[0].endDate).toBe("2026-06-17");
@@ -215,6 +217,7 @@ describe("GA4 campaign value picker", () => {
       "2026-06-01",
       "2026-06-17",
       "summer_sale",
+      "USD",
     );
 
     expect(result.totals).toEqual({
@@ -227,6 +230,7 @@ describe("GA4 campaign value picker", () => {
       engagementRate: 0.64,
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const trafficBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     const supplementBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body || "{}"));
     expect(JSON.stringify(trafficBody.dimensionFilter)).toContain("pageLocation");

@@ -399,7 +399,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
           if (conn && conn.method === "access_token" && conn.accessToken) {
             const attempt = async (token: string) => {
-              return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter);
+              return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
             };
             try {
               const res = await attempt(String(conn.accessToken));

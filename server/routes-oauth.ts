@@ -8927,7 +8927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const attempt = async (token: string) => {
-        return await ga4Service.getTotalsWithRevenue(String(connection.propertyId), token, startDateUsed, endDateUsed, campaignFilter);
+        return await ga4Service.getTotalsWithRevenue(String(connection.propertyId), token, startDateUsed, endDateUsed, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
       };
       const validateCurrency = (result: any) => {
         assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true);
@@ -9100,7 +9100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       };
       const fetchProviderTotals = async (token: string, fromDate = startDate, toDate = endDate) =>
-        ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter);
+        ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
       if (simulateRefreshFailure) {
         providerStatus = "live_provider_refresh_failed";
         providerError = "Simulated GA4 token refresh failure for validation; no token refresh was attempted and no token metadata was changed.";

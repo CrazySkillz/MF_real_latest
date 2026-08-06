@@ -610,6 +610,14 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
     expect(values).toMatchObject({ revenue: 0, totalRevenue: 0, roas: 0, roi: -100, cpa: 20 });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenLastCalledWith(
+      connection.propertyId,
+      connection.accessToken,
+      expect.any(String),
+      "2026-07-31",
+      campaign.ga4CampaignFilter,
+      campaign.currency,
+    );
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
 
     const revenueKpi = kpiRows.find((row) => row.metric === "totalRevenue")!;

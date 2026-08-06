@@ -23,7 +23,7 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).toContain("storage.getGA4Connection(campaignId, pid)");
     expect(route).toContain("storage.getGA4Connections(campaignId)");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate)");
-    expect(route).toContain("ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter)");
+    expect(route).toContain("ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter, String((campaign as any)?.currency || \"USD\").trim().toUpperCase())");
     expect(route).toContain('storage.getPlatformBenchmarks("google_analytics", campaignId)');
     expect(route).toContain("const currentValueWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);");
     expect(route).toContain("const currentValueStartDate = currentValueWindow.startDate;");

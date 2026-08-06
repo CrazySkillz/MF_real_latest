@@ -751,16 +751,22 @@ try {
   }));
   if (findings.length !== Math.min(12, trackerCounts.total)) throw new Error("Visible finding count does not match the tracker");
   const visibleMetadata = findings.map(({ text: _text, basis, ...finding }) => ({ ...finding, dataBasis: basis }));
-  if (JSON.stringify(visibleMetadata) !== JSON.stringify(allFindings.slice(0, 12).map((finding) => ({
-    id: finding.id,
-    category: finding.category,
-    severity: finding.severity,
-    title: finding.title,
-    description: finding.description,
-    recommendation: finding.recommendation || "",
-    confidence: finding.confidence,
-    dataBasis: finding.dataBasis,
-  })))) throw new Error("Visible findings do not match the first twelve generated findings");
+  const findingCategoryOrder = ["setup", "targets", "trends", "finance", "context"];
+  const expectedVisibleMetadata = findingCategoryOrder.flatMap((category) => allFindings.slice(0, 12)
+    .filter((finding) => finding.category === category)
+    .map((finding) => ({
+      id: finding.id,
+      category: finding.category,
+      severity: finding.severity,
+      title: finding.title,
+      description: finding.description,
+      recommendation: finding.recommendation || "",
+      confidence: finding.confidence,
+      dataBasis: finding.dataBasis,
+    })));
+  if (JSON.stringify(visibleMetadata) !== JSON.stringify(expectedVisibleMetadata)) {
+    throw new Error("Visible grouped findings do not match the first twelve generated findings");
+  }
   for (const finding of findings) {
     for (const field of ["id", "category", "severity", "title", "description", "basis", "confidence"] as const) {
       if (!String(finding[field] || "").trim()) throw new Error("Finding " + finding.id + " has an empty " + field);

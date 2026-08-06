@@ -248,7 +248,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('getByTestId("insights-trackers")');
     expect(validator).toContain('tracker.getAttribute("data-findings")');
     expect(validator).toContain("Complete finding inventory does not match the tracker");
-    expect(validator).toContain("Visible findings do not match the first twelve generated findings");
+    expect(validator).toContain('const findingCategoryOrder = ["setup", "targets", "trends", "finance", "context"]');
+    expect(validator).toContain("Visible grouped findings do not match the first twelve generated findings");
     expect(validator).toContain('getByTestId("insights-finding")');
     expect(validator).toContain('finding.id.endsWith(":wow")');
     expect(validator).toContain('finding.id.endsWith(":3d")');

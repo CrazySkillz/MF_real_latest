@@ -648,7 +648,7 @@ describe("GA4 UI regression guard", () => {
     expect(mapSection).not.toContain("Loading spreadsheet data");
   });
 
-  it("limits the v1 spend chooser to supported sources including Google Sheets", () => {
+  it("limits the current spend chooser to Google Sheets and CSV", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooserStart = spendModal.indexOf('{step === "select" && (');
     const chooserEnd = spendModal.indexOf('{step === "ad_platform" && (', chooserStart);
@@ -658,7 +658,7 @@ describe("GA4 UI regression guard", () => {
     expect(chooserEnd).toBeGreaterThan(chooserStart);
     expect(chooser).not.toContain("LinkedIn Ads");
     expect(chooser).not.toContain("Meta / Facebook");
-    expect(chooser).toContain("Google Ads");
+    expect(chooser).not.toContain("Google Ads");
     expect(chooser).toContain("Google Sheets");
     expect(chooser).not.toContain('{props.platformContext !== "ga4" && (');
     expect(chooser).toContain("Upload CSV");

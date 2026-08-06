@@ -8508,7 +8508,7 @@ export default function GA4Metrics() {
                               )}
                               {insightsTrendMode === "7d" && (!insightsRollups.last7.complete || !insightsRollups.prior7.complete) && (
                                 <div className="mb-2 text-xs text-muted-foreground/70" data-testid="insights-7d-historical-coverage">
-                                  Chart shows {chartData.length} complete historical 7-day window{chartData.length === 1 ? "" : "s"}. Latest adjacent-window comparison is unavailable because current {insightsRollups.last7.startDate} {"\u2192"} {insightsRollups.last7.endDate} has {insightsRollups.last7.days}/7 imported days and prior {insightsRollups.prior7.startDate} {"\u2192"} {insightsRollups.prior7.endDate} has {insightsRollups.prior7.days}/7. Missing dates are not assumed to be zero.
+                                  Chart shows {chartData.length} complete historical 7-day window{chartData.length === 1 ? "" : "s"}. 7-day comparison unavailable for the latest adjacent windows. Current {insightsRollups.last7.startDate} {"\u2192"} {insightsRollups.last7.endDate}: {insightsRollups.last7.days}/7 imported days. Prior {insightsRollups.prior7.startDate} {"\u2192"} {insightsRollups.prior7.endDate}: {insightsRollups.prior7.days}/7 imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.
                                 </div>
                               )}
                               <div className="h-64" data-testid="insights-trends-chart" data-chart-series={JSON.stringify(chartData)}>

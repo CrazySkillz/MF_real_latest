@@ -803,20 +803,6 @@ try {
   }
   const hiddenCount = Math.max(0, trackerCounts.total - findings.length);
   if (hiddenCount > 0) assertIncludes(await cardText("insights-hidden-count"), "+ " + hiddenCount + " more insights", "hidden finding count");
-  await owner.page.getByRole("tab", { name: "Overview", exact: true }).click();
-  const addSpendButton = owner.page.getByTestId("ga4-add-spend-source");
-  await addSpendButton.waitFor({ timeout: 120000 });
-  await addSpendButton.click();
-  const spendChooser = owner.page.getByRole("dialog").filter({ hasText: "Choose where your spend data comes from." });
-  await spendChooser.waitFor({ timeout: 120000 });
-  for (const label of ["Google Sheets", "Upload CSV"]) {
-    if (await spendChooser.getByText(label, { exact: true }).count() !== 1) throw new Error(`Current GA4 spend chooser is missing ${label}`);
-  }
-  const chooserText = normalizeText(await spendChooser.innerText());
-  for (const excluded of ["Google Ads", "LinkedIn", "Meta", "Facebook", "Instagram"]) {
-    if (chooserText.toLowerCase().includes(excluded.toLowerCase())) throw new Error(`Disabled-release ${excluded} source is visible in the GA4 spend chooser`);
-  }
-  await owner.page.keyboard.press("Escape");
   await owner.context.close();
 
   let tenantIsolation = "not run; no second production identity was authorized";

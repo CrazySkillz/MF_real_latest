@@ -256,6 +256,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("A KPI integrity finding does not map to the scoped KPI response");
     expect(validator).toContain("A Benchmark integrity finding does not map to the scoped Benchmark response");
     expect(validator).toContain("liveSurfaceParity");
+    expect(validator).toContain("financialReconciliation:");
+    expect(validator).toContain("dailyFreshness:");
+    expect(validator).toContain("totalRevenue: Number(financialRevenue.toFixed(2))");
     expect(validator).not.toContain('getByRole("tab", { name: "Overview"');
     expect(validator).not.toContain('getByTestId("ga4-add-spend-source")');
     expect(validator).not.toContain("Choose where your spend data comes from.");

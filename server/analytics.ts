@@ -1020,6 +1020,7 @@ export class GoogleAnalytics4Service {
       if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
 
       return {
+        ...result,
         revenueMetric: supplement.revenueMetric || result.revenueMetric,
         totals: {
           ...result.totals,

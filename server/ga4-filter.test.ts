@@ -200,6 +200,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          metadata: { currencyCode: "USD" },
           rows: isCampaignNameScope
             ? [{ metricValues: [{ value: "7" }, { value: "123.456" }] }]
             : isPageLocationScope
@@ -228,6 +229,7 @@ describe("GA4 campaign value picker", () => {
       engagedSessions: 54,
       engagementRate: 0.64,
     });
+    expect(result.currencyCode).toBe("USD");
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const trafficBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));

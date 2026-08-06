@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is PRODUCTION_READY for exact deployed revision a158229e20b5416395f32395bd2e14039c765db8. GA4/certifications/ga4-insights.json records the controlling machine status and frozen boundary.`
+`GA4 Insights is UNVERIFIED. The prior certification was invalidated by escaped production-path defects; GA4/certifications/ga4-insights.json records the controlling machine status.`
 
 ## Document Ownership
 
@@ -17,7 +17,7 @@ The Insights documentation is intentionally split into two files:
 - `GA4/INSIGHTS.md`
   Functional overview of the current GA4 Insights tab.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for Meta, Google Ads, LinkedIn, and other future platform sources.
+  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for later Meta, LinkedIn, Instagram, and other platform releases. Google Ads is part of the current GA4 Insights boundary.
 
 There is no separate `What to investigate next` production-readiness tracker anymore. That subsection is covered inside `GA4/INSIGHTS_PRODUCTION_READINESS.md` with the rest of the tab.
 
@@ -49,6 +49,13 @@ GA4 Insights must remain scoped to:
 
 Insights must not silently broaden to unrelated GA4 properties, campaigns, clients, or unselected source data.
 
+Current-release source boundary:
+
+- the GA4 Insights new-spend chooser exposes Google Ads, Google Sheets, and Upload CSV
+- LinkedIn, Meta/Facebook, and Instagram connectors and analytics are not enabled for this GA4 Insights release and are absent from that chooser
+- explicit LinkedIn, Meta, or Instagram platform-context records must not contribute to GA4 Insights financial totals
+- current-release Google Ads OAuth keeps provider tokens server-protected: the browser receives only a short-lived encrypted package bound to the authenticated owner, campaign, and provider account
+
 ## Section Summary
 
 ### Executive Financials
@@ -63,7 +70,7 @@ Shows:
 
 Current meaning:
 
-- spend comes from active spend-source totals
+- spend comes from active campaign-owned GA4-context spend-source totals
 - revenue is GA4 native revenue plus imported revenue sources when present
 - source provenance is shown in the shared `Sources used` footer
 - the copy is conditional on actual connected spend and revenue sources
@@ -147,11 +154,14 @@ Inputs include:
 - refreshed KPI context
 - refreshed Benchmark context
 
+Financial KPI/Benchmark snapshots consumed by Insights use the same campaign-to-date native-revenue and source-currency rules as the live financial cards. For real GA4 properties, an incomplete or failed live to-date response is unavailable; retained daily rows or a configured-lookback breakdown are not substituted for that different window. Last-good values may remain stored, but no new financial history point is recorded for an unavailable input.
+
 Important meaning:
 
 - if Overview-driving values become fresher, Insights should become fresher on refetch or rerender
 - GA4 can process Measurement Protocol events after the script or traffic event occurred, so values may increase later even when the seed script was not rerun
 - Trends requires completed daily facts; same-day Overview changes do not automatically create a completed Trends row
+- the dedicated Google Ads scheduler refreshes provider daily facts, materializes the exact saved GA4 spend source through the latest completed campaign day, and then recomputes dependent KPI/Benchmark values; the general external-value scheduler does not duplicate that GA4 Google Ads write
 
 ## Production-Readiness Reference
 
@@ -159,7 +169,7 @@ For any future question such as:
 
 - is Insights production-ready?
 - is this section accurate?
-- can this be used as a template for Meta or Google Ads?
+- can this be used as a template for Meta, LinkedIn, Instagram, or another later platform release?
 - what must another platform implement before copying this pattern?
 
 Use `GA4/INSIGHTS_PRODUCTION_READINESS.md`.

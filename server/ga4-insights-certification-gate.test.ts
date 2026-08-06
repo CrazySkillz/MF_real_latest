@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { transformSync } from "esbuild";
 import {
   evaluateGA4InsightsCertification,
   GA4_INSIGHTS_REQUIRED_DEPENDENCIES,
@@ -47,6 +49,12 @@ const context = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
 });
 
 describe("GA4 Insights machine certification gate", () => {
+  it("compiles both executable production validation scripts", () => {
+    for (const path of ["scripts/ga4-insights-live-readonly.ts", "scripts/ga4-insights-scheduler-validation.ts"]) {
+      expect(() => transformSync(readFileSync(path, "utf8"), { loader: "ts", format: "esm" })).not.toThrow();
+    }
+  });
+
   it("accepts a consistent UNVERIFIED record with pending external evidence", () => {
     expect(evaluateGA4InsightsCertification(record(), context())).toEqual({ ok: true, errors: [] });
   });

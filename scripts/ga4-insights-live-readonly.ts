@@ -76,9 +76,9 @@ const request = async (page: Page, path: string, method = "GET", body?: unknown)
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const text = await response.text();
-  let body: any = null;
-  try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-  return { ok: response.ok, status: response.status, body };
+  let parsedBody: any = null;
+  try { parsedBody = text ? JSON.parse(text) : null; } catch { parsedBody = text; }
+  return { ok: response.ok, status: response.status, body: parsedBody };
 }, { path, method, body });
 
 const readPersistenceFingerprint = async (client: any, campaignId: string) => {

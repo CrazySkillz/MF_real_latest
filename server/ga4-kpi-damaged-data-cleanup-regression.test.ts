@@ -61,7 +61,7 @@ describe("GA4 KPI damaged-data cleanup boundary", () => {
     const financial = script.slice(financialStart, financialEnd);
 
     expect(script).toContain('OLD_FINANCIAL_SOURCE_START_DATE = "2000-01-01"');
-    expect(financial).toContain("getGA4KPIFinancialSourceWindow()");
+    expect(financial).toContain("getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone)");
     expect(financial).toContain('String(primary?.method || "").trim().toLowerCase() === "access_token"');
     expect(financial).toContain("financial_live_ga4_totals_not_local");
     expect(financial).toContain("matches(currentValue, oldValue) && differs(oldValue, newValue)");

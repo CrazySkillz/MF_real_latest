@@ -17,26 +17,20 @@ const sliceBetween = (source: string, start: string, end: string) => {
 };
 
 describe("GA4 source lifecycle recompute route guards", () => {
-  it("keeps GA4 revenue source responses off the heavyweight KPI/Benchmark job", () => {
+  it("completes GA4 source-backed KPI/Benchmark recompute before mutation responses", () => {
     expect(routes).toContain('import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
     expect(routes).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
 
     const ga4Helper = sliceBetween(
       routes,
       "const recomputeGA4KPIAndBenchmarkValues",
-      "const scheduleGA4RevenuePostResponseRecompute",
+      "const recomputeGA4SpendBeforeResponse",
     );
     expect(ga4Helper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });");
 
-    const scheduleHelper = sliceBetween(
-      routes,
-      "const scheduleGA4RevenuePostResponseRecompute",
-      "const recomputeCampaignDerivedValues",
-    );
-    expect(scheduleHelper).toContain("setImmediate(() => {");
-    expect(scheduleHelper).toContain('const recomputeComplete = await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
-    expect(scheduleHelper).toContain("if (!recomputeComplete) return;");
-    expect(scheduleHelper).toContain("await checkPerformanceAlerts();");
+    const spendHelper = sliceBetween(routes, "const recomputeGA4SpendBeforeResponse", "const scheduleGA4KpiCreatePostResponseProcessing");
+    expect(spendHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
+    expect(routes).not.toContain("scheduleGA4SpendPostResponseRecompute");
     expect(routes).toContain("result.kpiIdsSkipped.length > 0");
     expect(jobs).toContain("kpiIdsSkipped.size === 0");
 
@@ -47,11 +41,11 @@ describe("GA4 source lifecycle recompute route guards", () => {
     );
     expect(revenueHelper).toContain("if (isGA4RevenuePlatformContext(opts.platformContext))");
     expect(revenueHelper).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId);");
-    expect(revenueHelper).toContain("scheduleGA4RevenuePostResponseRecompute(campaignId);");
+    expect(revenueHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
     expect(revenueHelper.indexOf("await refreshCampaignCurrentValuesForCampaign(campaignId);")).toBeLessThan(
-      revenueHelper.indexOf("scheduleGA4RevenuePostResponseRecompute(campaignId);"),
+      revenueHelper.indexOf('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");'),
     );
-    expect(revenueHelper).not.toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
+    expect(routes).not.toContain("scheduleGA4RevenuePostResponseRecompute");
   });
 
   it("passes platform context through GA4 revenue source add, edit, and delete recompute paths", () => {
@@ -90,19 +84,11 @@ describe("GA4 source lifecycle recompute route guards", () => {
     );
   });
 
-  it("keeps spend source process responses off the heavyweight GA4 KPI/Benchmark job", () => {
-    const scheduleHelper = sliceBetween(
-      routes,
-      "const scheduleGA4SpendPostResponseRecompute",
-      "const recomputeCampaignDerivedValues",
-    );
-    expect(scheduleHelper).toContain("setImmediate(() => {");
-    expect(scheduleHelper).toContain('void recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update").catch');
-    expect((routes.match(/scheduleGA4SpendPostResponseRecompute\(campaignId\);/g) || []).length).toBe(7);
+  it("keeps spend source process recomputes after durable source totals and before responses", () => {
+    expect((routes.match(/await recomputeGA4SpendBeforeResponse\(campaignId\);/g) || []).length).toBe(6);
 
     const processRoutes = [
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/process/manual"', "const processConnectorDerivedSpend"),
-      sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/linkedin/process"', 'app.post("/api/campaigns/:id/spend/csv/preview"'),
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/csv/process"', 'app.post("/api/campaigns/:id/spend/sheets/preview"'),
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/sheets/process"', "  // Salesforce PKCE support"),
     ];
@@ -110,10 +96,13 @@ describe("GA4 source lifecycle recompute route guards", () => {
     for (const route of processRoutes) {
       expect(route.indexOf("await recalcCampaignSpend(campaignId);")).toBeGreaterThanOrEqual(0);
       expect(route.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(
-        route.indexOf("scheduleGA4SpendPostResponseRecompute(campaignId);"),
+        route.indexOf("await recomputeGA4SpendBeforeResponse(campaignId);"),
       );
-      expect(route).not.toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
+      expect(route).toContain("await recomputeGA4SpendBeforeResponse(campaignId);");
     }
+    const linkedinRoute = sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/linkedin/process"', 'app.post("/api/campaigns/:id/spend/csv/preview"');
+    expect(linkedinRoute).toContain("LinkedIn spend is not enabled for this GA4 Insights release");
+    expect(linkedinRoute).not.toContain("replaceSpendSourceWithRecords");
   });
 
   it("keeps spend cleanup and delete recomputes after durable spend total changes", () => {
@@ -169,10 +158,9 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, 'ga4'",
       "replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'",
       "replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4'",
-      "replaceSpendSourceWithRecords(campaignId, sourceId, 'linkedin_api', 'ga4'",
       'replaceGa4SalesforceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull',
     ]) expect(routes).toContain(routeCall);
-    expect(routes).toContain("Multiple active LinkedIn spend sources require review.");
+    expect(routes).toContain("LinkedIn spend is not enabled for this GA4 Insights release");
     expect(storage).toContain("if (!savedConnection) throw new Error('Salesforce connection not found')");
     const sheetsRevenueRefresh = sliceBetween(scheduler, 'async function reprocessGoogleSheetsRevenue(', 'export async function runGoogleSheetsSpendSourceRefreshForValidation');
     expect(sheetsRevenueRefresh).toContain('storage.replaceRevenueSourceWithRecords(');
@@ -236,7 +224,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
       '// Connected platforms summary for campaign detail page',
     );
     const accessGuard = connectionRoute.indexOf('await ensureCampaignAccess(req as any, res as any, campaignId)');
-    const sourceRead = connectionRoute.indexOf('await storage.getGA4Connections(campaignId)');
+    const sourceRead = connectionRoute.indexOf('await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly })');
     const configuredFilter = connectionRoute.indexOf('const configuredGA4Connections = ga4Connections.filter');
     const usableFilter = connectionRoute.indexOf('const usableGA4Connections = configuredGA4Connections.filter');
     expect(accessGuard).toBeGreaterThan(-1);

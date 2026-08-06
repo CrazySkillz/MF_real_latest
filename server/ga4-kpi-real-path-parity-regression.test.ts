@@ -5,12 +5,14 @@ const pdfTextCalls = vi.hoisted((): string[] => []);
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getCampaigns: vi.fn(),
+  getClients: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4Connection: vi.fn(),
   updateGA4ConnectionTokens: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getLatestGA4DailyMetric: vi.fn(),
   upsertGA4DailyMetrics: vi.fn(),
+  replaceGA4DailyMetricsWindow: vi.fn(),
   getRevenueSources: vi.fn(),
   getSpendSources: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
@@ -94,7 +96,9 @@ const campaign = {
   id: "ga4-parity-campaign",
   name: "GA4 parity campaign",
   ownerId: "owner-1",
+  clientId: "client-1",
   currency: "USD",
+  reportingTimeZone: "Europe/Amsterdam",
   startDate: "2026-07-01T00:00:00.000Z",
   createdAt: "2026-07-01T00:00:00.000Z",
   ga4CampaignFilter: "parity_campaign",
@@ -218,16 +222,18 @@ function setAuthoritativeFixture() {
 
   storageMock.getCampaign.mockResolvedValue(campaign);
   storageMock.getCampaigns.mockResolvedValue([campaign]);
+  storageMock.getClients.mockResolvedValue([{ id: campaign.clientId, ownerId: campaign.ownerId }]);
   storageMock.getGA4Connections.mockResolvedValue([connection]);
   storageMock.getGA4Connection.mockResolvedValue(connection);
   storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
   storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
-  storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-source", sourceType: "upload_csv", displayName: "Imported revenue", isActive: true }]);
-  storageMock.getSpendSources.mockResolvedValue([{ id: "spend-source", sourceType: "upload_csv", displayName: "Imported spend", isActive: true }]);
+  storageMock.replaceGA4DailyMetricsWindow.mockResolvedValue({ replaced: 1 });
+  storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-source", sourceType: "csv", displayName: "Imported revenue", currency: "USD", isActive: true }]);
+  storageMock.getSpendSources.mockResolvedValue([{ id: "spend-source", sourceType: "csv", displayName: "Imported spend", currency: "USD", isActive: true }]);
   storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "revenue-source", sourceType: "upload_csv", displayName: "Imported revenue", revenue: 50 }]);
   storageMock.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "spend-source", sourceType: "upload_csv", displayName: "Imported spend", spend: 100 }]);
-  storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, sourceIds: ["revenue-source"] });
-  storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, sourceIds: ["spend-source"] });
+  storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, sourceIds: ["revenue-source"], currency: "USD" });
+  storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, sourceIds: ["spend-source"], currency: "USD" });
   storageMock.getPlatformKPIs.mockImplementation(async () => kpiRows);
   storageMock.updateKPI.mockImplementation(async (id: string, update: any) => {
     const row = kpiRows.find((item) => item.id === id);
@@ -258,6 +264,7 @@ function setAuthoritativeFixture() {
   ga4ServiceMock.getTimeSeriesWithToken.mockResolvedValue([dailyRow]);
   ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
     revenueMetric: "purchaseRevenue",
+    currencyCode: "USD",
     totals: { ...dailyRow, revenue: 150, engagedSessions: 61, engagementRate: 0.61 },
   });
 }
@@ -265,6 +272,7 @@ function setAuthoritativeFixture() {
 describe("GA4 KPI real-path cross-consumer parity", () => {
   beforeAll(async () => {
     const app = express();
+    app.use(express.json());
     server = await registerRoutes(app);
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const address = server.address();
@@ -309,6 +317,107 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(response.status).toBe(200);
     expect(body.map((row: any) => [row.metric, Number(row.currentValue)])).toEqual(
       kpiRows.map((row) => [row.metric, Number(expectedByMetric[row.metric])]),
+    );
+  });
+
+  it("lists only campaigns whose campaign owner and client owner both match the actor", async () => {
+    storageMock.getCampaigns.mockResolvedValue([
+      campaign,
+      { ...campaign, id: "foreign-client-campaign", clientId: "foreign-client" },
+      { ...campaign, id: "ownerless-campaign", ownerId: null },
+    ]);
+
+    vi.useRealTimers();
+    const response = await fetch(`${baseUrl}/api/campaigns`);
+    expect(response.status).toBe(200);
+    expect((await response.json()).map((row: any) => row.id)).toEqual([campaign.id]);
+  });
+
+  it("lists GA4 connections without lazy token migration in read-only validation mode", async () => {
+    vi.useRealTimers();
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-connections?readOnly=1`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ validationReadOnly: true });
+    expect(storageMock.getGA4Connections).toHaveBeenLastCalledWith(campaign.id, { migrateLegacyTokens: false });
+
+    const status = await fetch(`${baseUrl}/api/ga4/check-connection/${campaign.id}?readOnly=1`);
+    expect(status.status).toBe(200);
+    expect(await status.json()).toMatchObject({ validationReadOnly: true });
+    expect(storageMock.getGA4Connections).toHaveBeenLastCalledWith(campaign.id, { migrateLegacyTokens: false });
+  });
+
+  it("rejects unsigned legacy Google OAuth callbacks before external token work", async () => {
+    vi.useRealTimers();
+    const integrated = await fetch(`${baseUrl}/api/auth/google/callback?code=fake&state=${campaign.id}`);
+    expect(integrated.status).toBe(400);
+    expect(await integrated.text()).toContain("Invalid state");
+
+    const browser = await fetch(`${baseUrl}/api/auth/google/callback`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "fake", state: Buffer.from(JSON.stringify({ campaignId: campaign.id })).toString("base64") }),
+    });
+    expect(browser.status).toBe(400);
+    expect(await browser.json()).toMatchObject({ error: "Invalid state" });
+
+    const sheets = await fetch(`${baseUrl}/api/auth/google-sheets/callback?code=fake&state=${campaign.id}:revenue`);
+    expect(sheets.status).toBe(200);
+    expect(await sheets.text()).toContain("Invalid state");
+  });
+
+  it("fails closed instead of signing GA4 or Sheets OAuth state with a known development secret in production", async () => {
+    vi.useRealTimers();
+    const previous = {
+      nodeEnv: process.env.NODE_ENV,
+      session: process.env.SESSION_SECRET,
+      ga4: process.env.GA4_OAUTH_STATE_SECRET,
+      sheets: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+    };
+    process.env.NODE_ENV = "production";
+    delete process.env.SESSION_SECRET;
+    delete process.env.GA4_OAUTH_STATE_SECRET;
+    delete process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET;
+    try {
+      const ga4 = await fetch(`${baseUrl}/api/auth/google/integrated-connect`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id }),
+      });
+      expect(ga4.status).toBe(500);
+
+      const sheets = await fetch(`${baseUrl}/api/auth/google-sheets/connect`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id, purpose: "revenue" }),
+      });
+      expect(sheets.status).toBe(500);
+    } finally {
+      if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
+      if (previous.session === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = previous.session;
+      if (previous.ga4 === undefined) delete process.env.GA4_OAUTH_STATE_SECRET; else process.env.GA4_OAUTH_STATE_SECRET = previous.ga4;
+      if (previous.sheets === undefined) delete process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET; else process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET = previous.sheets;
+    }
+  });
+
+  it("uses a last-good row for current-value reconciliation without inventing target-day history", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    storageMock.getLatestGA4DailyMetric.mockResolvedValue({ ...dailyRow, date: "2026-07-30" });
+    ga4ServiceMock.getTimeSeriesData.mockResolvedValue([]);
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    expect(storageMock.updateKPI).toHaveBeenCalled();
+    expect(storageMock.recordKPIProgress).not.toHaveBeenCalled();
+    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled();
+    expect(result.kpisRecorded).toBe(0);
+    expect(result.benchmarksRecorded).toBe(0);
+    expect(ga4ServiceMock.getTimeSeriesData).toHaveBeenCalledWith(
+      campaign.id,
+      storageMock,
+      "2026-07-31",
+      connection.propertyId,
+      campaign.ga4CampaignFilter,
+      "2026-07-31",
     );
   });
 
@@ -381,6 +490,42 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
+  it("rejects malformed on-demand GA4 daily provider values before replacing persisted history", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    ga4ServiceMock.getTimeSeriesData.mockResolvedValue([{ ...dailyRow, date: "2026-07-31", sessions: "not-a-number" }]);
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-daily?days=30&propertyId=" + encodeURIComponent(connection.propertyId));
+
+    expect(response.status).toBe(500);
+    expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+  });
+
+  it("propagates read-only mode through breakdown and prevents to-date token refresh persistence", async () => {
+    vi.useRealTimers();
+    const breakdown = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?dateRange=30days&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    expect(breakdown.status).toBe(200);
+    expect(await breakdown.json()).toMatchObject({ validationReadOnly: true });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenLastCalledWith(
+      campaign.id,
+      storageMock,
+      expect.any(String),
+      connection.propertyId,
+      2000,
+      campaign.ga4CampaignFilter,
+      expect.any(String),
+      true,
+    );
+
+    storageMock.getGA4Connection.mockResolvedValue({ ...connection, refreshToken: "refresh-token" });
+    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValueOnce(new Error("GA4 API Error: 401 unauthenticated"));
+    const toDate = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    expect(toDate.status).toBe(401);
+    expect(await toDate.json()).toMatchObject({ validationReadOnly: true, error: "TOKEN_EXPIRED" });
+    expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
   it("uses the same recomputed revenue for actual alert truth and notification enrichment", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     const revenueKpi = kpiRows.find((row) => row.metric === "totalRevenue")!;
@@ -404,9 +549,10 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("keeps authoritative provider zero ahead of higher persisted and breakdown candidates in the job and Notifications", async () => {
-    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [] });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [], currency: "USD" });
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
       revenueMetric: "purchaseRevenue",
+      currencyCode: "USD",
       totals: { ...dailyRow, revenue: 0, conversions: 5 },
     });
 
@@ -435,8 +581,8 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
-  it("keeps persisted campaign-to-date totals ahead of configured breakdown when the provider candidate is incomplete", async () => {
-    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { sessions: 100, users: 80 } });
+  it("preserves last-good financial values when live to-date totals are incomplete", async () => {
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "USD", totals: { sessions: 100, users: 80 } });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
       totals: { ...dailyRow, revenue: 999, conversions: 99 },
     });
@@ -444,13 +590,30 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
 
     const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
-    expect(values).toMatchObject({ revenue: 200, totalRevenue: 200, roas: 2, roi: 100, cpa: 20 });
+    expect(values).toMatchObject({ revenue: -1, totalRevenue: -1, roas: -1, roi: -1, cpa: -1 });
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
-  it("uses the configured-lookback breakdown only when provider and persisted candidates are absent", async () => {
+  it("does not treat observed provider zero conversions and revenue as missing repair data", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{
+      ...dailyRow,
+      date: "2026-07-31",
+      conversions: 0,
+      revenue: "0.00",
+      revenueMetric: "totalRevenue",
+    }]);
+
+    vi.useRealTimers();
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&readOnly=true&propertyId=${encodeURIComponent(connection.propertyId)}`);
+    expect(response.status).toBe(200);
+    expect((await response.json()).data[0]).toMatchObject({ conversions: 0, revenue: "0.00" });
+    expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+    expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+  });
+
+  it("does not substitute a configured-lookback breakdown for live to-date financial totals", async () => {
     storageMock.getGA4DailyMetrics.mockResolvedValue([]);
-    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { sessions: 100, users: 80 } });
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "USD", totals: { sessions: 100, users: 80 } });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
       totals: { ...dailyRow, revenue: 150, conversions: 5 },
     });
@@ -458,15 +621,22 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
 
     const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
-    expect(values).toMatchObject({ revenue: 200, totalRevenue: 200, roas: 2, roi: 100, cpa: 20 });
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledWith(
-      campaign.id,
-      storageMock,
-      "30daysAgo",
-      connection.propertyId,
-      2000,
-      "parity_campaign",
-    );
+    expect(values).toMatchObject({ revenue: -1, totalRevenue: -1, roas: -1, roi: -1, cpa: -1 });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
+  it("preserves last-good financial values when native GA4 currency differs from campaign currency", async () => {
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      revenueMetric: "purchaseRevenue",
+      currencyCode: "EUR",
+      totals: { ...dailyRow, revenue: 150, conversions: 5 },
+    });
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    const values = Object.fromEntries(kpiRows.map((row) => [row.metric, Number(row.currentValue)]));
+    expect(values).toMatchObject({ revenue: -1, totalRevenue: -1, roas: -1, roi: -1, cpa: -1 });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
   it("preserves last-good financial rows only when their required source read is unavailable", async () => {

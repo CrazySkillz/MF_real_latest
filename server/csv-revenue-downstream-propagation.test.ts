@@ -3,6 +3,7 @@ import { join } from "path";
 import { describe, expect, it } from "vitest";
 import { computeCpa, computeRoiPercent } from "../shared/metric-math";
 import { aggregateCsvRevenueRows } from "./utils/csv";
+import { selectMaterializedRevenueTotal } from "./storage";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
@@ -69,13 +70,20 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
 
     for (const method of [totalMethod, breakdownMethod]) {
       expect(method).toContain("eq(revenueRecords.campaignId, campaignId)");
+      expect(method).toContain("eq(revenueSources.campaignId, campaignId)");
       expect(method).toContain("eq(revenueSources.isActive, true)");
       expect(method).toContain("eq(revenueSources.platformContext, 'ga4' as any)");
       expect(method).toContain("isNull(revenueSources.platformContext)");
       expect(method).toContain("revenueRecords.revenueSourceId");
     }
-    expect(totalMethod).toContain("item.aggregate > 0 ? item.aggregate : item.subCampaign");
-    expect(breakdownMethod).toContain("data.aggregate > 0 ? data.aggregate : data.subCampaign");
+    expect(totalMethod).toContain("selectMaterializedRevenueTotal(item.aggregate, item.subCampaign, item.hasAggregate)");
+    expect(breakdownMethod).toContain("selectMaterializedRevenueTotal(data.aggregate, data.subCampaign, data.hasAggregate)");
+  });
+
+  it("preserves authoritative zero and negative aggregate revenue instead of substituting detail rows", () => {
+    expect(selectMaterializedRevenueTotal(0, 125, true)).toBe(0);
+    expect(selectMaterializedRevenueTotal(-25, 125, true)).toBe(-25);
+    expect(selectMaterializedRevenueTotal(0, 125, false)).toBe(125);
   });
 
   it("serves revenue-to-date, breakdown, and source totals from that storage contract", () => {

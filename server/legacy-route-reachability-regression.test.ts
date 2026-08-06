@@ -43,27 +43,27 @@ describe("legacy route reachability inventory", () => {
     expect(metaReportsBlock).not.toContain('platformType: text("platform_type"');
   });
 
-  it("keeps ownerless campaign compatibility centralized and claim-based", () => {
+  it("fails closed for ownerless campaigns instead of assigning them to the first caller", () => {
     const routes = read("server/routes-oauth.ts");
     const accessStart = routes.indexOf("const ensureCampaignAccess = async");
     const accessEnd = routes.indexOf("async function requireCampaignAccessParamId", accessStart);
     const access = routes.slice(accessStart, accessEnd);
 
-    expect(access).toContain("Backward compatibility: claim un-owned campaigns");
-    expect(access).toContain("await storage.updateCampaign(campaignId, { ownerId: actorId } as any)");
+    expect(access).toContain('if (!ownerId) {');
+    expect(access).toContain('res.status(404).json({ success: false, message: "Campaign not found" });');
+    expect(access).not.toContain("storage.updateCampaign(campaignId, { ownerId: actorId }");
     expect(access.indexOf("if (!ownerId)")).toBeLessThan(access.indexOf("if (ownerId !== actorId)"));
   });
 
-  it("keeps campaign list ownerless compatibility claim-based before returning rows", () => {
+  it("excludes ownerless campaigns from the campaign list", () => {
     const routes = read("server/routes-oauth.ts");
     const routeStart = routes.indexOf('app.get("/api/campaigns"');
     const routeEnd = routes.indexOf('app.post("/api/campaigns"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("if (ownerId && ownerId !== actorId) return false");
-    expect(route).toContain("claim any un-owned campaigns shown to this session");
-    expect(route).toContain("storage.updateCampaign(String(c?.id || \"\"), { ownerId: actorId } as any)");
-    expect(route.indexOf("const toClaim")).toBeLessThan(route.indexOf("res.json("));
+    expect(route).toContain("if (ownerId !== actorId) return false");
+    expect(route).not.toContain("claim any un-owned campaigns shown to this session");
+    expect(route).not.toContain("const toClaim");
   });
 
   it("keeps legacy transfer routes classified as retained compatibility routes with campaign guards", () => {

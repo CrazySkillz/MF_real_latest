@@ -1,6 +1,16 @@
+import { normalizeStrictUtcDateKey } from "./data-transformation";
+
 export type ParsedCsv = {
   headers: string[];
   rows: Array<Record<string, string>>;
+};
+
+export const normalizeFinancialSourceDateKey = (value: unknown): string | null => {
+  const raw = String(value ?? "").trim();
+  if (!raw || /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(raw)) return null;
+  const explicitDate = raw.match(/^(\d{4}-\d{2}-\d{2})(?:T|\s)/)?.[1];
+  if (explicitDate) return normalizeStrictUtcDateKey(explicitDate) === explicitDate ? explicitDate : null;
+  return normalizeStrictUtcDateKey(raw);
 };
 
 export type CsvSpendAggregation = {
@@ -49,14 +59,12 @@ export function aggregateCsvRevenueRows(
     keptRows++;
     totalRevenue += revenue;
     if (mapping.dateColumn) {
-      const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
-      const date = rawDate && !/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(rawDate) ? new Date(rawDate) : null;
-      if (!date || Number.isNaN(date.getTime())) {
+      const date = normalizeFinancialSourceDateKey(row?.[mapping.dateColumn]);
+      if (!date) {
         undatedRevenue += revenue;
         continue;
       }
-      const normalizedDate = date.toISOString().split("T")[0];
-      dailyRevenue.set(normalizedDate, (dailyRevenue.get(normalizedDate) || 0) + revenue);
+      dailyRevenue.set(date, (dailyRevenue.get(date) || 0) + revenue);
     }
   }
 
@@ -103,14 +111,12 @@ export function aggregateCsvSpendRows(
     keptRows++;
     totalSpend += spend;
     if (mapping.dateColumn) {
-      const rawDate = String(row?.[mapping.dateColumn] ?? "").trim();
-      const date = rawDate && !/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(rawDate) ? new Date(rawDate) : null;
-      if (!date || Number.isNaN(date.getTime())) {
+      const date = normalizeFinancialSourceDateKey(row?.[mapping.dateColumn]);
+      if (!date) {
         undatedSpend += spend;
         continue;
       }
-      const normalizedDate = date.toISOString().split("T")[0];
-      dailySpend.set(normalizedDate, (dailySpend.get(normalizedDate) || 0) + spend);
+      dailySpend.set(date, (dailySpend.get(date) || 0) + spend);
     }
   }
 

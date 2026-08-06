@@ -40,7 +40,7 @@ import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, normalizeGA4InsightsDailyRows } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -258,12 +258,15 @@ const POSITIVE_KPI_EXCEEDS_PCT = 110;
 const KPI_BEHIND_PCT = 70;
 const KPI_NEEDS_ATTENTION_PCT = 90;
 // Minimum daily history for anomaly detection
-const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabels: string[]) => {
+const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabels: string[], ga4NoCompletedWindow = false) => {
   const hasSpend = spendLabels.length > 0;
   const hasRevenue = revenueLabels.length > 0;
   const revenueText = revenueLabels.join(", ");
   if (hasSpend && hasRevenue) return `Uses source-backed spend-to-date and total revenue from ${revenueText}.`;
   if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;
+  if (ga4NoCompletedWindow) return hasSpend
+    ? "Uses source-backed spend-to-date; GA4 native revenue awaits the first completed reporting day."
+    : "GA4 native revenue awaits the first completed reporting day; no spend source is connected.";
   if (hasSpend) return "Uses source-backed spend-to-date; no revenue source is connected.";
   return "No spend or revenue source is connected.";
 };
@@ -271,6 +274,7 @@ const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabel
 export default function GA4Metrics() {
   const [location] = useLocation();
   const search = useSearch();
+  const insightsValidationReadOnly = new URLSearchParams(search).get("readOnly") === "1";
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
   const { clients } = useClient();
@@ -879,7 +883,7 @@ export default function GA4Metrics() {
   // GA4 Reports (stored as platform reports)
   const { data: ga4Reports, isLoading: ga4ReportsLoading } = useQuery<any[]>({
     queryKey: ["/api/platforms/google_analytics/reports", campaignId],
-    enabled: !!campaignId,
+    enabled: !!campaignId && !insightsValidationReadOnly,
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -1535,7 +1539,7 @@ export default function GA4Metrics() {
 
   // Check GA4 connection status - Updated for multiple connections
   const { data: ga4Connection, isLoading: ga4ConnLoading, isError: ga4ConnectionError } = useQuery({
-    queryKey: ["/api/ga4/check-connection", campaignId],
+    queryKey: ["/api/ga4/check-connection", campaignId, insightsValidationReadOnly],
     enabled: !!campaignId,
     // Make the page frictionless: keep connection state fresh without requiring manual refresh.
     staleTime: 0,
@@ -1544,7 +1548,7 @@ export default function GA4Metrics() {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
+      const response = await fetch(`/api/ga4/check-connection/${campaignId}${insightsValidationReadOnly ? "?readOnly=1" : ""}`);
       const json = await response.json().catch(() => null);
       if (!response.ok || !json) throw new Error(json?.message || json?.error || "Failed to check the GA4 connection");
       return json;
@@ -1553,7 +1557,7 @@ export default function GA4Metrics() {
 
   // Get all GA4 connections for this campaign
   const { data: allGA4Connections } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-connections"],
+    queryKey: ["/api/campaigns", campaignId, "ga4-connections", insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1561,7 +1565,7 @@ export default function GA4Metrics() {
     refetchInterval: 10 * 60 * 1000, // 10 minutes
     refetchIntervalInBackground: true,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections`);
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections${insightsValidationReadOnly ? "?readOnly=1" : ""}`);
       const json = await response.json().catch(() => null);
       if (!response.ok || !json || json?.success === false) {
         throw new Error(json?.message || json?.error || "Failed to fetch GA4 connections");
@@ -1579,6 +1583,11 @@ export default function GA4Metrics() {
       .filter((property) => String(property?.propertyId || "").trim().length > 0)
       .filter((property) => Number(property?.lookbackDays) === 30);
   const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0;
+  const primaryGA4PropertyId = String((availableGA4Properties.find((property) => property?.isPrimary) || availableGA4Properties[0])?.propertyId || "");
+  const insightsAnalyticsHistoryMatchesSelectedProperty = isGA4InsightsAnalyticsHistoryInSelectedPropertyScope(
+    selectedGA4PropertyId,
+    primaryGA4PropertyId,
+  );
 
   const GA4_DAILY_LOOKBACK_DAYS = 30;
   const GA4_INSIGHTS_DAILY_LOOKBACK_DAYS = 60;
@@ -1665,6 +1674,7 @@ export default function GA4Metrics() {
   // Fetch industries list (used for Benchmarks -> Industry type)
   const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
     queryKey: ["/api/industry-benchmarks"],
+    enabled: !insightsValidationReadOnly,
     // Keep fresh so newly-added industries appear without requiring a hard refresh.
     staleTime: 0,
     queryFn: async () => {
@@ -1680,12 +1690,12 @@ export default function GA4Metrics() {
   // Stored-series analytics (used to make Insights richer: streaks/trends/volatility)
   const kpiAnalyticsQueries = useQueries({
     queries: (Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => ({
-      queryKey: ["/api/kpis", String(k?.id || ""), "analytics", "30d"],
-      enabled: activeTab === "insights" && !!k?.id,
+      queryKey: ["/api/kpis", String(k?.id || ""), "analytics", "30d", selectedGA4PropertyId],
+      enabled: activeTab === "insights" && !!k?.id && !!selectedGA4PropertyId,
       staleTime: 0,
       queryFn: async () => {
         const id = String(k?.id || "");
-        const resp = await fetch(`/api/kpis/${encodeURIComponent(id)}/analytics?timeframe=30d`);
+        const resp = await fetch(`/api/kpis/${encodeURIComponent(id)}/analytics?timeframe=30d&ga4Scope=1&propertyId=${encodeURIComponent(selectedGA4PropertyId)}`);
         const json = await resp.json().catch(() => null);
         if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to fetch KPI analytics history");
         return json;
@@ -1695,12 +1705,12 @@ export default function GA4Metrics() {
 
   const benchmarkAnalyticsQueries = useQueries({
     queries: (Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => ({
-      queryKey: ["/api/benchmarks", String(b?.id || ""), "analytics"],
-      enabled: activeTab === "insights" && !!b?.id,
+      queryKey: ["/api/benchmarks", String(b?.id || ""), "analytics", selectedGA4PropertyId],
+      enabled: activeTab === "insights" && !!b?.id && !!selectedGA4PropertyId,
       staleTime: 0,
       queryFn: async () => {
         const id = String(b?.id || "");
-        const resp = await fetch(`/api/benchmarks/${encodeURIComponent(id)}/analytics`);
+        const resp = await fetch(`/api/benchmarks/${encodeURIComponent(id)}/analytics?ga4Scope=1&propertyId=${encodeURIComponent(selectedGA4PropertyId)}`);
         const json = await resp.json().catch(() => null);
         if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to fetch Benchmark analytics history");
         return json;
@@ -1754,7 +1764,7 @@ export default function GA4Metrics() {
     })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error, isPlaceholderData: ga4DailyPlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
@@ -1766,7 +1776,7 @@ export default function GA4Metrics() {
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-daily?days=${encodeURIComponent(String(GA4_DAILY_LOOKBACK_DAYS))}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}`
+        )}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok && data?.requiresReauthorization) {
@@ -1784,7 +1794,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsValidationReadOnly],
     enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1793,7 +1803,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(
-        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`
+        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false) {
@@ -1874,7 +1884,7 @@ export default function GA4Metrics() {
   // Diagnostics (provenance + report shape checks)
   const { data: ga4Diagnostics } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -1919,7 +1929,7 @@ export default function GA4Metrics() {
     isError: breakdownError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
@@ -1931,7 +1941,7 @@ export default function GA4Metrics() {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}`
+        )}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
@@ -1971,7 +1981,7 @@ export default function GA4Metrics() {
 
   const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -1995,7 +2005,7 @@ export default function GA4Metrics() {
 
   const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -2037,7 +2047,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId],
+    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -2046,7 +2056,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`
+        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
@@ -2201,7 +2211,7 @@ export default function GA4Metrics() {
 
   const { data: hubspotPipelineProxyData, isLoading: hubspotPipelineProxyLoading, isError: hubspotPipelineProxyError } = useQuery<any>({
     queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"],
-    enabled: !!campaignId && configuredPipelineSourceTypes.has("hubspot"),
+    enabled: !insightsValidationReadOnly && !!campaignId && configuredPipelineSourceTypes.has("hubspot"),
     staleTime: 0,
     retry: false,
     queryFn: async () => {
@@ -2216,7 +2226,7 @@ export default function GA4Metrics() {
 
   const { data: salesforcePipelineProxyData, isLoading: salesforcePipelineProxyLoading, isError: salesforcePipelineProxyError } = useQuery<any>({
     queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "ga4"],
-    enabled: !!campaignId && configuredPipelineSourceTypes.has("salesforce"),
+    enabled: !insightsValidationReadOnly && !!campaignId && configuredPipelineSourceTypes.has("salesforce"),
     staleTime: 0,
     retry: false,
     queryFn: async () => {
@@ -2291,7 +2301,7 @@ export default function GA4Metrics() {
   // Latest-day endpoints default to the server's previous complete UTC day.
   const { data: spendDailyResp, isError: spendDailyError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/spend-daily?platformContext=ga4`, "latest"],
-    enabled: !!campaignId,
+    enabled: !insightsValidationReadOnly && !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -2303,7 +2313,7 @@ export default function GA4Metrics() {
 
   const { data: revenueDailyResp, isError: revenueDailyError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, "latest"],
-    enabled: !!campaignId,
+    enabled: !insightsValidationReadOnly && !!campaignId,
     staleTime: 0,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily`, { credentials: "include" });
@@ -2315,16 +2325,8 @@ export default function GA4Metrics() {
 
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
-    const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.map(String) : [];
     const sources = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
-    const labels: string[] = [];
-    for (const id of ids) {
-      const s = sources.find((x: any) => String(x?.id) === String(id));
-      if (!s) continue;
-      const label = String(s.displayName || s.sourceType || "").trim();
-      if (label) labels.push(label);
-    }
-    return labels;
+    return buildGA4InsightsSpendSourceLabels(persistedSpend, spendToDateResp?.sourceIds, sources);
   }, [spendToDateResp?.spendToDate, spendToDateResp?.sourceIds, spendSourcesResp]);
 
   const activeSpendSource = useMemo(() => {
@@ -2557,6 +2559,7 @@ export default function GA4Metrics() {
     return !!activeSpendSource || ids.length > 0;
   }, [activeSpendSource, spendToDateResp?.sourceIds]);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
+  const ga4NoCompletedWindow = (ga4ToDateResp as any)?.noCompletedWindow === true;
   const ga4FinancialCandidates = [
     (ga4ToDateResp as any)?.totals,
     !ga4DailyPlaceholder && ga4DailyRows.length > 0 ? dailySummedTotals : null,
@@ -2574,12 +2577,17 @@ export default function GA4Metrics() {
     // financial source used by Total Revenue, not only the Summary-card source.
     return !!activeRevenueSource || ga4HasRevenueMetric;
   }, [activeRevenueSource, ga4HasRevenueMetric]);
+  const ga4RevenueWindowState = resolveGA4InsightsRevenueWindowState({
+    noCompletedWindow: ga4NoCompletedWindow,
+    hasImportedRevenueSource: !!activeRevenueSource,
+    revenueMetricAvailable,
+  });
 
   const getMissingDependenciesForMetric = (metricKey: string) => {
     const { requiresSpend, requiresRevenue } = getGA4KpiMetricDependencies(metricKey);
     const missing: Array<"Spend" | "Revenue"> = [];
     if (requiresSpend && !spendMetricAvailable) missing.push("Spend");
-    if (requiresRevenue && !revenueMetricAvailable) missing.push("Revenue");
+    if (requiresRevenue && ga4RevenueWindowState.missingRevenueDependency) missing.push("Revenue");
     return { requiresSpend, requiresRevenue, missing };
   };
 
@@ -2654,16 +2662,36 @@ export default function GA4Metrics() {
   const revenueSourceLabels = useMemo(() => {
     const labels: string[] = [];
     if (ga4HasRevenueMetric) labels.push("GA4 native revenue");
-    for (const s of Array.isArray(revenueDisplaySources) ? revenueDisplaySources : []) {
+    const sourceIds = new Set(
+      (Array.isArray((importedRevenueToDateResp as any)?.sourceIds) ? (importedRevenueToDateResp as any).sourceIds : [])
+        .map(String),
+    );
+    const importedSources = sourceIds.size > 0
+      ? revenueDisplaySources.filter((source: any) => sourceIds.has(String(source?.sourceId || source?.id || "")))
+      : importedRevenueForFinancials === 0 ? revenueDisplaySources : [];
+    for (const s of importedSources) {
       const label = String((s as any)?.displayName || revenueSourceTypeLabel(String((s as any)?.sourceType || ""))).trim();
       if (label && !labels.includes(label)) labels.push(label);
     }
     return labels;
-  }, [ga4HasRevenueMetric, revenueDisplaySources]);
+  }, [ga4HasRevenueMetric, importedRevenueForFinancials, importedRevenueToDateResp, revenueDisplaySources]);
   const executiveFinancialsDescription = useMemo(
-    () => buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels),
-    [spendSourceLabels, revenueSourceLabels]
+    () => buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels, ga4NoCompletedWindow),
+    [spendSourceLabels, revenueSourceLabels, ga4NoCompletedWindow]
   );
+  const financialWindowDescription = useMemo(() => {
+    const windows: string[] = [];
+    if (ga4HasRevenueMetric && (ga4ToDateResp as any)?.startDate && (ga4ToDateResp as any)?.endDate) {
+      windows.push(`GA4 native revenue ${String((ga4ToDateResp as any).startDate)} to ${String((ga4ToDateResp as any).endDate)} completed days`);
+    }
+    if (revenueDisplaySources.length > 0 && (importedRevenueToDateResp as any)?.endDate) {
+      windows.push(`imported revenue source-to-date through completed ${trendsReportingTimeZoneLabel} day ${String((importedRevenueToDateResp as any).endDate)}`);
+    }
+    if (spendDisplaySources.length > 0 && (spendToDateResp as any)?.endDate) {
+      windows.push(`spend source-to-date through completed ${trendsReportingTimeZoneLabel} day ${String((spendToDateResp as any).endDate)}`);
+    }
+    return windows.length > 0 ? `${windows.join("; ")}.` : "";
+  }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4HasRevenueMetric ? 1 : 0);
@@ -2797,6 +2825,13 @@ export default function GA4Metrics() {
 
   const getKpiDataSufficiency = (kpi: any) => {
     const name = String(kpi?.metric || kpi?.name || "");
+    const noWindowReason = resolveGA4InsightsCampaignToDateSufficiencyReason({
+      noCompletedWindow: ga4NoCompletedWindow,
+      hasImportedRevenueSource: !!activeRevenueSource,
+      metric: name,
+      name: kpi?.name,
+    });
+    if (noWindowReason) return { sufficient: false, reason: noWindowReason };
     return resolveKpiDataSufficiency({
       metric: name,
       name: kpi?.name,
@@ -2821,14 +2856,22 @@ export default function GA4Metrics() {
     });
   };
 
-  const getBenchmarkDataSufficiency = (benchmark: any) =>
-    resolveBenchmarkDataSufficiency({
+  const getBenchmarkDataSufficiency = (benchmark: any) => {
+    const noWindowReason = resolveGA4InsightsCampaignToDateSufficiencyReason({
+      noCompletedWindow: ga4NoCompletedWindow,
+      hasImportedRevenueSource: !!activeRevenueSource,
+      metric: (benchmark as any)?.metric,
+      name: (benchmark as any)?.name,
+    });
+    if (noWindowReason) return { sufficient: false, reason: noWindowReason };
+    return resolveBenchmarkDataSufficiency({
       metric: String((benchmark as any)?.metric || ""),
       name: (benchmark as any)?.name,
       sessions: Number(getLiveBenchmarkCurrentValue("sessions") || 0),
       conversions: Number(financialConversions || 0),
       spend: Number(financialSpend || 0),
     });
+  };
 
   const getBenchmarkConsumerState = (benchmark: any) => {
     const deps = getMissingDependenciesForMetric(String(benchmark?.metric || benchmark?.name || ""));
@@ -4309,15 +4352,14 @@ export default function GA4Metrics() {
 
   const connectedPropertyCount =
     Number(ga4Connection?.totalConnections || 0) ||
-    (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0) ||
-    1;
+    (Array.isArray(ga4Connection?.connections) ? ga4Connection.connections.length : 0);
 
   const rateToPercent = (v: number) => normalizeRateToPercent(v);
 
   // Geographic data query
   const { data: geographicData, isLoading: geoLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange, selectedGA4PropertyId],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -4395,7 +4437,7 @@ export default function GA4Metrics() {
       : "No scored KPI tolerance available";
     return { total: items.length, scored, above, near, below, blocked, insufficient, unavailable, stale, pending, avgPct, toleranceSummary, toleranceTitle };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, kpiListState, trafficKpiInputState, revenueKpiInputState, spendKpiInputState]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, ga4NoCompletedWindow, ga4RevenueWindowState.sufficiencyReason, kpiListState, trafficKpiInputState, revenueKpiInputState, spendKpiInputState]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];
@@ -4444,6 +4486,8 @@ export default function GA4Metrics() {
     financialCPA,
     spendMetricAvailable,
     revenueMetricAvailable,
+    ga4NoCompletedWindow,
+    ga4RevenueWindowState.sufficiencyReason,
     benchmarkListState,
     trafficKpiInputState,
     revenueKpiInputState,
@@ -4457,7 +4501,6 @@ export default function GA4Metrics() {
     [insightsRollupRows, insightsRollupCutoff],
   );
   const insightsDataSummaryTotals = insightsRollups.last30;
-
   // --- Channel analysis for data-driven recommendations ---
   const channelAnalysis = useMemo(() => {
     const rows = !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
@@ -4591,6 +4634,7 @@ export default function GA4Metrics() {
       return "GA4 completed daily history";
     }
     if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
+    if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
     return "Current campaign data";
   };
 
@@ -4617,10 +4661,7 @@ export default function GA4Metrics() {
 
     // 0) Executive financial integrity checks (to-date / lifetime)
     // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
-    const toDateRangeLabel =
-      (ga4ToDateResp as any)?.startDate
-        ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}`
-        : "to date";
+    const toDateRangeLabel = financialWindowDescription || "source-to-date inputs";
 
     if (ga4InsightsDailyError && ga4InsightsDailyResp === undefined) {
       out.push({
@@ -4637,6 +4678,16 @@ export default function GA4Metrics() {
         title: "GA4 trend history is stale",
         description: "The tab is showing last-good daily values, but trend comparisons and recommendations are withheld until a current refresh succeeds.",
         recommendation: "Run the campaign GA4 refresh and confirm the completed-day coverage before acting on trend signals.",
+      });
+    }
+
+    if (!insightsAnalyticsHistoryMatchesSelectedProperty && (platformKPIs.length > 0 || benchmarks.length > 0)) {
+      out.push({
+        id: "integrity:analytics_history_primary_property_only",
+        severity: "medium",
+        title: "KPI and Benchmark history is withheld for this property",
+        description: "Current KPI and Benchmark evaluations use the selected property, but their stored trend snapshots are recorded for the campaign's primary GA4 property. Streak and historical-trend context is withheld to prevent cross-property comparisons.",
+        recommendation: "Use the primary GA4 property to review KPI and Benchmark history, or rely on the selected property's current values and GA4 daily Trends.",
       });
     }
 
@@ -4794,7 +4845,7 @@ export default function GA4Metrics() {
       });
     }
 
-    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) <= 0) {
+    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) > 0 && Number(financialRevenue || 0) === 0) {
       out.push({
         id: "financial:spend_no_revenue",
         severity: "high",
@@ -4806,13 +4857,44 @@ export default function GA4Metrics() {
       });
     }
 
-    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) <= 0 && Number(financialRevenue || 0) > 0) {
+    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && revenueMetricAvailable && Number(financialSpend || 0) === 0 && Number(financialRevenue || 0) > 0) {
       out.push({
         id: "financial:revenue_no_spend",
         severity: "medium",
         title: "Revenue exists, but spend is $0 to date",
         description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}), but spend-to-date is ${formatMoney(0)}.`,
         recommendation: "Import spend-to-date for this campaign so ROI/ROAS/CPA reflect actual performance.",
+      });
+    }
+    if (ga4NoCompletedWindow) {
+      out.push({
+        id: "financial:ga4_no_completed_window",
+        severity: "medium",
+        title: "GA4 campaign-to-date metrics are not available yet",
+        description: activeRevenueSource
+          ? "The campaign has no completed GA4 reporting day yet. Native revenue and conversion-dependent campaign-to-date values are withheld; independently imported revenue remains available."
+          : "The campaign has no completed GA4 reporting day yet. Native revenue and conversion-dependent campaign-to-date values are withheld rather than treated as zero or as a missing connection.",
+        recommendation: "Wait until the campaign has a completed reporting day in its configured timezone, then refresh Insights.",
+      });
+    }
+
+    if (revenueKpiInputState === "ready" && revenueMetricAvailable && Number(financialRevenue || 0) < 0) {
+      out.push({
+        id: "financial:negative_revenue",
+        severity: "high",
+        title: "Revenue is negative to date",
+        description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}); it is not treated as zero.`,
+        recommendation: "Verify refunds, chargebacks, adjustments, and revenue-event configuration before acting on revenue, ROI, or ROAS.",
+      });
+    }
+
+    if (spendKpiInputState === "ready" && spendMetricAvailable && Number(financialSpend || 0) < 0) {
+      out.push({
+        id: "financial:negative_spend",
+        severity: "high",
+        title: "Spend is negative to date",
+        description: `Spend-to-date is ${formatMoney(Number(financialSpend || 0))}; ROI, ROAS, and CPA are withheld because negative spend is not a valid denominator.`,
+        recommendation: "Verify credits, refunds, and spend-source signs before using spend-based metrics.",
       });
     }
 
@@ -4862,9 +4944,11 @@ export default function GA4Metrics() {
       const sev: InsightItem["severity"] = attPct < KPI_BEHIND_PCT ? "high" : "medium";
       const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
       const effectiveTarget = (getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? "";
-      const analytics = kpiAnalyticsById.get(String((k as any)?.id || "")) || null;
+      const analytics = insightsAnalyticsHistoryMatchesSelectedProperty
+        ? kpiAnalyticsById.get(String((k as any)?.id || "")) || null
+        : null;
 
-      // Streak: how many consecutive recorded days are in the same "not on track" state.
+      // Streak: adjacent calendar days only; sparse snapshots are not a day streak.
       const streak = (() => {
         const prog = Array.isArray(analytics?.progress) ? analytics.progress : [];
         if (prog.length === 0) return 0;
@@ -4873,17 +4957,16 @@ export default function GA4Metrics() {
         const statusFor = (val: number) => computeProgress({ current: val, target: target, lowerIsBetter }).status;
         const first = statusFor(parseFloat(String(prog[0]?.value || "0")));
         if (first === "on_track") return 0;
-        let n = 0;
-        for (const pt of prog) {
-          const st = statusFor(parseFloat(String(pt?.value || "0")));
-          if (st !== first) break;
-          n += 1;
-        }
-        return n;
+        return countGA4InsightsConsecutiveDays(
+          prog,
+          (pt: any) => pt?.recordedAt,
+          (pt: any) => statusFor(parseFloat(String(pt?.value || "0"))) === first,
+        );
       })();
 
       const trendNote = (() => {
-        if (!analytics?.trendAnalysis) return "";
+        const progress = Array.isArray(analytics?.progress) ? analytics.progress : [];
+        if (progress.length < 2 || !analytics?.trendAnalysis) return "";
         const pct = Number(analytics.trendAnalysis.percentage || 0);
         if (Math.abs(pct) < 0.1) return " Stable over recent period.";
         const dir = pct > 0 ? "up" : "down";
@@ -4951,8 +5034,11 @@ export default function GA4Metrics() {
 
       const sev: InsightItem["severity"] = status === "behind" ? "high" : "medium";
       const metric = String((b as any)?.metric || (b as any)?.name || "Benchmark");
-      const ban = benchmarkAnalyticsById.get(String((b as any)?.id || "")) || null;
-      const trendNote = ban?.performanceTrend ? ` Trend ${String(ban.performanceTrend)}.` : "";
+      const ban = insightsAnalyticsHistoryMatchesSelectedProperty
+        ? benchmarkAnalyticsById.get(String((b as any)?.id || "")) || null
+        : null;
+      const benchmarkHistory = Array.isArray(ban?.history) ? ban.history : [];
+      const trendNote = benchmarkHistory.length >= 2 && ban?.performanceTrend ? ` Trend ${String(ban.performanceTrend)}.` : "";
       const avgVar = Number(ban?.averageVariance || 0);
       const volNote = Number.isFinite(avgVar) && avgVar !== 0 ? ` Avg variance ${avgVar.toFixed(1)}%.` : "";
       out.push({
@@ -4995,11 +5081,21 @@ export default function GA4Metrics() {
     }
 
     // 2b) Scheduler dependency: inform user when analytics history is missing
-    const hasKpis = Array.isArray(platformKPIs) && platformKPIs.length > 0;
-    const hasKpiAnalytics = kpiAnalyticsById.size > 0;
-    const hasBenchmarks = Array.isArray(benchmarks) && benchmarks.length > 0;
-    const hasBenchmarkAnalytics = benchmarkAnalyticsById.size > 0;
-    if (kpiAnalyticsFailed || benchmarkAnalyticsFailed) {
+    const historyEligibleKpis = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) =>
+      getKpiConsumerState(k).eligible && !getInvalidKpiConfigReason(k)
+    );
+    const historyEligibleBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) =>
+      getBenchmarkConsumerState(b).eligible && !getInvalidBenchmarkConfigReason(b)
+    );
+    const hasKpis = historyEligibleKpis.length > 0;
+    const hasKpiAnalytics = hasKpis && historyEligibleKpis.every((k: any) =>
+      hasGA4InsightsAnalyticsHistory(kpiAnalyticsById.get(String(k?.id || "")), "progress")
+    );
+    const hasBenchmarks = historyEligibleBenchmarks.length > 0;
+    const hasBenchmarkAnalytics = hasBenchmarks && historyEligibleBenchmarks.every((b: any) =>
+      hasGA4InsightsAnalyticsHistory(benchmarkAnalyticsById.get(String(b?.id || "")), "history")
+    );
+    if (insightsAnalyticsHistoryMatchesSelectedProperty && (kpiAnalyticsFailed || benchmarkAnalyticsFailed)) {
       const failed: string[] = [];
       if (kpiAnalyticsFailed) failed.push("KPI");
       if (benchmarkAnalyticsFailed) failed.push("Benchmark");
@@ -5010,7 +5106,7 @@ export default function GA4Metrics() {
         description: `The live ${failed.join("/")} analytics request failed, so streak and trend recommendations are withheld.`,
         recommendation: "Refresh the tab. If the request still fails, verify campaign access and the analytics snapshot endpoint before acting on trend recommendations.",
       });
-    } else if ((hasKpis && !hasKpiAnalytics) || (hasBenchmarks && !hasBenchmarkAnalytics)) {
+    } else if (insightsAnalyticsHistoryMatchesSelectedProperty && ((hasKpis && !hasKpiAnalytics) || (hasBenchmarks && !hasBenchmarkAnalytics))) {
       const missing: string[] = [];
       if (hasKpis && !hasKpiAnalytics) missing.push("KPI");
       if (hasBenchmarks && !hasBenchmarkAnalytics) missing.push("Benchmark");
@@ -5208,7 +5304,7 @@ export default function GA4Metrics() {
         title: "Using 3-day comparison window (limited history)",
         description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${insightsRollups.last7.days}/${insightsRollups.last7.expectedDays} imported days. Prior window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${insightsRollups.prior7.days}/${insightsRollups.prior7.expectedDays} imported days. Both adjacent calendar windows must be complete before 7-day comparisons run; ${dates.length} total rows are present in the 60-day response.`,
       });
-    } else if (!trendsRefreshIsStale && dates.length > 0) {
+    } else if (!trendsRefreshIsStale) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
@@ -5223,7 +5319,7 @@ export default function GA4Metrics() {
         id: "positive:roas:lifetime",
         severity: "low",
         title: `ROAS is strong at ${Number(financialROAS).toFixed(2)}x`,
-        description: `Campaign ROAS is ${Number(financialROAS).toFixed(2)}x to date, well above the 1.0x breakeven point.`,
+        description: `Campaign ROAS is ${Number(financialROAS).toFixed(2)}x to date, above a 1.0x revenue-to-spend ratio. Profitability still depends on margin and other costs.`,
         recommendation: "Review high-ROAS channels before considering spend increases or new audience tests.",
       });
     }
@@ -5232,13 +5328,13 @@ export default function GA4Metrics() {
       if (!getKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;
       const p = computeKpiProgress(k);
-      const attPct = p?.attainmentPct ?? 0;
-      if (attPct >= POSITIVE_KPI_EXCEEDS_PCT) {
+      const improvementPct = Number(p?.effectiveDeltaPct || 0);
+      if (improvementPct >= POSITIVE_KPI_EXCEEDS_PCT - 100) {
         const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
         out.push({
           id: `positive:kpi:${String((k as any)?.id || metric)}`,
           severity: "low",
-          title: `${String((k as any)?.name || metric)} exceeds target by ${(attPct - 100).toFixed(0)}%`,
+          title: `${String((k as any)?.name || metric)} outperforms target by ${improvementPct.toFixed(0)}%`,
           description: (() => {
             const unit = String((k as any)?.unit || "%");
             const suffix = unit === "%" ? "%" : "";
@@ -5278,7 +5374,7 @@ export default function GA4Metrics() {
           id: "info:engagement_rate",
           severity: "low",
           title: `Engagement rate: ${engRate7}%`,
-          description: `${engRate7}% of sessions in the last 7 days were engaged (active interaction beyond bounce). ${Number(engRate7) >= 60 ? "This is a healthy engagement level." : Number(engRate7) >= 40 ? "Moderate engagement — room for improvement." : "Low engagement — consider reviewing landing page relevance."}`,
+          description: `${engRate7}% of sessions in the last 7 days met GA4's engaged-session criteria. ${Number(engRate7) >= 60 ? "This is a healthy engagement level." : Number(engRate7) >= 40 ? "Moderate engagement — room for improvement." : "Low engagement — consider reviewing landing page relevance."}`,
         });
       }
 
@@ -5340,6 +5436,8 @@ export default function GA4Metrics() {
     ga4HasRevenueMetric,
     spendMetricAvailable,
     revenueMetricAvailable,
+    ga4NoCompletedWindow,
+    ga4RevenueWindowState.sufficiencyReason,
     String((ga4ToDateResp as any)?.startDate || ""),
     String((ga4ToDateResp as any)?.endDate || ""),
     kpiAnalyticsById,
@@ -5353,6 +5451,8 @@ export default function GA4Metrics() {
     revenueKpiInputState,
     spendKpiInputState,
     benchmarkListState,
+    insightsAnalyticsHistoryMatchesSelectedProperty,
+    financialWindowDescription,
   ]);
 
   const insightsActionDescription = useMemo(() => {
@@ -5760,18 +5860,19 @@ export default function GA4Metrics() {
                 )}
               </div>
             </div>
-            <Card>
+            <Card data-testid="insights-scope-context">
               <CardContent className="p-4 text-sm text-muted-foreground/80 space-y-1">
-                <div><span className="font-medium text-foreground">Client:</span> {headerClientName}</div>
-                <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
-                <div><span className="font-medium text-foreground">GA4 Property ID:</span> {ga4ConnectionUsable ? (provenancePropertyId || provenanceProperty) : "Unavailable"}</div>
-                <div><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
+                <div data-testid="insights-scope-client"><span className="font-medium text-foreground">Client:</span> {headerClientName}</div>
+                <div data-testid="insights-scope-campaign"><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
+                <div data-testid="insights-scope-property"><span className="font-medium text-foreground">GA4 Property ID:</span> {ga4ConnectionUsable ? (provenancePropertyId || provenanceProperty) : "Unavailable"}</div>
+                <div data-testid="insights-scope-filter"><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
               </CardContent>
             </Card>
             {ga4ConnectionUsable && ga4DailyRefreshIsStale && (
               <div
                 className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                 data-testid="ga4-overview-freshness-warning"
+                data-insights-scope="shared"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>
@@ -6103,6 +6204,7 @@ export default function GA4Metrics() {
                               <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
                               {ga4ConnectionUsable && <button
                                 onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
+                                data-testid="ga4-add-spend-source"
                                 className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
                                 title="Add spend source"
                               >
@@ -8125,7 +8227,7 @@ export default function GA4Metrics() {
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                         <CardDescription>
-                          {executiveFinancialsDescription}
+                          {executiveFinancialsDescription} {financialWindowDescription}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -8148,7 +8250,7 @@ export default function GA4Metrics() {
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Revenue</div>
                               <div className="text-2xl font-bold text-foreground">
-                                {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)), revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable")}
+                                {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)), ga4RevenueWindowState.awaitingFirstCompletedDay ? ga4RevenueWindowState.unavailableLabel : revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable")}
                               </div>
                             </CardContent>
                           </Card>
@@ -8201,8 +8303,9 @@ export default function GA4Metrics() {
                             </div>
                             <div>
                               <span className="font-medium">Revenue</span>:{" "}
-                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : "Not connected"}
+                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : ga4NoCompletedWindow ? "GA4 native revenue — no completed day yet" : "Not connected"}
                             </div>
+                            {financialWindowDescription && <div><span className="font-medium">Windows</span>: {financialWindowDescription}</div>}
                           </div>
                         </div>
                       </CardContent>
@@ -8381,7 +8484,7 @@ export default function GA4Metrics() {
 
                           const deltaColor = (n: number) => n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
                           const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-                          const deltaPct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0;
+                          const deltaPct = calculateGA4InsightsDeltaPct;
 
                           return (
                             <>
@@ -8455,8 +8558,6 @@ export default function GA4Metrics() {
                                         const recentRows = sorted.slice(-showCount).reverse();
                                         return recentRows.map((r: any, idx: number) => {
                                           const curVal = isRate ? Number(r[metric] || 0) * 100 : Number(r[metric] || 0);
-                                          // Use index math instead of fragile indexOf reference scan
-                                          const sortedIdx = sorted.length - 1 - idx;
                                           const previousDate = addGA4InsightsDateDays(String(r.date || ""), -1);
                                           const prevRow = previousDate ? sorted.find((candidate: any) => String(candidate.date || "") === previousDate) : null;
                                           const prevVal = prevRow ? (isRate ? Number(prevRow[metric] || 0) * 100 : Number(prevRow[metric] || 0)) : 0;
@@ -8516,7 +8617,7 @@ export default function GA4Metrics() {
 
                                         return monthValues.map((row, i) => {
                                           const prev = i < monthValues.length - 1 ? monthValues[i + 1] : null;
-                                          const comparable = Boolean(prev && !row.isPartial && !prev.isPartial);
+                                          const comparable = Boolean(prev && areGA4InsightsMonthsAdjacent(row.ym, prev.ym) && !row.isPartial && !prev.isPartial);
                                           const delta = comparable && prev ? deltaPct(row.value, prev.value) : 0;
                                           return (
                                             <tr key={row.ym} className="border-b last:border-b-0">
@@ -8601,7 +8702,7 @@ export default function GA4Metrics() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg">Data Summary</CardTitle>
                           <CardDescription>
-                            GA4 completed-day window {insightsDataSummaryTotals.startDate || "Not available"} → {insightsDataSummaryTotals.endDate || "Not available"} ({insightsDataSummaryTotals.days}/{insightsDataSummaryTotals.expectedDays} imported days)
+                            GA4 daily metrics use {insightsDataSummaryTotals.startDate || "Not available"} → {insightsDataSummaryTotals.endDate || "Not available"} ({insightsDataSummaryTotals.days}/{insightsDataSummaryTotals.expectedDays} imported days). {financialWindowDescription || "Financial source windows are unavailable."}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -8629,7 +8730,9 @@ export default function GA4Metrics() {
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(insightsDataSummaryTotals.sessions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  Exact completed-day window
+                                  {insightsDataSummaryTotals.complete
+                                    ? "Exact completed-day window"
+                                    : `Partial: ${insightsDataSummaryTotals.days}/${insightsDataSummaryTotals.expectedDays} imported days; missing days excluded`}
                                 </p>
                               </div>
                             )}
@@ -8638,13 +8741,15 @@ export default function GA4Metrics() {
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Conversions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(insightsDataSummaryTotals.conversions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {insightsDataSummaryTotals.sessions > 0 ? `${formatPct((insightsDataSummaryTotals.conversions / insightsDataSummaryTotals.sessions) * 100)} conversion rate` : "Valid zero sessions"}
+                                  {insightsDataSummaryTotals.sessions > 0
+                                    ? `${formatPct((insightsDataSummaryTotals.conversions / insightsDataSummaryTotals.sessions) * 100)} conversion rate${insightsDataSummaryTotals.complete ? "" : " across imported days"}`
+                                    : "Valid zero sessions"}
                                 </p>
                               </div>
                             )}
                             {(financialRevenueAvailable || financialRevenueLoading) && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-revenue">
-                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue</p>
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue to date</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(financialRevenue))}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
                                   Total across revenue sources
@@ -8666,12 +8771,12 @@ export default function GA4Metrics() {
                           {(financialSpendAvailable || financialSpendLoading) && (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4 pt-4 border-t">
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-spend">
-                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Total Spend</p>
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Spend to date</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(financialSpend))}</p>
                               </div>
                               {(financialRevenueAvailable || financialRevenueLoading) && (
                                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-profit">
-                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Profit</p>
+                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Profit to date</p>
                                 <p className={`text-xl font-bold mt-1 ${!(financialRevenueAvailable && financialSpendAvailable) ? "text-foreground" : (financialRevenue - financialSpend) >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
                                     {renderFinancialValue(financialRevenueLoading || financialSpendLoading, financialRevenueAvailable && financialSpendAvailable, formatMoney(financialRevenue - financialSpend))}
                                   </p>
@@ -8679,7 +8784,7 @@ export default function GA4Metrics() {
                               )}
                               {(financialRevenueAvailable || financialRevenueLoading) && (
                                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-roas">
-                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">ROAS</p>
+                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">ROAS to date</p>
                                   <p className={`text-xl font-bold mt-1 ${!(financialRevenueAvailable && financialSpendAvailable && financialSpend > 0) ? "text-foreground" : financialROAS >= 1 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
                                     {renderFinancialValue(
                                       financialRevenueLoading || financialSpendLoading,
@@ -8692,8 +8797,8 @@ export default function GA4Metrics() {
                               )}
                               {ga4ToDateResp !== undefined && (
                                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-cpa">
-                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA</p>
-                                  <p className="text-xl font-bold text-foreground mt-1">{financialSpend > 0 && financialConversions > 0 ? formatMoney(financialCPA) : "—"}</p>
+                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA to date</p>
+                                  <p className="text-xl font-bold text-foreground mt-1">{ga4NoCompletedWindow ? "No completed GA4 day" : financialSpend > 0 && financialConversions > 0 ? formatMoney(financialCPA) : "—"}</p>
                                 </div>
                               )}
                             </div>
@@ -8745,6 +8850,7 @@ export default function GA4Metrics() {
                       data-total={insights.length}
                       data-high={insights.filter((i) => i.severity === "high").length}
                       data-medium={insights.filter((i) => i.severity === "medium").length}
+                      data-findings={JSON.stringify(insights)}
                     >
                       <Card data-testid="insights-tracker-total">
                         <CardContent className="p-5">
@@ -8906,7 +9012,7 @@ export default function GA4Metrics() {
                         <CardContent className="space-y-3 text-sm">
                           <div className="flex items-start justify-between gap-4">
                             <span className="text-muted-foreground/70">Status</span>
-                            <span className="font-medium text-foreground">{ga4Connection?.connected ? "Connected" : "Not connected"}</span>
+                            <span className="font-medium text-foreground">{ga4ConnectionUsable ? "Connected" : "Not connected"}</span>
                           </div>
                           <div className="flex items-start justify-between gap-4">
                             <span className="text-muted-foreground/70">Property</span>

@@ -10,6 +10,12 @@ describe("live GA4 Insights production boundary", () => {
 
     expect(page).toContain("const GA4_INSIGHTS_DAILY_LOOKBACK_DAYS = 60;");
     expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId');
+    expect(page).toContain('new URLSearchParams(search).get("readOnly") === "1"');
+    expect(page).toContain('insightsValidationReadOnly ? "&readOnly=1" : ""');
+    expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(4);
+    expect(page).toContain('"ga4-breakdown", dateRange, selectedGA4PropertyId, insightsValidationReadOnly');
+    expect(page).toContain('selectedGA4PropertyId, insightsValidationReadOnly]');
+    expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');
     expect(page).toContain('const insightsRollupRows = activeTab === "insights" ? ga4InsightsTimeSeries : ga4TimeSeries');
@@ -133,6 +139,7 @@ describe("live GA4 Insights production boundary", () => {
       expect(route).toContain("ensureCampaignAccess");
     }
     expect(daily).toContain("getReportingDateWindow(days, (campaign as any)?.reportingTimeZone)");
+    expect(daily).toContain("campaignFilter,\n          endDate,");
     expect(toDate).toContain("getReportingDateWindow(");
     expect(toDate).toContain("(campaign as any)?.reportingTimeZone");
     expect(breakdown).toContain("getReportingDateWindow(dateRangeToDays(dateRange), (campaign as any)?.reportingTimeZone)");
@@ -152,30 +159,64 @@ describe("live GA4 Insights production boundary", () => {
       "insights-summary-roas", "insights-summary-cpa", "insights-summary-channel-row",
       "insights-trackers", "insights-tracker-total", "insights-tracker-high",
       "insights-tracker-medium", "insights-findings", "insights-finding", "insights-hidden-count",
+      "insights-scope-context", "insights-scope-client", "insights-scope-campaign", "insights-scope-property", "insights-scope-filter",
     ]) {
       expect(page).toContain(`data-testid="${testId}"`);
     }
     for (const attribute of [
       "data-insight-id", "data-category", "data-severity", "data-title",
-      "data-description", "data-recommendation", "data-basis", "data-confidence",
+      "data-description", "data-recommendation", "data-basis", "data-confidence", "data-findings",
     ]) {
       expect(page).toContain(attribute);
     }
+  });
+
+  it("does not present a pre-property OAuth placeholder as a usable connection", () => {
+    const page = read("client", "src", "pages", "ga4-metrics.tsx");
+    expect(page).toContain('const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0');
+    expect(page).toContain('{ga4ConnectionUsable ? "Connected" : "Not connected"}');
+    expect(page).not.toContain("||\n    1;\n\n  const rateToPercent");
   });
 
   it("compares every rendered surface after the page's exact 60-day response is stable", () => {
     const validator = read("scripts", "ga4-insights-live-readonly.ts");
 
     expect(validator).toContain("const pageInputPromises = Object.entries(paths)");
+    expect(validator).toContain("for (const [key, value] of expected.searchParams)");
+    expect(validator).toContain("campaign: `/api/campaigns/${CAMPAIGN_ID}`");
+    expect(validator).toContain('clients: "/api/clients"');
+    expect(validator).toContain("Campaign response saved-filter parity failed");
+    expect(validator).toContain('request(owner.page, "/api/auth/google/url", "POST"');
+    expect(validator).toContain('request(owner.page, "/api/auth/google-sheets/connect", "POST"');
+    expect(validator).toContain('request(owner.page, "/api/auth/google-ads/connect", "POST"');
+    expect(validator).toContain('throw new Error("Production OAuth state is not signed")');
+    expect(validator).toContain("oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleAdsSignedState: true, googleClientConfigured: true, googleAdsClientConfigured: true }");
+    expect(validator).toContain("ga4-breakdown?dateRange=30days");
+    expect(validator).toContain("ga4-breakdown?dateRange=30days");
+    expect(validator).not.toContain("&debug=1&readOnly=1");
+    expect(validator).toContain("ga4-to-date?propertyId=");
+    expect(validator).toContain('if (responses[name]?.body?.validationReadOnly !== true)');
+    expect(validator).toContain("connectionStatus:");
+    expect(validator).toContain("overviewDaily:");
+    expect(validator).toContain('actual.searchParams.get("days") === "30"');
     expect(validator).toContain('actual.searchParams.get("days") === "60"');
+    expect(validator).toContain("overviewDailyWindow:");
     expect(validator).toContain("const pageInputEntries = await Promise.all(pageInputPromises)");
     expect(validator).toContain("responses[name] = { ok: true, status: response.status(), body: await response.json() }");
-    expect(validator).toContain("const analyticsResponsePromises = analyticsPaths.map");
-    expect(validator).toContain("getByText(\"Exact completed-day window\", { exact: true }).waitFor");
+    expect(validator).toContain("const analyticsResponsePromises = analyticsRequests.map");
+    expect(validator).toContain('actual.searchParams.get("ga4Scope") === "1"');
+    expect(validator).toContain("buildGA4InsightsHistoryScopeMarker(propertyId, filters");
+    expect(validator).toContain("analytics history escaped the selected property/filter/timezone/currency scope");
+    expect(validator).toContain('getByTestId("insights-summary-sessions").waitFor');
+    expect(validator).toContain('cardText("insights-scope-client")');
+    expect(validator).toContain('getByTestId("ga4-overview-freshness-warning")');
     expect(validator).toContain("buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate)");
     expect(validator).toContain('cardText("insights-financial-sources")');
     expect(validator).toContain('source?.displayName || revenueTypeLabel(source?.sourceType)');
+    expect(validator).toContain("const importedRevenueSourceIds = new Set(");
+    expect(validator).toContain("revenueDisplaySources.filter((source: any) => importedRevenueSourceIds.has");
     expect(validator).toContain('cardText("insights-summary-sessions")');
+    expect(validator).toContain('"summary traffic completeness"');
     expect(validator).toContain('getByTestId("insights-summary-channel-row")');
     const channelCellsStart = validator.indexOf("const expectedCells = [", validator.indexOf("const channelRows"));
     const channelCellsEnd = validator.indexOf("];", channelCellsStart);
@@ -199,15 +240,41 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('"Missing dates are not assumed to be zero."');
     expect(validator).toContain('getByRole("button", { name: "Monthly", exact: true }).click()');
     expect(validator).toContain('getByTestId("insights-trackers")');
+    expect(validator).toContain('tracker.getAttribute("data-findings")');
+    expect(validator).toContain("Complete finding inventory does not match the tracker");
+    expect(validator).toContain("Visible findings do not match the first twelve generated findings");
     expect(validator).toContain('getByTestId("insights-finding")');
     expect(validator).toContain('finding.id.endsWith(":wow")');
     expect(validator).toContain('finding.id.endsWith(":3d")');
+    expect(validator).toContain("A KPI integrity finding does not map to the scoped KPI response");
+    expect(validator).toContain("A Benchmark integrity finding does not map to the scoped Benchmark response");
     expect(validator).toContain("liveSurfaceParity");
+    expect(validator).toContain('getByTestId("ga4-add-spend-source")');
+    expect(validator).toContain('["Google Ads", "Google Sheets", "Upload CSV"]');
+    expect(validator).toContain('["LinkedIn", "Meta", "Facebook", "Instagram"]');
+    expect(validator).toContain("&readOnly=1");
+    expect(validator).toContain("ga4-metrics?tab=insights&readOnly=1");
+    expect(validator).toContain("uiDailyBody?.providerRefreshAttempted !== false");
+    expect(validator).toContain("uiOverviewDailyBody?.providerRefreshAttempted !== false");
+    expect(validator).toContain("readPersistenceFingerprint");
+    expect(validator).toContain("persistenceFingerprintAfter !== persistenceFingerprintBefore");
+    expect(validator).toContain("persistenceUnchanged: true");
+    expect(validator).toContain("analyticsadmin.googleapis.com/v1beta/properties/");
+    expect(validator).toContain("propertyTimeZone !== expected60.reportingTimeZone");
+    expect(validator).toContain("propertyCurrency !== currency");
+    expect(validator).toContain("Campaign client scope is missing or belongs to another tenant");
+    expect(validator).toContain("assertSourceCurrencies(revenueDefinitions, revenueBreakdownSources");
+    expect(validator).toContain("assertSourceCurrencies(spendDefinitions, spendBreakdownSources");
+    expect(validator).toContain('responses.revenue.body?.startDate !== "1900-01-01"');
+    expect(validator).toContain('responses.spend.body?.startDate !== "1900-01-01"');
+    expect(validator).toContain('"Windows: " + financialWindowDescription');
     for (const path of ["revenueSources", "revenueBreakdown", "spendSources", "spendBreakdown"]) {
       expect(validator).toContain(path + ":");
     }
     expect(validator).toContain("clerkGet(\"/users?limit=100&order_by=-created_at\")");
-    expect(validator).toContain("String(candidate?.id || \"\") !== String(row.owner_id)");
+    expect(validator).toContain("GA4_INSIGHTS_NONOWNER_USER_ID");
+    expect(validator).toContain("String(candidate?.id || \"\") === authorizedNonOwnerUserId");
+    expect(validator).not.toContain('users.find((candidate) => String(candidate?.id || "") !== String(row.owner_id))');
     expect(validator).toContain("allowMissing && tokenResponse.status === 404");
     expect(validator).toContain("GA4_INSIGHTS_REQUIRE_TENANT_ISOLATION");
     expect(validator).toContain("tenantIsolation = \"not run; no second production identity was authorized\"");

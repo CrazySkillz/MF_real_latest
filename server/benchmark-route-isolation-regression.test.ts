@@ -107,6 +107,6 @@ describe("Benchmark route isolation regression guard", () => {
     expect(routesFile).toContain('app.get("/api/benchmarks/:id/analytics", async (req, res) => {');
     expect(routesFile).toContain("const existing = await ensureBenchmarkAccess(req as any, res as any, id);");
     expect(routesFile).toContain("const history = await storage.getBenchmarkHistory(id);");
-    expect(routesFile).toContain("const analytics = await storage.getBenchmarkAnalytics(id);");
+    expect(routesFile).toContain("let analytics = await storage.getBenchmarkAnalytics(id);");
   });
 });

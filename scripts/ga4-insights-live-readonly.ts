@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chromium, type Page } from "playwright";
 import { pool } from "../server/db";
-import { addGA4InsightsDateDays, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsCalendarRollup, buildGA4InsightsHistoryScopeMarker, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
 import { getReportingDateWindow } from "../server/utils/reporting-timezone";
+import { decryptTokens } from "../server/utils/tokenVault";
+import { GoogleAdsClient } from "../server/googleAdsClient";
 
 const BASE_URL = process.env.GA4_INSIGHTS_BASE_URL || "https://marketforensics.onrender.com";
 const EXPECTED_SHA = String(process.env.GA4_INSIGHTS_EXPECTED_SHA || "").trim();
@@ -11,6 +13,7 @@ const requestedProperty = String(process.env.GA4_INSIGHTS_PROPERTY_ID || "").tri
 const clerkSecret = String(process.env.CLERK_SECRET_KEY || "").trim();
 const requireTenantIsolation = String(process.env.GA4_INSIGHTS_REQUIRE_TENANT_ISOLATION || "1") !== "0";
 const allowTemporaryUser = String(process.env.GA4_INSIGHTS_ALLOW_TEMPORARY_USER || "0") === "1";
+const authorizedNonOwnerUserId = String(process.env.GA4_INSIGHTS_NONOWNER_USER_ID || "").trim();
 
 if (!pool) throw new Error("DATABASE_URL is required");
 if (!clerkSecret) throw new Error("CLERK_SECRET_KEY is required");
@@ -37,7 +40,7 @@ const formatPct = (value: unknown) => {
   return (rounded === Math.floor(rounded) ? String(Math.round(rounded)) : rounded.toFixed(1)) + "%";
 };
 const formatDelta = (current: number, previous: number) => {
-  const delta = previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : 0;
+  const delta = calculateGA4InsightsDeltaPct(current, previous);
   return (delta >= 0 ? "+" : "") + delta.toFixed(1) + "%";
 };
 const parseFilter = (value: unknown) => {
@@ -63,15 +66,41 @@ const clerkDelete = async (path: string) => fetch(`https://api.clerk.com/v1${pat
   method: "DELETE",
   headers: { Authorization: `Bearer ${clerkSecret}` },
 });
-const request = async (page: Page, path: string, method = "GET") => page.evaluate(async ({ path, method }) => {
+const request = async (page: Page, path: string, method = "GET", body?: unknown) => page.evaluate(async ({ path, method, body }) => {
   const token = await (window as any).Clerk?.session?.getToken();
   if (!token) throw new Error("Clerk session token is unavailable");
-  const response = await fetch(path, { method, credentials: "include", headers: { Authorization: `Bearer ${token}` } });
+  const response = await fetch(path, {
+    method,
+    credentials: "include",
+    headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
   const text = await response.text();
   let body: any = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   return { ok: response.ok, status: response.status, body };
-}, { path, method });
+}, { path, method, body });
+
+const readPersistenceFingerprint = async (client: any, campaignId: string) => {
+  const result = await client.query(`
+    SELECT
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM campaigns WHERE id = $1) x) AS campaign,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT cl.* FROM clients cl JOIN campaigns c ON c.client_id = cl.id WHERE c.id = $1) x) AS client,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM ga4_connections WHERE campaign_id = $1) x) AS connections,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM ga4_daily_metrics WHERE campaign_id = $1) x) AS daily,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM google_ads_connections WHERE campaign_id = $1) x) AS google_ads_connections,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM google_ads_daily_metrics WHERE campaign_id = $1) x) AS google_ads_daily,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM revenue_sources WHERE campaign_id = $1) x) AS revenue_sources,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM revenue_records WHERE campaign_id = $1) x) AS revenue_records,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM spend_sources WHERE campaign_id = $1) x) AS spend_sources,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM spend_records WHERE campaign_id = $1) x) AS spend_records,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM kpis WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS kpis,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT kp.* FROM kpi_progress kp JOIN kpis k ON k.id = kp.kpi_id WHERE k.campaign_id = $1 AND k.platform_type = 'google_analytics') x) AS kpi_progress,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM benchmarks WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS benchmarks,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT bh.* FROM benchmark_history bh JOIN benchmarks b ON b.id = bh.benchmark_id WHERE b.campaign_id = $1 AND b.platform_type = 'google_analytics') x) AS benchmark_history
+  `, [campaignId]);
+  return createHash("sha256").update(JSON.stringify(result.rows[0] || {})).digest("hex");
+};
 
 const client = await pool.connect();
 const browser = await chromium.launch({ headless: true });
@@ -81,9 +110,11 @@ let output: Record<string, unknown> | null = null;
 try {
   await client.query("BEGIN TRANSACTION READ ONLY");
   const inventory = await client.query(`
-    SELECT c.owner_id, c.reporting_time_zone, c.ga4_campaign_filter, c.currency,
+    SELECT c.owner_id, c.client_id, cl.owner_id AS client_owner_id,
+           c.reporting_time_zone, c.ga4_campaign_filter, c.currency,
            g.property_id, g.display_name, g.property_name
     FROM campaigns c
+    LEFT JOIN clients cl ON cl.id = c.client_id
     JOIN ga4_connections g ON g.campaign_id = c.id AND g.is_active = true
     WHERE c.id = $1
       AND ($2 = '' OR REPLACE(g.property_id, 'properties/', '') = REPLACE($2, 'properties/', ''))
@@ -92,11 +123,15 @@ try {
   `, [CAMPAIGN_ID, requestedProperty]);
   if (inventory.rowCount !== 1) throw new Error("Exact active campaign/property inventory row was not found");
   const row = inventory.rows[0];
+  if (!row.client_id || String(row.client_owner_id || "") !== String(row.owner_id || "")) {
+    throw new Error("Campaign client scope is missing or belongs to another tenant");
+  }
   const propertyId = String(row.property_id);
   const currency = String(row.currency || "USD").trim().toUpperCase();
   const filters = parseFilter(row.ga4_campaign_filter);
   const expected60 = getReportingDateWindow(60, row.reporting_time_zone);
   const expected30 = getReportingDateWindow(30, row.reporting_time_zone);
+  const persistenceFingerprintBefore = await readPersistenceFingerprint(client, CAMPAIGN_ID);
 
   const healthResponse = await fetch(`${BASE_URL}/api/health`);
   const health: any = await healthResponse.json();
@@ -117,10 +152,33 @@ try {
 
   const owner = await signIn(String(row.owner_id));
   if (!owner) throw new Error("Campaign owner is unavailable in Clerk");
+  const [ga4OAuthConfig, sheetsOAuthConfig, googleAdsOAuthConfig] = await Promise.all([
+    request(owner.page, "/api/auth/google/url", "POST", { campaignId: CAMPAIGN_ID }),
+    request(owner.page, "/api/auth/google-sheets/connect", "POST", { campaignId: CAMPAIGN_ID, purpose: "revenue" }),
+    request(owner.page, "/api/auth/google-ads/connect", "POST", { campaignId: CAMPAIGN_ID, spendOnly: true }),
+  ]);
+  if (!ga4OAuthConfig.ok || !sheetsOAuthConfig.ok || !googleAdsOAuthConfig.ok) throw new Error("Production Google/Google Ads OAuth configuration validation failed");
+  const ga4OAuthUrl = new URL(String(ga4OAuthConfig.body?.oauthUrl || ""));
+  const sheetsOAuthUrl = new URL(String(sheetsOAuthConfig.body?.authUrl || ""));
+  const googleAdsOAuthUrl = new URL(String(googleAdsOAuthConfig.body?.authUrl || ""));
+  const ga4State = String(ga4OAuthUrl.searchParams.get("state") || "");
+  const sheetsState = String(sheetsOAuthUrl.searchParams.get("state") || "");
+  const googleAdsState = String(googleAdsOAuthUrl.searchParams.get("state") || "");
+  if (ga4State.split(".").length !== 2 || !sheetsState.startsWith("sheets:") || sheetsState.slice(7).split(".").length !== 2 || googleAdsState.split(".").length !== 2) {
+    throw new Error("Production OAuth state is not signed");
+  }
+  if (!ga4OAuthUrl.searchParams.get("client_id") || !sheetsOAuthUrl.searchParams.get("client_id") || !googleAdsOAuthUrl.searchParams.get("client_id")) {
+    throw new Error("Production Google/Google Ads OAuth client ID is unavailable");
+  }
   const paths = {
-    daily: `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}`,
-    breakdown: `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?dateRange=30days&propertyId=${encodeURIComponent(propertyId)}&debug=1`,
-    toDate: `/api/campaigns/${CAMPAIGN_ID}/ga4-to-date?propertyId=${encodeURIComponent(propertyId)}`,
+    campaign: `/api/campaigns/${CAMPAIGN_ID}`,
+    clients: "/api/clients",
+    connectionStatus: `/api/ga4/check-connection/${CAMPAIGN_ID}?readOnly=1`,
+    connections: `/api/campaigns/${CAMPAIGN_ID}/ga4-connections?readOnly=1`,
+    overviewDaily: `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=30&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
+    daily: `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
+    breakdown: `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?dateRange=30days&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
+    toDate: `/api/campaigns/${CAMPAIGN_ID}/ga4-to-date?propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
     revenue: `/api/campaigns/${CAMPAIGN_ID}/revenue-to-date`,
     spend: `/api/campaigns/${CAMPAIGN_ID}/spend-to-date?platformContext=ga4`,
     revenueSources: `/api/campaigns/${CAMPAIGN_ID}/revenue-sources`,
@@ -133,11 +191,28 @@ try {
   const entries = await Promise.all(Object.entries(paths).map(async ([name, path]) => [name, await request(owner.page, path)] as const));
   const responses = Object.fromEntries(entries) as Record<string, any>;
   for (const [name, response] of entries) if (!response.ok) throw new Error(`${name} endpoint failed (${response.status})`);
+  const assertCampaignResponseScope = (campaignResponse: any) => {
+    if (String(campaignResponse?.id || "") !== CAMPAIGN_ID || String(campaignResponse?.clientId || "") !== String(row.client_id)) {
+      throw new Error("Campaign/client response scope parity failed");
+    }
+    if (String(campaignResponse?.currency || "USD").trim().toUpperCase() !== currency) throw new Error("Campaign response currency parity failed");
+    if (getReportingDateWindow(1, campaignResponse?.reportingTimeZone).reportingTimeZone !== expected60.reportingTimeZone) throw new Error("Campaign response timezone parity failed");
+    if (JSON.stringify(parseFilter(campaignResponse?.ga4CampaignFilter).map(normalizeCampaign).sort()) !== JSON.stringify(filters.map(normalizeCampaign).sort())) {
+      throw new Error("Campaign response saved-filter parity failed");
+    }
+  };
+  assertCampaignResponseScope(responses.campaign.body || {});
+  const expectedClient = (Array.isArray(responses.clients.body) ? responses.clients.body : []).find((item: any) => String(item?.id || "") === String(row.client_id));
+  if (!expectedClient?.name) throw new Error("Campaign client is absent from the authenticated client response");
+  for (const name of ["connectionStatus", "connections", "overviewDaily", "daily", "breakdown", "toDate"]) {
+    if (responses[name]?.body?.validationReadOnly !== true) throw new Error(`${name} did not confirm read-only mode`);
+  }
 
-  for (const response of [responses.daily.body, responses.breakdown.body, responses.toDate.body]) {
+  for (const response of [responses.overviewDaily.body, responses.daily.body, responses.breakdown.body, responses.toDate.body]) {
     if (normalizeProperty(response?.propertyId) !== normalizeProperty(propertyId)) throw new Error("Property parity failed");
   }
   if (responses.daily.body?.startDate !== expected60.startDate || responses.daily.body?.endDate !== expected60.endDate) throw new Error("60-day window parity failed");
+  if (responses.overviewDaily.body?.startDate !== expected30.startDate || responses.overviewDaily.body?.endDate !== expected30.endDate) throw new Error("30-day overview window parity failed");
   if (responses.breakdown.body?.startDate !== expected30.startDate || responses.breakdown.body?.endDate !== expected30.endDate) throw new Error("30-day breakdown window parity failed");
   if (responses.toDate.body?.endDate !== expected60.endDate) throw new Error("to-date completed-day cutoff parity failed");
 
@@ -153,41 +228,64 @@ try {
     const response = await owner.page.waitForResponse((candidate) => {
       const actual = new URL(candidate.url());
       if (actual.pathname !== expected.pathname) return false;
+      for (const [key, value] of expected.searchParams) if (actual.searchParams.get(key) !== value) return false;
       if (name === "daily") return actual.searchParams.get("days") === "60";
+      if (name === "overviewDaily") return actual.searchParams.get("days") === "30";
       if (name === "breakdown") return actual.searchParams.get("dateRange") === "30days";
       return true;
     }, { timeout: 120000 });
     return [name, response] as const;
   });
-  const analyticsPaths = [
+  const analyticsRequests = [
     ...(Array.isArray(responses.kpis.body) ? responses.kpis.body : [])
       .filter((item: any) => String(item?.id || "").trim())
-      .map((item: any) => `/api/kpis/${encodeURIComponent(String(item.id))}/analytics`),
+      .map((item: any) => ({ kind: "KPI", id: String(item.id), path: `/api/kpis/${encodeURIComponent(String(item.id))}/analytics`, collection: "progress" })),
     ...(Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body : [])
       .filter((item: any) => String(item?.id || "").trim())
-      .map((item: any) => `/api/benchmarks/${encodeURIComponent(String(item.id))}/analytics`),
+      .map((item: any) => ({ kind: "Benchmark", id: String(item.id), path: `/api/benchmarks/${encodeURIComponent(String(item.id))}/analytics`, collection: "history" })),
   ];
-  const analyticsResponsePromises = analyticsPaths.map((path) => owner.page.waitForResponse((candidate) =>
-    new URL(candidate.url()).pathname === path
-  , { timeout: 120000 }));
-  await owner.page.goto(`${BASE_URL}/campaigns/${CAMPAIGN_ID}/ga4-metrics?tab=insights`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const analyticsResponsePromises = analyticsRequests.map(async (requestSpec) => {
+    const response = await owner.page.waitForResponse((candidate) => {
+      const actual = new URL(candidate.url());
+      return actual.pathname === requestSpec.path &&
+        actual.searchParams.get("ga4Scope") === "1" &&
+        normalizeProperty(actual.searchParams.get("propertyId")) === normalizeProperty(propertyId) &&
+        (requestSpec.kind !== "KPI" || actual.searchParams.get("timeframe") === "30d");
+    }, { timeout: 120000 });
+    return { requestSpec, response };
+  });
+  await owner.page.goto(`${BASE_URL}/campaigns/${CAMPAIGN_ID}/ga4-metrics?tab=insights&readOnly=1`, { waitUntil: "domcontentloaded", timeout: 60000 });
   const pageInputEntries = await Promise.all(pageInputPromises);
   for (const [name, response] of pageInputEntries) {
     if (!response.ok()) throw new Error("Live-page " + name + " request failed (" + response.status() + ")");
     responses[name] = { ok: true, status: response.status(), body: await response.json() };
   }
+  assertCampaignResponseScope(responses.campaign.body || {});
+  const uiClient = (Array.isArray(responses.clients.body) ? responses.clients.body : []).find((item: any) => String(item?.id || "") === String(row.client_id));
+  if (String(uiClient?.name || "") !== String(expectedClient.name)) throw new Error("Live-page client response parity failed");
   const analyticsResponses = await Promise.all(analyticsResponsePromises);
-  for (const response of analyticsResponses) {
+  const historyScopeMarker = buildGA4InsightsHistoryScopeMarker(propertyId, filters, row.reporting_time_zone, currency);
+  for (const { requestSpec, response } of analyticsResponses) {
     if (!response.ok()) throw new Error("Live-page analytics request failed (" + response.status() + ")");
+    const body: any = await response.json();
+    const points = Array.isArray(body?.[requestSpec.collection]) ? body[requestSpec.collection] : [];
+    if (points.some((point: any) => !String(point?.notes || "").includes(historyScopeMarker))) {
+      throw new Error(requestSpec.kind + " analytics history escaped the selected property/filter/timezone/currency scope");
+    }
   }
   const uiDailyBody: any = responses.daily.body;
+  const uiOverviewDailyBody: any = responses.overviewDaily.body;
   if (normalizeProperty(uiDailyBody?.propertyId) !== normalizeProperty(propertyId)) throw new Error("Live-page property parity failed");
+  if (uiDailyBody?.providerRefreshAttempted !== false) throw new Error("Live-page read-only parity triggered a daily provider refresh");
   if (uiDailyBody?.startDate !== expected60.startDate || uiDailyBody?.endDate !== expected60.endDate) throw new Error("Live-page 60-day window parity failed");
+  if (normalizeProperty(uiOverviewDailyBody?.propertyId) !== normalizeProperty(propertyId)) throw new Error("Live-page 30-day property parity failed");
+  if (uiOverviewDailyBody?.providerRefreshAttempted !== false) throw new Error("Live-page 30-day read-only parity triggered a provider refresh");
+  if (uiOverviewDailyBody?.startDate !== expected30.startDate || uiOverviewDailyBody?.endDate !== expected30.endDate) throw new Error("Live-page 30-day window parity failed");
   const uiRollups = buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
   await owner.page.getByRole("heading", { name: "Insights", exact: true }).waitFor({ timeout: 120000 });
   await owner.page.getByText("Executive Financials", { exact: true }).waitFor({ timeout: 120000 });
   await owner.page.getByText("Data Summary", { exact: true }).waitFor({ timeout: 120000 });
-  await owner.page.getByText("Exact completed-day window", { exact: true }).waitFor({ timeout: 120000 });
+  await owner.page.getByTestId("insights-summary-sessions").waitFor({ timeout: 120000 });
   await owner.page.waitForFunction(() => [
     "insights-financial-spend", "insights-financial-revenue", "insights-financial-profit",
     "insights-financial-roas", "insights-financial-roi", "insights-data-summary",
@@ -201,6 +299,19 @@ try {
   }
 
   const cardText = async (testId: string) => normalizeText(await owner.page.getByTestId(testId).innerText());
+  assertIncludes(await cardText("insights-scope-client"), String(expectedClient.name), "scope client");
+  assertIncludes(await cardText("insights-scope-campaign"), String(responses.campaign.body?.name || ""), "scope campaign");
+  assertIncludes(await cardText("insights-scope-property"), String(propertyId), "scope property");
+  assertIncludes(await cardText("insights-scope-filter"), filters.length > 0 ? filters.join(", ") : "All campaigns", "scope saved filter");
+  const freshnessWarning = owner.page.getByTestId("ga4-overview-freshness-warning");
+  if (uiOverviewDailyBody?.refreshIsStale === true) {
+    if (await freshnessWarning.count() !== 1) throw new Error("Shared daily freshness warning is missing");
+    const warningText = normalizeText(await freshnessWarning.innerText());
+    assertIncludes(warningText, uiOverviewDailyBody?.providerRefreshWarning ? "latest GA4 provider refresh did not complete" : "GA4 daily data is delayed", "shared freshness reason");
+    assertIncludes(warningText, String(uiOverviewDailyBody?.latestStoredDailyDate || "No stored daily values"), "shared freshness coverage");
+  } else if (await freshnessWarning.count() !== 0) {
+    throw new Error("Shared daily freshness warning rendered for a current response");
+  }
   const toDateTotals = responses.toDate.body?.totals || {};
   const revenueDefinitions = Array.isArray(responses.revenueSources.body?.sources) ? responses.revenueSources.body.sources : [];
   const spendDefinitions = Array.isArray(responses.spendSources.body?.sources) ? responses.spendSources.body.sources : [];
@@ -210,6 +321,98 @@ try {
   const importedRevenue = Number(responses.revenue.body?.totalRevenue || 0);
   const ga4RevenueMetric = String(responses.toDate.body?.revenueMetric || "").trim();
   const ga4HasRevenueMetric = Boolean(ga4RevenueMetric) || ga4Revenue !== 0;
+  const credentialInventory = await client.query(`
+    SELECT g.access_token, g.encrypted_tokens
+    FROM ga4_connections g
+    WHERE g.campaign_id = $1
+      AND g.is_active = true
+      AND REPLACE(g.property_id, 'properties/', '') = REPLACE($2, 'properties/', '')
+    ORDER BY g.is_primary DESC
+    LIMIT 1
+  `, [CAMPAIGN_ID, propertyId]);
+  if (credentialInventory.rowCount !== 1) throw new Error("Exact GA4 credential row was not found");
+  const decrypted = decryptTokens(credentialInventory.rows[0].encrypted_tokens);
+  const accessToken = String(decrypted.accessToken || credentialInventory.rows[0].access_token || "").trim();
+  if (!accessToken) throw new Error("GA4 property metadata token is unavailable");
+  const propertyResponse = await fetch(`https://analyticsadmin.googleapis.com/v1beta/properties/${encodeURIComponent(normalizeProperty(propertyId))}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const propertyMetadata: any = await propertyResponse.json().catch(() => ({}));
+  if (!propertyResponse.ok) throw new Error(`GA4 property metadata failed (${propertyResponse.status})`);
+  const propertyTimeZone = String(propertyMetadata?.timeZone || "").trim();
+  const propertyCurrency = String(propertyMetadata?.currencyCode || "").trim().toUpperCase();
+  if (!propertyTimeZone || propertyTimeZone !== expected60.reportingTimeZone) {
+    throw new Error(`GA4 property/campaign timezone mismatch (${propertyTimeZone || "missing"} vs ${expected60.reportingTimeZone})`);
+  }
+  if (ga4HasRevenueMetric && (!propertyCurrency || propertyCurrency !== currency)) {
+    throw new Error(`GA4 native revenue currency mismatch (${propertyCurrency || "missing"} vs ${currency})`);
+  }
+  const assertSourceCurrencies = (definitions: any[], breakdown: any[], kind: string) => {
+    for (const definition of definitions.filter((item: any) => item?.isActive !== false)) {
+      const detail = breakdown.find((item: any) => String(item?.sourceId || "") === String(definition?.id || ""));
+      const sourceCurrency = String(definition?.currency || detail?.currency || "").trim().toUpperCase();
+      if (!sourceCurrency) throw new Error(`${kind} source currency is unavailable`);
+      if (sourceCurrency !== currency) throw new Error(`${kind} source currency mismatch (${sourceCurrency} vs ${currency})`);
+    }
+  };
+  assertSourceCurrencies(revenueDefinitions, revenueBreakdownSources, "Revenue");
+  assertSourceCurrencies(spendDefinitions, spendBreakdownSources, "Spend");
+  assertGA4InsightsFinancialCurrencyScope({ currency }, revenueDefinitions, responses.revenue.body?.currency, "Imported revenue");
+  assertGA4InsightsFinancialCurrencyScope({ currency }, spendDefinitions, responses.spend.body?.currency, "Spend");
+  const activeGoogleAdsSources = spendDefinitions.filter((source: any) => {
+    if (source?.isActive === false || String(source?.sourceType || "") !== "ad_platforms") return false;
+    try {
+      const mapping = typeof source?.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source?.mappingConfig || {};
+      return String(mapping?.platform || "").toLowerCase() === "google_ads";
+    } catch { return false; }
+  });
+  if (activeGoogleAdsSources.length > 1) throw new Error("Multiple active GA4 Google Ads spend sources require review");
+  let googleAdsProviderScope: any = { active: false };
+  if (activeGoogleAdsSources.length === 1) {
+    const source = activeGoogleAdsSources[0];
+    const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
+    const connectionInventory = await client.query(`
+      SELECT customer_id, manager_account_id, method, spend_only, selected_campaign_ids,
+             access_token, refresh_token, client_id, client_secret, developer_token, encrypted_tokens
+      FROM google_ads_connections WHERE campaign_id = $1
+    `, [CAMPAIGN_ID]);
+    if (connectionInventory.rowCount !== 1) throw new Error("Exact Google Ads spend connection was not found");
+    const connection = connectionInventory.rows[0];
+    if (connection.method !== "oauth" || connection.spend_only !== true) throw new Error("GA4 Google Ads spend is not backed by an OAuth spend-only connection");
+    const tokens = decryptTokens(connection.encrypted_tokens);
+    const refreshToken = String(tokens.refreshToken || connection.refresh_token || "").trim();
+    const clientId = String(connection.client_id || process.env.GOOGLE_ADS_CLIENT_ID || "").trim();
+    const clientSecret = String(tokens.clientSecret || connection.client_secret || process.env.GOOGLE_ADS_CLIENT_SECRET || "").trim();
+    let providerAccessToken = String(tokens.accessToken || connection.access_token || "").trim();
+    if (refreshToken && clientId && clientSecret) providerAccessToken = (await GoogleAdsClient.refreshAccessToken(refreshToken, clientId, clientSecret)).access_token;
+    const developerToken = String(connection.developer_token || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "").trim();
+    if (!providerAccessToken || !developerToken) throw new Error("Google Ads provider metadata credentials are unavailable");
+    const provider = new GoogleAdsClient({
+      accessToken: providerAccessToken,
+      developerToken,
+      customerId: String(connection.customer_id),
+      managerAccountId: connection.manager_account_id ? String(connection.manager_account_id) : undefined,
+    });
+    const [account, providerCampaigns] = await Promise.all([provider.getCustomerAccount(), provider.getCampaigns()]);
+    if (account.manager || account.currencyCode !== currency || getReportingDateWindow(1, account.timeZone).reportingTimeZone !== expected60.reportingTimeZone) {
+      throw new Error("Google Ads account metadata does not match the GA4 campaign currency/timezone scope");
+    }
+    const sourceIds = Array.from(new Set((Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : []).map(String))).sort();
+    let connectionIds: string[] = [];
+    try { connectionIds = Array.from(new Set(JSON.parse(String(connection.selected_campaign_ids || "[]")).map(String))).sort() as string[]; } catch { connectionIds = []; }
+    if (sourceIds.length === 0 || JSON.stringify(sourceIds) !== JSON.stringify(connectionIds)) throw new Error("Google Ads source/connection selected-campaign scope mismatch");
+    const availableIds = new Set(providerCampaigns.map((campaign) => String(campaign.id)));
+    if (sourceIds.some((id) => !availableIds.has(id))) throw new Error("A selected Google Ads campaign is unavailable in the connected account");
+    if (String(mapping.sourceDataEndDate || "") !== expected60.dataThroughDate) throw new Error("Google Ads materialized source cutoff does not match the completed campaign day");
+    googleAdsProviderScope = { active: true, sourceHash: hash(source.id), selectedCampaignCount: sourceIds.length, customerHash: hash(connection.customer_id), currency: account.currencyCode, timeZone: account.timeZone };
+  }
+  const sourceToDateEnd = expected60.dataThroughDate;
+  if (responses.revenue.body?.startDate !== "1900-01-01" || responses.revenue.body?.endDate !== sourceToDateEnd) {
+    throw new Error("Imported revenue source-to-date window parity failed");
+  }
+  if (responses.spend.body?.startDate !== "1900-01-01" || responses.spend.body?.endDate !== sourceToDateEnd) {
+    throw new Error("Spend source-to-date window parity failed");
+  }
   const revenueMetricAvailable = revenueDefinitions.length > 0 || ga4HasRevenueMetric;
   const spendSourceIds = Array.isArray(responses.spend.body?.sourceIds) ? responses.spend.body.sourceIds.map(String) : [];
   const spendMetricAvailable = spendDefinitions.length > 0 || spendSourceIds.length > 0;
@@ -236,10 +439,11 @@ try {
     assertIncludes(await cardText(testId), expected, testId);
   }
 
-  const spendLabels = spendSourceIds.map((id: string) => {
-    const source = spendDefinitions.find((candidate: any) => String(candidate?.id) === id);
-    return String(source?.displayName || source?.sourceType || "").trim();
-  }).filter(Boolean);
+  const spendLabels = buildGA4InsightsSpendSourceLabels(
+    Number(responses.spend.body?.spendToDate || 0),
+    spendSourceIds,
+    spendDefinitions,
+  );
   const revenueTypeLabel = (type: unknown) => ({
     manual: "Manual", csv: "CSV", google_sheets: "Google Sheets", hubspot: "HubSpot",
     salesforce: "Salesforce", shopify: "Shopify", ga4: "GA4 Revenue", custom: "Custom",
@@ -249,19 +453,40 @@ try {
         definition?.isActive !== false && !revenueBreakdownSources.some((source: any) => String(source?.sourceId) === String(definition?.id))
       )]
     : revenueDefinitions.filter((definition: any) => definition?.isActive !== false);
-  const revenueLabels = revenueDisplaySources.map((source: any) => {
+  const importedRevenueSourceIds = new Set(
+    (Array.isArray(responses.revenue.body?.sourceIds) ? responses.revenue.body.sourceIds : []).map(String),
+  );
+  const revenueProvenanceSources = importedRevenueSourceIds.size > 0
+    ? revenueDisplaySources.filter((source: any) => importedRevenueSourceIds.has(String(source?.sourceId || source?.id || "")))
+    : importedRevenue === 0 ? revenueDisplaySources : [];
+  const revenueLabels = revenueProvenanceSources.map((source: any) => {
     return String(source?.displayName || revenueTypeLabel(source?.sourceType)).trim() || "Revenue";
   });
   if (ga4HasRevenueMetric) revenueLabels.unshift("GA4 native revenue");
   const sourcesText = await cardText("insights-financial-sources");
   assertIncludes(sourcesText, "Spend: " + (spendLabels.length > 0 ? spendLabels.join(", ") : "Not connected"), "spend provenance");
   assertIncludes(sourcesText, "Revenue: " + (revenueLabels.length > 0 ? Array.from(new Set(revenueLabels)).join(", ") : "Not connected"), "revenue provenance");
+  const financialWindows = [
+    ...(ga4HasRevenueMetric ? [`GA4 native revenue ${String(responses.toDate.body?.startDate)} to ${String(responses.toDate.body?.endDate)} completed days`] : []),
+    ...(revenueDisplaySources.length > 0 ? [`imported revenue source-to-date through completed ${expected60.reportingTimeZone.split("/").pop()?.replace(/_/g, " ")} day ${String(responses.revenue.body?.endDate)}`] : []),
+    ...(hasSpendDisplaySources ? [`spend source-to-date through completed ${expected60.reportingTimeZone.split("/").pop()?.replace(/_/g, " ")} day ${String(responses.spend.body?.endDate)}`] : []),
+  ];
+  const financialWindowDescription = financialWindows.length > 0 ? financialWindows.join("; ") + "." : "";
+  if (financialWindowDescription) assertIncludes(sourcesText, "Windows: " + financialWindowDescription, "financial window provenance");
 
   const summaryText = await cardText("insights-data-summary");
   assertIncludes(summaryText, String(uiRollups.last30.startDate), "summary start date");
   assertIncludes(summaryText, String(uiRollups.last30.endDate), "summary end date");
   assertIncludes(summaryText, uiRollups.last30.days + "/" + uiRollups.last30.expectedDays + " imported days", "summary completeness");
+  if (financialWindowDescription) assertIncludes(summaryText, financialWindowDescription, "summary financial windows");
   assertIncludes(await cardText("insights-summary-sessions"), formatNumber(uiRollups.last30.sessions), "summary sessions");
+  assertIncludes(
+    await cardText("insights-summary-sessions"),
+    uiRollups.last30.complete
+      ? "Exact completed-day window"
+      : `Partial: ${uiRollups.last30.days}/${uiRollups.last30.expectedDays} imported days; missing days excluded`,
+    "summary traffic completeness",
+  );
   assertIncludes(await cardText("insights-summary-conversions"), formatNumber(uiRollups.last30.conversions), "summary conversions");
   assertIncludes(
     await cardText("insights-summary-conversions"),
@@ -404,7 +629,7 @@ try {
       const [year, month] = current.month.split("-");
       const label = new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "long", year: "numeric" });
       const cells = (await renderedRows.nth(index).locator("td").allInnerTexts()).map(normalizeText);
-      const comparable = Boolean(previous && !current.partial && !previous?.partial);
+      const comparable = Boolean(previous && areGA4InsightsMonthsAdjacent(current.month, previous.month) && !current.partial && !previous?.partial);
       const expectedCells = [
         label + " " + (current.partial ? "partial, " + current.days + " days" : current.days + " days"),
         formatNumber(current.value),
@@ -520,7 +745,7 @@ try {
         const previous = index < expectedRows.length - 1 ? expectedRows[index + 1] : null;
         const [year, month] = current.month.split("-");
         const label = new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "long", year: "numeric" });
-        const comparable = Boolean(previous && !current.partial && !previous?.partial);
+        const comparable = Boolean(previous && areGA4InsightsMonthsAdjacent(current.month, previous.month) && !current.partial && !previous?.partial);
         const expectedCells = [
           label + " " + (current.partial ? "partial, " + current.days + " days" : current.days + " days"),
           formatTrendValue(metric.key, current.value),
@@ -545,6 +770,21 @@ try {
     high: Number(await tracker.getAttribute("data-high")),
     medium: Number(await tracker.getAttribute("data-medium")),
   };
+  const allFindings: any[] = JSON.parse(String(await tracker.getAttribute("data-findings") || "[]"));
+  if (allFindings.length !== trackerCounts.total) throw new Error("Complete finding inventory does not match the tracker");
+  if (allFindings.filter((finding) => finding?.severity === "high").length !== trackerCounts.high) throw new Error("High-priority tracker count parity failed");
+  if (allFindings.filter((finding) => finding?.severity === "medium").length !== trackerCounts.medium) throw new Error("Medium-priority tracker count parity failed");
+  if (new Set(allFindings.map((finding) => String(finding?.id || ""))).size !== allFindings.length) throw new Error("Finding IDs are not unique");
+  const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  for (let index = 0; index < allFindings.length; index += 1) {
+    const finding = allFindings[index];
+    for (const field of ["id", "category", "severity", "title", "description", "dataBasis", "confidence"]) {
+      if (!String(finding?.[field] || "").trim()) throw new Error("Finding " + String(finding?.id || index) + " has an empty " + field);
+    }
+    if (index > 0 && severityOrder[String(allFindings[index - 1]?.severity)] > severityOrder[String(finding?.severity)]) {
+      throw new Error("Finding priority ordering parity failed");
+    }
+  }
   assertIncludes(await cardText("insights-tracker-total"), formatNumber(trackerCounts.total), "total finding tracker");
   assertIncludes(await cardText("insights-tracker-high"), formatNumber(trackerCounts.high), "high finding tracker");
   assertIncludes(await cardText("insights-tracker-medium"), formatNumber(trackerCounts.medium), "medium finding tracker");
@@ -564,6 +804,17 @@ try {
     };
   }));
   if (findings.length !== Math.min(12, trackerCounts.total)) throw new Error("Visible finding count does not match the tracker");
+  const visibleMetadata = findings.map(({ text: _text, basis, ...finding }) => ({ ...finding, dataBasis: basis }));
+  if (JSON.stringify(visibleMetadata) !== JSON.stringify(allFindings.slice(0, 12).map((finding) => ({
+    id: finding.id,
+    category: finding.category,
+    severity: finding.severity,
+    title: finding.title,
+    description: finding.description,
+    recommendation: finding.recommendation || "",
+    confidence: finding.confidence,
+    dataBasis: finding.dataBasis,
+  })))) throw new Error("Visible findings do not match the first twelve generated findings");
   for (const finding of findings) {
     for (const field of ["id", "category", "severity", "title", "description", "basis", "confidence"] as const) {
       if (!String(finding[field] || "").trim()) throw new Error("Finding " + finding.id + " has an empty " + field);
@@ -572,14 +823,48 @@ try {
       assertIncludes(finding.text, value, "finding " + finding.id);
     }
   }
-  if ((!uiRollups.last7.complete || !uiRollups.prior7.complete) && findings.some((finding) => finding.id.endsWith(":wow"))) {
+  if ((!uiRollups.last7.complete || !uiRollups.prior7.complete) && allFindings.some((finding) => finding.id.endsWith(":wow"))) {
     throw new Error("A 7-day trend finding rendered without two complete 7-day windows");
   }
-  if ((!uiRollups.last3.complete || !uiRollups.prior3.complete) && findings.some((finding) => finding.id.endsWith(":3d"))) {
+  if ((!uiRollups.last3.complete || !uiRollups.prior3.complete) && allFindings.some((finding) => finding.id.endsWith(":3d"))) {
     throw new Error("A 3-day trend finding rendered without two complete 3-day windows");
+  }
+  if (uiDailyBody?.refreshIsStale && allFindings.some((finding) => /^(anomaly:|positive:(sessions|revenue|conversions):|info:(avg_sessions|engagement_rate|top_channel))/.test(finding.id))) {
+    throw new Error("A trend conclusion rendered from stale daily history");
+  }
+  const kpiIds = new Set((Array.isArray(responses.kpis.body) ? responses.kpis.body : []).map((item: any) => String(item?.id || "")));
+  const benchmarkIds = new Set((Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body : []).map((item: any) => String(item?.id || "")));
+  for (const finding of allFindings) {
+    const id = String(finding?.id || "");
+    if ((id.startsWith("kpi:") || id.startsWith("positive:kpi:")) && !kpiIds.has(id.slice(id.lastIndexOf(":") + 1))) {
+      throw new Error("A KPI finding does not map to the scoped KPI response");
+    }
+    if (id.startsWith("integrity:kpi") && !kpiIds.has(id.slice(id.lastIndexOf(":") + 1))) {
+      throw new Error("A KPI integrity finding does not map to the scoped KPI response");
+    }
+    if (id.startsWith("bench:") && !benchmarkIds.has(id.slice(id.lastIndexOf(":") + 1))) {
+      throw new Error("A Benchmark finding does not map to the scoped Benchmark response");
+    }
+    if (id.startsWith("integrity:bench") && !benchmarkIds.has(id.slice(id.lastIndexOf(":") + 1))) {
+      throw new Error("A Benchmark integrity finding does not map to the scoped Benchmark response");
+    }
   }
   const hiddenCount = Math.max(0, trackerCounts.total - findings.length);
   if (hiddenCount > 0) assertIncludes(await cardText("insights-hidden-count"), "+ " + hiddenCount + " more insights", "hidden finding count");
+  await owner.page.getByRole("tab", { name: "Overview", exact: true }).click();
+  const addSpendButton = owner.page.getByTestId("ga4-add-spend-source");
+  await addSpendButton.waitFor({ timeout: 120000 });
+  await addSpendButton.click();
+  const spendChooser = owner.page.getByRole("dialog").filter({ hasText: "Choose where your spend data comes from." });
+  await spendChooser.waitFor({ timeout: 120000 });
+  for (const label of ["Google Ads", "Google Sheets", "Upload CSV"]) {
+    if (await spendChooser.getByText(label, { exact: true }).count() !== 1) throw new Error(`Current GA4 spend chooser is missing ${label}`);
+  }
+  const chooserText = normalizeText(await spendChooser.innerText());
+  for (const excluded of ["LinkedIn", "Meta", "Facebook", "Instagram"]) {
+    if (chooserText.toLowerCase().includes(excluded.toLowerCase())) throw new Error(`Disabled-release ${excluded} source is visible in the GA4 spend chooser`);
+  }
+  await owner.page.keyboard.press("Escape");
   await owner.context.close();
 
   let tenantIsolation = "not run; no second production identity was authorized";
@@ -587,7 +872,12 @@ try {
     const usersResponse = await clerkGet("/users?limit=100&order_by=-created_at");
     const users: any[] = await usersResponse.json().catch(() => []);
     if (!usersResponse.ok || !Array.isArray(users)) throw new Error(`Clerk user inventory failed (${usersResponse.status})`);
-    let otherUser = users.find((candidate) => String(candidate?.id || "") !== String(row.owner_id));
+    let otherUser = authorizedNonOwnerUserId
+      ? users.find((candidate) => String(candidate?.id || "") === authorizedNonOwnerUserId)
+      : null;
+    if (otherUser && String(otherUser?.id || "") === String(row.owner_id)) {
+      throw new Error("Configured non-owner identity is the campaign owner");
+    }
     if (!otherUser && allowTemporaryUser) {
       const createdResponse = await clerkPost("/users", {
         email_address: [`ga4-insights-cert-${Date.now()}@example.com`],
@@ -600,11 +890,15 @@ try {
       otherUser = created;
     }
     const nonOwner = otherUser ? await signIn(String(otherUser.id), true) : null;
-    if (!nonOwner) throw new Error("No valid non-owner Clerk account is available for the tenant-isolation gate");
+    if (!nonOwner) throw new Error("No explicitly authorized non-owner Clerk account is available for the tenant-isolation gate");
     const denied = await request(nonOwner.page, paths.daily);
     if (denied.ok || ![403, 404].includes(denied.status)) throw new Error(`Non-owner request did not fail closed (${denied.status})`);
     tenantIsolation = `failed closed with ${denied.status}`;
     await nonOwner.context.close();
+  }
+  const persistenceFingerprintAfter = await readPersistenceFingerprint(client, CAMPAIGN_ID);
+  if (persistenceFingerprintAfter !== persistenceFingerprintBefore) {
+    throw new Error("Read-only certification changed campaign-scoped Insights persistence");
   }
 
   output = {
@@ -614,12 +908,17 @@ try {
     ownerHash: hash(row.owner_id),
     propertyId: normalizeProperty(propertyId),
     reportingTimeZone: expected60.reportingTimeZone,
+    propertyTimeZone,
     currency,
+    propertyCurrency,
+    oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleAdsSignedState: true, googleClientConfigured: true, googleAdsClientConfigured: true },
     savedFilterCount: filters.length,
     dailyWindow: { startDate: expected60.startDate, endDate: expected60.endDate, rows: rollups.availableDays },
+    overviewDailyWindow: { startDate: expected30.startDate, endDate: expected30.endDate, rows: Array.isArray(uiOverviewDailyBody?.data) ? uiOverviewDailyBody.data.length : 0 },
     breakdownWindow: { startDate: expected30.startDate, endDate: expected30.endDate, rows: responses.breakdown.body?.rows?.length || 0 },
     last30: { complete: rollups.last30.complete, sessions: rollups.last30.sessions, conversions: rollups.last30.conversions, revenue: Number(rollups.last30.revenue.toFixed(2)) },
     sourceCounts: { revenue: revenueDefinitions.length, spend: spendDefinitions.length },
+    googleAdsProviderScope,
     kpiCount: Array.isArray(responses.kpis.body) ? responses.kpis.body.length : 0,
     benchmarkCount: Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body.length : 0,
     liveSurfaceParity: {
@@ -631,8 +930,10 @@ try {
       visibleFindings: findings.length,
       hiddenFindings: hiddenCount,
       findingFields: ["id", "category", "severity", "title", "description", "recommendation", "basis", "confidence"],
+      spendChooser: ["Google Ads", "Google Sheets", "Upload CSV"],
     },
     tenantIsolation,
+    persistenceUnchanged: true,
     tenantFixture: !requireTenantIsolation
       ? "not applicable; tenant isolation skipped"
       : temporaryUserId ? "ephemeral Clerk-only user created and deleted" : "existing Clerk user",

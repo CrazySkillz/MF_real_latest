@@ -135,6 +135,15 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     });
   });
 
+  it("preserves the explicit source calendar date instead of shifting an offset timestamp", () => {
+    expect(aggregateCsvSpendRows([
+      { Date: "2026-08-01T23:30:00-05:00", Spend: "10" },
+    ], { spendColumn: "Spend", dateColumn: "Date" })).toMatchObject({
+      dailySpend: [{ date: "2026-08-01", spend: 10 }],
+      undatedSpend: 0,
+    });
+  });
+
   it("returns no accepted rows when the selected mapping has no valid positive spend", () => {
     expect(aggregateCsvSpendRows([
       { Date: "", Spend: "0" },
@@ -166,6 +175,15 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
       route.indexOf("const campaign = await storage.getCampaign(campaignId);"),
     );
     expect(route).not.toContain("dailySpendMap.set(today, (dailySpendMap.get(today) || 0) + aggregation.undatedSpend)");
+  });
+
+  it("fails dated GA4 Google Sheets spend before mutation when a selected row has no valid date", () => {
+    const start = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"');
+    const end = routes.indexOf("// Salesforce PKCE support", start);
+    const route = routes.slice(start, end);
+    expect(route).toContain("normalizeFinancialSourceDateKey((row as any)[dateCol])");
+    expect(route).toContain('if (platformContext === "ga4" && dateCol && undatedSpend > 0)');
+    expect(route.indexOf("undatedSpend > 0")).toBeLessThan(route.indexOf("storage.replaceSpendSourceWithRecords"));
   });
 
   it("rejects duplicate CSV date roles and removes them from the CSV Date options", () => {

@@ -74,13 +74,13 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("await storage.upsertGA4DailyMetrics(upserts as any);");
+    expect(route).toContain("await storage.replaceGA4DailyMetricsWindow(");
     expect(route).not.toContain("storage.createRevenueRecords");
     expect(route).not.toContain("revenueSourceId: 'ga4_daily_metrics'");
     expect(route).not.toContain('revenueSourceId: "ga4_daily_metrics"');
   });
 
-  it("repairs stored GA4 daily rows only when the exact daily refetch recovers conversion or revenue values", () => {
+  it("reconciles stored GA4 daily rows after an exact repair refetch, including authoritative zeros", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-daily"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
@@ -88,12 +88,12 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
 
     expect(route).toContain("const needsConversionRevenueRepair = (rows: any[]) =>");
     expect(route).toContain("const hasTraffic = list.some");
-    expect(route).toContain("const hasConversionRevenue = list.some");
-    expect(route).toContain("return hasTraffic && !hasConversionRevenue;");
+    expect(route).toContain("const hasConversions = list.some");
+    expect(route).toContain("const hasRevenue = list.some");
+    expect(route).toContain("return hasTraffic && !hasObservedProviderRevenueShape && (!hasConversions || !hasRevenue);");
     expect(route).toContain("} else if (needsConversionRevenueRepair(stored)) {");
-    expect(route).toContain("const recoveredConversionRevenue = upserts.some");
-    expect(route).toContain("if (recoveredConversionRevenue) {");
-    expect(route).toContain("await storage.upsertGA4DailyMetrics(upserts as any);");
+    expect(route).toContain("await storage.replaceGA4DailyMetricsWindow(");
+    expect(route).not.toContain("const recoveredConversionRevenue = upserts.some");
   });
 
   it("derives engagedSessions in the ga4-daily response from stored sessions and engagementRate", () => {

@@ -10,6 +10,8 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
   getRevenueTotalForRange: vi.fn(),
   getSpendTotalForRange: vi.fn(),
+  getRevenueSources: vi.fn(),
+  getSpendSources: vi.fn(),
   getPlatformKPIs: vi.fn(),
   updateKPI: vi.fn(),
   getKPIProgress: vi.fn(),
@@ -67,7 +69,12 @@ describe("GA4 KPI persisted financial source window", () => {
     vi.setSystemTime(new Date("2026-06-28T12:00:00.000Z"));
     resetMocks();
 
-    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-06-01T00:00:00.000Z" });
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      startDate: "2026-06-01T00:00:00.000Z",
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
     storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "service_account" }]);
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-06-27" && endDate === "2026-06-27") return [dailyRow];
@@ -75,9 +82,15 @@ describe("GA4 KPI persisted financial source window", () => {
       return [];
     });
     storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
-    storageMock.getGA4Connection.mockResolvedValue(null);
-    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, sourceIds: ["revenue-current-day"] });
-    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 200, sourceIds: ["spend-current-day"] });
+    storageMock.getGA4Connection.mockResolvedValue({ id: "connection-1", method: "access_token", accessToken: "token" });
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      currencyCode: "USD",
+      totals: { users: 50, sessions: 100, pageviews: 200, conversions: 10, revenue: 1000 },
+    });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: "USD", sourceIds: ["revenue-current-day"] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 200, currency: "USD", sourceIds: ["spend-current-day"] });
+    storageMock.getRevenueSources.mockResolvedValue([{ sourceType: "csv", currency: "USD", isActive: true }]);
+    storageMock.getSpendSources.mockResolvedValue([{ sourceType: "csv", currency: "USD", isActive: true }]);
     storageMock.getPlatformKPIs.mockResolvedValue([
       { id: "kpi-revenue", metric: "Revenue" },
       { id: "kpi-roas", metric: "ROAS" },
@@ -98,20 +111,20 @@ describe("GA4 KPI persisted financial source window", () => {
     vi.useRealTimers();
   });
 
-  it("uses today's UTC date for source-backed financial totals", () => {
-    expect(getGA4KPIFinancialSourceWindow(new Date("2026-06-28T12:00:00.000Z"))).toEqual({
+  it("uses the campaign-timezone latest completed day for source-backed financial totals", () => {
+    expect(getGA4KPIFinancialSourceWindow("Europe/Amsterdam", new Date("2026-06-28T12:00:00.000Z"))).toEqual({
       startDate: "1900-01-01",
-      endDate: "2026-06-28",
+      endDate: "2026-06-27",
     });
   });
 
-  it("persists KPI financial current values from source totals through today while GA4 native totals stay on the report date", async () => {
+  it("persists KPI financial current values from source totals through the same completed report date", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
 
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-06-27", "2026-06-27");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-06-01", "2026-06-27");
-    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-28", "ga4");
-    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-28", "ga4");
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-27", "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-27", "ga4");
 
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "6.5" });
@@ -126,8 +139,8 @@ describe("GA4 KPI persisted financial source window", () => {
       { id: "benchmark-revenue", metric: "Revenue", benchmarkValue: "2000" },
     ]);
     storageMock.getBenchmarkHistory.mockResolvedValue([
-      { recordedAt: new Date("2026-06-27T23:59:59.000Z"), currentValue: "1300" },
-      { recordedAt: new Date("2026-06-28T23:59:59.000Z"), currentValue: "1400" },
+      { recordedAt: new Date("2026-06-27T23:59:59.000Z"), currentValue: "1300", notes: "auto:ga4_daily:2026-06-27;ga4_scope_v1:123:Europe%2FAmsterdam:USD:%5B%5D" },
+      { recordedAt: new Date("2026-06-28T23:59:59.000Z"), currentValue: "1400", notes: "auto:ga4_daily:2026-06-28;ga4_scope_v1:123:Europe%2FAmsterdam:USD:%5B%5D" },
     ]);
 
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });

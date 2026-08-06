@@ -886,7 +886,7 @@ export class GoogleAnalytics4Service {
     startDate: string,
     endDate: string,
     campaignFilter?: CampaignFilter
-  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
@@ -927,7 +927,8 @@ export class GoogleAnalytics4Service {
       const engagedSessions = parseInt(String(mv?.[5]?.value || '0'), 10) || 0;
       const rawEngagementRate = Number.parseFloat(String(mv?.[6]?.value || '0')) || 0;
       const engagementRate = rawEngagementRate || (sessions > 0 ? engagedSessions / sessions : 0);
-      return { revenueMetric, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate } };
+      const currencyCode = String(json?.metadata?.currencyCode || "").trim().toUpperCase() || null;
+      return { revenueMetric, currencyCode, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate } };
     };
 
     const runWithRevenueFallback = async (scopeFilter: any, endDateOverride: string = endDate) => {
@@ -985,7 +986,8 @@ export class GoogleAnalytics4Service {
 
     const isEmptyTotals = (result: Awaited<ReturnType<typeof run>>) => {
       const totals = result?.totals || {};
-      return (Number(totals.sessions || 0) + Number(totals.users || 0) + Number(totals.conversions || 0) + Number(totals.pageviews || 0) + Number(totals.revenue || 0)) <= 0;
+      return [totals.sessions, totals.users, totals.conversions, totals.pageviews, totals.revenue]
+        .every((value) => Number(value || 0) === 0);
     };
 
     const hasTrafficTotals = (result: Awaited<ReturnType<typeof run>>) => {
@@ -997,24 +999,25 @@ export class GoogleAnalytics4Service {
       );
     };
 
-    const hasConversionRevenueTotals = (result: Awaited<ReturnType<typeof run>>) => {
-      const totals = result?.totals || {};
-      return Number(totals.conversions || 0) > 0 || Number(totals.revenue || 0) > 0;
-    };
-
     const supplementConversionRevenueTotals = async (result: Awaited<ReturnType<typeof run>>) => {
       const campaignNameFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
-      if (!campaignNameFilter || !hasTrafficTotals(result) || hasConversionRevenueTotals(result)) return result;
+      const currentConversions = Number(result?.totals?.conversions || 0);
+      const currentRevenue = Number(result?.totals?.revenue || 0);
+      if (!campaignNameFilter || !hasTrafficTotals(result) || (currentConversions !== 0 && currentRevenue !== 0)) return result;
 
       const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(() => null);
-      if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
+      const supplementalConversions = Number(supplement?.totals?.conversions || 0);
+      const supplementalRevenue = Number(supplement?.totals?.revenue || 0);
+      if (!supplement || (supplementalConversions === 0 && supplementalRevenue === 0)) return result;
+      const useSupplementalRevenue = currentRevenue === 0 && supplementalRevenue !== 0;
 
       return {
-        revenueMetric: supplement.revenueMetric || result.revenueMetric,
+        ...result,
+        revenueMetric: useSupplementalRevenue ? supplement.revenueMetric || result.revenueMetric : result.revenueMetric,
         totals: {
           ...result.totals,
-          conversions: supplement.totals.conversions,
-          revenue: supplement.totals.revenue,
+          conversions: currentConversions === 0 && supplementalConversions !== 0 ? supplementalConversions : currentConversions,
+          revenue: useSupplementalRevenue ? supplementalRevenue : currentRevenue,
         },
       };
     };
@@ -1022,7 +1025,7 @@ export class GoogleAnalytics4Service {
     try {
       const result = await runWithRevenueFallback(campaignDimensionFilter);
       if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result);
-      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(() => null);
+      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter).catch(() => null);
       const selectedResult = utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
       return await supplementConversionRevenueTotals(selectedResult);
     } catch (e: any) {
@@ -1044,6 +1047,7 @@ export class GoogleAnalytics4Service {
     limit: number = 2000,
     campaignFilter?: CampaignFilter,
     endDate?: string,
+    disableTokenRefresh = false,
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
@@ -1184,6 +1188,11 @@ export class GoogleAnalytics4Service {
         const errorText = await response.text();
         // If this is an auth error and we have a refresh token, attempt one automatic refresh + retry.
         if (isAuthErrorText(errorText)) {
+          if (disableTokenRefresh) {
+            const tokenExpiredError = new Error('TOKEN_EXPIRED');
+            (tokenExpiredError as any).isTokenExpired = true;
+            throw tokenExpiredError;
+          }
           if (connection.refreshToken) {
             try {
               const refreshResult = await this.refreshAccessToken(
@@ -1909,7 +1918,8 @@ export class GoogleAnalytics4Service {
     storage: any,
     dateRange = '30daysAgo',
     propertyId?: string,
-    campaignFilter?: CampaignFilter
+    campaignFilter?: CampaignFilter,
+    endDate = 'today',
   ): Promise<any[]> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
@@ -1924,7 +1934,7 @@ export class GoogleAnalytics4Service {
     }
 
     try {
-      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange, campaignFilter);
+      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange, campaignFilter, endDate);
     } catch (error: any) {
       console.log('GA4 time series API call failed:', error.message);
       
@@ -1965,7 +1975,7 @@ export class GoogleAnalytics4Service {
           }
 
           console.log('Access token refreshed successfully - retrying time series call');
-          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter);
+          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter, endDate);
         } else {
           const tokenExpiredError = new Error('TOKEN_EXPIRED');
           (tokenExpiredError as any).isTokenExpired = true;
@@ -2170,7 +2180,7 @@ export class GoogleAnalytics4Service {
       );
       const hasMissingConversionRevenue = timeSeriesData.some((r) =>
         (Number(r?.sessions || 0) > 0 || Number(r?.users || 0) > 0 || Number(r?.pageviews || 0) > 0) &&
-        (Number(r?.conversions || 0) <= 0 || Number(r?.revenue || 0) <= 0)
+        (Number(r?.conversions || 0) === 0 || Number(r?.revenue || 0) === 0)
       );
       const campaignNameConversionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
 
@@ -2184,7 +2194,7 @@ export class GoogleAnalytics4Service {
           if (!date) continue;
           const conversions = parseInt(String(row?.metricValues?.[0]?.value || '0'), 10) || 0;
           const revenue = Number.parseFloat(String(row?.metricValues?.[1]?.value || '0')) || 0;
-          if (conversions > 0 || revenue > 0) {
+          if (conversions !== 0 || revenue !== 0) {
             conversionRevenueByDate.set(date, {
               conversions,
               revenue: Number(revenue.toFixed(2)),
@@ -2199,12 +2209,12 @@ export class GoogleAnalytics4Service {
             if (!supplementalRow) return row;
             const conversions = Number(row?.conversions || 0);
             const revenue = Number(row?.revenue || 0);
-            if (conversions > 0 && revenue > 0) return row;
+            if (conversions !== 0 && revenue !== 0) return row;
             return {
               ...row,
-              conversions: conversions > 0 ? conversions : supplementalRow.conversions,
-              revenue: revenue > 0 ? revenue : supplementalRow.revenue,
-              revenueMetric: revenue > 0 ? row.revenueMetric : supplementalRow.revenueMetric,
+              conversions: conversions !== 0 ? conversions : supplementalRow.conversions,
+              revenue: revenue !== 0 ? revenue : supplementalRow.revenue,
+              revenueMetric: revenue !== 0 ? row.revenueMetric : supplementalRow.revenueMetric,
             };
           });
         }

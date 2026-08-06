@@ -408,10 +408,12 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
 
     const total = Number(totalRevenue.toFixed(2));
     const sourceId = String(source.id);
-    const endDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // yesterday
     const campaign = await storage.getCampaign(campaignId);
-    const currency = String(mappingConfig.currency || source?.currency || (campaign as any)?.currency || "USD");
     const platformContext = String(mappingConfig.platformContext || source?.platformContext || "ga4") as any;
+    const endDate = platformContext === "ga4"
+      ? getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone)
+      : new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const currency = String(mappingConfig.currency || source?.currency || (campaign as any)?.currency || "USD");
     const records = total > 0
       ? dateCol && dailyRevenueMap.size > 0
         ? Array.from(dailyRevenueMap.entries()).filter(([, rev]) => rev > 0).map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency }))
@@ -789,7 +791,9 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api";
           });
           const liCfg = safeJsonParse(linkedInSpend?.mappingConfig);
-          if (linkedInSpend && liCfg?.platform === "linkedin") {
+          if (linkedInSpend && String((linkedInSpend as any)?.platformContext || "ga4") === "ga4") {
+            skipped++;
+          } else if (linkedInSpend && liCfg?.platform === "linkedin") {
             attempted++;
             if (await reprocessLinkedInSpend(campaignId, linkedInSpend, liCfg)) { succeeded++; anyUpdated = true; }
           } else {
@@ -812,19 +816,35 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             }
             const displayName = String((src as any).displayName || "");
             const cfg = safeJsonParse((src as any).mappingConfig);
+            const platformContext = String((src as any).platformContext || cfg?.platformContext || "ga4") as any;
+            if (platformContext === "ga4") {
+              // The dedicated Google Ads scheduler is the sole updater for live GA4 ad-platform spend.
+              skipped++;
+              continue;
+            }
             const selectedIds = Array.isArray(cfg?.selectedCampaignIds)
               ? new Set(cfg.selectedCampaignIds.map((id: any) => String(id || "").trim()).filter(Boolean))
               : null;
-            const startDate = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-            const endDate = new Date().toISOString().slice(0, 10);
+            const campaignStart = new Date((campaign as any)?.startDate || "1900-01-01");
+            const startDate = Number.isNaN(campaignStart.getTime()) ? "1900-01-01" : campaignStart.toISOString().slice(0, 10);
+            const endDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone);
 
             let rows: any[] = [];
+            let providerFresh = false;
             if (displayName.includes("Google Ads")) {
               if (!selectedIds || selectedIds.size === 0) {
                 console.error(`[Auto Refresh] Refusing Google Ads spend reprocess for campaign ${campaignId}: missing selected campaign IDs`);
                 skipped++;
                 continue;
               }
+              const connection: any = await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+              if (!connection || !connection.spendOnly || String(connection.method || "") !== "oauth") {
+                console.error(`[Auto Refresh] Refusing unsupported Google Ads spend connection for campaign ${campaignId}`);
+                skipped++;
+                continue;
+              }
+              const lastRefreshAt = connection?.lastRefreshAt ? new Date(connection.lastRefreshAt).getTime() : 0;
+              providerFresh = Number.isFinite(lastRefreshAt) && Date.now() - lastRefreshAt <= 6 * 60 * 60 * 1000;
               rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
               rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));
             } else if (displayName.includes("Meta")) {
@@ -834,7 +854,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
               continue;
             }
 
-            if (rows.length === 0) continue;
+            if (rows.length === 0 && !providerFresh) continue;
 
             const spendByDate = new Map<string, number>();
             for (const r of rows) {
@@ -847,15 +867,14 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
               campaignId,
               date,
               spend: String(spend.toFixed(2)),
-              currency: "USD",
+              currency: String((src as any)?.currency || (campaign as any)?.currency || "USD"),
             }));
 
-            if (records.length > 0) {
+            if (records.length > 0 || providerFresh) {
               attempted++;
               try {
-                const platformContext = String((src as any).platformContext || cfg?.platformContext || "ga4") as any;
                 await storage.replaceSpendRecordsForSource(campaignId, String((src as any).id), "ad_platforms", platformContext, records);
-                const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate);
+                const allSpend = await storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate);
                 await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);
                 succeeded++;
                 anyUpdated = true;

@@ -48,6 +48,22 @@ try {
   const row = inventory.rows[0];
   const propertyId = String(row.property_id);
   const expected = getReportingDateWindow(60, row.reporting_time_zone);
+  const googleAdsInventory = await client.query(`
+    SELECT s.id, s.mapping_config, a.method, a.spend_only
+    FROM spend_sources s
+    LEFT JOIN google_ads_connections a ON a.campaign_id = s.campaign_id
+    WHERE s.campaign_id = $1 AND s.is_active = true AND s.source_type = 'ad_platforms'
+      AND COALESCE(s.platform_context, 'ga4') = 'ga4'
+  `, [CAMPAIGN_ID]);
+  const googleAdsSources = googleAdsInventory.rows.filter((source: any) => {
+    try { return String(JSON.parse(String(source.mapping_config || "{}"))?.platform || "").toLowerCase() === "google_ads"; }
+    catch { return false; }
+  });
+  if (googleAdsSources.length > 1) throw new Error("Multiple active GA4 Google Ads spend sources require review");
+  const googleAdsSource = googleAdsSources[0] || null;
+  if (googleAdsSource && (googleAdsSource.method !== "oauth" || googleAdsSource.spend_only !== true)) {
+    throw new Error("Active GA4 Google Ads spend source is not backed by an OAuth spend-only connection");
+  }
 
   const healthResponse = await fetch(`${BASE_URL}/api/health`);
   const health: any = await healthResponse.json();
@@ -78,7 +94,36 @@ try {
   if (after.body?.startDate !== expected.startDate || after.body?.endDate !== expected.endDate || after.body?.dataThroughDate !== expected.dataThroughDate) {
     throw new Error("Post-run completed-day window parity failed");
   }
-  if (after.body?.freshness?.status === "error") throw new Error("Post-run daily freshness reports an error");
+  if (after.body?.refreshIsStale !== false) throw new Error("Post-run daily response is stale or lacks verified freshness");
+  if (after.body?.providerRefreshOutcome === "failed" || after.body?.providerRefreshWarning) {
+    throw new Error("Post-run daily provider refresh reports a failure");
+  }
+
+  let googleAdsScheduler: any = { activeSource: false };
+  if (googleAdsSource) {
+    const spendPath = `/api/campaigns/${CAMPAIGN_ID}/spend-to-date?platformContext=ga4`;
+    const spendBefore = await request(page, spendPath);
+    if (!spendBefore.ok) throw new Error(`Pre-run GA4 spend read failed (${spendBefore.status})`);
+    const googleAdsRun = await request(page, `/api/google-ads/${CAMPAIGN_ID}/refresh`, "POST");
+    if (!googleAdsRun.ok || googleAdsRun.body?.success !== true || googleAdsRun.body?.providerRefreshed !== true) {
+      throw new Error(`Deterministic Google Ads scheduler run failed (${googleAdsRun.status})`);
+    }
+    if (googleAdsRun.body?.spendMaterialization?.updated !== true || String(googleAdsRun.body?.spendMaterialization?.sourceId || "") !== String(googleAdsSource.id)) {
+      throw new Error("Google Ads scheduler did not update the exact live GA4 spend source");
+    }
+    const spendAfter = await request(page, spendPath);
+    if (!spendAfter.ok || spendAfter.body?.endDate !== expected.dataThroughDate || !Array.isArray(spendAfter.body?.sourceIds) || !spendAfter.body.sourceIds.includes(String(googleAdsSource.id))) {
+      throw new Error("Post-run Google Ads spend source/window parity failed");
+    }
+    googleAdsScheduler = {
+      activeSource: true,
+      sourceHash: hash(googleAdsSource.id),
+      records: googleAdsRun.body.spendMaterialization.records,
+      spendBefore: spendBefore.body?.spendToDate,
+      spendAfter: spendAfter.body?.spendToDate,
+      completedDay: spendAfter.body?.endDate,
+    };
+  }
 
   console.log(JSON.stringify({
     status: "passed",
@@ -94,9 +139,10 @@ try {
       lastRunFinishedAt: run.body.after.lastRunFinishedAt,
       alertsSuppressed: true,
     },
+    googleAdsScheduler,
     dailyRowsBefore: Array.isArray(before.body?.data) ? before.body.data.length : 0,
     dailyRowsAfter: Array.isArray(after.body?.data) ? after.body.data.length : 0,
-    mutationBoundary: "authorized campaign daily refresh and direct KPI/Benchmark recompute only",
+    mutationBoundary: "authorized campaign GA4 daily refresh, active Google Ads spend refresh/materialization when present, and direct KPI/Benchmark recompute only",
   }, null, 2));
   await context.close();
 } finally {

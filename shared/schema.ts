@@ -22,7 +22,7 @@ export const insertClientSchema = createInsertSchema(clients).pick({
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Authorization: campaigns are owned by the caller identity (mmUserId session).
-  // Nullable for backward compatibility; the first authorized access will "claim" it.
+  // Legacy nulls fail closed and are not claimable through application routes.
   ownerId: text("owner_id"),
   clientId: text("client_id"), // references clients.id — scopes campaign to a client
   name: text("name").notNull(),
@@ -103,7 +103,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   propertyId: text("property_id").notNull(),
-  date: text("date").notNull(), // YYYY-MM-DD (UTC)
+  date: text("date").notNull(), // YYYY-MM-DD in the GA4 property's reporting timezone
   users: integer("users").notNull().default(0),
   sessions: integer("sessions").notNull().default(0),
   engagedSessions: integer("engaged_sessions"),

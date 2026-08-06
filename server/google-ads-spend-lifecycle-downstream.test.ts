@@ -67,11 +67,11 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(manualRoute).toContain("source = await storage.createSpendSource({");
     expect(manualRoute).toContain("sourceType: effectiveSourceType");
     expect(manualRoute).toContain("platformContext: platformContext || null");
-    expect(manualRoute).toContain("displayName: effectiveDisplayName");
+    expect(manualRoute).toContain("displayName: resolvedDisplayName");
     expect(manualRoute).toContain("mappingConfig: finalMappingConfig");
     expect(manualRoute.indexOf("await storage.deleteSpendRecordsBySource(existingSourceId)")).toBeLessThan(manualRoute.indexOf("await storage.createSpendRecords"));
     expect(manualRoute).toContain("spendSourceId: String(source.id)");
-    expect(manualRoute.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(manualRoute.indexOf("scheduleGA4SpendPostResponseRecompute(campaignId);"));
+    expect(manualRoute.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(manualRoute.indexOf("await recomputeGA4SpendBeforeResponse(campaignId);"));
     expect(manualRoute).toContain("platformContext: platformContext || null");
   });
 
@@ -129,8 +129,12 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(spendToDateRoute).toContain("requireCampaignAccessParamId");
     expect(spendToDateRoute).toContain("const campaign = await storage.getCampaign(campaignId);");
     expect(spendToDateRoute).toContain("const sources = await storage.getSpendSources(campaignId, platformContext);");
-    expect(spendToDateRoute).toContain('getSpendTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), platformContext)');
-    expect(spendToDateRoute).toContain("sourceIds: Array.isArray(sources) ? sources.map");
+    expect(spendToDateRoute).toContain('const startDate = "1900-01-01"');
+    expect(spendToDateRoute).toContain("getSpendTotalForRange(campaignId, startDate, endDate, platformContext)");
+    expect(spendToDateRoute).toContain("startDate,");
+    expect(spendToDateRoute).toContain("endDate,");
+    expect(spendToDateRoute).toContain("sourceIds: scopedTotals");
+    expect(spendToDateRoute).toContain("? scopedTotals.sourceIds");
     expect(spendBreakdownRoute).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(spendBreakdownRoute).toContain('const startDate = "1900-01-01";');
     expect(spendBreakdownRoute).toContain("storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext)");
@@ -187,33 +191,23 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(cards).toContain("formatMoney(Number(financialCPA || 0))");
   });
 
-  it("fails closed during scheduler Google Ads spend reprocess when saved selected campaign IDs are missing", () => {
-    const scheduler = read("server", "auto-refresh-scheduler.ts");
-    const adPlatformReprocess = sliceBetween(
+  it("fails closed in the dedicated scheduler when saved Google Ads campaign scope is missing or mismatched", () => {
+    const scheduler = read("server", "google-ads-scheduler.ts");
+    const materialize = sliceBetween(
       scheduler,
-      "// Ad Platform Spend (Google Ads / Meta)",
-      "// Google Sheets (Revenue)"
-    );
-    const googleAdsBranch = sliceBetween(
-      adPlatformReprocess,
-      'if (displayName.includes("Google Ads"))',
-      '} else if (displayName.includes("Meta"))'
+      "export async function materializeGA4GoogleAdsSpendForCampaign",
+      "export async function enrichGoogleAdsWithGA4Revenue"
     );
 
-    expect(adPlatformReprocess).toContain("const spendSrcs = await storage.getSpendSources(campaignId)");
-    expect(adPlatformReprocess).toContain("isSourceOutsideCampaign(src, campaignId)");
-    expect(adPlatformReprocess).toContain("selectedCampaignIds");
-    expect(googleAdsBranch).toContain("if (!selectedIds || selectedIds.size === 0)");
-    expect(googleAdsBranch).toContain("Refusing Google Ads spend reprocess for campaign ${campaignId}: missing selected campaign IDs");
-    expect(googleAdsBranch).toContain("skipped++;");
-    expect(googleAdsBranch).toContain("continue;");
-    expect(googleAdsBranch.indexOf("continue;")).toBeLessThan(googleAdsBranch.indexOf("storage.getGoogleAdsDailyMetrics"));
-    expect(googleAdsBranch).toContain("rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];");
-    expect(googleAdsBranch).toContain('rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));');
-    expect(adPlatformReprocess).toContain("await storage.replaceSpendRecordsForSource(");
-    expect(adPlatformReprocess).not.toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
-    expect(adPlatformReprocess).not.toContain("await storage.createSpendRecords(records);");
-    expect(adPlatformReprocess).toContain('const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate);');
-    expect(adPlatformReprocess).toContain("await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);");
+    expect(materialize).toContain('storage.getSpendSources(campaignId, "ga4")');
+    expect(materialize).toContain('String(mapping.platform || "").trim().toLowerCase() === "google_ads"');
+    expect(materialize).toContain("const sourceIds = parseSelectedGoogleAdsCampaignIds(mapping.selectedCampaignIds)");
+    expect(materialize).toContain("const connectionIds = parseSelectedGoogleAdsCampaignIds(connection.selectedCampaignIds)");
+    expect(materialize).toContain("sourceIds.length === 0 || JSON.stringify(sourceIds) !== JSON.stringify(connectionIds)");
+    expect(materialize).toContain("buildGA4GoogleAdsSpendMaterialization({");
+    expect(materialize).toContain("selectedCampaignIds: sourceIds");
+    expect(materialize).toContain("await storage.replaceSpendRecordsForSource(");
+    expect(materialize).toContain('storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate, "ga4")');
+    expect(materialize).not.toContain("deleteSpendRecordsBySource");
   });
 });

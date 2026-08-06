@@ -77,7 +77,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(refreshFunction).toContain('String(source.sourceType || "") === "google_sheets"');
     expect(refreshFunction).toContain("source.isActive !== false");
     expect(refreshFunction).toContain("reprocessGoogleSheetsSpend(campaignId, source, mappingConfig)");
-    expect(processRoute).toContain("scheduleGA4SpendPostResponseRecompute(campaignId);");
+    expect(processRoute).toContain("await recomputeGA4SpendBeforeResponse(campaignId);");
     expect(refreshFunction).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
     expect(refreshFunction).not.toContain("reprocessGoogleSheetsRevenue");
     expect(refreshFunction).not.toContain("reprocessHubSpot");
@@ -112,6 +112,17 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).not.toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");
     expect(content).not.toContain('String((s as any).sourceType || "") === "csv"');
     expect(content).not.toContain("reprocessCsv");
+  });
+  it("leaves live GA4 Google Ads spend to the dedicated provider scheduler", () => {
+    const content = schedulerFile();
+    const adPlatformStart = content.indexOf("// Ad Platform Spend");
+    const adPlatformEnd = content.indexOf("// Google Sheets (Revenue)", adPlatformStart);
+    const adPlatformBlock = content.slice(adPlatformStart, adPlatformEnd);
+
+    expect(adPlatformStart).toBeGreaterThan(-1);
+    expect(adPlatformBlock).toContain('if (platformContext === "ga4")');
+    expect(adPlatformBlock).toContain("dedicated Google Ads scheduler is the sole updater");
+    expect(adPlatformBlock).not.toContain("buildGA4GoogleAdsSpendMaterialization");
   });
   it("persists fresh Google Sheets spend preview metadata after reprocess", () => {
     const routes = routesFile();

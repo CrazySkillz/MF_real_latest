@@ -10,7 +10,7 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetr
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches } from './utils/shopify-revenue';
 import { getShopifyApiVersion, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
-import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
+import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
 import multer from "multer";
@@ -14574,15 +14574,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ====================== GA4 SERVER-SIDE OAUTH ======================
 
   const GA4_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-  const getOAuthStateSecret = (specificSecret: string | undefined, developmentFallback: string, label: string): string => {
-    const secret = specificSecret || process.env.SESSION_SECRET;
-    if (secret) return secret;
-    if (process.env.NODE_ENV === "production") throw new Error(`${label} OAuth state secret is not configured`);
-    return developmentFallback;
-  };
 
   const signGA4OAuthState = (campaignId: string): string => {
-    const secret = getOAuthStateSecret(process.env.GA4_OAUTH_STATE_SECRET, "dev-ga4-state-secret", "GA4");
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GA4_OAUTH_STATE_SECRET,
+      purpose: "ga4",
+      label: "GA4",
+      developmentFallback: "dev-ga4-state-secret",
+    });
     const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
@@ -14590,7 +14589,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyGA4OAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
-    const secret = getOAuthStateSecret(process.env.GA4_OAUTH_STATE_SECRET, "dev-ga4-state-secret", "GA4");
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GA4_OAUTH_STATE_SECRET,
+      purpose: "ga4",
+      label: "GA4",
+      developmentFallback: "dev-ga4-state-secret",
+    });
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
     if (parts.length !== 2) return { ok: false, error: "Invalid state" };
@@ -14609,7 +14613,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const signGoogleSheetsOAuthState = (campaignId: string, purpose?: string): string => {
-    const secret = getOAuthStateSecret(process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET, "dev-sheets-state-secret", "Google Sheets");
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+      purpose: "google-sheets",
+      label: "Google Sheets",
+      developmentFallback: "dev-sheets-state-secret",
+    });
     const payload = { c: String(campaignId || "").trim(), p: String(purpose || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
@@ -14617,7 +14626,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyGoogleSheetsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; purpose: string | null } | { ok: false; error: string } => {
-    const secret = getOAuthStateSecret(process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET, "dev-sheets-state-secret", "Google Sheets");
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+      purpose: "google-sheets",
+      label: "Google Sheets",
+      developmentFallback: "dev-sheets-state-secret",
+    });
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
     if (parts.length !== 2) return { ok: false, error: "Invalid state" };

@@ -3,17 +3,54 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { getInternalAutoRefreshToken, isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from "./google-ads-oauth-authorization";
+import { resolveOAuthStateSigningSecret } from "./utils/tokenVault";
 
 const routes = () => readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 
 describe("GA4 Insights authentication and tenant scope", () => {
-  it("keeps future LinkedIn, Meta, and Instagram spend connectors outside the current GA4 Insights source chooser", () => {
+  it("derives stable purpose-separated OAuth state secrets and fails closed without a production base secret", () => {
+    const keys = ["NODE_ENV", "SESSION_SECRET", "TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY"] as const;
+    const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+    const resolve = (purpose: string, specificSecret?: string) => resolveOAuthStateSigningSecret({
+      specificSecret,
+      purpose,
+      label: purpose,
+      developmentFallback: `dev-${purpose}`,
+    });
+
+    try {
+      process.env.NODE_ENV = "production";
+      delete process.env.SESSION_SECRET;
+      delete process.env.ENCRYPTION_KEY;
+      process.env.TOKEN_ENCRYPTION_KEY = "stable-production-token-secret";
+
+      const ga4 = resolve("ga4");
+      expect(resolve("ga4")).toBe(ga4);
+      expect(resolve("google-sheets")).not.toBe(ga4);
+
+      const explicit = resolve("ga4", "provider-specific-secret");
+      process.env.TOKEN_ENCRYPTION_KEY = "rotated-base-secret";
+      expect(resolve("ga4", "provider-specific-secret")).toBe(explicit);
+      expect(resolve("ga4")).not.toBe(ga4);
+
+      delete process.env.TOKEN_ENCRYPTION_KEY;
+      expect(() => resolve("ga4")).toThrow("ga4 OAuth state secret is not configured");
+    } finally {
+      for (const key of keys) {
+        const value = previous[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
+  it("keeps later-release ad connectors outside the current GA4 Insights source chooser", () => {
     const modal = readFileSync(join(process.cwd(), "client", "src", "components", "AddSpendWizardModal.tsx"), "utf8");
     const selectStart = modal.indexOf('{step === "select" && (');
     const selectEnd = modal.indexOf('{step === "ad_platform" && (', selectStart);
     const currentReleaseChooser = modal.slice(selectStart, selectEnd);
 
-    expect(currentReleaseChooser).toContain("Google Ads");
+    expect(currentReleaseChooser).not.toContain("Google Ads");
     expect(currentReleaseChooser).not.toContain("LinkedIn");
     expect(currentReleaseChooser).not.toContain("Meta");
     expect(currentReleaseChooser).not.toContain("Instagram");

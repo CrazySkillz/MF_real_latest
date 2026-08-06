@@ -15,7 +15,7 @@ Certified SHA: none
 
 Latest validated deployment candidate: `0a066fd38673a45d1e8639646f7099c230d144cc`
 
-Reason: the remaining release work is finite: GA4 and Google Sheets OAuth state signing currently depends on absent optional Render secrets; Google Ads is still exposed even though it is outside this release's validated source boundary; and the selected campaign's native GA4 revenue currency does not match campaign currency USD. Authenticated owner API/UI parity therefore cannot complete. Previously classified Critical and Major fixes also remain uncleared until one final revision passes the complete local and deployed evidence matrix. Final revision deployment, tenant isolation, live parity, and dependency freezing are certification gates rather than additional implementation findings.
+Reason: the remaining release work is finite. Deployed candidate `0a066fd38673a45d1e8639646f7099c230d144cc` still depends on absent optional GA4/Sheets Render secrets, still exposes Google Ads outside the validated source boundary, and cannot serve the selected campaign's native GA4 revenue because its currency does not match campaign USD. Commit 1 corrects the first two issues locally, but none of its changes are production-cleared until the final candidate is deployed. Previously classified Critical and Major fixes also remain uncleared until one final revision passes the complete local and deployed evidence matrix.
 
 <!-- /ga4-insights-current-status -->
 
@@ -64,7 +64,7 @@ This plan is finite. Certification stops at the live-tab boundary above.
 
 ## Ordered Remaining Commit Queue
 
-Status of every commit below: **NOT STARTED**. The controlling machine status remains `UNVERIFIED` throughout Commits 1-3.
+Execution state: **Commit 1 implemented and locally validated; not deployed. Commits 2-4 not started.** The controlling machine status remains `UNVERIFIED` throughout Commits 1-3.
 
 ### Commit 1 - `fix(ga4): enforce the Insights release and OAuth boundary`
 
@@ -74,6 +74,8 @@ Status of every commit below: **NOT STARTED**. The controlling machine status re
 - update the source-boundary documentation and machine dependency boundary without weakening foreign-platform fail-closed guards
 
 Completion gate: focused OAuth, authentication, source-scope, chooser, and tenant-boundary regressions pass. No Render secret or Google Ads credential change is required for this release.
+
+Local result: PASS - five focused production-path files, 79 tests, TypeScript, and production build. Production clearance remains pending Commit 3.
 
 ### Commit 2 - `fix(ga4): make native revenue currency scope provable`
 
@@ -325,6 +327,8 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | TypeScript | PASS: `tsc --noEmit --pretty false` on the runtime implementation inherited by `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`; both external validators compile in the regression packet. |
 | production build | PASS: `npm run build` on the runtime implementation inherited by `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`. |
 | machine certification checker | PASS while retaining the controlling `UNVERIFIED` status; it must be rerun after the documentation boundary is committed. |
+| Commit 1 focused release/OAuth boundary | PASS: 5 production-path files, 79 tests, including actual Express GA4/Sheets initiation success from the mandatory production token key, missing-all-secret fail-closed behavior, excluded Google Ads chooser/input scope, and deterministic validator scope. |
+| Commit 1 TypeScript and build | PASS: `npm run check` and `npm run build`. |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 

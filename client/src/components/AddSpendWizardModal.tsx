@@ -1522,16 +1522,6 @@ export function AddSpendWizardModal(props: {
             {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { setSelectedPlatform("google_ads"); setStep("ad_platform"); }}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Zap className="w-4 h-4" />
-                      Google Ads
-                    </CardTitle>
-                    <CardDescription>Pull spend via Google Ads API.</CardDescription>
-                  </CardHeader>
-                </Card>
-
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">

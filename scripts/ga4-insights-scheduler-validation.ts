@@ -59,11 +59,7 @@ try {
     try { return String(JSON.parse(String(source.mapping_config || "{}"))?.platform || "").toLowerCase() === "google_ads"; }
     catch { return false; }
   });
-  if (googleAdsSources.length > 1) throw new Error("Multiple active GA4 Google Ads spend sources require review");
-  const googleAdsSource = googleAdsSources[0] || null;
-  if (googleAdsSource && (googleAdsSource.method !== "oauth" || googleAdsSource.spend_only !== true)) {
-    throw new Error("Active GA4 Google Ads spend source is not backed by an OAuth spend-only connection");
-  }
+  if (googleAdsSources.length > 0) throw new Error("Google Ads spend is active outside the current GA4 Insights release boundary");
 
   const healthResponse = await fetch(`${BASE_URL}/api/health`);
   const health: any = await healthResponse.json();
@@ -99,31 +95,7 @@ try {
     throw new Error("Post-run daily provider refresh reports a failure");
   }
 
-  let googleAdsScheduler: any = { activeSource: false };
-  if (googleAdsSource) {
-    const spendPath = `/api/campaigns/${CAMPAIGN_ID}/spend-to-date?platformContext=ga4`;
-    const spendBefore = await request(page, spendPath);
-    if (!spendBefore.ok) throw new Error(`Pre-run GA4 spend read failed (${spendBefore.status})`);
-    const googleAdsRun = await request(page, `/api/google-ads/${CAMPAIGN_ID}/refresh`, "POST");
-    if (!googleAdsRun.ok || googleAdsRun.body?.success !== true || googleAdsRun.body?.providerRefreshed !== true) {
-      throw new Error(`Deterministic Google Ads scheduler run failed (${googleAdsRun.status})`);
-    }
-    if (googleAdsRun.body?.spendMaterialization?.updated !== true || String(googleAdsRun.body?.spendMaterialization?.sourceId || "") !== String(googleAdsSource.id)) {
-      throw new Error("Google Ads scheduler did not update the exact live GA4 spend source");
-    }
-    const spendAfter = await request(page, spendPath);
-    if (!spendAfter.ok || spendAfter.body?.endDate !== expected.dataThroughDate || !Array.isArray(spendAfter.body?.sourceIds) || !spendAfter.body.sourceIds.includes(String(googleAdsSource.id))) {
-      throw new Error("Post-run Google Ads spend source/window parity failed");
-    }
-    googleAdsScheduler = {
-      activeSource: true,
-      sourceHash: hash(googleAdsSource.id),
-      records: googleAdsRun.body.spendMaterialization.records,
-      spendBefore: spendBefore.body?.spendToDate,
-      spendAfter: spendAfter.body?.spendToDate,
-      completedDay: spendAfter.body?.endDate,
-    };
-  }
+  const googleAdsScheduler = { activeSource: false, releaseBoundary: "excluded" };
 
   console.log(JSON.stringify({
     status: "passed",
@@ -142,7 +114,7 @@ try {
     googleAdsScheduler,
     dailyRowsBefore: Array.isArray(before.body?.data) ? before.body.data.length : 0,
     dailyRowsAfter: Array.isArray(after.body?.data) ? after.body.data.length : 0,
-    mutationBoundary: "authorized campaign GA4 daily refresh, active Google Ads spend refresh/materialization when present, and direct KPI/Benchmark recompute only",
+    mutationBoundary: "authorized campaign GA4 daily refresh and direct KPI/Benchmark recompute only",
   }, null, 2));
   await context.close();
 } finally {

@@ -15,10 +15,9 @@ describe("GA4 Insights deterministic scheduler production evidence guard", () =>
     expect(script).toContain("Post-run completed-day window parity failed");
     expect(script).toContain('after.body?.refreshIsStale !== false');
     expect(script).toContain('after.body?.providerRefreshOutcome === "failed"');
-    expect(script).toContain("Multiple active GA4 Google Ads spend sources require review");
-    expect(script).toContain('`/api/google-ads/${CAMPAIGN_ID}/refresh`');
-    expect(script).toContain('googleAdsRun.body?.spendMaterialization?.updated !== true');
-    expect(script).toContain("Post-run Google Ads spend source/window parity failed");
+    expect(script).toContain("Google Ads spend is active outside the current GA4 Insights release boundary");
+    expect(script).toContain('releaseBoundary: "excluded"');
+    expect(script).not.toContain("/api/google-ads/");
     expect(script).not.toContain("after.body?.freshness?.status");
   });
 });

@@ -4,7 +4,6 @@ import { pool } from "../server/db";
 import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsCalendarRollup, buildGA4InsightsHistoryScopeMarker, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
 import { getReportingDateWindow } from "../server/utils/reporting-timezone";
 import { decryptTokens } from "../server/utils/tokenVault";
-import { GoogleAdsClient } from "../server/googleAdsClient";
 
 const BASE_URL = process.env.GA4_INSIGHTS_BASE_URL || "https://marketforensics.onrender.com";
 const EXPECTED_SHA = String(process.env.GA4_INSIGHTS_EXPECTED_SHA || "").trim();
@@ -152,23 +151,20 @@ try {
 
   const owner = await signIn(String(row.owner_id));
   if (!owner) throw new Error("Campaign owner is unavailable in Clerk");
-  const [ga4OAuthConfig, sheetsOAuthConfig, googleAdsOAuthConfig] = await Promise.all([
+  const [ga4OAuthConfig, sheetsOAuthConfig] = await Promise.all([
     request(owner.page, "/api/auth/google/url", "POST", { campaignId: CAMPAIGN_ID }),
     request(owner.page, "/api/auth/google-sheets/connect", "POST", { campaignId: CAMPAIGN_ID, purpose: "revenue" }),
-    request(owner.page, "/api/auth/google-ads/connect", "POST", { campaignId: CAMPAIGN_ID, spendOnly: true }),
   ]);
-  if (!ga4OAuthConfig.ok || !sheetsOAuthConfig.ok || !googleAdsOAuthConfig.ok) throw new Error("Production Google/Google Ads OAuth configuration validation failed");
+  if (!ga4OAuthConfig.ok || !sheetsOAuthConfig.ok) throw new Error("Production Google OAuth configuration validation failed");
   const ga4OAuthUrl = new URL(String(ga4OAuthConfig.body?.oauthUrl || ""));
   const sheetsOAuthUrl = new URL(String(sheetsOAuthConfig.body?.authUrl || ""));
-  const googleAdsOAuthUrl = new URL(String(googleAdsOAuthConfig.body?.authUrl || ""));
   const ga4State = String(ga4OAuthUrl.searchParams.get("state") || "");
   const sheetsState = String(sheetsOAuthUrl.searchParams.get("state") || "");
-  const googleAdsState = String(googleAdsOAuthUrl.searchParams.get("state") || "");
-  if (ga4State.split(".").length !== 2 || !sheetsState.startsWith("sheets:") || sheetsState.slice(7).split(".").length !== 2 || googleAdsState.split(".").length !== 2) {
+  if (ga4State.split(".").length !== 2 || !sheetsState.startsWith("sheets:") || sheetsState.slice(7).split(".").length !== 2) {
     throw new Error("Production OAuth state is not signed");
   }
-  if (!ga4OAuthUrl.searchParams.get("client_id") || !sheetsOAuthUrl.searchParams.get("client_id") || !googleAdsOAuthUrl.searchParams.get("client_id")) {
-    throw new Error("Production Google/Google Ads OAuth client ID is unavailable");
+  if (!ga4OAuthUrl.searchParams.get("client_id") || !sheetsOAuthUrl.searchParams.get("client_id")) {
+    throw new Error("Production Google OAuth client ID is unavailable");
   }
   const paths = {
     campaign: `/api/campaigns/${CAMPAIGN_ID}`,
@@ -366,46 +362,10 @@ try {
       return String(mapping?.platform || "").toLowerCase() === "google_ads";
     } catch { return false; }
   });
-  if (activeGoogleAdsSources.length > 1) throw new Error("Multiple active GA4 Google Ads spend sources require review");
-  let googleAdsProviderScope: any = { active: false };
-  if (activeGoogleAdsSources.length === 1) {
-    const source = activeGoogleAdsSources[0];
-    const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
-    const connectionInventory = await client.query(`
-      SELECT customer_id, manager_account_id, method, spend_only, selected_campaign_ids,
-             access_token, refresh_token, client_id, client_secret, developer_token, encrypted_tokens
-      FROM google_ads_connections WHERE campaign_id = $1
-    `, [CAMPAIGN_ID]);
-    if (connectionInventory.rowCount !== 1) throw new Error("Exact Google Ads spend connection was not found");
-    const connection = connectionInventory.rows[0];
-    if (connection.method !== "oauth" || connection.spend_only !== true) throw new Error("GA4 Google Ads spend is not backed by an OAuth spend-only connection");
-    const tokens = decryptTokens(connection.encrypted_tokens);
-    const refreshToken = String(tokens.refreshToken || connection.refresh_token || "").trim();
-    const clientId = String(connection.client_id || process.env.GOOGLE_ADS_CLIENT_ID || "").trim();
-    const clientSecret = String(tokens.clientSecret || connection.client_secret || process.env.GOOGLE_ADS_CLIENT_SECRET || "").trim();
-    let providerAccessToken = String(tokens.accessToken || connection.access_token || "").trim();
-    if (refreshToken && clientId && clientSecret) providerAccessToken = (await GoogleAdsClient.refreshAccessToken(refreshToken, clientId, clientSecret)).access_token;
-    const developerToken = String(connection.developer_token || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "").trim();
-    if (!providerAccessToken || !developerToken) throw new Error("Google Ads provider metadata credentials are unavailable");
-    const provider = new GoogleAdsClient({
-      accessToken: providerAccessToken,
-      developerToken,
-      customerId: String(connection.customer_id),
-      managerAccountId: connection.manager_account_id ? String(connection.manager_account_id) : undefined,
-    });
-    const [account, providerCampaigns] = await Promise.all([provider.getCustomerAccount(), provider.getCampaigns()]);
-    if (account.manager || account.currencyCode !== currency || getReportingDateWindow(1, account.timeZone).reportingTimeZone !== expected60.reportingTimeZone) {
-      throw new Error("Google Ads account metadata does not match the GA4 campaign currency/timezone scope");
-    }
-    const sourceIds = Array.from(new Set((Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : []).map(String))).sort();
-    let connectionIds: string[] = [];
-    try { connectionIds = Array.from(new Set(JSON.parse(String(connection.selected_campaign_ids || "[]")).map(String))).sort() as string[]; } catch { connectionIds = []; }
-    if (sourceIds.length === 0 || JSON.stringify(sourceIds) !== JSON.stringify(connectionIds)) throw new Error("Google Ads source/connection selected-campaign scope mismatch");
-    const availableIds = new Set(providerCampaigns.map((campaign) => String(campaign.id)));
-    if (sourceIds.some((id) => !availableIds.has(id))) throw new Error("A selected Google Ads campaign is unavailable in the connected account");
-    if (String(mapping.sourceDataEndDate || "") !== expected60.dataThroughDate) throw new Error("Google Ads materialized source cutoff does not match the completed campaign day");
-    googleAdsProviderScope = { active: true, sourceHash: hash(source.id), selectedCampaignCount: sourceIds.length, customerHash: hash(connection.customer_id), currency: account.currencyCode, timeZone: account.timeZone };
+  if (activeGoogleAdsSources.length > 0) {
+    throw new Error("Google Ads spend is active outside the current GA4 Insights release boundary");
   }
+  const googleAdsProviderScope = { active: false, releaseBoundary: "excluded" };
   const sourceToDateEnd = expected60.dataThroughDate;
   if (responses.revenue.body?.startDate !== "1900-01-01" || responses.revenue.body?.endDate !== sourceToDateEnd) {
     throw new Error("Imported revenue source-to-date window parity failed");
@@ -857,11 +817,11 @@ try {
   await addSpendButton.click();
   const spendChooser = owner.page.getByRole("dialog").filter({ hasText: "Choose where your spend data comes from." });
   await spendChooser.waitFor({ timeout: 120000 });
-  for (const label of ["Google Ads", "Google Sheets", "Upload CSV"]) {
+  for (const label of ["Google Sheets", "Upload CSV"]) {
     if (await spendChooser.getByText(label, { exact: true }).count() !== 1) throw new Error(`Current GA4 spend chooser is missing ${label}`);
   }
   const chooserText = normalizeText(await spendChooser.innerText());
-  for (const excluded of ["LinkedIn", "Meta", "Facebook", "Instagram"]) {
+  for (const excluded of ["Google Ads", "LinkedIn", "Meta", "Facebook", "Instagram"]) {
     if (chooserText.toLowerCase().includes(excluded.toLowerCase())) throw new Error(`Disabled-release ${excluded} source is visible in the GA4 spend chooser`);
   }
   await owner.page.keyboard.press("Escape");
@@ -911,7 +871,7 @@ try {
     propertyTimeZone,
     currency,
     propertyCurrency,
-    oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleAdsSignedState: true, googleClientConfigured: true, googleAdsClientConfigured: true },
+    oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleClientConfigured: true },
     savedFilterCount: filters.length,
     dailyWindow: { startDate: expected60.startDate, endDate: expected60.endDate, rows: rollups.availableDays },
     overviewDailyWindow: { startDate: expected30.startDate, endDate: expected30.endDate, rows: Array.isArray(uiOverviewDailyBody?.data) ? uiOverviewDailyBody.data.length : 0 },
@@ -930,7 +890,7 @@ try {
       visibleFindings: findings.length,
       hiddenFindings: hiddenCount,
       findingFields: ["id", "category", "severity", "title", "description", "recommendation", "basis", "confidence"],
-      spendChooser: ["Google Ads", "Google Sheets", "Upload CSV"],
+      spendChooser: ["Google Sheets", "Upload CSV"],
     },
     tenantIsolation,
     persistenceUnchanged: true,

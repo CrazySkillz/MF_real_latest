@@ -80,7 +80,7 @@ describe("GA4 Insights production calendar paths", () => {
       { sourceType: "ad_platforms", currency: "EUR", mappingConfig: JSON.stringify({ platform: "google_ads" }) },
       { sourceType: "csv", currency: "EUR" },
       { sourceType: "google_sheets", currency: "EUR" },
-    ], "EUR", "Spend")).not.toThrow();
+    ], "EUR", "Spend")).toThrow("outside the current GA4 Insights release scope");
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [
       { sourceType: "ad_platforms", currency: "EUR", mappingConfig: JSON.stringify({ platform: "meta" }) },
     ], "EUR", "Spend")).toThrow("outside the current GA4 Insights release scope");

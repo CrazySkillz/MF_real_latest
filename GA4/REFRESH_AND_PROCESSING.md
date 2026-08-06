@@ -210,7 +210,7 @@ Current eligible sources include:
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
 
-For the current live GA4 Insights release, only Google Ads is enabled from the ad-platform spend family. LinkedIn, Meta/Facebook, and Instagram are later-release platforms and must not feed GA4 Insights. The general external-value scheduler skips every GA4-context `ad_platforms` source; the dedicated Google Ads scheduler owns the current-release Google Ads provider refresh and GA4 spend materialization.
+No ad-platform spend connector is enabled for the current live GA4 Insights release. Google Ads, LinkedIn, Meta/Facebook, and Instagram are later-release platforms and must not feed GA4 Insights. Existing provider schedulers remain outside this certification and do not qualify an ad-platform source for the current release.
 
 LinkedIn and Meta schedulers persist their analytics in their canonical platform daily tables. They must not also append those windows to generic `spend_records` under pseudo source IDs such as `linkedin_daily_metrics` or `meta_daily_metrics`; generic financial spend must remain backed by a real campaign-scoped `spend_sources` row.
 
@@ -290,8 +290,7 @@ Ad-platform spend auto-refresh rule:
 - edit or refresh mode must validate the stable spend source ID before updating records; a stale or wrong-platform source ID must fail closed instead of creating a new source
 - scheduler refresh must not broaden spend to all campaigns available in the connected account
 - scheduler refresh must not append duplicate rows on repeated runs
-- current-release GA4 Google Ads spend has one writer: the dedicated Google Ads scheduler; a provider refresh must immediately materialize the exact saved GA4 source through the campaign-timezone completed day and complete dependent recompute
-- a failed Google Ads connection inventory read is a scheduler failure, not a successful zero-work run
+- later-release GA4 Google Ads spend remains outside the current Insights certification; if enabled in a future revision, its dedicated scheduler and materialization path require a separate complete validation
 - scheduler failures should log source-specific phrases: `LinkedIn spend reprocess failed`, `Meta spend reprocess failed`, `Google Ads spend reprocess failed`, and `Google Sheets spend reprocess failed`
 - internal scheduler self-calls should have a bounded timeout so one stalled provider refresh cannot prevent the full auto-refresh cycle from completing
 - the LinkedIn refresh phase inside the external auto-refresh scheduler should also have a bounded timeout so CRM/ecommerce revenue reprocess can still run when LinkedIn refresh stalls

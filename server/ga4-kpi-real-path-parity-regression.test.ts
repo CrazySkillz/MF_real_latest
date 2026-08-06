@@ -372,11 +372,15 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       session: process.env.SESSION_SECRET,
       ga4: process.env.GA4_OAUTH_STATE_SECRET,
       sheets: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+      tokenEncryption: process.env.TOKEN_ENCRYPTION_KEY,
+      encryption: process.env.ENCRYPTION_KEY,
     };
     process.env.NODE_ENV = "production";
     delete process.env.SESSION_SECRET;
     delete process.env.GA4_OAUTH_STATE_SECRET;
     delete process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET;
+    delete process.env.TOKEN_ENCRYPTION_KEY;
+    delete process.env.ENCRYPTION_KEY;
     try {
       const ga4 = await fetch(`${baseUrl}/api/auth/google/integrated-connect`, {
         method: "POST",
@@ -396,6 +400,53 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       if (previous.session === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = previous.session;
       if (previous.ga4 === undefined) delete process.env.GA4_OAUTH_STATE_SECRET; else process.env.GA4_OAUTH_STATE_SECRET = previous.ga4;
       if (previous.sheets === undefined) delete process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET; else process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET = previous.sheets;
+      if (previous.tokenEncryption === undefined) delete process.env.TOKEN_ENCRYPTION_KEY; else process.env.TOKEN_ENCRYPTION_KEY = previous.tokenEncryption;
+      if (previous.encryption === undefined) delete process.env.ENCRYPTION_KEY; else process.env.ENCRYPTION_KEY = previous.encryption;
+    }
+  });
+
+  it("signs GA4 and Sheets OAuth state from the mandatory production token key", async () => {
+    vi.useRealTimers();
+    const previous = {
+      nodeEnv: process.env.NODE_ENV,
+      session: process.env.SESSION_SECRET,
+      ga4: process.env.GA4_OAUTH_STATE_SECRET,
+      sheets: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+      tokenEncryption: process.env.TOKEN_ENCRYPTION_KEY,
+      encryption: process.env.ENCRYPTION_KEY,
+    };
+    process.env.NODE_ENV = "production";
+    delete process.env.SESSION_SECRET;
+    delete process.env.GA4_OAUTH_STATE_SECRET;
+    delete process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET;
+    delete process.env.ENCRYPTION_KEY;
+    process.env.TOKEN_ENCRYPTION_KEY = "stable-production-token-key";
+    try {
+      const ga4 = await fetch(`${baseUrl}/api/auth/google/integrated-connect`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id }),
+      });
+      expect(ga4.status).toBe(200);
+      const ga4State = new URL((await ga4.json()).authUrl).searchParams.get("state") || "";
+      expect(ga4State.split(".")).toHaveLength(2);
+
+      const sheets = await fetch(`${baseUrl}/api/auth/google-sheets/connect`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id, purpose: "revenue" }),
+      });
+      expect(sheets.status).toBe(200);
+      const sheetsState = new URL((await sheets.json()).authUrl).searchParams.get("state") || "";
+      expect(sheetsState.startsWith("sheets:")).toBe(true);
+      expect(sheetsState.slice(7).split(".")).toHaveLength(2);
+    } finally {
+      if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
+      if (previous.session === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = previous.session;
+      if (previous.ga4 === undefined) delete process.env.GA4_OAUTH_STATE_SECRET; else process.env.GA4_OAUTH_STATE_SECRET = previous.ga4;
+      if (previous.sheets === undefined) delete process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET; else process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET = previous.sheets;
+      if (previous.tokenEncryption === undefined) delete process.env.TOKEN_ENCRYPTION_KEY; else process.env.TOKEN_ENCRYPTION_KEY = previous.tokenEncryption;
+      if (previous.encryption === undefined) delete process.env.ENCRYPTION_KEY; else process.env.ENCRYPTION_KEY = previous.encryption;
     }
   });
 

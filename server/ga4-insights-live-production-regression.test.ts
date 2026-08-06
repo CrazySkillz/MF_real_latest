@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), "utf8");
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), "utf8").replace(/\r\n?/g, "\n");
 
 describe("live GA4 Insights production boundary", () => {
   it("uses an isolated, property-verified 60-day daily-history request", () => {
@@ -188,9 +188,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("Campaign response saved-filter parity failed");
     expect(validator).toContain('request(owner.page, "/api/auth/google/url", "POST"');
     expect(validator).toContain('request(owner.page, "/api/auth/google-sheets/connect", "POST"');
-    expect(validator).toContain('request(owner.page, "/api/auth/google-ads/connect", "POST"');
+    expect(validator).not.toContain('request(owner.page, "/api/auth/google-ads/connect", "POST"');
     expect(validator).toContain('throw new Error("Production OAuth state is not signed")');
-    expect(validator).toContain("oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleAdsSignedState: true, googleClientConfigured: true, googleAdsClientConfigured: true }");
+    expect(validator).toContain("oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleClientConfigured: true }");
     expect(validator).toContain("ga4-breakdown?dateRange=30days");
     expect(validator).toContain("ga4-breakdown?dateRange=30days");
     expect(validator).not.toContain("&debug=1&readOnly=1");
@@ -250,8 +250,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("A Benchmark integrity finding does not map to the scoped Benchmark response");
     expect(validator).toContain("liveSurfaceParity");
     expect(validator).toContain('getByTestId("ga4-add-spend-source")');
-    expect(validator).toContain('["Google Ads", "Google Sheets", "Upload CSV"]');
-    expect(validator).toContain('["LinkedIn", "Meta", "Facebook", "Instagram"]');
+    expect(validator).toContain('["Google Sheets", "Upload CSV"]');
+    expect(validator).toContain('["Google Ads", "LinkedIn", "Meta", "Facebook", "Instagram"]');
     expect(validator).toContain("&readOnly=1");
     expect(validator).toContain("ga4-metrics?tab=insights&readOnly=1");
     expect(validator).toContain("uiDailyBody?.providerRefreshAttempted !== false");

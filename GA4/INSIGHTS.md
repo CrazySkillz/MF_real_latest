@@ -51,7 +51,7 @@ Insights must not silently broaden to unrelated GA4 properties, campaigns, clien
 
 Current-release source boundary:
 
-- the GA4 Insights new-spend chooser exposes Google Ads, Google Sheets, and Upload CSV
+- the GA4 Insights new-spend chooser exposes Google Sheets and Upload CSV; Google Ads is a later-release connector and must not supply this release's live values
 - LinkedIn, Meta/Facebook, and Instagram connectors and analytics are not enabled for this GA4 Insights release and are absent from that chooser
 - explicit LinkedIn, Meta, or Instagram platform-context records must not contribute to GA4 Insights financial totals
 - current-release Google Ads OAuth keeps provider tokens server-protected: the browser receives only a short-lived encrypted package bound to the authenticated owner, campaign, and provider account

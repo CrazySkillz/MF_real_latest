@@ -106,10 +106,7 @@ export const assertGA4InsightsFinancialCurrencyScope = (
   if (label === "Spend") {
     for (const source of activeSources) {
       const sourceType = String(source?.sourceType || "").trim().toLowerCase();
-      let mapping: any = {};
-      try { mapping = typeof source?.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source?.mappingConfig || {}; } catch { mapping = {}; }
-      const googleAds = sourceType === "ad_platforms" && String(mapping?.platform || "").trim().toLowerCase() === "google_ads";
-      if (sourceType !== "csv" && sourceType !== "google_sheets" && !googleAds) {
+      if (sourceType !== "csv" && sourceType !== "google_sheets") {
         throw new Error("Spend source is outside the current GA4 Insights release scope");
       }
     }

@@ -6,7 +6,7 @@ This file defines how GA4 `Total Revenue`, `Total Spend`, and related financial 
 
 This is a sensitive area.
 
-Current GA4 Insights release boundary: its new-spend chooser exposes Google Ads, Google Sheets, and Upload CSV. LinkedIn, Meta/Facebook, and Instagram are not enabled for this release and explicit foreign platform contexts must not contribute to live GA4 Insights totals. Broader historical platform journeys below do not change that live release boundary.
+Current GA4 Insights release boundary: its new-spend chooser exposes Google Sheets and Upload CSV. Google Ads, LinkedIn, Meta/Facebook, and Instagram are not enabled for this release and explicit foreign platform contexts must not contribute to live GA4 Insights totals. Broader historical platform journeys below do not change that live release boundary.
 
 ## Total Revenue And Total Spend Pattern
 
@@ -543,7 +543,7 @@ Spend source options:
 
 Current certification focus:
 
-- Google Ads is included in the current live Insights audit together with Google Sheets and Upload CSV. It remains `UNVERIFIED` until the exact corrected revision passes real OAuth/customer/provider metadata, deployed lifecycle, deterministic scheduler, production inventory, and live API/UI parity gates. Reports and email behavior are outside this audit.
+- Google Ads is outside the current live Insights release and certification boundary because no authorized live test account is available. It must remain absent from the chooser and live inputs until a later revision performs its own complete provider certification. Reports and email behavior are outside this audit.
 - Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets block and restores it to both choosers through the existing scoped APIs. This is locally proven and awaiting deployed visibility validation; it does not independently certify Google Sheets Revenue or the complete provider lifecycle.
 
 When the user clicks `+` on the `Total Spend` card:

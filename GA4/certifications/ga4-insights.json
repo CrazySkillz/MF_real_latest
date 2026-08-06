@@ -121,7 +121,8 @@
     { "id": "typescript", "status": "passed", "evidence": "tsc --noEmit --pretty false passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a; external validators compile in the regression packet." },
     { "id": "build", "status": "passed", "evidence": "npm run build passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a." },
     { "id": "machine_gate", "status": "passed", "evidence": "The machine checker passed while correctly retaining the controlling UNVERIFIED status." },
-    { "id": "commit1_oauth_release_boundary", "status": "passed", "evidence": "Five focused production-path files and 79 tests passed, including actual Express GA4/Sheets initiation using the mandatory token key, missing-all-secret fail-closed behavior, and excluded Google Ads chooser/input/scheduler scope; npm run check and npm run build also passed." }
+    { "id": "commit1_oauth_release_boundary", "status": "passed", "evidence": "Five focused production-path files and 79 tests passed, including actual Express GA4/Sheets initiation using the mandatory token key, missing-all-secret fail-closed behavior, and excluded Google Ads chooser/input/scheduler scope; npm run check and npm run build also passed." },
+    { "id": "commit2_currency_diagnostic", "status": "passed", "evidence": "Three focused production-path files and 47 tests passed for matching, unavailable, mixed imported/native, explicit observed mismatch, valid-zero, source-scope, and live-validator paths; npm run check also passed. Deployed observed-currency and configuration alignment evidence remains pending." }
   ],
   "externalGates": [
     { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render /api/health reported exact candidate 0a066fd38673a45d1e8639646f7099c230d144cc in production." },

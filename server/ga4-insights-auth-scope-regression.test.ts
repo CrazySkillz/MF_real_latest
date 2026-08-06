@@ -138,7 +138,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Imported revenue")');
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Spend")');
     const helper = readFileSync(join(process.cwd(), "shared", "ga4-insights.ts"), "utf8");
-    expect(helper).toContain("currency does not match campaign currency");
+    expect(helper).toContain("does not match campaign currency");
   });
 
   it("fails closed before Google Sheets source OAuth can attach to an ownerless campaign", () => {

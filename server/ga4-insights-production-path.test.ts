@@ -71,8 +71,9 @@ describe("GA4 Insights production calendar paths", () => {
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [], "EUR", "GA4 native revenue", true)).not.toThrow();
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [], null, "GA4 native revenue", true)).toThrow("currency is unavailable");
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [{ currency: "EUR", isActive: true }], "EUR", "Revenue")).not.toThrow();
-    expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [{ currency: "USD", isActive: true }], "EUR", "Revenue")).toThrow("does not match campaign currency EUR");
+    expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [{ currency: "USD", isActive: true }], "EUR", "Revenue")).toThrow("Revenue currencies EUR, USD do not match one campaign currency EUR");
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [{ sourceType: "csv", currency: null, isActive: true }], null, "Spend")).toThrow("source currency is unavailable");
+    expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "USD" }, [], "EUR", "GA4 native revenue", true)).toThrow("GA4 native revenue currency EUR does not match campaign currency USD");
   });
 
   it("fails closed when a disabled-release connector is stored in GA4 Insights scope", () => {

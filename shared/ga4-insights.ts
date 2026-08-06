@@ -124,8 +124,12 @@ export const assertGA4InsightsFinancialCurrencyScope = (
   if (requireObserved && !observed) throw new Error(`${label} currency is unavailable`);
   if (configured.some((currency) => !currency)) throw new Error(`${label} source currency is unavailable`);
   const currencies = new Set([...configured, observed].filter(Boolean));
-  if (currencies.size > 1 || (currencies.size === 1 && !currencies.has(expected))) {
-    throw new Error(`${label} currency does not match campaign currency ${expected}`);
+  const actualCurrencies = Array.from(currencies).sort();
+  if (actualCurrencies.length > 1) {
+    throw new Error(`${label} currencies ${actualCurrencies.join(", ")} do not match one campaign currency ${expected}`);
+  }
+  if (actualCurrencies.length === 1 && actualCurrencies[0] !== expected) {
+    throw new Error(`${label} currency ${actualCurrencies[0]} does not match campaign currency ${expected}`);
   }
 };
 

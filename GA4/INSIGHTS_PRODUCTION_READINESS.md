@@ -64,7 +64,7 @@ This plan is finite. Certification stops at the live-tab boundary above.
 
 ## Ordered Remaining Commit Queue
 
-Execution state: **Commit 1 implemented and locally validated; not deployed. Commits 2-4 not started.** The controlling machine status remains `UNVERIFIED` throughout Commits 1-3.
+Execution state: **Commit 1 pushed as `95bc50e5`; Commit 2 implemented and locally validated but awaits deployed currency evidence; Commits 3-4 not started.** The controlling machine status remains `UNVERIFIED` throughout Commits 1-3.
 
 ### Commit 1 - `fix(ga4): enforce the Insights release and OAuth boundary`
 
@@ -85,6 +85,8 @@ Local result: PASS - five focused production-path files, 79 tests, TypeScript, a
 - after the deployed diagnostic proves the actual property currency, make only the explicitly approved campaign/property/source configuration correction; never convert or relabel stored values implicitly
 
 Completion gate: the selected production property, campaign, and every active GA4 Insights financial source have one verified currency, and authenticated `ga4-to-date` succeeds with exact provenance.
+
+Local result: PASS - three focused production-path files, 47 tests, and TypeScript. The production configuration gate remains open until the deployed response proves the observed currency.
 
 ### Commit 3 - `test(ga4): freeze the final Insights certification candidate`
 
@@ -329,6 +331,8 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | machine certification checker | PASS while retaining the controlling `UNVERIFIED` status; it must be rerun after the documentation boundary is committed. |
 | Commit 1 focused release/OAuth boundary | PASS: 5 production-path files, 79 tests, including actual Express GA4/Sheets initiation success from the mandatory production token key, missing-all-secret fail-closed behavior, excluded Google Ads chooser/input scope, and deterministic validator scope. |
 | Commit 1 TypeScript and build | PASS: `npm run check` and `npm run build`. |
+| Commit 2 focused currency diagnostic | PASS: 3 production-path files, 47 tests, including matching, unavailable, mixed imported/native, explicit observed mismatch, valid-zero preservation, source scope, and live-validator coverage. |
+| Commit 2 TypeScript | PASS: `npm run check`. |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 

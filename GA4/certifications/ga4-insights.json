@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-insights-live",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "dc3c46db407f30f529760263eac9281e1965ae69",
+  "lastReviewedSha": "f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a",
   "certifiedSha": null,
   "deployedSha": null,
-  "invalidationReason": "The prior certification is invalidated by escaped production-path defects in calculations, scope, authentication, scheduler history, completeness, source precedence, UI state, and documentation. The corrected boundary is not certified until its exact revision is deployed and all required production-only evidence passes.",
+  "invalidationReason": "The corrected revision is deployed but production OAuth configuration and native GA4 currency gates fail; owner API/UI parity, tenant isolation, active Google Ads provider materialization, and dependency freezing remain incomplete.",
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
     "includedSurfaces": [
@@ -130,14 +130,14 @@
     { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "Authentication, isolation, source-scope, lifecycle, and scheduler-consumer regressions passed in the 350-test production-path packet; the separate shared file result is 77 passed and 10 disabled-Instagram route-extraction failures." },
     { "id": "typescript", "status": "passed", "evidence": "tsc --noEmit --pretty false passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a; external validators compile in the regression packet." },
     { "id": "build", "status": "passed", "evidence": "npm run build passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a." },
-    { "id": "machine_gate", "status": "passed", "evidence": "The machine checker passed while correctly retaining the controlling UNVERIFIED status before deployment." }
+    { "id": "machine_gate", "status": "passed", "evidence": "The machine checker passed while correctly retaining the controlling UNVERIFIED status." }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "pending", "evidence": "The corrected revision is not yet committed, pushed, or deployed." },
-    { "id": "authenticated_owner_api_ui_parity", "status": "pending", "evidence": "Authenticated owner API/UI parity is required against the exact corrected deployed revision." },
-    { "id": "live_surface_value_parity", "status": "pending", "evidence": "Every visible value, state, table, chart, and finding must pass against the exact corrected deployed revision." },
+    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render /api/health reported exact candidate 0a066fd38673a45d1e8639646f7099c230d144cc in production." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "failed", "evidence": "OAuth configuration checks returned 500 and selected-property ga4-to-date returned 500 for native revenue currency mismatch against campaign USD." },
+    { "id": "live_surface_value_parity", "status": "failed", "evidence": "No complete value packet can pass while ga4-to-date is unavailable; partial downstream evidence is not counted." },
     { "id": "tenant_isolation", "status": "pending", "evidence": "A read-only non-owner request using an existing authorized identity must fail closed on the exact corrected deployment; creation of another temporary user is not authorized." },
-    { "id": "deterministic_scheduler", "status": "pending", "evidence": "The deterministic campaign-scoped scheduler validation must pass on the exact corrected deployment." },
+    { "id": "deterministic_scheduler", "status": "passed", "evidence": "Exact candidate 0a066fd3 completed the manual campaign-scoped run successfully at 2026-08-06T05:12:00.343Z with alerts suppressed and daily rows unchanged at 19; no active Google Ads source existed." },
     { "id": "dependency_hashes", "status": "pending", "evidence": "The final committed dependency and production configuration boundary has not yet been frozen." }
   ]
 }

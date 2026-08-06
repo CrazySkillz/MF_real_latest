@@ -13,9 +13,9 @@ Current reviewed implementation SHA: `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`
 
 Certified SHA: none
 
-Deployed SHA: none for the corrected boundary
+Latest validated deployment candidate: `0a066fd38673a45d1e8639646f7099c230d144cc`
 
-Reason: the earlier certification is invalid because the current audit found escaped calculation, source-scope, authentication, scheduler-history, completeness, state, and documentation defects. Local corrections are under validation. Production status cannot change until the focused revision is committed, pushed, deployed exactly, and every required authenticated read-only, tenant-isolation, deterministic scheduler, UI/API parity, configuration, and dependency gate passes on that revision.
+Reason: the corrected revision is deployed, but production configuration and live-value gates fail. GA4 and Google Sheets OAuth state secrets are absent, Google Ads OAuth credentials are absent, and the selected campaign's native GA4 revenue currency does not match campaign currency USD. Authenticated owner API/UI parity therefore cannot complete. Tenant isolation and dependency freezing also remain pending.
 
 <!-- /ga4-insights-current-status -->
 
@@ -212,6 +212,8 @@ The active audit findings and exact affected paths are recorded below. Status re
 47. **Native revenue and imported revenue/spend could use different end dates.** Root cause: native GA4 used the campaign-reporting-timezone completed day while source totals and copy used UTC/current-day boundaries. Path: native and imported financial APIs -> combined Revenue/Spend -> Profit, ROAS, ROI, CPA, KPI/Benchmark values, Data Summary, and findings. Fix under validation: all live financial inputs and direct recomputes end on the same latest completed campaign-reporting day; the UI and evidence packet disclose that exact cutoff.
 48. **The on-demand GA4 daily route could bypass the corrupt-value guard.** Root cause: its provider mapper applied `Number(value) || 0` before the strict storage replacement boundary, converting malformed values to valid zero even though the scheduler and storage paths rejected the raw input. Path: live `/ga4-daily` refresh -> provider mapper -> exact-window replacement -> Trends, Data Summary, KPI/Benchmark values, and findings. Fix under validation: the route now applies the shared production normalizer to raw provider values, rejects invalid or out-of-window rows before replacement, and has an actual Express-route regression proving last-good persistence is untouched.
 49. **The production read-only validator did not compile.** Root cause: the browser request helper redeclared its `body` parameter as a local response variable, a syntax failure outside the main TypeScript project boundary. Path: exact deployed revision -> authenticated owner parity runner -> no executable production evidence. Fix under validation: use a distinct parsed-response variable and compile both executable certification scripts in the machine-gate regression suite.
+50. **The enabled production OAuth paths are not configured.** Root cause: Render has neither `GA4_OAUTH_STATE_SECRET` nor `GOOGLE_SHEETS_OAUTH_STATE_SECRET` (and no shared `SESSION_SECRET` fallback), while Google Ads reports missing client ID, client secret, and developer token. Path: GA4/Sheets/Google Ads connect initiation -> signed campaign-bound state/provider authorization -> selected native/imported/spend inputs -> live Insights. Production evidence: authenticated requests on deployed `0a066fd38673a45d1e8639646f7099c230d144cc` returned HTTP 500 for all three paths. Required fix: configure distinct production state secrets plus the real Google Ads credentials in Render, redeploy, and rerun the signed-state/provider checks.
+51. **The selected production campaign cannot serve native GA4 financials under its configured currency.** Root cause: the live GA4 totals provider reports a non-USD native revenue currency while the campaign is USD; the fail-closed currency guard correctly rejects the combination. Path: selected GA4 property -> `ga4-to-date` -> native Revenue -> Profit, ROAS, ROI, CPA, KPI/Benchmark inputs, Data Summary, and findings. Production evidence: the authenticated read-only endpoint returned HTTP 500 with `GA4 native revenue currency does not match campaign currency USD`; the independent GA4 Admin metadata request also returned 401, so property metadata parity remains unproven. Required fix: explicitly align the campaign and every active financial source to the actual GA4 property currency, or select the intended matching property; do not convert or relabel values implicitly.
 
 Every active Critical and Major finding above invalidates the prior certification. The code changes are not cleared until the final committed revision passes the complete local and deployed evidence matrix.
 
@@ -287,6 +289,19 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
+
+## Current Production Evidence - `0a066fd38673a45d1e8639646f7099c230d144cc`
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: `/api/health` reported `0a066fd38673a45d1e8639646f7099c230d144cc` in production |
+| deterministic scheduler | PASS: manual campaign-scoped run completed at `2026-08-06T05:12:00.343Z`, alerts were suppressed, property `542352127` remained at 19 daily rows, and no active Google Ads source existed to materialize |
+| production OAuth configuration | FAIL: GA4 state secret missing; Google Sheets initiation failed because its state secret and shared fallback are missing; Google Ads client ID, client secret, and developer token missing |
+| authenticated owner API/UI parity | FAIL: the selected-property `ga4-to-date` endpoint returned 500 because native revenue currency does not match campaign USD |
+| GA4 Admin metadata parity | FAIL: the independent property metadata request returned 401, so production timezone/currency metadata could not be independently proved |
+| live surface value parity | NOT COMPLETE: blocked before any complete financial/UI certification packet; no partial packet is counted as a pass |
+| active Google Ads provider/materialization | NOT EXERCISED: the campaign has no active Google Ads spend source; local actual-provider-shape regressions pass, but deployed customer/campaign/materialization evidence remains required for the enabled connector |
+| tenant isolation | PENDING: no newly authorized non-owner identity was available; no temporary user was created |
 
 ## Historical Production Certification Evidence — `a158229e20b5416395f32395bd2e14039c765db8`
 

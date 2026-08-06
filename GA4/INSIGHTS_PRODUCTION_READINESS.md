@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
 
-Current reviewed implementation SHA: `27b1cfb4234757340a681209d32df9b09efd52eb`
+Current reviewed implementation SHA: `afcadf2129562799f2a387546fd60e2ceec0fcbb`
 
 Certified SHA: none
 
 Latest validated deployment candidate: none
 
-Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. This corrected revision is not deployed or certified, and the live Insights value contradiction remains unresolved.
+Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` preserves the requested currency metadata through the Insights-only supplemental merge after deployed `56edb3af429a64952bc30376c349001a0dd0442e` failed its authenticated read-only financial check. The current correction is not deployed or certified, and the live Insights value contradiction remains unresolved.
 
 <!-- /ga4-insights-current-status -->
 
@@ -217,7 +217,7 @@ The active audit findings and exact affected paths are recorded below. Status re
 9. **The live Google Ads spend source trusted a browser-calculated amount.** Root cause: the source wizard summed preview rows client-side and posted the resulting amount through the generic manual-spend route, which persisted it without recomputing from campaign-owned provider facts. An authenticated caller could therefore change every spend-derived executive value without changing Google Ads data. Path: Google Ads daily facts -> browser preview/amount -> manual-spend route -> GA4-context spend records -> Spend, Profit, ROAS, ROI, CPA, KPI/Benchmark values, and findings. Fix under validation: treat the client payload as selection only; recompute the amount, per-day records, account label, and breakdown from the selected campaign's server-held Google Ads facts through one exercised production helper.
 
 ### Major
-56. **The Insights audit changed Overview-owned behavior and a shared Overview revenue calculation.** Root cause: the audit treated shared financial inputs and the Overview source chooser as if Insights owned them. Path: GA4 provider request and fallback -> `/ga4-to-date` -> page-wide financial availability -> Overview Total Revenue; and Overview Total Spend `+` chooser. Effect: native revenue could become `Unavailable`, source selection changed, and later currency conversion changed Overview values. The local correction restores the normal Overview request and source precedence, keeps the stricter currency request on `insightsScope=1` only, restores the Overview chooser, and adds cross-tab boundary regressions. Status remains Major/open until the corrected commit is deployed and authenticated Overview and Insights parity pass.
+56. **The Insights audit changed Overview-owned behavior and a shared Overview revenue calculation.** Root cause: the audit treated shared financial inputs and the Overview source chooser as if Insights owned them. Path: GA4 provider request and fallback -> `/ga4-to-date` -> page-wide financial availability -> Overview Total Revenue; and Overview Total Spend `+` chooser. Effect: native revenue could become `Unavailable`, source selection changed, and later currency conversion changed Overview values. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores the normal Overview request and source precedence, keeps the stricter currency request on `insightsScope=1` only, restores the Overview chooser, and adds cross-tab boundary regressions. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` retains Insights-only currency metadata after the supplemental provider merge without changing normal Overview output. Status remains Major/open until the corrected commit is deployed and authenticated Overview and Insights parity pass.
 
 
 1. **The certification record and narrative could contradict each other.** Root cause: no machine guard rejected a ready claim while the controlling JSON or status block remained `UNVERIFIED`. Path: readiness documents -> machine record -> release decision. Fix: committed guard `dc3c46db407f30f529760263eac9281e1965ae69` binds the current status block, required dependencies, evidence gates, hashes, and exact SHAs.
@@ -356,12 +356,22 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | Commit 2 TypeScript | PASS: `npm run check`. |
 | campaign-currency correction | PASS on implementation `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49`: 6 focused files, 103 tests, including actual provider request bodies, selected-property to-date, KPI/Benchmark recompute, auth/scope, and certification-validation guards. |
 | campaign-currency correction TypeScript/build/machine gate | PASS: `npm run check`, `npm run build`, and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
+| Overview isolation and Insights metadata correction | PASS on `afcadf2129562799f2a387546fd60e2ceec0fcbb`: 7 focused production/shared files, 132 tests; normal Overview requests retain their original provider/fallback/output contract, while explicit Insights requests retain USD response metadata through the supplemental merge. |
+| Overview isolation TypeScript/build/machine gate | PASS: `npm run check`, `npm run build` (3,466 modules), and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49`
+## Current Production Evidence - `56edb3af429a64952bc30376c349001a0dd0442e`
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: `/api/health` reported `56edb3af429a64952bc30376c349001a0dd0442e` in production |
+| authenticated owner Insights financial API parity | FAIL: the read-only `ga4-to-date?insightsScope=1` request returned HTTP 500, `GA4 native revenue currency is unavailable`; the supplemental merge dropped the provider response metadata. This invalidates `56edb3af429a64952bc30376c349001a0dd0442e` as a certification candidate. |
+| corrected replacement | PENDING: deploy `afcadf2129562799f2a387546fd60e2ceec0fcbb`, confirm exact revision, then rerun authenticated owner/non-owner and Overview/Insights parity. |
+
+## Superseded Production Evidence - `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49`
 
 | Gate | Result |
 |---|---|

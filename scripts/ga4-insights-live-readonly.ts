@@ -491,8 +491,12 @@ try {
   const normalizedDailyRows = normalizeGA4InsightsDailyRows(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
   const trends = owner.page.getByTestId("insights-trends");
   const dailyChartEndDate = String(normalizedDailyRows.at(-1)?.date || "");
-  const dailyChartStartDate = dailyChartEndDate ? addGA4InsightsDateDays(dailyChartEndDate, -29) || "" : "";
+  const dailyChartWindowStartDate = dailyChartEndDate ? addGA4InsightsDateDays(dailyChartEndDate, -29) || "" : "";
+  const dailyChartStartDate = normalizedDailyRows.find((row) => row.date >= dailyChartWindowStartDate && row.date <= dailyChartEndDate)?.date || dailyChartWindowStartDate;
   const dailyChartRows = normalizedDailyRows.filter((row) => row.date >= dailyChartStartDate && row.date <= dailyChartEndDate);
+  const dailyChartSlots = dailyChartStartDate && dailyChartEndDate
+    ? Math.round((Date.parse(dailyChartEndDate) - Date.parse(dailyChartStartDate)) / 86_400_000) + 1
+    : 0;
   const assertChartSeries = async (expected: unknown[], label: string) => {
     const raw = await trends.getByTestId("insights-trends-chart").getAttribute("data-chart-series");
     const actual = JSON.parse(String(raw || "[]"));
@@ -518,14 +522,14 @@ try {
     const byDate = new Map(normalizedDailyRows.map((row) => [row.date, row]));
     const expectedChart: unknown[] = [];
     const finalDate = dailyChartEndDate;
-    let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
+    let cursor = dailyChartStartDate;
     while (cursor && cursor <= finalDate) {
       const row = byDate.get(cursor);
       expectedChart.push({ date: cursor.slice(5), value: row ? Number(row.sessions || 0) : null, idx: expectedChart.length });
       cursor = addGA4InsightsDateDays(cursor, 1) || "";
     }
     const dailyCoverage = await trends.getByTestId("insights-daily-chart-coverage").innerText();
-    assertIncludes(dailyCoverage, "Daily chart " + addGA4InsightsDateDays(finalDate, -29) + " \u2192 " + finalDate, "daily chart range");
+    assertIncludes(dailyCoverage, "Daily chart " + dailyChartStartDate + " \u2192 " + finalDate, "daily chart range");
     assertIncludes(dailyCoverage, expectedChart.filter((row: any) => row.value !== null).length + "/" + expectedChart.length + " imported days", "daily chart coverage");
     assertIncludes(dailyCoverage, "Missing dates are skipped, not treated as zero.", "daily chart missing-date state");
     await assertChartSeries(expectedChart, "Daily");
@@ -640,7 +644,7 @@ try {
         if (actualCells.join("|") !== expectedCells.join("|")) throw new Error(metric.label + " Daily parity failed for " + current.date);
       }
       const expectedChart: unknown[] = [];
-      let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
+      let cursor = dailyChartStartDate;
       while (cursor && cursor <= finalDate) {
         const row = byDate.get(cursor);
         const raw = row ? dailyTrendValue(row, metric.key) : null;
@@ -861,7 +865,7 @@ try {
     dailyChart: {
       startDate: dailyChartStartDate,
       endDate: dailyChartEndDate,
-      slots: dailyChartEndDate ? 30 : 0,
+      slots: dailyChartSlots,
       importedDays: dailyChartRows.length,
       points: dailyChartRows.map((row) => ({ date: row.date, sessions: row.sessions })),
     },

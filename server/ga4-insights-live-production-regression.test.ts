@@ -51,7 +51,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
     expect(page).toContain("const finalDate = String(sorted[sorted.length - 1]?.date || \"\");");
     expect(page).not.toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");
-    expect(page).toContain("addGA4InsightsDateDays(finalDate, -29)");
+    expect(page).toContain("const initialDate = finalDate ? addGA4InsightsDateDays(finalDate, -29) || \"\" : \"\";");
+    expect(page).toContain("const firstImportedDate = sorted.find((row: any) => {");
+    expect(page).toContain("let cursor = String(firstImportedDate?.date || initialDate);");
     expect(page).not.toContain("const dailyChartRows = sorted.slice(-30);");
     expect(page).toContain('data-testid="insights-daily-chart-coverage"');
     expect(page).toContain('data-testid="insights-trend-metric"');
@@ -237,6 +239,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('validateRollingMode("30d", 30)');
     expect(validator).toContain('getByTestId("insights-trends-chart").getAttribute("data-chart-series")');
     expect(validator).toContain('const dailyChartEndDate = String(normalizedDailyRows.at(-1)?.date || "")');
+    expect(validator).toContain("const dailyChartWindowStartDate = dailyChartEndDate ? addGA4InsightsDateDays(dailyChartEndDate, -29)");
+    expect(validator).toContain("normalizedDailyRows.find((row) => row.date >= dailyChartWindowStartDate && row.date <= dailyChartEndDate)?.date");
     expect(validator).not.toContain('uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date');
     expect(validator).toContain('await assertChartSeries(expectedChart, "Daily")');
     expect(validator).toContain('getByTestId("insights-daily-chart-coverage")');

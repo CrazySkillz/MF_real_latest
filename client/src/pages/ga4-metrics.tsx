@@ -8435,10 +8435,15 @@ export default function GA4Metrics() {
                           let dailyChartStartDate = "";
                           let dailyChartEndDate = "";
                           if (insightsTrendMode === "daily") {
-                            // Show last 30 days for a readable daily chart
+                            // Show up to 30 calendar days, starting at the first imported date in that window.
                             const dailyRowsByDate = new Map(sorted.map((row: any) => [String(row.date || ""), row]));
                             const finalDate = String(sorted[sorted.length - 1]?.date || "");
-                            let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
+                            const initialDate = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
+                            const firstImportedDate = sorted.find((row: any) => {
+                              const date = String(row.date || "");
+                              return date >= initialDate && date <= finalDate;
+                            });
+                            let cursor = String(firstImportedDate?.date || initialDate);
                             dailyChartStartDate = cursor;
                             dailyChartEndDate = finalDate;
                             while (cursor && cursor <= finalDate) {

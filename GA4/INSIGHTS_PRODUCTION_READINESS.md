@@ -15,7 +15,7 @@ Certified SHA: none
 
 Latest validated deployment candidate: `0a066fd38673a45d1e8639646f7099c230d144cc`
 
-Reason: the corrected revision is deployed, but production configuration and live-value gates fail. GA4 and Google Sheets OAuth state secrets are absent, Google Ads OAuth credentials are absent, and the selected campaign's native GA4 revenue currency does not match campaign currency USD. Authenticated owner API/UI parity therefore cannot complete. Tenant isolation and dependency freezing also remain pending.
+Reason: the remaining release work is finite: GA4 and Google Sheets OAuth state signing currently depends on absent optional Render secrets; Google Ads is still exposed even though it is outside this release's validated source boundary; and the selected campaign's native GA4 revenue currency does not match campaign currency USD. Authenticated owner API/UI parity therefore cannot complete. Previously classified Critical and Major fixes also remain uncleared until one final revision passes the complete local and deployed evidence matrix. Final revision deployment, tenant isolation, live parity, and dependency freezing are certification gates rather than additional implementation findings.
 
 <!-- /ga4-insights-current-status -->
 
@@ -45,6 +45,7 @@ Excluded from this certification:
 - alerts and notifications
 - simulated/test-only GA4 properties such as `yesop`
 - LinkedIn, Meta/Facebook, and Instagram platform connectors and analytics; they are not enabled in the current GA4 Insights release, are absent from its new-spend source chooser, and explicit foreign platform contexts must not feed GA4 Insights
+- Google Ads; no live test account is available for this release, so it must be absent from the live source chooser and must not supply a value rendered by GA4 Insights
 
 The excluded items are outside the Insights certification definition. They are not deferred Insights validation and do not qualify or limit a future clean live-tab certification.
 
@@ -60,6 +61,45 @@ The excluded items are outside the Insights certification definition. They are n
 8. Run authenticated read-only API/UI parity and record dependency hashes before changing status.
 
 This plan is finite. Certification stops at the live-tab boundary above.
+
+## Ordered Remaining Commit Queue
+
+Status of every commit below: **NOT STARTED**. The controlling machine status remains `UNVERIFIED` throughout Commits 1-3.
+
+### Commit 1 - `fix(ga4): enforce the Insights release and OAuth boundary`
+
+- derive separate GA4 and Google Sheets OAuth-state signing keys from the existing mandatory production token-encryption secret when an explicit provider state secret is absent; retain explicit-secret precedence and fail closed when no stable production secret exists
+- prove with focused production-path tests that the derived GA4 and Sheets keys are stable, purpose-separated, and unavailable without the mandatory secret
+- remove Google Ads from the live GA4 Insights source chooser and prevent it from being treated as a certified live Insights input in this release
+- update the source-boundary documentation and machine dependency boundary without weakening foreign-platform fail-closed guards
+
+Completion gate: focused OAuth, authentication, source-scope, chooser, and tenant-boundary regressions pass. No Render secret or Google Ads credential change is required for this release.
+
+### Commit 2 - `fix(ga4): make native revenue currency scope provable`
+
+- preserve the existing fail-closed no-conversion rule
+- return a safe, explicit expected-versus-observed currency-code mismatch so the real GA4 property currency can be established without guessing
+- add production-path tests covering matching currency, mismatching currency, unavailable currency, imported/native source parity, and valid zero
+- after the deployed diagnostic proves the actual property currency, make only the explicitly approved campaign/property/source configuration correction; never convert or relabel stored values implicitly
+
+Completion gate: the selected production property, campaign, and every active GA4 Insights financial source have one verified currency, and authenticated `ga4-to-date` succeeds with exact provenance.
+
+### Commit 3 - `test(ga4): freeze the final Insights certification candidate`
+
+- freeze one implementation SHA and its dependency/configuration hashes
+- run the focused Insights suite, affected shared regressions, authentication and tenant-isolation tests, source-scope tests, TypeScript, production build, and machine checker
+- push only the focused commits and confirm Render deploys the exact candidate SHA
+- run authenticated read-only owner API/UI parity, non-owner isolation, completed-day/timezone/window/source-state parity, and deterministic scheduler validation only for producers that directly update live Insights inputs
+
+Completion gate: every in-scope command and deployed check passes on the same SHA with no Critical or Major finding open. Any failure leaves status `UNVERIFIED` and creates a new classified finding before further work.
+
+### Commit 4 - `docs(ga4): record exact Insights certification evidence [skip render]`
+
+- record the certified and deployed candidate SHA, dependency/configuration boundary, commands, results, findings, external evidence, and known limitations
+- change machine and controlling status to `PRODUCTION_READY` only if Commit 3's complete local and production evidence packet passed; otherwise record the failed gate and retain `UNVERIFIED`
+- keep Reports-owned functionality and later-release ad connectors outside the Insights certification, not as deferred Insights validation
+
+This documentation-only evidence commit does not alter the certified runtime boundary and must not trigger a different Render runtime revision.
 
 ## Complete Visible Value Inventory
 
@@ -129,7 +169,7 @@ An analytics request failure produces an integrity finding. It is not converted 
 - the saved GA4 campaign filter is passed to daily, breakdown, and to-date provider queries
 - the isolated Trends response must return the selected property ID or it fails closed
 - previous-property placeholder rows are not used by live Insights financial or recommendation paths
-- production OAuth configuration must supply Google and Google Ads client credentials plus feature-specific GA4/Sheets/Google Ads state secrets or `SESSION_SECRET`; the deployed read-only packet must prove all three authorization URLs contain signed state
+- production OAuth configuration must supply Google client credentials and a stable token-encryption secret; GA4 and Sheets state must use explicit provider secrets when configured or stable purpose-separated keys derived from that mandatory token secret; the deployed read-only packet must prove both in-scope authorization URLs contain signed state
 
 ## State And Misleading-Guidance Contract
 
@@ -212,8 +252,9 @@ The active audit findings and exact affected paths are recorded below. Status re
 47. **Native revenue and imported revenue/spend could use different end dates.** Root cause: native GA4 used the campaign-reporting-timezone completed day while source totals and copy used UTC/current-day boundaries. Path: native and imported financial APIs -> combined Revenue/Spend -> Profit, ROAS, ROI, CPA, KPI/Benchmark values, Data Summary, and findings. Fix under validation: all live financial inputs and direct recomputes end on the same latest completed campaign-reporting day; the UI and evidence packet disclose that exact cutoff.
 48. **The on-demand GA4 daily route could bypass the corrupt-value guard.** Root cause: its provider mapper applied `Number(value) || 0` before the strict storage replacement boundary, converting malformed values to valid zero even though the scheduler and storage paths rejected the raw input. Path: live `/ga4-daily` refresh -> provider mapper -> exact-window replacement -> Trends, Data Summary, KPI/Benchmark values, and findings. Fix under validation: the route now applies the shared production normalizer to raw provider values, rejects invalid or out-of-window rows before replacement, and has an actual Express-route regression proving last-good persistence is untouched.
 49. **The production read-only validator did not compile.** Root cause: the browser request helper redeclared its `body` parameter as a local response variable, a syntax failure outside the main TypeScript project boundary. Path: exact deployed revision -> authenticated owner parity runner -> no executable production evidence. Fix under validation: use a distinct parsed-response variable and compile both executable certification scripts in the machine-gate regression suite.
-50. **The enabled production OAuth paths are not configured.** Root cause: Render has neither `GA4_OAUTH_STATE_SECRET` nor `GOOGLE_SHEETS_OAUTH_STATE_SECRET` (and no shared `SESSION_SECRET` fallback), while Google Ads reports missing client ID, client secret, and developer token. Path: GA4/Sheets/Google Ads connect initiation -> signed campaign-bound state/provider authorization -> selected native/imported/spend inputs -> live Insights. Production evidence: authenticated requests on deployed `0a066fd38673a45d1e8639646f7099c230d144cc` returned HTTP 500 for all three paths. Required fix: configure distinct production state secrets plus the real Google Ads credentials in Render, redeploy, and rerun the signed-state/provider checks.
+50. **The in-scope production OAuth paths depend on absent optional state secrets.** Root cause: GA4 and Google Sheets state signing does not yet derive purpose-separated signing keys from the stable token-encryption secret already required for production token storage. Path: GA4/Sheets connect initiation -> signed campaign-bound state/provider authorization -> selected native/imported inputs -> live Insights. Production evidence: authenticated requests on deployed `0a066fd38673a45d1e8639646f7099c230d144cc` returned HTTP 500. Required fix: Commit 1 adds the secure production fallback and focused signed-state tests without requiring new Render variables.
 51. **The selected production campaign cannot serve native GA4 financials under its configured currency.** Root cause: the live GA4 totals provider reports a non-USD native revenue currency while the campaign is USD; the fail-closed currency guard correctly rejects the combination. Path: selected GA4 property -> `ga4-to-date` -> native Revenue -> Profit, ROAS, ROI, CPA, KPI/Benchmark inputs, Data Summary, and findings. Production evidence: the authenticated read-only endpoint returned HTTP 500 with `GA4 native revenue currency does not match campaign currency USD`; the independent GA4 Admin metadata request also returned 401, so property metadata parity remains unproven. Required fix: explicitly align the campaign and every active financial source to the actual GA4 property currency, or select the intended matching property; do not convert or relabel values implicitly.
+52. **Google Ads remains exposed without a certifiable live provider boundary for this release.** Root cause: the source chooser still advertises the connector even though no authorized live Google Ads test account is available and the connector is explicitly outside the release boundary. Path: live source chooser -> Google Ads connection/materialization -> Spend and every spend-derived Insights value. Required fix: Commit 1 removes the chooser entry and excludes the connector from the certified dependency boundary while preserving fail-closed backend guards for a later release.
 
 Every active Critical and Major finding above invalidates the prior certification. The code changes are not cleared until the final committed revision passes the complete local and deployed evidence matrix.
 
@@ -268,7 +309,6 @@ No Minor finding changes a visible numeric result after the fixes above.
 - saved GA4 filter or reporting-timezone changes atomically invalidate only that campaign's daily facts before deterministic scoped refresh
 - KPI/Benchmark history is retained but only the exact selected property/filter/timezone/currency marker is eligible for live Insights; mismatched and legacy history is not deleted or rendered
 - imported source add/edit/delete/refresh paths recompute only the owning campaign and GA4 platform context
-- the dedicated Google Ads provider scheduler is the sole updater of live GA4 Google Ads spend; the general external-value scheduler skips GA4 ad-platform sources
 - source deletion can change live financial values but cannot broaden to another campaign or platform
 - the campaign-scoped deterministic scheduler trigger runs the deployed daily refresh plus KPI/Benchmark recompute for only the authorized campaign and suppresses the global alert sweep
 - a timer status alone is not a successful value refresh
@@ -296,11 +336,11 @@ Separate repository result: the complete `server/source-safety-regression.test.t
 |---|---|
 | exact Render revision | PASS: `/api/health` reported `0a066fd38673a45d1e8639646f7099c230d144cc` in production |
 | deterministic scheduler | PASS: manual campaign-scoped run completed at `2026-08-06T05:12:00.343Z`, alerts were suppressed, property `542352127` remained at 19 daily rows, and no active Google Ads source existed to materialize |
-| production OAuth configuration | FAIL: GA4 state secret missing; Google Sheets initiation failed because its state secret and shared fallback are missing; Google Ads client ID, client secret, and developer token missing |
+| production OAuth configuration | FAIL on this revision: GA4 state secret missing; Google Sheets initiation failed because its state secret and shared fallback are missing. Commit 1 replaces this optional-Render-secret dependency for the two in-scope OAuth paths. |
 | authenticated owner API/UI parity | FAIL: the selected-property `ga4-to-date` endpoint returned 500 because native revenue currency does not match campaign USD |
 | GA4 Admin metadata parity | FAIL: the independent property metadata request returned 401, so production timezone/currency metadata could not be independently proved |
 | live surface value parity | NOT COMPLETE: blocked before any complete financial/UI certification packet; no partial packet is counted as a pass |
-| active Google Ads provider/materialization | NOT EXERCISED: the campaign has no active Google Ads spend source; local actual-provider-shape regressions pass, but deployed customer/campaign/materialization evidence remains required for the enabled connector |
+| Google Ads release boundary | FAIL on this revision: the campaign has no active Google Ads spend source, but the chooser still exposes the unvalidated connector. Commit 1 must remove it; provider/materialization evidence is then outside this release rather than deferred Insights validation. |
 | tenant isolation | PENDING: no newly authorized non-owner identity was available; no temporary user was created |
 
 ## Historical Production Certification Evidence — `a158229e20b5416395f32395bd2e14039c765db8`

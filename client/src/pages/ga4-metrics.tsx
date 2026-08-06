@@ -5613,7 +5613,6 @@ export default function GA4Metrics() {
   const ga4DailyExpectedThroughDate = String((ga4DailyResp as any)?.dataThroughDate || "").trim();
   const ga4DailyProviderCoverageThroughDate = String((ga4DailyResp as any)?.providerCoverageThroughDate || "").trim();
   const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
-  const ga4DailyProviderRefreshWarning = Boolean(String((ga4DailyResp as any)?.providerRefreshWarning || "").trim());
   const ga4DailyFreshnessAvailable = ga4ConnectionUsable && Boolean(ga4DailyResp);
   const ga4DailyFreshnessLabel = !ga4DailyFreshnessAvailable
     ? "Unavailable"
@@ -5873,23 +5872,6 @@ export default function GA4Metrics() {
                 <div data-testid="insights-scope-filter"><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
               </CardContent>
             </Card>
-            {ga4ConnectionUsable && ga4DailyRefreshIsStale && (
-              <div
-                className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-                data-testid="ga4-overview-freshness-warning"
-                data-insights-scope="shared"
-              >
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>
-                  {ga4DailyProviderRefreshWarning ? "The latest GA4 provider refresh did not complete. " : "GA4 daily data is delayed. "}
-                  {ga4DailyLatestStoredDate ? (
-                    <>Stored data is available through {ga4DailyLatestStoredDate}{ga4DailyExpectedThroughDate ? `; expected through ${ga4DailyExpectedThroughDate}` : ""}. Saved values remain visible while refresh is retried.</>
-                  ) : (
-                    <>No stored daily values are currently available{ga4DailyExpectedThroughDate ? `; expected through ${ga4DailyExpectedThroughDate}` : ""}; refresh will be retried.</>
-                  )}
-                </span>
-              </div>
-            )}
             {!ga4ConnectionUsable && (
               <div
                 className="mt-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
@@ -8231,9 +8213,6 @@ export default function GA4Metrics() {
                     <Card className="border-border" data-testid="insights-executive-financials">
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
-                        <CardDescription>
-                          {executiveFinancialsDescription} {financialWindowDescription}
-                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         {(spendKpiInputState === "stale" || revenueKpiInputState === "stale") && (
@@ -8310,7 +8289,6 @@ export default function GA4Metrics() {
                               <span className="font-medium">Revenue</span>:{" "}
                               {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : ga4NoCompletedWindow ? "GA4 native revenue — no completed day yet" : "Not connected"}
                             </div>
-                            {financialWindowDescription && <div><span className="font-medium">Windows</span>: {financialWindowDescription}</div>}
                           </div>
                         </div>
                       </CardContent>

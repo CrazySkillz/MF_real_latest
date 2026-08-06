@@ -107,7 +107,7 @@ describe("GA4 reporting-day cutoff", () => {
     expect(page).toContain("const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;");
     expect(page).toContain("Checked through ${ga4DailyProviderCoverageThroughDate}; latest activity ${ga4DailyLatestStoredDate");
     expect(page).not.toContain('data-testid="ga4-overview-freshness-summary"');
-    expect(page).toContain('data-testid="ga4-overview-freshness-warning"');
+    expect(page).not.toContain('data-testid="ga4-overview-freshness-warning"');
     expect(page).toContain("Latest visible refresh metadata from the GA4 page inputs.");
     expect(page).toContain("formatConnectionTimestamp((ga4DailyResp as any)?.lastCompletedRefreshAt)");
     expect(page).not.toContain("formatConnectionTimestamp(provenanceLastUpdated)");

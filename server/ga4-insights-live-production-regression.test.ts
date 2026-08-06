@@ -296,7 +296,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("assertSourceCurrencies(spendDefinitions, spendBreakdownSources");
     expect(validator).toContain('responses.revenue.body?.startDate !== "1900-01-01"');
     expect(validator).toContain('responses.spend.body?.startDate !== "1900-01-01"');
-    expect(validator).toContain('"Windows: " + financialWindowDescription');
+    expect(validator).toContain('sourcesText.includes("Windows:")');
     for (const path of ["revenueSources", "revenueBreakdown", "spendSources", "spendBreakdown"]) {
       expect(validator).toContain(path + ":");
     }

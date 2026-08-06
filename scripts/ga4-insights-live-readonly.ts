@@ -303,14 +303,8 @@ try {
   assertIncludes(await cardText("insights-scope-campaign"), String(responses.campaign.body?.name || ""), "scope campaign");
   assertIncludes(await cardText("insights-scope-property"), String(propertyId), "scope property");
   assertIncludes(await cardText("insights-scope-filter"), filters.length > 0 ? filters.join(", ") : "All campaigns", "scope saved filter");
-  const freshnessWarning = owner.page.getByTestId("ga4-overview-freshness-warning");
-  if (uiOverviewDailyBody?.refreshIsStale === true) {
-    if (await freshnessWarning.count() !== 1) throw new Error("Shared daily freshness warning is missing");
-    const warningText = normalizeText(await freshnessWarning.innerText());
-    assertIncludes(warningText, uiOverviewDailyBody?.providerRefreshWarning ? "latest GA4 provider refresh did not complete" : "GA4 daily data is delayed", "shared freshness reason");
-    assertIncludes(warningText, String(uiOverviewDailyBody?.latestStoredDailyDate || "No stored daily values"), "shared freshness coverage");
-  } else if (await freshnessWarning.count() !== 0) {
-    throw new Error("Shared daily freshness warning rendered for a current response");
+  if (await owner.page.getByTestId("ga4-overview-freshness-warning").count() !== 0) {
+    throw new Error("Shared daily freshness warning should not be rendered");
   }
   const toDateTotals = responses.toDate.body?.totals || {};
   const revenueDefinitions = Array.isArray(responses.revenueSources.body?.sources) ? responses.revenueSources.body.sources : [];
@@ -418,7 +412,7 @@ try {
     ...(hasSpendDisplaySources ? [`spend source-to-date through completed ${expected60.reportingTimeZone.split("/").pop()?.replace(/_/g, " ")} day ${String(responses.spend.body?.endDate)}`] : []),
   ];
   const financialWindowDescription = financialWindows.length > 0 ? financialWindows.join("; ") + "." : "";
-  if (financialWindowDescription) assertIncludes(sourcesText, "Windows: " + financialWindowDescription, "financial window provenance");
+  if (sourcesText.includes("Windows:")) throw new Error("Sources used should not render financial windows");
 
   const summaryText = await cardText("insights-data-summary");
   assertIncludes(summaryText, String(uiRollups.last30.startDate), "summary start date");

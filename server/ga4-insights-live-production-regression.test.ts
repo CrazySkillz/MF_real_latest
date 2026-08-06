@@ -49,6 +49,10 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain("Number(insightsRollups?.availableDays || 0) < minDays");
     expect(page).toContain("Current 7-day window ${insightsRollups.last7.startDate}");
     expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
+    expect(page).toContain("const complete7DayRows = insightsTrendMode === \"7d\"");
+    expect(page).toContain("? complete7DayRows.length > 0");
+    expect(page).toContain('data-testid="insights-7d-historical-coverage"');
+    expect(page).toContain('chartData.length === 1 ? { r: 3 } : false');
     expect(page).toContain("const finalDate = String(sorted[sorted.length - 1]?.date || \"\");");
     expect(page).not.toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");
     expect(page).toContain("const initialDate = finalDate ? addGA4InsightsDateDays(finalDate, -29) || \"\" : \"\";");
@@ -62,7 +66,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain(": null,");
     expect(page).toContain('connectNulls={insightsTrendMode === "daily"}');
     expect(page).not.toContain("connectNulls={false}");
-    expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : false}');
+    expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false}');
   });
 
   it("does not reuse prior-property or stale channel data for recommendations", () => {
@@ -236,6 +240,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(channelCells).toContain("formatPct(expected.sessions > 0");
     expect(channelCells).not.toContain("formatMoney(expected.revenue");
     expect(validator).toContain('validateRollingMode("7d", 7)');
+    expect(validator).toContain("const expected7DaySessionChart = normalizedDailyRows.slice(-14).reduce");
+    expect(validator).toContain("rolling7DayChart: expected7DaySessionChart");
     expect(validator).toContain('validateRollingMode("30d", 30)');
     expect(validator).toContain('getByTestId("insights-trends-chart").getAttribute("data-chart-series")');
     expect(validator).toContain('const dailyChartEndDate = String(normalizedDailyRows.at(-1)?.date || "")');

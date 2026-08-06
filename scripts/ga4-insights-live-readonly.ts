@@ -497,6 +497,11 @@ try {
   const dailyChartSlots = dailyChartStartDate && dailyChartEndDate
     ? Math.round((Date.parse(dailyChartEndDate) - Date.parse(dailyChartStartDate)) / 86_400_000) + 1
     : 0;
+  const expected7DaySessionChart = normalizedDailyRows.slice(-14).reduce<Array<{ date: string; value: number; idx: number }>>((chart, row) => {
+    const rollup = buildGA4InsightsCalendarRollup(normalizedDailyRows, row.date, 7);
+    if (rollup.complete) chart.push({ date: row.date.slice(5), value: Number(rollup.sessions.toFixed(2)), idx: chart.length });
+    return chart;
+  }, []);
   const assertChartSeries = async (expected: unknown[], label: string) => {
     const raw = await trends.getByTestId("insights-trends-chart").getAttribute("data-chart-series");
     const actual = JSON.parse(String(raw || "[]"));
@@ -541,6 +546,13 @@ try {
     await trends.getByRole("button", { name: mode, exact: true }).click();
     const current = days === 7 ? uiRollups.last7 : uiRollups.last30;
     const prior = days === 7 ? uiRollups.prior7 : uiRollups.prior30;
+    const expectedChart: unknown[] = days === 7 ? expected7DaySessionChart : [];
+    if (days === 30) {
+      for (const row of normalizedDailyRows.slice(-(days * 2))) {
+        const rollup = buildGA4InsightsCalendarRollup(normalizedDailyRows, row.date, days);
+        if (rollup.complete) expectedChart.push({ date: row.date.slice(5), value: Number(rollup.sessions.toFixed(2)), idx: expectedChart.length });
+      }
+    }
     if (current.complete && prior.complete) {
       const rendered = normalizeText(await trends.innerText());
       assertIncludes(rendered, "Last " + days + " days", mode + " current label");
@@ -550,12 +562,6 @@ try {
       assertIncludes(rendered, "Prior " + days + " days", mode + " prior label");
       assertIncludes(rendered, String(prior.startDate) + " \u2192 " + String(prior.endDate), mode + " prior range");
       assertIncludes(rendered, formatNumber(prior.sessions), mode + " prior value");
-      const expectedChart: unknown[] = [];
-      for (const row of normalizedDailyRows.slice(-(days * 2))) {
-        const rollup = buildGA4InsightsCalendarRollup(normalizedDailyRows, row.date, days);
-        if (rollup.complete) expectedChart.push({ date: row.date.slice(5), value: Number(rollup.sessions.toFixed(2)), idx: expectedChart.length });
-      }
-      await assertChartSeries(expectedChart, mode);
     } else {
       const rendered = await trends.innerText();
       assertIncludes(rendered, days + "-day comparison unavailable", mode + " insufficient-history state");
@@ -564,6 +570,7 @@ try {
       assertIncludes(rendered, "Total imported rows in the 60-day response: " + normalizedDailyRows.length, mode + " total imported rows");
       assertIncludes(rendered, "Missing dates are not assumed to be zero.", mode + " missing-date policy");
     }
+    if (expectedChart.length > 0) await assertChartSeries(expectedChart, mode);
   };
   await validateRollingMode("7d", 7);
   await validateRollingMode("30d", 30);
@@ -869,6 +876,7 @@ try {
       importedDays: dailyChartRows.length,
       points: dailyChartRows.map((row) => ({ date: row.date, sessions: row.sessions })),
     },
+    rolling7DayChart: expected7DaySessionChart,
     dailyFreshness: {
       refreshIsStale: uiDailyBody?.refreshIsStale,
       providerRefreshOutcome: uiDailyBody?.providerRefreshOutcome || null,

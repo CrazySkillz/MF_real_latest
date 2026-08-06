@@ -8388,6 +8388,10 @@ export default function GA4Metrics() {
                         {/* Trends line chart */}
                         {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
                           const dailyRows = Array.isArray(ga4InsightsTimeSeries) ? (ga4InsightsTimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
+                          const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+                          const complete7DayRows = insightsTrendMode === "7d"
+                            ? sorted.filter((row: any) => buildGA4InsightsCalendarRollup(sorted, String(row.date || ""), 7).complete)
+                            : [];
                           const availableMonths = new Set(
                             dailyRows
                               .map((r: any) => String(r?.date || "").slice(0, 7))
@@ -8399,7 +8403,7 @@ export default function GA4Metrics() {
                             : insightsTrendMode === "daily"
                               ? dailyRows.length >= minRequiredDays
                               : insightsTrendMode === "7d"
-                                ? insightsRollups.last7.complete && insightsRollups.prior7.complete
+                                ? complete7DayRows.length > 0
                                 : insightsRollups.last30.complete && insightsRollups.prior30.complete;
                           if (!hasRequiredHistory) {
                             const rollingWindow = insightsTrendMode === "7d"
@@ -8424,7 +8428,6 @@ export default function GA4Metrics() {
                             );
                           }
 
-                          let sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
                           const metric = insightsTrendMetric;
                           const isRate = metric === "engagementRate";
                           const isMoney = metric === "revenue";
@@ -8503,6 +8506,11 @@ export default function GA4Metrics() {
                                   Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are skipped, not treated as zero.
                                 </div>
                               )}
+                              {insightsTrendMode === "7d" && (!insightsRollups.last7.complete || !insightsRollups.prior7.complete) && (
+                                <div className="mb-2 text-xs text-muted-foreground/70" data-testid="insights-7d-historical-coverage">
+                                  Chart shows {chartData.length} complete historical 7-day window{chartData.length === 1 ? "" : "s"}. Latest adjacent-window comparison is unavailable because current {insightsRollups.last7.startDate} {"\u2192"} {insightsRollups.last7.endDate} has {insightsRollups.last7.days}/7 imported days and prior {insightsRollups.prior7.startDate} {"\u2192"} {insightsRollups.prior7.endDate} has {insightsRollups.prior7.days}/7. Missing dates are not assumed to be zero.
+                                </div>
+                              )}
                               <div className="h-64" data-testid="insights-trends-chart" data-chart-series={JSON.stringify(chartData)}>
                                 <ResponsiveContainer width="100%" height="100%">
                                   {insightsTrendMode === "monthly" ? (
@@ -8528,7 +8536,8 @@ export default function GA4Metrics() {
                                       <XAxis
                                         dataKey="idx"
                                         type="number"
-                                        domain={[0, Math.max(1, chartData.length - 1)]}
+                                        domain={chartData.length === 1 ? [-1, 1] : [0, Math.max(1, chartData.length - 1)]}
+                                        ticks={chartData.length === 1 ? [0] : undefined}
                                         tickFormatter={(idx: number) => chartData[Math.round(idx)]?.date || ""}
                                         allowDecimals={false}
                                         stroke="#64748b"
@@ -8545,7 +8554,7 @@ export default function GA4Metrics() {
                                           return `${periodLabel} period ending: ${dateLabel}`;
                                         }}
                                       />
-                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : false} connectNulls={insightsTrendMode === "daily"} name={trendMetricLabels[metric] || metric} />
+                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false} connectNulls={insightsTrendMode === "daily"} name={trendMetricLabels[metric] || metric} />
                                     </LineChart>
                                   )}
                                 </ResponsiveContainer>
@@ -8667,6 +8676,13 @@ export default function GA4Metrics() {
                                         const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                                         const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
                                         const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
+                                        if (insightsTrendMode === "7d" && (!cur.complete || !prior.complete)) {
+                                          return (
+                                            <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">
+                                              Latest adjacent 7-day comparison is unavailable. The chart shows only complete historical 7-day windows.
+                                            </td></tr>
+                                          );
+                                        }
 
                                         const getVal = (rollup: typeof cur) => {
                                           if (metric === "engagementRate") return rollup.engagementRate;

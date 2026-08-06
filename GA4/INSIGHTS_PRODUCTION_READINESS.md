@@ -9,7 +9,7 @@ Status: **UNVERIFIED**
 
 Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
 
-Current reviewed implementation SHA: `9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8`
+Current reviewed implementation SHA: `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`
 
 Certified SHA: none
 
@@ -211,6 +211,7 @@ The active audit findings and exact affected paths are recorded below. Status re
 46. **Two schedulers could materialize live GA4 Google Ads spend using different source-identification rules, while an inventory failure looked like a successful zero-work run.** Root cause: the general external-value scheduler identified Google Ads by display text and rewrote GA4 spend independently of the dedicated provider scheduler; the dedicated scheduler swallowed a failed connection inventory read. Path: scheduler inventory/source selection -> provider daily facts -> GA4 spend replacement -> every spend-derived Insights value and freshness claim. Fix under validation: the dedicated Google Ads scheduler is the sole GA4 ad-platform spend updater, exact mapping platform and selected IDs are required, inventory failure throws, and the timer records the failure instead of producing false success.
 47. **Native revenue and imported revenue/spend could use different end dates.** Root cause: native GA4 used the campaign-reporting-timezone completed day while source totals and copy used UTC/current-day boundaries. Path: native and imported financial APIs -> combined Revenue/Spend -> Profit, ROAS, ROI, CPA, KPI/Benchmark values, Data Summary, and findings. Fix under validation: all live financial inputs and direct recomputes end on the same latest completed campaign-reporting day; the UI and evidence packet disclose that exact cutoff.
 48. **The on-demand GA4 daily route could bypass the corrupt-value guard.** Root cause: its provider mapper applied `Number(value) || 0` before the strict storage replacement boundary, converting malformed values to valid zero even though the scheduler and storage paths rejected the raw input. Path: live `/ga4-daily` refresh -> provider mapper -> exact-window replacement -> Trends, Data Summary, KPI/Benchmark values, and findings. Fix under validation: the route now applies the shared production normalizer to raw provider values, rejects invalid or out-of-window rows before replacement, and has an actual Express-route regression proving last-good persistence is untouched.
+49. **The production read-only validator did not compile.** Root cause: the browser request helper redeclared its `body` parameter as a local response variable, a syntax failure outside the main TypeScript project boundary. Path: exact deployed revision -> authenticated owner parity runner -> no executable production evidence. Fix under validation: use a distinct parsed-response variable and compile both executable certification scripts in the machine-gate regression suite.
 
 Every active Critical and Major finding above invalidates the prior certification. The code changes are not cleared until the final committed revision passes the complete local and deployed evidence matrix.
 
@@ -276,11 +277,11 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 | Gate | Result |
 |---|---|
-| focused live Insights and affected UI/timezone suite | PASS on implementation `9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8`: 35 files, 350 tests. |
-| affected auth, isolation, source, parity, lifecycle, and scheduler-consumer suite | PASS inside the same 35-file/350-test production-path packet. The complete shared source-safety file is reported separately below. |
+| focused live Insights and affected UI/timezone suite | PASS on implementation `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`: 35 files, 351 tests, including executable compilation of both production validators. |
+| affected auth, isolation, source, parity, lifecycle, and scheduler-consumer suite | PASS inside the same 35-file/351-test production-path packet. The complete shared source-safety file is reported separately below. |
 | focused production calendar/monthly/currency functions | PASS inside the same packet, including the reported sparse 21-row fixture and actual shared production functions. |
-| TypeScript | PASS: `tsc --noEmit --pretty false` on implementation `9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8`. |
-| production build | PASS: `npm run build` on implementation `9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8`. |
+| TypeScript | PASS: `tsc --noEmit --pretty false` on the runtime implementation inherited by `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`; both external validators compile in the regression packet. |
+| production build | PASS: `npm run build` on the runtime implementation inherited by `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`. |
 | machine certification checker | PASS while retaining the controlling `UNVERIFIED` status; it must be rerun after the documentation boundary is committed. |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.

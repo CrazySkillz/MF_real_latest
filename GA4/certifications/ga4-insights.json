@@ -126,10 +126,10 @@
     "endMarker": "<!-- /ga4-insights-current-status -->"
   },
   "requiredTests": [
-    { "id": "focused_live", "status": "passed", "evidence": "35 files and 350 tests passed on implementation 9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8." },
+    { "id": "focused_live", "status": "passed", "evidence": "35 files and 351 tests passed on implementation f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a, including compilation of both executable production validators." },
     { "id": "auth_scope_source_scheduler", "status": "passed", "evidence": "Authentication, isolation, source-scope, lifecycle, and scheduler-consumer regressions passed in the 350-test production-path packet; the separate shared file result is 77 passed and 10 disabled-Instagram route-extraction failures." },
-    { "id": "typescript", "status": "passed", "evidence": "tsc --noEmit --pretty false passed on implementation 9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8." },
-    { "id": "build", "status": "passed", "evidence": "npm run build passed on implementation 9f7c8e2ce1523cb71e8ef9ef1293e9765bc6d7f8." },
+    { "id": "typescript", "status": "passed", "evidence": "tsc --noEmit --pretty false passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a; external validators compile in the regression packet." },
+    { "id": "build", "status": "passed", "evidence": "npm run build passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a." },
     { "id": "machine_gate", "status": "passed", "evidence": "The machine checker passed while correctly retaining the controlling UNVERIFIED status before deployment." }
   ],
   "externalGates": [

@@ -274,7 +274,6 @@ const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabel
 export default function GA4Metrics() {
   const [location] = useLocation();
   const search = useSearch();
-  const insightsValidationReadOnly = new URLSearchParams(search).get("readOnly") === "1";
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
   const { clients } = useClient();
@@ -293,7 +292,9 @@ export default function GA4Metrics() {
   }, []);
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const insightsValidationReadOnly = activeTab === "insights" && new URLSearchParams(search).get("readOnly") === "1";
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
+  const insightsFinancialScope = activeTab === "insights";
   useEffect(() => {
     const nextSearchParams = new URLSearchParams(search);
     const nextTabParam = nextSearchParams.get("tab");
@@ -2047,7 +2048,9 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, insightsValidationReadOnly],
+    queryKey: insightsFinancialScope
+      ? [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "insights", insightsValidationReadOnly]
+      : [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -2056,7 +2059,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsFinancialScope ? "&insightsScope=1" : ""}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
@@ -2640,7 +2643,9 @@ export default function GA4Metrics() {
     Array.isArray(revenueSourcesResp?.sources) &&
     revenueSourcesResp.sources.length === 0;
   const importedRevenueAvailable = importedRevenueToDateResp !== undefined || revenueSourceDefinitionsKnownEmpty;
-  const financialRevenueAvailable = ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable;
+  const financialRevenueAvailable = activeTab === "insights"
+    ? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable
+    : ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;
   const financialRevenueLoading =
     !financialRevenueAvailable &&
     (ga4ToDateLoading || ga4Loading || breakdownLoading || importedRevenueLoading || revenueSourcesLoading);

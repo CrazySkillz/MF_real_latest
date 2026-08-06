@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
 
-Current reviewed implementation SHA: `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49`
+Current reviewed implementation SHA: none; Overview-isolation correction is local and uncommitted
 
 Certified SHA: none
 
-Latest validated deployment candidate: `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49`
+Latest validated deployment candidate: none
 
-Reason: exact deployed candidate `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49` now requests native GA4 financial reports in the campaign currency, and authenticated production evidence returns `USD 46,101.90`; the imported-revenue API returns `USD 16,700.00`; and both live Insights financial surfaces render `USD 62,801.90`. This removes the prior unavailable state but does not establish the user-asserted `USD 58,935.33`. The connected Shopify source remains authoritative zero for its saved `utm_campaign = brand_search_q1` mapping: a full-history provider read returned ten orders, no non-empty UTM campaign values, and only two eligible tag-attributed orders of USD 300 each outside the live campaign window. The value `58,935.33` exists in persisted KPI history but is not a current source-backed Total Revenue input. Status remains `UNVERIFIED` while this value contradiction, native daily/to-date currency parity, tenant isolation, deterministic scheduler, complete owner parity, and final dependency verification remain open.
+Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. The local correction restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. No corrected revision is certified or deployed, and the live Insights value contradiction remains unresolved.
 
 <!-- /ga4-insights-current-status -->
 
@@ -44,8 +44,8 @@ Excluded from this certification:
 - unrelated GA4 tabs, except a shared producer whose value is rendered by live Insights
 - alerts and notifications
 - simulated/test-only GA4 properties such as `yesop`
-- LinkedIn, Meta/Facebook, and Instagram platform connectors and analytics; they are not enabled in the current GA4 Insights release, are absent from its new-spend source chooser, and explicit foreign platform contexts must not feed GA4 Insights
-- Google Ads; no live test account is available for this release, so it must be absent from the live source chooser and must not supply a value rendered by GA4 Insights
+- LinkedIn, Meta/Facebook, and Instagram platform connectors and analytics; they are not enabled as Insights inputs and explicit foreign platform contexts must not feed GA4 Insights
+- Google Ads Insights values; no live test account is available, so Google Ads cannot supply a value certified by Insights. Overview chooser availability is separately owned and unchanged by this exclusion.
 
 The excluded items are outside the Insights certification definition. They are not deferred Insights validation and do not qualify or limit a future clean live-tab certification.
 
@@ -217,6 +217,8 @@ The active audit findings and exact affected paths are recorded below. Status re
 9. **The live Google Ads spend source trusted a browser-calculated amount.** Root cause: the source wizard summed preview rows client-side and posted the resulting amount through the generic manual-spend route, which persisted it without recomputing from campaign-owned provider facts. An authenticated caller could therefore change every spend-derived executive value without changing Google Ads data. Path: Google Ads daily facts -> browser preview/amount -> manual-spend route -> GA4-context spend records -> Spend, Profit, ROAS, ROI, CPA, KPI/Benchmark values, and findings. Fix under validation: treat the client payload as selection only; recompute the amount, per-day records, account label, and breakdown from the selected campaign's server-held Google Ads facts through one exercised production helper.
 
 ### Major
+56. **The Insights audit changed Overview-owned behavior and a shared Overview revenue calculation.** Root cause: the audit treated shared financial inputs and the Overview source chooser as if Insights owned them. Path: GA4 provider request and fallback -> `/ga4-to-date` -> page-wide financial availability -> Overview Total Revenue; and Overview Total Spend `+` chooser. Effect: native revenue could become `Unavailable`, source selection changed, and later currency conversion changed Overview values. The local correction restores the normal Overview request and source precedence, keeps the stricter currency request on `insightsScope=1` only, restores the Overview chooser, and adds cross-tab boundary regressions. Status remains Major/open until the corrected commit is deployed and authenticated Overview and Insights parity pass.
+
 
 1. **The certification record and narrative could contradict each other.** Root cause: no machine guard rejected a ready claim while the controlling JSON or status block remained `UNVERIFIED`. Path: readiness documents -> machine record -> release decision. Fix: committed guard `dc3c46db407f30f529760263eac9281e1965ae69` binds the current status block, required dependencies, evidence gates, hashes, and exact SHAs.
 2. **Sparse rows could be described as satisfying or merely missing a fixed 14-row requirement.** Root cause: visible copy and some guards treated response row count as calendar coverage. Path: 60-day daily response -> Trends gate/copy -> 7d/30d chart and recommendation eligibility. Fix under validation: use the actual shared current/prior calendar rollups and disclose both exact windows and imported-day counts. The reported 21-row fixture correctly remains incomplete because its current and prior seven-day windows contain 1/7 and 0/7 dates.

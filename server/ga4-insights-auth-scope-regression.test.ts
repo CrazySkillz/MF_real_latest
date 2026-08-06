@@ -44,13 +44,13 @@ describe("GA4 Insights authentication and tenant scope", () => {
     }
   });
 
-  it("keeps later-release ad connectors outside the current GA4 Insights source chooser", () => {
+  it("does not let the Insights certification redefine the Overview source chooser", () => {
     const modal = readFileSync(join(process.cwd(), "client", "src", "components", "AddSpendWizardModal.tsx"), "utf8");
     const selectStart = modal.indexOf('{step === "select" && (');
     const selectEnd = modal.indexOf('{step === "ad_platform" && (', selectStart);
     const currentReleaseChooser = modal.slice(selectStart, selectEnd);
 
-    expect(currentReleaseChooser).not.toContain("Google Ads");
+    expect(currentReleaseChooser).toContain("Google Ads");
     expect(currentReleaseChooser).not.toContain("LinkedIn");
     expect(currentReleaseChooser).not.toContain("Meta");
     expect(currentReleaseChooser).not.toContain("Instagram");
@@ -136,6 +136,9 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sources, scopedTotals?.currency, "Spend")');
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true)');
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Imported revenue")');
+    expect(source).toContain('const insightsFinancialScope = validationReadOnly || String(req.query.insightsScope || "").trim() === "1"');
+    expect(source).toContain("if (!insightsFinancialScope)");
+    expect(source).toContain("if (insightsFinancialScope)");
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Spend")');
     const helper = readFileSync(join(process.cwd(), "shared", "ga4-insights.ts"), "utf8");
     expect(helper).toContain("does not match campaign currency");

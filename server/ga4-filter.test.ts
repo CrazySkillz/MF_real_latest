@@ -171,7 +171,6 @@ describe("GA4 campaign value picker", () => {
       "2026-06-01",
       "2026-06-17",
       "summer_sale",
-      "USD",
     );
 
     expect(result.totals).toEqual({
@@ -183,12 +182,12 @@ describe("GA4 campaign value picker", () => {
       engagedSessions: 0,
       engagementRate: 0,
     });
-    expect(result.currencyCode).toBe("USD");
+    expect(result.currencyCode).toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
+    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === undefined)).toBe(true);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
-    expect(fallbackBody.dateRanges[0].endDate).toBe("2026-06-17");
+    expect(fallbackBody.dateRanges[0].endDate).toBe("today");
   });
 
   it("supplements to-date conversion and revenue values without changing traffic totals", async () => {
@@ -238,7 +237,7 @@ describe("GA4 campaign value picker", () => {
     expect(supplementBody.metrics).toEqual([{ name: "conversions" }, { name: "totalRevenue" }]);
   });
 
-  it("preserves a nonzero native field while supplementing only the missing to-date field", async () => {
+  it("keeps any nonzero native conversion/revenue field authoritative", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const isSupplement = (body?.metrics || []).length === 2;
@@ -256,8 +255,8 @@ describe("GA4 campaign value picker", () => {
       "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale",
     );
 
-    expect(result.totals).toMatchObject({ sessions: 85, conversions: 4, revenue: 123.45 });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.totals).toMatchObject({ sessions: 85, conversions: 4, revenue: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("treats negative native revenue as authoritative instead of empty", async () => {

@@ -114,7 +114,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(section).toContain('revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable"');
     expect(section).toContain("Showing last-good financial values");
     expect(page).toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
-    expect(page).toContain("const financialRevenueAvailable = ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable;");
+    expect(page).toContain('const financialRevenueAvailable = activeTab === "insights"');
+    expect(page).toContain("? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable");
+    expect(page).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
     expect(page).toContain('if (ga4ToDateError) return "unavailable";');
     expect(page).toContain('id: ga4ToDateResp === undefined ? "financial:ga4_to_date_unavailable" : "financial:ga4_to_date_stale"');
     expect(page).toContain('title: ga4ToDateResp === undefined ? "GA4 lifetime totals are unavailable" : "GA4 lifetime totals are stale"');

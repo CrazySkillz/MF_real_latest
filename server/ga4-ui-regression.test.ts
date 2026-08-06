@@ -245,7 +245,9 @@ describe("GA4 UI regression guard", () => {
     );
     expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
     expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
-    expect(ga4Metrics).toContain("const financialRevenueAvailable = ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable;");
+    expect(ga4Metrics).toContain('const financialRevenueAvailable = activeTab === "insights"');
+    expect(ga4Metrics).toContain("? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable");
+    expect(ga4Metrics).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
     expect(ga4Metrics).toMatch(/spendSourceDefinitionsKnownEmpty\) &&\r?\n\s+spendMetricAvailable;/);
     expect(ga4Metrics).not.toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;");
     expect(ga4Metrics).not.toContain("      spendSourceDefinitionsKnownEmpty);");
@@ -648,7 +650,7 @@ describe("GA4 UI regression guard", () => {
     expect(mapSection).not.toContain("Loading spreadsheet data");
   });
 
-  it("limits the current spend chooser to Google Sheets and CSV", () => {
+  it("keeps the Overview spend chooser independent from the Insights certification boundary", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooserStart = spendModal.indexOf('{step === "select" && (');
     const chooserEnd = spendModal.indexOf('{step === "ad_platform" && (', chooserStart);
@@ -658,7 +660,7 @@ describe("GA4 UI regression guard", () => {
     expect(chooserEnd).toBeGreaterThan(chooserStart);
     expect(chooser).not.toContain("LinkedIn Ads");
     expect(chooser).not.toContain("Meta / Facebook");
-    expect(chooser).not.toContain("Google Ads");
+    expect(chooser).toContain("Google Ads");
     expect(chooser).toContain("Google Sheets");
     expect(chooser).not.toContain('{props.platformContext !== "ga4" && (');
     expect(chooser).toContain("Upload CSV");
@@ -787,7 +789,10 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsValidationReadOnly]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, insightsValidationReadOnly]');
-    expect(ga4Metrics).toContain("queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, insightsValidationReadOnly]");
+    expect(ga4Metrics).toContain("queryKey: insightsFinancialScope");
+    expect(ga4Metrics).toContain('? [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "insights", insightsValidationReadOnly]');
+    expect(ga4Metrics).toContain(": [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId]");
+    expect(ga4Metrics).toContain('insightsFinancialScope ? "&insightsScope=1" : ""');
     expect(ga4Metrics).not.toContain("ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&dateRange=");
   });
 });

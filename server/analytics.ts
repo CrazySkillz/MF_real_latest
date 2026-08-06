@@ -887,7 +887,7 @@ export class GoogleAnalytics4Service {
     endDate: string,
     campaignFilter?: CampaignFilter,
     currencyCode?: string,
-  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode?: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
     if (requestedCurrencyCode && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) throw new Error('GA4 report currency is invalid');
@@ -931,8 +931,12 @@ export class GoogleAnalytics4Service {
       const engagedSessions = parseInt(String(mv?.[5]?.value || '0'), 10) || 0;
       const rawEngagementRate = Number.parseFloat(String(mv?.[6]?.value || '0')) || 0;
       const engagementRate = rawEngagementRate || (sessions > 0 ? engagedSessions / sessions : 0);
-      const currencyCode = String(json?.metadata?.currencyCode || "").trim().toUpperCase() || null;
-      return { revenueMetric, currencyCode, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate } };
+      const responseCurrencyCode = String(json?.metadata?.currencyCode || "").trim().toUpperCase() || null;
+      return {
+        revenueMetric,
+        ...(requestedCurrencyCode ? { currencyCode: responseCurrencyCode } : {}),
+        totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate },
+      };
     };
 
     const runWithRevenueFallback = async (scopeFilter: any, endDateOverride: string = endDate) => {
@@ -991,8 +995,7 @@ export class GoogleAnalytics4Service {
 
     const isEmptyTotals = (result: Awaited<ReturnType<typeof run>>) => {
       const totals = result?.totals || {};
-      return [totals.sessions, totals.users, totals.conversions, totals.pageviews, totals.revenue]
-        .every((value) => Number(value || 0) === 0);
+      return (Number(totals.sessions || 0) + Number(totals.users || 0) + Number(totals.conversions || 0) + Number(totals.pageviews || 0) + Number(totals.revenue || 0)) <= 0;
     };
 
     const hasTrafficTotals = (result: Awaited<ReturnType<typeof run>>) => {
@@ -1004,25 +1007,24 @@ export class GoogleAnalytics4Service {
       );
     };
 
+    const hasConversionRevenueTotals = (result: Awaited<ReturnType<typeof run>>) => {
+      const totals = result?.totals || {};
+      return Number(totals.conversions || 0) > 0 || Number(totals.revenue || 0) > 0;
+    };
+
     const supplementConversionRevenueTotals = async (result: Awaited<ReturnType<typeof run>>) => {
       const campaignNameFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
-      const currentConversions = Number(result?.totals?.conversions || 0);
-      const currentRevenue = Number(result?.totals?.revenue || 0);
-      if (!campaignNameFilter || !hasTrafficTotals(result) || (currentConversions !== 0 && currentRevenue !== 0)) return result;
+      if (!campaignNameFilter || !hasTrafficTotals(result) || hasConversionRevenueTotals(result)) return result;
 
       const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(() => null);
-      const supplementalConversions = Number(supplement?.totals?.conversions || 0);
-      const supplementalRevenue = Number(supplement?.totals?.revenue || 0);
-      if (!supplement || (supplementalConversions === 0 && supplementalRevenue === 0)) return result;
-      const useSupplementalRevenue = currentRevenue === 0 && supplementalRevenue !== 0;
+      if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
 
       return {
-        ...result,
-        revenueMetric: useSupplementalRevenue ? supplement.revenueMetric || result.revenueMetric : result.revenueMetric,
+        revenueMetric: supplement.revenueMetric || result.revenueMetric,
         totals: {
           ...result.totals,
-          conversions: currentConversions === 0 && supplementalConversions !== 0 ? supplementalConversions : currentConversions,
-          revenue: useSupplementalRevenue ? supplementalRevenue : currentRevenue,
+          conversions: supplement.totals.conversions,
+          revenue: supplement.totals.revenue,
         },
       };
     };
@@ -1030,7 +1032,7 @@ export class GoogleAnalytics4Service {
     try {
       const result = await runWithRevenueFallback(campaignDimensionFilter);
       if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result);
-      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter).catch(() => null);
+      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(() => null);
       const selectedResult = utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
       return await supplementConversionRevenueTotals(selectedResult);
     } catch (e: any) {

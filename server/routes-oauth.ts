@@ -8804,6 +8804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
       const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
       const requestedPropertyId = String(req.query.propertyId || "").trim();
+      const insightsFinancialScope = validationReadOnly || String(req.query.insightsScope || "").trim() === "1";
       if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
 
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
@@ -8927,10 +8928,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const attempt = async (token: string) => {
-        return await ga4Service.getTotalsWithRevenue(String(connection.propertyId), token, startDateUsed, endDateUsed, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
+        if (!insightsFinancialScope) {
+          return await ga4Service.getTotalsWithRevenue(
+            String(connection.propertyId),
+            token,
+            startDateUsed,
+            endDateUsed,
+            campaignFilter,
+          );
+        }
+        return await ga4Service.getTotalsWithRevenue(
+          String(connection.propertyId),
+          token,
+          startDateUsed,
+          endDateUsed,
+          campaignFilter,
+          String((campaign as any)?.currency || "USD").trim().toUpperCase(),
+        );
       };
       const validateCurrency = (result: any) => {
-        assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true);
+        if (insightsFinancialScope) {
+          assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true);
+        }
         return result;
       };
 

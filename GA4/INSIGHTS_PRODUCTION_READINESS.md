@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Status: **PRODUCTION_READY**
+Status: **UNVERIFIED**
 
-Certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`
+Last certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad` (invalidated)
 
-Deployed SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`
+Deployed SHA observed at invalidation: `2527cb8f79061ff341f050286adad0f90ce69589`
 
-Certification date: `2026-08-06` (`Europe/Amsterdam`)
+Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
-Open findings: Critical `0`; Major `0`; Minor `0`.
+Open findings: Critical `0`; Major `1`; Minor `0`.
 
-Decision: the live GA4 Insights tab is revision-specifically production-ready for the boundary below. Render health, deterministic campaign-only daily refresh plus KPI/Benchmark recompute, authenticated owner API/UI parity, non-owner fail-closed isolation, USD/Amsterdam/property/filter scope, freshness, financial reconciliation, and semantic persistence safety all passed on the exact deployed SHA. Any dependency, configuration, upstream producer, rendered transform, newly discovered consumer, or contradictory production result invalidates this certification.
+Decision: the prior certification is invalidated. A contradictory production result proved the Daily chart was anchored to the completed-day cutoff rather than the latest imported day, pushing valid imported history outside the visible 30-day chart. The candidate correction anchors only the Daily chart to the latest imported day; current status remains unverified until the new revision is deployed and validated.
 
 <!-- /ga4-insights-current-status -->
 

@@ -49,7 +49,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain("Number(insightsRollups?.availableDays || 0) < minDays");
     expect(page).toContain("Current 7-day window ${insightsRollups.last7.startDate}");
     expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
-    expect(page).toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");
+    expect(page).toContain("const finalDate = String(sorted[sorted.length - 1]?.date || \"\");");
+    expect(page).not.toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");
     expect(page).toContain("addGA4InsightsDateDays(finalDate, -29)");
     expect(page).not.toContain("const dailyChartRows = sorted.slice(-30);");
     expect(page).toContain('data-testid="insights-daily-chart-coverage"');

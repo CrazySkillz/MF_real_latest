@@ -1,11 +1,11 @@
 {
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
-    "status":  "PRODUCTION_READY",
-    "lastReviewedSha":  "80ffc60c4ac38b8bb01a91373a6a41d552f066ad",
-    "certifiedSha":  "80ffc60c4ac38b8bb01a91373a6a41d552f066ad",
-    "deployedSha":  "80ffc60c4ac38b8bb01a91373a6a41d552f066ad",
-    "invalidationReason":  null,
+    "status":  "UNVERIFIED",
+    "lastReviewedSha":  "2527cb8f79061ff341f050286adad0f90ce69589",
+    "certifiedSha":  null,
+    "deployedSha":  null,
+    "invalidationReason":  "Contradictory production UI proved the Daily chart cutoff anchor discarded valid imported history; candidate correction requires deployed validation.",
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [
@@ -26,7 +26,7 @@
                                                       "raw channel rows only; no guessed or proportional allocation"
                                                   ],
                                   "windowRules":  [
-                                                      "campaign-reporting-timezone completed days only",
+                                                      "campaign-reporting-timezone completed days only; the Daily chart ends on the latest imported day while rolling comparisons remain completed-day-cutoff anchored",
                                                       "two exact complete calendar windows for comparisons",
                                                       "partial or incomplete months are not compared with full months",
                                                       "valid zero, unavailable, stale last-good, blocked, and insufficient data remain distinct"

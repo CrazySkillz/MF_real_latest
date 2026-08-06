@@ -8437,7 +8437,7 @@ export default function GA4Metrics() {
                           if (insightsTrendMode === "daily") {
                             // Show last 30 days for a readable daily chart
                             const dailyRowsByDate = new Map(sorted.map((row: any) => [String(row.date || ""), row]));
-                            const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || "");
+                            const finalDate = String(sorted[sorted.length - 1]?.date || "");
                             let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
                             dailyChartStartDate = cursor;
                             dailyChartEndDate = finalDate;

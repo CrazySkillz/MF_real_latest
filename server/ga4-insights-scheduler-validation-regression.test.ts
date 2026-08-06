@@ -10,6 +10,7 @@ describe("GA4 Insights deterministic scheduler production evidence guard", () =>
 
     expect(script).toContain("GA4_INSIGHTS_EXPECTED_SHA");
     expect(script).toContain("ga4-daily-scheduler/run-now");
+    expect(script).toContain('propertyId=${encodeURIComponent(propertyId)}&readOnly=1');
     expect(script).toContain('run.body?.after?.lastRunStatus !== "success"');
     expect(script).toContain('certificationStatus !== "validation_output_only"');
     expect(script).toContain("Post-run completed-day window parity failed");

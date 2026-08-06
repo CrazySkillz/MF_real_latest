@@ -74,7 +74,7 @@ try {
   await page.waitForFunction(() => Boolean((window as any).Clerk?.session?.id), undefined, { timeout: 60000 });
   sessionId = await page.evaluate(() => String((window as any).Clerk?.session?.id || ""));
 
-  const dailyPath = `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}`;
+  const dailyPath = `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`;
   const before = await request(page, dailyPath);
   if (!before.ok) throw new Error(`Pre-run daily read failed (${before.status})`);
   const run = await request(page, `/api/campaigns/${CAMPAIGN_ID}/ga4-daily-scheduler/run-now`, "POST");

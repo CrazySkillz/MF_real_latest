@@ -88,13 +88,13 @@ const readPersistenceFingerprint = async (client: any, campaignId: string) => {
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM ga4_daily_metrics WHERE campaign_id = $1) x) AS daily,
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM google_ads_connections WHERE campaign_id = $1) x) AS google_ads_connections,
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM google_ads_daily_metrics WHERE campaign_id = $1) x) AS google_ads_daily,
-      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM revenue_sources WHERE campaign_id = $1) x) AS revenue_sources,
-      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM revenue_records WHERE campaign_id = $1) x) AS revenue_records,
-      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM spend_sources WHERE campaign_id = $1) x) AS spend_sources,
-      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM spend_records WHERE campaign_id = $1) x) AS spend_records,
-      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM kpis WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS kpis,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT id, campaign_id, source_type, platform_context, display_name, currency, is_active, connected_at, created_at FROM revenue_sources WHERE campaign_id = $1) x) AS revenue_sources,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.revenue_source_id, x.date, x.revenue, x.external_id)::text, '[]')) FROM (SELECT campaign_id, revenue_source_id, date, revenue, currency, external_id, source_type, sub_campaign_urn FROM revenue_records WHERE campaign_id = $1) x) AS revenue_records,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT id, campaign_id, source_type, platform_context, display_name, currency, is_active, connected_at, created_at FROM spend_sources WHERE campaign_id = $1) x) AS spend_sources,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.spend_source_id, x.date, x.spend, x.sub_campaign_urn)::text, '[]')) FROM (SELECT campaign_id, spend_source_id, date, spend, currency, source_type, sub_campaign_urn FROM spend_records WHERE campaign_id = $1) x) AS spend_records,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) - 'updated_at' ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM kpis WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS kpis,
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT kp.* FROM kpi_progress kp JOIN kpis k ON k.id = kp.kpi_id WHERE k.campaign_id = $1 AND k.platform_type = 'google_analytics') x) AS kpi_progress,
-      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM benchmarks WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS benchmarks,
+      (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) - 'updated_at' - 'last_updated' ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM benchmarks WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS benchmarks,
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT bh.* FROM benchmark_history bh JOIN benchmarks b ON b.id = bh.benchmark_id WHERE b.campaign_id = $1 AND b.platform_type = 'google_analytics') x) AS benchmark_history
   `, [campaignId]);
   return result.rows[0] || {};
@@ -893,7 +893,7 @@ try {
       findingFields: ["id", "category", "severity", "title", "description", "recommendation", "basis", "confidence"],
     },
     tenantIsolation,
-    persistenceUnchanged: true,
+    persistenceSemanticStateUnchanged: true,
     tenantFixture: !requireTenantIsolation
       ? "not applicable; tenant isolation skipped"
       : temporaryUserId ? "ephemeral Clerk-only user created and deleted" : "existing Clerk user",

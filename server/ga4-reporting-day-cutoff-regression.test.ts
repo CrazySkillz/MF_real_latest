@@ -52,6 +52,22 @@ describe("GA4 reporting-day cutoff", () => {
     });
   });
 
+  it("treats a completed full-window refresh as current when GA4 returns sparse activity rows", () => {
+    expect(resolveGA4DailyFreshness({
+      dataThroughDate: "2026-08-05",
+      expectedRefreshAt: new Date("2026-08-06T01:00:00.000Z"),
+      lastCompletedRefreshAt: "2026-08-06T10:30:00.000Z",
+      oldestDueMissingDailyDate: "2026-08-05",
+      providerCoverageThroughDate: null,
+      now: new Date("2026-08-06T12:00:00.000Z"),
+    })).toEqual({
+      providerCoverageThroughDate: null,
+      oldestDueMissingDailyDate: null,
+      refreshIsStale: false,
+    });
+  });
+
+
   it("retains a failed provider warning even when prior coverage was current", () => {
     expect(resolveGA4DailyFreshness({
       dataThroughDate: "2026-07-29",

@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
 
-Current reviewed implementation SHA: `2655f3c928868128b9ef13b76d54942053474b47`
+Current reviewed implementation SHA: `b634d991602e149c926da05422833b46475ab4e8`
 
 Certified SHA: none
 
 Latest validated deployment candidate: none
 
-Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` preserves the requested currency metadata through the Insights-only supplemental merge after deployed `56edb3af429a64952bc30376c349001a0dd0442e` failed its authenticated read-only financial check. Follow-up `2655f3c928868128b9ef13b76d54942053474b47` validates the exact Insights Data API response currency/timezone metadata without decrypting production credentials locally. The current correction is not deployed or certified, and the live Insights value contradiction remains unresolved.
+Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` preserves the requested currency metadata through the Insights-only supplemental merge after deployed `56edb3af429a64952bc30376c349001a0dd0442e` failed its authenticated read-only financial check. Follow-up `2655f3c928868128b9ef13b76d54942053474b47` validates the exact Insights Data API response currency/timezone metadata without decrypting production credentials locally. Follow-up `b634d991602e149c926da05422833b46475ab4e8` compares the first twelve generated findings in the documented category-grouped render order. The current correction is not deployed or certified, and the live Insights value contradiction remains unresolved.
 
 <!-- /ga4-insights-current-status -->
 
@@ -221,6 +221,8 @@ The active audit findings and exact affected paths are recorded below. Status re
 
 57. **The production validator required local decryption of a production-only GA4 token.** Root cause: the external runner queried encrypted credentials and called the Admin API directly, even though the local evidence environment intentionally does not hold the production token-encryption key. Path: authenticated page/API parity -> local credential decryption -> property metadata check -> certification abort. Effect: exact deployed `4830767193cf434d0de464436b4e06e412f33ab2` reached authenticated parity but could not complete its evidence packet. Correction `2655f3c928868128b9ef13b76d54942053474b47` propagates Data API response timezone only for the explicit Insights request and validates the provider-returned response currency/timezone; normal Overview requests still expose neither field. Status remains Major/open until the corrected commit is deployed and the full authenticated packet passes.
 
+58. **The production validator compared grouped visible findings to an ungrouped generated sequence.** Root cause: the UI caps the first twelve findings and then renders them in the documented `setup`, `targets`, `trends`, `finance`, `context` category order, while the validator expected the original flat priority order. Path: complete generated finding metadata -> first-twelve cap -> grouped live cards -> authenticated parity comparison. Effect: exact deployed `d981a0a73c398e8b08e028239b20bcb15de232c4` failed despite the same finding records being present. Correction `b634d991602e149c926da05422833b46475ab4e8` applies the production category order to the expected first-twelve packet before field-for-field comparison. Status remains Major/open until the corrected commit is deployed and the full authenticated packet passes.
+
 
 1. **The certification record and narrative could contradict each other.** Root cause: no machine guard rejected a ready claim while the controlling JSON or status block remained `UNVERIFIED`. Path: readiness documents -> machine record -> release decision. Fix: committed guard `dc3c46db407f30f529760263eac9281e1965ae69` binds the current status block, required dependencies, evidence gates, hashes, and exact SHAs.
 2. **Sparse rows could be described as satisfying or merely missing a fixed 14-row requirement.** Root cause: visible copy and some guards treated response row count as calendar coverage. Path: 60-day daily response -> Trends gate/copy -> 7d/30d chart and recommendation eligibility. Fix under validation: use the actual shared current/prior calendar rollups and disclose both exact windows and imported-day counts. The reported 21-row fixture correctly remains incomplete because its current and prior seven-day windows contain 1/7 and 0/7 dates.
@@ -362,18 +364,27 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | Overview isolation TypeScript/build/machine gate | PASS: `npm run check`, `npm run build` (3,466 modules), and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
 | response-metadata validator correction | PASS on `2655f3c928868128b9ef13b76d54942053474b47`: 7 production/shared files, 132 tests; explicit Insights requests propagate provider response currency/timezone, normal Overview requests expose neither field, and the validator cannot decrypt production credentials locally. |
 | response-metadata TypeScript/build/machine gate | PASS: `npm run check`, `npm run build` (3,466 modules), and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
+| grouped-findings validator correction | PASS on `b634d991602e149c926da05422833b46475ab4e8`: 11 focused validator tests and `npm run check`; the expected packet is capped before applying the documented category render order. The production app bundle is unchanged from the prior passing build. |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `4830767193cf434d0de464436b4e06e412f33ab2`
+## Current Production Evidence - `d981a0a73c398e8b08e028239b20bcb15de232c4`
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: `/api/health` reported `d981a0a73c398e8b08e028239b20bcb15de232c4` in production |
+| authenticated owner/non-owner packet | FAIL: authenticated owner API/UI parity reached the complete finding-card comparison, then rejected the documented grouped render order as though it were the flat generated order. Cleanup succeeded; the temporary session was revoked and user deleted. This failure invalidates `d981a0a73c398e8b08e028239b20bcb15de232c4` as a certification candidate. |
+| corrected replacement | PENDING: deploy `b634d991602e149c926da05422833b46475ab4e8`, confirm exact revision, then rerun the complete authenticated packet. |
+
+## Superseded Production Evidence - `4830767193cf434d0de464436b4e06e412f33ab2`
 
 | Gate | Result |
 |---|---|
 | exact Render revision | PASS: `/api/health` reported `4830767193cf434d0de464436b4e06e412f33ab2` in production |
-| authenticated owner/non-owner packet | FAIL: authenticated Insights/API parity reached the independent metadata gate, then the external runner could not decrypt the production GA4 credential because its local environment intentionally lacks the production token-encryption key. Cleanup runs in `finally`; the temporary session was revoked and user deleted. This failure invalidates `4830767193cf434d0de464436b4e06e412f33ab2` as a certification candidate. |
-| corrected replacement | PENDING: deploy `2655f3c928868128b9ef13b76d54942053474b47`, confirm exact revision, then rerun the complete authenticated packet. |
+| authenticated owner/non-owner packet | FAIL: authenticated Insights/API parity reached the independent metadata gate, then the external runner could not decrypt the production GA4 credential because its local environment intentionally lacks the production token-encryption key. Cleanup succeeded; the temporary session was revoked and user deleted. This failure invalidates `4830767193cf434d0de464436b4e06e412f33ab2` as a certification candidate. |
+| corrected replacement | deployed as descendant `d981a0a73c398e8b08e028239b20bcb15de232c4`; that revision reached the later grouped-findings gate recorded above. |
 
 ## Superseded Production Evidence - `56edb3af429a64952bc30376c349001a0dd0442e`
 

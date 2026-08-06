@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
 
-Current reviewed implementation SHA: `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`
+Current reviewed implementation SHA: `3862d5afabd5210e305013c88bfce806415786d9`
 
 Certified SHA: none
 
-Latest validated deployment candidate: `25285f493f343c49a0d7867f8a9753d10be1fdbf`
+Latest validated deployment candidate: `3862d5afabd5210e305013c88bfce806415786d9`
 
-Reason: deployed candidate `25285f493f343c49a0d7867f8a9753d10be1fdbf` clears the optional GA4/Sheets Render-secret dependency and reports the exact remaining financial blocker: selected GA4 property `542352127` is GBP while the campaign and every active imported source and persisted record are USD. Relabelling those imported values GBP is prohibited. Two production-validator evidence defects found during this check are corrected locally with focused guards but are not yet committed. Previously classified Critical and Major fixes remain uncleared until one final revision passes the complete local and deployed evidence matrix.
+Reason: exact deployed candidate `3862d5afabd5210e305013c88bfce806415786d9` proves the remaining financial blocker: selected GA4 property `542352127` reports GBP while it is intended to be USD and the campaign plus every active imported source and persisted record are USD. Relabelling imported values or bypassing the currency guard is prohibited. Commit 4 passes the expanded local production-path packet, TypeScript, build, machine checker, exact-SHA health, and OAuth initiation. Status remains `UNVERIFIED` until the GA4 property actually reports USD and the same deployed candidate passes complete owner parity, tenant isolation, deterministic scheduler, UI/API parity, and final dependency verification.
 
 <!-- /ga4-insights-current-status -->
 
@@ -64,7 +64,7 @@ This plan is finite. Certification stops at the live-tab boundary above.
 
 ## Ordered Remaining Commit Queue
 
-Execution state: **Commit 1 pushed as `95bc50e5`; Commit 2 pushed and deployed as `25285f49`; Commit 3 validator corrections are locally validated; final candidate and evidence commits remain pending.** The controlling machine status remains `UNVERIFIED` until every production gate passes.
+Execution state: **Commit 1 pushed as `95bc50e5`; Commit 2 pushed and deployed as `25285f49`; Commit 3 pushed as `92b1ac51`; Commit 4 pushed and deployed as `3862d5af`; Commit 5 is this documentation-only evidence commit.** The controlling machine status remains `UNVERIFIED` until every production gate passes.
 
 ### Commit 1 - `fix(ga4): enforce the Insights release and OAuth boundary`
 
@@ -105,6 +105,8 @@ Completion gate: focused validator regression passes and the read-only validator
 - run authenticated read-only owner API/UI parity, non-owner isolation, completed-day/timezone/window/source-state parity, and deterministic scheduler validation only for producers that directly update live Insights inputs
 
 Completion gate: every in-scope command and deployed check passes on the same SHA with no Critical or Major finding open. Any failure leaves status `UNVERIFIED` and creates a new classified finding before further work.
+
+Local result: PASS on `3862d5afabd5210e305013c88bfce806415786d9` - 53 production-path files and 498 tests, TypeScript, production build, and machine checker. Production-only gates remain open.
 
 ### Commit 5 - `docs(ga4): record exact Insights certification evidence [skip render]`
 
@@ -266,12 +268,17 @@ The active audit findings and exact affected paths are recorded below. Status re
 48. **The on-demand GA4 daily route could bypass the corrupt-value guard.** Root cause: its provider mapper applied `Number(value) || 0` before the strict storage replacement boundary, converting malformed values to valid zero even though the scheduler and storage paths rejected the raw input. Path: live `/ga4-daily` refresh -> provider mapper -> exact-window replacement -> Trends, Data Summary, KPI/Benchmark values, and findings. Fix under validation: the route now applies the shared production normalizer to raw provider values, rejects invalid or out-of-window rows before replacement, and has an actual Express-route regression proving last-good persistence is untouched.
 49. **The production read-only validator did not compile.** Root cause: the browser request helper redeclared its `body` parameter as a local response variable, a syntax failure outside the main TypeScript project boundary. Path: exact deployed revision -> authenticated owner parity runner -> no executable production evidence. Fix under validation: use a distinct parsed-response variable and compile both executable certification scripts in the machine-gate regression suite.
 50. **The in-scope production OAuth paths depend on absent optional state secrets.** Root cause: GA4 and Google Sheets state signing does not yet derive purpose-separated signing keys from the stable token-encryption secret already required for production token storage. Path: GA4/Sheets connect initiation -> signed campaign-bound state/provider authorization -> selected native/imported inputs -> live Insights. Production evidence: authenticated requests on deployed `0a066fd38673a45d1e8639646f7099c230d144cc` returned HTTP 500. Required fix: Commit 1 adds the secure production fallback and focused signed-state tests without requiring new Render variables.
-51. **The selected production campaign cannot serve native GA4 financials under its configured currency.** Root cause: the live GA4 totals provider reports a non-USD native revenue currency while the campaign is USD; the fail-closed currency guard correctly rejects the combination. Path: selected GA4 property -> `ga4-to-date` -> native Revenue -> Profit, ROAS, ROI, CPA, KPI/Benchmark inputs, Data Summary, and findings. Production evidence: the authenticated read-only endpoint returned HTTP 500 with `GA4 native revenue currency does not match campaign currency USD`; the independent GA4 Admin metadata request also returned 401, so property metadata parity remains unproven. Required fix: explicitly align the campaign and every active financial source to the actual GA4 property currency, or select the intended matching property; do not convert or relabel values implicitly.
+51. **The selected production campaign cannot serve native GA4 financials under its configured currency.** Root cause: GA4 property `542352127` reports GBP even though the property is intended to be USD and the campaign plus every active imported definition and record are USD; the fail-closed currency guard correctly rejects the combination. Path: selected GA4 property -> `ga4-to-date` -> native Revenue -> Profit, ROAS, ROI, CPA, KPI/Benchmark inputs, Data Summary, and findings. Production evidence: the authenticated read-only endpoint returned HTTP 500 with `GA4 native revenue currency GBP does not match campaign currency USD`. Required external correction: set property `542352127` to USD in GA4 Admin, then prove both Admin metadata and live totals report USD; do not convert, relabel, or bypass the guard.
 52. **Google Ads remains exposed without a certifiable live provider boundary for this release.** Root cause: the source chooser still advertises the connector even though no authorized live Google Ads test account is available and the connector is explicitly outside the release boundary. Path: live source chooser -> Google Ads connection/materialization -> Spend and every spend-derived Insights value. Required fix: Commit 1 removes the chooser entry and excludes the connector from the certified dependency boundary while preserving fail-closed backend guards for a later release.
 53. **The read-only production validator rejected a successful GA4 OAuth response.** Root cause: it read camel-case `oauthUrl` while the exercised production route returns `oauth_url`. Path: authenticated GA4 OAuth initiation -> validator URL/state parsing -> owner production evidence packet. Production evidence: exact deployed Commit 1 reached URL parsing and failed with `ERR_INVALID_URL` from an empty field. Fix under validation: read the actual production response field and regression-guard both the required snake-case field and absence of the incorrect camel-case read.
 54. **The read-only production validator discarded the API failure reason needed to diagnose a blocked value.** Root cause: its response loop reported only endpoint name and HTTP status even though the authenticated API returned a bounded error field. Path: `ga4-to-date` response -> validator failure handling -> currency evidence and release decision. Production evidence: exact deployed Commit 2 reached `ga4-to-date` and reported only `toDate endpoint failed (500)`. Fix under validation: include only the authenticated API `error` or `message`, capped at 300 characters, and regression-guard that bounded fail path.
 
 Every active Critical and Major finding above invalidates the prior certification. The code changes are not cleared until the final committed revision passes the complete local and deployed evidence matrix.
+
+### Minor
+
+1. **The UI regression guard still expected Google Ads in the current-release spend chooser.** Root cause: the assertion was not updated with the approved release boundary. Path: chooser source list -> automated release-boundary evidence. Fix: require Google Ads, LinkedIn, and Meta to be absent while Google Sheets and CSV remain present.
+2. **The Shopify downstream fixture could not exercise the current financial producer contract.** Root cause: it expected an intraday end date and omitted the exact access-token connection and USD source/native aggregate provenance now required by the production path. Path: Shopify materialized revenue -> completed-day/currency guard -> KPI/Benchmark and notification values. Fix: bind the fixture to USD at every source boundary, supply the exercised GA4 connection, and require the last completed day.
 
 ### Historical findings for superseded revisions
 
@@ -334,11 +341,11 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 | Gate | Result |
 |---|---|
-| focused live Insights and affected UI/timezone suite | PASS on implementation `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`: 35 files, 351 tests, including executable compilation of both production validators. |
-| affected auth, isolation, source, parity, lifecycle, and scheduler-consumer suite | PASS inside the same 35-file/351-test production-path packet. The complete shared source-safety file is reported separately below. |
+| focused live Insights and affected UI/timezone suite | PASS on implementation `3862d5afabd5210e305013c88bfce806415786d9`: 53 files, 498 tests, including executable compilation of both production validators and every active GA4, CSV, Google Sheets, HubSpot, and Shopify producer/consumer guard selected for the live tab. |
+| affected auth, isolation, source, parity, lifecycle, and scheduler-consumer suite | PASS inside the same 53-file/498-test production-path packet. The complete shared source-safety file is reported separately below. |
 | focused production calendar/monthly/currency functions | PASS inside the same packet, including the reported sparse 21-row fixture and actual shared production functions. |
-| TypeScript | PASS: `tsc --noEmit --pretty false` on the runtime implementation inherited by `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`; both external validators compile in the regression packet. |
-| production build | PASS: `npm run build` on the runtime implementation inherited by `f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a`. |
+| TypeScript | PASS: `npm run check` on `3862d5afabd5210e305013c88bfce806415786d9`; both external validators compile in the regression packet. |
+| production build | PASS: `npm run build` on `3862d5afabd5210e305013c88bfce806415786d9`. |
 | machine certification checker | PASS while retaining the controlling `UNVERIFIED` status; it must be rerun after the documentation boundary is committed. |
 | Commit 1 focused release/OAuth boundary | PASS: 5 production-path files, 79 tests, including actual Express GA4/Sheets initiation success from the mandatory production token key, missing-all-secret fail-closed behavior, excluded Google Ads chooser/input scope, and deterministic validator scope. |
 | Commit 1 TypeScript and build | PASS: `npm run check` and `npm run build`. |
@@ -349,15 +356,15 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `25285f493f343c49a0d7867f8a9753d10be1fdbf`
+## Current Production Evidence - `3862d5afabd5210e305013c88bfce806415786d9`
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: `/api/health` reported `25285f493f343c49a0d7867f8a9753d10be1fdbf` in production |
+| exact Render revision | PASS: `/api/health` reported `3862d5afabd5210e305013c88bfce806415786d9` in production |
 | deterministic scheduler | PENDING on this revision: historical evidence is not carried forward; rerun only on the final corrected candidate |
-| production OAuth configuration | PASS: authenticated GA4 and Google Sheets initiation returned signed state and configured Google client IDs without optional provider/session state secrets |
-| authenticated owner API/UI parity | FAIL CLOSED: selected-property `ga4-to-date` returned `GA4 native revenue currency GBP does not match campaign currency USD` |
-| financial source/record currency inventory | PASS read-only: all active definitions and persisted records are USD - spend is 3 CSV plus 1 Sheets definition with 6 CSV and 2 Sheets records; revenue is 1 CSV, 3 HubSpot, and 1 Shopify definition with 2 CSV, 6 HubSpot, and 1 valid-zero Shopify record |
+| production OAuth configuration | PASS on this exact candidate: authenticated GA4 and Google Sheets initiation returned signed state and configured Google client IDs without optional provider/session state secrets |
+| authenticated owner API/UI parity | FAIL CLOSED on this exact candidate: selected-property `ga4-to-date` returned `GA4 native revenue currency GBP does not match campaign currency USD` |
+| financial source/record currency inventory | Most recent read-only inventory remains all USD - spend is 3 CSV plus 1 Sheets definition with 6 CSV and 2 Sheets records; revenue is 1 CSV, 3 HubSpot, and 1 Shopify definition with 2 CSV, 6 HubSpot, and 1 valid-zero Shopify record. It must be rechecked in the final successful packet. |
 | GA4 Admin metadata parity | PENDING: the production totals provider proves GBP, but the independent Admin metadata step remains behind the failed full response packet |
 | live surface value parity | NOT COMPLETE: blocked before any complete financial/UI certification packet; no partial packet is counted as a pass |
 | Google Ads release boundary | PARTIAL: deployed code removes and fails closed the connector, and production inventory has no active source; authenticated chooser parity remains behind the failed financial packet and is not counted complete |

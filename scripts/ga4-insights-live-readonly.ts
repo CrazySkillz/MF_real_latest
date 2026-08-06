@@ -868,7 +868,6 @@ try {
       visibleFindings: findings.length,
       hiddenFindings: hiddenCount,
       findingFields: ["id", "category", "severity", "title", "description", "recommendation", "basis", "confidence"],
-      spendChooser: ["Google Sheets", "Upload CSV"],
     },
     tenantIsolation,
     persistenceUnchanged: true,

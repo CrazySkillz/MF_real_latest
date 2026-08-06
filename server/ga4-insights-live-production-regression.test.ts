@@ -259,6 +259,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).not.toContain('getByRole("tab", { name: "Overview"');
     expect(validator).not.toContain('getByTestId("ga4-add-spend-source")');
     expect(validator).not.toContain("Choose where your spend data comes from.");
+    expect(validator).not.toContain("spendChooser:");
     expect(validator).toContain("&readOnly=1");
     expect(validator).toContain("ga4-metrics?tab=insights&readOnly=1");
     expect(validator).toContain("uiDailyBody?.providerRefreshAttempted !== false");

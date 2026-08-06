@@ -265,9 +265,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("readPersistenceFingerprint");
     expect(validator).toContain("persistenceFingerprintAfter !== persistenceFingerprintBefore");
     expect(validator).toContain("persistenceUnchanged: true");
-    expect(validator).toContain("analyticsadmin.googleapis.com/v1beta/properties/");
-    expect(validator).toContain("propertyTimeZone !== expected60.reportingTimeZone");
-    expect(validator).toContain("propertyCurrency !== currency");
+    expect(validator).not.toContain("decryptTokens");
+    expect(validator).toContain("responseTimeZone !== expected60.reportingTimeZone");
+    expect(validator).toContain("responseCurrency !== currency");
     expect(validator).toContain("Campaign client scope is missing or belongs to another tenant");
     expect(validator).toContain("assertSourceCurrencies(revenueDefinitions, revenueBreakdownSources");
     expect(validator).toContain("assertSourceCurrencies(spendDefinitions, spendBreakdownSources");

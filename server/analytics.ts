@@ -887,7 +887,7 @@ export class GoogleAnalytics4Service {
     endDate: string,
     campaignFilter?: CampaignFilter,
     currencyCode?: string,
-  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode?: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode?: string | null; reportingTimeZone?: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
     if (requestedCurrencyCode && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) throw new Error('GA4 report currency is invalid');
@@ -932,9 +932,10 @@ export class GoogleAnalytics4Service {
       const rawEngagementRate = Number.parseFloat(String(mv?.[6]?.value || '0')) || 0;
       const engagementRate = rawEngagementRate || (sessions > 0 ? engagedSessions / sessions : 0);
       const responseCurrencyCode = String(json?.metadata?.currencyCode || "").trim().toUpperCase() || null;
+      const responseReportingTimeZone = String(json?.metadata?.timeZone || "").trim() || null;
       return {
         revenueMetric,
-        ...(requestedCurrencyCode ? { currencyCode: responseCurrencyCode } : {}),
+        ...(requestedCurrencyCode ? { currencyCode: responseCurrencyCode, reportingTimeZone: responseReportingTimeZone } : {}),
         totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate },
       };
     };

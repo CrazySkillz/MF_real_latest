@@ -3,7 +3,6 @@ import { chromium, type Page } from "playwright";
 import { pool } from "../server/db";
 import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsCalendarRollup, buildGA4InsightsHistoryScopeMarker, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
 import { getReportingDateWindow } from "../server/utils/reporting-timezone";
-import { decryptTokens } from "../server/utils/tokenVault";
 
 const BASE_URL = process.env.GA4_INSIGHTS_BASE_URL || "https://marketforensics.onrender.com";
 const EXPECTED_SHA = String(process.env.GA4_INSIGHTS_EXPECTED_SHA || "").trim();
@@ -322,31 +321,13 @@ try {
   const importedRevenue = Number(responses.revenue.body?.totalRevenue || 0);
   const ga4RevenueMetric = String(responses.toDate.body?.revenueMetric || "").trim();
   const ga4HasRevenueMetric = Boolean(ga4RevenueMetric) || ga4Revenue !== 0;
-  const credentialInventory = await client.query(`
-    SELECT g.access_token, g.encrypted_tokens
-    FROM ga4_connections g
-    WHERE g.campaign_id = $1
-      AND g.is_active = true
-      AND REPLACE(g.property_id, 'properties/', '') = REPLACE($2, 'properties/', '')
-    ORDER BY g.is_primary DESC
-    LIMIT 1
-  `, [CAMPAIGN_ID, propertyId]);
-  if (credentialInventory.rowCount !== 1) throw new Error("Exact GA4 credential row was not found");
-  const decrypted = decryptTokens(credentialInventory.rows[0].encrypted_tokens);
-  const accessToken = String(decrypted.accessToken || credentialInventory.rows[0].access_token || "").trim();
-  if (!accessToken) throw new Error("GA4 property metadata token is unavailable");
-  const propertyResponse = await fetch(`https://analyticsadmin.googleapis.com/v1beta/properties/${encodeURIComponent(normalizeProperty(propertyId))}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const propertyMetadata: any = await propertyResponse.json().catch(() => ({}));
-  if (!propertyResponse.ok) throw new Error(`GA4 property metadata failed (${propertyResponse.status})`);
-  const propertyTimeZone = String(propertyMetadata?.timeZone || "").trim();
-  const propertyCurrency = String(propertyMetadata?.currencyCode || "").trim().toUpperCase();
-  if (!propertyTimeZone || propertyTimeZone !== expected60.reportingTimeZone) {
-    throw new Error(`GA4 property/campaign timezone mismatch (${propertyTimeZone || "missing"} vs ${expected60.reportingTimeZone})`);
+  const responseTimeZone = String(responses.toDate.body?.reportingTimeZone || "").trim();
+  const responseCurrency = String(responses.toDate.body?.currencyCode || "").trim().toUpperCase();
+  if (!responseTimeZone || responseTimeZone !== expected60.reportingTimeZone) {
+    throw new Error(`GA4 report/campaign timezone mismatch (${responseTimeZone || "missing"} vs ${expected60.reportingTimeZone})`);
   }
-  if (ga4HasRevenueMetric && (!propertyCurrency || propertyCurrency !== currency)) {
-    throw new Error(`GA4 native revenue currency mismatch (${propertyCurrency || "missing"} vs ${currency})`);
+  if (ga4HasRevenueMetric && (!responseCurrency || responseCurrency !== currency)) {
+    throw new Error(`GA4 native revenue response currency mismatch (${responseCurrency || "missing"} vs ${currency})`);
   }
   const assertSourceCurrencies = (definitions: any[], breakdown: any[], kind: string) => {
     for (const definition of definitions.filter((item: any) => item?.isActive !== false)) {
@@ -873,9 +854,9 @@ try {
     ownerHash: hash(row.owner_id),
     propertyId: normalizeProperty(propertyId),
     reportingTimeZone: expected60.reportingTimeZone,
-    propertyTimeZone,
+    responseTimeZone,
     currency,
-    propertyCurrency,
+    responseCurrency,
     oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleClientConfigured: true },
     savedFilterCount: filters.length,
     dailyWindow: { startDate: expected60.startDate, endDate: expected60.endDate, rows: rollups.availableDays },

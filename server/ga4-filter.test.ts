@@ -183,6 +183,7 @@ describe("GA4 campaign value picker", () => {
       engagementRate: 0,
     });
     expect(result.currencyCode).toBeUndefined();
+    expect(result.reportingTimeZone).toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === undefined)).toBe(true);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
@@ -200,7 +201,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
-          metadata: { currencyCode: "USD" },
+          metadata: { currencyCode: "USD", timeZone: "Europe/Amsterdam" },
           rows: isCampaignNameScope
             ? [{ metricValues: [{ value: "7" }, { value: "123.456" }] }]
             : isPageLocationScope
@@ -230,6 +231,7 @@ describe("GA4 campaign value picker", () => {
       engagementRate: 0.64,
     });
     expect(result.currencyCode).toBe("USD");
+    expect(result.reportingTimeZone).toBe("Europe/Amsterdam");
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const trafficBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));

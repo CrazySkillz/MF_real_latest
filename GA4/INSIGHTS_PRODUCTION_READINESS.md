@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
 
-Current reviewed implementation SHA: `76eec088a8b832522396d6d25a7c9b0d6646f595`
+Current reviewed implementation SHA: `1f29fffe1910bc557dccdf3e42764a8853ff18eb`
 
 Certified SHA: none
 
 Latest validated deployment candidate: none
 
-Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` preserves the requested currency metadata through the Insights-only supplemental merge after deployed `56edb3af429a64952bc30376c349001a0dd0442e` failed its authenticated read-only financial check. Follow-up `2655f3c928868128b9ef13b76d54942053474b47` validates the exact Insights Data API response currency/timezone metadata without decrypting production credentials locally. Follow-up `b634d991602e149c926da05422833b46475ab4e8` compares the first twelve generated findings in the documented category-grouped render order. Follow-up `c23010342d4186c9bfe79c25e626eb28be11361e` removes the out-of-scope Overview chooser interaction from the Insights validator. Follow-up `76eec088a8b832522396d6d25a7c9b0d6646f595` removes the final hard-coded Overview chooser field from the Insights evidence JSON. The current correction is not deployed or certified, and the live Insights value contradiction remains unresolved.
+Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` preserves the requested currency metadata through the Insights-only supplemental merge after deployed `56edb3af429a64952bc30376c349001a0dd0442e` failed its authenticated read-only financial check. Follow-up `2655f3c928868128b9ef13b76d54942053474b47` validates the exact Insights Data API response currency/timezone metadata without decrypting production credentials locally. Follow-up `b634d991602e149c926da05422833b46475ab4e8` compares the first twelve generated findings in the documented category-grouped render order. Follow-up `c23010342d4186c9bfe79c25e626eb28be11361e` removes the out-of-scope Overview chooser interaction from the Insights validator. Follow-up `76eec088a8b832522396d6d25a7c9b0d6646f595` removes the final hard-coded Overview chooser field from the Insights evidence JSON. Follow-up `1f29fffe1910bc557dccdf3e42764a8853ff18eb` reports changed persistence component names instead of collapsing them into one opaque hash. The current correction is not deployed or certified, and the live Insights value contradiction remains unresolved.
 
 <!-- /ga4-insights-current-status -->
 
@@ -227,6 +227,8 @@ The active audit findings and exact affected paths are recorded below. Status re
 
 60. **The Insights evidence JSON retained a hard-coded Overview chooser claim after the interaction was removed.** Root cause: `liveSurfaceParity.spendChooser` was a static array, not measured evidence. Path: successful Insights-only validation -> emitted certification packet -> false Overview parity claim. Effect: exact deployed `477deb04acec3b7e58163732a72ce2df02d1ff71` passed every executed Insights gate but its output overclaimed an unexecuted Overview surface, so it is not accepted as clean certification evidence. Correction `76eec088a8b832522396d6d25a7c9b0d6646f595` removes and regression-forbids that field. Status remains Major/open until the corrected revision emits a clean authenticated packet.
 
+61. **The read-only persistence guard collapsed every in-scope table into one opaque hash.** Root cause: a concurrent production update and a validator-caused mutation produced the same undifferentiated error. Path: before/after campaign-scoped table hashes -> one aggregate SHA-256 -> certification failure without an affected component. Effect: the first clean-packet run on deployed `c292e9d340591ca308401765343464db1b39701d` observed a persistence change but could not attribute it; an immediate diagnostic rerun on the unchanged app passed with persistence unchanged, supporting a concurrent update but not proving its component. Correction `1f29fffe1910bc557dccdf3e42764a8853ff18eb` compares and reports only component names while keeping values hashed. Status remains Major/open until the corrected exact revision passes the authenticated packet.
+
 
 1. **The certification record and narrative could contradict each other.** Root cause: no machine guard rejected a ready claim while the controlling JSON or status block remained `UNVERIFIED`. Path: readiness documents -> machine record -> release decision. Fix: committed guard `dc3c46db407f30f529760263eac9281e1965ae69` binds the current status block, required dependencies, evidence gates, hashes, and exact SHAs.
 2. **Sparse rows could be described as satisfying or merely missing a fixed 14-row requirement.** Root cause: visible copy and some guards treated response row count as calendar coverage. Path: 60-day daily response -> Trends gate/copy -> 7d/30d chart and recommendation eligibility. Fix under validation: use the actual shared current/prior calendar rollups and disclose both exact windows and imported-day counts. The reported 21-row fixture correctly remains incomplete because its current and prior seven-day windows contain 1/7 and 0/7 dates.
@@ -371,19 +373,29 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | grouped-findings validator correction | PASS on `b634d991602e149c926da05422833b46475ab4e8`: 11 focused validator tests and `npm run check`; the expected packet is capped before applying the documented category render order. The production app bundle is unchanged from the prior passing build. |
 | Insights/Overview validator boundary correction | PASS on `c23010342d4186c9bfe79c25e626eb28be11361e`: 49 focused validator/UI tests and `npm run check`; the Insights validator contains no Overview-tab or financial-source chooser interaction. The production app bundle is unchanged from the prior passing build. |
 | false Overview evidence removal | PASS on `76eec088a8b832522396d6d25a7c9b0d6646f595`: 11 focused validator tests and `npm run check`; the emitted Insights packet contains no hard-coded chooser field. The production app bundle is unchanged from the prior passing build. |
+| component-level persistence diagnostics | PASS on `1f29fffe1910bc557dccdf3e42764a8853ff18eb`: 11 focused validator tests and `npm run check`; component names are reported while all persisted values remain hashed. The production app bundle is unchanged from the prior passing build. |
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `477deb04acec3b7e58163732a72ce2df02d1ff71`
+## Current Production Evidence - `c292e9d340591ca308401765343464db1b39701d`
+
+| Gate | Result |
+|---|---|
+| exact Render revision | PASS: `/api/health` reported `c292e9d340591ca308401765343464db1b39701d` in production |
+| first authenticated clean-packet attempt | FAIL only at the final aggregate persistence hash after every live/auth/source/value check passed; the aggregate error could not identify the changed component. Cleanup succeeded. |
+| diagnostic rerun on unchanged deployed app | PASS with validator `1f29fffe1910bc557dccdf3e42764a8853ff18eb`: USD/Amsterdam response metadata, 19 sparse daily rows, 5 financial values, 8 summary values, 3 channel rows, 4 Trends modes, 3 tracker values, 12 visible plus 5 hidden findings, tenant 404, unchanged persistence, and temporary-user cleanup all passed. Because the validator revision differs from the deployed app SHA, this is supporting evidence, not final exact-boundary certification. |
+| corrected replacement | PENDING: deploy `1f29fffe1910bc557dccdf3e42764a8853ff18eb`, confirm exact revision, then rerun the clean authenticated packet and deterministic scheduler/post-run parity. |
+
+## Superseded Production Evidence - `477deb04acec3b7e58163732a72ce2df02d1ff71`
 
 | Gate | Result |
 |---|---|
 | exact Render revision | PASS: `/api/health` reported `477deb04acec3b7e58163732a72ce2df02d1ff71` in production |
 | authenticated Insights-only owner/non-owner execution | PASS: all executed financial, summary, channel, Trends, tracker, grouped-finding, tenant-isolation, persistence, OAuth-state, property/filter/timezone, and response-currency checks passed; the temporary session was revoked and user deleted. |
 | evidence integrity | FAIL: the emitted JSON still claimed a hard-coded Overview spend-chooser result that was not executed. The Insights results are supporting evidence but `477deb04acec3b7e58163732a72ce2df02d1ff71` is not accepted as a clean certification packet. |
-| corrected replacement | PENDING: deploy `76eec088a8b832522396d6d25a7c9b0d6646f595`, confirm exact revision, then rerun the clean authenticated Insights-only packet. |
+| corrected replacement | deployed as descendant `c292e9d340591ca308401765343464db1b39701d`; that revision emitted clean output but its first attempt collided with an unattributed concurrent persistence change. |
 
 ## Superseded Production Evidence - `788ff46dbdb2173c54a4de47c0e93a87563cf30b`
 

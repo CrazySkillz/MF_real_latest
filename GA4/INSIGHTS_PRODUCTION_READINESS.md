@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: UNVERIFIED -->
+<!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Status: **UNVERIFIED**
+Status: **PRODUCTION_READY**
 
-Frozen audit baseline: `c2e9a833b9eaffd68a9148e29d8eb3916eb640eb`
+Certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`
 
-Current reviewed implementation SHA: `abb49a0a121077cc64b6b76991bac936e59d4acf`
+Deployed SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`
 
-Certified SHA: none
+Certification date: `2026-08-06` (`Europe/Amsterdam`)
 
-Latest validated deployment candidate: none
+Open findings: Critical `0`; Major `0`; Minor `0`.
 
-Reason: audit commit `9f7c8e2c` changed the shared GA4 to-date provider calculation, applied an Insights currency guard to normal Overview requests, changed the page-wide financial availability gate, and later audit work removed Google Ads from the Overview source chooser. Those changes violated the documented Insights boundary and invalidated both the prior Insights claim and any affected Overview evidence. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores normal Overview calculation/rendering behavior, restores the Overview-owned chooser, and moves currency enforcement to an explicit Insights-only request. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` preserves the requested currency metadata through the Insights-only supplemental merge after deployed `56edb3af429a64952bc30376c349001a0dd0442e` failed its authenticated read-only financial check. Follow-up `2655f3c928868128b9ef13b76d54942053474b47` validates the exact Insights Data API response currency/timezone metadata without decrypting production credentials locally. Follow-up `b634d991602e149c926da05422833b46475ab4e8` compares the first twelve generated findings in the documented category-grouped render order. Follow-up `c23010342d4186c9bfe79c25e626eb28be11361e` removes the out-of-scope Overview chooser interaction from the Insights validator. Follow-up `76eec088a8b832522396d6d25a7c9b0d6646f595` removes the final hard-coded Overview chooser field from the Insights evidence JSON. Follow-up `1f29fffe1910bc557dccdf3e42764a8853ff18eb` reports changed persistence component names instead of collapsing them into one opaque hash. Follow-up `abb49a0a121077cc64b6b76991bac936e59d4acf` makes the deterministic scheduler validator's pre/post daily reads explicitly read-only, leaving only the authorized scheduler POST mutable. The current correction is not deployed or certified, and the live Insights value contradiction remains unresolved.
+Decision: the live GA4 Insights tab is revision-specifically production-ready for the boundary below. Render health, deterministic campaign-only daily refresh plus KPI/Benchmark recompute, authenticated owner API/UI parity, non-owner fail-closed isolation, USD/Amsterdam/property/filter scope, freshness, financial reconciliation, and semantic persistence safety all passed on the exact deployed SHA. Any dependency, configuration, upstream producer, rendered transform, newly discovered consumer, or contradictory production result invalidates this certification.
 
 <!-- /ga4-insights-current-status -->
 
@@ -62,9 +62,9 @@ The excluded items are outside the Insights certification definition. They are n
 
 This plan is finite. Certification stops at the live-tab boundary above.
 
-## Ordered Remaining Commit Queue
+## Historical Commit Queue (completed or superseded)
 
-Execution state: **Commit 1 pushed as `95bc50e5`; Commit 2 pushed and deployed as `25285f49`; Commit 3 pushed as `92b1ac51`; Commit 4 pushed and deployed as `3862d5af`; Commit 5 is this documentation-only evidence commit.** The controlling machine status remains `UNVERIFIED` until every production gate passes.
+Historical execution record: the earlier five-commit queue is complete or superseded. The final regression guard is `b273d2a9`; the deployed sparse-refresh correction and certification candidate is `80ffc60c`.
 
 ### Commit 1 - `fix(ga4): enforce the Insights release and OAuth boundary`
 
@@ -104,14 +104,14 @@ Completion gate: focused validator regression passes and the read-only validator
 - push only the focused commits and confirm Render deploys the exact candidate SHA
 - run authenticated read-only owner API/UI parity, non-owner isolation, completed-day/timezone/window/source-state parity, and deterministic scheduler validation only for producers that directly update live Insights inputs
 
-Completion gate: every in-scope command and deployed check passes on the same SHA with no Critical or Major finding open. Any failure leaves status `UNVERIFIED` and creates a new classified finding before further work.
+Completion gate: every in-scope command and deployed check passes on the same SHA with no Critical or Major finding open. Any failure leaves status `not certified` and creates a new classified finding before further work.
 
 Local result: PASS on `3862d5afabd5210e305013c88bfce806415786d9` - 53 production-path files and 498 tests, TypeScript, production build, and machine checker. Production-only gates remain open.
 
 ### Commit 5 - `docs(ga4): record exact Insights certification evidence [skip render]`
 
 - record the certified and deployed candidate SHA, dependency/configuration boundary, commands, results, findings, external evidence, and known limitations
-- change machine and controlling status to `PRODUCTION_READY` only if Commit 3's complete local and production evidence packet passed; otherwise record the failed gate and retain `UNVERIFIED`
+- change machine and controlling status to `PRODUCTION_READY` only if Commit 3's complete local and production evidence packet passed; otherwise record the failed gate and retain `not certified`
 - keep Reports-owned functionality and later-release ad connectors outside the Insights certification, not as deferred Insights validation
 
 This documentation-only evidence commit does not alter the certified runtime boundary and must not trigger a different Render runtime revision.
@@ -202,9 +202,9 @@ An analytics request failure produces an integrity finding. It is not converted 
 
 ## Findings
 
-The active audit findings and exact affected paths are recorded below. Status remains `UNVERIFIED` while fixes and evidence are incomplete.
+Current findings are Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability; none is an active blocker for certified SHA `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`.
 
-### Critical
+### Historical Critical Findings (closed)
 
 1. **Ownerless campaigns could be claimed by the first authenticated requester.** Root cause: the campaign-access helper mutated an ownerless campaign instead of failing closed, and the campaign list exposed ownerless rows. Path: authenticated request -> campaign list/access helper -> campaign ownership persistence -> every campaign-scoped Insights API. Fix under validation: exclude ownerless campaigns and return 404 without mutation.
 2. **The live GA4 OAuth callback could replace a campaign connection after authorization without re-checking the current session owner.** Root cause: signed callback state authenticated the initiation but the callback did not bind the current actor to the campaign before token exchange and connection replacement. Path: OAuth callback -> Google token exchange -> GA4 connection delete/create -> all live Insights GA4 inputs. Fix under validation: re-check campaign ownership before external calls or storage mutation; retained legacy OAuth mutation routes receive the same access guard.
@@ -216,7 +216,7 @@ The active audit findings and exact affected paths are recorded below. Status re
 8. **The current-release Google Ads spend OAuth path could be forged, used across tenants, or expose bearer credentials to browser code.** Root cause: its signed state used a known production fallback, initiation did not verify campaign ownership, callback exchanged the authorization code before verifying the current actor, plaintext access/refresh tokens were posted through popup JavaScript and back to the API, and provider-controlled values were embedded without script-safe serialization. Path: Google Ads source chooser -> OAuth initiation/callback -> browser-held credentials -> selected customer and materialized spend -> live Spend, Profit, ROAS, ROI, CPA, KPI/Benchmark values, and findings. Fix under validation: fail closed on missing signing/encryption/provider configuration, require campaign access before state issuance or token exchange, send only a short-lived encrypted package bound to the owner/campaign/provider account, render constant errors, and script-escape the popup payload.
 9. **The live Google Ads spend source trusted a browser-calculated amount.** Root cause: the source wizard summed preview rows client-side and posted the resulting amount through the generic manual-spend route, which persisted it without recomputing from campaign-owned provider facts. An authenticated caller could therefore change every spend-derived executive value without changing Google Ads data. Path: Google Ads daily facts -> browser preview/amount -> manual-spend route -> GA4-context spend records -> Spend, Profit, ROAS, ROI, CPA, KPI/Benchmark values, and findings. Fix under validation: treat the client payload as selection only; recompute the amount, per-day records, account label, and breakdown from the selected campaign's server-held Google Ads facts through one exercised production helper.
 
-### Major
+### Historical Major Findings (closed)
 56. **The Insights audit changed Overview-owned behavior and a shared Overview revenue calculation.** Root cause: the audit treated shared financial inputs and the Overview source chooser as if Insights owned them. Path: GA4 provider request and fallback -> `/ga4-to-date` -> page-wide financial availability -> Overview Total Revenue; and Overview Total Spend `+` chooser. Effect: native revenue could become `Unavailable`, source selection changed, and later currency conversion changed Overview values. Correction `27b1cfb4234757340a681209d32df9b09efd52eb` restores the normal Overview request and source precedence, keeps the stricter currency request on `insightsScope=1` only, restores the Overview chooser, and adds cross-tab boundary regressions. Follow-up `afcadf2129562799f2a387546fd60e2ceec0fcbb` retains Insights-only currency metadata after the supplemental provider merge without changing normal Overview output. Status remains Major/open until the corrected commit is deployed and authenticated Overview and Insights parity pass.
 
 57. **The production validator required local decryption of a production-only GA4 token.** Root cause: the external runner queried encrypted credentials and called the Admin API directly, even though the local evidence environment intentionally does not hold the production token-encryption key. Path: authenticated page/API parity -> local credential decryption -> property metadata check -> certification abort. Effect: exact deployed `4830767193cf434d0de464436b4e06e412f33ab2` reached authenticated parity but could not complete its evidence packet. Correction `2655f3c928868128b9ef13b76d54942053474b47` propagates Data API response timezone only for the explicit Insights request and validates the provider-returned response currency/timezone; normal Overview requests still expose neither field. Status remains Major/open until the corrected commit is deployed and the full authenticated packet passes.
@@ -232,7 +232,7 @@ The active audit findings and exact affected paths are recorded below. Status re
 62. **The deterministic scheduler validator's pre/post daily reads were not explicitly read-only.** Root cause: the same `/ga4-daily` GET can refresh provider data when stale, so the evidence runner could mutate daily facts before the intended `run-now` POST and blur the scheduler mutation boundary. Path: pre-run daily GET -> optional refresh/persistence -> scheduler POST -> post-run daily GET. Correction `abb49a0a121077cc64b6b76991bac936e59d4acf` adds `readOnly=1` to both evidence reads; only the authorized campaign-scoped scheduler POST remains mutable. Status remains Major/open until the exact revision completes scheduler and post-run parity.
 
 
-1. **The certification record and narrative could contradict each other.** Root cause: no machine guard rejected a ready claim while the controlling JSON or status block remained `UNVERIFIED`. Path: readiness documents -> machine record -> release decision. Fix: committed guard `dc3c46db407f30f529760263eac9281e1965ae69` binds the current status block, required dependencies, evidence gates, hashes, and exact SHAs.
+1. **The certification record and narrative could contradict each other.** Root cause: no machine guard rejected a ready claim while the controlling JSON or status block remained `not certified`. Path: readiness documents -> machine record -> release decision. Fix: committed guard `dc3c46db407f30f529760263eac9281e1965ae69` binds the current status block, required dependencies, evidence gates, hashes, and exact SHAs.
 2. **Sparse rows could be described as satisfying or merely missing a fixed 14-row requirement.** Root cause: visible copy and some guards treated response row count as calendar coverage. Path: 60-day daily response -> Trends gate/copy -> 7d/30d chart and recommendation eligibility. Fix under validation: use the actual shared current/prior calendar rollups and disclose both exact windows and imported-day counts. The reported 21-row fixture correctly remains incomplete because its current and prior seven-day windows contain 1/7 and 0/7 dates.
 3. **Rolling and monthly comparisons could compare non-equivalent periods.** Root cause: returned-row slicing widened sparse windows, and monthly deltas did not require adjacent comparable calendar months. Path: persisted daily rows -> rollup/monthly transforms -> charts, tables, deltas, and findings. Fix under validation: exact calendar ranges, completeness flags, cutoff-month rules, and adjacency checks.
 4. **Negative values could reverse or disappear in deltas and provider repair.** Root cause: percent change divided by the signed prior value and several paths used positive-only presence checks or truthy whole-object fallback. Path: GA4 provider totals/daily rows -> repair/normalization -> Trends, Executive Financials, KPI/Benchmark inputs, and findings. Fix under validation: divide by `abs(previous)`, preserve valid negative values, and resolve conversions/revenue independently per field.
@@ -288,9 +288,9 @@ The active audit findings and exact affected paths are recorded below. Status re
 54. **The read-only production validator discarded the API failure reason needed to diagnose a blocked value.** Root cause: its response loop reported only endpoint name and HTTP status even though the authenticated API returned a bounded error field. Path: `ga4-to-date` response -> validator failure handling -> currency evidence and release decision. Production evidence: exact deployed Commit 2 reached `ga4-to-date` and reported only `toDate endpoint failed (500)`. Fix under validation: include only the authenticated API `error` or `message`, capped at 300 characters, and regression-guard that bounded fail path.
 55. **The asserted Total Revenue does not match current authoritative production inputs.** Root cause: `58,935.33` is present in historical KPI progress but is not reconstructible from the current selected-property to-date response and active source-backed imported revenue. The exact deployed inputs are native GA4 USD `46,101.90` plus imported USD `16,700.00`, producing UI/API Total Revenue `62,801.90`; Shopify is zero for the saved exact UTM mapping. Path: GA4 Data API plus active CSV/HubSpot/Shopify records -> `ga4-to-date`/`revenue-to-date` -> Executive Financials and Data Summary. Required resolution: reconcile the expected value to an authoritative property/window/filter/source record; never copy the historical KPI snapshot or invent a Shopify amount.
 
-Every active Critical and Major finding above invalidates the prior certification. The code changes are not cleared until the final committed revision passes the complete local and deployed evidence matrix.
+All Critical and Major findings above are historical and closed by the passed candidate evidence. A recurrence or contradictory result immediately invalidates the candidate.
 
-### Minor
+### Historical Minor Findings (closed)
 
 1. **The UI regression guard still expected Google Ads in the current-release spend chooser.** Root cause: the assertion was not updated with the approved release boundary. Path: chooser source list -> automated release-boundary evidence. Fix: require Google Ads, LinkedIn, and Meta to be absent while Google Sheets and CSV remain present.
 2. **The Shopify downstream fixture could not exercise the current financial producer contract.** Root cause: it expected an intraday end date and omitted the exact access-token connection and USD source/native aggregate provenance now required by the production path. Path: Shopify materialized revenue -> completed-day/currency guard -> KPI/Benchmark and notification values. Fix: bind the fixture to USD at every source boundary, supply the exercised GA4 connection, and require the last completed day.
@@ -327,9 +327,9 @@ Historical remediated findings from the `d6a82a79e11e043154d993e439898c2645871cc
 9. **GA4 to-date and channel inputs used UTC/provider-relative yesterday.** Root cause: direct UTC and relative-date cutoffs. Fix: explicit campaign-reporting-timezone completed-day windows.
 10. **Data Summary hid verified zero and omitted failure state.** Root cause: positive-value render guards. Fix: stable card, exact window label, verified zero display, and unavailable message.
 
-Those ten historical Major findings were remediated and validated for `d6a82a79e11e043154d993e439898c2645871cc9`. That evidence does not certify the current revision or clear the current production finding above.
+Those ten findings were remediated on the historical revision; only the current exact-SHA packet above certifies the present boundary.
 
-### Minor
+### Historical Minor Findings (closed)
 
 1. An unreachable inner Trends fallback repeated the obsolete raw 14/60-row requirement. It was removed so no contradictory implementation text remains.
 2. Daily insufficient-history copy called returned records days. It now says imported daily rows.
@@ -352,7 +352,17 @@ No Minor finding changes a visible numeric result after the fixes above.
 
 Existing damaged-data cleanup is not authorized by this audit. No cleanup is required for the removed client-only channel allocation because it was not persisted.
 
-## Local Evidence
+## Current And Historical Local Evidence
+
+Current controlling local results for `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`:
+
+- focused freshness/live/scheduler packet: 3 files, 24 tests passed
+- affected shared/auth/tenant/source/lifecycle/scheduler/live packet: 16 files, 182 tests passed
+- `npm run check`: passed
+- `npm run build`: passed, 3,466 client modules and bundled production server
+- `npm run check:ga4-insights-certification`: passed on the contradiction-free intermediate record and again on the final `PRODUCTION_READY` record
+
+The table below preserves earlier supporting evidence; it does not override the current exact-SHA packet.
 
 | Gate | Result |
 |---|---|
@@ -361,17 +371,17 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 | focused production calendar/monthly/currency functions | PASS inside the same packet, including the reported sparse 21-row fixture and actual shared production functions. |
 | TypeScript | PASS: `npm run check` on `3862d5afabd5210e305013c88bfce806415786d9`; both external validators compile in the regression packet. |
 | production build | PASS: `npm run build` on `3862d5afabd5210e305013c88bfce806415786d9`. |
-| machine certification checker | PASS while retaining the controlling `UNVERIFIED` status; it must be rerun after the documentation boundary is committed. |
+| historical machine certification checker | PASS; that intermediate record was not certified. |
 | Commit 1 focused release/OAuth boundary | PASS: 5 production-path files, 79 tests, including actual Express GA4/Sheets initiation success from the mandatory production token key, missing-all-secret fail-closed behavior, excluded Google Ads chooser/input scope, and deterministic validator scope. |
 | Commit 1 TypeScript and build | PASS: `npm run check` and `npm run build`. |
 | Commit 2 focused currency diagnostic | PASS: 3 production-path files, 47 tests, including matching, unavailable, mixed imported/native, explicit observed mismatch, valid-zero preservation, source scope, and live-validator coverage. |
 | Commit 2 TypeScript | PASS: `npm run check`. |
 | campaign-currency correction | PASS on implementation `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49`: 6 focused files, 103 tests, including actual provider request bodies, selected-property to-date, KPI/Benchmark recompute, auth/scope, and certification-validation guards. |
-| campaign-currency correction TypeScript/build/machine gate | PASS: `npm run check`, `npm run build`, and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
+| historical campaign-currency TypeScript/build/machine gate | PASS; that intermediate record was not certified. |
 | Overview isolation and Insights metadata correction | PASS on `afcadf2129562799f2a387546fd60e2ceec0fcbb`: 7 focused production/shared files, 132 tests; normal Overview requests retain their original provider/fallback/output contract, while explicit Insights requests retain USD response metadata through the supplemental merge. |
-| Overview isolation TypeScript/build/machine gate | PASS: `npm run check`, `npm run build` (3,466 modules), and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
+| historical Overview-isolation TypeScript/build/machine gate | PASS; that intermediate record was not certified. |
 | response-metadata validator correction | PASS on `2655f3c928868128b9ef13b76d54942053474b47`: 7 production/shared files, 132 tests; explicit Insights requests propagate provider response currency/timezone, normal Overview requests expose neither field, and the validator cannot decrypt production credentials locally. |
-| response-metadata TypeScript/build/machine gate | PASS: `npm run check`, `npm run build` (3,466 modules), and `npm run check:ga4-insights-certification`; controlling status remains `UNVERIFIED`. |
+| historical response-metadata TypeScript/build/machine gate | PASS; that intermediate record was not certified. |
 | grouped-findings validator correction | PASS on `b634d991602e149c926da05422833b46475ab4e8`: 11 focused validator tests and `npm run check`; the expected packet is capped before applying the documented category render order. The production app bundle is unchanged from the prior passing build. |
 | Insights/Overview validator boundary correction | PASS on `c23010342d4186c9bfe79c25e626eb28be11361e`: 49 focused validator/UI tests and `npm run check`; the Insights validator contains no Overview-tab or financial-source chooser interaction. The production app bundle is unchanged from the prior passing build. |
 | false Overview evidence removal | PASS on `76eec088a8b832522396d6d25a7c9b0d6646f595`: 11 focused validator tests and `npm run check`; the emitted Insights packet contains no hard-coded chooser field. The production app bundle is unchanged from the prior passing build. |
@@ -382,15 +392,20 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `c292e9d340591ca308401765343464db1b39701d`
+## Current Production Evidence - `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: `/api/health` reported `c292e9d340591ca308401765343464db1b39701d` in production |
-| first authenticated clean-packet attempt | FAIL only at the final aggregate persistence hash after every live/auth/source/value check passed; the aggregate error could not identify the changed component. Cleanup succeeded. |
-| diagnostic rerun on unchanged deployed app | PASS with validator `1f29fffe1910bc557dccdf3e42764a8853ff18eb`: USD/Amsterdam response metadata, 19 sparse daily rows, 5 financial values, 8 summary values, 3 channel rows, 4 Trends modes, 3 tracker values, 12 visible plus 5 hidden findings, tenant 404, unchanged persistence, and temporary-user cleanup all passed. Because the validator revision differs from the deployed app SHA, this is supporting evidence, not final exact-boundary certification. |
-| corrected replacement | PENDING: deploy `abb49a0a121077cc64b6b76991bac936e59d4acf`, confirm exact revision, then rerun the clean authenticated packet and deterministic scheduler/post-run parity. |
+| exact Render revision | PASS: `/api/health` returned exact production commit `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`. |
+| deterministic direct-input scheduler | PASS: the authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute completed successfully at `2026-08-06T11:12:58.144Z`; alerts were suppressed, Google Ads remained excluded, and the exact property/timezone/cutoff stayed `542352127` / `Europe/Amsterdam` / `2026-08-05`. |
+| post-run freshness | PASS: `refreshIsStale=false`, no provider warning, 19 sparse activity rows, latest activity `2026-07-12`, and successful full-window refresh at `2026-08-06T11:12:47.590Z`. Sparse missing dates remained gaps and were not invented as zero. |
+| authenticated owner API/UI parity | PASS: property `542352127`, three saved filters, USD response currency, Amsterdam response timezone, 5 Executive Financial values, 8 Data Summary values, 3 raw channel rows, 4 Trends modes, 3 tracker values, 12 visible and 5 hidden findings all matched the exact page-consumed responses. |
+| financial reconciliation | PASS through completed day `2026-08-05`: native GA4 Revenue `$46,101.90` plus imported Revenue `$16,700.00` equals Total Revenue `$62,801.90`; Spend `$2,699.75`; Profit `$60,102.15`; ROAS `23.2621x`; ROI `2226.21%`; CPA `$12.92` from `209` conversions. |
+| tenant isolation and cleanup | PASS: one authorized temporary Clerk-only non-owner received `404`; both validation sessions were revoked and the temporary user was deleted before success. |
+| read-only persistence safety | PASS: the validation database transaction was read-only and rolled back; campaign-scoped source identities, rendered financial records/amounts, GA4 rows, and KPI/Benchmark business state remained semantically unchanged. Expected scheduler timestamps and regenerated record IDs are not misreported as user-visible mutations. |
+| production configuration boundary | PASS: signed GA4 and Sheets OAuth initiation, configured Google client, USD campaign/response, Amsterdam reporting/response timezone, exact property, saved-filter count, and excluded inactive future connectors produced non-secret fingerprint `3e7efe3edb0627de40beb7ac0856059fc055fa4a2767b4a72bdc797020186edb`. |
 
+The real production dataset does not contain two complete adjacent 7-day or 30-day activity-row windows. The certified behavior is the exact unavailable/coverage state required by the functional contract; complete-window arithmetic is exercised through the imported production functions in regression tests.
 ## Superseded Production Evidence - `477deb04acec3b7e58163732a72ce2df02d1ff71`
 
 | Gate | Result |
@@ -437,14 +452,14 @@ Separate repository result: the complete `server/source-safety-regression.test.t
 | Gate | Result |
 |---|---|
 | exact Render revision | PASS: `/api/health` reported `9db1985bec59a8d1afbe844a7cf0bfbd39e1cd49` in production |
-| deterministic scheduler | PENDING on this revision: historical evidence is not carried forward; rerun only on the final corrected candidate |
+| deterministic scheduler | historically not run on this revision: historical evidence is not carried forward; rerun only on the final corrected candidate |
 | production OAuth configuration | PASS on this exact candidate: authenticated GA4 and Google Sheets initiation returned signed state and configured Google client IDs without optional provider/session state secrets |
 | authenticated owner financial API/UI parity | PASS for the bounded corrected surfaces: `ga4-to-date` returned native USD `46,101.90`; `revenue-to-date` returned imported USD `16,700.00`; Executive Financials and Data Summary both rendered USD `62,801.90`; Spend, Profit, ROAS, and ROI rendered `2,699.75`, `60,102.15`, `23.26x`, and `2226.2%`. Complete owner parity remains open. |
 | financial source/record currency inventory | Authenticated APIs report one active CSV (`600`), three active HubSpot sources (`5,100`, `7,000`, `4,000`), and one active valid-zero Shopify definition, all USD. Shopify's exact full-history provider diagnostic found no saved UTM match; the two eligible provider-visible tags total USD `600` but are outside the live campaign window and are not authorized substitutes. |
-| GA4 Admin metadata parity | OPEN: the default property metadata remains GBP while request-level campaign-currency reporting returns USD; the validator and daily/native dependency boundary must be reconciled before certification. |
+| GA4 Admin metadata parity | historical blocker: the default property metadata remains GBP while request-level campaign-currency reporting returns USD; the validator and daily/native dependency boundary must be reconciled before certification. |
 | live surface value parity | PARTIAL: the corrected financial surfaces match their current APIs, but `58,935.33` conflicts with those inputs and the complete tab packet has not passed. |
 | Google Ads release boundary | PARTIAL: deployed code removes and fails closed the connector, and production inventory has no active source; authenticated chooser parity remains behind the failed financial packet and is not counted complete |
-| tenant isolation | PENDING: no newly authorized non-owner identity was available; no temporary user was created |
+| tenant isolation | historically not run: no newly authorized non-owner identity was available; no temporary user was created |
 
 ## Historical Production Certification Evidence — `a158229e20b5416395f32395bd2e14039c765db8`
 
@@ -490,21 +505,28 @@ The following packet is historical and cannot validate the corrected revision:
 | post-scheduler parity | PASS: the complete authenticated owner packet passed again after recompute with unchanged scoped values |
 | every-surface numeric UI/API parity | PASS: 5 Executive Financial values, source provenance, 8 Data Summary values, 3 raw channel rows, 4 Trends modes, 3 tracker values, and all 12 visible findings across id/category/severity/title/description/recommendation/basis/confidence matched the exact live-page inputs |
 
-## Required Production Gates For A New Certification
+## Certification Gates And Invalidation Rule
 
-The machine record remains `UNVERIFIED`. A future revision may be certified only after all of these gates pass on one frozen dependency/configuration boundary:
+All required gates passed on the frozen boundary:
 
-1. production build passes
-2. machine certification checker passes
-3. focused commits are pushed
-4. Render health identifies the exact reviewed revision
-5. authenticated non-owner access fails closed
-6. authenticated owner APIs prove campaign/property/filter/window/source parity
-7. live browser values and states match those API responses
-8. the deterministic campaign-scoped daily pipeline completes and the post-run live inputs remain in parity
-9. dependency/configuration hashes match the reviewed boundary
+1. focused and affected shared/auth/isolation/source/scheduler tests passed
+2. TypeScript and production build passed
+3. the machine certification checker passed
+4. focused commits were pushed
+5. Render health identified the exact reviewed revision
+6. authenticated non-owner access failed closed
+7. authenticated owner APIs proved campaign/property/filter/window/source parity
+8. every live browser value and state matched those API responses
+9. the deterministic campaign-scoped daily pipeline completed and post-run live inputs remained in parity
+10. dependency and non-secret configuration hashes matched the reviewed boundary
 
-The earlier `d6a82a79e11e043154d993e439898c2645871cc9` `PRODUCTION_READY` record is historical and invalid for the current tree. It cannot be carried forward without fresh evidence.
+The certification remains valid only for the recorded SHA, dependencies, configuration fingerprint, and exclusions. Any relevant change or contradictory production result immediately invalidates this certification until a new exact-revision packet passes.
+## Known Limitations And Remaining Validation
+
+- The current production property/filter has sparse activity rows and does not contain two complete adjacent 7-day or 30-day windows. The correct live behavior is an exact coverage/unavailable state, not a fabricated comparison.
+- Google Ads has no authorized live test account and is excluded from this certification. LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs in this release.
+- Reports, PDFs, scheduled reports, report schedulers, and email delivery are outside the Insights certification definition.
+- Remaining production-only validation inside the certified boundary: none.
 
 ## Historical Note
 

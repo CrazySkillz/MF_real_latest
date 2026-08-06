@@ -1,4 +1,4 @@
-﻿# GA4 Insights
+# GA4 Insights
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The prior certification was invalidated by escaped production-path defects; GA4/certifications/ga4-insights.json records the controlling machine status.`
+`GA4 Insights is PRODUCTION_READY for exact deployed SHA 80ffc60c4ac38b8bb01a91373a6a41d552f066ad and the recorded dependency/configuration boundary; GA4/certifications/ga4-insights.json is the controlling machine record.`
 
 ## Document Ownership
 
@@ -17,7 +17,7 @@ The Insights documentation is intentionally split into two files:
 - `GA4/INSIGHTS.md`
   Functional overview of the current GA4 Insights tab.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for later Meta, LinkedIn, Instagram, and other platform releases. Google Ads is part of the current GA4 Insights boundary.
+  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for later Meta, LinkedIn, Instagram, Google Ads, and other platform releases. Google Ads is outside the current Insights certification boundary because no authorized live test account is available.
 
 There is no separate `What to investigate next` production-readiness tracker anymore. That subsection is covered inside `GA4/INSIGHTS_PRODUCTION_READINESS.md` with the rest of the tab.
 

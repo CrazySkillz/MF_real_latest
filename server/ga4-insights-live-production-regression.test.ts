@@ -60,6 +60,10 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("let cursor = String(firstImportedDate?.date || initialDate);");
     expect(page).not.toContain("const dailyChartRows = sorted.slice(-30);");
     expect(page).toContain('data-testid="insights-daily-chart-coverage"');
+    expect(page.indexOf('data-testid="insights-daily-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
+    expect(page).toContain('data-testid="insights-7d-chart-coverage"');
+    expect(page.indexOf('data-testid="insights-7d-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
+    expect(page).toContain("Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.");
     expect(page).toContain('data-testid="insights-trend-metric"');
     expect(page).toContain("Missing dates are skipped, not treated as zero.");
     expect(page).toContain("value: row ? (isRate");

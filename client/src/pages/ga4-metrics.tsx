@@ -8412,6 +8412,8 @@ export default function GA4Metrics() {
                           let chartData: { date: string; value: number | null; idx: number; partial?: boolean }[] = [];
                           let dailyChartStartDate = "";
                           let dailyChartEndDate = "";
+                          let rollingChartStartDate = "";
+                          let rollingChartEndDate = "";
                           if (insightsTrendMode === "daily") {
                             // Show up to 30 calendar days, starting at the first imported date in that window.
                             const dailyRowsByDate = new Map(sorted.map((row: any) => [String(row.date || ""), row]));
@@ -8454,6 +8456,8 @@ export default function GA4Metrics() {
                               }
                               // engagementRate is already a weighted average — no further processing needed
                               // Non-rate metrics show rolling window totals (sum of last N days)
+                              if (!rollingChartStartDate) rollingChartStartDate = String(rollup.startDate || "");
+                              rollingChartEndDate = String(rollup.endDate || "");
                               chartData.push({ date: String(row.date || "").slice(5), value: Number(val.toFixed(2)), idx: chartData.length });
                             }
                           }
@@ -8476,11 +8480,6 @@ export default function GA4Metrics() {
 
                           return (
                             <>
-                              {insightsTrendMode === "daily" && (
-                                <div className="mb-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
-                                  Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are skipped, not treated as zero.
-                                </div>
-                              )}
                               <div className="h-64" data-testid="insights-trends-chart" data-chart-series={JSON.stringify(chartData)}>
                                 <ResponsiveContainer width="100%" height="100%">
                                   {insightsTrendMode === "monthly" ? (
@@ -8529,6 +8528,16 @@ export default function GA4Metrics() {
                                   )}
                                 </ResponsiveContainer>
                               </div>
+                              {insightsTrendMode === "daily" && (
+                                <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
+                                  Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are skipped, not treated as zero.
+                                </div>
+                              )}
+                              {insightsTrendMode === "7d" && (
+                                <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-7d-chart-coverage">
+                                  {chartData.length > 0 ? <>7-day chart {rollingChartStartDate} {"\u2192"} {rollingChartEndDate}: {chartData.length} complete rolling window{chartData.length === 1 ? "" : "s"}.</> : <>7-day chart: no complete rolling windows in the displayed range.</>} Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.
+                                </div>
+                              )}
 
                               {/* Comparison table */}
                               {insightsTrendMode === "daily" ? (

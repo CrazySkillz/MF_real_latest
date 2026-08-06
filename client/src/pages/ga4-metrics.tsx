@@ -8540,7 +8540,7 @@ export default function GA4Metrics() {
                                           return `${periodLabel} period ending: ${dateLabel}`;
                                         }}
                                       />
-                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls={false} name={trendMetricLabels[metric] || metric} />
+                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : false} connectNulls={false} name={trendMetricLabels[metric] || metric} />
                                     </LineChart>
                                   )}
                                 </ResponsiveContainer>

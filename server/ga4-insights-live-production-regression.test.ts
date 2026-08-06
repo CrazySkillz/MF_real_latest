@@ -58,6 +58,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("value: row ? (isRate");
     expect(page).toContain(": null,");
     expect(page).toContain("connectNulls={false}");
+    expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : false}');
+    expect(page).not.toContain("dot={false} connectNulls={false}");
   });
 
   it("does not reuse prior-property or stale channel data for recommendations", () => {

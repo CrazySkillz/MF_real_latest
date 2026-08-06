@@ -265,7 +265,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("uiDailyBody?.providerRefreshAttempted !== false");
     expect(validator).toContain("uiOverviewDailyBody?.providerRefreshAttempted !== false");
     expect(validator).toContain("readPersistenceFingerprint");
-    expect(validator).toContain("persistenceFingerprintAfter !== persistenceFingerprintBefore");
+    expect(validator).toContain("changedPersistenceComponents = Object.keys(persistenceFingerprintBefore)");
+    expect(validator).toContain("Read-only certification observed changed campaign-scoped persistence:");
     expect(validator).toContain("persistenceUnchanged: true");
     expect(validator).not.toContain("decryptTokens");
     expect(validator).toContain("responseTimeZone !== expected60.reportingTimeZone");

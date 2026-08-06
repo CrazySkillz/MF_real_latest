@@ -97,7 +97,7 @@ const readPersistenceFingerprint = async (client: any, campaignId: string) => {
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT * FROM benchmarks WHERE campaign_id = $1 AND platform_type = 'google_analytics') x) AS benchmarks,
       (SELECT md5(COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id)::text, '[]')) FROM (SELECT bh.* FROM benchmark_history bh JOIN benchmarks b ON b.id = bh.benchmark_id WHERE b.campaign_id = $1 AND b.platform_type = 'google_analytics') x) AS benchmark_history
   `, [campaignId]);
-  return createHash("sha256").update(JSON.stringify(result.rows[0] || {})).digest("hex");
+  return result.rows[0] || {};
 };
 
 const client = await pool.connect();
@@ -835,8 +835,11 @@ try {
     await nonOwner.context.close();
   }
   const persistenceFingerprintAfter = await readPersistenceFingerprint(client, CAMPAIGN_ID);
-  if (persistenceFingerprintAfter !== persistenceFingerprintBefore) {
-    throw new Error("Read-only certification changed campaign-scoped Insights persistence");
+  const changedPersistenceComponents = Object.keys(persistenceFingerprintBefore).filter((key) =>
+    persistenceFingerprintBefore[key] !== persistenceFingerprintAfter[key],
+  );
+  if (changedPersistenceComponents.length > 0) {
+    throw new Error(`Read-only certification observed changed campaign-scoped persistence: ${changedPersistenceComponents.join(", ")}`);
   }
 
   output = {

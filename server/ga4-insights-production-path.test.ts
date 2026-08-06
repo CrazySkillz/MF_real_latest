@@ -133,6 +133,16 @@ describe("GA4 Insights production calendar paths", () => {
     expect(result.prior30.endDate).toBe("2026-07-02");
   });
 
+  it("recognizes the first complete 30-day window before a prior window exists", () => {
+    const normalized = normalizeGA4InsightsDailyRows(rows("2026-07-03", 30), "2026-08-01");
+    const current = buildGA4InsightsCalendarRollup(normalized, "2026-08-01", 30);
+    const prior = buildGA4InsightsCalendarRollup(normalized, "2026-07-02", 30);
+
+    expect(current.complete).toBe(true);
+    expect(current.days).toBe(30);
+    expect(prior.complete).toBe(false);
+  });
+
   it("excludes intraday and duplicate rows before calculating", () => {
     const normalized = normalizeGA4InsightsDailyRows([
       { date: "2026-08-01", sessions: 1 },

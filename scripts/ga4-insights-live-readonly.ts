@@ -556,6 +556,10 @@ try {
       assertIncludes(rendered, "Prior " + days + " days", mode + " prior label");
       assertIncludes(rendered, String(prior.startDate) + " \u2192 " + String(prior.endDate), mode + " prior range");
       assertIncludes(rendered, formatNumber(prior.sessions), mode + " prior value");
+    } else if (expectedChart.length > 0) {
+      const rendered = normalizeText(await trends.innerText());
+      assertIncludes(rendered, "Latest adjacent " + days + "-day comparison is unavailable", mode + " latest comparison state");
+      assertIncludes(rendered, "complete historical " + days + "-day windows", mode + " historical chart state");
     } else {
       const rendered = await trends.innerText();
       assertIncludes(rendered, days + "-day comparison unavailable", mode + " insufficient-history state");

@@ -51,6 +51,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
     expect(page).toContain("const complete7DayRows = insightsTrendMode === \"7d\"");
     expect(page).toContain("? complete7DayRows.length > 0");
+    expect(page).toContain("const complete30DayRows = insightsTrendMode === \"30d\"");
+    expect(page).toContain(": complete30DayRows.length > 0");
+    expect(page).toContain("Latest adjacent {windowDays}-day comparison is unavailable.");
     expect(page).not.toContain('data-testid="insights-7d-historical-coverage"');
     expect(page).toContain('chartData.length === 1 ? { r: 3 } : false');
     expect(page).toContain("const finalDate = String(sorted[sorted.length - 1]?.date || \"\");");
@@ -230,6 +233,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('cardText("insights-scope-client")');
     expect(validator).toContain('getByTestId("ga4-overview-freshness-warning")');
     expect(validator).toContain("buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate)");
+    expect(validator).toContain("else if (expectedChart.length > 0)");
     expect(validator).toContain('cardText("insights-financial-sources")');
     expect(validator).toContain('source?.displayName || revenueTypeLabel(source?.sourceType)');
     expect(validator).toContain("const importedRevenueSourceIds = new Set(");

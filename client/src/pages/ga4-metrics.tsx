@@ -8367,6 +8367,9 @@ export default function GA4Metrics() {
                           const complete7DayRows = insightsTrendMode === "7d"
                             ? sorted.filter((row: any) => buildGA4InsightsCalendarRollup(sorted, String(row.date || ""), 7).complete)
                             : [];
+                          const complete30DayRows = insightsTrendMode === "30d"
+                            ? sorted.filter((row: any) => buildGA4InsightsCalendarRollup(sorted, String(row.date || ""), 30).complete)
+                            : [];
                           const availableMonths = new Set(
                             dailyRows
                               .map((r: any) => String(r?.date || "").slice(0, 7))
@@ -8379,7 +8382,7 @@ export default function GA4Metrics() {
                               ? dailyRows.length >= minRequiredDays
                               : insightsTrendMode === "7d"
                                 ? complete7DayRows.length > 0
-                                : insightsRollups.last30.complete && insightsRollups.prior30.complete;
+                                : complete30DayRows.length > 0;
                           if (!hasRequiredHistory) {
                             const rollingWindow = insightsTrendMode === "7d"
                               ? { label: "7-day", current: insightsRollups.last7, prior: insightsRollups.prior7 }
@@ -8655,10 +8658,10 @@ export default function GA4Metrics() {
                                         const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                                         const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
                                         const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
-                                        if (insightsTrendMode === "7d" && (!cur.complete || !prior.complete)) {
+                                        if (!cur.complete || !prior.complete) {
                                           return (
                                             <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">
-                                              Latest adjacent 7-day comparison is unavailable. The chart shows only complete historical 7-day windows.
+                                              Latest adjacent {windowDays}-day comparison is unavailable. The chart shows only complete historical {windowDays}-day windows.
                                             </td></tr>
                                           );
                                         }

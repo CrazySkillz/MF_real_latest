@@ -589,7 +589,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const availableMonths = new Set(");
     expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;');
     expect(ga4Metrics).toContain('insightsRollups.last7.complete && insightsRollups.prior7.complete');
-    expect(ga4Metrics).toContain('insightsRollups.last30.complete && insightsRollups.prior30.complete');
+    expect(ga4Metrics).toContain('const complete30DayRows = insightsTrendMode === "30d"');
+    expect(ga4Metrics).toContain(': complete30DayRows.length > 0');
     expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} imported daily rows`;');
     expect(ga4Metrics).toContain("Both adjacent calendar windows must contain every completed reporting day.");
     expect(ga4Metrics).toContain("Missing dates are not assumed to be zero.");

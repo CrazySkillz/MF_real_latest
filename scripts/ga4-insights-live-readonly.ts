@@ -490,6 +490,9 @@ try {
 
   const normalizedDailyRows = normalizeGA4InsightsDailyRows(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
   const trends = owner.page.getByTestId("insights-trends");
+  const dailyChartEndDate = String(normalizedDailyRows.at(-1)?.date || "");
+  const dailyChartStartDate = dailyChartEndDate ? addGA4InsightsDateDays(dailyChartEndDate, -29) || "" : "";
+  const dailyChartRows = normalizedDailyRows.filter((row) => row.date >= dailyChartStartDate && row.date <= dailyChartEndDate);
   const assertChartSeries = async (expected: unknown[], label: string) => {
     const raw = await trends.getByTestId("insights-trends-chart").getAttribute("data-chart-series");
     const actual = JSON.parse(String(raw || "[]"));
@@ -514,7 +517,7 @@ try {
     }
     const byDate = new Map(normalizedDailyRows.map((row) => [row.date, row]));
     const expectedChart: unknown[] = [];
-    const finalDate = String(uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date || "");
+    const finalDate = dailyChartEndDate;
     let cursor = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
     while (cursor && cursor <= finalDate) {
       const row = byDate.get(cursor);
@@ -618,7 +621,7 @@ try {
   await trends.getByRole("button", { name: "Daily", exact: true }).click();
   if (dailyExpected.length >= 2) {
     const byDate = new Map(normalizedDailyRows.map((row) => [row.date, row]));
-    const finalDate = String(uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date || "");
+    const finalDate = dailyChartEndDate;
     for (const metric of allTrendMetrics) {
       await chooseTrendMetric(metric.label);
       const rows = trends.locator("tbody tr");
@@ -855,6 +858,13 @@ try {
     oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleClientConfigured: true },
     savedFilterCount: filters.length,
     dailyWindow: { startDate: expected60.startDate, endDate: expected60.endDate, rows: rollups.availableDays },
+    dailyChart: {
+      startDate: dailyChartStartDate,
+      endDate: dailyChartEndDate,
+      slots: dailyChartEndDate ? 30 : 0,
+      importedDays: dailyChartRows.length,
+      points: dailyChartRows.map((row) => ({ date: row.date, sessions: row.sessions })),
+    },
     dailyFreshness: {
       refreshIsStale: uiDailyBody?.refreshIsStale,
       providerRefreshOutcome: uiDailyBody?.providerRefreshOutcome || null,

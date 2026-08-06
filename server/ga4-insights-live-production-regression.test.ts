@@ -236,6 +236,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('validateRollingMode("7d", 7)');
     expect(validator).toContain('validateRollingMode("30d", 30)');
     expect(validator).toContain('getByTestId("insights-trends-chart").getAttribute("data-chart-series")');
+    expect(validator).toContain('const dailyChartEndDate = String(normalizedDailyRows.at(-1)?.date || "")');
+    expect(validator).not.toContain('uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date');
     expect(validator).toContain('await assertChartSeries(expectedChart, "Daily")');
     expect(validator).toContain('getByTestId("insights-daily-chart-coverage")');
     expect(validator).toContain("for (const metric of allTrendMetrics)");

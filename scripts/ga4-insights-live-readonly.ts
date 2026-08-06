@@ -156,7 +156,7 @@ try {
     request(owner.page, "/api/auth/google-sheets/connect", "POST", { campaignId: CAMPAIGN_ID, purpose: "revenue" }),
   ]);
   if (!ga4OAuthConfig.ok || !sheetsOAuthConfig.ok) throw new Error("Production Google OAuth configuration validation failed");
-  const ga4OAuthUrl = new URL(String(ga4OAuthConfig.body?.oauthUrl || ""));
+  const ga4OAuthUrl = new URL(String(ga4OAuthConfig.body?.oauth_url || ""));
   const sheetsOAuthUrl = new URL(String(sheetsOAuthConfig.body?.authUrl || ""));
   const ga4State = String(ga4OAuthUrl.searchParams.get("state") || "");
   const sheetsState = String(sheetsOAuthUrl.searchParams.get("state") || "");
@@ -186,7 +186,12 @@ try {
   };
   const entries = await Promise.all(Object.entries(paths).map(async ([name, path]) => [name, await request(owner.page, path)] as const));
   const responses = Object.fromEntries(entries) as Record<string, any>;
-  for (const [name, response] of entries) if (!response.ok) throw new Error(`${name} endpoint failed (${response.status})`);
+  for (const [name, response] of entries) {
+    if (!response.ok) {
+      const reason = String(response.body?.error || response.body?.message || "no API reason returned").slice(0, 300);
+      throw new Error(`${name} endpoint failed (${response.status}): ${reason}`);
+    }
+  }
   const assertCampaignResponseScope = (campaignResponse: any) => {
     if (String(campaignResponse?.id || "") !== CAMPAIGN_ID || String(campaignResponse?.clientId || "") !== String(row.client_id)) {
       throw new Error("Campaign/client response scope parity failed");

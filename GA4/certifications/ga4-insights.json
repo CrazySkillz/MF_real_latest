@@ -5,7 +5,7 @@
   "lastReviewedSha": "f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a",
   "certifiedSha": null,
   "deployedSha": null,
-  "invalidationReason": "The final release-boundary correction is not deployed, the native GA4 currency gate fails, and owner API/UI parity, tenant isolation, and dependency freezing remain incomplete.",
+  "invalidationReason": "Deployed candidate 25285f49 proves GA4 property 542352127 is GBP while the campaign and all active imported source definitions and records are USD; owner UI/API parity, tenant isolation, final scheduler evidence, and dependency freezing remain incomplete.",
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
     "includedSurfaces": [
@@ -122,14 +122,15 @@
     { "id": "build", "status": "passed", "evidence": "npm run build passed on the runtime implementation inherited by f1643ea3ae2bcc5ebb00fde9631f203c67e1fa9a." },
     { "id": "machine_gate", "status": "passed", "evidence": "The machine checker passed while correctly retaining the controlling UNVERIFIED status." },
     { "id": "commit1_oauth_release_boundary", "status": "passed", "evidence": "Five focused production-path files and 79 tests passed, including actual Express GA4/Sheets initiation using the mandatory token key, missing-all-secret fail-closed behavior, and excluded Google Ads chooser/input/scheduler scope; npm run check and npm run build also passed." },
-    { "id": "commit2_currency_diagnostic", "status": "passed", "evidence": "Three focused production-path files and 47 tests passed for matching, unavailable, mixed imported/native, explicit observed mismatch, valid-zero, source-scope, and live-validator paths; npm run check also passed. Deployed observed-currency and configuration alignment evidence remains pending." }
+    { "id": "commit2_currency_diagnostic", "status": "passed", "evidence": "Three focused production-path files and 47 tests passed for matching, unavailable, mixed imported/native, explicit observed mismatch, valid-zero, source-scope, and live-validator paths; npm run check also passed. Deployed read-only evidence proves GBP property versus USD campaign/source/record scope." },
+    { "id": "validator_failure_evidence", "status": "passed", "evidence": "The focused 11-test validator regression passes; corrected local validation against exact deployed 25285f49 reports the bounded API reason: GA4 native revenue currency GBP does not match campaign currency USD." }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render /api/health reported exact candidate 0a066fd38673a45d1e8639646f7099c230d144cc in production." },
-    { "id": "authenticated_owner_api_ui_parity", "status": "failed", "evidence": "OAuth configuration checks returned 500 and selected-property ga4-to-date returned 500 for native revenue currency mismatch against campaign USD." },
+    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render /api/health reported exact candidate 25285f493f343c49a0d7867f8a9753d10be1fdbf in production." },
+    { "id": "authenticated_owner_api_ui_parity", "status": "failed", "evidence": "GA4 and Sheets OAuth initiation passed without optional Render state secrets, then selected-property ga4-to-date failed closed because GA4 property 542352127 reports GBP while the campaign is USD." },
     { "id": "live_surface_value_parity", "status": "failed", "evidence": "No complete value packet can pass while ga4-to-date is unavailable; partial downstream evidence is not counted." },
     { "id": "tenant_isolation", "status": "pending", "evidence": "A read-only non-owner request using an existing authorized identity must fail closed on the exact corrected deployment; creation of another temporary user is not authorized." },
-    { "id": "deterministic_scheduler", "status": "passed", "evidence": "Exact candidate 0a066fd3 completed the manual campaign-scoped run successfully at 2026-08-06T05:12:00.343Z with alerts suppressed and daily rows unchanged at 19; no active Google Ads source existed." },
+    { "id": "deterministic_scheduler", "status": "pending", "evidence": "Historical candidate 0a066fd3 passed; the deterministic scheduler must run again on the final corrected candidate and is not carried forward." },
     { "id": "dependency_hashes", "status": "pending", "evidence": "The final committed dependency and production configuration boundary has not yet been frozen." }
   ]
 }

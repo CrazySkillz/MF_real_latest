@@ -189,6 +189,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('request(owner.page, "/api/auth/google/url", "POST"');
     expect(validator).toContain('request(owner.page, "/api/auth/google-sheets/connect", "POST"');
     expect(validator).not.toContain('request(owner.page, "/api/auth/google-ads/connect", "POST"');
+    expect(validator).toContain("ga4OAuthConfig.body?.oauth_url");
+    expect(validator).not.toContain("ga4OAuthConfig.body?.oauthUrl");
     expect(validator).toContain('throw new Error("Production OAuth state is not signed")');
     expect(validator).toContain("oauthConfiguration: { ga4SignedState: true, sheetsSignedState: true, googleClientConfigured: true }");
     expect(validator).toContain("ga4-breakdown?dateRange=30days");
@@ -203,6 +205,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("overviewDailyWindow:");
     expect(validator).toContain("const pageInputEntries = await Promise.all(pageInputPromises)");
     expect(validator).toContain("responses[name] = { ok: true, status: response.status(), body: await response.json() }");
+    expect(validator).toContain('response.body?.error || response.body?.message || "no API reason returned"');
+    expect(validator).toContain(".slice(0, 300)");
     expect(validator).toContain("const analyticsResponsePromises = analyticsRequests.map");
     expect(validator).toContain('actual.searchParams.get("ga4Scope") === "1"');
     expect(validator).toContain("buildGA4InsightsHistoryScopeMarker(propertyId, filters");

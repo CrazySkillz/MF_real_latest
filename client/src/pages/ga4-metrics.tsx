@@ -8323,7 +8323,11 @@ export default function GA4Metrics() {
                           <div>
                             <CardTitle className="text-lg">Trends</CardTitle>
                             <CardDescription>
-                              Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.
+                              <ul className="list-disc pl-5 space-y-1">
+                                <li>Daily shows day-by-day values.</li>
+                                <li>7d/30d show rolling totals.</li>
+                                <li>Monthly compares calendar months.</li>
+                              </ul>
                             </CardDescription>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -8364,19 +8368,12 @@ export default function GA4Metrics() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground/80">
-                          <span>Completed-day cutoff <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
-                          <span>Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span></span>
-                          <span>Reporting timezone <span className="font-medium text-foreground">{trendsReportingTimeZoneLabel}</span></span>
-                          <span>Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
-                          <span>Expected refresh <span className="font-medium text-foreground">{trendsExpectedRefreshLabel}</span></span>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground/80">
+                          <span className="whitespace-nowrap">Completed-day cutoff <span className="font-medium text-foreground">{trendsDataThroughLabel}</span> <span aria-hidden="true">|</span></span>
+                          <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
+                          <span className="whitespace-nowrap">Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span> <span aria-hidden="true">|</span></span>
+                          <span className="whitespace-nowrap">Expected refresh <span className="font-medium text-foreground">{trendsExpectedRefreshLabel}</span></span>
                         </div>
-                        {trendsRefreshIsStale && (
-                          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                            <span>Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run. Values remain unchanged until the next GA4 daily refresh completes.</span>
-                          </div>
-                        )}
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
                             GA4 daily history is unavailable. Trend values and trend-based recommendations are withheld.
@@ -8504,11 +8501,6 @@ export default function GA4Metrics() {
                               {insightsTrendMode === "daily" && (
                                 <div className="mb-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
                                   Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are skipped, not treated as zero.
-                                </div>
-                              )}
-                              {insightsTrendMode === "7d" && (!insightsRollups.last7.complete || !insightsRollups.prior7.complete) && (
-                                <div className="mb-2 text-xs text-muted-foreground/70" data-testid="insights-7d-historical-coverage">
-                                  Chart shows {chartData.length} complete historical 7-day window{chartData.length === 1 ? "" : "s"}. 7-day comparison unavailable for the latest adjacent windows. Current {insightsRollups.last7.startDate} {"\u2192"} {insightsRollups.last7.endDate}: {insightsRollups.last7.days}/7 imported days. Prior {insightsRollups.prior7.startDate} {"\u2192"} {insightsRollups.prior7.endDate}: {insightsRollups.prior7.days}/7 imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.
                                 </div>
                               )}
                               <div className="h-64" data-testid="insights-trends-chart" data-chart-series={JSON.stringify(chartData)}>

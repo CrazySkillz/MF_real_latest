@@ -51,7 +51,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
     expect(page).toContain("const complete7DayRows = insightsTrendMode === \"7d\"");
     expect(page).toContain("? complete7DayRows.length > 0");
-    expect(page).toContain('data-testid="insights-7d-historical-coverage"');
+    expect(page).not.toContain('data-testid="insights-7d-historical-coverage"');
     expect(page).toContain('chartData.length === 1 ? { r: 3 } : false');
     expect(page).toContain("const finalDate = String(sorted[sorted.length - 1]?.date || \"\");");
     expect(page).not.toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");

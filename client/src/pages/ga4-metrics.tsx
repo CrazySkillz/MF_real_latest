@@ -1921,7 +1921,6 @@ export default function GA4Metrics() {
     ? (ga4InsightsDailyResp as any)?.lastCompletedRefreshAt
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
-  const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4InsightsDailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);
   const trendsRefreshIsStale = Boolean((ga4InsightsDailyResp as any)?.refreshIsStale) || Boolean(ga4InsightsDailyError && ga4InsightsDailyResp !== undefined);
 
   const {
@@ -8349,8 +8348,7 @@ export default function GA4Metrics() {
                         <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground/80">
                           <span className="whitespace-nowrap">Completed-day cutoff <span className="font-medium text-foreground">{trendsDataThroughLabel}</span> <span aria-hidden="true">|</span></span>
                           <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
-                          <span className="whitespace-nowrap">Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span> <span aria-hidden="true">|</span></span>
-                          <span className="whitespace-nowrap">Expected refresh <span className="font-medium text-foreground">{trendsExpectedRefreshLabel}</span></span>
+                          <span className="whitespace-nowrap">Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
                         </div>
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
@@ -8393,7 +8391,7 @@ export default function GA4Metrics() {
                             if (rollingWindow) {
                               return (
                                 <div className="text-sm text-muted-foreground/70 py-4">
-                                  {rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}
+                                  {insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</> : <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}</>}
                                 </div>
                               );
                             }
@@ -8539,6 +8537,11 @@ export default function GA4Metrics() {
                               {insightsTrendMode === "7d" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-7d-chart-coverage">
                                   {chartData.length > 0 ? <>7-day chart {rollingChartStartDate} {"\u2192"} {rollingChartEndDate}: {chartData.length} complete rolling window{chartData.length === 1 ? "" : "s"}.</> : <>7-day chart: no complete rolling windows in the displayed range.</>} Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.
+                                </div>
+                              )}
+                              {insightsTrendMode === "monthly" && (
+                                <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-monthly-comparison-note">
+                                  Monthly comparison requires two adjacent complete calendar months. Partial months are shown but not compared.
                                 </div>
                               )}
 

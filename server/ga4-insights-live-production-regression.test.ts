@@ -37,6 +37,7 @@ describe("live GA4 Insights production boundary", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
     expect(page).toContain("Both adjacent calendar windows must contain every completed reporting day.");
+    expect(page).toContain('insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</>');
     expect(page).toContain("{rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days");
     expect(page).toContain("{rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days");
     expect(page).toContain("Total imported rows in the 60-day response: {dailyRows.length}.");
@@ -67,6 +68,9 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('data-testid="insights-7d-chart-coverage"');
     expect(page.indexOf('data-testid="insights-7d-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
     expect(page).toContain("Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.");
+    expect(page).toContain('data-testid="insights-monthly-comparison-note"');
+    expect(page.indexOf('data-testid="insights-monthly-comparison-note"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
+    expect(page).toContain("Monthly comparison requires two adjacent complete calendar months. Partial months are shown but not compared.");
     expect(page).toContain('data-testid="insights-trend-metric"');
     expect(page).toContain("Missing dates are skipped, not treated as zero.");
     expect(page).toContain("value: row ? (isRate");
@@ -234,6 +238,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('getByTestId("ga4-overview-freshness-warning")');
     expect(validator).toContain("buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate)");
     expect(validator).toContain("else if (expectedChart.length > 0)");
+    expect(validator).toContain("30d insufficient-history copy should not render window details");
     expect(validator).toContain('cardText("insights-financial-sources")');
     expect(validator).toContain('source?.displayName || revenueTypeLabel(source?.sourceType)');
     expect(validator).toContain("const importedRevenueSourceIds = new Set(");

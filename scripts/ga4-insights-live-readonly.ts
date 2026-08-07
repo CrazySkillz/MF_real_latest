@@ -563,9 +563,13 @@ try {
     } else {
       const rendered = await trends.innerText();
       assertIncludes(rendered, days + "-day comparison unavailable", mode + " insufficient-history state");
-      assertIncludes(rendered, "Current " + current.startDate + " → " + current.endDate + ": " + current.days + "/" + current.expectedDays + " imported days", mode + " current coverage");
-      assertIncludes(rendered, "Prior " + prior.startDate + " → " + prior.endDate + ": " + prior.days + "/" + prior.expectedDays + " imported days", mode + " prior coverage");
-      assertIncludes(rendered, "Total imported rows in the 60-day response: " + normalizedDailyRows.length, mode + " total imported rows");
+      if (days === 7) {
+        assertIncludes(rendered, "Current " + current.startDate + " → " + current.endDate + ": " + current.days + "/" + current.expectedDays + " imported days", mode + " current coverage");
+        assertIncludes(rendered, "Prior " + prior.startDate + " → " + prior.endDate + ": " + prior.days + "/" + prior.expectedDays + " imported days", mode + " prior coverage");
+        assertIncludes(rendered, "Total imported rows in the 60-day response: " + normalizedDailyRows.length, mode + " total imported rows");
+      } else if (normalizeText(rendered).includes("Current " + current.startDate)) {
+        throw new Error("30d insufficient-history copy should not render window details");
+      }
       assertIncludes(rendered, "Missing dates are not assumed to be zero.", mode + " missing-date policy");
     }
     if (expectedChart.length > 0) await assertChartSeries(expectedChart, mode);

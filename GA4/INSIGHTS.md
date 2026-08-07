@@ -115,6 +115,7 @@ Current meaning:
 - mixed-source financial values are shown as totals, not exact daily averages
 - channel rows show the raw property/filter-scoped GA4 breakdown values and their own shares; values are never proportionally allocated to another total
 - channel share copy names the raw breakdown-session denominator, and a lowest-conversion-rate channel is identified only when one channel is uniquely lower at the displayed one-decimal precision
+- the live summary explicitly distinguishes imported daily traffic, campaign-to-date financials, and the separate raw GA4 channel breakdown
 
 ### Tracker Cards
 

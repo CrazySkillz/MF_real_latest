@@ -8727,6 +8727,11 @@ export default function GA4Metrics() {
                           {(financialRevenueAvailable || financialSpendAvailable) && (revenueKpiInputState === "stale" || spendKpiInputState === "stale") && (
                             <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good Data Summary financial values because one or more source refreshes failed.</div>
                           )}
+                          {ga4InsightsDailyResp !== undefined && channelAnalysis && (
+                            <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
+                              Traffic uses imported daily records. Financials are campaign-to-date. Channel figures use a separate GA4 breakdown and are not a breakdown of the {formatNumber(insightsDataSummaryTotals.sessions)} traffic sessions.
+                            </p>
+                          )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 h-8 rounded bg-muted animate-pulse" aria-label="Loading GA4 Insights summary" />
                           )}
@@ -8812,7 +8817,7 @@ export default function GA4Metrics() {
                           {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 1 && (
                             <div className="mt-4 pt-4 border-t">
                               <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">
-                                Channel Breakdown · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
+                                Channel Breakdown &mdash; separate GA4 query, {formatNumber(channelAnalysis.totalSessions)} sessions · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
                               </p>
                               <div className="overflow-hidden border rounded-md">
                                 <table className="w-full text-sm">

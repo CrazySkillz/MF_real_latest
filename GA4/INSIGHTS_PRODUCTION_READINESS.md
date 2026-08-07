@@ -15,7 +15,7 @@ Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
 Open findings: Critical `0`; Major `1`; Minor `0`.
 
-Decision: the prior certification is invalidated. Later contradictory production results exposed the Daily chart anchor defect, a tab-dependent native-revenue currency request, and tied channel conversion rates being misidentified as a unique lowest channel. The current candidate corrects those behaviors and labels the raw channel-share denominator; status remains unverified until the new revision is deployed and validated.
+Decision: the prior certification is invalidated. Later contradictory production results exposed the Daily chart anchor defect, a tab-dependent native-revenue currency request, and tied channel conversion rates being misidentified as a unique lowest channel. The current candidate corrects those behaviors, labels the raw channel-share denominator, and explicitly distinguishes the three Data Summary scopes without changing their values; status remains unverified until the new revision is deployed and validated.
 
 <!-- /ga4-insights-current-status -->
 

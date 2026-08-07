@@ -215,6 +215,14 @@ describe("GA4 Insights regression guard", () => {
     expect(content).not.toContain("{channelAnalysis.topSessionShare.toFixed(0)}% of sessions");
   });
 
+  it("states the separate Data Summary scopes without changing their values", () => {
+    const content = ga4MetricsFile();
+
+    expect(content).toContain("Traffic uses imported daily records. Financials are campaign-to-date. Channel figures use a separate GA4 breakdown and are not a breakdown of the");
+    expect(content).toContain("Channel Breakdown &mdash; separate GA4 query,");
+    expect(content).toContain("{formatNumber(channelAnalysis.totalSessions)} sessions");
+  });
+
   it("keeps GA4 Insights report output aligned with grouped and evidence-aware findings", () => {
     const content = ga4MetricsFile();
     const renderStart = content.indexOf("const renderInsightsSection = () => {");

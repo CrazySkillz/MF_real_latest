@@ -528,21 +528,35 @@ describe("GA4 campaign value picker", () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const filter = JSON.stringify(body?.dimensionFilter || {});
       const isLandingUtm = dimensions.length === 2 && dimensions.includes("pageLocation");
+      const isChannelUtm = dimensions.length === 1 && dimensions[0] === "date";
+      const channelSessions = filter.includes("utm_source=google") ? "200"
+        : filter.includes("utm_source=facebook") ? "140"
+        : "109";
       return {
         ok: true,
         json: async () => ({
-          rows: isLandingUtm
+          rows: isChannelUtm
+            ? [{
+                dimensionValues: [{ value: "20260708" }],
+                metricValues: [channelSessions, channelSessions, channelSessions].map((value) => ({ value })),
+              }]
+            : isLandingUtm
             ? [
                 landingRow("20260708", "/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200"),
                 landingRow("20260708", "/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140"),
                 landingRow("20260708", "/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109"),
-                landingRow("20260713", "/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "306"),
+                landingRow("20260708", "/pricing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "108"),
+                landingRow("20260708", "/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "107"),
+                landingRow("20260708", "/pricing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "91"),
               ]
             : standardRows,
           totals: [{
             metricValues: (isLandingUtm
-              ? ["755", "755", "755"]
+              ? ["449", "449", "449"]
+              : isChannelUtm
+              ? [channelSessions, channelSessions, channelSessions]
               : ["54", "54", "54", "0", "54"]
             ).map((value) => ({ value })),
           }],
@@ -559,9 +573,9 @@ describe("GA4 campaign value picker", () => {
       ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06", false, true,
     );
 
-    expect(result.totals.sessions).toBe(755);
+    expect(result.totals.sessions).toBe(449);
     expect(result.totals.conversions).toBe(54);
-    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(755);
+    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(449);
     expect(result.rows[0]).toMatchObject({ source: "google", medium: "display" });
     const displayedRows = filterGA4InsightsBreakdownRowsToImportedDates(
       result.rows,
@@ -592,13 +606,16 @@ describe("GA4 campaign value picker", () => {
     expect(landingBody.metrics).toEqual([
       { name: "sessions" }, { name: "totalUsers" }, { name: "engagedSessions" },
     ]);
+    const channelBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body || "{}"));
+    expect(channelBody.dimensions).toEqual([{ name: "date" }]);
+    expect(JSON.stringify(channelBody.dimensionFilter)).toContain("utm_source=google");
 
     const defaultResult = await ga4Service.getAcquisitionBreakdown(
       "campaign-1", storage, "2026-07-08", "123", 2000,
       ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06",
     );
     expect(defaultResult.totals.sessions).toBe(54);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
   it('paginates acquisition rows to the provider rowCount', async () => {

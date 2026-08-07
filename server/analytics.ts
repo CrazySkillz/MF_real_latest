@@ -1485,19 +1485,53 @@ export class GoogleAnalytics4Service {
             revenue: current.revenue + (Number(metrics[3]?.value) || 0),
           });
         }
-        const trafficByKey = new Map<string, { date: string; source: string; medium: string; campaign: string; sessions: number; users: number; engagedSessions: number }>();
+        const channelsByKey = new Map<string, { source: string; medium: string; campaign: string }>();
         for (const row of Array.isArray(landingData?.rows) ? landingData.rows : []) {
-          const date = String(row?.dimensionValues?.[0]?.value || '');
           const landingPage = String(row?.dimensionValues?.[1]?.value || '');
           const source = this.extractUrlSearchParam(landingPage, 'utm_source');
           const medium = this.extractUrlSearchParam(landingPage, 'utm_medium');
           const campaign = this.extractUrlSearchParam(landingPage, 'utm_campaign');
-          const key = keyFor(date, source, medium);
-          const current = trafficByKey.get(key) || { date, source, medium, campaign, sessions: 0, users: 0, engagedSessions: 0 };
-          current.sessions += Number(row?.metricValues?.[0]?.value) || 0;
-          current.users += Number(row?.metricValues?.[1]?.value) || 0;
-          current.engagedSessions += Number(row?.metricValues?.[2]?.value) || 0;
-          trafficByKey.set(key, current);
+          if (source && medium) channelsByKey.set(keyFor('', source, medium), { source, medium, campaign });
+        }
+        const utmValueExpression = (param: string, value: string) => {
+          const encoded = encodeURIComponent(value);
+          const plusEncoded = encoded.replace(/%20/g, '+');
+          const expressions = Array.from(new Set([value, encoded, plusEncoded])).map((candidate) => ({
+            filter: {
+              fieldName: 'pageLocation',
+              stringFilter: { matchType: 'CONTAINS', value: `utm_${param}=${candidate}`, caseSensitive: false },
+            },
+          }));
+          return expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };
+        };
+        const channelReports = await Promise.all(Array.from(channelsByKey.values()).map(async (channel) => ({
+          channel,
+          report: await fetchReport(
+            'totalRevenue',
+            [{ name: 'date' }],
+            undefined,
+            { dimensionFilter: { andGroup: { expressions: [
+              pageLocationCampaignFilter.dimensionFilter,
+              utmValueExpression('source', channel.source),
+              utmValueExpression('medium', channel.medium),
+            ] } } },
+            endDate || 'yesterday',
+            [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
+          ),
+        })));
+        const trafficByKey = new Map<string, { date: string; source: string; medium: string; campaign: string; sessions: number; users: number; engagedSessions: number }>();
+        for (const { channel, report } of channelReports) {
+          for (const row of Array.isArray(report?.rows) ? report.rows : []) {
+            const date = String(row?.dimensionValues?.[0]?.value || '');
+            const key = keyFor(date, channel.source, channel.medium);
+            trafficByKey.set(key, {
+              date,
+              ...channel,
+              sessions: Number(row?.metricValues?.[0]?.value) || 0,
+              users: Number(row?.metricValues?.[1]?.value) || 0,
+              engagedSessions: Number(row?.metricValues?.[2]?.value) || 0,
+            });
+          }
         }
         const mergedRows = Array.from(trafficByKey.entries()).map(([key, row]) => {
           const conversion = conversionByKey.get(key) || { conversions: 0, revenue: 0 };

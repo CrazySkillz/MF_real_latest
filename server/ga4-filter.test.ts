@@ -465,58 +465,6 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("uses session-level manual UTM acquisition rows instead of purchase-only attribution rows", async () => {
-    const row = (source: string, medium: string, campaign: string, sessions: string, conversions: string) => ({
-      dimensionValues: ["20260708", "Paid Social", source, medium, campaign, "desktop", "NL"]
-        .map((value) => ({ value })),
-      metricValues: [sessions, sessions, conversions, "0", sessions]
-        .map((value) => ({ value })),
-    });
-    const fetchMock = vi.fn(async (_url: string, init: any) => {
-      const body = JSON.parse(String(init?.body || "{}"));
-      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isManualUtm = dimensions.includes("sessionManualCampaignName");
-
-      return {
-        ok: true,
-        json: async () => ({
-          rows: isManualUtm
-            ? [
-                row("google", "display", "yesop_retargeting", "200", "21"),
-                row("facebook", "paid_social", "yesop_paid_social", "140", "17"),
-                row("newsletter", "email", "yesop_email_nurture", "109", "16"),
-              ]
-            : [row("google", "display", "yesop_retargeting", "54", "54")],
-          totals: [{
-            metricValues: (isManualUtm
-              ? ["449", "449", "54", "0", "449"]
-              : ["54", "54", "54", "0", "54"]
-            ).map((value) => ({ value })),
-          }],
-        }),
-      } as any;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const storage = { getGA4Connection: vi.fn(async () => ({
-      id: "conn-1", propertyId: "properties/123", accessToken: "token",
-    })) };
-
-    const result = await ga4Service.getAcquisitionBreakdown(
-      "campaign-1", storage, "2026-07-08", "123", 2000,
-      ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06",
-    );
-
-    expect(result.totals.sessions).toBe(449);
-    expect(result.totals.conversions).toBe(54);
-    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(449);
-    expect(result.rows[0]).toMatchObject({ source: "google", medium: "display", campaign: "yesop_retargeting" });
-    const requestBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body || "{}"));
-    expect(requestBody.dimensions).toContainEqual({ name: "sessionManualCampaignName" });
-    expect(JSON.stringify(requestBody.dimensionFilter)).toContain("sessionManualCampaignName");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
   it("uses pageLocation UTM fallback for acquisition rows when campaign dimensions are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));

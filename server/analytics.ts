@@ -1162,7 +1162,7 @@ export class GoogleAnalytics4Service {
     const fetchReport = async (
       metricName: 'totalRevenue' | 'purchaseRevenue',
       dimensions: Array<{ name: string }>,
-      preferredCampaignDim?: 'sessionCampaignName' | 'sessionManualCampaignName' | 'campaignName' | 'firstUserCampaignName',
+      preferredCampaignDim?: 'sessionCampaignName' | 'campaignName' | 'firstUserCampaignName',
       scopeFilter?: any,
       endDateOverride: string = endDate || 'yesterday'
     ) => {
@@ -1272,15 +1272,6 @@ export class GoogleAnalytics4Service {
       { name: 'sessionSource' },
       { name: 'sessionMedium' },
     ];
-    const sessionManualFull = [
-      { name: 'date' },
-      { name: 'sessionDefaultChannelGroup' },
-      { name: 'sessionManualSource' },
-      { name: 'sessionManualMedium' },
-      { name: 'sessionManualCampaignName' },
-      { name: 'deviceCategory' },
-      { name: 'country' },
-    ];
 
     // Fallback dimension names (some properties expose these without the `session*` prefix).
     const legacyFull = [
@@ -1340,7 +1331,6 @@ export class GoogleAnalytics4Service {
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
       const names = dims.map((d) => String(d?.name || ''));
-      if (names.includes('sessionManualCampaignName')) return 'sessionManualCampaignName' as const;
       if (names.some((n) => n.startsWith('session'))) return 'sessionCampaignName' as const;
       if (names.some((n) => n.startsWith('firstUser'))) return 'firstUserCampaignName' as const;
       return 'campaignName' as const;
@@ -1371,9 +1361,6 @@ export class GoogleAnalytics4Service {
       { name: 'firstUserNoCampaign', dims: firstUserNoCampaign },
       { name: 'firstUserCore', dims: firstUserCore },
     ];
-    if (this.normalizeCampaignFilter(campaignFilter).length > 0) {
-      dimensionCandidates.unshift({ name: 'sessionManualFull', dims: sessionManualFull });
-    }
 
     let chosenDims: Array<{ name: string }> = sessionScopedFull;
     let chosenRevenueMetric: string = 'totalRevenue';
@@ -1390,9 +1377,9 @@ export class GoogleAnalytics4Service {
       // Heuristic: if acquisition fields are all "(not set)" / "Unassigned", treat as uninformative.
       // IMPORTANT: Use dimension-name lookup (not fixed indexes) because candidate dimension sets differ.
       const idxChannel = indexOfAny(dimsNames, ['sessionDefaultChannelGroup', 'defaultChannelGroup', 'firstUserDefaultChannelGroup']);
-      const idxSource = indexOfAny(dimsNames, ['sessionManualSource', 'sessionSource', 'source', 'firstUserSource']);
-      const idxMedium = indexOfAny(dimsNames, ['sessionManualMedium', 'sessionMedium', 'medium', 'firstUserMedium']);
-      const idxCampaign = indexOfAny(dimsNames, ['sessionManualCampaignName', 'sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
+      const idxSource = indexOfAny(dimsNames, ['sessionSource', 'source', 'firstUserSource']);
+      const idxMedium = indexOfAny(dimsNames, ['sessionMedium', 'medium', 'firstUserMedium']);
+      const idxCampaign = indexOfAny(dimsNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
 
       const channel = getDim(dimValues, idxChannel);
       const source = getDim(dimValues, idxSource);
@@ -1488,9 +1475,9 @@ export class GoogleAnalytics4Service {
     const chosenDimNames = chosenDims.map((d: any) => String(d?.name || ''));
     const idxDate = indexOfAny(chosenDimNames, ['date']);
     const idxChannel = indexOfAny(chosenDimNames, ['sessionDefaultChannelGroup', 'defaultChannelGroup', 'firstUserDefaultChannelGroup']);
-    const idxSource = indexOfAny(chosenDimNames, ['sessionManualSource', 'sessionSource', 'source', 'firstUserSource']);
-    const idxMedium = indexOfAny(chosenDimNames, ['sessionManualMedium', 'sessionMedium', 'medium', 'firstUserMedium']);
-    const idxCampaign = indexOfAny(chosenDimNames, ['sessionManualCampaignName', 'sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
+    const idxSource = indexOfAny(chosenDimNames, ['sessionSource', 'source', 'firstUserSource']);
+    const idxMedium = indexOfAny(chosenDimNames, ['sessionMedium', 'medium', 'firstUserMedium']);
+    const idxCampaign = indexOfAny(chosenDimNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
     const idxDevice = indexOfAny(chosenDimNames, ['deviceCategory']);
     const idxCountry = indexOfAny(chosenDimNames, ['country']);
     const idxPageLocation = indexOfAny(chosenDimNames, ['pageLocation']);

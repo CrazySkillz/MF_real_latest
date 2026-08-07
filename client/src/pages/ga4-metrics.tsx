@@ -3886,7 +3886,7 @@ export default function GA4Metrics() {
           ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), "Current GA4 total"] as [string, string, string]] : []),
           ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), "Total across revenue sources"] as [string, string, string]] : []),
-          ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(channelAnalysis.totalSessions)} channel-breakdown sessions · ${channelAnalysis.channelCount} channels`]] : []),
+          ...(dataSummaryChannelAnalysis?.topSessionChannel ? [["Top Channel", String(dataSummaryChannelAnalysis.topSessionChannel.label || ""), `${dataSummaryChannelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions · ${dataSummaryChannelAnalysis.channelCount} channels`]] : []),
         ];
         const secondaryDataCards: string[][] = [
           ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""] as [string, string, string]] : []),
@@ -3896,14 +3896,14 @@ export default function GA4Metrics() {
         ];
         if (primaryDataCards.length > 0) renderInsightDataCards(primaryDataCards, 4);
         if (secondaryDataCards.length > 0) renderInsightDataCards(secondaryDataCards, 4);
-        if (channelAnalysis?.channels && channelAnalysis.channels.length >= 1) {
-          const sessScale = channelAnalysis.totalSessions > 0 ? breakdownTotals.sessions / channelAnalysis.totalSessions : 1;
-          const convScale = (channelAnalysis.channels.reduce((s: number, c: any) => s + c.conversions, 0) || 1);
+        if (dataSummaryChannelAnalysis?.channels && dataSummaryChannelAnalysis.channels.length >= 1) {
+          const sessScale = dataSummaryChannelAnalysis.totalSessions > 0 ? breakdownTotals.sessions / dataSummaryChannelAnalysis.totalSessions : 1;
+          const convScale = (dataSummaryChannelAnalysis.channels.reduce((s: number, c: any) => s + c.conversions, 0) || 1);
           const convScaleFactor = breakdownTotals.conversions > 0 ? breakdownTotals.conversions / convScale : 1;
           addSimpleTable(
             "Channel Breakdown",
             ["CHANNEL", "SESSIONS", "SHARE", "CONVERSIONS", "CONV. RATE"],
-            channelAnalysis.channels.map((ch: any) => {
+            dataSummaryChannelAnalysis.channels.map((ch: any) => {
               const scaledSessions = Math.round(Number(ch?.sessions || 0) * sessScale);
               const scaledConversions = Math.round(Number(ch?.conversions || 0) * convScaleFactor);
               const share = breakdownTotals.sessions > 0 ? (scaledSessions / breakdownTotals.sessions * 100) : 0;
@@ -4566,7 +4566,15 @@ export default function GA4Metrics() {
     };
   }, [ga4Breakdown, breakdownPlaceholder]);
 
-  const recommendationChannelAnalysis = breakdownError ? null : channelAnalysis;
+  const insightsChannelBreakdownMatchesDaily =
+    ga4InsightsDailyResp !== undefined &&
+    channelAnalysis !== null &&
+    String((ga4Breakdown as any)?.startDate || "") === String(insightsDataSummaryTotals.startDate || "") &&
+    String((ga4Breakdown as any)?.endDate || "") === String(insightsDataSummaryTotals.endDate || "") &&
+    channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions &&
+    channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions;
+  const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
+  const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
 
   const INSIGHT_CATEGORY_GROUPS = [
     { key: "setup", label: "Data setup issues" },
@@ -8724,12 +8732,17 @@ export default function GA4Metrics() {
                           {breakdownError && ga4Breakdown !== undefined && !breakdownPlaceholder && (
                             <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good channel values; channel-based recommendations are withheld until refresh succeeds.</div>
                           )}
+                          {ga4InsightsDailyResp !== undefined && channelAnalysis && !insightsChannelBreakdownMatchesDaily && (
+                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="insights-data-summary-channel-unavailable">
+                              Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.
+                            </div>
+                          )}
                           {(financialRevenueAvailable || financialSpendAvailable) && (revenueKpiInputState === "stale" || spendKpiInputState === "stale") && (
                             <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good Data Summary financial values because one or more source refreshes failed.</div>
                           )}
-                          {ga4InsightsDailyResp !== undefined && channelAnalysis && (
+                          {ga4InsightsDailyResp !== undefined && dataSummaryChannelAnalysis && (
                             <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
-                              Traffic uses imported daily records. Financials are campaign-to-date. Channel figures use a separate GA4 breakdown and are not a breakdown of the {formatNumber(insightsDataSummaryTotals.sessions)} traffic sessions.
+                              Traffic and channel figures cover the same imported reporting window. Financials are campaign-to-date.
                             </p>
                           )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
@@ -8767,14 +8780,14 @@ export default function GA4Metrics() {
                                 </p>
                               </div>
                             )}
-                            {channelAnalysis && channelAnalysis.topSessionChannel && (
+                            {dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.topSessionChannel && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-top-channel">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Top Channel</p>
-                                <p className="text-base font-bold text-foreground mt-1 truncate" title={channelAnalysis.topSessionChannel.label}>
-                                  {channelAnalysis.topSessionChannel.label}
+                                <p className="text-base font-bold text-foreground mt-1 truncate" title={dataSummaryChannelAnalysis.topSessionChannel.label}>
+                                  {dataSummaryChannelAnalysis.topSessionChannel.label}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {`${channelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(channelAnalysis.totalSessions)} channel-breakdown sessions · ${channelAnalysis.channelCount} channels`}
+                                  {`${dataSummaryChannelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions · ${dataSummaryChannelAnalysis.channelCount} channels`}
                                 </p>
                               </div>
                             )}
@@ -8814,10 +8827,10 @@ export default function GA4Metrics() {
                               )}
                             </div>
                           )}
-                          {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 1 && (
+                          {dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels && dataSummaryChannelAnalysis.channels.length >= 1 && (
                             <div className="mt-4 pt-4 border-t">
                               <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">
-                                Channel Breakdown &mdash; separate GA4 query, {formatNumber(channelAnalysis.totalSessions)} sessions · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
+                                Channel Breakdown · {formatNumber(dataSummaryChannelAnalysis.totalSessions)} sessions · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
                               </p>
                               <div className="overflow-hidden border rounded-md">
                                 <table className="w-full text-sm">
@@ -8831,10 +8844,10 @@ export default function GA4Metrics() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {channelAnalysis.channels.map((ch: any) => {
-                                      const share = channelAnalysis.totalSessions > 0 ? (ch.sessions / channelAnalysis.totalSessions * 100) : 0;
+                                    {dataSummaryChannelAnalysis.channels.map((ch: any) => {
+                                      const share = dataSummaryChannelAnalysis.totalSessions > 0 ? (ch.sessions / dataSummaryChannelAnalysis.totalSessions * 100) : 0;
                                       const cr = ch.sessions > 0 ? (ch.conversions / ch.sessions * 100) : 0;
-                                      const isLowestCR = channelAnalysis.channels.length > 1 && channelAnalysis.lowestCRChannel?.label === ch.label;
+                                      const isLowestCR = dataSummaryChannelAnalysis.channels.length > 1 && dataSummaryChannelAnalysis.lowestCRChannel?.label === ch.label;
                                       return (
                                         <tr key={ch.label} className="border-b last:border-b-0" data-testid="insights-summary-channel-row" data-channel-label={ch.label}>
                                           <td className="p-2 pl-3 text-foreground font-medium truncate max-w-[200px]" title={ch.label}>{ch.label}</td>

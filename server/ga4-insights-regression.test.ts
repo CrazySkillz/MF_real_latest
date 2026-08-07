@@ -211,16 +211,22 @@ describe("GA4 Insights regression guard", () => {
   it("labels channel share with its raw breakdown denominator", () => {
     const content = ga4MetricsFile();
 
-    expect(content).toContain("% of ${formatNumber(channelAnalysis.totalSessions)} channel-breakdown sessions");
+    expect(content).toContain("% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions");
     expect(content).not.toContain("{channelAnalysis.topSessionShare.toFixed(0)}% of sessions");
   });
 
-  it("states the separate Data Summary scopes without changing their values", () => {
+  it("withholds mismatched channel attribution from the Data Summary and recommendations", () => {
     const content = ga4MetricsFile();
 
-    expect(content).toContain("Traffic uses imported daily records. Financials are campaign-to-date. Channel figures use a separate GA4 breakdown and are not a breakdown of the");
-    expect(content).toContain("Channel Breakdown &mdash; separate GA4 query,");
-    expect(content).toContain("{formatNumber(channelAnalysis.totalSessions)} sessions");
+    expect(content).toContain("const insightsChannelBreakdownMatchesDaily =");
+    expect(content).toContain("channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions");
+    expect(content).toContain("channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions");
+    expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");
+    expect(content).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
+    expect(content).toContain("Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.");
+    expect(content).toContain("{dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.topSessionChannel && (");
+    expect(content).toContain("{dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels && dataSummaryChannelAnalysis.channels.length >= 1 && (");
+    expect(content).not.toContain("Channel figures use a separate GA4 breakdown and are not a breakdown of the");
   });
 
   it("keeps GA4 Insights report output aligned with grouped and evidence-aware findings", () => {

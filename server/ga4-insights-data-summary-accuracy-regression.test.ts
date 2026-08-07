@@ -14,11 +14,11 @@ describe("GA4 Insights Data Summary accuracy", () => {
     const pdf = readScheduledPdf();
 
     const liveStart = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
-    const liveEnd = page.indexOf("{channelAnalysis && channelAnalysis.channels", liveStart);
+    const liveEnd = page.indexOf("{dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels", liveStart);
     const liveSection = page.slice(liveStart, liveEnd);
 
     const downloadStart = page.indexOf('sectionTitle("Data Summary", C.insights);');
-    const downloadEnd = page.indexOf("if (channelAnalysis?.channels", downloadStart);
+    const downloadEnd = page.indexOf("if (dataSummaryChannelAnalysis?.channels", downloadStart);
     const downloadSection = page.slice(downloadStart, downloadEnd);
 
     const scheduledStart = pdf.indexOf('"Data Summary",');

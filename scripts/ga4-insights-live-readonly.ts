@@ -306,6 +306,13 @@ try {
   if (await owner.page.getByTestId("ga4-overview-freshness-warning").count() !== 0) {
     throw new Error("Shared daily freshness warning should not be rendered");
   }
+  responses.breakdownDebug = await request(
+    owner.page,
+    `${paths.breakdown}&insightsChannelAttribution=1&debug=1`,
+  );
+  if (!responses.breakdownDebug.ok) {
+    throw new Error(`breakdown debug endpoint failed (${responses.breakdownDebug.status})`);
+  }
   const toDateTotals = responses.toDate.body?.totals || {};
   const revenueDefinitions = Array.isArray(responses.revenueSources.body?.sources) ? responses.revenueSources.body.sources : [];
   const spendDefinitions = Array.isArray(responses.spendSources.body?.sources) ? responses.spendSources.body.sources : [];
@@ -465,6 +472,7 @@ try {
         expectedChannels,
         breakdownWindow: [responses.breakdown.body?.startDate, responses.breakdown.body?.endDate],
         breakdownTotals: responses.breakdown.body?.totals,
+        breakdownDebug: responses.breakdownDebug.body?.meta,
         dailyWindow: [uiRollups.last30.startDate, uiRollups.last30.endDate],
         dailyTotals: { sessions: uiRollups.last30.sessions, conversions: uiRollups.last30.conversions },
       }));

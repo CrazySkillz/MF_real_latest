@@ -1061,7 +1061,14 @@ export class GoogleAnalytics4Service {
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
-    meta: { propertyId: string; revenueMetric: string; dimensions: string[]; rowCount: number; sessionsDerivedFromUsers: boolean };
+    meta: {
+      propertyId: string;
+      revenueMetric: string;
+      dimensions: string[];
+      rowCount: number;
+      sessionsDerivedFromUsers: boolean;
+      insightsLandingCoverage?: Record<string, string | number | boolean>;
+    };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) {
@@ -1455,7 +1462,9 @@ export class GoogleAnalytics4Service {
       throw lastError;
     }
 
+    let insightsLandingCoverage: Record<string, string | number | boolean> | undefined;
     if (preferLandingUtmCoverage) {
+      insightsLandingCoverage = { attempted: true, selected: false, reason: 'not-evaluated' };
       try {
         const landingData = await fetchReport(
           'totalRevenue',
@@ -1523,7 +1532,25 @@ export class GoogleAnalytics4Service {
         const rowSessions = mergedRows.reduce((sum, row) => sum + (Number(row.metricValues[0].value) || 0), 0);
         const rowConversions = mergedRows.reduce((sum, row) => sum + (Number(row.metricValues[2].value) || 0), 0);
         const rowRevenue = mergedRows.reduce((sum, row) => sum + (Number(row.metricValues[3].value) || 0), 0);
-        if (mergedRows.length > 0 && landingSessions > reportMetricTotal(data, 0) &&
+        const standardSessions = reportMetricTotal(data, 0);
+        insightsLandingCoverage = {
+          attempted: true,
+          selected: false,
+          reason: mergedRows.length === 0 ? 'no-traffic-rows'
+            : landingSessions <= standardSessions ? 'no-coverage-gain'
+            : rowSessions !== landingSessions ? 'traffic-total-mismatch'
+            : rowConversions !== standardConversions ? 'conversion-total-mismatch'
+            : Math.abs(rowRevenue - standardRevenue) >= 0.01 ? 'revenue-total-mismatch'
+            : 'eligible',
+          standardSessions,
+          landingSessions,
+          rowSessions,
+          standardConversions,
+          rowConversions,
+          standardRevenue: Number(standardRevenue.toFixed(2)),
+          rowRevenue: Number(rowRevenue.toFixed(2)),
+        };
+        if (mergedRows.length > 0 && landingSessions > standardSessions &&
             rowSessions === landingSessions && rowConversions === standardConversions &&
             Math.abs(rowRevenue - standardRevenue) < 0.01) {
           data = {
@@ -1539,9 +1566,17 @@ export class GoogleAnalytics4Service {
             ] }],
           };
           chosenDims = landingPageCore;
+          insightsLandingCoverage.selected = true;
+          insightsLandingCoverage.reason = 'selected';
         }
       } catch (error: any) {
         if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded) throw error;
+        insightsLandingCoverage = {
+          attempted: true,
+          selected: false,
+          reason: 'provider-error',
+          error: String(error?.message || error || 'unknown').slice(0, 300),
+        };
       }
     }
 
@@ -1648,6 +1683,7 @@ export class GoogleAnalytics4Service {
         dimensions: chosenDims.map((d: any) => d.name),
         rowCount: rows.length,
         sessionsDerivedFromUsers: false,
+        ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
       },
     };
   }

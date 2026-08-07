@@ -520,8 +520,8 @@ describe("GA4 campaign value picker", () => {
       standardRow("facebook", "paid_social", "yesop_paid_social", "17"),
       standardRow("newsletter", "email", "yesop_email_nurture", "16"),
     ];
-    const landingRow = (url: string, sessions: string) => ({
-      dimensionValues: [{ value: "20260708" }, { value: url }],
+    const landingRow = (url: string, source: string, medium: string, campaign: string, sessions: string) => ({
+      dimensionValues: ["20260708", url, source, medium, campaign].map((value) => ({ value })),
       metricValues: [sessions, sessions, sessions].map((value) => ({ value })),
     });
     const fetchMock = vi.fn(async (_url: string, init: any) => {
@@ -533,9 +533,9 @@ describe("GA4 campaign value picker", () => {
         json: async () => ({
           rows: isLandingUtm
             ? [
-                landingRow("/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200"),
-                landingRow("/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140"),
-                landingRow("/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109"),
+                landingRow("/landing", "google", "display", "yesop_retargeting", "200"),
+                landingRow("/landing", "facebook", "paid_social", "yesop_paid_social", "140"),
+                landingRow("/landing", "newsletter", "email", "yesop_email_nurture", "109"),
               ]
             : standardRows,
           totals: [{
@@ -563,7 +563,8 @@ describe("GA4 campaign value picker", () => {
     expect(result.rows[0]).toMatchObject({ source: "google", medium: "display", campaign: "yesop_retargeting" });
     const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
     expect(landingBody.dimensions).toContainEqual({ name: "landingPagePlusQueryString" });
-    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("landingPagePlusQueryString");
+    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("sessionCampaignName");
+    expect(JSON.stringify(landingBody.dimensionFilter)).not.toContain("landingPagePlusQueryString");
     expect(landingBody.metrics).toEqual([
       { name: "sessions" }, { name: "totalUsers" }, { name: "engagedSessions" },
     ]);

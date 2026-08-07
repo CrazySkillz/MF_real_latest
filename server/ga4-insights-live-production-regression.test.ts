@@ -83,7 +83,8 @@ describe("live GA4 Insights production boundary", () => {
   it("does not reuse prior-property or stale channel data for recommendations", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
-    expect(page).toContain("}, [ga4Breakdown, breakdownPlaceholder]);");
+    expect(page).toContain("filterGA4InsightsBreakdownRowsToImportedDates(");
+    expect(page).toContain("}, [activeTab, ga4Breakdown, breakdownPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);");
     expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
     expect(page).toContain("const ch = recommendationChannelAnalysis;");
     expect(page).toContain("if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel");

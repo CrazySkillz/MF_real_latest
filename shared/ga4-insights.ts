@@ -162,6 +162,24 @@ export const selectUniqueLowestGA4InsightsConversionRateChannel = <T extends { c
   return lowest.length === 1 ? lowest[0].channel : null;
 };
 
+export const filterGA4InsightsBreakdownRowsToImportedDates = <T extends { date?: unknown }>(
+  rows: T[],
+  dailyRows: Array<{ date?: unknown }>,
+  startDate: unknown,
+  endDate: unknown,
+): T[] => {
+  const start = toGA4InsightsDateOnly(startDate);
+  const end = toGA4InsightsDateOnly(endDate);
+  if (!start || !end) return [];
+  const importedDates = new Set((Array.isArray(dailyRows) ? dailyRows : [])
+    .map((row) => toGA4InsightsDateOnly(row?.date))
+    .filter((date): date is string => Boolean(date && date >= start && date <= end)));
+  return (Array.isArray(rows) ? rows : []).filter((row) => {
+    const date = toGA4InsightsDateOnly(row?.date);
+    return Boolean(date && importedDates.has(date));
+  });
+};
+
 export const addGA4InsightsDateDays = (value: string, days: number): string | null => {
   if (!DATE_ONLY.test(String(value || ""))) return null;
   const date = new Date(`${value}T00:00:00.000Z`);

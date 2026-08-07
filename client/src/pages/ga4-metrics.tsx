@@ -40,7 +40,7 @@ import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -4504,7 +4504,15 @@ export default function GA4Metrics() {
   const insightsDataSummaryTotals = insightsRollups.last30;
   // --- Channel analysis for data-driven recommendations ---
   const channelAnalysis = useMemo(() => {
-    const rows = !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
+    const breakdownRows = !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
+    const rows = activeTab === "insights"
+      ? filterGA4InsightsBreakdownRowsToImportedDates(
+          breakdownRows,
+          ga4InsightsTimeSeries,
+          insightsDataSummaryTotals.startDate,
+          insightsDataSummaryTotals.endDate,
+        )
+      : breakdownRows;
     if (rows.length === 0) return null;
 
     const byChannel = new Map<string, { label: string; sessions: number; conversions: number; revenue: number }>();
@@ -4564,7 +4572,7 @@ export default function GA4Metrics() {
       channelCount: channels.length,
       channels: bySessionsDesc,
     };
-  }, [ga4Breakdown, breakdownPlaceholder]);
+  }, [activeTab, ga4Breakdown, breakdownPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);
 
   const insightsChannelBreakdownMatchesDaily =
     ga4InsightsDailyResp !== undefined &&

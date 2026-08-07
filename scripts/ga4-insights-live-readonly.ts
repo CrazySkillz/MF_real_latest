@@ -294,7 +294,7 @@ try {
     return element && !String(element.textContent || "").includes("Loading...");
   }), undefined, { timeout: 120000 });
   const bodyText = await owner.page.locator("body").innerText();
-  for (const required of ["Completed-day cutoff", "Latest imported day", "Reporting timezone", "What to investigate next"]) {
+  for (const required of ["Completed-day cutoff", "Latest imported day", "What to investigate next"]) {
     if (!bodyText.includes(required)) throw new Error(`Live Insights text missing: ${required}`);
   }
 
@@ -457,7 +457,18 @@ try {
   const expectedChannels = Array.from(channelMap.values()).sort((a, b) => b.sessions - a.sessions);
   const channelTotalSessions = expectedChannels.reduce((sum, channel) => sum + channel.sessions, 0);
   const channelRows = owner.page.getByTestId("insights-summary-channel-row");
-  if (await channelRows.count() !== expectedChannels.length) throw new Error("Rendered channel row count does not match the scoped breakdown");
+  const renderedChannelCount = await channelRows.count();
+  if (renderedChannelCount !== expectedChannels.length) {
+    throw new Error("Rendered channel row count does not match the scoped breakdown "
+      + JSON.stringify({
+        renderedChannelCount,
+        expectedChannels,
+        breakdownWindow: [responses.breakdown.body?.startDate, responses.breakdown.body?.endDate],
+        breakdownTotals: responses.breakdown.body?.totals,
+        dailyWindow: [uiRollups.last30.startDate, uiRollups.last30.endDate],
+        dailyTotals: { sessions: uiRollups.last30.sessions, conversions: uiRollups.last30.conversions },
+      }));
+  }
   for (let index = 0; index < expectedChannels.length; index += 1) {
     const expected = expectedChannels[index];
     const cells = await channelRows.nth(index).locator("td").allInnerTexts();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { filterGA4InsightsBreakdownRowsToImportedDates } from "../shared/ga4-insights";
 
 const readClient = () =>
   readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
@@ -9,6 +10,22 @@ const readScheduledPdf = () =>
   readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
 describe("GA4 Insights Data Summary accuracy", () => {
+  it("limits channel rows to the exact imported dates used by the summary", () => {
+    const rows = [
+      { date: "2026-07-08", sessions: 200 },
+      { date: "2026-07-09", sessions: 249 },
+      { date: "2026-07-13", sessions: 306 },
+    ];
+    const filtered = filterGA4InsightsBreakdownRowsToImportedDates(
+      rows,
+      [{ date: "2026-07-08" }, { date: "2026-07-09" }],
+      "2026-07-08",
+      "2026-08-06",
+    );
+    expect(filtered).toEqual(rows.slice(0, 2));
+    expect(filtered.reduce((sum, row) => sum + row.sessions, 0)).toBe(449);
+  });
+
   it("does not present additive to-date revenue as an exact daily average", () => {
     const page = readClient();
     const pdf = readScheduledPdf();

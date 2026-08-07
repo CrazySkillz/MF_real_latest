@@ -1333,8 +1333,10 @@ export class GoogleAnalytics4Service {
     const landingPageCore = [
       { name: 'date' },
       { name: 'landingPagePlusQueryString' },
+      { name: 'sessionSource' },
+      { name: 'sessionMedium' },
+      { name: 'sessionCampaignName' },
     ];
-    const landingPageCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter, 'landingPagePlusQueryString');
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
       const names = dims.map((d) => String(d?.name || ''));
@@ -1454,13 +1456,13 @@ export class GoogleAnalytics4Service {
       throw lastError;
     }
 
-    if (preferLandingUtmCoverage && landingPageCampaignFilter) {
+    if (preferLandingUtmCoverage) {
       try {
         const landingData = await fetchReport(
           'totalRevenue',
           landingPageCore,
+          'sessionCampaignName',
           undefined,
-          landingPageCampaignFilter,
           endDate || 'yesterday',
           [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
         );
@@ -1485,9 +1487,9 @@ export class GoogleAnalytics4Service {
         for (const row of Array.isArray(landingData?.rows) ? landingData.rows : []) {
           const date = String(row?.dimensionValues?.[0]?.value || '');
           const landingPage = String(row?.dimensionValues?.[1]?.value || '');
-          const source = this.extractUrlSearchParam(landingPage, 'utm_source');
-          const medium = this.extractUrlSearchParam(landingPage, 'utm_medium');
-          const campaign = this.extractUrlSearchParam(landingPage, 'utm_campaign');
+          const source = String(row?.dimensionValues?.[2]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_source');
+          const medium = String(row?.dimensionValues?.[3]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_medium');
+          const campaign = String(row?.dimensionValues?.[4]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_campaign');
           const key = keyFor(date, source, medium);
           const current = trafficByKey.get(key) || { date, source, medium, campaign, sessions: 0, users: 0, engagedSessions: 0 };
           current.sessions += Number(row?.metricValues?.[0]?.value) || 0;
@@ -1499,7 +1501,13 @@ export class GoogleAnalytics4Service {
           const conversion = conversionByKey.get(key) || { conversions: 0, revenue: 0 };
           const syntheticLandingPage = `/?utm_source=${encodeURIComponent(row.source)}&utm_medium=${encodeURIComponent(row.medium)}&utm_campaign=${encodeURIComponent(row.campaign)}`;
           return {
-            dimensionValues: [{ value: row.date }, { value: syntheticLandingPage }],
+            dimensionValues: [
+              { value: row.date },
+              { value: syntheticLandingPage },
+              { value: row.source },
+              { value: row.medium },
+              { value: row.campaign },
+            ],
             metricValues: [
               { value: String(row.sessions) },
               { value: String(row.users) },

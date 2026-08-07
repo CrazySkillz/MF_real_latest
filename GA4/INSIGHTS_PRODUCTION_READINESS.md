@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Last certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad` (invalidated)
 
-Deployed SHA observed at invalidation: `2527cb8f79061ff341f050286adad0f90ce69589`
+Current deployed correction SHA: `af601caa31a7c4bb5ec107c236e4aafe6326a36c`
 
 Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
-Open findings: Critical `0`; Major `1`; Minor `0`.
+Open findings for the reported channel-table defect: Critical `0`; Major `0`; Minor `0`.
 
-Decision: the prior certification is invalidated. Production proved the combined acquisition query covered only 54 converting Sessions while the four imported summary dates contained 449 Sessions; the full live provider window contained 755 Sessions. The first candidate still failed because it returned `sessionCampaignName` as an incompatible extra dimension instead of using it only as the scope filter. The current candidate keeps that filter, uses the known-working landing-page/source/medium dimensions for traffic, merges exact-key conversions/revenue, and filters to imported summary dates before the parity gate. Status remains unverified until the new revision is deployed and validated.
+Decision: the prior whole-tab certification remains invalidated. On deployed SHA `af601caa31a7c4bb5ec107c236e4aafe6326a36c`, the authenticated owner validator passed with three rendered channel rows whose 449 Sessions and 54 Conversions reconcile exactly to the four imported daily dates. Root cause was twofold: the seeded property stores channel scope in page-URL UTM values rather than the GA4 session-campaign field, and page-level Session rows are non-additive. The correction discovers the UTM channels, obtains one provider Session count per channel/date without summing page rows, merges only exact-key conversion/revenue values, and retains the UI parity gate. Status remains `UNVERIFIED` pending a complete new certification packet, including tenant isolation.
 
 <!-- /ga4-insights-current-status -->
 

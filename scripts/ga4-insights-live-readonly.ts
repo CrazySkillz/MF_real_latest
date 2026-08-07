@@ -497,7 +497,8 @@ try {
     const top = expectedChannels[0];
     const topText = await cardText("insights-summary-top-channel");
     assertIncludes(topText, top.label, "top channel label");
-    assertIncludes(topText, (channelTotalSessions > 0 ? (top.sessions / channelTotalSessions) * 100 : 0).toFixed(0) + "% of sessions", "top channel share");
+    assertIncludes(topText, (channelTotalSessions > 0 ? (top.sessions / channelTotalSessions) * 100 : 0).toFixed(0)
+      + `% of ${formatNumber(channelTotalSessions)} channel-breakdown sessions`, "top channel share");
     assertIncludes(topText, expectedChannels.length + " channels", "top channel count");
   }
 

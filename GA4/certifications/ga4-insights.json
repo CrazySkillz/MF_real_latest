@@ -2,10 +2,10 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "UNVERIFIED",
-    "lastReviewedSha":  "2527cb8f79061ff341f050286adad0f90ce69589",
+    "lastReviewedSha":  "af601caa31a7c4bb5ec107c236e4aafe6326a36c",
     "certifiedSha":  null,
-    "deployedSha":  null,
-    "invalidationReason":  "Contradictory production UI proved the Daily chart cutoff anchor discarded valid imported history; candidate correction requires deployed validation.",
+    "deployedSha":  "af601caa31a7c4bb5ec107c236e4aafe6326a36c",
+    "invalidationReason":  "The reported channel-table defect is fixed and authenticated owner UI/API parity passed with 3 rows, 449 Sessions, and 54 Conversions. Whole-tab certification remains invalidated pending a complete new packet including tenant isolation.",
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [

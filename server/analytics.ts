@@ -1561,7 +1561,7 @@ export class GoogleAnalytics4Service {
           selected: false,
           reason: mergedRows.length === 0 ? 'no-traffic-rows'
             : landingSessions <= standardSessions ? 'no-coverage-gain'
-            : rowSessions !== landingSessions ? 'traffic-total-mismatch'
+            : rowSessions <= standardSessions ? 'no-channel-coverage-gain'
             : rowConversions !== standardConversions ? 'conversion-total-mismatch'
             : Math.abs(rowRevenue - standardRevenue) >= 0.01 ? 'revenue-total-mismatch'
             : 'eligible',
@@ -1574,14 +1574,14 @@ export class GoogleAnalytics4Service {
           rowRevenue: Number(rowRevenue.toFixed(2)),
         };
         if (mergedRows.length > 0 && landingSessions > standardSessions &&
-            rowSessions === landingSessions && rowConversions === standardConversions &&
+            rowSessions > standardSessions && rowConversions === standardConversions &&
             Math.abs(rowRevenue - standardRevenue) < 0.01) {
           data = {
             ...landingData,
             rows: mergedRows,
             rowCount: mergedRows.length,
             totals: [{ metricValues: [
-              { value: String(landingSessions) },
+              { value: String(rowSessions) },
               { value: String(landingUsers) },
               { value: String(standardConversions) },
               { value: String(standardRevenue) },

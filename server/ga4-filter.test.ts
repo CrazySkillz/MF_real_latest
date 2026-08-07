@@ -554,7 +554,7 @@ describe("GA4 campaign value picker", () => {
             : standardRows,
           totals: [{
             metricValues: (isLandingUtm
-              ? ["449", "449", "449"]
+              ? ["448", "449", "449"]
               : isChannelUtm
               ? [channelSessions, channelSessions, channelSessions]
               : ["54", "54", "54", "0", "54"]

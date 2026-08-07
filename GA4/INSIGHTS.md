@@ -114,6 +114,7 @@ Current meaning:
 - traffic values use the exact current 30-calendar-day completed-day window and remain visible for verified zero
 - mixed-source financial values are shown as totals, not exact daily averages
 - channel rows show the raw property/filter-scoped GA4 breakdown values and their own shares; values are never proportionally allocated to another total
+- channel share copy names the raw breakdown-session denominator, and a lowest-conversion-rate channel is identified only when one channel is uniquely lower at the displayed one-decimal precision
 
 ### Tracker Cards
 

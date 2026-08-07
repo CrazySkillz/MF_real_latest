@@ -150,6 +150,18 @@ export const calculateGA4InsightsDeltaPct = (current: number, previous: number) 
     ? ((current - previous) / Math.abs(previous)) * 100
     : current > 0 ? 100 : current < 0 ? -100 : 0;
 
+export const selectUniqueLowestGA4InsightsConversionRateChannel = <T extends { cr: number }>(
+  channels: T[],
+): T | null => {
+  const scored = channels
+    .map((channel) => ({ channel, visibleRate: Math.round(Number(channel.cr) * 10) / 10 }))
+    .filter(({ visibleRate }) => Number.isFinite(visibleRate));
+  if (scored.length < 2) return null;
+  const minimum = Math.min(...scored.map(({ visibleRate }) => visibleRate));
+  const lowest = scored.filter(({ visibleRate }) => visibleRate === minimum);
+  return lowest.length === 1 ? lowest[0].channel : null;
+};
+
 export const addGA4InsightsDateDays = (value: string, days: number): string | null => {
   if (!DATE_ONLY.test(String(value || ""))) return null;
   const date = new Date(`${value}T00:00:00.000Z`);

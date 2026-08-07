@@ -40,7 +40,7 @@ import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -3886,7 +3886,7 @@ export default function GA4Metrics() {
           ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), "Current GA4 total"] as [string, string, string]] : []),
           ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), "Total across revenue sources"] as [string, string, string]] : []),
-          ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions · ${channelAnalysis.channelCount} channels`]] : []),
+          ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(channelAnalysis.totalSessions)} channel-breakdown sessions · ${channelAnalysis.channelCount} channels`]] : []),
         ];
         const secondaryDataCards: string[][] = [
           ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""] as [string, string, string]] : []),
@@ -4550,9 +4550,7 @@ export default function GA4Metrics() {
       ...ch,
       cr: ch.sessions > 0 ? (ch.conversions / ch.sessions) * 100 : 0,
     }));
-    const lowestCRChannel = withCR.length > 0
-      ? withCR.reduce((a, b) => a.cr < b.cr ? a : b)
-      : null;
+    const lowestCRChannel = selectUniqueLowestGA4InsightsConversionRateChannel(withCR);
 
     return {
       totalSessions,
@@ -8771,7 +8769,7 @@ export default function GA4Metrics() {
                                   {channelAnalysis.topSessionChannel.label}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {channelAnalysis.topSessionShare.toFixed(0)}% of sessions · {channelAnalysis.channelCount} channels
+                                  {`${channelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(channelAnalysis.totalSessions)} channel-breakdown sessions · ${channelAnalysis.channelCount} channels`}
                                 </p>
                               </div>
                             )}

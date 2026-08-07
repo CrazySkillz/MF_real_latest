@@ -17,6 +17,7 @@ import {
   normalizeGA4InsightsDailyRows,
   resolveGA4InsightsCampaignToDateSufficiencyReason,
   resolveGA4InsightsRevenueWindowState,
+  selectUniqueLowestGA4InsightsConversionRateChannel,
 } from "../shared/ga4-insights";
 
 const rows = (start: string, days: number) => Array.from({ length: days }, (_, index) => {
@@ -254,6 +255,24 @@ describe("GA4 Insights production calendar paths", () => {
     expect(areGA4InsightsMonthsAdjacent("2026-08", "2026-07")).toBe(true);
     expect(areGA4InsightsMonthsAdjacent("2027-01", "2026-12")).toBe(true);
     expect(areGA4InsightsMonthsAdjacent("2026-08", "2026-06")).toBe(false);
+  });
+
+  it("does not invent a lowest-converting channel when displayed rates are tied", () => {
+    expect(selectUniqueLowestGA4InsightsConversionRateChannel([
+      { label: "google / display", cr: 100 },
+      { label: "facebook / paid_social", cr: 100 },
+      { label: "newsletter / email", cr: 100 },
+    ])).toBeNull();
+
+    expect(selectUniqueLowestGA4InsightsConversionRateChannel([
+      { label: "google / display", cr: 12.04 },
+      { label: "facebook / paid_social", cr: 12.03 },
+    ])).toBeNull();
+
+    expect(selectUniqueLowestGA4InsightsConversionRateChannel([
+      { label: "google / display", cr: 12.1 },
+      { label: "facebook / paid_social", cr: 9.9 },
+    ])?.label).toBe("facebook / paid_social");
   });
 
   it("preserves explicit zero engaged sessions and derives only a genuinely missing value", () => {

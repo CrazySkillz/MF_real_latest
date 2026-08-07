@@ -208,6 +208,13 @@ describe("GA4 Insights regression guard", () => {
     expect(pdfContent).not.toContain("dropped first");
   });
 
+  it("labels channel share with its raw breakdown denominator", () => {
+    const content = ga4MetricsFile();
+
+    expect(content).toContain("% of ${formatNumber(channelAnalysis.totalSessions)} channel-breakdown sessions");
+    expect(content).not.toContain("{channelAnalysis.topSessionShare.toFixed(0)}% of sessions");
+  });
+
   it("keeps GA4 Insights report output aligned with grouped and evidence-aware findings", () => {
     const content = ga4MetricsFile();
     const renderStart = content.indexOf("const renderInsightsSection = () => {");

@@ -791,10 +791,16 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsValidationReadOnly]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, insightsValidationReadOnly]');
-    expect(ga4Metrics).toContain("queryKey: insightsFinancialScope");
-    expect(ga4Metrics).toContain('? [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "insights", insightsValidationReadOnly]');
-    expect(ga4Metrics).toContain(": [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId]");
-    expect(ga4Metrics).toContain('insightsFinancialScope ? "&insightsScope=1" : ""');
+    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
     expect(ga4Metrics).not.toContain("ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&dateRange=");
+  });
+
+  it("uses one campaign-currency GA4 financial request across Overview and Insights", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).not.toContain("const insightsFinancialScope = activeTab === \"insights\";");
+    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
+    expect(ga4Metrics).toContain('&insightsScope=1${insightsValidationReadOnly ? "&readOnly=1" : ""}');
+    expect(ga4Metrics).not.toContain('insightsFinancialScope ? "&insightsScope=1" : ""');
   });
 });

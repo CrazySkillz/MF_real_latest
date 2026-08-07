@@ -294,7 +294,6 @@ export default function GA4Metrics() {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const insightsValidationReadOnly = activeTab === "insights" && new URLSearchParams(search).get("readOnly") === "1";
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
-  const insightsFinancialScope = activeTab === "insights";
   useEffect(() => {
     const nextSearchParams = new URLSearchParams(search);
     const nextTabParam = nextSearchParams.get("tab");
@@ -2047,9 +2046,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
-    queryKey: insightsFinancialScope
-      ? [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "insights", insightsValidationReadOnly]
-      : [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId],
+    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -2058,7 +2055,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsFinancialScope ? "&insightsScope=1" : ""}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&insightsScope=1${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {

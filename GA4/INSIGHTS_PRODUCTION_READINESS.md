@@ -15,7 +15,7 @@ Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
 Open findings: Critical `0`; Major `1`; Minor `0`.
 
-Decision: the prior certification is invalidated. A contradictory production result proved the Daily chart was anchored to the completed-day cutoff rather than the latest imported day, pushing valid imported history outside the visible 30-day chart. The candidate correction anchors only the Daily chart to the latest imported day; current status remains unverified until the new revision is deployed and validated.
+Decision: the prior certification is invalidated. Later contradictory production results exposed both the Daily chart anchor defect and a tab-dependent native-revenue currency request. The current candidate corrects the chart behavior and makes Overview and Insights use one campaign-currency to-date request; status remains unverified until the new revision is deployed and validated.
 
 <!-- /ga4-insights-current-status -->
 

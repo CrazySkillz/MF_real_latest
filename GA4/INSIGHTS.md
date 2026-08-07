@@ -56,7 +56,7 @@ Current-release source boundary:
 - LinkedIn, Meta/Facebook, and Instagram connectors and analytics are not enabled as Insights inputs for this release
 - explicit LinkedIn, Meta, or Instagram platform-context records must not contribute to GA4 Insights financial totals
 - Insights may consume only financial totals already produced by documented campaign-owned source paths; it must not mutate Overview source selection, source lifecycle, calculations, availability gates, or rendering
-- for native GA4 revenue, the Insights-only to-date request supplies the campaign currency to the Data API and verifies the returned response `currencyCode` and `timeZone`; normal Overview requests retain their existing request and response contract
+- for native GA4 revenue, the shared Overview/Insights to-date request supplies the campaign currency to the Data API and verifies the returned response `currencyCode` and `timeZone`; both tabs therefore use the same native monetary value
 
 ## Section Summary
 

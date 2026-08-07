@@ -15,7 +15,7 @@ Only evidence from the same deployed commit, production-data state, and document
 
 ## Current Decision — Stable Cross-Session Answer
 
-**UNVERIFIED at the current revision. Current Commit 20's local corrective follow-up restores the verified 2 July legacy cutover, and Current Commit 21 locally restores Google Sheets in both GA4 financial-source choosers and removes only the obsolete new-source API rejection. Both changes require deployment and bounded validation; OAuth durability remains due on or after 2026-08-07.**
+**UNVERIFIED at the current revision. Current Commit 20's local corrective follow-up restores the verified 2 July legacy cutover, and Current Commit 21 locally restores Google Sheets in both GA4 financial-source choosers and removes only the obsolete new-source API rejection. The current local financial follow-up also aligns Overview native revenue with Insights on the campaign-currency request. These changes require deployment and bounded validation; OAuth durability remains due on or after 2026-08-07.**
 
 ## Intended Release Scope
 

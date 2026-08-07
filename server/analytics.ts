@@ -1337,12 +1337,6 @@ export class GoogleAnalytics4Service {
       { name: 'pageLocation' },
     ];
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
-    const landingPageCore = [
-      { name: 'date' },
-      { name: 'landingPagePlusQueryString' },
-      { name: 'sessionSource' },
-      { name: 'sessionMedium' },
-    ];
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
       const names = dims.map((d) => String(d?.name || ''));
@@ -1463,14 +1457,14 @@ export class GoogleAnalytics4Service {
     }
 
     let insightsLandingCoverage: Record<string, string | number | boolean> | undefined;
-    if (preferLandingUtmCoverage) {
+    if (preferLandingUtmCoverage && pageLocationCampaignFilter) {
       insightsLandingCoverage = { attempted: true, selected: false, reason: 'not-evaluated' };
       try {
         const landingData = await fetchReport(
           'totalRevenue',
-          landingPageCore,
-          'sessionCampaignName',
+          pageLocationCore,
           undefined,
+          pageLocationCampaignFilter,
           endDate || 'yesterday',
           [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
         );
@@ -1495,8 +1489,8 @@ export class GoogleAnalytics4Service {
         for (const row of Array.isArray(landingData?.rows) ? landingData.rows : []) {
           const date = String(row?.dimensionValues?.[0]?.value || '');
           const landingPage = String(row?.dimensionValues?.[1]?.value || '');
-          const source = String(row?.dimensionValues?.[2]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_source');
-          const medium = String(row?.dimensionValues?.[3]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_medium');
+          const source = this.extractUrlSearchParam(landingPage, 'utm_source');
+          const medium = this.extractUrlSearchParam(landingPage, 'utm_medium');
           const campaign = this.extractUrlSearchParam(landingPage, 'utm_campaign');
           const key = keyFor(date, source, medium);
           const current = trafficByKey.get(key) || { date, source, medium, campaign, sessions: 0, users: 0, engagedSessions: 0 };
@@ -1509,12 +1503,7 @@ export class GoogleAnalytics4Service {
           const conversion = conversionByKey.get(key) || { conversions: 0, revenue: 0 };
           const syntheticLandingPage = `/?utm_source=${encodeURIComponent(row.source)}&utm_medium=${encodeURIComponent(row.medium)}&utm_campaign=${encodeURIComponent(row.campaign)}`;
           return {
-            dimensionValues: [
-              { value: row.date },
-              { value: syntheticLandingPage },
-              { value: row.source },
-              { value: row.medium },
-            ],
+            dimensionValues: [{ value: row.date }, { value: syntheticLandingPage }],
             metricValues: [
               { value: String(row.sessions) },
               { value: String(row.users) },
@@ -1565,7 +1554,7 @@ export class GoogleAnalytics4Service {
               { value: String(landingEngagedSessions) },
             ] }],
           };
-          chosenDims = landingPageCore;
+          chosenDims = pageLocationCore;
           insightsLandingCoverage.selected = true;
           insightsLandingCoverage.reason = 'selected';
         }

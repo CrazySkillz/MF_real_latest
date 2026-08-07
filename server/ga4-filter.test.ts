@@ -521,23 +521,23 @@ describe("GA4 campaign value picker", () => {
       standardRow("facebook", "paid_social", "yesop_paid_social", "17"),
       standardRow("newsletter", "email", "yesop_email_nurture", "16"),
     ];
-    const landingRow = (date: string, url: string, source: string, medium: string, sessions: string) => ({
-      dimensionValues: [date, url, source, medium].map((value) => ({ value })),
+    const landingRow = (date: string, url: string, sessions: string) => ({
+      dimensionValues: [date, url].map((value) => ({ value })),
       metricValues: [sessions, sessions, sessions].map((value) => ({ value })),
     });
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isLandingUtm = dimensions.includes("landingPagePlusQueryString");
+      const isLandingUtm = dimensions.length === 2 && dimensions.includes("pageLocation");
       return {
         ok: true,
         json: async () => ({
           rows: isLandingUtm
             ? [
-                landingRow("20260708", "/landing", "google", "display", "200"),
-                landingRow("20260708", "/landing", "facebook", "paid_social", "140"),
-                landingRow("20260708", "/landing", "newsletter", "email", "109"),
-                landingRow("20260713", "/landing", "google", "display", "306"),
+                landingRow("20260708", "/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200"),
+                landingRow("20260708", "/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140"),
+                landingRow("20260708", "/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109"),
+                landingRow("20260713", "/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "306"),
               ]
             : standardRows,
           totals: [{
@@ -585,12 +585,10 @@ describe("GA4 campaign value picker", () => {
     const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
     expect(landingBody.dimensions).toEqual([
       { name: "date" },
-      { name: "landingPagePlusQueryString" },
-      { name: "sessionSource" },
-      { name: "sessionMedium" },
+      { name: "pageLocation" },
     ]);
-    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("sessionCampaignName");
-    expect(JSON.stringify(landingBody.dimensionFilter)).not.toContain("landingPagePlusQueryString");
+    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("pageLocation");
+    expect(JSON.stringify(landingBody.dimensionFilter)).not.toContain("sessionCampaignName");
     expect(landingBody.metrics).toEqual([
       { name: "sessions" }, { name: "totalUsers" }, { name: "engagedSessions" },
     ]);

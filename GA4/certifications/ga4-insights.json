@@ -2,10 +2,10 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "UNVERIFIED",
-    "lastReviewedSha":  "af601caa31a7c4bb5ec107c236e4aafe6326a36c",
+    "lastReviewedSha":  "704ac13da6f280e4c596a737e54ffa19478a91db",
     "certifiedSha":  null,
-    "deployedSha":  "af601caa31a7c4bb5ec107c236e4aafe6326a36c",
-    "invalidationReason":  "The reported channel-table defect is fixed and authenticated owner UI/API parity passed with 3 rows, 449 Sessions, and 54 Conversions. Whole-tab certification remains invalidated pending a complete new packet including tenant isolation.",
+    "deployedSha":  "704ac13da6f280e4c596a737e54ffa19478a91db",
+    "invalidationReason":  "The reported channel-table defect is fixed and authenticated owner UI/API parity passed with 3 rows, 339 Sessions, and 41 Conversions for the July 9-August 7 rolling window. Whole-tab certification remains invalidated pending a complete new packet including tenant isolation.",
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [

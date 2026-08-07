@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Last certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad` (invalidated)
 
-Current deployed correction SHA: `af601caa31a7c4bb5ec107c236e4aafe6326a36c`
+Current deployed correction SHA: `704ac13da6f280e4c596a737e54ffa19478a91db`
 
 Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
 Open findings for the reported channel-table defect: Critical `0`; Major `0`; Minor `0`.
 
-Decision: the prior whole-tab certification remains invalidated. On deployed SHA `af601caa31a7c4bb5ec107c236e4aafe6326a36c`, the authenticated owner validator passed with three rendered channel rows whose 449 Sessions and 54 Conversions reconcile exactly to the four imported daily dates. Root cause was twofold: the seeded property stores channel scope in page-URL UTM values rather than the GA4 session-campaign field, and page-level Session rows are non-additive. The correction discovers the UTM channels, obtains one provider Session count per channel/date without summing page rows, merges only exact-key conversion/revenue values, and retains the UI parity gate. Status remains `UNVERIFIED` pending a complete new certification packet, including tenant isolation.
+Decision: the prior whole-tab certification remains invalidated. On deployed SHA `704ac13da6f280e4c596a737e54ffa19478a91db`, the authenticated owner validator passed with three rendered channel rows whose 339 Sessions and 41 Conversions reconcile exactly to the three imported dates in the July 9-August 7 window. Root cause was threefold: the seeded property stores channel scope in page-URL UTM values rather than the GA4 session-campaign field; page-level Session rows are non-additive; and GA4's page-dimension aggregate varied by one Session from the exact per-channel/date rows as the rolling window advanced. The correction obtains one provider Session count per discovered UTM channel/date, merges only exact-key conversion/revenue values, and relies on the existing UI gate to require exact parity with Daily totals before rendering. Status remains `UNVERIFIED` pending a complete new certification packet, including tenant isolation.
 
 <!-- /ga4-insights-current-status -->
 

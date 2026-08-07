@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The reported channel-table defect is fixed and owner-validated on deployed SHA af601caa31a7c4bb5ec107c236e4aafe6326a36c; whole-tab re-certification remains pending. GA4/certifications/ga4-insights.json is the controlling machine record.`
+`GA4 Insights is UNVERIFIED. The reported channel-table defect is fixed and owner-validated on deployed SHA 704ac13da6f280e4c596a737e54ffa19478a91db; whole-tab re-certification remains pending. GA4/certifications/ga4-insights.json is the controlling machine record.`
 
 ## Document Ownership
 

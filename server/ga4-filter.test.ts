@@ -510,14 +510,19 @@ describe("GA4 campaign value picker", () => {
   });
 
   it("uses complete landing-page UTM attribution for Insights when standard acquisition rows are partial", async () => {
-    const standardRow = {
-      dimensionValues: ["20260708", "Paid Social", "google", "display", "yesop_retargeting", "desktop", "NL"]
+    const standardRow = (source: string, medium: string, campaign: string, sessions: string) => ({
+      dimensionValues: ["20260708", "Paid Social", source, medium, campaign, "desktop", "NL"]
         .map((value) => ({ value })),
-      metricValues: ["54", "54", "54", "0", "54"].map((value) => ({ value })),
-    };
-    const landingRow = (url: string, sessions: string, conversions: string) => ({
+      metricValues: [sessions, sessions, sessions, "0", sessions].map((value) => ({ value })),
+    });
+    const standardRows = [
+      standardRow("google", "display", "yesop_retargeting", "21"),
+      standardRow("facebook", "paid_social", "yesop_paid_social", "17"),
+      standardRow("newsletter", "email", "yesop_email_nurture", "16"),
+    ];
+    const landingRow = (url: string, sessions: string) => ({
       dimensionValues: [{ value: "20260708" }, { value: url }],
-      metricValues: [sessions, sessions, conversions, "0", sessions].map((value) => ({ value })),
+      metricValues: [sessions, sessions, sessions].map((value) => ({ value })),
     });
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
@@ -528,14 +533,14 @@ describe("GA4 campaign value picker", () => {
         json: async () => ({
           rows: isLandingUtm
             ? [
-                landingRow("/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200", "21"),
-                landingRow("/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140", "17"),
-                landingRow("/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109", "16"),
+                landingRow("/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200"),
+                landingRow("/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140"),
+                landingRow("/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109"),
               ]
-            : [standardRow],
+            : standardRows,
           totals: [{
             metricValues: (isLandingUtm
-              ? ["449", "449", "54", "0", "449"]
+              ? ["449", "449", "449"]
               : ["54", "54", "54", "0", "54"]
             ).map((value) => ({ value })),
           }],
@@ -559,6 +564,9 @@ describe("GA4 campaign value picker", () => {
     const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
     expect(landingBody.dimensions).toContainEqual({ name: "landingPagePlusQueryString" });
     expect(JSON.stringify(landingBody.dimensionFilter)).toContain("landingPagePlusQueryString");
+    expect(landingBody.metrics).toEqual([
+      { name: "sessions" }, { name: "totalUsers" }, { name: "engagedSessions" },
+    ]);
 
     const defaultResult = await ga4Service.getAcquisitionBreakdown(
       "campaign-1", storage, "2026-07-08", "123", 2000,

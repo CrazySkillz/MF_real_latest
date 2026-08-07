@@ -1165,7 +1165,8 @@ export class GoogleAnalytics4Service {
       dimensions: Array<{ name: string }>,
       preferredCampaignDim?: 'sessionCampaignName' | 'campaignName' | 'firstUserCampaignName',
       scopeFilter?: any,
-      endDateOverride: string = endDate || 'yesterday'
+      endDateOverride: string = endDate || 'yesterday',
+      metricsOverride?: Array<{ name: string }>,
     ) => {
       const requestBody = {
         dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
@@ -1174,7 +1175,7 @@ export class GoogleAnalytics4Service {
           campaignFilter,
           preferredCampaignDim || 'sessionCampaignName',
         ) || {}),
-        metrics: [
+        metrics: metricsOverride || [
           { name: 'sessions' },
           { name: 'totalUsers' },
           { name: 'conversions' },
@@ -1455,17 +1456,83 @@ export class GoogleAnalytics4Service {
 
     if (preferLandingUtmCoverage && landingPageCampaignFilter) {
       try {
-        const result = await fetchWithRevenueFallback(landingPageCore, landingPageCampaignFilter);
-        const landingRows = Array.isArray(result.data?.rows) ? result.data.rows : [];
-        const landingSessions = reportMetricTotal(result.data, 0);
-        const landingConversions = reportMetricTotal(result.data, 2);
-        const rowSessions = landingRows.reduce((sum: number, row: any) => sum + (Number(row?.metricValues?.[0]?.value) || 0), 0);
-        const rowConversions = landingRows.reduce((sum: number, row: any) => sum + (Number(row?.metricValues?.[2]?.value) || 0), 0);
-        if (landingRows.length > 0 && landingSessions > reportMetricTotal(data, 0) &&
-            rowSessions === landingSessions && rowConversions === landingConversions) {
-          data = result.data;
+        const landingData = await fetchReport(
+          'totalRevenue',
+          landingPageCore,
+          undefined,
+          landingPageCampaignFilter,
+          endDate || 'yesterday',
+          [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
+        );
+        const standardDimNames = chosenDims.map((item) => item.name);
+        const standardDateIndex = indexOfAny(standardDimNames, ['date']);
+        const standardSourceIndex = indexOfAny(standardDimNames, ['sessionSource', 'source', 'firstUserSource']);
+        const standardMediumIndex = indexOfAny(standardDimNames, ['sessionMedium', 'medium', 'firstUserMedium']);
+        const conversionByKey = new Map<string, { conversions: number; revenue: number }>();
+        const keyFor = (date: string, source: string, medium: string) =>
+          [date, source, medium].map((value) => String(value || '').trim().toLowerCase()).join('|');
+        for (const row of Array.isArray(data?.rows) ? data.rows : []) {
+          const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
+          const metrics = Array.isArray(row?.metricValues) ? row.metricValues : [];
+          const key = keyFor(getDim(dims, standardDateIndex), getDim(dims, standardSourceIndex), getDim(dims, standardMediumIndex));
+          const current = conversionByKey.get(key) || { conversions: 0, revenue: 0 };
+          conversionByKey.set(key, {
+            conversions: current.conversions + (Number(metrics[2]?.value) || 0),
+            revenue: current.revenue + (Number(metrics[3]?.value) || 0),
+          });
+        }
+        const trafficByKey = new Map<string, { date: string; source: string; medium: string; campaign: string; sessions: number; users: number; engagedSessions: number }>();
+        for (const row of Array.isArray(landingData?.rows) ? landingData.rows : []) {
+          const date = String(row?.dimensionValues?.[0]?.value || '');
+          const landingPage = String(row?.dimensionValues?.[1]?.value || '');
+          const source = this.extractUrlSearchParam(landingPage, 'utm_source');
+          const medium = this.extractUrlSearchParam(landingPage, 'utm_medium');
+          const campaign = this.extractUrlSearchParam(landingPage, 'utm_campaign');
+          const key = keyFor(date, source, medium);
+          const current = trafficByKey.get(key) || { date, source, medium, campaign, sessions: 0, users: 0, engagedSessions: 0 };
+          current.sessions += Number(row?.metricValues?.[0]?.value) || 0;
+          current.users += Number(row?.metricValues?.[1]?.value) || 0;
+          current.engagedSessions += Number(row?.metricValues?.[2]?.value) || 0;
+          trafficByKey.set(key, current);
+        }
+        const mergedRows = Array.from(trafficByKey.entries()).map(([key, row]) => {
+          const conversion = conversionByKey.get(key) || { conversions: 0, revenue: 0 };
+          const syntheticLandingPage = `/?utm_source=${encodeURIComponent(row.source)}&utm_medium=${encodeURIComponent(row.medium)}&utm_campaign=${encodeURIComponent(row.campaign)}`;
+          return {
+            dimensionValues: [{ value: row.date }, { value: syntheticLandingPage }],
+            metricValues: [
+              { value: String(row.sessions) },
+              { value: String(row.users) },
+              { value: String(conversion.conversions) },
+              { value: String(conversion.revenue) },
+              { value: String(row.engagedSessions) },
+            ],
+          };
+        });
+        const landingSessions = reportMetricTotal(landingData, 0);
+        const landingUsers = reportMetricTotal(landingData, 1);
+        const landingEngagedSessions = reportMetricTotal(landingData, 2);
+        const standardConversions = reportMetricTotal(data, 2);
+        const standardRevenue = reportMetricTotal(data, 3);
+        const rowSessions = mergedRows.reduce((sum, row) => sum + (Number(row.metricValues[0].value) || 0), 0);
+        const rowConversions = mergedRows.reduce((sum, row) => sum + (Number(row.metricValues[2].value) || 0), 0);
+        const rowRevenue = mergedRows.reduce((sum, row) => sum + (Number(row.metricValues[3].value) || 0), 0);
+        if (mergedRows.length > 0 && landingSessions > reportMetricTotal(data, 0) &&
+            rowSessions === landingSessions && rowConversions === standardConversions &&
+            Math.abs(rowRevenue - standardRevenue) < 0.01) {
+          data = {
+            ...landingData,
+            rows: mergedRows,
+            rowCount: mergedRows.length,
+            totals: [{ metricValues: [
+              { value: String(landingSessions) },
+              { value: String(landingUsers) },
+              { value: String(standardConversions) },
+              { value: String(standardRevenue) },
+              { value: String(landingEngagedSessions) },
+            ] }],
+          };
           chosenDims = landingPageCore;
-          chosenRevenueMetric = result.revenueMetric;
         }
       } catch (error: any) {
         if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded) throw error;

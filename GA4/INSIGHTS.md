@@ -113,9 +113,10 @@ Current meaning:
 - financial values use the same revenue and spend model as Executive Financials
 - traffic values use the exact current 30-calendar-day completed-day window and remain visible for verified zero
 - mixed-source financial values are shown as totals, not exact daily averages
-- channel rows show the raw property/filter-scoped GA4 breakdown values and their own shares; values are never proportionally allocated to another total
+- channel rows use property/filter-scoped landing-page UTM attribution when the standard acquisition response is partial; this fallback is requested only by Insights
+- channel rows render only when their dates, Sessions, and Conversions exactly match the daily-summary window; otherwise they are withheld rather than allocated or estimated
 - channel share copy names the raw breakdown-session denominator, and a lowest-conversion-rate channel is identified only when one channel is uniquely lower at the displayed one-decimal precision
-- the live summary explicitly distinguishes imported daily traffic, campaign-to-date financials, and the separate raw GA4 channel breakdown
+- the live summary distinguishes same-window GA4 traffic/channel values from campaign-to-date financials
 
 ### Tracker Cards
 

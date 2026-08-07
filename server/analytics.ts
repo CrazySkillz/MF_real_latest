@@ -96,7 +96,7 @@ export class GoogleAnalytics4Service {
     };
   }
 
-  private buildUtmCampaignPageLocationFilter(filter: CampaignFilter) {
+  private buildUtmCampaignPageLocationFilter(filter: CampaignFilter, fieldName = 'pageLocation') {
     const values = this.normalizeCampaignFilter(filter);
     if (values.length === 0) return null;
 
@@ -105,7 +105,7 @@ export class GoogleAnalytics4Service {
       const plusEncoded = encoded.replace(/%20/g, '+');
       return Array.from(new Set([value, encoded, plusEncoded])).map((v) => ({
         filter: {
-          fieldName: 'pageLocation',
+          fieldName,
           stringFilter: {
             matchType: 'CONTAINS',
             value: `utm_campaign=${v}`,
@@ -1057,6 +1057,7 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter,
     endDate?: string,
     disableTokenRefresh = false,
+    preferLandingUtmCoverage = false,
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
@@ -1328,6 +1329,11 @@ export class GoogleAnalytics4Service {
       { name: 'pageLocation' },
     ];
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+    const landingPageCore = [
+      { name: 'date' },
+      { name: 'landingPagePlusQueryString' },
+    ];
+    const landingPageCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter, 'landingPagePlusQueryString');
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
       const names = dims.map((d) => String(d?.name || ''));
@@ -1372,6 +1378,14 @@ export class GoogleAnalytics4Service {
     };
 
     const getDim = (dimValues: any[], idx: number) => (idx >= 0 ? String(dimValues?.[idx]?.value ?? '') : '');
+    const reportMetricTotal = (report: any, metricIndex: number) => {
+      const aggregate = Number(report?.totals?.[0]?.metricValues?.[metricIndex]?.value);
+      if (Number.isFinite(aggregate)) return aggregate;
+      return (Array.isArray(report?.rows) ? report.rows : []).reduce(
+        (sum: number, row: any) => sum + (Number(row?.metricValues?.[metricIndex]?.value) || 0),
+        0,
+      );
+    };
 
     const isUninformativeRow = (dimValues: any[], dimsNames: string[]) => {
       // Heuristic: if acquisition fields are all "(not set)" / "Unassigned", treat as uninformative.
@@ -1439,6 +1453,25 @@ export class GoogleAnalytics4Service {
       throw lastError;
     }
 
+    if (preferLandingUtmCoverage && landingPageCampaignFilter) {
+      try {
+        const result = await fetchWithRevenueFallback(landingPageCore, landingPageCampaignFilter);
+        const landingRows = Array.isArray(result.data?.rows) ? result.data.rows : [];
+        const landingSessions = reportMetricTotal(result.data, 0);
+        const landingConversions = reportMetricTotal(result.data, 2);
+        const rowSessions = landingRows.reduce((sum: number, row: any) => sum + (Number(row?.metricValues?.[0]?.value) || 0), 0);
+        const rowConversions = landingRows.reduce((sum: number, row: any) => sum + (Number(row?.metricValues?.[2]?.value) || 0), 0);
+        if (landingRows.length > 0 && landingSessions > reportMetricTotal(data, 0) &&
+            rowSessions === landingSessions && rowConversions === landingConversions) {
+          data = result.data;
+          chosenDims = landingPageCore;
+          chosenRevenueMetric = result.revenueMetric;
+        }
+      } catch (error: any) {
+        if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded) throw error;
+      }
+    }
+
     if (pageLocationCampaignFilter) {
       const currentRows = Array.isArray(data?.rows) ? data.rows : [];
       if (currentRows.length === 0) {
@@ -1480,7 +1513,7 @@ export class GoogleAnalytics4Service {
     const idxCampaign = indexOfAny(chosenDimNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
     const idxDevice = indexOfAny(chosenDimNames, ['deviceCategory']);
     const idxCountry = indexOfAny(chosenDimNames, ['country']);
-    const idxPageLocation = indexOfAny(chosenDimNames, ['pageLocation']);
+    const idxPageLocation = indexOfAny(chosenDimNames, ['pageLocation', 'landingPagePlusQueryString']);
 
     for (const row of Array.isArray(data?.rows) ? data.rows : []) {
       const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];

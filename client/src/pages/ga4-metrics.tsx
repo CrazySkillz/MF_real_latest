@@ -1928,7 +1928,7 @@ export default function GA4Metrics() {
     isError: breakdownError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, insightsValidationReadOnly],
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
@@ -1940,7 +1940,7 @@ export default function GA4Metrics() {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : ""}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {

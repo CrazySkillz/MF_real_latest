@@ -12482,6 +12482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
       const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
+      const insightsChannelAttribution = String(req.query.insightsChannelAttribution || '').trim() === '1';
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
@@ -12569,6 +12570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignFilter,
         providerEndDate,
         validationReadOnly,
+        insightsChannelAttribution,
       );
 
       res.json({

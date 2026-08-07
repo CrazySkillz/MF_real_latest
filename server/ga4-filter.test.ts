@@ -509,6 +509,65 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.metricAggregations).toEqual(["TOTAL"]);
   });
 
+  it("uses complete landing-page UTM attribution for Insights when standard acquisition rows are partial", async () => {
+    const standardRow = {
+      dimensionValues: ["20260708", "Paid Social", "google", "display", "yesop_retargeting", "desktop", "NL"]
+        .map((value) => ({ value })),
+      metricValues: ["54", "54", "54", "0", "54"].map((value) => ({ value })),
+    };
+    const landingRow = (url: string, sessions: string, conversions: string) => ({
+      dimensionValues: [{ value: "20260708" }, { value: url }],
+      metricValues: [sessions, sessions, conversions, "0", sessions].map((value) => ({ value })),
+    });
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const isLandingUtm = dimensions.includes("landingPagePlusQueryString");
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isLandingUtm
+            ? [
+                landingRow("/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200", "21"),
+                landingRow("/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140", "17"),
+                landingRow("/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109", "16"),
+              ]
+            : [standardRow],
+          totals: [{
+            metricValues: (isLandingUtm
+              ? ["449", "449", "54", "0", "449"]
+              : ["54", "54", "54", "0", "54"]
+            ).map((value) => ({ value })),
+          }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({
+      id: "conn-1", propertyId: "properties/123", accessToken: "token",
+    })) };
+
+    const result = await ga4Service.getAcquisitionBreakdown(
+      "campaign-1", storage, "2026-07-08", "123", 2000,
+      ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06", false, true,
+    );
+
+    expect(result.totals.sessions).toBe(449);
+    expect(result.totals.conversions).toBe(54);
+    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(449);
+    expect(result.rows[0]).toMatchObject({ source: "google", medium: "display", campaign: "yesop_retargeting" });
+    const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
+    expect(landingBody.dimensions).toContainEqual({ name: "landingPagePlusQueryString" });
+    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("landingPagePlusQueryString");
+
+    const defaultResult = await ga4Service.getAcquisitionBreakdown(
+      "campaign-1", storage, "2026-07-08", "123", 2000,
+      ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06",
+    );
+    expect(defaultResult.totals.sessions).toBe(54);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('paginates acquisition rows to the provider rowCount', async () => {
     const row = (campaign: string, sessions: string) => ({
       dimensionValues: ['20260618', 'Paid Search', 'google', 'cpc', campaign, 'desktop', 'NL']

@@ -13,7 +13,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('new URLSearchParams(search).get("readOnly") === "1"');
     expect(page).toContain('insightsValidationReadOnly ? "&readOnly=1" : ""');
     expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(4);
-    expect(page).toContain('"ga4-breakdown", dateRange, selectedGA4PropertyId, insightsValidationReadOnly');
+    expect(page).toContain('"ga4-breakdown", dateRange, selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
     expect(page).toContain('selectedGA4PropertyId, insightsValidationReadOnly]');
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
@@ -84,7 +84,7 @@ describe("live GA4 Insights production boundary", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
     expect(page).toContain("}, [ga4Breakdown, breakdownPlaceholder]);");
-    expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : channelAnalysis;");
+    expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
     expect(page).toContain("const ch = recommendationChannelAnalysis;");
     expect(page).toContain("if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel");
     expect(page).toContain("Showing last-good channel values; channel-based recommendations are withheld until refresh succeeds.");
@@ -117,7 +117,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(start).toBeGreaterThan(-1);
     expect(section).toContain("formatNumber(ch.sessions)");
     expect(section).toContain("formatNumber(ch.conversions)");
-    expect(section).toContain("ch.sessions / channelAnalysis.totalSessions");
+    expect(section).toContain("ch.sessions / dataSummaryChannelAnalysis.totalSessions");
     expect(section).not.toContain("sessScale");
     expect(section).not.toContain("convScaleFactor");
     expect(section).not.toContain("scaledSessions");

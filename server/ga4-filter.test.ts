@@ -1,5 +1,6 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { ga4Service } from "./analytics";
+import { filterGA4InsightsBreakdownRowsToImportedDates } from "../shared/ga4-insights";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -509,7 +510,7 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.metricAggregations).toEqual(["TOTAL"]);
   });
 
-  it("uses complete landing-page UTM attribution for Insights when standard acquisition rows are partial", async () => {
+  it("produces a renderable Insights channel table from full provider traffic and exact imported dates", async () => {
     const standardRow = (source: string, medium: string, campaign: string, sessions: string) => ({
       dimensionValues: ["20260708", "Paid Social", source, medium, campaign, "desktop", "NL"]
         .map((value) => ({ value })),
@@ -520,8 +521,8 @@ describe("GA4 campaign value picker", () => {
       standardRow("facebook", "paid_social", "yesop_paid_social", "17"),
       standardRow("newsletter", "email", "yesop_email_nurture", "16"),
     ];
-    const landingRow = (url: string, source: string, medium: string, campaign: string, sessions: string) => ({
-      dimensionValues: ["20260708", url, source, medium, campaign].map((value) => ({ value })),
+    const landingRow = (date: string, url: string, source: string, medium: string, sessions: string) => ({
+      dimensionValues: [date, url, source, medium].map((value) => ({ value })),
       metricValues: [sessions, sessions, sessions].map((value) => ({ value })),
     });
     const fetchMock = vi.fn(async (_url: string, init: any) => {
@@ -533,14 +534,15 @@ describe("GA4 campaign value picker", () => {
         json: async () => ({
           rows: isLandingUtm
             ? [
-                landingRow("/landing", "google", "display", "yesop_retargeting", "200"),
-                landingRow("/landing", "facebook", "paid_social", "yesop_paid_social", "140"),
-                landingRow("/landing", "newsletter", "email", "yesop_email_nurture", "109"),
+                landingRow("20260708", "/landing", "google", "display", "200"),
+                landingRow("20260708", "/landing", "facebook", "paid_social", "140"),
+                landingRow("20260708", "/landing", "newsletter", "email", "109"),
+                landingRow("20260713", "/landing", "google", "display", "306"),
               ]
             : standardRows,
           totals: [{
             metricValues: (isLandingUtm
-              ? ["449", "449", "449"]
+              ? ["755", "755", "755"]
               : ["54", "54", "54", "0", "54"]
             ).map((value) => ({ value })),
           }],
@@ -557,12 +559,36 @@ describe("GA4 campaign value picker", () => {
       ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06", false, true,
     );
 
-    expect(result.totals.sessions).toBe(449);
+    expect(result.totals.sessions).toBe(755);
     expect(result.totals.conversions).toBe(54);
-    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(449);
-    expect(result.rows[0]).toMatchObject({ source: "google", medium: "display", campaign: "yesop_retargeting" });
+    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(755);
+    expect(result.rows[0]).toMatchObject({ source: "google", medium: "display" });
+    const displayedRows = filterGA4InsightsBreakdownRowsToImportedDates(
+      result.rows,
+      [{ date: "2026-07-08" }, { date: "2026-07-09" }, { date: "2026-07-10" }, { date: "2026-07-12" }],
+      "2026-07-08",
+      "2026-08-06",
+    );
+    const displayedSessions = displayedRows.reduce((sum, item) => sum + item.sessions, 0);
+    const displayedConversions = displayedRows.reduce((sum, item) => sum + item.conversions, 0);
+    expect({ displayedSessions, displayedConversions }).toEqual({
+      displayedSessions: 449,
+      displayedConversions: 54,
+    });
+    const tableShouldRender =
+      displayedRows.length > 0 &&
+      "2026-07-08" === "2026-07-08" &&
+      "2026-08-06" === "2026-08-06" &&
+      displayedSessions === 449 &&
+      displayedConversions === 54;
+    expect(tableShouldRender).toBe(true);
     const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
-    expect(landingBody.dimensions).toContainEqual({ name: "landingPagePlusQueryString" });
+    expect(landingBody.dimensions).toEqual([
+      { name: "date" },
+      { name: "landingPagePlusQueryString" },
+      { name: "sessionSource" },
+      { name: "sessionMedium" },
+    ]);
     expect(JSON.stringify(landingBody.dimensionFilter)).toContain("sessionCampaignName");
     expect(JSON.stringify(landingBody.dimensionFilter)).not.toContain("landingPagePlusQueryString");
     expect(landingBody.metrics).toEqual([

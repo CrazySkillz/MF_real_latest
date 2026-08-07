@@ -1335,7 +1335,6 @@ export class GoogleAnalytics4Service {
       { name: 'landingPagePlusQueryString' },
       { name: 'sessionSource' },
       { name: 'sessionMedium' },
-      { name: 'sessionCampaignName' },
     ];
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
@@ -1489,7 +1488,7 @@ export class GoogleAnalytics4Service {
           const landingPage = String(row?.dimensionValues?.[1]?.value || '');
           const source = String(row?.dimensionValues?.[2]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_source');
           const medium = String(row?.dimensionValues?.[3]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_medium');
-          const campaign = String(row?.dimensionValues?.[4]?.value || '') || this.extractUrlSearchParam(landingPage, 'utm_campaign');
+          const campaign = this.extractUrlSearchParam(landingPage, 'utm_campaign');
           const key = keyFor(date, source, medium);
           const current = trafficByKey.get(key) || { date, source, medium, campaign, sessions: 0, users: 0, engagedSessions: 0 };
           current.sessions += Number(row?.metricValues?.[0]?.value) || 0;
@@ -1506,7 +1505,6 @@ export class GoogleAnalytics4Service {
               { value: syntheticLandingPage },
               { value: row.source },
               { value: row.medium },
-              { value: row.campaign },
             ],
             metricValues: [
               { value: String(row.sessions) },

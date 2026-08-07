@@ -15,7 +15,7 @@ Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
 Open findings: Critical `0`; Major `1`; Minor `0`.
 
-Decision: the prior certification is invalidated. Production proved the combined acquisition query covered only 54 converting Sessions while the four imported summary dates contained 449 Sessions; the full live provider window contained 755 Sessions. The local candidate uses session-campaign-scoped landing-page rows for traffic, standard acquisition rows for conversions/revenue, and filters the merged rows to the exact imported summary dates before the date/Session/Conversion UI parity gate. Status remains unverified until the new revision is deployed and validated.
+Decision: the prior certification is invalidated. Production proved the combined acquisition query covered only 54 converting Sessions while the four imported summary dates contained 449 Sessions; the full live provider window contained 755 Sessions. The first candidate still failed because it returned `sessionCampaignName` as an incompatible extra dimension instead of using it only as the scope filter. The current candidate keeps that filter, uses the known-working landing-page/source/medium dimensions for traffic, merges exact-key conversions/revenue, and filters to imported summary dates before the parity gate. Status remains unverified until the new revision is deployed and validated.
 
 <!-- /ga4-insights-current-status -->
 

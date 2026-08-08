@@ -172,6 +172,7 @@ describe("GA4 campaign value picker", () => {
       "2026-06-01",
       "2026-06-17",
       "summer_sale",
+      "USD",
     );
 
     expect(result.totals).toEqual({
@@ -183,10 +184,10 @@ describe("GA4 campaign value picker", () => {
       engagedSessions: 0,
       engagementRate: 0,
     });
-    expect(result.currencyCode).toBeUndefined();
-    expect(result.reportingTimeZone).toBeUndefined();
+    expect(result.currencyCode).toBe("USD");
+    expect(result.reportingTimeZone).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === undefined)).toBe(true);
+    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
     expect(fallbackBody.dateRanges[0].endDate).toBe("today");
@@ -248,7 +249,7 @@ describe("GA4 campaign value picker", () => {
       const isSupplement = (body?.metrics || []).length === 2;
       return {
         ok: true,
-        json: async () => ({ rows: [{ metricValues: isSupplement
+        json: async () => ({ metadata: { currencyCode: "USD" }, rows: [{ metricValues: isSupplement
           ? [{ value: "7" }, { value: "123.45" }]
           : [{ value: "85" }, { value: "80" }, { value: "4" }, { value: "100" }, { value: "0" }, { value: "50" }, { value: "0.5" }]
         }] }),
@@ -257,7 +258,7 @@ describe("GA4 campaign value picker", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await ga4Service.getTotalsWithRevenue(
-      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale",
+      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale", "USD",
     );
 
     expect(result.totals).toMatchObject({ sessions: 85, conversions: 4, revenue: 0 });
@@ -267,7 +268,7 @@ describe("GA4 campaign value picker", () => {
   it("treats negative native revenue as authoritative instead of empty", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ rows: [{ metricValues: [
+      json: async () => ({ metadata: { currencyCode: "USD" }, rows: [{ metricValues: [
         { value: "85" }, { value: "80" }, { value: "4" }, { value: "100" },
         { value: "-25.5" }, { value: "50" }, { value: "0.5" },
       ] }] }),
@@ -275,11 +276,45 @@ describe("GA4 campaign value picker", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await ga4Service.getTotalsWithRevenue(
-      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale",
+      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale", "USD",
     );
 
     expect(result.totals.revenue).toBe(-25.5);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a missing GA4 response currency instead of treating it as campaign currency", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ rows: [] }),
+    } as any)));
+
+    await expect(ga4Service.getTotalsWithRevenue(
+      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale", "USD",
+    )).rejects.toThrow("currency unavailable does not match requested currency USD");
+  });
+
+  it("does not swallow a currency mismatch from the conversion/revenue supplement", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const supplement = (body?.metrics || []).length === 2;
+      return {
+        ok: true,
+        json: async () => ({
+          metadata: { currencyCode: supplement ? "EUR" : "USD" },
+          rows: [{ metricValues: supplement
+            ? [{ value: "2" }, { value: "20" }]
+            : [{ value: "10" }, { value: "8" }, { value: "0" }, { value: "12" }, { value: "0" }, { value: "5" }, { value: "0.5" }]
+          }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(ga4Service.getTotalsWithRevenue(
+      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale", "USD",
+    )).rejects.toThrow("currency EUR does not match requested currency USD");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("uses pageLocation UTM fallback for daily time series when campaign dimensions are empty", async () => {

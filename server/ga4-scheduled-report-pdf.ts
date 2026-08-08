@@ -452,6 +452,7 @@ async function buildGA4ReportPayload(report: any) {
   const connection = await choosePrimaryConnection(campaignId);
   const propertyId = String(connection.propertyId);
   const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+  const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
   const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
   const reportLookbackRange = `${lookbackDays}daysAgo`;
   const adComparisonRequirements = getAdComparisonReportRequirements(report);
@@ -501,7 +502,7 @@ async function buildGA4ReportPayload(report: any) {
   ]);
 
   const ga4ToDate = await withTokenRefresh(connection, async (token) => {
-    return await ga4Service.getTotalsWithRevenue(propertyId, token, financialStartDate, financialEndDate, campaignFilter);
+    return await ga4Service.getTotalsWithRevenue(propertyId, token, financialStartDate, financialEndDate, campaignFilter, campaignCurrency);
   }).catch((e) => {
     logPartFailure("totals with revenue", e);
     return { totals: {} };
@@ -532,15 +533,15 @@ async function buildGA4ReportPayload(report: any) {
     overviewDailyRows = dailyRows;
   }
   const overviewRequirements = getOverviewReportRequirements(report);
+  const hasImportedRevenueSource = revenueSources.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
   const unavailableOverviewParts: string[] = [];
   if (overviewRequirements.summary && overviewDailyRows.length === 0 && (overviewStartDate < dailyStart || failedParts.has("time series"))) {
     unavailableOverviewParts.push("Summary");
   }
   if (overviewRequirements.revenue) {
-    const nativeRevenueUnavailable =
-      failedParts.has("totals with revenue") &&
-      dailyRows.length === 0 &&
-      failedParts.has("acquisition breakdown");
+    const nativeRevenueUnavailable = hasImportedRevenueSource
+      ? failedParts.has("totals with revenue")
+      : failedParts.has("totals with revenue") && dailyRows.length === 0 && failedParts.has("acquisition breakdown");
     if (nativeRevenueUnavailable || failedParts.has("revenue sources") || failedParts.has("revenue breakdown")) {
       unavailableOverviewParts.push("Revenue");
     }
@@ -640,11 +641,9 @@ async function buildGA4ReportPayload(report: any) {
     conversions: Number((ga4ToDate as any)?.totals?.conversions || 0),
     revenue: Number((ga4ToDate as any)?.totals?.revenue || 0),
   };
-  const ga4FinancialCandidates = [
-    (ga4ToDate as any)?.totals,
-    dailyRows.length > 0 ? dailySummedTotals : null,
-    hasBreakdownOverviewTotals ? breakdownFinancialTotals : null,
-  ];
+  const ga4FinancialCandidates = hasImportedRevenueSource
+    ? [(ga4ToDate as any)?.totals]
+    : [(ga4ToDate as any)?.totals, dailyRows.length > 0 ? dailySummedTotals : null, hasBreakdownOverviewTotals ? breakdownFinancialTotals : null];
   const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateFinancialTotals);
   const importedRevenueForFinancials = Number(revenueBreakdown.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);

@@ -2555,15 +2555,18 @@ export default function GA4Metrics() {
   }, [activeSpendSource, spendToDateResp?.sourceIds]);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
   const ga4NoCompletedWindow = (ga4ToDateResp as any)?.noCompletedWindow === true;
-  const ga4FinancialCandidates = [
-    (ga4ToDateResp as any)?.totals,
-    !ga4DailyPlaceholder && ga4DailyRows.length > 0 ? dailySummedTotals : null,
-    !breakdownPlaceholder && hasBreakdownOverviewTotals ? ga4BreakdownTotals : null,
-  ];
+  const hasImportedRevenueSource = !!activeRevenueSource
+    || (Array.isArray((importedRevenueToDateResp as any)?.sourceIds) && (importedRevenueToDateResp as any).sourceIds.length > 0);
+  const requiresVerifiedNativeCurrency = hasImportedRevenueSource && !!selectedGA4PropertyId;
+  const ga4NativeCurrencyVerified = String((ga4ToDateResp as any)?.currencyCode || "").trim().toUpperCase()
+    === campaignCurrency.trim().toUpperCase();
+  const ga4FinancialCandidates = requiresVerifiedNativeCurrency
+    ? [ga4NativeCurrencyVerified ? (ga4ToDateResp as any)?.totals : null]
+    : [(ga4ToDateResp as any)?.totals, !ga4DailyPlaceholder && ga4DailyRows.length > 0 ? dailySummedTotals : null, !breakdownPlaceholder && hasBreakdownOverviewTotals ? ga4BreakdownTotals : null];
   const ga4FinancialTotalsSource = selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateOverviewTotals);
-  const ga4FinancialNativeAvailable = ga4ToDateResp !== undefined ||
-    (!ga4DailyPlaceholder && ga4DailyRows.length > 0) ||
-    (!breakdownPlaceholder && hasBreakdownOverviewResponse);
+  const ga4FinancialNativeAvailable = requiresVerifiedNativeCurrency
+    ? ga4NativeCurrencyVerified && ga4ToDateResp !== undefined
+    : ga4ToDateResp !== undefined || (!ga4DailyPlaceholder && ga4DailyRows.length > 0) || (!breakdownPlaceholder && hasBreakdownOverviewResponse);
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;
 
@@ -2636,7 +2639,7 @@ export default function GA4Metrics() {
     revenueSourcesResp.sources.length === 0;
   const importedRevenueAvailable = importedRevenueToDateResp !== undefined || revenueSourceDefinitionsKnownEmpty;
   const financialRevenueAvailable = activeTab === "insights"
-    ? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable
+    ? ga4ToDateResp !== undefined && (!requiresVerifiedNativeCurrency || ga4NativeCurrencyVerified) && importedRevenueAvailable && revenueMetricAvailable
     : ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;
   const financialRevenueLoading =
     !financialRevenueAvailable &&

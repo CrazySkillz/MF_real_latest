@@ -177,6 +177,9 @@ High-level rule:
 - `Total Revenue` is additive:
   `Total Revenue = selected scoped GA4-native financial revenue + active GA4-context source-backed imported campaign revenue`
 - the shared Overview/Insights native GA4 request uses the campaign currency before native revenue is added to campaign-currency imported sources
+- every campaign-to-date native GA4 financial request must verify that the response metadata currency equals the requested campaign currency; missing or mismatched currency fails closed
+- persisted daily and configured-lookback breakdown revenue have no historical currency provenance, so they remain native-only continuity fallbacks and must not be combined with imported revenue when the verified campaign-to-date provider value is unavailable
+- scheduled reports, downstream campaign totals, KPI current values, and alert decisions apply the same rule; this does not convert currency or rewrite historical records
 - the `Total Revenue` Revenue Sources modal should show HubSpot and Shopify mapped platform campaign names from saved `campaignMappings` when available, not only generic source type labels
 - the `Add revenue source` chooser is v1-scoped: Salesforce revenue is hidden for v1, while retained Salesforce docs/code paths are not current GA4 v1 certification scope
 - Campaign Breakdown row revenue must add imported HubSpot revenue only to rows matched by saved CRM-to-platform `campaignMappings`; the currently recorded HubSpot deployed evidence is limited to the Current Commit 4.11 `yesop_retargeting` mapped-row packet

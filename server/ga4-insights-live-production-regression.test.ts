@@ -152,7 +152,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain("Showing last-good GA4 summary values; trend recommendations are withheld until refresh succeeds.");
     expect(page).toContain("Sessions, conversions and channels cover recent 30 days");
     expect(page).toContain('const financialRevenueAvailable = activeTab === "insights"');
-    expect(page).toContain("? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable");
+    expect(page).toContain("? ga4ToDateResp !== undefined && (!requiresVerifiedNativeCurrency || ga4NativeCurrencyVerified) && importedRevenueAvailable && revenueMetricAvailable");
     expect(page).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
     expect(page).toContain('if (ga4ToDateError) return "unavailable";');
     expect(page).toContain('id: ga4ToDateResp === undefined ? "financial:ga4_to_date_unavailable" : "financial:ga4_to_date_stale"');

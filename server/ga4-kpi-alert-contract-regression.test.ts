@@ -124,6 +124,18 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(isAlertDecisionBreached(revenue)).toBe(false);
   });
 
+  it("does not evaluate imported revenue with an unverified native fallback", async () => {
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: ["shopify-zero"] });
+
+    const revenue = await resolveAlertCurrentValueForDecision(row("revenue"));
+
+    expect(revenue).toMatchObject({
+      currentValue: "99",
+      __alertDecisionEligible: false,
+      __alertDecisionReason: "unavailable",
+    });
+  });
+
   it("routes every GA4 alert consumer through the shared resolver and decision predicate", () => {
     const files = [
       "kpi-scheduler.ts",

@@ -59,6 +59,14 @@ describe("GA4 Overview revenue currency and total integrity", () => {
   });
 
   it("keeps the damage inventory read-only while flagging campaign-currency and HubSpot provenance candidates", () => {
+    const analytics = source("server/analytics.ts");
+    const page = source("client/src/pages/ga4-metrics.tsx");
+    const scheduledReport = source("server/ga4-scheduled-report-pdf.ts");
+    expect(analytics).toContain("currencyCode: string,");
+    expect(analytics).toContain("const responseCurrencyCode = verifyResponseCurrency(json);");
+    expect(page).toContain("const requiresVerifiedNativeCurrency = hasImportedRevenueSource && !!selectedGA4PropertyId;");
+    expect(scheduledReport).toContain("const ga4FinancialCandidates = hasImportedRevenueSource");
+
     const routes = source("server/routes-oauth.ts");
     const route = sliceBetween(
       routes,

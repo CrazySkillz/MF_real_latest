@@ -146,6 +146,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   const primary = (connections || []).find((conn: any) => conn?.isPrimary) || (connections || [])[0];
   let ga4Available = false;
   let ga4RevenueAvailable = false;
+  let verifiedToDateFinancialCandidateAvailable = false;
   if (primary?.propertyId) {
     const propertyId = String(primary.propertyId);
     const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
@@ -192,8 +193,10 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
             startDate,
             financialEndDate,
             campaignFilter,
+            String((campaign as any)?.currency || "USD").trim().toUpperCase(),
           );
           toDateCandidate = (toDate as any)?.totals || {};
+          verifiedToDateFinancialCandidateAvailable = isGA4FinancialTotalsCandidate(toDateCandidate);
         } catch {
           // Keep persisted and breakdown candidates when to-date provider totals are unavailable.
         }
@@ -244,6 +247,10 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   const spendTotals: any = spendTotalsResult.status === "fulfilled" ? spendTotalsResult.value : { totalSpend: 0 };
   const revenueBreakdown: any[] = revenueBreakdownResult.status === "fulfilled" ? revenueBreakdownResult.value : [];
   const spendBreakdown: any[] = spendBreakdownResult.status === "fulfilled" ? spendBreakdownResult.value : [];
+  const hasImportedRevenueSource = Array.isArray((revenueTotals as any)?.sourceIds) && (revenueTotals as any).sourceIds.length > 0;
+  if (hasImportedRevenueSource && primary?.propertyId && !isYesopMockProperty(String(primary.propertyId)) && !verifiedToDateFinancialCandidateAvailable) {
+    ga4RevenueAvailable = false;
+  }
 
   return {
     revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),

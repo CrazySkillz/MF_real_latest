@@ -136,9 +136,9 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sources, scopedTotals?.currency, "Spend")');
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true)');
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Imported revenue")');
-    expect(source).toContain('const insightsFinancialScope = validationReadOnly || String(req.query.insightsScope || "").trim() === "1"');
-    expect(source).toContain("if (!insightsFinancialScope)");
-    expect(source).toContain("if (insightsFinancialScope)");
+    expect(source).not.toContain("const insightsFinancialScope =");
+    expect(source).toContain("currencyCode: campaignCurrency,");
+    expect(source).toContain("campaignCurrency,");
     expect(source).toContain('assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Spend")');
     const helper = readFileSync(join(process.cwd(), "shared", "ga4-insights.ts"), "utf8");
     expect(helper).toContain("does not match campaign currency");

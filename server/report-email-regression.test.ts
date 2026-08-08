@@ -94,10 +94,9 @@ describe("scheduled report email regression guard", () => {
 
     expect(source).toContain("const breakdownFinancialTotals = {");
     expect(source).toContain("const ga4ToDateFinancialTotals = {");
-    expect(source).toContain("const ga4FinancialCandidates = [");
-    expect(source).toContain("(ga4ToDate as any)?.totals,");
-    expect(source).toContain("dailyRows.length > 0 ? dailySummedTotals : null,");
-    expect(source).toContain("hasBreakdownOverviewTotals ? breakdownFinancialTotals : null,");
+    expect(source).toContain("const ga4FinancialCandidates = hasImportedRevenueSource");
+    expect(source).toContain("? [(ga4ToDate as any)?.totals]");
+    expect(source).toContain(": [(ga4ToDate as any)?.totals, dailyRows.length > 0 ? dailySummedTotals : null, hasBreakdownOverviewTotals ? breakdownFinancialTotals : null];");
     expect(source).toContain("selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateFinancialTotals)");
     expect(source).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
     expect(source).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");

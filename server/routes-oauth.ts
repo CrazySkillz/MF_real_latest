@@ -8862,11 +8862,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
       const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
       const requestedPropertyId = String(req.query.propertyId || "").trim();
-      const insightsFinancialScope = validationReadOnly || String(req.query.insightsScope || "").trim() === "1";
       if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
 
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
 
       // Use explicit campaign startDate if set; otherwise default to campaign creation date (MetricMind campaign lifetime).
       const startDateUsed = (() => {
@@ -8940,6 +8940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate: startDateUsed,
           endDate: endDateUsed,
           revenueMetric: noRevenue ? "" : "totalRevenue",
+          currencyCode: campaignCurrency,
           totals,
           ...(debug ? { meta: { isSimulated: true, simDays: simRows.length, dbDays: dbCount } } : {}),
         });
@@ -8970,6 +8971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate: startDateUsed,
           endDate: endDateUsed,
           revenueMetric: "",
+          currencyCode: campaignCurrency,
           noCompletedWindow: true,
           ...(validationReadOnly ? { validationReadOnly: true } : {}),
           message: "No completed GA4 reporting day is available for this campaign yet.",
@@ -8986,28 +8988,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const attempt = async (token: string) => {
-        if (!insightsFinancialScope) {
-          return await ga4Service.getTotalsWithRevenue(
-            String(connection.propertyId),
-            token,
-            startDateUsed,
-            endDateUsed,
-            campaignFilter,
-          );
-        }
         return await ga4Service.getTotalsWithRevenue(
           String(connection.propertyId),
           token,
           startDateUsed,
           endDateUsed,
           campaignFilter,
-          String((campaign as any)?.currency || "USD").trim().toUpperCase(),
+          campaignCurrency,
         );
       };
       const validateCurrency = (result: any) => {
-        if (insightsFinancialScope) {
-          assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true);
-        }
+        assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true);
         return result;
       };
 
@@ -14075,6 +14066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueSources: any[] = [];
       let financialRevenueInputs: any[] = [];
       let importedRevenueAvailable = false;
+      let hasImportedRevenueSource = false;
       const materializedRevenueSourceTypes = new Set<string>();
       try {
         // Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.
@@ -14083,6 +14075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
         importedRevenueAvailable = true;
         const revenueSourceDefinitions = await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]);
+        hasImportedRevenueSource = revenueSourceDefinitions.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
         const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
         for (const source of revenueBreakdown) {
           materializedRevenueSourceTypes.add(String(source?.sourceType || "").trim().toLowerCase());
@@ -14292,7 +14285,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 String(primaryGA4.accessToken),
                 startDateUsed,
                 endDateUsed,
-                parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter)
+                parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
+                String((campaign as any)?.currency || "USD").trim().toUpperCase(),
               );
               const totals = (toDate as any)?.totals || {};
               toDateFinancialCandidate = { ...totals, source: "ga4_to_date" };
@@ -14300,18 +14294,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Keep the other complete GA4 candidates when to-date provider totals are unavailable.
             }
           }
-          financialGa4Totals = selectGA4FinancialTotalsSource([
-            toDateFinancialCandidate,
-            persistedFinancialCandidate,
-            financialGa4Totals,
-          ], toDateFinancialCandidate || financialGa4Totals);
-          financialGa4Totals.available = ga4TotalsAvailable;
-          financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
-          financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
-          financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
-          financialWebAnalytics.users = parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users);
+          if (hasImportedRevenueSource && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate)) {
+            ga4TotalsAvailable = false;
+            financialGa4Totals = { ...financialGa4Totals, available: false };
+            financialWebAnalytics.available = false;
+            financialWebAnalytics.revenue = 0;
+            financialWebAnalytics.conversions = 0;
+          } else {
+            financialGa4Totals = selectGA4FinancialTotalsSource([
+              toDateFinancialCandidate,
+              persistedFinancialCandidate,
+              financialGa4Totals,
+            ], toDateFinancialCandidate || financialGa4Totals);
+            financialGa4Totals.available = ga4TotalsAvailable;
+            financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
+            financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
+            financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
+            financialWebAnalytics.users = parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users);
+          }
         } catch {
-          // Keep the date-range GA4 result if to-date financial alignment is unavailable.
+          if (hasImportedRevenueSource) {
+            ga4TotalsAvailable = false;
+            financialGa4Totals = { ...financialGa4Totals, available: false };
+            financialWebAnalytics.available = false;
+            financialWebAnalytics.revenue = 0;
+            financialWebAnalytics.conversions = 0;
+          }
         }
       }
 

@@ -885,12 +885,23 @@ export class GoogleAnalytics4Service {
     accessToken: string,
     startDate: string,
     endDate: string,
-    campaignFilter?: CampaignFilter,
-    currencyCode?: string,
-  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode?: string | null; reportingTimeZone?: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
+    campaignFilter: CampaignFilter,
+    currencyCode: string,
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; currencyCode: string; reportingTimeZone: string | null; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
-    if (requestedCurrencyCode && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) throw new Error('GA4 report currency is invalid');
+    if (!/^[A-Z]{3}$/.test(requestedCurrencyCode)) throw new Error('GA4 report currency is required and must be a three-letter code');
+    const verifyResponseCurrency = (json: any) => {
+      const observed = String(json?.metadata?.currencyCode || '').trim().toUpperCase();
+      if (observed !== requestedCurrencyCode) {
+        throw Object.assign(new Error(`GA4 report currency ${observed || 'unavailable'} does not match requested currency ${requestedCurrencyCode}`), { code: 'GA4_CURRENCY_UNVERIFIED' });
+      }
+      return observed;
+    };
+    const ignoreNonCurrencyFailure = (error: any) => {
+      if (error?.code === 'GA4_CURRENCY_UNVERIFIED') throw error;
+      return null;
+    };
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
@@ -903,7 +914,7 @@ export class GoogleAnalytics4Service {
         },
         body: JSON.stringify({
           dateRanges: [{ startDate, endDate: endDateOverride }],
-          ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
+          currencyCode: requestedCurrencyCode,
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [
             { name: 'sessions' },
@@ -931,11 +942,12 @@ export class GoogleAnalytics4Service {
       const engagedSessions = parseInt(String(mv?.[5]?.value || '0'), 10) || 0;
       const rawEngagementRate = Number.parseFloat(String(mv?.[6]?.value || '0')) || 0;
       const engagementRate = rawEngagementRate || (sessions > 0 ? engagedSessions / sessions : 0);
-      const responseCurrencyCode = String(json?.metadata?.currencyCode || "").trim().toUpperCase() || null;
+      const responseCurrencyCode = verifyResponseCurrency(json);
       const responseReportingTimeZone = String(json?.metadata?.timeZone || "").trim() || null;
       return {
         revenueMetric,
-        ...(requestedCurrencyCode ? { currencyCode: responseCurrencyCode, reportingTimeZone: responseReportingTimeZone } : {}),
+        currencyCode: responseCurrencyCode,
+        reportingTimeZone: responseReportingTimeZone,
         totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate },
       };
     };
@@ -962,7 +974,7 @@ export class GoogleAnalytics4Service {
         },
         body: JSON.stringify({
           dateRanges: [{ startDate, endDate }],
-          ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
+          currencyCode: requestedCurrencyCode,
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [
             { name: 'conversions' },
@@ -975,6 +987,7 @@ export class GoogleAnalytics4Service {
         throw new Error(`GA4 Conversion/Revenue API Error: ${txt}`);
       }
       const json = await resp.json().catch(() => ({} as any));
+      verifyResponseCurrency(json);
       const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
       const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
       const conversions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
@@ -1017,7 +1030,7 @@ export class GoogleAnalytics4Service {
       const campaignNameFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
       if (!campaignNameFilter || !hasTrafficTotals(result) || hasConversionRevenueTotals(result)) return result;
 
-      const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(() => null);
+      const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(ignoreNonCurrencyFailure);
       if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
 
       return {
@@ -1034,7 +1047,7 @@ export class GoogleAnalytics4Service {
     try {
       const result = await runWithRevenueFallback(campaignDimensionFilter);
       if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result);
-      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(() => null);
+      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(ignoreNonCurrencyFailure);
       const selectedResult = utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
       return await supplementConversionRevenueTotals(selectedResult);
     } catch (e: any) {

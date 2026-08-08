@@ -233,10 +233,11 @@ describe("GA4 UI regression guard", () => {
   it("keeps GA4 Overview financial totals on one complete scoped source", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
-    expect(ga4Metrics).toContain("const ga4FinancialCandidates = [");
-    expect(ga4Metrics).toContain("(ga4ToDateResp as any)?.totals,");
-    expect(ga4Metrics).toContain("ga4DailyRows.length > 0 ? dailySummedTotals : null,");
-    expect(ga4Metrics).toContain("hasBreakdownOverviewTotals ? ga4BreakdownTotals : null,");
+    expect(ga4Metrics).toContain("|| (Array.isArray((importedRevenueToDateResp as any)?.sourceIds) && (importedRevenueToDateResp as any).sourceIds.length > 0);");
+    expect(ga4Metrics).toContain("const requiresVerifiedNativeCurrency = hasImportedRevenueSource && !!selectedGA4PropertyId;");
+    expect(ga4Metrics).toContain("const ga4FinancialCandidates = requiresVerifiedNativeCurrency");
+    expect(ga4Metrics).toContain("? [ga4NativeCurrencyVerified ? (ga4ToDateResp as any)?.totals : null]");
+    expect(ga4Metrics).toContain(": [(ga4ToDateResp as any)?.totals, !ga4DailyPlaceholder && ga4DailyRows.length > 0 ? dailySummedTotals : null, !breakdownPlaceholder && hasBreakdownOverviewTotals ? ga4BreakdownTotals : null];");
     expect(ga4Metrics).toContain("selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateOverviewTotals)");
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
     expect(ga4Metrics).toContain("const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;");
@@ -246,7 +247,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
     expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
     expect(ga4Metrics).toContain('const financialRevenueAvailable = activeTab === "insights"');
-    expect(ga4Metrics).toContain("? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable");
+    expect(ga4Metrics).toContain("? ga4ToDateResp !== undefined && (!requiresVerifiedNativeCurrency || ga4NativeCurrencyVerified) && importedRevenueAvailable && revenueMetricAvailable");
     expect(ga4Metrics).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
     expect(ga4Metrics).toMatch(/spendSourceDefinitionsKnownEmpty\) &&\r?\n\s+spendMetricAvailable;/);
     expect(ga4Metrics).not.toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;");

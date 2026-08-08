@@ -326,6 +326,27 @@ describe("Shopify downstream value/content regression guard", () => {
     })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: Imported revenue provenance");
   });
 
+  it("does not combine Shopify revenue with an unverified persisted GA4 fallback", async () => {
+    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error("provider unavailable"));
+
+    await expect(buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-currency-failure",
+        campaignId: campaign.id,
+        name: "Currency verification failure",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          sections: { overview: true },
+          subsections: { overview: { revenue: true } },
+        }),
+      },
+      reportName: "Currency verification failure",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Revenue");
+  });
+
   it("persists GA4 KPI and Benchmark row values from the Shopify imported revenue total", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-04", suppressAlerts: true });
 

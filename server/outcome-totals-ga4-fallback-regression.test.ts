@@ -129,12 +129,15 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
 
     expect(route).toContain("let ga4TotalsAvailable = !activeGA4;");
     expect(route).toContain("let importedRevenueAvailable = false;");
+    expect(route).toContain("let hasImportedRevenueSource = false;");
     expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: ga4TotalsAvailable };");
     expect(route).toContain('const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? ga4TotalsAvailable : !webAnalyticsProvider || !custom?.error };');
     expect(route).toContain("ga4Service.getTotalsWithRevenue(");
     expect(route).toContain("financialGa4Totals = selectGA4FinancialTotalsSource([");
     expect(route).toContain("toDateFinancialCandidate,");
     expect(route).toContain("persistedFinancialCandidate,");
+    expect(route).toContain("if (hasImportedRevenueSource && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate))");
+    expect(route).toContain("financialWebAnalytics.available = false;");
     expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
     expect(route).toContain("ga4: financialGa4Totals,");
     expect(route).toContain("webAnalytics: financialWebAnalytics,");

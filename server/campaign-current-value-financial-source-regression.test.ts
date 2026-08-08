@@ -70,4 +70,17 @@ describe("campaign current-value financial source contract", () => {
     expect(totals).toMatchObject({ ga4Revenue: 0, financialConversions: 0, ga4RevenueAvailable: true });
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
+
+  it("uses persisted fallback only when it will not be combined with an imported source", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 500, conversions: 25 }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error("provider unavailable"));
+    ga4ServiceMock.getAcquisitionBreakdown.mockRejectedValue(new Error("breakdown unavailable"));
+
+    const nativeOnly = await getCampaignMetricTotals("campaign-1", true);
+    expect(nativeOnly).toMatchObject({ ga4Revenue: 500, ga4RevenueAvailable: true });
+
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: ["shopify-zero"] });
+    const combined = await getCampaignMetricTotals("campaign-1", true);
+    expect(combined).toMatchObject({ ga4RevenueAvailable: false, revenueAvailable: false });
+  });
 });

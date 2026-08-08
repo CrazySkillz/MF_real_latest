@@ -141,6 +141,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             fromDate,
             endDate,
             parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
+            String((campaign as any)?.currency || "USD").trim().toUpperCase(),
           );
         const assignProviderInputs = async (token: string) => {
           assignLiveTotals(await attempt(token, startDate));
@@ -222,6 +223,9 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const importedRevenueValue = importedRevenueResult.status === "fulfilled"
       ? parseGA4FinancialNumber((importedRevenueResult.value as any)?.totalRevenue)
       : null;
+    const hasImportedRevenueSource = importedRevenueResult.status === "fulfilled"
+      && Array.isArray((importedRevenueResult.value as any)?.sourceIds)
+      && (importedRevenueResult.value as any).sourceIds.length > 0;
     const spendValue = spendResult.status === "fulfilled"
       ? parseGA4FinancialNumber((spendResult.value as any)?.totalSpend)
       : null;
@@ -229,6 +233,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     if (usesFinancialSource) {
       const dependencies = getGA4KpiMetricDependencies(metric);
       const sourceVerified = !!financialInputs
+        && (!dependencies.requiresRevenue || !hasImportedRevenueSource || !!mockFinancialCandidate || !!providerFinancialCandidate)
         && (!dependencies.requiresRevenue || importedRevenueValue !== null)
         && (!dependencies.requiresSpend || spendValue !== null);
       if (!sourceVerified) return blockAlertDecision(resolved, "unavailable");

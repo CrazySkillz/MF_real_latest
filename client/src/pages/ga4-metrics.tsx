@@ -6613,14 +6613,14 @@ export default function GA4Metrics() {
                     }}
                   />
                   <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
-                    <DialogContent className="bg-card border-border max-w-lg">
+                    <DialogContent data-revenue-sources-dialog className="bg-card border-border max-w-lg">
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Revenue Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">
                           Sources contributing to Total Revenue.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                      <div className="scrollbar-hide max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                         {revenueSourcesUnavailable && (
                           <div className="text-sm text-destructive">Revenue sources are unavailable. Refresh the page to try again.</div>
                         )}
@@ -6658,9 +6658,6 @@ export default function GA4Metrics() {
                                   {revenueSourceDisplayLabel(s)}{dateLabel}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
-                                {isShopify && cfg?.developmentStoreTestOrdersIncluded ? (
-                                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Development-store test data</p>
-                                ) : null}
                                 {shopifyFreshnessText ? <p className="text-xs text-muted-foreground/70">{shopifyFreshnessText}</p> : null}
                               </div>
                               <div className="flex items-center gap-2">

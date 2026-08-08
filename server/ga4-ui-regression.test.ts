@@ -26,10 +26,14 @@ describe("GA4 UI regression guard", () => {
 
   it("keeps revenue and spend source modals scrollable for many entries", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const styles = readClient("index.css");
 
     expect(ga4Metrics).toContain('<DialogTitle className="text-foreground">Revenue Sources</DialogTitle>');
     expect(ga4Metrics).toContain('<DialogTitle className="text-foreground">Spend Sources</DialogTitle>');
-    expect(ga4Metrics).toContain('<div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">');
+    expect(ga4Metrics).toContain('<DialogContent data-revenue-sources-dialog className="bg-card border-border max-w-lg">');
+    expect(ga4Metrics).toContain('<div className="scrollbar-hide max-h-[65vh] space-y-2 overflow-y-auto pr-1">');
+    expect(styles).toContain('body[data-scroll-locked]:has([data-revenue-sources-dialog])');
+    expect(styles).toContain('margin-right: 0 !important;');
   });
 
   it("keeps Add Revenue source picker copy aligned with the production wording", () => {

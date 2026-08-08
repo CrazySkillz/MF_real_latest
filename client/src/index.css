@@ -71,6 +71,10 @@
     overflow-y: scroll;
   }
 
+  body[data-scroll-locked]:has([data-revenue-sources-dialog]) {
+    margin-right: 0 !important;
+  }
+
   * {
     @apply border-border;
   }

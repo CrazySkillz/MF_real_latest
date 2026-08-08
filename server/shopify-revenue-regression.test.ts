@@ -279,14 +279,12 @@ describe("Shopify revenue regression guard", () => {
   it('isolates test-order revenue to Shopify-verified development stores', () => {
     const routes = read(ROUTES_FILE);
     const wizard = read(SHOPIFY_WIZARD_FILE);
-    const ga4Metrics = read(GA4_METRICS_FILE);
     expect(routes).toContain('developmentStoreTestOrdersIncluded = await isShopifyPartnerDevelopmentStore');
     expect(routes).toContain('developmentStoreVerification = \'failed_closed\'');
     expect(routes).toContain('platformCtx === \'ga4\' && !verifiedDevelopmentStore');
     expect(routes).toContain('developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded');
     expect(routes).toContain('developmentStoreTestOrdersIncluded,');
     expect(wizard).toContain('Shopify development-store test orders are included for validation. This is test revenue.');
-    expect(ga4Metrics).toContain('Development-store test data');
   });
 
   it("keeps Shopify save portable across campaign and mapping variants", () => {

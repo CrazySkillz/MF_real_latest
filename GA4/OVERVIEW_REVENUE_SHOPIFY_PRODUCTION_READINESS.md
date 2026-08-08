@@ -21,7 +21,7 @@ orders with `test = true` remain excluded by default and can be included only
 when Shopify GraphQL confirms `Shop.plan.partnerDevelopment = true`. Verified
 development stores use the wizard's existing 3,650-day source-to-date validation
 window; normal merchant stores retain the campaign reporting window and test-order
-exclusion. The review and Revenue Sources modal label included values as test data.
+exclusion. The Review Settings preview labels included values as test data.
 Provider verification failure defaults closed and does not enable test orders.
 
 This is the canonical Shopify Revenue readiness document as of 2026-07-15 for deployed Current Commit 9.3 (`a2735192`), the completed exact-source provider repair, the Current Commit 8 reconciliation, the platform-isolated owner-scoped production inventory, the exact transactional GA4 test-source cleanup, and the final all-pass certification evidence documented below.

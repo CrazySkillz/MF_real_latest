@@ -149,7 +149,7 @@ Current meaning:
 - unverified KPI and Benchmark evaluations are consolidated into one data-readiness finding instead of presenting one shared source failure as many business issues
 - missing snapshot history is reported as unavailable and does not assume that a future scheduler run will succeed
 - generic total-ROAS strength findings are withheld because ROAS alone does not prove profitability or a channel-level scaling opportunity
-- intro copy is history-aware
+- the page header remains stable while loading and freshness details stay in the relevant finding cards
 - recommendations are phrased as checks, not proven causal conclusions
 
 ## Certification Boundary

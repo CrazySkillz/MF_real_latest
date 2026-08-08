@@ -208,7 +208,7 @@ describe("GA4 Insights regression guard", () => {
     expect(renderSection).toContain("Confidence: {i.confidence}");
   });
 
-  it("makes What to investigate next intro copy reflect available daily history", () => {
+  it("keeps the What to investigate next page header stable while report context remains history-aware", () => {
     const content = ga4MetricsFile();
     const copyStart = content.indexOf("const insightsActionDescription = useMemo(() => {");
     const copyEnd = content.indexOf("// Collect GA4 campaign names from the current campaign's saved GA4 scope.", copyStart);
@@ -227,8 +227,7 @@ describe("GA4 Insights regression guard", () => {
     expect(copySection).toContain("Both windows are complete, so 7-day comparisons run");
     expect(copySection).toContain("imported row${availableDays === 1 ? \"\" : \"s\"} in the 60-day response");
     expect(copySection).not.toContain("completed GA4 day${availableDays");
-    expect(renderSection).toContain("<CardDescription>{insightsActionDescription}</CardDescription>");
-    expect(renderSection).not.toContain("when enough daily history exists");
+    expect(renderSection).not.toContain("<CardDescription>");
   });
 
   it("keeps What to investigate next recommendations worded as checks rather than causal conclusions", () => {

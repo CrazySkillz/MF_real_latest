@@ -8904,7 +8904,6 @@ export default function GA4Metrics() {
                     <Card className="border-border" data-testid="insights-findings">
                       <CardHeader>
                         <CardTitle className="text-lg">What to investigate next</CardTitle>
-                        <CardDescription>{insightsActionDescription}</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {insights.length === 0 ? (

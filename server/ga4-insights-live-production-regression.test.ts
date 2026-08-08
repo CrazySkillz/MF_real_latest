@@ -12,15 +12,29 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId');
     expect(page).toContain('new URLSearchParams(search).get("readOnly") === "1"');
     expect(page).toContain('insightsValidationReadOnly ? "&readOnly=1" : ""');
-    expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(4);
+    expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(2);
     expect(page).toContain('"ga4-breakdown", dateRange, selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
-    expect(page).toContain('selectedGA4PropertyId, insightsValidationReadOnly]');
+    expect(page).toContain('selectedGA4PropertyId, insightsDailyReadOnly]');
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');
     expect(page).toContain('const insightsRollupRows = activeTab === "insights" ? ga4InsightsTimeSeries : ga4TimeSeries');
     expect(page).toContain("buildGA4InsightsRollups(insightsRollupRows, insightsRollupCutoff)");
     expect(page).not.toContain('queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_DAILY_LOOKBACK_DAYS');
+  });
+
+  it("keeps overlapping 30-day and 60-day Insights history reads non-mutating", () => {
+    const page = read("client", "src", "pages", "ga4-metrics.tsx");
+    const overviewDailyStart = page.indexOf('"ga4-daily", GA4_DAILY_LOOKBACK_DAYS');
+    const insightsDailyStart = page.indexOf('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS');
+    const overviewDaily = page.slice(overviewDailyStart, insightsDailyStart);
+    const insightsDaily = page.slice(insightsDailyStart, page.indexOf("const ga4DailyDataThroughDate", insightsDailyStart));
+
+    expect(page).toContain('const insightsDailyReadOnly = activeTab === "insights" || insightsValidationReadOnly;');
+    expect(overviewDaily).toContain("selectedGA4PropertyId, insightsDailyReadOnly");
+    expect(insightsDaily).toContain("selectedGA4PropertyId, insightsDailyReadOnly");
+    expect(overviewDaily).toContain('insightsDailyReadOnly ? "&readOnly=1" : ""');
+    expect(insightsDaily).toContain('insightsDailyReadOnly ? "&readOnly=1" : ""');
   });
 
   it("withholds failed or stale history instead of emitting recommendations from it", () => {

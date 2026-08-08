@@ -151,6 +151,7 @@ Current meaning:
 - generic total-ROAS strength findings are withheld because ROAS alone does not prove profitability or a channel-level scaling opportunity
 - the page header remains stable while loading and freshness details stay in the relevant finding cards
 - tracker counts and finding cards remain withheld during the initial multi-query load, then render once from settled inputs; background refetches retain the last stable query data
+- normal Insights page loads read the overlapping 30-day and 60-day stored daily windows without replacing them; scheduled or explicit refresh pipelines remain responsible for persistence
 - recommendations are phrased as checks, not proven causal conclusions
 
 ## Certification Boundary

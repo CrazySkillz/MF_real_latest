@@ -289,6 +289,7 @@ export default function GA4Metrics() {
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const insightsValidationReadOnly = activeTab === "insights" && new URLSearchParams(search).get("readOnly") === "1";
+  const insightsDailyReadOnly = activeTab === "insights" || insightsValidationReadOnly;
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
   useEffect(() => {
     const nextSearchParams = new URLSearchParams(search);
@@ -1760,7 +1761,7 @@ export default function GA4Metrics() {
     })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error, isPlaceholderData: ga4DailyPlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsValidationReadOnly],
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsDailyReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
@@ -1772,7 +1773,7 @@ export default function GA4Metrics() {
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-daily?days=${encodeURIComponent(String(GA4_DAILY_LOOKBACK_DAYS))}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        )}${insightsDailyReadOnly ? "&readOnly=1" : ""}`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok && data?.requiresReauthorization) {
@@ -1790,7 +1791,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsValidationReadOnly],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsDailyReadOnly],
     enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1799,7 +1800,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(
-        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsDailyReadOnly ? "&readOnly=1" : ""}`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false) {

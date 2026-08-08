@@ -79,6 +79,9 @@ describe('controlled Shopify repair', () => {
     expect(wizard).toContain('const isRepair = mode === "edit" && !hasEditChanges;');
     expect(wizard).toContain('Refresh from Shopify');
     expect(wizard).not.toContain('Repair from Shopify');
+    expect(wizard).toContain('title: "Shopify revenue refreshed"');
+    expect(wizard).not.toContain('Shopify revenue repaired');
+    expect(wizard).not.toContain('post-repair');
     expect(wizard).toContain('{previewError}');
     expect(wizard).toContain('repairConfirmation: preview.repairConfirmation');
     expect(wizard).toContain('/ga4-overview/source-damage-inventory');

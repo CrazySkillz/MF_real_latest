@@ -573,10 +573,10 @@ export function ShopifyRevenueWizard(props: {
         }
         const repairPass = repairInventory?.shopifyLocalPersistencePass === true;
         toast(isRepair ? {
-          title: repairPass ? "Shopify revenue repaired" : "Shopify revenue refreshed",
+          title: "Shopify revenue refreshed",
           description: repairPass
-            ? "The locally verifiable Shopify integrity checks now pass. Provider-only limitations remain."
-            : "Revenue was replaced from Shopify, but the post-repair integrity check still needs review.",
+            ? "Shopify revenue refreshed successfully and local integrity checks passed."
+            : "Shopify revenue refreshed, but the follow-up integrity check could not be completed.",
           ...(!repairPass ? { variant: "destructive" as const } : {}),
         } : {
           title: "Revenue imported",

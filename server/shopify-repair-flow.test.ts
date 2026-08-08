@@ -85,6 +85,15 @@ describe('controlled Shopify repair', () => {
     expect(wizard).toContain('shopifyLocalPersistencePass === true');
   });
 
+  it('times out only the optional post-save inventory check', () => {
+    const wizard = readFileSync(join(__dirname, '..', 'client', 'src', 'components', 'ShopifyRevenueWizard.tsx'), 'utf8');
+    const saveStart = wizard.indexOf('const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`');
+    const inventoryStart = wizard.indexOf('const inventoryResp = await fetch(`/api/campaigns/${campaignId}/ga4-overview/source-damage-inventory`');
+    const completionStart = wizard.indexOf('const repairPass =', inventoryStart);
+    expect(wizard.slice(saveStart, inventoryStart)).not.toContain('AbortSignal.timeout');
+    expect(wizard.slice(inventoryStart, completionStart)).toContain('signal: AbortSignal.timeout(15000)');
+  });
+
   it('retains only the original saved edit value when Shopify currently returns no match', () => {
     const wizard = readFileSync(join(__dirname, '..', 'client', 'src', 'components', 'ShopifyRevenueWizard.tsx'), 'utf8');
     expect(wizard).toContain('mode === "edit" && campaignField === savedField && savedValues.has(v)');

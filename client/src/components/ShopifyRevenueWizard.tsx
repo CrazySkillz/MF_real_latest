@@ -564,6 +564,7 @@ export function ShopifyRevenueWizard(props: {
             const inventoryResp = await fetch(`/api/campaigns/${campaignId}/ga4-overview/source-damage-inventory`, {
               credentials: "include",
               cache: "no-store",
+              signal: AbortSignal.timeout(15000),
             });
             repairInventory = await inventoryResp.json().catch(() => null);
           } catch {

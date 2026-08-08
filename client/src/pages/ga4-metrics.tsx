@@ -8723,16 +8723,10 @@ export default function GA4Metrics() {
                       <Card className="border-border" data-testid="insights-data-summary">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg">Data Summary</CardTitle>
-                          <CardDescription>
-                            GA4 daily metrics use {insightsDataSummaryTotals.startDate || "Not available"} → {insightsDataSummaryTotals.endDate || "Not available"} ({insightsDataSummaryTotals.days}/{insightsDataSummaryTotals.expectedDays} imported days).
-                          </CardDescription>
                         </CardHeader>
                         <CardContent>
                           {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 text-sm text-destructive">GA4 summary values are unavailable; no zero values are inferred.</div>
-                          )}
-                          {trendsRefreshIsStale && ga4InsightsDailyResp !== undefined && (
-                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good GA4 summary values; trend recommendations are withheld until refresh succeeds.</div>
                           )}
                           {breakdownError && ga4Breakdown === undefined && (
                             <div className="mb-4 text-sm text-destructive">Channel values are unavailable; no channel recommendation is inferred.</div>
@@ -8747,7 +8741,7 @@ export default function GA4Metrics() {
                           )}
                           {ga4InsightsDailyResp !== undefined && dataSummaryChannelAnalysis && (
                             <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
-                              Sessions, conversions and channels cover the same imported reporting dates.
+                              Sessions, conversions and channels cover recent 30 days
                             </p>
                           )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (

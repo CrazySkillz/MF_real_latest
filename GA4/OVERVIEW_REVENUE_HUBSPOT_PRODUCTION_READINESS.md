@@ -2,14 +2,36 @@
 
 ## Mandatory status
 
-**Current status: clean-certified and production-ready for the validated
-documented GA4 HubSpot Revenue scope.**
+**Current status: UNVERIFIED on the current revision. The historical H10d
+certification is invalidated. A local forward-path currency fix is present but
+is not deployed, and existing persisted HubSpot revenue requires read-only
+candidate inventory plus provider-authoritative refresh evidence before any
+clean status can be reconsidered.**
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
 those summaries conflict with this source-specific audit.
 
-Audit baseline:
+Current controlling audit (2026-08-08):
+
+- pre-fix revision inspected: `deb368b16d7bd970a3f19dbac634eed199227b22`
+- the prior certified dependency boundary changed after its audited revision,
+  including `server/routes-oauth.ts`, `server/storage.ts`, the Overview UI,
+  schedulers, reports, and shared schema
+- root cause found: one detected HubSpot currency was checked only for
+  homogeneity, not parity with campaign currency; values could therefore be
+  persisted and displayed under the campaign currency without conversion
+- a second totals defect selected aggregate rows only when their sum was
+  positive, so an authoritative zero or negative aggregate could be replaced
+  by attributed rows
+- the local fix fails GA4 HubSpot preview/save/scheduler reprocessing closed on
+  missing or mismatched provider currency, persists source-level currency
+  provenance, and selects totals by aggregate-record presence
+- no production row was changed, repaired, deactivated, or deleted
+- historical rows without source-level provider-currency provenance remain
+  candidates, not proven damage and not safe cleanup targets
+
+Historical H10d baseline (history only):
 
 - audit date: 2026-07-12
 - audited commit: `d9fb4b155ee051ace0660625f0e61dce7286e4dd`
@@ -22,11 +44,10 @@ Audit baseline:
   recorded below and remains uncommitted/deployment-unverified
 - production data changes or cleanup in this audit: none
 
-Future-reference rule: the mandatory status above and the final certification
+Future-reference rule: the mandatory status above and the current certification
 gate at the end of this file are the current answer. Intermediate H1-H10 and
-Current Commit 4.x statements are retained as audit chronology; their earlier
-`pending`, `unproven`, `broken`, or narrow-scope status does not override the
-H10d result.
+Current Commit 4.x statements are retained as historical audit chronology and
+do not restore current readiness.
 
 Implementation alignment at H10d:
 
@@ -1604,10 +1625,10 @@ Not proven by local H9:
 
 ## Certification gate
 
-At deployed H10c commit `0df257a6fe47f65e1489ede6202a954588ad3c65`
-plus this H10d evidence reconciliation, GA4 Overview HubSpot Revenue is
-**clean-certified and production-ready for the validated documented scope**.
-This is the durable future answer absent a HubSpot/GA4/runtime code change,
-failed validation, contradictory production evidence, provider/API change, or
-changed requirement. The future and excluded boundaries above are not part of
-that claim and require fresh scoped evidence if later requested.
+**Current decision: UNVERIFIED.** The deployed H10c commit
+`0df257a6fe47f65e1489ede6202a954588ad3c65` and H10d reconciliation are
+historical evidence only. Current clean certification requires the local
+currency/total fix to be committed and deployed, focused and adjacent tests to
+pass, the exact dependency boundary to be recorded, and read-only inventory plus
+provider-authoritative validation to establish the current persisted-data state.
+Automatic cleanup remains forbidden.

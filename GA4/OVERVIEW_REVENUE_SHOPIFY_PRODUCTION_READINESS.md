@@ -2,7 +2,18 @@
 
 ## Status
 
-**Production-ready and clean-certified for the currently enabled GA4 Overview Shopify Revenue Admin API token scope as of 2026-07-15. Dormant OAuth remains excluded while unavailable.**
+**Current status: UNVERIFIED on the current revision. The 2026-07-15 Admin API
+token certification is historical and was invalidated by later changes inside
+its dependency boundary.**
+
+Current local review on 2026-08-08 traced add, edit, exact-attribution preview,
+explicit repair, scheduler refresh, exact-source delete, full disconnect,
+currency parity, totals, and no-cleanup inventory behavior. No new Shopify
+runtime defect was proven. The displayed zero-match preview for
+`utm_campaign = brand_search_q1` is provider-authoritative for the current
+eligible order set and is not itself evidence of corruption. Current status
+nevertheless remains UNVERIFIED until the present revision is committed,
+deployed, and supported by fresh provider and read-only persisted-data evidence.
 
 This is the canonical Shopify Revenue readiness document as of 2026-07-15 for deployed Current Commit 9.3 (`a2735192`), the completed exact-source provider repair, the Current Commit 8 reconciliation, the platform-isolated owner-scoped production inventory, the exact transactional GA4 test-source cleanup, and the final all-pass certification evidence documented below.
 
@@ -932,11 +943,16 @@ Deployed completion evidence on 2026-07-15:
 
 ## Certification Gate
 
-**Satisfied on 2026-07-15 for the currently enabled GA4 Overview Shopify Revenue Admin API token scope.** Current Commit 9's local implementation and connected deployed-refresh gates pass. Current Commits 9.1 and 9.2 retain their failed-safe deployed results. Deployed Current Commit 9.3 then completed the exact one-source cleanup and the final read-only owner-scoped inventory passed.
+**Current decision: UNVERIFIED.** This gate was satisfied historically on
+2026-07-15 for commit `a2735192`; it is not satisfied for the current revision.
+The evidence below remains bounded history.
 
 The required certification conditions are satisfied:
 
 - Current Commit 9.3 is deployed and its response confirms successful cleanup of only the one documented GA4 campaign/source/connection set, with no recompute failure
 - the one-call owner-scoped batch returned `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` as `true`, `openRefreshFailureCount` as `0`, and no failed campaigns
 
-No remaining engineering or evidence step blocks this certification. Dormant OAuth remains excluded until it is configured and separately evidenced; future operational/provider failures reopen only the affected evidence boundary rather than retroactively proving this retained certification packet false.
+Current certification requires a new exact commit/dependency boundary, focused
+and adjacent local validation, deployment, provider-authoritative add/edit/
+repair evidence, and fresh owner-scoped read-only inventory. No automatic repair
+or cleanup is authorized by this status change. Dormant OAuth remains excluded.

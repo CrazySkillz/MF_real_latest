@@ -277,7 +277,7 @@ Executive-UX note:
 
 ## Revenue Source 1: Shopify Journey
 
-Current certification status (2026-07-15): Shopify Revenue is **production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is canonical; the packets below remain bounded historical evidence only. Dormant OAuth and non-GA4 Shopify sources are excluded from this certification.
+Current status (2026-08-08): Shopify Revenue is **UNVERIFIED on the current revision**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is canonical; the 2026-07-15 packet is bounded history only. Dormant OAuth and non-GA4 Shopify sources remain excluded.
 
 The user journey is:
 
@@ -362,7 +362,7 @@ Important meaning:
 - in the GA4 Overview `Revenue Sources` modal, HubSpot rows should show the mapped platform campaign name under `HubSpot (Deals)` when saved `campaignMappings` provide one; if no mapping is saved, fall back to the source type label `HubSpot`
 - HubSpot imported revenue should enter Campaign Breakdown only through exact saved `campaignMappings`; the recorded deployed 4.11 evidence proves one `yesop_retargeting` mapped-row delta and does not prove other rows, other campaigns, or alternate mappings
 - HubSpot-backed GA4 report values should use the same source-backed financial total and exact mapped Campaign Breakdown formula; Current Commit 4.12 records local guards and deployed evidence for the configured `GA4 Overview Report` packet only
-- HubSpot-backed GA4 KPI/Benchmark financial values use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded). HubSpot Revenue is clean-certified and production-ready for the validated documented GA4 Overview scope after H10d; the canonical evidence and implementation matrix is `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. Historical Current Commit 4.x packets remain bounded evidence, while future provider/API changes, unlisted configurations, future failures/deliveries, and non-GA4 contexts remain outside certification.
+- HubSpot-backed GA4 KPI/Benchmark financial values use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded). HubSpot Revenue is **UNVERIFIED on the current revision**; the canonical status and revalidation boundary is `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`, and H10d is bounded history only.
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step

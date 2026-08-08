@@ -2412,11 +2412,10 @@ export default function GA4Metrics() {
     if (breakdownSources.length > 0) {
       const rows = breakdownSources.map((s: any) => {
         const definition = defsMap.get(String(s.sourceId));
-        const sourceType = String(s.sourceType || "").toLowerCase();
         return {
           ...s,
           mappingConfig: definition?.mappingConfig || null,
-          ...(sourceType === "hubspot" ? { materializedRevenueStatus: "available" } : {}),
+          materializedRevenueStatus: "available",
         };
       });
       const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
@@ -6488,7 +6487,7 @@ export default function GA4Metrics() {
                               ? `Refresh failed${shopifyLastGoodAt ? ` · Last good ${formatConnectionTimestamp(shopifyLastGoodAt)}` : ""}`
                               : shopifyLastGoodAt ? `Last refreshed ${formatConnectionTimestamp(shopifyLastGoodAt)}` : "Refresh status unavailable";
                           const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
-                          const materializedRevenueUnavailable = s.sourceType === "hubspot" && s.materializedRevenueStatus === "unavailable";
+                          const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
                           const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
                           const sourceTypeText = mappedCampaignText

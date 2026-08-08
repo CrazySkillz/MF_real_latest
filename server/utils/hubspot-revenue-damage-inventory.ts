@@ -1,3 +1,5 @@
+import { selectRevenueRecordTotal } from './revenue-record-total';
+
 const round2 = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
 const sourceId = (value: any) => String(value?.id || '');
 const isGa4HubspotSource = (source: any) =>
@@ -24,6 +26,7 @@ export const hubspotInventoryMappingsMatch = (a: any, b: any) => Boolean(a && b)
   && a.campaignProperty === b.campaignProperty
   && normalizeSelectedValues(a.selectedValues || []) === normalizeSelectedValues(b.selectedValues || [])
   && a.revenueProperty === b.revenueProperty
+  && String(a.currency || '').trim().toUpperCase() === String(b.currency || '').trim().toUpperCase()
   && a.dateField === b.dateField
   && a.pipelineEnabled === b.pipelineEnabled
   && a.pipelineStageId === b.pipelineStageId;
@@ -51,13 +54,17 @@ const isStrictDateKey = (value: any) => {
 const recordTotal = (records: any[]) => {
   let aggregate = 0;
   let attributed = 0;
+  let hasAggregate = false;
   for (const record of records) {
     const revenue = Number(record?.revenue);
     if (!Number.isFinite(revenue)) continue;
     if (String(record?.subCampaignUrn || '').trim()) attributed += revenue;
-    else aggregate += revenue;
+    else {
+      aggregate += revenue;
+      hasAggregate = true;
+    }
   }
-  return round2(aggregate > 0 ? aggregate : attributed);
+  return round2(selectRevenueRecordTotal({ aggregate, attributed, hasAggregate }));
 };
 
 const summarize = (source: any, records: any[], extra: Record<string, any> = {}) => ({

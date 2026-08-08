@@ -74,8 +74,8 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
       expect(method).toContain("isNull(revenueSources.platformContext)");
       expect(method).toContain("revenueRecords.revenueSourceId");
     }
-    expect(totalMethod).toContain("item.aggregate > 0 ? item.aggregate : item.subCampaign");
-    expect(breakdownMethod).toContain("data.aggregate > 0 ? data.aggregate : data.subCampaign");
+    expect(totalMethod).toContain("selectRevenueRecordTotal(item)");
+    expect(breakdownMethod).toContain("selectRevenueRecordTotal(data)");
   });
 
   it("serves revenue-to-date, breakdown, and source totals from that storage contract", () => {
@@ -88,7 +88,8 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
     expect(endpoints).toContain('const startDate = "1900-01-01";');
     expect(endpoints).toContain("storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext)");
     expect(endpoints).toContain("storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any)");
-    expect(endpoints).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext)');
+    expect(endpoints).toContain('const breakdownEndDate = platformContext === "ga4" ? new Date().toISOString().slice(0, 10) : "2999-12-31";');
+    expect(endpoints).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)');
     expect(endpoints).toContain('const sourceId = String(source?.id || "");');
     expect(endpoints).toContain("const hasMaterializedRevenue = totalsBySource.has(sourceId);");
     expect(endpoints).toContain("const recordTotal = totalsBySource.get(sourceId) || 0;");

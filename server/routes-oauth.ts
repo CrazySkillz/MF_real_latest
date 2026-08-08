@@ -15,6 +15,7 @@ import multer from "multer";
 import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
+import { selectRevenueRecordTotal } from "./utils/revenue-record-total";
 import { inspectGa4ShopifyCrossCampaignOverlap, inspectGa4ShopifyRevenueDamage } from "./utils/shopify-revenue-damage-inventory";
 import { findOpenShopifyRefreshFailureNotification, parseShopifyRefreshNotificationMetadata, resolveShopifyRefreshFailureNotification, SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND } from "./utils/shopify-refresh-notification";
 import type { ParsedMetrics } from "./services/pdf-parser";
@@ -1505,8 +1506,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allSpendSources as any[], allSpendRecords as any[], "spendSourceId", "spend", overviewRetainedSpendTypes,
       );
       const retainedSourceReviewCount = activeRetainedRevenueSources.length + activeRetainedSpendSources.length;
+      const campaignRevenueCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const activeRevenueCurrencyMismatchGroups = (allRevenueSources as any[])
+        .filter((source) => source?.isActive !== false && normalizeOverviewInventoryPlatformContext(source?.platformContext) === "ga4")
+        .map((source) => {
+          const sourceId = String(source?.id || "");
+          const sourceCurrency = String(source?.currency || "").trim().toUpperCase();
+          const records = (allRevenueRecords as any[]).filter((record) => String(record?.revenueSourceId || "") === sourceId);
+          const mismatchedRecords = records.filter((record) => String(record?.currency || "").trim().toUpperCase() !== campaignRevenueCurrency);
+          if (sourceCurrency === campaignRevenueCurrency && mismatchedRecords.length === 0) return null;
+          return {
+            sourceId,
+            sourceType: String(source?.sourceType || ""),
+            sourceCurrency: sourceCurrency || null,
+            campaignCurrency: campaignRevenueCurrency,
+            mismatchedRecordIds: mismatchedRecords.map((record) => String(record?.id || "")).filter(Boolean),
+            recordCurrencies: Array.from(new Set(mismatchedRecords.map((record) => String(record?.currency || "").trim().toUpperCase() || null))),
+          };
+        })
+        .filter(Boolean);
 
       const findings = {
+        activeRevenueCurrencyMismatchGroups,
         orphanRevenueRecordGroups: groupOverviewInventoryRecords(
           allRevenueRecords as any[],
           "revenueSourceId",
@@ -1570,7 +1591,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         String(group?.signature?.sourceType || "").toLowerCase() === "csv"
         && normalizeOverviewInventoryPlatformContext(group?.signature?.platformContext) === "ga4"
       );
-      const csvFindingCount = csvInventory.summary.findingCount + duplicateActiveCsvSourceGroups.length;
+      const csvCurrencyMismatchGroups = activeRevenueCurrencyMismatchGroups.filter((group: any) =>
+        String(group?.sourceType || "").toLowerCase() === "csv"
+      );
+      const csvFindingCount = csvInventory.summary.findingCount + duplicateActiveCsvSourceGroups.length + csvCurrencyMismatchGroups.length;
       const normalizeHubspotScopeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
       const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
       const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeHubspotScopeValue).filter(Boolean));
@@ -1614,6 +1638,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ].map(normalizeHubspotScopeValue).filter(Boolean);
       const hubspotFindings = {
         ...hubspotIntegrityInventory.findings,
+        hubspotCurrencyMismatchGroups: activeRevenueCurrencyMismatchGroups.filter((group: any) =>
+          String(group?.sourceType || "").toLowerCase() === "hubspot"
+        ),
         activeHubspotSourcesWithZeroRecords: activeHubspotRevenueSources
           .filter((source) => (revenueRecordCounts.get(String(source?.id)) || 0) === 0)
           .map(summarizeHubspotSource),
@@ -1663,6 +1690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedValues: Array.isArray(mapping?.selectedValues) ? mapping.selectedValues.map((value: any) => String(value)).filter(Boolean) : [],
         selectedValuesCount: Array.isArray(mapping?.selectedValues) ? mapping.selectedValues.length : 0,
         revenueProperty: mapping?.revenueProperty ? String(mapping.revenueProperty) : null,
+        currency: mapping?.currency ? String(mapping.currency).trim().toUpperCase() : null,
         dateField: mapping?.dateField ? String(mapping.dateField) : null,
         pipelineEnabled: mapping?.pipelineEnabled === true,
         pipelineStageId: mapping?.pipelineStageId ? String(mapping.pipelineStageId) : null,
@@ -1684,14 +1712,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const hubspotSourceRevenueTotal = (sourceId: string) => {
         let aggregate = 0;
-        let subCampaign = 0;
+        let attributed = 0;
+        let hasAggregate = false;
         for (const record of (allRevenueRecords as any[]).filter((row) => String(row?.revenueSourceId || "") === sourceId)) {
           const value = Number(record?.revenue);
           if (!Number.isFinite(value)) continue;
-          if (record?.subCampaignUrn) subCampaign += value;
-          else aggregate += value;
+          if (record?.subCampaignUrn) attributed += value;
+          else {
+            aggregate += value;
+            hasAggregate = true;
+          }
         }
-        return Math.round((aggregate > 0 ? aggregate : subCampaign) * 100) / 100;
+        return Math.round(selectRevenueRecordTotal({ aggregate, attributed, hasAggregate }) * 100) / 100;
       };
       const hubspotDateLabel = (dateField: string | null) => {
         if (dateField === "hs_lastmodifieddate") return "Modified Date";
@@ -1737,6 +1769,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           !source.mapping.campaignProperty
           || source.mapping.selectedValuesCount === 0
           || !source.mapping.revenueProperty
+          || !source.mapping.currency
+          || source.mapping.currency !== campaignRevenueCurrency
           || !source.mapping.dateField
           || source.platformContext !== "ga4"
         ),
@@ -1788,13 +1822,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? "No active null-context or retained hidden-source rows were found for this campaign."
             : "Review each returned source ID, context, mapping identity, record count, and amount before explicit support, exact migration, or deactivation; this inventory does not mutate data.",
         },
-        csvInventoryPass: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0,
+        csvInventoryPass: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0 && csvCurrencyMismatchGroups.length === 0,
         csvSummary: { ...csvInventory.summary, findingCount: csvFindingCount },
-        csvFindings: { ...csvInventory.findings, duplicateActiveCsvSourceGroups },
+        csvFindings: { ...csvInventory.findings, duplicateActiveCsvSourceGroups, csvCurrencyMismatchGroups },
         csvCleanupAssessment: {
-          candidateReviewRequired: !(csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0),
+          candidateReviewRequired: !(csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0 && csvCurrencyMismatchGroups.length === 0),
           automaticCleanupAllowed: false,
-          reason: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0
+          reason: csvInventory.pass && duplicateActiveCsvSourceGroups.length === 0 && csvCurrencyMismatchGroups.length === 0
             ? "No GA4 CSV Revenue damage candidates were found for this campaign."
             : "Review the exact CSV source and record IDs before proposing a separate transactional cleanup; this inventory does not mutate data.",
         },
@@ -3205,7 +3239,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const sources = await storage.getRevenueSources(campaignId, platformContext);
-      const breakdown = await storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext).catch(() => [] as any[]);
+      const breakdownEndDate = platformContext === "ga4" ? new Date().toISOString().slice(0, 10) : "2999-12-31";
+      const breakdown = await storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext).catch(() => [] as any[]);
       const totalsBySource = new Map((Array.isArray(breakdown) ? breakdown : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
       const sourcesWithTotals = (Array.isArray(sources) ? sources : []).map((source: any) => {
         let cfgTotal = 0;
@@ -3216,13 +3251,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sourceId = String(source?.id || "");
         const hasMaterializedRevenue = totalsBySource.has(sourceId);
         const recordTotal = totalsBySource.get(sourceId) || 0;
-        const isGa4Hubspot = platformContext === "ga4" && String(source?.sourceType || "").trim().toLowerCase() === "hubspot";
+        const isGa4RevenueSource = platformContext === "ga4";
         return {
           ...source,
-          lastTotalRevenue: isGa4Hubspot
+          lastTotalRevenue: isGa4RevenueSource
             ? hasMaterializedRevenue ? Number(recordTotal.toFixed(2)) : null
             : Number((recordTotal || cfgTotal || 0).toFixed(2)),
-          ...(isGa4Hubspot ? { materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable" } : {}),
+          ...(isGa4RevenueSource ? { materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable" } : {}),
           ...(getShopifyRevenueSourceFreshness(source) ? { freshness: getShopifyRevenueSourceFreshness(source) } : {}),
         };
       });
@@ -4333,7 +4368,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const endDate = fallbackRecordDate;
 
         const campaign = await storage.getCampaign(campaignId);
-        const currency = mapping.currency || (campaign as any)?.currency || "USD";
+        const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+        const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
+        if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+          return res.status(400).json({
+            success: false,
+            code: "REVENUE_CURRENCY_MISMATCH",
+            error: `Currency mismatch: CSV revenue is in ${requestedCurrency}, but this campaign is set to ${campaignCurrency}.`,
+            sourceCurrency: requestedCurrency,
+            campaignCurrency,
+          });
+        }
+        const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.
         const existingSourceIdOrNull = mapping?.sourceId || null;
@@ -4345,6 +4391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
         const normalizedMapping = {
           ...mapping,
+          currency,
           dateRange: undefined,
           mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date",
           storedRevenueColumn: revenueColumn || null,
@@ -4975,10 +5022,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = fallbackRecordDate;
 
       const campaign = await storage.getCampaign(campaignId);
-      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
+      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+        return res.status(400).json({
+          success: false,
+          code: "REVENUE_CURRENCY_MISMATCH",
+          error: `Currency mismatch: Google Sheets revenue is in ${requestedCurrency}, but this campaign is set to ${campaignCurrency}.`,
+          sourceCurrency: requestedCurrency,
+          campaignCurrency,
+        });
+      }
+      const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
       const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
 
-      const normalizedMapping = { ...mapping, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
+      const normalizedMapping = { ...mapping, currency, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
       delete (normalizedMapping as any).sourceId;
       const nextMappingConfig = JSON.stringify({
         ...normalizedMapping,
@@ -18237,6 +18295,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      const camp = await storage.getCampaign(campaignId);
+      const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
+
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
       // User-selected date field; fall back to Close Date for confirmed revenue.
@@ -18357,7 +18418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
-          if (c) currencies.add(c);
+          if (c) currencies.add(c.toUpperCase());
 
           if (convValueProp) {
             const cvRaw = props[convValueProp];
@@ -18399,6 +18460,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({
           error: `Multiple currencies found for the selected deals (${Array.from(currencies).join(', ')}). Please filter HubSpot deals to a single currency.`,
           currencies: Array.from(currencies),
+        });
+      }
+      const hubspotRevenueCurrency = currencies.size === 1
+        ? String(Array.from(currencies)[0] || "").trim().toUpperCase()
+        : "";
+      if (platformCtx === "ga4" && importedDealCount > 0 && !hubspotRevenueCurrency) {
+        return res.status(422).json({
+          error: "HubSpot did not return a currency for the selected revenue deals. No revenue changes were saved.",
+          code: "HUBSPOT_REVENUE_CURRENCY_UNAVAILABLE",
+          campaignCurrency,
+        });
+      }
+      if (platformCtx === "ga4" && hubspotRevenueCurrency && hubspotRevenueCurrency !== campaignCurrency) {
+        return res.status(400).json({
+          error: `Currency mismatch: HubSpot deals are in ${hubspotRevenueCurrency}, but this campaign is set to ${campaignCurrency}. Please align currencies before importing revenue.`,
+          code: "HUBSPOT_REVENUE_CURRENCY_MISMATCH",
+          hubspotCurrency: hubspotRevenueCurrency,
+          campaignCurrency,
         });
       }
 
@@ -18444,6 +18523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           previewOnly: true,
           totalRevenue: Number(totalRevenue.toFixed(2)),
+          currency: hubspotRevenueCurrency || campaignCurrency,
           pipelinePreviewTotal,
           dealBreakdown,
           dealBreakdownTotal: importedDealCount,
@@ -18471,7 +18551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: effectiveValueSource,
           days: rangeDays,
           stageIds: effectiveStageIds,
-          currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          currency: hubspotRevenueCurrency || null,
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           pipelineEnabled: pipelineEnabled,
@@ -18526,7 +18606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (!Number.isFinite(amt)) continue;
 
                 const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
-                if (c) pipelineCurrencies.add(c);
+                if (c) pipelineCurrencies.add(c.toUpperCase());
                 pipelineToDate += amt;
                 const campaignValue = String(props?.[campaignProp] || '').trim();
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
@@ -18582,8 +18662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
       try {
-        const camp = await storage.getCampaign(campaignId);
-        const cur = (camp as any)?.currency || "USD";
+        const cur = campaignCurrency;
 
         // Idempotent: reuse the same HubSpot revenue source id (stable provenance) across daily refreshes.
         const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
@@ -18626,6 +18705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateField: dateFieldChoice,
           dailyMaterialization: platformCtx === "ga4" && revenueByCloseDate.size > 0 ? "selected_date_field_v1" : null,
           revenueClassification,
+          currency: hubspotRevenueCurrency || campaignCurrency,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastSyncedAt: new Date().toISOString(),
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
@@ -18737,7 +18817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionValue: convValue,
             // return totalRevenue as a diagnostic only (not used as source of truth in this mode)
             totalRevenue: Number(totalRevenue.toFixed(2)),
-            currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+            currency: hubspotRevenueCurrency || null,
           });
         }
 
@@ -18803,7 +18883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         totalRevenue: Number(totalRevenue.toFixed(2)),
-        currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        currency: hubspotRevenueCurrency || null,
       });
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);

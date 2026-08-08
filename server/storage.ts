@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
+import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness, selectRevenueRecordTotal } from "./utils/revenue-record-total";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -1915,6 +1916,9 @@ export class DatabaseStorage implements IStorage {
         currency: revenueRecords.currency,
         revenueSourceId: revenueRecords.revenueSourceId,
         subCampaignUrn: revenueRecords.subCampaignUrn,
+        sourceCurrency: revenueSources.currency,
+        sourceType: revenueSources.sourceType,
+        mappingConfig: revenueSources.mappingConfig,
       })
       .from(revenueRecords)
       .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
@@ -1928,22 +1932,34 @@ export class DatabaseStorage implements IStorage {
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
-    const totalsBySource = new Map<string, { aggregate: number; subCampaign: number }>();
+    if (requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)) {
+      const activeSources = await this.getRevenueSources(campaignId, platformContext);
+      assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[]);
+    }
+    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
+    const validatedCurrency = platformContext === 'ga4'
+      ? assertGa4RevenueCurrencyIntegrity(rows as any[], (campaign as any)?.currency || 'USD')
+      : undefined;
+
+    const totalsBySource = new Map<string, { aggregate: number; attributed: number; hasAggregate: boolean }>();
     const sourceIds = new Set<string>();
-    let currency: string | undefined = undefined;
+    let currency: string | undefined = validatedCurrency;
     for (const r of rows as any[]) {
       const v = parseFloat(String((r as any).revenueRecords?.revenue ?? (r as any).revenue ?? "0"));
       if (Number.isNaN(v)) continue;
       const sid = String((r as any).revenueRecords?.revenueSourceId ?? (r as any).revenueSourceId);
       if (sid) sourceIds.add(sid);
-      const existing = totalsBySource.get(sid) || { aggregate: 0, subCampaign: 0 };
-      if ((r as any).subCampaignUrn ?? (r as any).revenueRecords?.subCampaignUrn) existing.subCampaign += v;
-      else existing.aggregate += v;
+      const existing = totalsBySource.get(sid) || { aggregate: 0, attributed: 0, hasAggregate: false };
+      if ((r as any).subCampaignUrn ?? (r as any).revenueRecords?.subCampaignUrn) existing.attributed += v;
+      else {
+        existing.aggregate += v;
+        existing.hasAggregate = true;
+      }
       totalsBySource.set(sid, existing);
       const cur = (r as any).revenueRecords?.currency ?? (r as any).currency;
       if (!currency && cur) currency = String(cur);
     }
-    const total = Array.from(totalsBySource.values()).reduce((sum, item) => sum + (item.aggregate > 0 ? item.aggregate : item.subCampaign), 0);
+    const total = Array.from(totalsBySource.values()).reduce((sum, item) => sum + selectRevenueRecordTotal(item), 0);
     return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
@@ -1956,6 +1972,8 @@ export class DatabaseStorage implements IStorage {
         revenue: revenueRecords.revenue,
         currency: revenueRecords.currency,
         subCampaignUrn: revenueRecords.subCampaignUrn,
+        sourceCurrency: revenueSources.currency,
+        mappingConfig: revenueSources.mappingConfig,
       })
       .from(revenueRecords)
       .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
@@ -1969,7 +1987,12 @@ export class DatabaseStorage implements IStorage {
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
-    const totals = new Map<string, { displayName: string; sourceType: string; aggregate: number; subCampaign: number; currency?: string }>();
+    if (platformContext === 'ga4') {
+      const campaign = await this.getCampaign(campaignId);
+      assertGa4RevenueCurrencyIntegrity(rows as any[], (campaign as any)?.currency || 'USD');
+    }
+
+    const totals = new Map<string, { displayName: string; sourceType: string; aggregate: number; attributed: number; hasAggregate: boolean; currency?: string }>();
     for (const r of rows as any[]) {
       const sid = String(r.revenueSourceId ?? r.revenueRecords?.revenueSourceId);
       const v = parseFloat(String(r.revenue ?? r.revenueRecords?.revenue ?? "0"));
@@ -1978,17 +2001,21 @@ export class DatabaseStorage implements IStorage {
         displayName: String(r.displayName ?? r.revenueSources?.displayName ?? 'Unknown'),
         sourceType: String(r.sourceType ?? r.revenueSources?.sourceType ?? 'unknown'),
         aggregate: 0,
-        subCampaign: 0,
+        attributed: 0,
+        hasAggregate: false,
         currency: r.currency ?? r.revenueRecords?.currency,
       };
-      if (r.subCampaignUrn ?? r.revenueRecords?.subCampaignUrn) existing.subCampaign += v;
-      else existing.aggregate += v;
+      if (r.subCampaignUrn ?? r.revenueRecords?.subCampaignUrn) existing.attributed += v;
+      else {
+        existing.aggregate += v;
+        existing.hasAggregate = true;
+      }
       totals.set(sid, existing);
     }
 
     return Array.from(totals.entries()).map(([sourceId, data]) => ({
       sourceId, displayName: data.displayName, sourceType: data.sourceType,
-      revenue: Number((data.aggregate > 0 ? data.aggregate : data.subCampaign).toFixed(2)), currency: data.currency,
+      revenue: Number(selectRevenueRecordTotal(data).toFixed(2)), currency: data.currency,
     }));
   }
 

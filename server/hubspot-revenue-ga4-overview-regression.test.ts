@@ -210,9 +210,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(breakdownMethod).toContain("platformContext === 'ga4'");
     expect(breakdownMethod).toContain("eq(revenueSources.platformContext, platformContext as any)");
 
-    expect(totalMethod).toContain("const totalsBySource = new Map<string, { aggregate: number; subCampaign: number }>();");
-    expect(totalMethod).toContain("item.aggregate > 0 ? item.aggregate : item.subCampaign");
-    expect(breakdownMethod).toContain("data.aggregate > 0 ? data.aggregate : data.subCampaign");
+    expect(totalMethod).toContain("const totalsBySource = new Map<string, { aggregate: number; attributed: number; hasAggregate: boolean }>();");
+    expect(totalMethod).toContain("selectRevenueRecordTotal(item)");
+    expect(breakdownMethod).toContain("selectRevenueRecordTotal(data)");
   });
 
   it("scheduler reprocesses saved HubSpot revenue mappings with platform context and stable source IDs", () => {
@@ -390,9 +390,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(inventoryRoute).toContain("hubspotProvenance: {");
     expect(inventoryRoute).toContain("sourceModalExpected");
     expect(inventoryRoute).toContain("const hubspotSourceRevenueTotal = (sourceId: string) => {");
-    expect(inventoryRoute).toContain("if (record?.subCampaignUrn) subCampaign += value;");
-    expect(inventoryRoute).toContain("else aggregate += value;");
-    expect(inventoryRoute).toContain("return Math.round((aggregate > 0 ? aggregate : subCampaign) * 100) / 100;");
+    expect(inventoryRoute).toContain("if (record?.subCampaignUrn) attributed += value;");
+    expect(inventoryRoute).toContain("aggregate += value;");
+    expect(inventoryRoute).toContain("selectRevenueRecordTotal({ aggregate, attributed, hasAggregate })");
     expect(inventoryRoute).not.toContain("const hubspotSourceRevenueTotal = (sourceId: string) => centsOverviewInventoryTotal");
     expect(inventoryRoute).toContain("campaignProperty");
     expect(inventoryRoute).toContain("selectedValues");

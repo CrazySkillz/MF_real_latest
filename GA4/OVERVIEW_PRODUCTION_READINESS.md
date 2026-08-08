@@ -15,7 +15,7 @@ Only evidence from the same deployed commit, production-data state, and document
 
 ## Current Decision — Stable Cross-Session Answer
 
-**UNVERIFIED at the current revision. Current Commit 20's local corrective follow-up restores the verified 2 July legacy cutover, and Current Commit 21 locally restores Google Sheets in both GA4 financial-source choosers and removes only the obsolete new-source API rejection. Both changes require deployment and bounded validation; OAuth durability remains due on or after 2026-08-07.**
+**UNVERIFIED at the current revision. The 2026-08-08 Total Revenue audit invalidated historical HubSpot, Shopify, and CSV source certifications, found a HubSpot currency-relabeling defect and an aggregate-grain total defect, and found that native GA4 revenue requests do not currently set or validate campaign currency. The imported-source forward fix is local only; current persisted-data and deployed-provider evidence are not established.**
 
 ## Intended Release Scope
 
@@ -34,6 +34,7 @@ Future 60/90-day options are outside this release and require later implementati
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |
+| Total Revenue currency and persisted-data gate | **Local imported-source fix; native GA4 and deployment evidence open** | CSV/Sheets supplied currency must equal campaign currency; HubSpot must return one campaign-matching currency; Shopify retains existing shop-money parity; imported reads must fail closed on mismatched currency or historical HubSpot rows without provider-currency provenance. Native GA4 `runReport` currency must be made campaign-consistent across to-date, daily persistence, breakdown, schedulers, and downstream consumers before certification. Run read-only exact-ID inventory before any cleanup proposal. |
 | Current Commit 21 | **Local; deployment required** | Google Sheets is restored in GA4 `Add revenue source` and `Add spend source`; new requests use the existing campaign-access guard, GA4 platform context, mapping validation, and atomic exact-source persistence. Confirm both cards render after deployment; do not create production data solely for this visibility check. |
 | Current Commit 20 | **Corrective follow-up local; deployment required** | Commit `9c0ef7e8` exposed a legacy-boundary migration defect: OAuth `connectedAt` is not property-selection history. The correction excludes the exact extra 330 Sessions / 330 Users / 42 Conversions, uses the verified `2026-07-02` cutover only when a retained connection lacks `importStartDate`, and preserves persisted per-selection boundaries for new connections. API/UI/Overview-report parity remains externally unproven. |
 | Current Commit 19 | **Bounded implementation closed** | Runtime `ba2e4329` deployed; the existing `GA4 single` / `ga4_mock` page showed `Last 30 completed days` and loaded normally. Unsupported-write rejection is automated/code-path proven at this source, not production-injected. |
@@ -59,6 +60,7 @@ The scheduler-backed Summary begins with the initial 30-day import and accumulat
 ## Production-Data Boundary
 
 - no cleanup, reconnect, migration, deletion, or rewrite is authorized by this documentation
+- existing HubSpot rows without source-level provider-currency provenance are review candidates; they must not be silently relabeled, deleted, or declared correct
 - Commit 17 rollback behavior is regression-covered; unsafe production provider-failure injection is not required or claimed
 - the eight retained inventory sources are not silently certified or cleaned
 
@@ -66,18 +68,23 @@ The scheduler-backed Summary begins with the initial 30-day import and accumulat
 
 The documented initial-30-day-import scope may be clean-certified only when, at the same deployed commit and data state:
 
-1. Current Commits 20 and 21 are deployed; Summary API/UI/Overview-report parity and both Google Sheets chooser cards are validated.
+1. Current Commits 20 and 21 plus the Total Revenue currency/total fix are committed and deployed; Summary API/UI/Overview-report parity and both Google Sheets chooser cards are validated.
 2. One current-release timer-fired GA4 daily scheduler run proves that a zero-activity day does not drop the oldest imported day or change unchanged totals.
 3. OAuth durability passes on 2026-08-07 or later.
 4. The deterministic/read-only pack has no unresolved included value, source, lifecycle, failure, or downstream path.
-5. All canonical documents record the same decision.
+5. Native GA4 to-date, persisted daily, and breakdown revenue use a proven campaign-currency contract without rewriting mixed historical rows unsafely.
+6. Read-only revenue-source inventory and provider-authoritative HubSpot/Shopify packets establish the exact current persisted-data state; all canonical documents record the same decision.
 
 Only then may the status say:
 
 **GA4 Overview is clean-certified and production-ready for the documented 30-completed-day scope. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future configurations, and future provider behavior are excluded.**
 
-Until then, the exact answer is: **GA4 Overview is unverified because Current Commit 20's legacy-boundary correction and Current Commit 21's Google Sheets chooser restoration still require deployment validation. A current-release scheduled run and the 2026-08-07 OAuth durability check must then pass before clean certification.**
+Until then, the exact answer is: **GA4 Overview is UNVERIFIED. Imported-source currency and total protections are local only, historical HubSpot currency provenance is incomplete, native GA4 campaign-currency consistency remains unresolved, and fresh deployed/provider/read-only inventory evidence is required.**
 
 ## Source Authority
 
-HubSpot Revenue remains **clean-certified and production-ready** for its validated scope under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. Historical-ledger note: bounded source-family evidence does not override this current whole-Overview decision.
+HubSpot Revenue is **UNVERIFIED on the current revision** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; H10d is historical only. This does not change the existing whole-Overview UNVERIFIED decision.
+
+Shopify Revenue is **UNVERIFIED on the current revision** under `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`. Current code trace found no new Shopify add/edit/repair/delete defect; an exact zero-match preview remains authoritative only for the provider order set and mapping fingerprint shown at preview time.
+
+Google Sheets and Upload CSV Revenue are **UNVERIFIED on the current revision** under `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Their historical packets do not carry across the new currency boundary.

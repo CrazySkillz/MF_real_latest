@@ -4651,6 +4651,7 @@ export default function GA4Metrics() {
   const getInsightDataBasis = (item: Pick<InsightItem, "id">): string => {
     const id = String(item.id || "");
     if (id === "integrity:target_period_mismatch") return "Saved target period + current-value reporting window";
+    if (id === "integrity:targets_unverified") return "Required source state + saved KPI/Benchmark configuration";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
@@ -4799,19 +4800,23 @@ export default function GA4Metrics() {
       });
     }
 
-    for (const item of unverifiedKpis) {
-      const name = String(item.k?.name || item.k?.metric || "KPI");
+
+    const unverifiedTargets = [
+      ...unverifiedKpis.map(({ k, consumerState }) => ({ name: String(k?.name || k?.metric || "KPI"), consumerState })),
+      ...unverifiedBenchmarks.map(({ b, consumerState }) => ({ name: String(b?.name || b?.metric || "Benchmark"), consumerState })),
+    ];
+    if (unverifiedTargets.length > 0) {
+      const affectedNames = Array.from(new Set(unverifiedTargets.map(({ name }) => name)));
+      const reasons = Array.from(new Set(unverifiedTargets.map(({ consumerState }) => consumerState.detail)));
+      const hasUnavailableInput = unverifiedTargets.some(({ consumerState }) => consumerState.code === "failed" || consumerState.code === "unavailable");
       out.push({
-        id: `integrity:kpi_${item.consumerState.code}:${String(item.k?.id || name)}`,
-        severity: item.consumerState.code === "loading" || item.consumerState.code === "insufficient_data" ? "medium" : "high",
-        title: `${name}: ${item.consumerState.label}`,
-        description: `${item.consumerState.detail} No KPI performance conclusion or breach is generated from this value.`,
-        recommendation: item.consumerState.code === "insufficient_data"
-          ? "Wait for the required denominator data before evaluating this KPI."
-          : "Refresh the KPI and required GA4, revenue, or spend source before using this value for decisions.",
+        id: "integrity:targets_unverified",
+        severity: hasUnavailableInput ? "high" : "medium",
+        title: `${unverifiedTargets.length} saved target evaluation${unverifiedTargets.length === 1 ? "" : "s"} withheld`,
+        description: `${reasons.join(" ")} Affected saved targets: ${affectedNames.join(", ")}. No KPI or Benchmark performance conclusion is generated from these values.`,
+        recommendation: "Resolve the stated data condition, then refresh Insights before using these targets for decisions.",
       });
     }
-
     for (const item of blockedBenchmarks) {
       const name = String(item.b?.name || item.b?.metric || "Benchmark");
       const missingLabel = item.missing.join(" + ");
@@ -4829,18 +4834,6 @@ export default function GA4Metrics() {
       });
     }
 
-    for (const item of unverifiedBenchmarks) {
-      const name = String(item.b?.name || item.b?.metric || "Benchmark");
-      out.push({
-        id: `integrity:bench_${item.consumerState.code}:${String(item.b?.id || name)}`,
-        severity: item.consumerState.code === "loading" || item.consumerState.code === "insufficient_data" ? "medium" : "high",
-        title: `${name}: ${item.consumerState.label}`,
-        description: `${item.consumerState.detail} No Benchmark performance conclusion or breach is generated from this value.`,
-        recommendation: item.consumerState.code === "insufficient_data"
-          ? "Wait for the required denominator data before evaluating this Benchmark."
-          : "Refresh the Benchmark and required GA4, revenue, or spend source before using this value for decisions.",
-      });
-    }
 
     for (const item of invalidKpis) {
       const name = String(item.k?.name || item.k?.metric || "KPI");
@@ -8911,7 +8904,7 @@ export default function GA4Metrics() {
                     </div>
 
                     <p className="text-xs text-muted-foreground/70">
-                      Each saved KPI or Benchmark is counted separately. Total findings also include positive and informational items.
+                      Verified KPI and Benchmark conclusions are counted separately. Shared unverified-source effects are consolidated. Total findings also include positive and informational items.
                     </p>
                     <Card className="border-border" data-testid="insights-findings">
                       <CardHeader>

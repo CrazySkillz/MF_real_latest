@@ -88,7 +88,7 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(tracker).toContain("const consumerState = getKpiConsumerState(kpi);");
     expect(tracker).toContain("if (!consumerState.eligible) continue;");
     expect(insights).toContain("if (!getKpiConsumerState(k).eligible) continue;");
-    expect(insights).toContain("No KPI performance conclusion or breach is generated from this value.");
+    expect(insights).toContain("No KPI or Benchmark performance conclusion is generated from these values.");
     expect(insights).toContain("if (!getKpiInsightPeriodCompatibility(k).comparable) continue;");
     expect(insights).toContain("if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;");
     expect(insights).toContain("Target reporting periods need review");

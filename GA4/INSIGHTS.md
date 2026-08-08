@@ -128,7 +128,7 @@ Current meaning:
 
 - tracker cards are derived from generated findings
 - hidden findings must be disclosed when the visible list is capped
-- each saved KPI or Benchmark is counted separately
+- verified KPI and Benchmark conclusions are counted separately; shared unverified-source effects are consolidated
 - total findings also include positive and informational items
 - grouped badges state how many findings are shown in the capped summary
 
@@ -143,6 +143,7 @@ Current meaning:
 - KPI target findings require an explicit 30-day tracking period for 30-day traffic values; campaign-to-date financial values require a campaign-to-date target
 - Benchmark findings require an explicitly matching reporting period; incompatible targets are withheld and summarized as one configuration finding
 - cards include data-basis and confidence labels
+- unverified KPI and Benchmark evaluations are consolidated into one data-readiness finding instead of presenting one shared source failure as many business issues
 - intro copy is history-aware
 - recommendations are phrased as checks, not proven causal conclusions
 

@@ -122,9 +122,23 @@ describe("GA4 Insights regression guard", () => {
     expect(trackerSection).toContain("Total findings");
     expect(trackerSection).toContain("High-severity findings");
     expect(trackerSection).toContain("Medium-severity findings");
-    expect(trackerSection).toContain("Each saved KPI or Benchmark is counted separately.");
+    expect(trackerSection).toContain("Shared unverified-source effects are consolidated.");
     expect(content).toContain("{groupInsights.length} shown");
   });
+  it("consolidates unverified target checks instead of counting one source failure as many issues", () => {
+    const content = ga4MetricsFile();
+    const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names", insightsStart);
+    const section = content.slice(insightsStart, insightsEnd);
+
+    expect(section).toContain("const unverifiedTargets = [");
+    expect(section).toContain('id: "integrity:targets_unverified"');
+    expect(section).toContain("saved target evaluation");
+    expect(section).toContain("No KPI or Benchmark performance conclusion is generated from these values.");
+    expect(section).not.toContain("for (const item of unverifiedKpis)");
+    expect(section).not.toContain("for (const item of unverifiedBenchmarks)");
+  });
+
 
   it("flags invalid KPI and Benchmark targets before generating performance guidance", () => {
     const content = ga4MetricsFile();

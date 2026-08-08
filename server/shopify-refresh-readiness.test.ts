@@ -155,7 +155,7 @@ describe("Shopify refresh lifecycle wiring", () => {
     expect(scheduler).toContain("runDailyAutoRefreshOnce()");
   });
 
-  it("exposes Shopify freshness in provenance, DeepDive risk, and scheduled aggregates", () => {
+  it("exposes Shopify freshness in provenance, DeepDive risk, and scheduled aggregates without source-list clutter", () => {
     const routes = read("routes-oauth.ts");
     const aggregate = read("utils/performance-summary-aggregate.ts");
     const snapshots = read("scheduler.ts");
@@ -166,7 +166,11 @@ describe("Shopify refresh lifecycle wiring", () => {
     expect(routes).toContain('message: "Shopify Revenue freshness is unavailable; current revenue cannot be dated"');
     expect(aggregate).toContain("{ ...source.freshness");
     expect(snapshots).toContain("getShopifyRevenueRefreshFreshness(sourceMapping)");
-    expect(ga4Page).toContain('cfg?.refreshStatus === "failed"');
-    expect(ga4Page).toContain("Last refreshed");
+    const revenueSourcesModal = ga4Page.slice(
+      ga4Page.indexOf('>Revenue Sources</DialogTitle>'),
+      ga4Page.indexOf('>Spend Sources</DialogTitle>'),
+    );
+    expect(revenueSourcesModal).not.toContain("shopifyFreshnessText");
+    expect(revenueSourcesModal).not.toContain("Last refreshed");
   });
 });

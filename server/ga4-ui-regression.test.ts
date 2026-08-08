@@ -342,7 +342,7 @@ describe("GA4 UI regression guard", () => {
     expect(createSection).not.toContain("conversions: Number(financialConversions || 0),");
   });
 
-  it("keeps Insights CPA aligned to Overview financial conversions", () => {
+  it("keeps report CPA aligned to Overview financial conversions without duplicating it in Data Summary", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const browserReportStart = ga4Metrics.indexOf("if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0))");
     const browserReportEnd = ga4Metrics.indexOf("if (!includeInsightsActions)", browserReportStart);
@@ -357,8 +357,9 @@ describe("GA4 UI regression guard", () => {
     expect(liveEnd).toBeGreaterThan(liveStart);
     expect(browserReportSection).toContain("financialConversions > 0 && financialSpend > 0");
     expect(browserReportSection).toContain("formatMoney(financialCPA)");
-    expect(liveSection).toContain("financialConversions > 0");
-    expect(liveSection).toContain("formatMoney(financialCPA)");
+    expect(liveSection).not.toContain("financialConversions > 0");
+    expect(liveSection).not.toContain("formatMoney(financialCPA)");
+    expect(liveSection).not.toContain('data-testid="insights-summary-cpa"');
     expect(ga4Metrics).not.toContain("financialSpend / breakdownTotals.conversions");
   });
 

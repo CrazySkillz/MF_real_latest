@@ -134,14 +134,13 @@ describe("live GA4 Insights production boundary", () => {
     expect(section).toContain('spendKpiInputState === "ready" && !spendMetricAvailable ? "Not connected" : "Unavailable"');
     expect(section).toContain('revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable"');
     expect(section).toContain("Showing last-good financial values");
-    expect(page).toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
+    expect(page).not.toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
     expect(page).toContain('const financialRevenueAvailable = activeTab === "insights"');
     expect(page).toContain("? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable");
     expect(page).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
     expect(page).toContain('if (ga4ToDateError) return "unavailable";');
     expect(page).toContain('id: ga4ToDateResp === undefined ? "financial:ga4_to_date_unavailable" : "financial:ga4_to_date_stale"');
     expect(page).toContain('title: ga4ToDateResp === undefined ? "GA4 lifetime totals are unavailable" : "GA4 lifetime totals are stale"');
-    expect(page).toContain("{ga4ToDateResp !== undefined && (");
     expect(page).toContain('if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && !revenueMetricAvailable)');
     expect(page).toContain('if (revenueKpiInputState === "ready" && spendKpiInputState === "ready" && revenueMetricAvailable && !spendMetricAvailable)');
     expect(section).toContain('financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable"');
@@ -177,14 +176,19 @@ describe("live GA4 Insights production boundary", () => {
       "insights-financial-profit", "insights-financial-roas", "insights-financial-roi",
       "insights-financial-sources", "insights-trends", "insights-data-summary",
       "insights-trends-chart",
-      "insights-summary-sessions", "insights-summary-conversions", "insights-summary-revenue",
-      "insights-summary-top-channel", "insights-summary-spend", "insights-summary-profit",
-      "insights-summary-roas", "insights-summary-cpa", "insights-summary-channel-row",
+      "insights-summary-sessions", "insights-summary-conversions",
+      "insights-summary-top-channel", "insights-summary-channel-row",
       "insights-trackers", "insights-tracker-total", "insights-tracker-high",
       "insights-tracker-medium", "insights-findings", "insights-finding", "insights-hidden-count",
       "insights-scope-context", "insights-scope-client", "insights-scope-campaign", "insights-scope-property", "insights-scope-filter",
     ]) {
       expect(page).toContain(`data-testid="${testId}"`);
+    }
+    for (const removedTestId of [
+      "insights-summary-revenue", "insights-summary-spend", "insights-summary-profit",
+      "insights-summary-roas", "insights-summary-cpa",
+    ]) {
+      expect(page).not.toContain(`data-testid="${removedTestId}"`);
     }
     for (const attribute of [
       "data-insight-id", "data-category", "data-severity", "data-title",

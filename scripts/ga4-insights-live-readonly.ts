@@ -413,19 +413,12 @@ try {
   const sourcesText = await cardText("insights-financial-sources");
   assertIncludes(sourcesText, "Spend: " + (spendLabels.length > 0 ? spendLabels.join(", ") : "Not connected"), "spend provenance");
   assertIncludes(sourcesText, "Revenue: " + (revenueLabels.length > 0 ? Array.from(new Set(revenueLabels)).join(", ") : "Not connected"), "revenue provenance");
-  const financialWindows = [
-    ...(ga4HasRevenueMetric ? [`GA4 native revenue ${String(responses.toDate.body?.startDate)} to ${String(responses.toDate.body?.endDate)} completed days`] : []),
-    ...(revenueDisplaySources.length > 0 ? [`imported revenue source-to-date through completed ${expected60.reportingTimeZone.split("/").pop()?.replace(/_/g, " ")} day ${String(responses.revenue.body?.endDate)}`] : []),
-    ...(hasSpendDisplaySources ? [`spend source-to-date through completed ${expected60.reportingTimeZone.split("/").pop()?.replace(/_/g, " ")} day ${String(responses.spend.body?.endDate)}`] : []),
-  ];
-  const financialWindowDescription = financialWindows.length > 0 ? financialWindows.join("; ") + "." : "";
   if (sourcesText.includes("Windows:")) throw new Error("Sources used should not render financial windows");
 
   const summaryText = await cardText("insights-data-summary");
   assertIncludes(summaryText, String(uiRollups.last30.startDate), "summary start date");
   assertIncludes(summaryText, String(uiRollups.last30.endDate), "summary end date");
   assertIncludes(summaryText, uiRollups.last30.days + "/" + uiRollups.last30.expectedDays + " imported days", "summary completeness");
-  if (financialWindowDescription) assertIncludes(summaryText, financialWindowDescription, "summary financial windows");
   assertIncludes(await cardText("insights-summary-sessions"), formatNumber(uiRollups.last30.sessions), "summary sessions");
   assertIncludes(
     await cardText("insights-summary-sessions"),
@@ -440,14 +433,8 @@ try {
     uiRollups.last30.sessions > 0 ? formatPct((uiRollups.last30.conversions / uiRollups.last30.sessions) * 100) + " conversion rate" : "Valid zero sessions",
     "summary conversion rate",
   );
-  if (financialRevenueAvailable) assertIncludes(await cardText("insights-summary-revenue"), formatMoney(financialRevenue, currency), "summary revenue");
-  if (financialSpendAvailable) {
-    assertIncludes(await cardText("insights-summary-spend"), formatMoney(financialSpend, currency), "summary spend");
-    if (financialRevenueAvailable) {
-      assertIncludes(await cardText("insights-summary-profit"), formatMoney(financialProfit, currency), "summary profit");
-      assertIncludes(await cardText("insights-summary-roas"), financialSpend > 0 ? financialRoas.toFixed(2) + "x" : "\u2014", "summary ROAS");
-    }
-    assertIncludes(await cardText("insights-summary-cpa"), financialSpend > 0 && financialConversions > 0 ? formatMoney(financialCpa, currency) : "\u2014", "summary CPA");
+  for (const testId of ["insights-summary-revenue", "insights-summary-spend", "insights-summary-profit", "insights-summary-roas", "insights-summary-cpa"]) {
+    if (await owner.page.getByTestId(testId).count() !== 0) throw new Error(`${testId} should not be rendered in Data Summary`);
   }
 
   const channelMap = new Map<string, { label: string; sessions: number; conversions: number; revenue: number }>();
@@ -928,7 +915,7 @@ try {
     benchmarkCount: Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body.length : 0,
     liveSurfaceParity: {
       executiveFinancialValues: Object.keys(expectedFinancialValues).length,
-      summaryValues: 8,
+      summaryValues: 3,
       channelRows: expectedChannels.length,
       trendModes: 4,
       trackerValues: 3,

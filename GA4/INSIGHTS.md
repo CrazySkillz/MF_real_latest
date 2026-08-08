@@ -106,17 +106,15 @@ History gates:
 
 ### Data Summary
 
-Shows compact operational context from currently available campaign values.
+Shows compact recent GA4 traffic and channel context for the imported reporting dates.
 
 Current meaning:
 
-- financial values use the same revenue and spend model as Executive Financials
 - traffic values use the exact current 30-calendar-day completed-day window and remain visible for verified zero
-- mixed-source financial values are shown as totals, not exact daily averages
 - when the standard acquisition response is partial, Insights uses session-campaign-scoped landing-page rows for traffic and standard GA4 acquisition rows for conversions/revenue, merged only by exact date/source/medium and filtered to the imported dates used by Data Summary; the result is shown only when every displayed metric total reconciles
 - channel rows render only when their dates, Sessions, and Conversions exactly match the daily-summary window; otherwise they are withheld rather than allocated or estimated
 - channel share copy names the raw breakdown-session denominator, and a lowest-conversion-rate channel is identified only when one channel is uniquely lower at the displayed one-decimal precision
-- the live summary distinguishes same-window GA4 traffic/channel values from campaign-to-date financials
+- campaign-to-date financial values remain in Executive Financials and are not duplicated in Data Summary
 
 ### Tracker Cards
 

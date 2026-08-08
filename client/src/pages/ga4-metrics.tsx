@@ -8724,7 +8724,7 @@ export default function GA4Metrics() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg">Data Summary</CardTitle>
                           <CardDescription>
-                            GA4 daily metrics use {insightsDataSummaryTotals.startDate || "Not available"} → {insightsDataSummaryTotals.endDate || "Not available"} ({insightsDataSummaryTotals.days}/{insightsDataSummaryTotals.expectedDays} imported days). {financialWindowDescription || "Financial source windows are unavailable."}
+                            GA4 daily metrics use {insightsDataSummaryTotals.startDate || "Not available"} → {insightsDataSummaryTotals.endDate || "Not available"} ({insightsDataSummaryTotals.days}/{insightsDataSummaryTotals.expectedDays} imported days).
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -8745,18 +8745,15 @@ export default function GA4Metrics() {
                               Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.
                             </div>
                           )}
-                          {(financialRevenueAvailable || financialSpendAvailable) && (revenueKpiInputState === "stale" || spendKpiInputState === "stale") && (
-                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good Data Summary financial values because one or more source refreshes failed.</div>
-                          )}
                           {ga4InsightsDailyResp !== undefined && dataSummaryChannelAnalysis && (
                             <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
-                              Traffic and channel figures cover the same imported reporting window. Financials are campaign-to-date.
+                              Sessions, conversions and channels cover the same imported reporting dates.
                             </p>
                           )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 h-8 rounded bg-muted animate-pulse" aria-label="Loading GA4 Insights summary" />
                           )}
-                          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {ga4InsightsDailyResp !== undefined && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-sessions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
@@ -8779,15 +8776,6 @@ export default function GA4Metrics() {
                                 </p>
                               </div>
                             )}
-                            {(financialRevenueAvailable || financialRevenueLoading) && (
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-revenue">
-                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue to date</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(financialRevenue))}</p>
-                                <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  Total across revenue sources
-                                </p>
-                              </div>
-                            )}
                             {dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.topSessionChannel && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-top-channel">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Top Channel</p>
@@ -8800,41 +8788,6 @@ export default function GA4Metrics() {
                               </div>
                             )}
                           </div>
-                          {(financialSpendAvailable || financialSpendLoading) && (
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4 pt-4 border-t">
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-spend">
-                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Spend to date</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(financialSpend))}</p>
-                              </div>
-                              {(financialRevenueAvailable || financialRevenueLoading) && (
-                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-profit">
-                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Profit to date</p>
-                                <p className={`text-xl font-bold mt-1 ${!(financialRevenueAvailable && financialSpendAvailable) ? "text-foreground" : (financialRevenue - financialSpend) >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
-                                    {renderFinancialValue(financialRevenueLoading || financialSpendLoading, financialRevenueAvailable && financialSpendAvailable, formatMoney(financialRevenue - financialSpend))}
-                                  </p>
-                                </div>
-                              )}
-                              {(financialRevenueAvailable || financialRevenueLoading) && (
-                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-roas">
-                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">ROAS to date</p>
-                                  <p className={`text-xl font-bold mt-1 ${!(financialRevenueAvailable && financialSpendAvailable && financialSpend > 0) ? "text-foreground" : financialROAS >= 1 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
-                                    {renderFinancialValue(
-                                      financialRevenueLoading || financialSpendLoading,
-                                      financialRevenueAvailable && financialSpendAvailable && financialSpend > 0,
-                                      `${financialROAS.toFixed(2)}x`,
-                                      financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable",
-                                    )}
-                                  </p>
-                                </div>
-                              )}
-                              {ga4ToDateResp !== undefined && (
-                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-cpa">
-                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA to date</p>
-                                  <p className="text-xl font-bold text-foreground mt-1">{ga4NoCompletedWindow ? "No completed GA4 day" : financialSpend > 0 && financialConversions > 0 ? formatMoney(financialCPA) : "—"}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
                           {dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels && dataSummaryChannelAnalysis.channels.length >= 1 && (
                             <div className="mt-4 pt-4 border-t">
                               <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">

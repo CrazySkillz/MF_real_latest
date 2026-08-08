@@ -17,6 +17,14 @@ export type ShopifyRepairConfirmation = {
   providerFingerprint: string;
 };
 
+export const shouldPreserveShopifyDevelopmentStoreLastGood = (input: {
+  schedulerRefresh: boolean;
+  previouslyIncludedTestOrders: unknown;
+  currentlyIncludedTestOrders: boolean;
+}): boolean => input.schedulerRefresh
+  && input.previouslyIncludedTestOrders === true
+  && !input.currentlyIncludedTestOrders;
+
 const fingerprint = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 export const buildShopifyRepairConfirmation = (input: {

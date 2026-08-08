@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency } from './utils/shopify-revenue';
+import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 
 const order = (overrides: Record<string, unknown> = {}) => ({
   test: false,
@@ -50,6 +50,29 @@ describe('Shopify confirmed-revenue policy', () => {
       test: true,
       cancelled_at: '2026-07-01T00:00:00Z',
     }), { includeDevelopmentStoreTestOrders: true })).toBeNull();
+  });
+
+  it('preserves last-good development-store revenue only when a scheduler refresh loses verification', () => {
+    expect(shouldPreserveShopifyDevelopmentStoreLastGood({
+      schedulerRefresh: true,
+      previouslyIncludedTestOrders: true,
+      currentlyIncludedTestOrders: false,
+    })).toBe(true);
+    expect(shouldPreserveShopifyDevelopmentStoreLastGood({
+      schedulerRefresh: false,
+      previouslyIncludedTestOrders: true,
+      currentlyIncludedTestOrders: false,
+    })).toBe(false);
+    expect(shouldPreserveShopifyDevelopmentStoreLastGood({
+      schedulerRefresh: true,
+      previouslyIncludedTestOrders: false,
+      currentlyIncludedTestOrders: false,
+    })).toBe(false);
+    expect(shouldPreserveShopifyDevelopmentStoreLastGood({
+      schedulerRefresh: true,
+      previouslyIncludedTestOrders: true,
+      currentlyIncludedTestOrders: true,
+    })).toBe(false);
   });
 
   it('fails closed when classification or current revenue is missing or unsupported', () => {

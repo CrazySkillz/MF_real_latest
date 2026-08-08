@@ -283,6 +283,8 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('developmentStoreVerification = \'failed_closed\'');
     expect(routes).toContain('platformCtx === \'ga4\' && !verifiedDevelopmentStore');
     expect(routes).toContain('developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded');
+    expect(routes).toContain('shouldPreserveShopifyDevelopmentStoreLastGood({');
+    expect(routes).toContain("schedulerRefresh: internalAutoRefresh && platformCtx === 'ga4'");
     expect(routes).toContain('developmentStoreTestOrdersIncluded,');
     expect(wizard).toContain('Shopify development-store test orders are included for validation. This is test revenue.');
   });

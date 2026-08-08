@@ -8,7 +8,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
-import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches } from './utils/shopify-revenue';
+import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 import { getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
@@ -33853,6 +33853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : new Set<string>();
       const requestedSourceId = String(body.data.sourceId || "").trim();
       let requestedSource: any = null;
+      let requestedSourceMapping: Record<string, any> = {};
       if (requestedSourceId) {
         requestedSource = await storage.getRevenueSource(campaignId, requestedSourceId);
         const existingCtx = String(requestedSource?.platformContext || "ga4").trim().toLowerCase();
@@ -33860,13 +33861,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: "Shopify revenue source not found" });
         }
         if (platformCtx === "ga4" && !isDryRun && !repairConfirmation) {
-          let existingMapping: Record<string, any> = {};
           try {
-            existingMapping = requestedSource.mappingConfig ? JSON.parse(String(requestedSource.mappingConfig)) : {};
+            requestedSourceMapping = requestedSource.mappingConfig ? JSON.parse(String(requestedSource.mappingConfig)) : {};
           } catch {
-            existingMapping = {};
+            requestedSourceMapping = {};
           }
-          const attemptedMapping = markShopifyRevenueRefreshAttempt(existingMapping, refreshEvent);
+          const attemptedMapping = markShopifyRevenueRefreshAttempt(requestedSourceMapping, refreshEvent);
           const auditedSource = await storage.updateGa4ShopifyRevenueSourceRefreshState(campaignId, requestedSourceId, JSON.stringify(attemptedMapping));
           if (!auditedSource) throw new Error("Shopify revenue source not found");
           refreshAudit = { campaignId, sourceId: requestedSourceId, mapping: attemptedMapping, event: refreshEvent };
@@ -33902,6 +33902,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const orders = orderBatch.orders;
       const developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded;
+      if (shouldPreserveShopifyDevelopmentStoreLastGood({
+        schedulerRefresh: internalAutoRefresh && platformCtx === 'ga4',
+        previouslyIncludedTestOrders: requestedSourceMapping.developmentStoreTestOrdersIncluded,
+        currentlyIncludedTestOrders: developmentStoreTestOrdersIncluded,
+      })) {
+        const error: any = new Error('Shopify development-store verification changed during automatic refresh; last-good revenue was preserved');
+        error.code = 'SHOPIFY_DEVELOPMENT_STORE_VERIFICATION_CHANGED';
+        throw error;
+      }
 
       const getFieldValue = (o: any): string => {
         const utm = getUtmFromOrder(o);

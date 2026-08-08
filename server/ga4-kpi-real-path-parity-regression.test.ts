@@ -566,6 +566,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       campaign.ga4CampaignFilter,
       expect.any(String),
       true,
+      false,
     );
 
     storageMock.getGA4Connection.mockResolvedValue({ ...connection, refreshToken: "refresh-token" });

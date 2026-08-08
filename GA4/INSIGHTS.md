@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The Data Summary scope correction is deployed on SHA 45b92891d7080039cfba58aca3b91085e211ceb8; its authenticated UI/API assertions passed, while whole-tab re-certification remains pending because the final integrity gate observed concurrent campaign-scoped persistence changes. GA4/certifications/ga4-insights.json is the controlling machine record.`
+`GA4 Insights is UNVERIFIED. Production currently runs SHA 6e30a7e36484694994f151006029a725498a98fe. The complete local Insights/shared dependency boundary passes, but the final candidate has not completed the authenticated exact-SHA external certification packet. GA4/certifications/ga4-insights.json is the controlling machine record.`
 
 ## Document Ownership
 

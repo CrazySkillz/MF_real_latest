@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Last certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad` (invalidated)
 
-Current deployed correction SHA: `45b92891d7080039cfba58aca3b91085e211ceb8`
+Current deployed unverified SHA: `6e30a7e36484694994f151006029a725498a98fe`
 
 Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
 Open findings for the reported channel-table defect: Critical `0`; Major `0`; Minor `0`.
 
-Decision: the prior whole-tab certification remains invalidated. Deployed SHA `45b92891d7080039cfba58aca3b91085e211ceb8` keeps the exact channel-table reconciliation and removes campaign-to-date financial duplication from Data Summary, leaving those values in Executive Financials. The authenticated validator completed the live UI/API assertions for three summary values and the reconciled channel rows, then failed closed because its final integrity gate observed concurrent campaign-scoped persistence changes. Status remains `UNVERIFIED` pending a clean complete certification packet, including tenant isolation.
+Decision: the prior whole-tab certification remains invalidated. Production SHA `6e30a7e36484694994f151006029a725498a98fe` includes later Insights findings-stability and read-only daily-query corrections after the last reviewed packet. Focused regressions, the complete 44-file/477-test Insights/shared dependency boundary, TypeScript, and production build pass. Authenticated deployed gates have not completed on one frozen candidate, so status remains `UNVERIFIED` pending that exact-SHA external packet.
 
 <!-- /ga4-insights-current-status -->
 

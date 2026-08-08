@@ -8,7 +8,7 @@ describe("GA4 Insights anomaly location copy", () => {
     const categoryStart = content.indexOf("const getInsightCategory =");
     const categoryEnd = content.indexOf("const getInsightDataBasis =", categoryStart);
     const placeholderStart = content.indexOf('id: "anomaly:not-enough-history"');
-    const placeholderEnd = content.indexOf("// 4) Positive signals", placeholderStart);
+    const placeholderEnd = content.indexOf("// 4) Positive saved-target signals", placeholderStart);
     const categorySection = content.slice(categoryStart, categoryEnd);
     const placeholderSection = content.slice(placeholderStart, placeholderEnd);
 

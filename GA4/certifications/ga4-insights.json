@@ -4,8 +4,8 @@
     "status":  "UNVERIFIED",
     "lastReviewedSha":  "45b92891d7080039cfba58aca3b91085e211ceb8",
     "certifiedSha":  null,
-    "deployedSha":  "45b92891d7080039cfba58aca3b91085e211ceb8",
-    "invalidationReason":  "The Data Summary scope correction is deployed and its authenticated UI/API assertions passed, but the final integrity gate observed concurrent campaign-scoped persistence changes. Whole-tab certification remains invalidated pending a clean complete packet including tenant isolation.",
+    "deployedSha":  null,
+    "invalidationReason":  "Production SHA 6e30a7e36484694994f151006029a725498a98fe contains post-review Insights changes. The complete local Insights/shared dependency boundary passes, but authenticated exact-SHA external certification gates remain pending.",
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [
@@ -473,59 +473,59 @@
                           {
                               "id":  "focused_freshness_live_scheduler",
                               "status":  "passed",
-                              "evidence":  "86 focused Insights, UI, and GA4 data-path tests passed on 45b92891; the validator script compiles."
+                              "evidence":  "129 focused Insights, UI, auth-scope, scheduler-validation, and GA4 data-path tests passed on the current certification working tree."
                           },
                           {
                               "id":  "affected_shared_auth_scope",
-                              "status":  "not_run",
-                              "evidence":  "The broader certification suite was not rerun for this UI-only correction."
+                              "status":  "passed",
+                              "evidence":  "The complete recorded Insights/shared dependency boundary passed on the current certification working tree: 44 test files and 477 tests."
                           },
                           {
                               "id":  "typescript",
                               "status":  "passed",
-                              "evidence":  "npm run check passed on 45b92891."
+                              "evidence":  "npm run check passed on the current certification working tree."
                           },
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "npm run build passed on 45b92891; Vite transformed 3,466 modules and the production server bundle completed."
+                              "evidence":  "npm run build passed on the current certification working tree; Vite transformed 3,466 modules and the production server bundle completed."
                           },
                           {
                               "id":  "machine_gate",
-                              "status":  "not_run",
-                              "evidence":  "The full machine certification gate was not run because the production persistence-integrity check failed closed."
+                              "status":  "pending",
+                              "evidence":  "The machine gate must be rerun after all local and external evidence is recorded for one frozen candidate."
                           }
                       ],
     "externalGates":  [
                           {
                               "id":  "exact_sha_deployment",
-                              "status":  "passed",
-                              "evidence":  "Render /api/health reported exact deployed SHA 45b92891d7080039cfba58aca3b91085e211ceb8."
+                              "status":  "pending",
+                              "evidence":  "Render /api/health reports production SHA 6e30a7e36484694994f151006029a725498a98fe, but the post-test-guard certification candidate is not yet frozen and deployed."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
-                              "status":  "failed",
-                              "evidence":  "Authenticated owner UI/API assertions completed, but repeated final integrity checks observed concurrent campaign-scoped persistence changes and failed closed."
+                              "status":  "pending",
+                              "evidence":  "Authenticated owner UI/API parity and persistence integrity remain pending on the final frozen candidate."
                           },
                           {
                               "id":  "live_surface_value_parity",
-                              "status":  "passed",
-                              "evidence":  "All Data Summary assertions passed for 3 summary values and the reconciled channel rows; the five campaign-to-date financial cards were absent as required."
+                              "status":  "pending",
+                              "evidence":  "Exact live-surface value parity remains pending on the final frozen candidate."
                           },
                           {
                               "id":  "tenant_isolation",
-                              "status":  "not_run",
-                              "evidence":  "Not rerun for the current deployed correction."
+                              "status":  "pending",
+                              "evidence":  "Tenant isolation remains pending on the final frozen candidate."
                           },
                           {
                               "id":  "deterministic_scheduler",
-                              "status":  "not_run",
-                              "evidence":  "Not rerun for the current deployed correction."
+                              "status":  "pending",
+                              "evidence":  "The deterministic campaign-scoped scheduler validation remains pending on the final frozen candidate."
                           },
                           {
                               "id":  "dependency_hashes",
                               "status":  "pending",
-                              "evidence":  "Changed dependency hashes are refreshed for this status record; the full configuration fingerprint was not re-certified."
+                              "evidence":  "Dependency hashes and the configuration fingerprint remain pending for the final frozen candidate."
                           }
                       ],
     "configurationFingerprint":  {

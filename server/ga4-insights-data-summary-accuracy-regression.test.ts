@@ -49,7 +49,10 @@ describe("GA4 Insights Data Summary accuracy", () => {
     expect(scheduledStart).toBeGreaterThan(-1);
     expect(scheduledEnd).toBeGreaterThan(scheduledStart);
 
-    for (const section of [liveSection, downloadSection, scheduledSection]) {
+    expect(liveSection).not.toContain("Total across revenue sources");
+    expect(liveSection).not.toContain("financialRevenue / Math.max");
+    expect(liveSection).not.toContain("/day avg");
+    for (const section of [downloadSection, scheduledSection]) {
       expect(section).toContain("Total across revenue sources");
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");

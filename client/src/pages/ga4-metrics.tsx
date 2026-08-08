@@ -39,7 +39,7 @@ import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } fro
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
-import { getGA4KpiReportingWindowLabel, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
+import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
 import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
 
 interface Campaign {
@@ -2890,6 +2890,21 @@ export default function GA4Metrics() {
     });
   };
 
+  const getKpiInsightPeriodCompatibility = (kpi: any) =>
+    resolveGA4InsightTargetPeriodCompatibility({
+      metric: kpi?.metric,
+      name: kpi?.name,
+      timeframe: kpi?.timeframe,
+      trackingPeriod: kpi?.trackingPeriod,
+    });
+
+  const getBenchmarkInsightPeriodCompatibility = (benchmark: any) =>
+    resolveGA4InsightTargetPeriodCompatibility({
+      metric: benchmark?.metric,
+      name: benchmark?.name,
+      period: benchmark?.period,
+    });
+
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -4635,6 +4650,7 @@ export default function GA4Metrics() {
 
   const getInsightDataBasis = (item: Pick<InsightItem, "id">): string => {
     const id = String(item.id || "");
+    if (id === "integrity:target_period_mismatch") return "Saved target period + current-value reporting window";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
@@ -4744,6 +4760,27 @@ export default function GA4Metrics() {
         return reason ? { b, reason } : null;
       })
       .filter(Boolean) as Array<{ b: any; reason: string }>;
+
+    const periodMismatchKpis = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) =>
+      getKpiConsumerState(k).eligible &&
+      !getInvalidKpiConfigReason(k) &&
+      !getKpiInsightPeriodCompatibility(k).comparable
+    );
+    const periodMismatchBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) =>
+      getBenchmarkConsumerState(b).eligible &&
+      !getInvalidBenchmarkConfigReason(b) &&
+      !getBenchmarkInsightPeriodCompatibility(b).comparable
+    );
+    const periodMismatchCount = periodMismatchKpis.length + periodMismatchBenchmarks.length;
+    if (periodMismatchCount > 0) {
+      out.push({
+        id: "integrity:target_period_mismatch",
+        severity: "medium",
+        title: "Target reporting periods need review",
+        description: `${periodMismatchCount} verified saved target${periodMismatchCount === 1 ? "" : "s"} are not evaluated because their saved periods do not match the reporting windows of their current values.`,
+        recommendation: "Review each affected target period and compare it only with a value calculated for the same period.",
+      });
+    }
 
     for (const item of blockedKpis) {
       const name = String(item.k?.name || item.k?.metric || "KPI");
@@ -4952,6 +4989,7 @@ export default function GA4Metrics() {
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
       if (!getKpiConsumerState(k).eligible) continue; // non-verified KPIs are handled in integrity checks above
       if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
+      if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
       if (attPct >= KPI_NEEDS_ATTENTION_PCT) continue; // Only flag KPIs below attainment threshold
@@ -4999,7 +5037,7 @@ export default function GA4Metrics() {
           const prefix = unit === "$" ? "$" : "";
           const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit)}${suffix}`;
           const tgtFmt = `${prefix}${formatNumberByUnit(String(effectiveTarget), unit)}${suffix}`;
-          return `Current ${curFmt} vs target ${tgtFmt} (${formatPct(attPct)} progress).${streakNote}${trendNote}`;
+          return `${getKpiInsightPeriodCompatibility(k).currentWindow}: Current ${curFmt} vs target ${tgtFmt} (${formatPct(attPct)} progress).${streakNote}${trendNote}`;
         })(),
         recommendation: (() => {
           const m = metric.toLowerCase();
@@ -5043,6 +5081,7 @@ export default function GA4Metrics() {
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
       if (!getBenchmarkConsumerState(b).eligible) continue; // non-verified Benchmarks are handled in integrity checks above
       if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
+      if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;
       const p = computeBenchmarkProgress(b);
       const status = String(p?.status || "");
       if (status !== "behind" && status !== "needs_attention") continue;
@@ -5060,7 +5099,7 @@ export default function GA4Metrics() {
         id: `bench:${String((b as any)?.id || metric)}`,
         severity: sev,
         title: `${String((b as any)?.name || metric)} ${status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`,
-        description: `Current ${formatBenchmarkValue(getBenchmarkDisplayCurrentValue(b), String((b as any)?.unit || "%"))} vs benchmark ${formatBenchmarkValue(
+        description: `${getBenchmarkInsightPeriodCompatibility(b).currentWindow}: Current ${formatBenchmarkValue(getBenchmarkDisplayCurrentValue(b), String((b as any)?.unit || "%"))} vs benchmark ${formatBenchmarkValue(
           String((b as any)?.benchmarkValue || "0"),
           String((b as any)?.unit || "%")
         )} (${String(p?.labelPct || "0")}% to benchmark).${trendNote}${volNote}`,
@@ -5342,6 +5381,7 @@ export default function GA4Metrics() {
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
       if (!getKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;
+      if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
       const p = computeKpiProgress(k);
       const improvementPct = Number(p?.effectiveDeltaPct || 0);
       if (improvementPct >= POSITIVE_KPI_EXCEEDS_PCT - 100) {
@@ -5356,7 +5396,7 @@ export default function GA4Metrics() {
             const prefix = unit === "$" ? "$" : "";
             const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit)}${suffix}`;
             const tgtFmt = `${prefix}${formatNumberByUnit(String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""), unit)}${suffix}`;
-            return `Current ${curFmt} vs target ${tgtFmt}.`;
+            return `${getKpiInsightPeriodCompatibility(k).currentWindow}: Current ${curFmt} vs target ${tgtFmt}.`;
           })(),
           recommendation: "Review whether the target should be raised before changing budget allocation.",
         });
@@ -8835,7 +8875,7 @@ export default function GA4Metrics() {
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-muted-foreground/70">Total insights</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">Total findings</p>
                               <p className="text-2xl font-bold text-foreground">{insights.length}</p>
                             </div>
                             <BarChart3 className="w-7 h-7 text-muted-foreground" />
@@ -8846,7 +8886,7 @@ export default function GA4Metrics() {
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-muted-foreground/70">High priority</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">High-severity findings</p>
                               <p className="text-2xl font-bold text-red-600">
                                 {insights.filter((i) => i.severity === "high").length}
                               </p>
@@ -8859,7 +8899,7 @@ export default function GA4Metrics() {
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-muted-foreground/70">Needs attention</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">Medium-severity findings</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {insights.filter((i) => i.severity === "medium").length}
                               </p>
@@ -8870,6 +8910,9 @@ export default function GA4Metrics() {
                       </Card>
                     </div>
 
+                    <p className="text-xs text-muted-foreground/70">
+                      Each saved KPI or Benchmark is counted separately. Total findings also include positive and informational items.
+                    </p>
                     <Card className="border-border" data-testid="insights-findings">
                       <CardHeader>
                         <CardTitle className="text-lg">What to investigate next</CardTitle>
@@ -8892,7 +8935,7 @@ export default function GA4Metrics() {
                                     <div key={group.key} className="space-y-2">
                                       <div className="flex items-center gap-2">
                                         <h4 className="text-sm font-semibold text-foreground">{group.label}</h4>
-                                        <Badge variant="outline" className="text-xs">{groupInsights.length}</Badge>
+                                        <Badge variant="outline" className="text-xs">{groupInsights.length} shown</Badge>
                                       </div>
                                       <div className="space-y-3">
                                         {groupInsights.map((i) => {
@@ -8958,7 +9001,7 @@ export default function GA4Metrics() {
                                 })}
                                 {insights.length > visibleInsights.length ? (
                                   <div className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground/80" data-testid="insights-hidden-count">
-                                    + {insights.length - visibleInsights.length} more insights not shown in this summary.
+                                    + {insights.length - visibleInsights.length} more findings not shown in this summary.
                                   </div>
                                 ) : null}
                               </div>

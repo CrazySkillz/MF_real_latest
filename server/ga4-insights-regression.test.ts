@@ -111,6 +111,21 @@ describe("GA4 Insights regression guard", () => {
     expect(renderSection).toContain("groupInsights.map((i) =>");
   });
 
+  it("labels tracker totals as per-finding counts without changing their calculation", () => {
+    const content = ga4MetricsFile();
+    const trackerStart = content.indexOf('data-testid="insights-trackers"');
+    const trackerEnd = content.indexOf('data-testid="insights-findings"', trackerStart);
+    const trackerSection = content.slice(trackerStart, trackerEnd);
+
+    expect(trackerStart).toBeGreaterThan(-1);
+    expect(trackerEnd).toBeGreaterThan(trackerStart);
+    expect(trackerSection).toContain("Total findings");
+    expect(trackerSection).toContain("High-severity findings");
+    expect(trackerSection).toContain("Medium-severity findings");
+    expect(trackerSection).toContain("Each saved KPI or Benchmark is counted separately.");
+    expect(content).toContain("{groupInsights.length} shown");
+  });
+
   it("flags invalid KPI and Benchmark targets before generating performance guidance", () => {
     const content = ga4MetricsFile();
     const helperStart = content.indexOf("const isBoundedRateMetric =");

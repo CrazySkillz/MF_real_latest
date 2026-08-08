@@ -19,7 +19,7 @@ describe("GA4 Insights findings completeness visibility", () => {
     expect(renderEnd).toBeGreaterThan(renderStart);
     expect(section).toContain("const visibleInsights = insights.slice(0, 12);");
     expect(section).toContain("insights.length > visibleInsights.length");
-    expect(section).toContain("+ {insights.length - visibleInsights.length} more insights not shown in this summary.");
+    expect(section).toContain("+ {insights.length - visibleInsights.length} more findings not shown in this summary.");
     expect(section).toContain("visibleInsights.filter((i) => i.category === group.key)");
     expect(section).toContain("Basis: {i.dataBasis}");
     expect(section).toContain("Confidence: {i.confidence}");

@@ -825,7 +825,7 @@ try {
     }
   }
   const hiddenCount = Math.max(0, trackerCounts.total - findings.length);
-  if (hiddenCount > 0) assertIncludes(await cardText("insights-hidden-count"), "+ " + hiddenCount + " more insights", "hidden finding count");
+  if (hiddenCount > 0) assertIncludes(await cardText("insights-hidden-count"), "+ " + hiddenCount + " more findings", "hidden finding count");
   await owner.context.close();
 
   let tenantIsolation = "not run; no second production identity was authorized";

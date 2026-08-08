@@ -120,14 +120,17 @@ Current meaning:
 
 Shows:
 
-- `Total insights`
-- `High priority`
-- `Needs attention`
+- `Total findings`
+- `High-severity findings`
+- `Medium-severity findings`
 
 Current meaning:
 
 - tracker cards are derived from generated findings
 - hidden findings must be disclosed when the visible list is capped
+- each saved KPI or Benchmark is counted separately
+- total findings also include positive and informational items
+- grouped badges state how many findings are shown in the capped summary
 
 ### What To Investigate Next
 
@@ -137,6 +140,8 @@ Current meaning:
 
 - findings are grouped by investigation type
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
+- KPI target findings require an explicit 30-day tracking period for 30-day traffic values; campaign-to-date financial values require a campaign-to-date target
+- Benchmark findings require an explicitly matching reporting period; incompatible targets are withheld and summarized as one configuration finding
 - cards include data-basis and confidence labels
 - intro copy is history-aware
 - recommendations are phrased as checks, not proven causal conclusions

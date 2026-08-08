@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   getGA4KpiReportingWindowLabel,
   resolveGA4KpiConsumerState,
+  resolveGA4InsightTargetPeriodCompatibility,
   type GA4KpiInputState,
 } from "../shared/ga4-kpi-consumer-state";
 
@@ -49,6 +50,31 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(getGA4KpiReportingWindowLabel("__custom__")).toBe("Saved custom value (no standard GA4 reporting window)");
   });
 
+  it("fails Insights target guidance closed when saved and live reporting periods differ", () => {
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "sessions", timeframe: "monthly", trackingPeriod: 30,
+    }).comparable).toBe(true);
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "sessions", timeframe: "quarterly", trackingPeriod: 90,
+    }).comparable).toBe(false);
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "revenue", timeframe: "monthly",
+    }).comparable).toBe(false);
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "revenue", timeframe: "campaign-to-date",
+    }).comparable).toBe(true);
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "sessions", period: "monthly",
+    }).comparable).toBe(false);
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "sessions", period: "rolling-30-days",
+    }).comparable).toBe(true);
+    expect(resolveGA4InsightTargetPeriodCompatibility({
+      metric: "__custom__", timeframe: "monthly", trackingPeriod: 30,
+    }).comparable).toBe(false);
+  });
+
+
   it("wires the actual KPI cards, tracker, Insights, breach pulse, and browser PDF through the shared state", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf8");
     const tracker = page.slice(page.indexOf("const kpiTracker = useMemo"), page.indexOf("const benchmarkTracker = useMemo"));
@@ -63,6 +89,9 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(tracker).toContain("if (!consumerState.eligible) continue;");
     expect(insights).toContain("if (!getKpiConsumerState(k).eligible) continue;");
     expect(insights).toContain("No KPI performance conclusion or breach is generated from this value.");
+    expect(insights).toContain("if (!getKpiInsightPeriodCompatibility(k).comparable) continue;");
+    expect(insights).toContain("if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;");
+    expect(insights).toContain("Target reporting periods need review");
     expect(pdf).toContain("const consumerState = getKpiConsumerState(k);");
     expect(pdf).toContain("Last-good value (not verified)");
     expect(pdf).toContain('kpiTracker.scored > 0 ? `${Number(kpiTracker.avgPct || 0).toFixed(1)}%` : "—"');

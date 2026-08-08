@@ -2,10 +2,10 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "UNVERIFIED",
-    "lastReviewedSha":  "704ac13da6f280e4c596a737e54ffa19478a91db",
+    "lastReviewedSha":  "45b92891d7080039cfba58aca3b91085e211ceb8",
     "certifiedSha":  null,
-    "deployedSha":  "704ac13da6f280e4c596a737e54ffa19478a91db",
-    "invalidationReason":  "The reported channel-table defect is fixed and authenticated owner UI/API parity passed with 3 rows, 339 Sessions, and 41 Conversions for the July 9-August 7 rolling window. Whole-tab certification remains invalidated pending a complete new packet including tenant isolation.",
+    "deployedSha":  "45b92891d7080039cfba58aca3b91085e211ceb8",
+    "invalidationReason":  "The Data Summary scope correction is deployed and its authenticated UI/API assertions passed, but the final integrity gate observed concurrent campaign-scoped persistence changes. Whole-tab certification remains invalidated pending a clean complete packet including tenant isolation.",
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [
@@ -46,12 +46,12 @@
                          {
                              "path":  "GA4/INSIGHTS.md",
                              "role":  "functional contract",
-                             "sha256":  "6fa1e0bcddc637be3946ccab85a54874de82ab5ac4de346e00dd43dbaeaf2f49"
+                             "sha256":  "1cca2f251fcc1878aedd7cdc629313a2bf6b1f6f0e74c66d0ae5b18cdda0ea29"
                          },
                          {
                              "path":  "GA4/INSIGHTS_PRODUCTION_READINESS.md",
                              "role":  "controlling status",
-                             "sha256":  "e9251e9866fd3106a46370614eed07f137650f6a5e712d0bf54aaa747546965c"
+                             "sha256":  "8c0c84482834b89d8ed42719495c58832ca6c7355824ede1c871d65f3ae749cb"
                          },
                          {
                              "path":  "GA4/README.md",
@@ -71,7 +71,7 @@
                          {
                              "path":  "client/src/pages/ga4-metrics.tsx",
                              "role":  "live renderer and query composition",
-                             "sha256":  "51964ba5508635ca50534a0825b4a87064cee8424271d10c140744185030317d"
+                             "sha256":  "617d0aa3c95e258539cb4f92a93a08b967a1291e30b7f69046b9e1551b7380c2"
                          },
                          {
                              "path":  "client/src/components/AddSpendWizardModal.tsx",
@@ -206,7 +206,7 @@
                          {
                              "path":  "server/ga4-insights-live-production-regression.test.ts",
                              "role":  "live boundary regression tests",
-                             "sha256":  "fac9b4c6eaa3a4880619e3541010ffe88ef31ba6d973ac4e182d5025f1e3141f"
+                             "sha256":  "4d3b0b3aacc3a561f652fa46b983fc4105be2f5a8259917675cfad1bf0739a94"
                          },
                          {
                              "path":  "server/ga4-insights-auth-scope-regression.test.ts",
@@ -351,12 +351,12 @@
                          {
                              "path":  "server/ga4-ui-regression.test.ts",
                              "role":  "shared UI regression tests",
-                             "sha256":  "3f5965a69496262cf6534a2111fd97e4def912533d38b1e33cc163a7e0302ad5"
+                             "sha256":  "b83b88b45c7e57ef0b49b84e7da19d81a3cbb816949edde7a85affa92b436840"
                          },
                          {
                              "path":  "scripts/ga4-insights-live-readonly.ts",
                              "role":  "authenticated deployed parity validator",
-                             "sha256":  "2766200c965c4e10ed02e7edd898dcd6e77bff48326dbb7b7a5b679e53d5cd78"
+                             "sha256":  "bc526a3c627ebb3b72296deab8923ada0b7267f0204cf80cda63aeb671f29c4d"
                          },
                          {
                              "path":  "scripts/ga4-insights-scheduler-validation.ts",
@@ -473,59 +473,59 @@
                           {
                               "id":  "focused_freshness_live_scheduler",
                               "status":  "passed",
-                              "evidence":  "3 files and 24 focused production-path tests passed on 80ffc60c; validator and scheduler scripts compile."
+                              "evidence":  "86 focused Insights, UI, and GA4 data-path tests passed on 45b92891; the validator script compiles."
                           },
                           {
                               "id":  "affected_shared_auth_scope",
-                              "status":  "passed",
-                              "evidence":  "16 files and 182 affected shared, authentication, tenant-isolation, source-scope, lifecycle, scheduler, and live Insights tests passed on 80ffc60c."
+                              "status":  "not_run",
+                              "evidence":  "The broader certification suite was not rerun for this UI-only correction."
                           },
                           {
                               "id":  "typescript",
                               "status":  "passed",
-                              "evidence":  "npm run check passed on 80ffc60c."
+                              "evidence":  "npm run check passed on 45b92891."
                           },
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "npm run build passed on 80ffc60c; Vite transformed 3,466 modules and the production server bundle completed."
+                              "evidence":  "npm run build passed on 45b92891; Vite transformed 3,466 modules and the production server bundle completed."
                           },
                           {
                               "id":  "machine_gate",
-                              "status":  "passed",
-                              "evidence":  "The machine checker passed on the contradiction-free frozen boundary and this final status record."
+                              "status":  "not_run",
+                              "evidence":  "The full machine certification gate was not run because the production persistence-integrity check failed closed."
                           }
                       ],
     "externalGates":  [
                           {
                               "id":  "exact_sha_deployment",
                               "status":  "passed",
-                              "evidence":  "Render /api/health reported exact deployed SHA 80ffc60c4ac38b8bb01a91373a6a41d552f066ad."
+                              "evidence":  "Render /api/health reported exact deployed SHA 45b92891d7080039cfba58aca3b91085e211ceb8."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
-                              "status":  "passed",
-                              "evidence":  "Authenticated owner APIs and the live Insights page matched property 542352127, Europe/Amsterdam, USD, three saved filters, financials, summary, channels, Trends, trackers, and findings."
+                              "status":  "failed",
+                              "evidence":  "Authenticated owner UI/API assertions completed, but repeated final integrity checks observed concurrent campaign-scoped persistence changes and failed closed."
                           },
                           {
                               "id":  "live_surface_value_parity",
                               "status":  "passed",
-                              "evidence":  "All 5 Executive Financial values, 8 Data Summary values, 3 channel rows, 4 Trends modes, 3 tracker values, and 12 visible plus 5 hidden findings matched page-consumed production responses."
+                              "evidence":  "All Data Summary assertions passed for 3 summary values and the reconciled channel rows; the five campaign-to-date financial cards were absent as required."
                           },
                           {
                               "id":  "tenant_isolation",
-                              "status":  "passed",
-                              "evidence":  "The authorized temporary Clerk-only non-owner request failed closed with 404; sessions were revoked and the user was deleted before success."
+                              "status":  "not_run",
+                              "evidence":  "Not rerun for the current deployed correction."
                           },
                           {
                               "id":  "deterministic_scheduler",
-                              "status":  "passed",
-                              "evidence":  "The campaign-only GA4 daily refresh and direct KPI/Benchmark recompute succeeded at 2026-08-06T11:12:58.144Z with alerts suppressed; post-run freshness and parity passed."
+                              "status":  "not_run",
+                              "evidence":  "Not rerun for the current deployed correction."
                           },
                           {
                               "id":  "dependency_hashes",
-                              "status":  "passed",
-                              "evidence":  "Every recorded dependency hash and non-secret configuration fingerprint was recomputed for the reviewed 80ffc60c boundary."
+                              "status":  "pending",
+                              "evidence":  "Changed dependency hashes are refreshed for this status record; the full configuration fingerprint was not re-certified."
                           }
                       ],
     "configurationFingerprint":  {

@@ -9,13 +9,13 @@ Status: **UNVERIFIED**
 
 Last certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad` (invalidated)
 
-Current deployed correction SHA: `704ac13da6f280e4c596a737e54ffa19478a91db`
+Current deployed correction SHA: `45b92891d7080039cfba58aca3b91085e211ceb8`
 
 Last certification date: `2026-08-06` (`Europe/Amsterdam`)
 
 Open findings for the reported channel-table defect: Critical `0`; Major `0`; Minor `0`.
 
-Decision: the prior whole-tab certification remains invalidated. On deployed SHA `704ac13da6f280e4c596a737e54ffa19478a91db`, the authenticated owner validator passed with three rendered channel rows whose 339 Sessions and 41 Conversions reconcile exactly to the three imported dates in the July 9-August 7 window. Root cause was threefold: the seeded property stores channel scope in page-URL UTM values rather than the GA4 session-campaign field; page-level Session rows are non-additive; and GA4's page-dimension aggregate varied by one Session from the exact per-channel/date rows as the rolling window advanced. The correction obtains one provider Session count per discovered UTM channel/date, merges only exact-key conversion/revenue values, and relies on the existing UI gate to require exact parity with Daily totals before rendering. Status remains `UNVERIFIED` pending a complete new certification packet, including tenant isolation.
+Decision: the prior whole-tab certification remains invalidated. Deployed SHA `45b92891d7080039cfba58aca3b91085e211ceb8` keeps the exact channel-table reconciliation and removes campaign-to-date financial duplication from Data Summary, leaving those values in Executive Financials. The authenticated validator completed the live UI/API assertions for three summary values and the reconciled channel rows, then failed closed because its final integrity gate observed concurrent campaign-scoped persistence changes. Status remains `UNVERIFIED` pending a clean complete certification packet, including tenant isolation.
 
 <!-- /ga4-insights-current-status -->
 

@@ -911,7 +911,7 @@ export function ShopifyRevenueWizard(props: {
               </div>
               {unavailableSavedValues.length > 0 && (
                 <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-                  Saved value {unavailableSavedValues.map((value) => `“${value}”`).join(", ")} is not present in the current Shopify orders. Continue to Review to confirm the zero-match provider preview. Nothing changes until you confirm Repair from Shopify.
+                  Saved value {unavailableSavedValues.map((value) => `“${value}”`).join(", ")} is not present in the current Shopify orders. Continue to Review to confirm the zero-match provider preview. Nothing changes until you confirm Refresh from Shopify.
                 </div>
               )}
               {renderPlatformCampaignMappings()}
@@ -1025,7 +1025,7 @@ export function ShopifyRevenueWizard(props: {
               </div>
               {isRepair && preview?.repairConfirmation && (
                 <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
-                  Confirm the Shopify preview above. Repair from Shopify atomically replaces only this source's records and preserves the last-good records if replacement fails.
+                  Confirm the Shopify preview above. Refresh from Shopify atomically replaces only this source's records and preserves the last-good records if replacement fails.
                 </div>
               )}
             </div>
@@ -1050,7 +1050,7 @@ export function ShopifyRevenueWizard(props: {
                 (step === "crosswalk" && selectedValues.length === 0) ||
                 (step === "review" && isRepair && (previewLoading || !!previewError || !preview?.repairConfirmation))
               }>
-                {step === "review" ? (isSaving ? "Processing..." : isRepair ? "Repair from Shopify" : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
+                {step === "review" ? (isSaving ? "Processing..." : isRepair ? "Refresh from Shopify" : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

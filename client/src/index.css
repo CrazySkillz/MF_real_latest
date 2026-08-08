@@ -78,8 +78,6 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
-    /* Fallback for browsers that don't support scrollbar-gutter: keep vertical scrollbar space reserved. */
-    overflow-y: scroll;
   }
 }
 

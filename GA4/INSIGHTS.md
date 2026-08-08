@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. Production currently runs SHA 6e30a7e36484694994f151006029a725498a98fe. The complete local Insights/shared dependency boundary passes, but the final candidate has not completed the authenticated exact-SHA external certification packet. GA4/certifications/ga4-insights.json is the controlling machine record.`
+`GA4 Insights is PRODUCTION_READY for exact deployed SHA 1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e and the recorded dependency/configuration boundary. All local, authenticated API/UI parity, tenant-isolation, deterministic scheduler, and persistence gates passed. GA4/certifications/ga4-insights.json is the controlling machine record.`
 
 ## Document Ownership
 

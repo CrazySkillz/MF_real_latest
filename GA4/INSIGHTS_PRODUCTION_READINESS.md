@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: UNVERIFIED -->
+<!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Status: **UNVERIFIED**
+Status: **PRODUCTION_READY**
 
-Last certified implementation SHA: `80ffc60c4ac38b8bb01a91373a6a41d552f066ad` (invalidated)
+Certified and deployed implementation SHA: `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`
 
-Current deployed unverified SHA: `6e30a7e36484694994f151006029a725498a98fe`
+Certification date: `2026-08-08` (`Europe/Amsterdam`)
 
-Last certification date: `2026-08-06` (`Europe/Amsterdam`)
+Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
 Open findings for the reported channel-table defect: Critical `0`; Major `0`; Minor `0`.
 
-Decision: the prior whole-tab certification remains invalidated. Production SHA `6e30a7e36484694994f151006029a725498a98fe` includes later Insights findings-stability and read-only daily-query corrections after the last reviewed packet. Focused regressions, the complete 44-file/477-test Insights/shared dependency boundary, TypeScript, and production build pass. Authenticated deployed gates have not completed on one frozen candidate, so status remains `UNVERIFIED` pending that exact-SHA external packet.
+Decision: **PRODUCTION_READY** for the live GA4 Insights tab on exact deployed SHA `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e` and the recorded dependency/configuration boundary. The complete 44-file/478-test shared boundary, TypeScript, production build, authenticated owner API/UI value parity, non-owner tenant isolation, deterministic campaign-scoped scheduler, and post-scheduler persistence checks all passed. Reports-owned behavior remains outside this certification.
 
 <!-- /ga4-insights-current-status -->
 

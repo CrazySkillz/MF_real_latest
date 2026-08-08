@@ -5,10 +5,12 @@ import {
   evaluateGA4InsightsCertification,
   GA4_INSIGHTS_REQUIRED_DEPENDENCIES,
   GA4_INSIGHTS_REQUIRED_EXTERNAL_GATES,
+  hashGA4InsightsCertificationText,
 } from "./ga4-insights-certification-gate";
 
 const sha = "a".repeat(40);
 const hash = "b".repeat(64);
+const canonicalBoundary = "property 123; campaign abc; Europe/Amsterdam; USD";
 const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
   schemaVersion: 1,
   sectionId: "ga4-insights-live",
@@ -24,6 +26,11 @@ const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
     sourceRules: ["selected property and saved filter"],
     windowRules: ["completed campaign-reporting days"],
     ownershipRules: ["campaign access"],
+  },
+  configurationFingerprint: {
+    algorithm: "sha256",
+    value: hashGA4InsightsCertificationText(canonicalBoundary),
+    canonicalBoundary,
   },
   dependencies: GA4_INSIGHTS_REQUIRED_DEPENDENCIES.map((path) => ({ path, role: "boundary", sha256: status === "PRODUCTION_READY" ? hash : null })),
   statusDocument: {
@@ -108,5 +115,13 @@ describe("GA4 Insights machine certification gate", () => {
   it("rejects a changed certified dependency", () => {
     const changed = { ...context("PRODUCTION_READY"), sha256: () => "c".repeat(64) };
     expect(evaluateGA4InsightsCertification(record("PRODUCTION_READY"), changed).errors.some((error) => error.includes("changed since certification"))).toBe(true);
+  });
+
+  it("rejects a configuration fingerprint that does not match its canonical boundary", () => {
+    const value = record();
+    value.configurationFingerprint.value = "c".repeat(64);
+    expect(evaluateGA4InsightsCertification(value, context()).errors).toContain(
+      "configurationFingerprint does not match canonicalBoundary",
+    );
   });
 });

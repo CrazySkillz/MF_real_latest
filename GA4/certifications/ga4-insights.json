@@ -1,11 +1,11 @@
 {
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
-    "status":  "UNVERIFIED",
-    "lastReviewedSha":  "45b92891d7080039cfba58aca3b91085e211ceb8",
-    "certifiedSha":  null,
-    "deployedSha":  null,
-    "invalidationReason":  "Production SHA 6e30a7e36484694994f151006029a725498a98fe contains post-review Insights changes. The complete local Insights/shared dependency boundary passes, but authenticated exact-SHA external certification gates remain pending.",
+    "status":  "PRODUCTION_READY",
+    "lastReviewedSha":  "1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e",
+    "certifiedSha":  "1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e",
+    "deployedSha":  "1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e",
+    "invalidationReason":  null,
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [
@@ -46,17 +46,17 @@
                          {
                              "path":  "GA4/INSIGHTS.md",
                              "role":  "functional contract",
-                             "sha256":  "1cca2f251fcc1878aedd7cdc629313a2bf6b1f6f0e74c66d0ae5b18cdda0ea29"
+                             "sha256":  "ccccab13491d8a3b5d9db903d8b7432d3677fa6648f4f2bb0efe77497a1bad5d"
                          },
                          {
                              "path":  "GA4/INSIGHTS_PRODUCTION_READINESS.md",
                              "role":  "controlling status",
-                             "sha256":  "8c0c84482834b89d8ed42719495c58832ca6c7355824ede1c871d65f3ae749cb"
+                             "sha256":  "81621882490fc305a4721075f31359d047b85bdd0e98ba0315d5dc97f61ec108"
                          },
                          {
                              "path":  "GA4/README.md",
                              "role":  "GA4 status index",
-                             "sha256":  "2f59650270e82609ea8dbd1b85f00c19da5edc099338562dcd1feb4e45dd4131"
+                             "sha256":  "b0b8c86cd847f113f87887d853802badd45b261610d6ae3c88a511546eb2de02"
                          },
                          {
                              "path":  "GA4/FINANCIAL_SOURCES.md",
@@ -71,7 +71,7 @@
                          {
                              "path":  "client/src/pages/ga4-metrics.tsx",
                              "role":  "live renderer and query composition",
-                             "sha256":  "617d0aa3c95e258539cb4f92a93a08b967a1291e30b7f69046b9e1551b7380c2"
+                             "sha256":  "e1765b2086fb10ab518b795262493da255952e566962ac4b21bf3850590ef0b4"
                          },
                          {
                              "path":  "client/src/components/AddSpendWizardModal.tsx",
@@ -81,7 +81,7 @@
                          {
                              "path":  "shared/ga4-insights.ts",
                              "role":  "calendar and monthly production calculations",
-                             "sha256":  "79b4f5705c81faa057e2d8c07d8e710b8a332fd3701d402ef9c86a2f67219d5c"
+                             "sha256":  "7e66dc9fa77b31efb77556e810a8491548cec107e9336058e208fa6dd78cc6d5"
                          },
                          {
                              "path":  "shared/ga4-financial-source.ts",
@@ -96,7 +96,7 @@
                          {
                              "path":  "shared/ga4-kpi-consumer-state.ts",
                              "role":  "consumer state eligibility",
-                             "sha256":  "9a0716854a037257f8c811263dd1fb98fa56e6aaef23ca0774cb0d8dd13ccfde"
+                             "sha256":  "bd211f8512429feeb3a0db65677445d55df2725188e8d14d594047f3c551f47f"
                          },
                          {
                              "path":  "shared/ga4-kpi-live-value.ts",
@@ -126,7 +126,7 @@
                          {
                              "path":  "server/routes-oauth.ts",
                              "role":  "API auth, scope, and window boundary",
-                             "sha256":  "41e2b021e6d9e711095ba9756f5f6491c3a2b4823f553aff755471666f121b1d"
+                             "sha256":  "e33c7224eb8e662654217731f541219662be452ceff3593dc2b70b754a757991"
                          },
                          {
                              "path":  "server/index.ts",
@@ -151,7 +151,7 @@
                          {
                              "path":  "server/analytics.ts",
                              "role":  "GA4 provider queries and pagination",
-                             "sha256":  "93ba1637a38813f970388434865f7272d73bb3f332b5555177f1d53bd3850918"
+                             "sha256":  "54cff55f64d8289972505cef0fd24a741220543c705450b72591fddf9ac15580"
                          },
                          {
                              "path":  "server/real-ga4-client.ts",
@@ -191,22 +191,22 @@
                          {
                              "path":  "server/ga4-insights-certification-gate.ts",
                              "role":  "machine certification checker",
-                             "sha256":  "e6d2a427310612af1bd47f635df2571f9ef209f9b550b138bd978ecee2049111"
+                             "sha256":  "66f7bc018b403be8396c744921deee2a1d01f6fffcb28497f75a8914361c1c51"
                          },
                          {
                              "path":  "server/ga4-insights-certification-gate.test.ts",
                              "role":  "checker regression tests",
-                             "sha256":  "36c441ce82ef57201c049ad800d8fda22ab9e25ea80c797655715f9c3c55896b"
+                             "sha256":  "cf7dbbcd7118fc1a4383f8b5540707d2f9986f19bff8a71b44902e5bf7c86e83"
                          },
                          {
                              "path":  "server/ga4-insights-production-path.test.ts",
                              "role":  "actual calculation tests",
-                             "sha256":  "a153e189692e6effc4b0db5d75ea2b3332cf5b88e101deab9ae479529c6e4855"
+                             "sha256":  "a5341db842c011558d39311b0bf6526a6efb929e29c498cce904072484255542"
                          },
                          {
                              "path":  "server/ga4-insights-live-production-regression.test.ts",
                              "role":  "live boundary regression tests",
-                             "sha256":  "4d3b0b3aacc3a561f652fa46b983fc4105be2f5a8259917675cfad1bf0739a94"
+                             "sha256":  "8c792ebb3d96ef0e0ce8ab6dbe0418743915c1e39ddb7dac35c0e1a35aa99c1d"
                          },
                          {
                              "path":  "server/ga4-insights-auth-scope-regression.test.ts",
@@ -221,7 +221,7 @@
                          {
                              "path":  "server/ga4-kpi-real-path-parity-regression.test.ts",
                              "role":  "actual KPI and Benchmark producer-path regression tests",
-                             "sha256":  "7ddb3e1437ead93c91e0bf07732db4f15741342629681436e81b6f493bce5901"
+                             "sha256":  "f8abae553903e1269518d3be556e7c203747014820b056c910ed9a7be7b13743"
                          },
                          {
                              "path":  "server/ga4-kpi-financial-window-regression.test.ts",
@@ -281,7 +281,7 @@
                          {
                              "path":  "server/ga4-filter.test.ts",
                              "role":  "saved GA4 campaign-filter provider regression tests",
-                             "sha256":  "a2e6b64cb1b5e903d0a6527d3906e41ccbe32d73648dc1e59de47b392dcc3f04"
+                             "sha256":  "697aa91a437d77f0f8a75d5a3aab01fa02ff5c9d50b4574034e15d4a82fa4576"
                          },
                          {
                              "path":  "server/ga4-spend-scope-regression.test.ts",
@@ -321,42 +321,42 @@
                          {
                              "path":  "server/ga4-insights-anomaly-location-regression.test.ts",
                              "role":  "anomaly source regression tests",
-                             "sha256":  "0eaf5877ada0c7afc35ddf416867d064e5ceafbcee78e41818e43488c85d8a7c"
+                             "sha256":  "32ea14dc33c36e1ca202c39e0ae13ed92f4ad19ab345b598df5b97de2ff2674e"
                          },
                          {
                              "path":  "server/ga4-insights-copy-accuracy-regression.test.ts",
                              "role":  "copy and state regression tests",
-                             "sha256":  "1858f35871e300eaa8cacc9a83ceb717f782d45920c515ac22d43de89f7c1852"
+                             "sha256":  "e0ec5de91ef0e330fb153fed63d792351a1cdcb3ca583eece56b16bb80ea120f"
                          },
                          {
                              "path":  "server/ga4-insights-data-summary-accuracy-regression.test.ts",
                              "role":  "Data Summary regression tests",
-                             "sha256":  "e175d6622448ce2fcb59285080c626978887dbbb8a364af25794b9f3e69983c1"
+                             "sha256":  "978c1180c2b40b7cb2ac7afd019494d2c5175aa12cde9d12ee2bdd6face46f68"
                          },
                          {
                              "path":  "server/ga4-insights-findings-completeness-regression.test.ts",
                              "role":  "finding inventory regression tests",
-                             "sha256":  "67c177959e5f72e28a62805bd8751242361bc1ebe3831eefe7df8615a3878ac4"
+                             "sha256":  "6dffc503e75da9865aca3d02c31cff84544370a454a647a2a8f01a095e25a781"
                          },
                          {
                              "path":  "server/ga4-insights-regression.test.ts",
                              "role":  "live Insights regression tests",
-                             "sha256":  "1cac33a1e67115072a1acf78aac559331b24179871fceb946e9919e7dc7b88ad"
+                             "sha256":  "16d21e81a79df3a259b51b28cd7fc5f71ac045f48b4cbaca460bb9b502730e01"
                          },
                          {
                              "path":  "server/ga4-reporting-day-cutoff-regression.test.ts",
                              "role":  "completed-day cutoff regression tests",
-                             "sha256":  "a72a1864f1468ba2c6dca1d69de98584fad3f69aa9c6c73eb3635e0f9dfefb7b"
+                             "sha256":  "ff0aed887cde80756498ca71888f74e468808113f75f5326efb1a5bed4695230"
                          },
                          {
                              "path":  "server/ga4-ui-regression.test.ts",
                              "role":  "shared UI regression tests",
-                             "sha256":  "b83b88b45c7e57ef0b49b84e7da19d81a3cbb816949edde7a85affa92b436840"
+                             "sha256":  "5c3d081b6fdfffb2b4bdce773b0989929f54f447937148d650314b2799d87586"
                          },
                          {
                              "path":  "scripts/ga4-insights-live-readonly.ts",
                              "role":  "authenticated deployed parity validator",
-                             "sha256":  "bc526a3c627ebb3b72296deab8923ada0b7267f0204cf80cda63aeb671f29c4d"
+                             "sha256":  "1e7287ccb049bda2dd51532bf58fb79a54b03fea03c05902b01f0af53d12931b"
                          },
                          {
                              "path":  "scripts/ga4-insights-scheduler-validation.ts",
@@ -478,7 +478,7 @@
                           {
                               "id":  "affected_shared_auth_scope",
                               "status":  "passed",
-                              "evidence":  "The complete recorded Insights/shared dependency boundary passed on the current certification working tree: 44 test files and 477 tests."
+                              "evidence":  "The complete final Insights/shared dependency boundary passed: 44 test files and 478 tests."
                           },
                           {
                               "id":  "typescript",
@@ -492,45 +492,45 @@
                           },
                           {
                               "id":  "machine_gate",
-                              "status":  "pending",
-                              "evidence":  "The machine gate must be rerun after all local and external evidence is recorded for one frozen candidate."
+                              "status":  "passed",
+                              "evidence":  "The fail-closed machine certification checker passed after all final local, external, hash, and status evidence was synchronized."
                           }
                       ],
     "externalGates":  [
                           {
                               "id":  "exact_sha_deployment",
-                              "status":  "pending",
-                              "evidence":  "Render /api/health reports production SHA 6e30a7e36484694994f151006029a725498a98fe, but the post-test-guard certification candidate is not yet frozen and deployed."
+                              "status":  "passed",
+                              "evidence":  "Render /api/health returned exact deployed SHA 1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
-                              "status":  "pending",
-                              "evidence":  "Authenticated owner UI/API parity and persistence integrity remain pending on the final frozen candidate."
+                              "status":  "passed",
+                              "evidence":  "Authenticated production owner validation matched every live Insights value to scoped APIs on the exact deployed SHA; its read-only transaction rolled back and campaign-scoped persistence remained semantically unchanged."
                           },
                           {
                               "id":  "live_surface_value_parity",
-                              "status":  "pending",
-                              "evidence":  "Exact live-surface value parity remains pending on the final frozen candidate."
+                              "status":  "passed",
+                              "evidence":  "All 5 Executive Financial values, 3 Data Summary values, 3 channel rows, 4 Trends modes, 3 tracker values, and 11 visible findings matched page-consumed production inputs."
                           },
                           {
                               "id":  "tenant_isolation",
-                              "status":  "pending",
-                              "evidence":  "Tenant isolation remains pending on the final frozen candidate."
+                              "status":  "passed",
+                              "evidence":  "An explicitly authorized ephemeral Clerk-only non-owner failed closed with HTTP 404; its session was revoked, the exact user was deleted, and campaign persistence was unchanged."
                           },
                           {
                               "id":  "deterministic_scheduler",
-                              "status":  "pending",
-                              "evidence":  "The deterministic campaign-scoped scheduler validation remains pending on the final frozen candidate."
+                              "status":  "passed",
+                              "evidence":  "The authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute succeeded at 2026-08-08T13:27:08.662Z with alerts suppressed; daily rows remained 19 before and after, and post-run parity/persistence checks passed."
                           },
                           {
                               "id":  "dependency_hashes",
-                              "status":  "pending",
-                              "evidence":  "Dependency hashes and the configuration fingerprint remain pending for the final frozen candidate."
+                              "status":  "passed",
+                              "evidence":  "All 84 dependency hashes were recomputed and matched the final boundary. Authenticated exact-SHA output revalidated the canonical non-secret configuration boundary, and its reproducible SHA-256 fingerprint matched."
                           }
                       ],
     "configurationFingerprint":  {
                                      "algorithm":  "sha256",
-                                     "value":  "3e7efe3edb0627de40beb7ac0856059fc055fa4a2767b4a72bdc797020186edb",
+                                     "value":  "f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0",
                                      "canonicalBoundary":  "property 542352127; campaign fc734ddaf728; Europe/Amsterdam; USD; 3 saved filters; Google Ads inactive/excluded; LinkedIn/Meta/Instagram disabled; GA4 and Sheets signed OAuth configuration passed"
                                  }
 }

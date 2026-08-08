@@ -146,6 +146,16 @@ export function evaluateGA4InsightsCertification(
       if (!excluded.includes(required)) errors.push(`excludedSurfaces must name ${required}`);
     }
   }
+  const fingerprint = value.configurationFingerprint;
+  if (!isObject(fingerprint)) errors.push("configurationFingerprint must be an object");
+  else {
+    if (fingerprint.algorithm !== "sha256") errors.push("configurationFingerprint algorithm must be sha256");
+    if (typeof fingerprint.canonicalBoundary !== "string" || !fingerprint.canonicalBoundary.trim()) {
+      errors.push("configurationFingerprint canonicalBoundary is required");
+    } else if (fingerprint.value !== hashGA4InsightsCertificationText(fingerprint.canonicalBoundary)) {
+      errors.push("configurationFingerprint does not match canonicalBoundary");
+    }
+  }
 
   const dependencies = Array.isArray(value.dependencies) ? value.dependencies : [];
   const byPath = new Map(dependencies.map((item: any) => [item?.path, item]));

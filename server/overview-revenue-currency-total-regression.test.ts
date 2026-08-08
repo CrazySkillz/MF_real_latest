@@ -20,15 +20,14 @@ describe("GA4 Overview revenue currency and total integrity", () => {
     expect(selectRevenueRecordTotal({ aggregate: 0, attributed: 25, hasAggregate: false })).toBe(25);
   });
 
-  it("fails current reads closed for mismatched rows and unproven historical HubSpot currency", () => {
+  it("fails mismatched persisted currencies without invalidating matching legacy HubSpot rows", () => {
     expect(() => assertGa4RevenueCurrencyIntegrity([
       { currency: "EUR", sourceCurrency: "EUR", sourceType: "csv", mappingConfig: "{}" },
     ], "USD")).toThrow("does not match");
-    expect(() => assertGa4RevenueCurrencyIntegrity([
-      { currency: "USD", sourceCurrency: "USD", sourceType: "hubspot", mappingConfig: "{}" },
-    ], "USD")).toThrow("no verified");
     expect(assertGa4RevenueCurrencyIntegrity([
-      { currency: "usd", sourceCurrency: "USD", sourceType: "hubspot", mappingConfig: JSON.stringify({ currency: "USD" }) },
+      { currency: "USD", sourceCurrency: "USD", sourceType: "shopify", revenue: "0.00", mappingConfig: "{}" },
+      { currency: "USD", sourceCurrency: "USD", sourceType: "hubspot", revenue: "5100.00", mappingConfig: "{}" },
+      { currency: "usd", sourceCurrency: "USD", sourceType: "csv", revenue: "600.00", mappingConfig: "{}" },
     ], "usd")).toBe("USD");
     expect(source("server/storage.ts").match(/assertGa4RevenueCurrencyIntegrity\(/g)?.length).toBe(2);
   });

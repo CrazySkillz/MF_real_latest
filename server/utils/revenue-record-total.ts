@@ -48,19 +48,6 @@ export const assertGa4RevenueCurrencyIntegrity = (rows: any[], campaignCurrencyR
         code: 'GA4_REVENUE_CURRENCY_INTEGRITY_ERROR',
       });
     }
-    if (String((row?.sourceType ?? row?.revenueSources?.sourceType) || '').trim().toLowerCase() === 'hubspot') {
-      let mapping: any = null;
-      try {
-        mapping = typeof row?.mappingConfig === 'string' ? JSON.parse(row.mappingConfig) : row?.mappingConfig;
-      } catch {
-        mapping = null;
-      }
-      if (currencyCode(mapping?.currency) !== campaignCurrency) {
-        throw Object.assign(new Error('Active GA4 HubSpot revenue has no verified campaign-currency provenance'), {
-          code: 'GA4_REVENUE_CURRENCY_INTEGRITY_ERROR',
-        });
-      }
-    }
   }
   return campaignCurrency;
 };

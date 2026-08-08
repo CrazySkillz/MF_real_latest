@@ -150,6 +150,7 @@ Current meaning:
 - missing snapshot history is reported as unavailable and does not assume that a future scheduler run will succeed
 - generic total-ROAS strength findings are withheld because ROAS alone does not prove profitability or a channel-level scaling opportunity
 - the page header remains stable while loading and freshness details stay in the relevant finding cards
+- tracker counts and finding cards remain withheld during the initial multi-query load, then render once from settled inputs; background refetches retain the last stable query data
 - recommendations are phrased as checks, not proven causal conclusions
 
 ## Certification Boundary

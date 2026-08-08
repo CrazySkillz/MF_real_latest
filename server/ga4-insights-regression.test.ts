@@ -125,6 +125,31 @@ describe("GA4 Insights regression guard", () => {
     expect(trackerSection).toContain("Shared unverified-source effects are consolidated.");
     expect(content).toContain("{groupInsights.length} shown");
   });
+  it("withholds transient tracker counts and findings until all initial inputs settle", () => {
+    const content = ga4MetricsFile();
+    const gateStart = content.indexOf("const insightsInitialLoading =");
+    const gateEnd = content.indexOf("const INSIGHT_CATEGORY_GROUPS = [", gateStart);
+    const gateSection = content.slice(gateStart, gateEnd);
+    const trackerStart = content.indexOf('data-testid="insights-trackers"');
+    const trackerEnd = content.indexOf('data-testid="insights-findings"', trackerStart);
+    const trackerSection = content.slice(trackerStart, trackerEnd);
+    const findingsEnd = content.indexOf("</CardContent>", trackerEnd);
+    const findingsSection = content.slice(trackerEnd, findingsEnd);
+
+    expect(gateStart).toBeGreaterThan(-1);
+    expect(gateEnd).toBeGreaterThan(gateStart);
+    expect(gateSection).toContain('kpiListState === "loading"');
+    expect(gateSection).toContain('benchmarkListState === "loading"');
+    expect(gateSection).toContain('trafficKpiInputState === "loading"');
+    expect(gateSection).toContain('revenueKpiInputState === "loading"');
+    expect(gateSection).toContain('spendKpiInputState === "loading"');
+    expect(gateSection).toContain("kpiAnalyticsQueries.some");
+    expect(gateSection).toContain("benchmarkAnalyticsQueries.some");
+    expect(trackerSection).toContain('insightsInitialLoading ? "?" : insights.length');
+    expect(findingsSection).toContain("insightsInitialLoading ? (");
+    expect(findingsSection).toContain("Preparing verified findings");
+  });
+
   it("consolidates unverified target checks instead of counting one source failure as many issues", () => {
     const content = ga4MetricsFile();
     const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");

@@ -4594,6 +4594,21 @@ export default function GA4Metrics() {
     channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions;
   const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
   const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
+  const insightsInitialLoading =
+    activeTab === "insights" && (
+      campaignLoading ||
+      ga4ConnLoading ||
+      kpiListState === "loading" ||
+      benchmarkListState === "loading" ||
+      trafficKpiInputState === "loading" ||
+      revenueKpiInputState === "loading" ||
+      spendKpiInputState === "loading" ||
+      (ga4InsightsDailyLoading && ga4InsightsDailyResp === undefined) ||
+      (breakdownLoading && ga4Breakdown === undefined) ||
+      kpiAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined) ||
+      benchmarkAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined)
+    );
+
 
   const INSIGHT_CATEGORY_GROUPS = [
     { key: "setup", label: "Data setup issues" },
@@ -8854,17 +8869,17 @@ export default function GA4Metrics() {
                     <div
                       className="grid gap-4 md:grid-cols-3"
                       data-testid="insights-trackers"
-                      data-total={insights.length}
-                      data-high={insights.filter((i) => i.severity === "high").length}
-                      data-medium={insights.filter((i) => i.severity === "medium").length}
-                      data-findings={JSON.stringify(insights)}
+                      data-total={insightsInitialLoading ? undefined : insights.length}
+                      data-high={insightsInitialLoading ? undefined : insights.filter((i) => i.severity === "high").length}
+                      data-medium={insightsInitialLoading ? undefined : insights.filter((i) => i.severity === "medium").length}
+                      data-findings={insightsInitialLoading ? undefined : JSON.stringify(insights)}
                     >
                       <Card data-testid="insights-tracker-total">
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-muted-foreground/70">Total findings</p>
-                              <p className="text-2xl font-bold text-foreground">{insights.length}</p>
+                              <p className="text-2xl font-bold text-foreground">{insightsInitialLoading ? "?" : insights.length}</p>
                             </div>
                             <BarChart3 className="w-7 h-7 text-muted-foreground" />
                           </div>
@@ -8876,7 +8891,7 @@ export default function GA4Metrics() {
                             <div>
                               <p className="text-sm font-medium text-muted-foreground/70">High-severity findings</p>
                               <p className="text-2xl font-bold text-red-600">
-                                {insights.filter((i) => i.severity === "high").length}
+                                {insightsInitialLoading ? "?" : insights.filter((i) => i.severity === "high").length}
                               </p>
                             </div>
                             <AlertTriangle className="w-7 h-7 text-red-600" />
@@ -8889,7 +8904,7 @@ export default function GA4Metrics() {
                             <div>
                               <p className="text-sm font-medium text-muted-foreground/70">Medium-severity findings</p>
                               <p className="text-2xl font-bold text-amber-600">
-                                {insights.filter((i) => i.severity === "medium").length}
+                                {insightsInitialLoading ? "?" : insights.filter((i) => i.severity === "medium").length}
                               </p>
                             </div>
                             <TrendingDown className="w-7 h-7 text-amber-600" />
@@ -8906,7 +8921,11 @@ export default function GA4Metrics() {
                         <CardTitle className="text-lg">What to investigate next</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {insights.length === 0 ? (
+                        {insightsInitialLoading ? (
+                          <div className="text-sm text-muted-foreground/70" role="status">
+                            Preparing verified findings...
+                          </div>
+                        ) : insights.length === 0 ? (
                           <div className="text-sm text-muted-foreground/70">
                             No issues detected for the selected range. Create KPIs and Benchmarks to unlock performance tracking insights.
                           </div>

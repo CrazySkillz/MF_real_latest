@@ -7,13 +7,14 @@ token certification is historical and was invalidated by later changes inside
 its dependency boundary.**
 
 Current local review on 2026-08-08 traced add, edit, exact-attribution preview,
-explicit repair, scheduler refresh, exact-source delete, full disconnect,
-currency parity, totals, and no-cleanup inventory behavior. No new Shopify
-runtime defect was proven. The displayed zero-match preview for
-`utm_campaign = brand_search_q1` is provider-authoritative for the current
-eligible order set and is not itself evidence of corruption. Current status
-nevertheless remains UNVERIFIED until the present revision is committed,
-deployed, and supported by fresh provider and read-only persisted-data evidence.
+explicit refresh, scheduler refresh, exact-source delete, full disconnect,
+currency parity, totals, and no-cleanup inventory behavior. Deployed validation
+proved the refresh could remain on `Processing...` after source persistence
+because Shopify provider requests and the post-commit GA4 recompute had no
+response bounds. The current working fix bounds each provider request before
+mutation, bounds the post-commit response wait while preserving recomputation,
+and retains the existing bounded read-only inventory check. Current status
+remains UNVERIFIED until this revision is committed, deployed, and validated.
 
 This is the canonical Shopify Revenue readiness document as of 2026-07-15 for deployed Current Commit 9.3 (`a2735192`), the completed exact-source provider repair, the Current Commit 8 reconciliation, the platform-isolated owner-scoped production inventory, the exact transactional GA4 test-source cleanup, and the final all-pass certification evidence documented below.
 
@@ -21,9 +22,9 @@ The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVER
 
 The current honest answer is:
 
-- Shopify Revenue's complete documented local lifecycle and downstream matrix is implemented and locally regression-covered.
-- The Admin API token path has bounded deployed evidence, including an exact-source provider-authoritative zero-match repair.
-- The currently enabled GA4 Overview Shopify Revenue Admin API token scope is production-ready and clean-certified by the fresh evidence in this document; this does not certify dormant OAuth or another platform's Shopify source.
+- Shopify Revenue's documented local lifecycle and downstream matrix remains implemented and locally regression-covered, including the new bounded-wait guards.
+- The Admin API token path has historical bounded deployed evidence, including an exact-source provider-authoritative zero-match refresh.
+- The current revision is not production-certified until the bounded-wait fix is deployed and validated; dormant OAuth and other platforms' Shopify sources remain outside this scope.
 - The inspected production source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` was inconsistent before repair. Shopify then returned zero current matches for the unchanged `utm_campaign = brand_search_q1` mapping, the user confirmed the scoped transactional repair, and the automatic post-repair inventory returned `shopifyLocalPersistencePass: true`. The exact expanded post-repair entity/finding packet was not retained in this audit record, so no broader production-data-health claim is made.
 - The first deployed Current Commit 9 inventory returned `crossCampaignPass: true` but `localPass: false` with three reported campaigns and three open scheduler failures. Exact source reads then proved two reports/alerts belonged to non-GA4 Shopify sources (`linkedin` and `meta`), which Current Commit 9.3 excluded without mutation. The exact GA4 test boundary was cleaned transactionally with `status: 200`, `success: true`, `cleanupApplied: true`, and `recomputeFailures: []`.
 - The independent post-cleanup owner-scoped inventory returned `ownerScopedBatchComplete: true`, `shopifyLocalPersistencePass: true`, `crossCampaignOrderOverlapPass: true`, `shopifyReadinessCandidatePass: true`, `openRefreshFailureCount: 0`, and `failedCampaigns: []`.

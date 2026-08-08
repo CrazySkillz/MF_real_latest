@@ -76,6 +76,7 @@ export async function shopifyAdminFetch(args: {
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   max429Retries?: number;
+  requestTimeoutMs?: number;
   onResponse?: (event: { attempt: number; status: number; retryAfterSeconds: number | null }) => void;
 }): Promise<Response> {
   const shopDomain = normalizeShopifyDomain(args.shopDomain);
@@ -95,14 +96,23 @@ export async function shopifyAdminFetch(args: {
   const fetchImpl = args.fetchImpl || fetch;
   const sleep = args.sleep || defaultSleep;
   const max429Retries = Math.max(0, Math.min(args.max429Retries ?? 2, 2));
+  const requestTimeoutMs = Math.max(1, Math.min(args.requestTimeoutMs ?? 30000, 120000));
 
   for (let attempt = 0; ; attempt++) {
-    const response = await fetchImpl(url, {
-      headers: {
-        'X-Shopify-Access-Token': args.accessToken,
-        'Content-Type': 'application/json',
-      },
-    });
+    const signal = AbortSignal.timeout(requestTimeoutMs);
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        headers: {
+          'X-Shopify-Access-Token': args.accessToken,
+          'Content-Type': 'application/json',
+        },
+        signal,
+      });
+    } catch (error) {
+      if (signal.aborted) throw new Error(`Shopify API request timed out after ${requestTimeoutMs}ms`);
+      throw error;
+    }
     const retryAfterRaw = response.headers.get('Retry-After');
     const retryAfterSeconds = retryAfterRaw === null ? null : Number(retryAfterRaw);
     args.onResponse?.({

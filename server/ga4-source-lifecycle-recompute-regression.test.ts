@@ -42,6 +42,9 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(revenueHelper).toContain("if (isGA4RevenuePlatformContext(opts.platformContext))");
     expect(revenueHelper).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId);");
     expect(revenueHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
+    expect(revenueHelper).toContain("completed = await Promise.race([");
+    expect(revenueHelper).toContain("GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS");
+    expect(revenueHelper).toContain("continuing in background");
     expect(revenueHelper.indexOf("await refreshCampaignCurrentValuesForCampaign(campaignId);")).toBeLessThan(
       revenueHelper.indexOf('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");'),
     );

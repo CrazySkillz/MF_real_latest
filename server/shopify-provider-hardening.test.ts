@@ -97,6 +97,15 @@ describe('Shopify provider hardening', () => {
     expect(sleep).toHaveBeenCalledTimes(2);
   });
 
+  it('fails closed when a Shopify provider request exceeds its timeout', async () => {
+    const fetchImpl = vi.fn((_url: any, init: any) => new Promise<Response>((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true });
+    })) as any;
+    await expect(shopifyAdminFetch({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', endpoint: '/admin/api/2026-07/shop.json', fetchImpl, requestTimeoutMs: 5,
+    })).rejects.toThrow('Shopify API request timed out after 5ms');
+  });
+
   it('fails closed for unsafe retry, version, and pagination boundaries', async () => {
     await expect(shopifyAdminFetch({
       shopDomain: 'store.myshopify.com', accessToken: 'secret', endpoint: '/admin/api/2026-07/shop.json',

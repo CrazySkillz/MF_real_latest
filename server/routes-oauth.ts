@@ -3865,10 +3865,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return mappedId && activeGoogleAdsCampaignIds.has(mappedId) ? mappedId : null;
   };
 
-  // Revenue source saves must return after source records are durable. GA4 source-backed current
-  // values refresh synchronously; heavier GA4 history/alert reconciliation runs after the response.
+  // Revenue source saves wait for GA4-derived values only within a bounded response window.
+  // If recompute exceeds that window, durable source data can return while the same work continues.
   const isGA4RevenuePlatformContext = (platformContext?: string | null) =>
     String(platformContext || "ga4").trim().toLowerCase() === "ga4";
+  const GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS = 15000;
 
   const recomputeGA4KPIAndBenchmarkValues = async (campaignId: string, logPrefix: string) => {
     try {
@@ -3923,8 +3924,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
-      await refreshCampaignCurrentValuesForCampaign(campaignId);
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+      const recomputePromise = (async () => {
+        await refreshCampaignCurrentValuesForCampaign(campaignId);
+        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
+      })();
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let completed = false;
+      try {
+        completed = await Promise.race([
+          recomputePromise.then(() => true),
+          new Promise<boolean>((resolve) => {
+            timeoutId = setTimeout(() => resolve(false), GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS);
+          }),
+        ]);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+      if (!completed) {
+        console.warn(`[Revenue Update] GA4 derived recompute exceeded the response wait for campaign ${campaignId}; continuing in background.`);
+        void recomputePromise.catch((e) => {
+          console.warn(`[Revenue Update] Background recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+        });
+      }
       return;
     }
     try {

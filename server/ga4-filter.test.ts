@@ -406,6 +406,70 @@ describe("GA4 campaign value picker", () => {
     }
   });
 
+  it("requests and verifies the campaign currency before returning persisted daily revenue", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ metadata: { currencyCode: "USD" }, rows: [] }),
+    } as any));
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = {
+      getCampaign: vi.fn(async () => ({ id: "campaign-1", currency: "USD" })),
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    await ga4Service.getTimeSeriesData("campaign-1", storage, "2026-06-01", "123", "summer_sale", "2026-06-30");
+
+    expect(fetchMock).toHaveBeenCalled();
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(JSON.parse(String((init as any)?.body || "{}")).currencyCode).toBe("USD");
+    }
+
+    fetchMock.mockImplementation(async () => ({
+      ok: true,
+      json: async () => ({ metadata: { currencyCode: "EUR" }, rows: [] }),
+    } as any));
+    await expect(ga4Service.getTimeSeriesData(
+      "campaign-1", storage, "2026-06-01", "123", "summer_sale", "2026-06-30",
+    )).rejects.toMatchObject({ code: "GA4_CURRENCY_UNVERIFIED" });
+  });
+
+  it("requests and verifies the campaign currency for acquisition revenue breakdowns", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ metadata: { currencyCode: "USD" }, rows: [], totals: [] }),
+    } as any));
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = {
+      getCampaign: vi.fn(async () => ({ id: "campaign-1", currency: "USD" })),
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    await ga4Service.getAcquisitionBreakdown("campaign-1", storage, "30daysAgo", "123", 200, "summer_sale");
+
+    expect(fetchMock).toHaveBeenCalled();
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(JSON.parse(String((init as any)?.body || "{}")).currencyCode).toBe("USD");
+    }
+
+    fetchMock.mockImplementation(async () => ({
+      ok: true,
+      json: async () => ({ metadata: { currencyCode: "EUR" }, rows: [], totals: [] }),
+    } as any));
+    await expect(ga4Service.getAcquisitionBreakdown(
+      "campaign-1", storage, "30daysAgo", "123", 200, "summer_sale",
+    )).rejects.toMatchObject({ code: "GA4_CURRENCY_UNVERIFIED" });
+  });
+
   it("supplements daily conversion and revenue values without changing daily traffic totals", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));

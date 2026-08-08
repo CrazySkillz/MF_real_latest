@@ -1071,6 +1071,7 @@ export class GoogleAnalytics4Service {
     endDate?: string,
     disableTokenRefresh = false,
     preferLandingUtmCoverage = false,
+    currencyCode?: string,
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
@@ -1118,6 +1119,20 @@ export class GoogleAnalytics4Service {
     }
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    const campaign = !currencyCode && typeof storage?.getCampaign === 'function'
+      ? await storage.getCampaign(campaignId)
+      : null;
+    const requestedCurrencyCode = String(currencyCode || campaign?.currency || '').trim().toUpperCase();
+    if (typeof storage?.getCampaign === 'function' && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) {
+      throw new Error('GA4 report currency is required and must be a three-letter code');
+    }
+    const verifyResponseCurrency = (json: any) => {
+      if (!requestedCurrencyCode) return;
+      const observed = String(json?.metadata?.currencyCode || '').trim().toUpperCase();
+      if (observed !== requestedCurrencyCode) {
+        throw Object.assign(new Error(`GA4 report currency ${observed || 'unavailable'} does not match requested currency ${requestedCurrencyCode}`), { code: 'GA4_CURRENCY_UNVERIFIED' });
+      }
+    };
 
     const isAuthErrorText = (txt: string) => {
       const t = String(txt || '').toLowerCase();
@@ -1137,6 +1152,7 @@ export class GoogleAnalytics4Service {
         isPaginationIncomplete: true,
       });
     const completeReportRows = async (firstPage: any, requestBody: any) => {
+      verifyResponseCurrency(firstPage);
       const expectedRows = Number(firstPage?.rowCount);
       const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
       if (!Number.isFinite(expectedRows) || expectedRows <= rows.length) {
@@ -1163,6 +1179,7 @@ export class GoogleAnalytics4Service {
           throw incompletePaginationError(await response.text());
         }
         const page: any = await response.json();
+        verifyResponseCurrency(page);
         const pageRows = Array.isArray(page?.rows) ? page.rows : [];
         if (pageRows.length === 0) {
           throw incompletePaginationError(
@@ -1190,6 +1207,7 @@ export class GoogleAnalytics4Service {
     ) => {
       const requestBody = {
         dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
+        ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
         dimensions,
         ...(scopeFilter || this.buildCampaignDimensionFilter(
           campaignFilter,
@@ -1252,7 +1270,7 @@ export class GoogleAnalytics4Service {
               }
               return completeReportRows(await retry.json(), requestBody);
             } catch (refreshError: any) {
-              if (refreshError?.isPaginationIncomplete) {
+              if (refreshError?.isPaginationIncomplete || refreshError?.code === 'GA4_CURRENCY_UNVERIFIED') {
                 throw refreshError;
               }
               const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
@@ -1455,7 +1473,7 @@ export class GoogleAnalytics4Service {
         chosenDims = candidate.dims;
         chosenRevenueMetric = result.revenueMetric;
       } catch (e: any) {
-        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded) {
+        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded || e?.code === 'GA4_CURRENCY_UNVERIFIED') {
           throw e;
         }
         // Dimension/metric incompatibility, unknown dimensions, or other GA4 API errors.
@@ -2107,6 +2125,7 @@ export class GoogleAnalytics4Service {
     propertyId?: string,
     campaignFilter?: CampaignFilter,
     endDate = 'today',
+    currencyCode?: string,
   ): Promise<any[]> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || connection.method !== 'access_token') {
@@ -2120,8 +2139,16 @@ export class GoogleAnalytics4Service {
       throw tokenExpiredError;
     }
 
+    const campaign = !currencyCode && typeof storage?.getCampaign === 'function'
+      ? await storage.getCampaign(campaignId)
+      : null;
+    const requestedCurrencyCode = String(currencyCode || campaign?.currency || '').trim().toUpperCase();
+    if (typeof storage?.getCampaign === 'function' && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) {
+      throw new Error('GA4 report currency is required and must be a three-letter code');
+    }
+
     try {
-      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange, campaignFilter, endDate);
+      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange, campaignFilter, endDate, requestedCurrencyCode);
     } catch (error: any) {
       console.log('GA4 time series API call failed:', error.message);
       
@@ -2162,7 +2189,7 @@ export class GoogleAnalytics4Service {
           }
 
           console.log('Access token refreshed successfully - retrying time series call');
-          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter, endDate);
+          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter, endDate, requestedCurrencyCode);
         } else {
           const tokenExpiredError = new Error('TOKEN_EXPIRED');
           (tokenExpiredError as any).isTokenExpired = true;
@@ -2179,9 +2206,21 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     campaignFilter?: CampaignFilter,
     endDate = 'today',
+    currencyCode?: string,
   ): Promise<any[]> {
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+      const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
+      if (requestedCurrencyCode && !/^[A-Z]{3}$/.test(requestedCurrencyCode)) {
+        throw new Error('GA4 report currency must be a three-letter code');
+      }
+      const verifyResponseCurrency = (json: any) => {
+        if (!requestedCurrencyCode) return;
+        const observed = String(json?.metadata?.currencyCode || '').trim().toUpperCase();
+        if (observed !== requestedCurrencyCode) {
+          throw Object.assign(new Error(`GA4 report currency ${observed || 'unavailable'} does not match requested currency ${requestedCurrencyCode}`), { code: 'GA4_CURRENCY_UNVERIFIED' });
+        }
+      };
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
       const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
@@ -2201,6 +2240,7 @@ export class GoogleAnalytics4Service {
               },
             ],
             dimensions: [{ name: 'date' }],
+            ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
             ...(scopeFilter ? scopeFilter : {}),
             metrics: [
               { name: 'sessions' },
@@ -2228,6 +2268,7 @@ export class GoogleAnalytics4Service {
         }
 
         const data = await response.json();
+        verifyResponseCurrency(data);
         return { data, revenueMetric };
       };
 
@@ -2260,6 +2301,7 @@ export class GoogleAnalytics4Service {
               },
             ],
             dimensions: [{ name: 'date' }],
+            ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
             ...(scopeFilter ? scopeFilter : {}),
             metrics: [
               { name: 'conversions' },
@@ -2281,6 +2323,7 @@ export class GoogleAnalytics4Service {
         }
 
         const data = await response.json();
+        verifyResponseCurrency(data);
         return { data, revenueMetric };
       };
 

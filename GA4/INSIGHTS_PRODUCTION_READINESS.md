@@ -9,7 +9,7 @@ Status: **PRODUCTION_READY**
 
 Certified and deployed implementation SHA: `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`
 
-Certification date: `2026-08-08` (`Europe/Amsterdam`)
+Clean certification date: `2026-08-08` (`Europe/Amsterdam`). This is the current clean, production-ready certification record for future reference. It applies only to the exact deployed implementation and recorded dependency/configuration boundary below; relevant future changes invalidate it until recertified.
 
 Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
@@ -122,7 +122,7 @@ This documentation-only evidence commit does not alter the certified runtime bou
 |---|---|---|
 | Shared live-tab context | Client, Campaign, selected GA4 Property ID, saved Property Campaigns filter, delayed/provider-refresh warning when applicable | authenticated client and campaign responses; selected active GA4 connection; 30-day daily response freshness metadata |
 | Executive Financials | Spend, Revenue, Profit, ROAS, ROI, source labels, loading/unavailable/not-connected/last-good state | GA4-context spend sources and totals; native GA4 to-date totals; GA4-context imported revenue; fixed native-source precedence; Revenue = native + imported; Profit = Revenue - Spend; ROAS = Revenue / Spend only when Spend > 0; ROI uses shared metric math only when Spend > 0 |
-| Trends | Sessions, Users in Daily only, Conversions, Revenue, Page Views, Engagement Rate; Daily, 7d, 30d, Monthly; cutoff/import/refresh/timezone labels | non-mutating Insights reads for overlapping 30-day and isolated 60-day `ga4-daily` responses; selected property; completed campaign-reporting days; exact 30-calendar-day Daily chart with null gaps; shared calendar rollups; session-weighted engagement preserving explicit zero engaged sessions; prior-calendar-day deltas; partial/incomplete month labeling |
+| Trends | Sessions, Users in Daily only, Conversions, Revenue, Page Views, Engagement Rate; Daily, 7d, 30d, Monthly; completed-day cutoff, latest-imported-day, and last-refreshed labels | non-mutating Insights reads for overlapping 30-day and isolated 60-day `ga4-daily` responses; selected property; completed campaign-reporting days; Daily chart bounded to the latest 30 calendar days and beginning at the first imported date; shared calendar rollups; session-weighted engagement preserving explicit zero engaged sessions; prior-calendar-day deltas; partial/incomplete month labeling |
 | Data Summary | 30-day Sessions, Conversions, conversion rate, Top Channel, channel Sessions/Share/Conversions/CR | exact last 30 calendar days from the isolated daily response; raw same-window GA4 acquisition breakdown for the selected property/filter; no campaign-to-date financial duplication; no proportional allocation |
 | Tracker cards | Total findings, High-severity findings, Medium-severity findings | full generated finding list before the visible finding cap; verified KPI/Benchmark conclusions are counted separately; shared unverified-source effects are consolidated; total includes positive and informational findings |
 | What to investigate next | stable page header; settled-input tracker counts; grouped finding title, description, recommended check, severity, basis, confidence, hidden count | initial multi-query readiness gate; financial integrity rules; eligible KPI/Benchmark values and snapshot analytics; fail-closed saved-target/current-window period matching with affected target identification; saved KPI priority and factual below-target status; consolidated unverified-target readiness finding; factual no-snapshot state; complete 3-day or 7-day calendar comparisons; raw same-window channel context; explicit unavailable/stale/configuration findings; no generic total-ROAS strength inference |
@@ -142,7 +142,7 @@ This documentation-only evidence commit does not alter the certified runtime bou
 -> `buildGA4InsightsRollups`, `buildGA4InsightsCalendarRollup`, or `buildGA4InsightsMonthlySeries`
 -> Trends, Data Summary, tracker inputs, and trend findings.
 
-Daily charts iterate the exact 30 calendar dates ending at `dataThroughDate`; missing rows become `null` gaps and are not connected. Rollups use persisted `engagedSessions` whenever present, including zero, and derive it from that row's normalized engagement rate only for legacy absence.
+Daily charts consider the latest 30 calendar dates ending at the latest imported date, begin at the first imported date in that range, and connect observed values across later `null` gaps for readability without treating missing dates as zero. Rollups use persisted `engagedSessions` whenever present, including zero, and derive it from that row's normalized engagement rate only for legacy absence.
 
 ### Channel values
 
@@ -202,7 +202,7 @@ An analytics request failure produces an integrity finding. It is not converted 
 
 ## Findings
 
-Current findings are Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability; none is an active blocker for certified SHA `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`.
+Current findings are Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability; none is an active blocker for certified SHA `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`.
 
 ### Historical Critical Findings (closed)
 
@@ -354,13 +354,13 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 ## Current And Historical Local Evidence
 
-Current controlling local results for `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`:
+Current controlling local results for `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`:
 
-- focused freshness/live/scheduler packet: 3 files, 24 tests passed
-- affected shared/auth/tenant/source/lifecycle/scheduler/live packet: 16 files, 182 tests passed
+- focused Insights, UI, auth-scope, scheduler-validation, and GA4 data-path packet: 129 tests passed
+- complete Insights/shared dependency boundary: 44 files, 478 tests passed
 - `npm run check`: passed
 - `npm run build`: passed, 3,466 client modules and bundled production server
-- `npm run check:ga4-insights-certification`: passed on the contradiction-free intermediate record and again on the final `PRODUCTION_READY` record
+- `npm run check:ga4-insights-certification`: passed on the final `PRODUCTION_READY` machine record
 
 The table below preserves earlier supporting evidence; it does not override the current exact-SHA packet.
 
@@ -390,20 +390,18 @@ The table below preserves earlier supporting evidence; it does not override the 
 
 Source-text assertions are structural evidence only. Numeric calendar and monthly correctness is exercised through the actual shared functions imported by the live page.
 
-Separate repository result: the complete `server/source-safety-regression.test.ts` file currently reports 77 passed and 10 failed, and all ten failures are Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets pass independently as recorded above. The Instagram failures neither execute nor supply a value to live GA4 Insights and are not Insights findings, limitations, or deferred Insights work.
+Historical out-of-scope repository result: the complete `server/source-safety-regression.test.ts` file reported 77 passed and 10 failed, and all ten failures were Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets passed independently as recorded above. Those Instagram failures neither executed nor supplied a value to live GA4 Insights and were not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`
+## Current Production Evidence - `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: `/api/health` returned exact production commit `80ffc60c4ac38b8bb01a91373a6a41d552f066ad`. |
-| deterministic direct-input scheduler | PASS: the authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute completed successfully at `2026-08-06T11:12:58.144Z`; alerts were suppressed, Google Ads remained excluded, and the exact property/timezone/cutoff stayed `542352127` / `Europe/Amsterdam` / `2026-08-05`. |
-| post-run freshness | PASS: `refreshIsStale=false`, no provider warning, 19 sparse activity rows, latest activity `2026-07-12`, and successful full-window refresh at `2026-08-06T11:12:47.590Z`. Sparse missing dates remained gaps and were not invented as zero. |
-| authenticated owner API/UI parity | PASS: property `542352127`, three saved filters, USD response currency, Amsterdam response timezone, 5 Executive Financial values, 8 Data Summary values, 3 raw channel rows, 4 Trends modes, 3 tracker values, 12 visible and 5 hidden findings all matched the exact page-consumed responses. |
-| financial reconciliation | PASS through completed day `2026-08-05`: native GA4 Revenue `$46,101.90` plus imported Revenue `$16,700.00` equals Total Revenue `$62,801.90`; Spend `$2,699.75`; Profit `$60,102.15`; ROAS `23.2621x`; ROI `2226.21%`; CPA `$12.92` from `209` conversions. |
-| tenant isolation and cleanup | PASS: one authorized temporary Clerk-only non-owner received `404`; both validation sessions were revoked and the temporary user was deleted before success. |
-| read-only persistence safety | PASS: the validation database transaction was read-only and rolled back; campaign-scoped source identities, rendered financial records/amounts, GA4 rows, and KPI/Benchmark business state remained semantically unchanged. Expected scheduler timestamps and regenerated record IDs are not misreported as user-visible mutations. |
-| production configuration boundary | PASS: signed GA4 and Sheets OAuth initiation, configured Google client, USD campaign/response, Amsterdam reporting/response timezone, exact property, saved-filter count, and excluded inactive future connectors produced non-secret fingerprint `3e7efe3edb0627de40beb7ac0856059fc055fa4a2767b4a72bdc797020186edb`. |
+| exact Render revision | PASS: `/api/health` returned exact production commit `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`. |
+| authenticated owner API/UI parity | PASS: property `542352127`, three saved filters, USD response currency, Amsterdam response timezone, 5 Executive Financial values, 3 Data Summary values, 3 channel rows, 4 Trends modes, 3 tracker values, and 11 visible findings all matched the exact page-consumed responses. |
+| tenant isolation and cleanup | PASS: one explicitly authorized ephemeral Clerk-only non-owner received `404`; its session was revoked, the exact user was deleted, and campaign persistence was unchanged. |
+| deterministic direct-input scheduler | PASS: the authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute completed successfully at `2026-08-08T13:27:08.662Z`; alerts were suppressed and daily rows remained 19 before and after. |
+| post-scheduler parity and persistence | PASS: the follow-up API/UI parity check passed; the validation transaction was read-only and rolled back, and campaign-scoped persistence remained semantically unchanged. |
+| dependency and configuration boundary | PASS: all 84 dependency hashes matched; the canonical non-secret boundary is property `542352127`, campaign `fc734ddaf728`, `Europe/Amsterdam`, USD, three saved filters, Google Ads inactive/excluded, LinkedIn/Meta/Instagram disabled, and signed GA4/Sheets OAuth configuration passed. Its reproducible SHA-256 fingerprint is `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`. |
 
 The real production dataset does not contain two complete adjacent 7-day or 30-day activity-row windows. The certified behavior is the exact unavailable/coverage state required by the functional contract; complete-window arithmetic is exercised through the imported production functions in regression tests.
 ## Superseded Production Evidence - `477deb04acec3b7e58163732a72ce2df02d1ff71`

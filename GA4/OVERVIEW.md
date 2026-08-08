@@ -226,8 +226,8 @@ Pipeline Proxy rule:
 
 Insights alignment rule:
 
-- `Insights -> Data Summary -> Revenue` should use the same all-source `financialRevenue` model as Overview and Executive Financials
-- imported revenue updates should therefore appear consistently in Overview, Insights Executive Financials, and Insights Data Summary
+- `Insights -> Executive Financials -> Revenue` uses the same all-source `financialRevenue` model as Overview
+- imported revenue updates should therefore appear consistently in Overview and Insights Executive Financials; Insights Data Summary is intentionally limited to recent GA4 traffic and channel metrics
 
 CRM Pipeline Proxy example:
 

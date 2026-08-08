@@ -46,17 +46,17 @@
                          {
                              "path":  "GA4/INSIGHTS.md",
                              "role":  "functional contract",
-                             "sha256":  "ccccab13491d8a3b5d9db903d8b7432d3677fa6648f4f2bb0efe77497a1bad5d"
+                             "sha256":  "13315cfce662007a25f9a231a466b02f423c28f974ef8b3a8afc3c372faf8b5d"
                          },
                          {
                              "path":  "GA4/INSIGHTS_PRODUCTION_READINESS.md",
                              "role":  "controlling status",
-                             "sha256":  "81621882490fc305a4721075f31359d047b85bdd0e98ba0315d5dc97f61ec108"
+                             "sha256":  "bdae13f9a3b782f2046581fb1e40c5f469431791ad77601120e39e080a76d124"
                          },
                          {
                              "path":  "GA4/README.md",
                              "role":  "GA4 status index",
-                             "sha256":  "b0b8c86cd847f113f87887d853802badd45b261610d6ae3c88a511546eb2de02"
+                             "sha256":  "59c41e2639aedd35f6c5d83e06283fdbb4b9c30210be3dfc9762cdb68f383022"
                          },
                          {
                              "path":  "GA4/FINANCIAL_SOURCES.md",
@@ -66,7 +66,7 @@
                          {
                              "path":  "GA4/REFRESH_AND_PROCESSING.md",
                              "role":  "refresh contract",
-                             "sha256":  "192d6d27a29d5ab888ed024794b032396a15e47b2b57187862fe6c01b04665c0"
+                             "sha256":  "49bfbabffdd253282770af5314cf0e3294bc219a02cf4e1050a17fe0ac5e5f16"
                          },
                          {
                              "path":  "client/src/pages/ga4-metrics.tsx",

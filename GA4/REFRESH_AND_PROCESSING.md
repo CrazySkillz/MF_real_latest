@@ -246,7 +246,7 @@ GA4 daily scheduled-refresh validation:
 4. After the scheduled time, confirm:
    - `[GA4 Daily] Pipeline starting (trigger=scheduled)`
    - `[GA4 Daily] Pipeline done (trigger=scheduled, elapsedSeconds=...)`
-5. In Insights Trends, confirm `Last refreshed` is at or after `Expected refresh` and no stale warning appears.
+5. In Insights Trends, confirm the visible `Last refreshed` value is current. In the authenticated `ga4-daily` response, confirm `lastCompletedRefreshAt` is at or after `expectedRefreshAt` and `refreshIsStale=false`; the live Trends header intentionally does not render `Expected refresh`.
 
 Current deployed evidence:
 

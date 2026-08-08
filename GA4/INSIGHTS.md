@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is PRODUCTION_READY for exact deployed SHA 1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e and the recorded dependency/configuration boundary. All local, authenticated API/UI parity, tenant-isolation, deterministic scheduler, and persistence gates passed. GA4/certifications/ga4-insights.json is the controlling machine record.`
+`Clean certification status as of 2026-08-08 (Europe/Amsterdam): GA4 Insights is PRODUCTION_READY for exact deployed SHA 1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e and the recorded dependency/configuration boundary. All local, authenticated API/UI parity, tenant-isolation, deterministic scheduler, and persistence gates passed. This certification is revision-bound; a relevant implementation, dependency, configuration, or contradictory production change invalidates it until recertified. GA4/certifications/ga4-insights.json is the controlling machine record.`
 
 ## Document Ownership
 
@@ -92,7 +92,7 @@ Current meaning:
 - Trends uses persisted GA4 daily facts for the selected campaign/property/scope
 - Insights requests an isolated 60-calendar-day window through the latest completed reporting day so two exact 30-day windows can be evaluated without changing Overview or KPI windows; GA4 may return sparse rows, so returned row count is not treated as consecutive-day coverage
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Completed-day cutoff`, `Latest imported day`, `Reporting timezone`, `Last refreshed`, and `Expected refresh` explain freshness
+- `Completed-day cutoff`, `Latest imported day`, and `Last refreshed` explain freshness
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
 - missing GA4 rows are not synthesized as zero-value days and do not widen a comparison window
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate

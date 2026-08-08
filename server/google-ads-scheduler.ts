@@ -8,6 +8,9 @@ import { db } from "./db";
 import { googleAdsConnections, googleAdsDailyMetrics } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
+import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { buildGA4GoogleAdsSpendMaterialization } from "./ga4-google-ads-spend";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -135,9 +138,10 @@ async function generateMockGoogleAdsData(
  */
 async function fetchRealGoogleAdsData(
   campaignId: string,
-  connection: any
+  connection: any,
+  campaign: any,
 ): Promise<void> {
-  const { GoogleAdsClient } = await import('./googleAdsClient');
+  const { GoogleAdsClient, mapGoogleAdsDailyInsights } = await import('./googleAdsClient');
 
   let accessToken = connection.accessToken;
   const refreshToken = connection.refreshToken;
@@ -158,8 +162,7 @@ async function fetchRealGoogleAdsData(
   }
 
   if (!accessToken) {
-    console.warn(`[Google Ads] No access token for campaign ${campaignId}`);
-    return;
+    throw new Error(`Google Ads access token is unavailable for campaign ${campaignId}`);
   }
 
   const client = new GoogleAdsClient({
@@ -169,52 +172,104 @@ async function fetchRealGoogleAdsData(
     managerAccountId: connection.managerAccountId || undefined,
   });
 
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 60);
+  const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
+  const startDate = Number.isNaN(campaignStart.getTime()) ? new Date("2000-01-01T00:00:00Z") : campaignStart;
 
   // Filter by selected campaigns if configured
   const selectedIds: string[] | undefined = connection.selectedCampaignIds
     ? JSON.parse(connection.selectedCampaignIds)
     : undefined;
-  const insights = await client.getDailyMetrics(iso(startDate), iso(endDate), selectedIds && selectedIds.length > 0 ? selectedIds : undefined);
-
-  if (insights.length === 0) {
-    console.log(`[Google Ads] No data returned for campaign ${campaignId}`);
-    return;
+  const startDateIso = iso(startDate);
+  const reportingTimeZone = normalizeReportingTimeZone((campaign as any)?.reportingTimeZone);
+  const endDateIso = getReportingDateWindow(1, reportingTimeZone).endDate;
+  if (startDateIso > endDateIso) throw new Error(`Google Ads has no completed reporting day for campaign ${campaignId}`);
+  const account = await client.getCustomerAccount();
+  const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+  if (account.manager || account.currencyCode !== campaignCurrency || normalizeReportingTimeZone(account.timeZone) !== reportingTimeZone) {
+    throw new Error(`Google Ads account scope does not match campaign currency/timezone for campaign ${campaignId}`);
   }
+  const insights = await client.getDailyMetrics(startDateIso, endDateIso, selectedIds && selectedIds.length > 0 ? selectedIds : undefined);
 
-  const metricsToUpsert = insights.map((i) => ({
-    campaignId,
-    googleCampaignId: i.campaignId,
-    googleCampaignName: i.campaignName,
-    date: i.date,
-    impressions: i.impressions,
-    clicks: i.clicks,
-    spend: String(GoogleAdsClient.microsToAmount(i.costMicros).toFixed(2)),
-    conversions: String(i.conversions),
-    conversionValue: String(i.conversionsValue.toFixed(2)),
-    ctr: String((i.ctr * 100).toFixed(4)),
-    cpc: String(GoogleAdsClient.microsToAmount(i.averageCpc).toFixed(2)),
-    cpm: String(GoogleAdsClient.microsToAmount(i.averageCpm).toFixed(2)),
-    interactionRate: String((i.interactionRate * 100).toFixed(2)),
-    videoViews: i.videoViews,
-    searchImpressionShare: String((i.searchImpressionShare * 100).toFixed(2)),
-    costPerConversion: i.conversions > 0
-      ? String((GoogleAdsClient.microsToAmount(i.costMicros) / i.conversions).toFixed(2))
-      : null,
-    conversionRate: i.clicks > 0
-      ? String(((i.conversions / i.clicks) * 100).toFixed(2))
-      : null,
-  }));
+  const metricsToUpsert = mapGoogleAdsDailyInsights(campaignId, insights);
 
-  const { upserted } = await storage.upsertGoogleAdsDailyMetrics(metricsToUpsert);
-  console.log(`[Google Ads] Upserted ${upserted} daily metrics for campaign ${campaignId}`);
+  const { replaced } = await storage.replaceGoogleAdsDailyMetricsForWindow(campaignId, startDateIso, endDateIso, metricsToUpsert as any);
+  console.log(`[Google Ads] Replaced ${replaced} daily metrics for campaign ${campaignId}`);
 
   // Update lastRefreshAt
   await storage.updateGoogleAdsConnection(campaignId, {
     lastRefreshAt: new Date(),
   } as any);
+}
+
+const parseSelectedGoogleAdsCampaignIds = (value: unknown): string[] => {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.from(new Set((Array.isArray(parsed) ? parsed : []).map(String).map((id) => id.trim()).filter(Boolean))).sort();
+  } catch {
+    return [];
+  }
+};
+
+export async function materializeGA4GoogleAdsSpendForCampaign(
+  campaignId: string,
+  campaign?: any,
+  connection?: any,
+): Promise<{ updated: boolean; sourceId: string | null; records: number; totalSpend: number | null }> {
+  campaign = campaign || await storage.getCampaign(campaignId).catch(() => null);
+  connection = connection || await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+  if (!campaign || !connection || !connection.spendOnly || String(connection.method || "") !== "oauth") {
+    throw new Error(`GA4 Google Ads spend scope is unavailable for campaign ${campaignId}`);
+  }
+  const sources = await storage.getSpendSources(campaignId, "ga4").catch(() => [] as any[]);
+  const googleAdsSources = (Array.isArray(sources) ? sources : []).filter((source: any) => {
+    if (!source || source.isActive === false || String(source.sourceType || "") !== "ad_platforms") return false;
+    try {
+      const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
+      return String(mapping.platform || "").trim().toLowerCase() === "google_ads";
+    } catch {
+      return false;
+    }
+  });
+  if (googleAdsSources.length === 0) return { updated: false, sourceId: null, records: 0, totalSpend: null };
+  if (googleAdsSources.length !== 1) throw new Error(`Multiple active GA4 Google Ads spend sources require review for campaign ${campaignId}`);
+  const source = googleAdsSources[0];
+  const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
+  const sourceIds = parseSelectedGoogleAdsCampaignIds(mapping.selectedCampaignIds);
+  const connectionIds = parseSelectedGoogleAdsCampaignIds(connection.selectedCampaignIds);
+  if (sourceIds.length === 0 || JSON.stringify(sourceIds) !== JSON.stringify(connectionIds)) {
+    throw new Error(`GA4 Google Ads selected campaign scope mismatch for campaign ${campaignId}`);
+  }
+  const campaignCurrency = String(campaign.currency || "USD").trim().toUpperCase();
+  if (String(source.currency || "").trim().toUpperCase() !== campaignCurrency) {
+    throw new Error(`GA4 Google Ads spend currency mismatch for campaign ${campaignId}`);
+  }
+  const campaignStart = new Date(campaign.startDate || "1900-01-01");
+  const startDate = Number.isNaN(campaignStart.getTime()) ? "1900-01-01" : campaignStart.toISOString().slice(0, 10);
+  const endDate = getReportingDateWindow(1, campaign.reportingTimeZone).endDate;
+  if (startDate > endDate) throw new Error(`Google Ads has no completed reporting day for campaign ${campaignId}`);
+  const refreshedAt = connection.lastRefreshAt ? new Date(connection.lastRefreshAt) : null;
+  if (!refreshedAt || !Number.isFinite(refreshedAt.getTime()) || Date.now() - refreshedAt.getTime() > 6 * 60 * 60 * 1000) {
+    throw new Error(`GA4 Google Ads provider data is stale for campaign ${campaignId}`);
+  }
+  const materialized = buildGA4GoogleAdsSpendMaterialization({
+    campaignId,
+    currency: campaignCurrency,
+    accountName: String(connection.customerName || "Google Ads Account"),
+    selectedCampaignIds: sourceIds,
+    rows: await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate),
+    startDate,
+    endDate,
+    fetchedAt: refreshedAt.toISOString(),
+    requireEverySelectedCampaign: false,
+  });
+  await storage.replaceSpendRecordsForSource(campaignId, String(source.id), "ad_platforms", "ga4", materialized.records as any);
+  const totals = await storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate, "ga4");
+  await storage.updateCampaign(campaignId, { spend: totals.totalSpend.toFixed(2) } as any);
+  const recompute = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+  if (Number(recompute.campaignsProcessed || 0) <= 0 || recompute.campaignIdsSkipped.length > 0 || recompute.campaignIdsFailed.length > 0 || recompute.kpiIdsSkipped.length > 0 || recompute.kpiIdsFailed.length > 0 || recompute.benchmarkIdsSkipped.length > 0 || recompute.benchmarkIdsFailed.length > 0 || recompute.alertReconciliationFailures.length > 0) {
+    throw new Error(`GA4 Google Ads downstream recompute was incomplete for campaign ${campaignId}`);
+  }
+  return { updated: true, sourceId: String(source.id), records: materialized.records.length, totalSpend: totals.totalSpend };
 }
 
 /**
@@ -263,24 +318,30 @@ export async function refreshGoogleAdsForCampaign(
   campaignId: string,
   connection?: any,
   opts?: { advanceTestDay?: boolean }
-): Promise<void> {
+): Promise<{ providerRefreshed: boolean; spendMaterialization: { updated: boolean; sourceId: string | null; records: number; totalSpend: number | null } | null }> {
   if (!connection) {
     connection = await storage.getGoogleAdsConnection(campaignId);
   }
-  if (!connection) return;
+  if (!connection) throw new Error(`Google Ads connection is unavailable for campaign ${campaignId}`);
   const isSpendOnly = !!(connection as any).spendOnly;
   const isTestMode = String((connection as any).method || "") === "test_mode";
-  if (isSpendOnly && isTestMode) return;
+  if (isSpendOnly && isTestMode) return { providerRefreshed: false, spendMaterialization: null };
   const campaign = await storage.getCampaign(campaignId).catch(() => null);
   if (!campaign) {
-    console.warn(`[Google Ads Scheduler] Skipping refresh for missing campaign ${campaignId}`);
-    return;
+    throw new Error(`Google Ads campaign scope is unavailable for campaign ${campaignId}`);
   }
 
   if (connection.method === 'test_mode') {
     await generateMockGoogleAdsData(campaignId, connection, { advanceDay: opts?.advanceTestDay });
+    return { providerRefreshed: true, spendMaterialization: null };
   } else {
-    await fetchRealGoogleAdsData(campaignId, connection);
+    await fetchRealGoogleAdsData(campaignId, connection, campaign);
+    if (isSpendOnly) {
+      const refreshedConnection = await storage.getGoogleAdsConnection(campaignId);
+      const spendMaterialization = await materializeGA4GoogleAdsSpendForCampaign(campaignId, campaign, refreshedConnection);
+      return { providerRefreshed: true, spendMaterialization };
+    }
+    return { providerRefreshed: true, spendMaterialization: null };
   }
 }
 
@@ -297,7 +358,9 @@ export function startGoogleAdsScheduler(): void {
   console.log(`[Google Ads Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
 
   setInterval(() => {
-    refreshAllGoogleAdsMetrics();
+    void refreshAllGoogleAdsMetrics().catch((error: any) => {
+      console.error("[Google Ads Scheduler] Scheduled refresh failed:", error?.message || error);
+    });
   }, refreshIntervalMs);
 
   console.log('[Google Ads Scheduler] Started successfully');
@@ -308,19 +371,25 @@ export function startGoogleAdsScheduler(): void {
  */
 export async function refreshAllGoogleAdsMetrics(
   opts?: { advanceDay?: boolean }
-): Promise<void> {
+): Promise<{ attempted: number; succeeded: number; failedCampaignIds: string[] }> {
   let connections: any[] = [];
   try {
     connections = await db.select().from(googleAdsConnections);
-  } catch {
-    return;
+  } catch (error: any) {
+    throw new Error(`Google Ads connection inventory failed: ${error?.message || error}`);
   }
 
+  let succeeded = 0;
+  const failedCampaignIds: string[] = [];
   for (const conn of connections) {
     try {
-      await refreshGoogleAdsForCampaign(conn.campaignId, conn, { advanceTestDay: opts?.advanceDay });
+      // Reload through storage so encrypted provider credentials are hydrated before refresh.
+      await refreshGoogleAdsForCampaign(conn.campaignId, undefined, { advanceTestDay: opts?.advanceDay });
+      succeeded++;
     } catch (e: any) {
+      failedCampaignIds.push(String(conn.campaignId));
       console.error(`[Google Ads Scheduler] Error refreshing campaign ${conn.campaignId}:`, e.message);
     }
   }
+  return { attempted: connections.length, succeeded, failedCampaignIds };
 }

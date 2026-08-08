@@ -52,6 +52,22 @@ describe("GA4 reporting-day cutoff", () => {
     });
   });
 
+  it("treats a completed full-window refresh as current when GA4 returns sparse activity rows", () => {
+    expect(resolveGA4DailyFreshness({
+      dataThroughDate: "2026-08-05",
+      expectedRefreshAt: new Date("2026-08-06T01:00:00.000Z"),
+      lastCompletedRefreshAt: "2026-08-06T10:30:00.000Z",
+      oldestDueMissingDailyDate: "2026-08-05",
+      providerCoverageThroughDate: null,
+      now: new Date("2026-08-06T12:00:00.000Z"),
+    })).toEqual({
+      providerCoverageThroughDate: null,
+      oldestDueMissingDailyDate: null,
+      refreshIsStale: false,
+    });
+  });
+
+
   it("retains a failed provider warning even when prior coverage was current", () => {
     expect(resolveGA4DailyFreshness({
       dataThroughDate: "2026-07-29",
@@ -91,7 +107,7 @@ describe("GA4 reporting-day cutoff", () => {
     expect(page).toContain("const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;");
     expect(page).toContain("Checked through ${ga4DailyProviderCoverageThroughDate}; latest activity ${ga4DailyLatestStoredDate");
     expect(page).not.toContain('data-testid="ga4-overview-freshness-summary"');
-    expect(page).toContain('data-testid="ga4-overview-freshness-warning"');
+    expect(page).not.toContain('data-testid="ga4-overview-freshness-warning"');
     expect(page).toContain("Latest visible refresh metadata from the GA4 page inputs.");
     expect(page).toContain("formatConnectionTimestamp((ga4DailyResp as any)?.lastCompletedRefreshAt)");
     expect(page).not.toContain("formatConnectionTimestamp(provenanceLastUpdated)");

@@ -214,7 +214,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
     } : null;
 
-    const financialWindow = getGA4KPIFinancialSourceWindow();
+    const financialWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
     const [importedRevenueResult, spendResult] = await Promise.allSettled([
       storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
       storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),

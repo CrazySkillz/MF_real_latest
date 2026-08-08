@@ -16,6 +16,8 @@ export interface GoogleAdsCustomerAccount {
   descriptiveName: string;
   resourceName: string;
   manager: boolean;
+  currencyCode: string;
+  timeZone: string;
 }
 
 export interface GoogleAdsCampaignInfo {
@@ -145,7 +147,7 @@ export class GoogleAdsClient {
         });
 
         const detailResponse = await detailApi.post('/googleAds:searchStream', {
-          query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager FROM customer LIMIT 1`,
+          query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
         });
 
         const results = detailResponse.data?.[0]?.results || [];
@@ -156,6 +158,8 @@ export class GoogleAdsClient {
             descriptiveName: customer.descriptiveName || `Account ${customer.id}`,
             resourceName: customer.resourceName,
             manager: customer.manager || false,
+            currencyCode: String(customer.currencyCode || "").trim().toUpperCase(),
+            timeZone: String(customer.timeZone || "").trim(),
           });
         }
       } catch {
@@ -164,6 +168,22 @@ export class GoogleAdsClient {
     }
 
     return customers;
+  }
+
+  async getCustomerAccount(): Promise<GoogleAdsCustomerAccount> {
+    const response = await this.api.post('/googleAds:searchStream', {
+      query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
+    });
+    const customer = response.data?.[0]?.results?.[0]?.customer;
+    if (!customer?.id) throw new Error('Google Ads customer metadata is unavailable');
+    return {
+      id: String(customer.id),
+      descriptiveName: String(customer.descriptiveName || `Account ${customer.id}`),
+      resourceName: String(customer.resourceName || `customers/${customer.id}`),
+      manager: customer.manager === true,
+      currencyCode: String(customer.currencyCode || '').trim().toUpperCase(),
+      timeZone: String(customer.timeZone || '').trim(),
+    };
   }
 
   /**
@@ -197,8 +217,13 @@ export class GoogleAdsClient {
    * Returns data with cost_micros (divide by 1,000,000 for actual currency amount)
    */
   async getDailyMetrics(startDate: string, endDate: string, campaignIds?: string[]): Promise<GoogleAdsDailyInsight[]> {
-    const campaignFilter = campaignIds && campaignIds.length > 0
-      ? `AND campaign.id IN (${campaignIds.map(id => `${id}`).join(', ')})`
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
+      throw new Error('Invalid Google Ads date range');
+    }
+    const normalizedCampaignIds = Array.from(new Set((campaignIds || []).map((id) => String(id || '').trim()).filter(Boolean)));
+    if (normalizedCampaignIds.some((id) => !/^\d+$/.test(id))) throw new Error('Invalid Google Ads campaign ID');
+    const campaignFilter = normalizedCampaignIds.length > 0
+      ? `AND campaign.id IN (${normalizedCampaignIds.join(', ')})`
       : '';
     const response = await this.api.post('/googleAds:searchStream', {
       query: `
@@ -250,4 +275,30 @@ export class GoogleAdsClient {
   static microsToAmount(micros: number): number {
     return micros / 1_000_000;
   }
+}
+
+export function mapGoogleAdsDailyInsights(campaignId: string, insights: GoogleAdsDailyInsight[]) {
+  return insights.map((insight) => ({
+    campaignId,
+    googleCampaignId: insight.campaignId,
+    googleCampaignName: insight.campaignName,
+    date: insight.date,
+    impressions: insight.impressions,
+    clicks: insight.clicks,
+    spend: String(GoogleAdsClient.microsToAmount(insight.costMicros).toFixed(2)),
+    conversions: String(insight.conversions),
+    conversionValue: String(insight.conversionsValue.toFixed(2)),
+    ctr: String((insight.ctr * 100).toFixed(4)),
+    cpc: String(GoogleAdsClient.microsToAmount(insight.averageCpc).toFixed(2)),
+    cpm: String(GoogleAdsClient.microsToAmount(insight.averageCpm).toFixed(2)),
+    interactionRate: String((insight.interactionRate * 100).toFixed(2)),
+    videoViews: insight.videoViews,
+    searchImpressionShare: String((insight.searchImpressionShare * 100).toFixed(2)),
+    costPerConversion: insight.conversions > 0
+      ? String((GoogleAdsClient.microsToAmount(insight.costMicros) / insight.conversions).toFixed(2))
+      : null,
+    conversionRate: insight.clicks > 0
+      ? String(((insight.conversions / insight.clicks) * 100).toFixed(2))
+      : null,
+  }));
 }

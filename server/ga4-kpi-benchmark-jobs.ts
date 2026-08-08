@@ -12,13 +12,14 @@ import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4Financ
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { getReportingDateWindow } from "./utils/reporting-timezone";
+import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
 const GA4_KPI_FINANCIAL_SOURCE_START_DATE = "1900-01-01";
 
-export const getGA4KPIFinancialSourceWindow = (now: Date = new Date()) => ({
+export const getGA4KPIFinancialSourceWindow = (reportingTimeZone: unknown = "UTC", now: Date = new Date()) => ({
   startDate: GA4_KPI_FINANCIAL_SOURCE_START_DATE,
-  endDate: isoDateUTC(now),
+  endDate: getReportingDateWindow(1, reportingTimeZone, now).endDate,
 });
 
 export const getGA4KPIReportingWindow = (reportingTimeZone: unknown, requestedDate?: string, now: Date = new Date()) => {
@@ -272,6 +273,12 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
       const propertyId = String(primary.propertyId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const historyScopeMarker = buildGA4InsightsHistoryScopeMarker(
+        propertyId,
+        campaignFilter,
+        (campaign as any)?.reportingTimeZone,
+        (campaign as any)?.currency,
+      );
       const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone, requestedDate);
       const date = reportingWindow.endDate;
       const recordedAt = toRecordedAtUtc(date);
@@ -285,7 +292,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           storage,
           date, // explicit YYYY-MM-DD
           propertyId,
-          campaignFilter
+          campaignFilter,
+          date,
         ).catch(() => []);
         const rows = Array.isArray(series) ? series : [];
         const upserts = rows
@@ -304,13 +312,12 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
             isSimulated: Boolean((campaign as any)?.ga4CampaignFilter && String((campaign as any).ga4CampaignFilter).toLowerCase().includes("mock")),
           }))
           .filter((x: any) => String(x.date) === date);
-        if (upserts.length > 0) {
-          await storage.upsertGA4DailyMetrics(upserts as any);
-        }
+        await storage.replaceGA4DailyMetricsWindow(campaignId, propertyId, date, date, upserts as any);
         daily = await storage.getGA4DailyMetrics(campaignId, propertyId, date, date).catch(() => []);
       }
 
       let row = Array.isArray(daily) ? (daily as any[])[0] : null;
+      const hasExactDailyRow = Boolean(row && String((row as any)?.date || "") === date);
       if (!row) {
         row = await storage.getLatestGA4DailyMetric(campaignId, propertyId).catch(() => null as any);
       }
@@ -328,8 +335,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
 
       // Build GA4 to-date totals (campaign lifetime) for accurate financial KPIs (ROAS/ROI/CPA).
-      // Primary path: GA4 API totals (with automatic token refresh).
-      // Fallback: sum stored daily rows (retention window), mainly for mock/demo flows.
+      // Production path: GA4 API totals (with automatic token refresh).
+      // Stored daily totals are retained only for the explicit mock/demo property.
       const startDateUsed = (() => {
         const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
         if (!raw) return "2000-01-01";
@@ -372,10 +379,12 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         ga4RevenueToDate += Number((r as any)?.revenue || 0) || 0;
       }
 
-      const financialSourceWindow = getGA4KPIFinancialSourceWindow();
+      const financialSourceWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
       const financialInputsPromise = Promise.allSettled([
         storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
         storage.getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
+        storage.getRevenueSources(campaignId, "ga4"),
+        storage.getSpendSources(campaignId, "ga4"),
       ]);
       let providerFinancialCandidate: any = null;
       if (isYesopMockProperty(propertyId)) {
@@ -390,10 +399,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
           if (conn && conn.method === "access_token" && conn.accessToken) {
             const attempt = async (token: string) => {
-              return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter);
+              return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
             };
             try {
               const res = await attempt(String(conn.accessToken));
+              assertGA4InsightsFinancialCurrencyScope(campaign, [], res?.currencyCode, "GA4 native revenue", true);
               providerFinancialCandidate = isGA4FinancialTotalsCandidate(res?.totals) ? res.totals : null;
             } catch (e: any) {
               const msg = String(e?.message || "");
@@ -417,22 +427,39 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
                   expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
                 });
                 const res = await attempt(String(refresh.access_token));
+                assertGA4InsightsFinancialCurrencyScope(campaign, [], res?.currencyCode, "GA4 native revenue", true);
                 providerFinancialCandidate = isGA4FinancialTotalsCandidate(res?.totals) ? res.totals : null;
               }
             }
           }
         } catch {
-          // ignore and keep fallback
+          // Financial metrics remain unavailable when the live provider path fails.
         }
       }
 
-      const [importedRevenueResult, spendTotalResult] = await financialInputsPromise;
-      const importedRevenueValue = importedRevenueResult.status === "fulfilled"
+      const [importedRevenueResult, spendTotalResult, revenueSourcesResult, spendSourcesResult] = await financialInputsPromise;
+      let importedRevenueValue = importedRevenueResult.status === "fulfilled" && revenueSourcesResult.status === "fulfilled"
         ? parseGA4FinancialNumber((importedRevenueResult.value as any)?.totalRevenue)
         : null;
-      const spendValue = spendTotalResult.status === "fulfilled"
+      let spendValue = spendTotalResult.status === "fulfilled" && spendSourcesResult.status === "fulfilled"
         ? parseGA4FinancialNumber((spendTotalResult.value as any)?.totalSpend)
         : null;
+      try {
+        if (importedRevenueValue !== null) assertGA4InsightsFinancialCurrencyScope(
+          campaign,
+          revenueSourcesResult.status === "fulfilled" ? revenueSourcesResult.value as any[] : [],
+          importedRevenueResult.status === "fulfilled" ? (importedRevenueResult.value as any)?.currency : null,
+          "Imported revenue",
+        );
+      } catch { importedRevenueValue = null; }
+      try {
+        if (spendValue !== null) assertGA4InsightsFinancialCurrencyScope(
+          campaign,
+          spendSourcesResult.status === "fulfilled" ? spendSourcesResult.value as any[] : [],
+          spendTotalResult.status === "fulfilled" ? (spendTotalResult.value as any)?.currency : null,
+          "Spend",
+        );
+      } catch { spendValue = null; }
 
       const inputs = {
         users: Math.round(trafficTotals.users || 0),
@@ -452,14 +479,6 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         recordBenchmarkHistory(history: any): Promise<any>;
       };
       const benchmarks = campaignBenchmarks;
-      const hasFinancialMetric =
-        (Array.isArray(kpis) ? kpis : []).some((kpi: any) =>
-          isGA4FinancialKpiMetric(resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name) || ""),
-        ) ||
-        (Array.isArray(benchmarks) ? benchmarks : []).some((benchmark: any) =>
-          isGA4FinancialKpiMetric(resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name) || ""),
-        );
-
       const persistedFinancialCandidate = (Array.isArray(toDateRows) && toDateRows.length > 0) || isYesopMockProperty(propertyId) ? {
         users: Math.round(usersToDate || 0),
         sessions: Math.round(sessionsToDate || 0),
@@ -467,21 +486,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         conversions: Math.round(conversionsToDate || 0),
         revenue: round2(ga4RevenueToDate || 0),
       } : null;
-      let breakdownFinancialCandidate: any = null;
-      const missingEarlierFinancialCandidate = !isGA4FinancialTotalsCandidate(
-        selectGA4FinancialTotalsSource([providerFinancialCandidate, persistedFinancialCandidate], {} as any),
-      );
-      if (hasFinancialMetric && missingEarlierFinancialCandidate && !isYesopMockProperty(propertyId)) {
-        try {
-          const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays)) ? Number((primary as any).lookbackDays) : 90;
-          const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, `${lookbackDays}daysAgo`, propertyId, 2000, campaignFilter);
-          breakdownFinancialCandidate = isGA4FinancialTotalsCandidate((breakdown as any)?.totals) ? (breakdown as any).totals : null;
-        } catch {
-          // Keep the existing to-date/daily financial source if breakdown is unavailable.
-        }
-      }
       const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
-        [providerFinancialCandidate, persistedFinancialCandidate, breakdownFinancialCandidate],
+        [providerFinancialCandidate, isYesopMockProperty(propertyId) ? persistedFinancialCandidate : null],
         {} as any,
       );
       const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
@@ -531,7 +537,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           if (!updated) throw new Error("KPI current-value update did not change a row");
 
           const existing = await storage.getKPIProgress(kpiId);
-          const existingPts = (Array.isArray(existing) ? existing : [])
+          const existingPts = filterGA4InsightsHistoryByScope(Array.isArray(existing) ? existing : [], historyScopeMarker)
             .map((p: any) => ({
               value: Number(p?.value || 0) || 0,
               recordedAt: p?.recordedAt ? new Date(p.recordedAt) : new Date(0),
@@ -540,7 +546,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
             .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
 
           const already = existingPts.some((p) => isoDateUTC(p.recordedAt) === date);
-          if (!already) {
+          if (hasExactDailyRow && !already) {
             const prev = existingPts.length > 0 ? existingPts[0].value : null;
             const newPoint = { value: valueNum, recordedAt };
             const rolling7 = computeRollingAverage(existingPts, 7, newPoint);
@@ -554,7 +560,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
               rollingAverage30d: String(round2(rolling30)),
               trendDirection,
               recordedAt,
-              notes: `auto:ga4_daily:${date}`,
+              notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
             } as any);
             kpisRecorded += 1;
           }
@@ -585,9 +591,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           if (!updated) throw new Error("Benchmark current-value update did not change a row");
 
           const history = await benchmarkStorage.getBenchmarkHistory(benchmarkId);
-          const hist = Array.isArray(history) ? history : [];
+          const hist = filterGA4InsightsHistoryByScope(Array.isArray(history) ? history : [], historyScopeMarker);
           const already = hist.some((h: any) => isoDateUTC(new Date((h as any)?.recordedAt || 0)) === date);
-          if (!already) {
+          if (hasExactDailyRow && !already) {
             const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
             const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
             const rating = computeBenchmarkRating(variance);
@@ -599,7 +605,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
               variance: String(round2(variance)),
               performanceRating: rating,
               recordedAt,
-              notes: `auto:ga4_daily:${date}`,
+              notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
             } as any);
             benchmarksRecorded += 1;
           }

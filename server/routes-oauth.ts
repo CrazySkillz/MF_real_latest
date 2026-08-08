@@ -10,9 +10,11 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetr
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches } from './utils/shopify-revenue';
 import { getShopifyApiVersion, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
-import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
+import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
+import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
+import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
 import multer from "multer";
-import { aggregateCsvRevenueRows, aggregateCsvSpendRows, parseCsvText } from "./utils/csv";
+import { aggregateCsvRevenueRows, aggregateCsvSpendRows, normalizeFinancialSourceDateKey, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
 import { selectRevenueRecordTotal } from "./utils/revenue-record-total";
@@ -55,6 +57,18 @@ import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-v
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
+import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
+
+const serializeOAuthPopupJson = (value: unknown): string => (JSON.stringify(value) ?? "null")
+  .replace(/</g, "\\u003c")
+  .replace(/\u2028/g, "\\u2028")
+  .replace(/\u2029/g, "\\u2029");
+const escapeOAuthPopupHtml = (value: unknown): string => String(value ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -2343,9 +2357,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
       const sources = await storage.getSpendSources(campaignId, platformContext);
+      const startDate = "1900-01-01";
+      const endDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : new Date().toISOString().slice(0, 10);
       const scopedTotals = platformContext
-        ? await storage.getSpendTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), platformContext)
+        ? await storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)
         : null;
+      assertGA4InsightsFinancialCurrencyScope(campaign, sources, scopedTotals?.currency, "Spend");
       const spendToDate = scopedTotals ? Number(scopedTotals.totalSpend || 0) : parseNum((campaign as any)?.spend);
       const currency = String(scopedTotals?.currency || (campaign as any)?.currency || (sources as any[])?.[0]?.currency || "USD");
 
@@ -2353,7 +2372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         spendToDate: Number((Number.isFinite(spendToDate) ? spendToDate : 0).toFixed(2)),
         currency,
-        sourceIds: Array.isArray(sources) ? sources.map((s: any) => String(s?.id)).filter(Boolean) : [],
+        startDate,
+        endDate,
+        sourceIds: scopedTotals
+          ? scopedTotals.sourceIds
+          : Array.isArray(sources) ? sources.map((s: any) => String(s?.id)).filter(Boolean) : [],
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend-to-date" });
@@ -2967,14 +2990,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const ownerId = String((campaign as any).ownerId || "").trim();
     if (!ownerId) {
-      // Backward compatibility: claim un-owned campaigns to the first active session that accesses them.
-      try {
-        await storage.updateCampaign(campaignId, { ownerId: actorId } as any);
-        return { ...campaign, ownerId: actorId };
-      } catch {
-        // If we can't persist (e.g. in-memory), still allow within this process.
-        return { ...campaign, ownerId: actorId };
-      }
+      res.status(404).json({ success: false, message: "Campaign not found" });
+      return null;
     }
 
     if (ownerId !== actorId) {
@@ -3102,9 +3119,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
       const startDate = "1900-01-01";
-      const endDate = new Date().toISOString().slice(0, 10);
+      const endDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : new Date().toISOString().slice(0, 10);
 
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
+      const [totals, sources] = await Promise.all([
+        storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext),
+        storage.getRevenueSources(campaignId, platformContext),
+      ]);
+      assertGA4InsightsFinancialCurrencyScope(campaign, sources, totals.currency, "Imported revenue");
       res.json({ success: true, platformContext, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
@@ -3123,9 +3146,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
       const startDate = "1900-01-01";
-      const endDate = new Date().toISOString().slice(0, 10);
+      const endDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : new Date().toISOString().slice(0, 10);
 
-      const sources = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any);
+      const [sources, sourceDefinitions] = await Promise.all([
+        storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any),
+        storage.getRevenueSources(campaignId, platformContext),
+      ]);
+      assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Imported revenue");
       const totalRevenue = sources.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
       res.json({ success: true, totalRevenue: Number(totalRevenue.toFixed(2)), sources, startDate, endDate });
@@ -3146,9 +3175,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform spend provenance.
       const startDate = "1900-01-01";
-      const endDate = new Date().toISOString().slice(0, 10); // include today's records
+      const endDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : new Date().toISOString().slice(0, 10);
 
-      const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext);
+      const [sources, sourceDefinitions] = await Promise.all([
+        storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext),
+        storage.getSpendSources(campaignId, platformContext),
+      ]);
+      assertGA4InsightsFinancialCurrencyScope(campaign, sourceDefinitions, null, "Spend");
       const totalSpend = sources.reduce((sum: number, s: any) => sum + s.spend, 0);
 
       res.json({ success: true, totalSpend: Number(totalSpend.toFixed(2)), sources, startDate, endDate });
@@ -3848,37 +3883,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           kpiIdsFailed: result.kpiIdsFailed,
           alertReconciliationFailures: result.alertReconciliationFailures,
         });
-        return false;
+        throw new Error(`GA4 KPI/Benchmark recompute incomplete for campaign ${campaignId}`);
       }
       return true;
     } catch (e) {
       console.warn(`[${logPrefix}] GA4 KPI/Benchmark recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
-      return false;
+      throw e;
     }
   };
 
-  const scheduleGA4RevenuePostResponseRecompute = (campaignId: string) => {
-    setImmediate(() => {
-      void (async () => {
-        const recomputeComplete = await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
-        if (!recomputeComplete) return;
-        try {
-          await checkPerformanceAlerts();
-        } catch (e) {
-          console.warn(`[Revenue Update] Alert check failed after revenue update for campaign ${campaignId}:`, (e as any)?.message || e);
-        }
-      })().catch((e) => {
-        console.warn(`[Revenue Update] Background recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
-      });
-    });
-  };
-
-  const scheduleGA4SpendPostResponseRecompute = (campaignId: string) => {
-    setImmediate(() => {
-      void recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update").catch((e) => {
-        console.warn(`[Spend Update] Background recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
-      });
-    });
+  const recomputeGA4SpendBeforeResponse = async (campaignId: string) => {
+    await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
   };
 
   const scheduleGA4KpiCreatePostResponseProcessing = (campaignId: string, kpiId: string) => {
@@ -3908,12 +3923,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
-      try {
-        await refreshCampaignCurrentValuesForCampaign(campaignId);
-      } catch (e) {
-        console.warn(`[Revenue Update] Campaign current-value refresh failed for campaign ${campaignId}:`, (e as any)?.message || e);
-      }
-      scheduleGA4RevenuePostResponseRecompute(campaignId);
+      await refreshCampaignCurrentValuesForCampaign(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
       return;
     }
     try {
@@ -3986,7 +3997,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ success: false, error: "amount or conversionValue must be > 0" });
         }
       }
-      const cur = currency || (campaign as any)?.currency || "USD";
+      const cur = String(platformContext || "").trim().toLowerCase() === "ga4"
+        ? String((campaign as any)?.currency || "USD")
+        : currency || (campaign as any)?.currency || "USD";
 
       // Note: do NOT deactivate existing sources — revenue sources are additive.
       // Each manual/CSV/Sheets/CRM source adds independently. Only explicit delete removes a source.
@@ -4319,7 +4332,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 ? await getActiveTikTokCampaignIdSet(campaignId)
               : new Set<string>();
         const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
-        const fallbackRecordDate = yesterdayUTC();
+        const campaign = await storage.getCampaign(campaignId);
+        const fallbackRecordDate = platformContext === "ga4"
+          ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+          : yesterdayUTC();
 
         for (const row of parsedRows) {
           if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -4346,15 +4362,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Track daily revenue if date column provided
             let normalizedDateForRow: string | null = null;
             if (dateCol) {
-              const dateStr = String((row as any)[dateCol] ?? "").trim();
-              if (dateStr) {
-                const date = new Date(dateStr);
-                if (!isNaN(date.getTime())) {
-                  const normalizedDate = date.toISOString().split('T')[0];
-                  normalizedDateForRow = normalizedDate;
-                  dailyRevenueMap.set(normalizedDate, (dailyRevenueMap.get(normalizedDate) || 0) + revenue);
-                }
-              }
+              normalizedDateForRow = normalizeFinancialSourceDateKey((row as any)[dateCol]);
+              if (normalizedDateForRow) dailyRevenueMap.set(normalizedDateForRow, (dailyRevenueMap.get(normalizedDateForRow) || 0) + revenue);
             }
             const subCampaignUrn = googleAdsCampaignIdFromValueOrMapping(platformContext, campaignKey, campaignMappings, activeGoogleAdsCampaignIds);
             if (subCampaignUrn) {
@@ -4367,7 +4376,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const endDate = fallbackRecordDate;
 
-        const campaign = await storage.getCampaign(campaignId);
         const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
         const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
         if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
@@ -4424,6 +4432,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+          const visibleTotalRevenue = dateCol
+            ? Number(Array.from(dailyRevenueMap.entries()).filter(([date]) => date <= endDate).reduce((sum, [, revenue]) => sum + revenue, 0).toFixed(2))
+            : totalRevenue;
           const revenueRecordsToInsert: any[] = [];
           if (dateCol && dailyRevenueMap.size > 0) {
             revenueRecordsToInsert.push(...Array.from(dailyRevenueMap.entries())
@@ -4478,7 +4489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             keptRows: kept,
             date: endDate,
             mode: "revenue_to_date",
-            totalRevenue,
+            totalRevenue: visibleTotalRevenue,
+            importedRowsTotalRevenue: totalRevenue,
           });
         }
 
@@ -4968,7 +4980,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? await getActiveTikTokCampaignIdSet(campaignId)
             : new Set<string>();
       const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
-      const fallbackRecordDate = yesterdayUTC();
+      const campaign = await storage.getCampaign(campaignId);
+      const fallbackRecordDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : yesterdayUTC();
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -4991,15 +5006,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Track daily revenue if date column provided
             let normalizedDateForRow: string | null = null;
             if (dateCol) {
-              const dateStr = String((row as any)[dateCol] ?? "").trim();
-              if (dateStr) {
-                const date = new Date(dateStr);
-                if (!isNaN(date.getTime())) {
-                  const normalizedDate = date.toISOString().split('T')[0];
-                  normalizedDateForRow = normalizedDate;
-                  dailyRevenueMap.set(normalizedDate, (dailyRevenueMap.get(normalizedDate) || 0) + revenue);
-                }
-              }
+              normalizedDateForRow = normalizeFinancialSourceDateKey((row as any)[dateCol]);
+              if (normalizedDateForRow) dailyRevenueMap.set(normalizedDateForRow, (dailyRevenueMap.get(normalizedDateForRow) || 0) + revenue);
             }
             const subCampaignUrn = googleAdsCampaignIdFromValueOrMapping(platformContext, campaignKey, campaignMappings, activeGoogleAdsCampaignIds);
             if (subCampaignUrn) {
@@ -5021,7 +5029,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const endDate = fallbackRecordDate;
 
-      const campaign = await storage.getCampaign(campaignId);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
       if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
@@ -5068,6 +5075,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (platformContext === 'ga4') {
         const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+        const visibleTotalRevenue = dateCol
+          ? Number(Array.from(dailyRevenueMap.entries()).filter(([date]) => date <= endDate).reduce((sum, [, revenue]) => sum + revenue, 0).toFixed(2))
+          : totalRevenue;
         const records: any[] = dateCol && dailyRevenueMap.size > 0
           ? Array.from(dailyRevenueMap.entries()).filter(([, rev]) => rev > 0).map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency }))
           : totalRevenue > 0 ? [{ campaignId, date: endDate, revenue: totalRevenue.toFixed(2) as any, currency }] : [];
@@ -5080,7 +5090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : 'Google Sheets revenue'), currency, mappingConfig: nextMappingConfig, isActive: true,
         } as any, records);
         await recomputeCampaignDerivedValues(campaignId, { platformContext });
-        return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue });
+        return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue: visibleTotalRevenue, importedRowsTotalRevenue: totalRevenue });
       }
 
       let source: any = existingSheetsSource || null;
@@ -5309,26 +5319,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/spend/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const amount = parseNum((req.body as any)?.amount);
+      let amount = parseNum((req.body as any)?.amount);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
       const platformContext = (req.body as any)?.platformContext ? String((req.body as any).platformContext) : undefined;
       const subCampaignUrn = (req.body as any)?.subCampaignUrn ? String((req.body as any).subCampaignUrn) : undefined;
       const overrideSourceType = (req.body as any)?.sourceType ? String((req.body as any).sourceType) : null;
       const overrideDisplayName = (req.body as any)?.displayName ? String((req.body as any).displayName) : null;
-      const clientMappingConfig = (req.body as any)?.mappingConfig || null;
+      let clientMappingConfig = (req.body as any)?.mappingConfig || null;
       const existingSourceId = (req.body as any)?.sourceId ? String((req.body as any).sourceId) : null;
-      if (!(amount > 0)) {
-        return res.status(400).json({ success: false, error: "Amount must be > 0" });
-      }
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
-      const cur = currency || (campaign as any)?.currency || "USD";
+      const cur = String(platformContext || "").trim().toLowerCase() === "ga4"
+        ? String((campaign as any)?.currency || "USD")
+        : currency || (campaign as any)?.currency || "USD";
 
       const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);
       const effectiveDisplayName = overrideDisplayName || (platformContext ? `Manual spend – ${platformContext}` : "Manual entry");
       if (String(platformContext || 'ga4').trim().toLowerCase() === 'ga4' && effectiveSourceType === 'manual') {
         return res.status(400).json({ success: false, error: 'Manual Spend is not supported for GA4.' });
       }
+      const isGA4GoogleAdsSpend = String(platformContext || "").trim().toLowerCase() === "ga4" && effectiveSourceType === "ad_platforms";
+      let ga4GoogleAdsSpendRecords: any[] | null = null;
+      if (isGA4GoogleAdsSpend) {
+        if (String(clientMappingConfig?.platform || "").trim().toLowerCase() !== "google_ads") {
+          return res.status(400).json({ success: false, error: "Google Ads is the only enabled GA4 ad-platform spend source" });
+        }
+        const connection: any = await storage.getGoogleAdsConnection(campaignId);
+        if (!connection || !connection.spendOnly) {
+          return res.status(400).json({ success: false, error: "Google Ads spend connection is unavailable" });
+        }
+        if (String(connection.method || "") !== "oauth") {
+          return res.status(400).json({ success: false, error: "Simulated Google Ads data is not supported by GA4 Insights" });
+        }
+        const campaignStart = new Date((campaign as any)?.startDate || "1900-01-01");
+        const startDate = Number.isNaN(campaignStart.getTime()) ? "1900-01-01" : campaignStart.toISOString().slice(0, 10);
+        const endDate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate;
+        if (startDate > endDate) {
+          return res.status(400).json({ success: false, error: "Google Ads spend is unavailable until the campaign has a completed reporting day" });
+        }
+        try {
+          const materialized = buildGA4GoogleAdsSpendMaterialization({
+            campaignId,
+            currency: cur,
+            accountName: String(connection.customerName || "Google Ads Account"),
+            selectedCampaignIds: clientMappingConfig?.selectedCampaignIds,
+            rows: await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate),
+            startDate,
+            endDate,
+            fetchedAt: connection.lastRefreshAt,
+          });
+          amount = materialized.amount;
+          ga4GoogleAdsSpendRecords = materialized.records;
+          clientMappingConfig = materialized.mappingConfig;
+        } catch (error: any) {
+          return res.status(400).json({ success: false, error: error?.message || "Google Ads spend data is invalid" });
+        }
+      } else if (!(amount > 0)) {
+        return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      }
+      const resolvedDisplayName = isGA4GoogleAdsSpend ? "Google Ads" : effectiveDisplayName;
 
       // Build mappingConfig: use client-provided config if available, otherwise default
       const finalMappingConfig = clientMappingConfig
@@ -5340,17 +5389,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existingSource || String((existingSource as any)?.sourceType || '').trim() !== effectiveSourceType) {
           return res.status(404).json({ success: false, error: 'Spend source not found' });
         }
-        if (effectiveSourceType === 'ad_platforms' && overrideDisplayName && String((existingSource as any)?.displayName || '').trim() !== effectiveDisplayName) {
-          return res.status(404).json({ success: false, error: `${effectiveDisplayName} spend source not found` });
+        if (effectiveSourceType === 'ad_platforms' && String((existingSource as any)?.displayName || '').trim() !== resolvedDisplayName) {
+          return res.status(404).json({ success: false, error: `${resolvedDisplayName} spend source not found` });
         }
       }
       if (platformContext === 'ga4') {
         const today = new Date().toISOString().split('T')[0];
+        const records = ga4GoogleAdsSpendRecords || [{ campaignId, date: today, spend: amount.toFixed(2), currency: cur, sourceType: effectiveSourceType, subCampaignUrn: subCampaignUrn || null } as any];
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, 'ga4', {
-          campaignId, sourceType: effectiveSourceType, platformContext: 'ga4', displayName: effectiveDisplayName, currency: cur, mappingConfig: finalMappingConfig, isActive: true,
-        } as any, [{ campaignId, date: today, spend: amount.toFixed(2), currency: cur, sourceType: effectiveSourceType, subCampaignUrn: subCampaignUrn || null } as any]);
+          campaignId, sourceType: effectiveSourceType, platformContext: 'ga4', displayName: resolvedDisplayName, currency: cur, mappingConfig: finalMappingConfig, isActive: true,
+        } as any, records);
         await recalcCampaignSpend(campaignId);
-        scheduleGA4SpendPostResponseRecompute(campaignId);
+        await recomputeGA4SpendBeforeResponse(campaignId);
         return res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext });
       }
 
@@ -5364,14 +5414,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (overrideSourceType && String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
-        if (effectiveSourceType === "ad_platforms" && overrideDisplayName && String((existingSource as any)?.displayName || "").trim() !== effectiveDisplayName) {
-          return res.status(404).json({ success: false, error: `${effectiveDisplayName} spend source not found` });
+        if (effectiveSourceType === "ad_platforms" && overrideDisplayName && String((existingSource as any)?.displayName || "").trim() !== resolvedDisplayName) {
+          return res.status(404).json({ success: false, error: `${resolvedDisplayName} spend source not found` });
         }
         // Update existing source instead of creating a new one
         source = await storage.updateSpendSource(existingSourceId, {
           sourceType: effectiveSourceType,
           platformContext: platformContext || null,
-          displayName: effectiveDisplayName,
+          displayName: resolvedDisplayName,
           currency: cur,
           mappingConfig: finalMappingConfig,
           isActive: true,
@@ -5390,7 +5440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignId,
           sourceType: effectiveSourceType,
           platformContext: platformContext || null,
-          displayName: effectiveDisplayName,
+          displayName: resolvedDisplayName,
           currency: cur,
           mappingConfig: finalMappingConfig,
           isActive: true,
@@ -5416,7 +5466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recalculate campaign.spend from all active sources
       try {
         await recalcCampaignSpend(campaignId);
-        scheduleGA4SpendPostResponseRecompute(campaignId);
+        await recomputeGA4SpendBeforeResponse(campaignId);
       } catch (e: any) {
         console.warn("[Manual Spend] Failed to recalculate campaign.spend:", e?.message);
       }
@@ -5612,19 +5662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (platformContext === 'ga4') {
-        let sourceId = existingSourceId || null;
-        if (!sourceId) {
-          const matches = (await storage.getSpendSources(campaignId, 'ga4')).filter((candidate: any) => candidate?.isActive !== false && String(candidate?.sourceType || '') === 'linkedin_api');
-          if (matches.length > 1) return res.status(409).json({ success: false, error: 'Multiple active LinkedIn spend sources require review.' });
-          sourceId = matches[0]?.id ? String(matches[0].id) : null;
-        }
-        const today = new Date().toISOString().split('T')[0];
-        const source = await storage.replaceSpendSourceWithRecords(campaignId, sourceId, 'linkedin_api', 'ga4', {
-          campaignId, sourceType: 'linkedin_api', platformContext: 'ga4', displayName: 'LinkedIn Ads', currency: cur, mappingConfig, isActive: true,
-        } as any, [{ campaignId, date: today, spend: totalSpend.toFixed(2), currency: cur, sourceType: 'linkedin_api' } as any]);
-        await recalcCampaignSpend(campaignId);
-        scheduleGA4SpendPostResponseRecompute(campaignId);
-        return res.json({ success: true, sourceId: source.id, totalSpend: Number(totalSpend.toFixed(2)), currency: cur, campaignCount: breakdown.length });
+        return res.status(400).json({ success: false, error: "LinkedIn spend is not enabled for this GA4 Insights release" });
       }
       let source: any;
 
@@ -5668,7 +5706,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create spend_record so spend-breakdown returns correct amounts
-      const today = new Date().toISOString().split("T")[0];
+      const today = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : new Date().toISOString().split("T")[0];
       await storage.createSpendRecords([{
         campaignId,
         spendSourceId: String(source.id),
@@ -5679,7 +5719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }] as any);
 
       await recalcCampaignSpend(campaignId);
-      scheduleGA4SpendPostResponseRecompute(campaignId);
+      await recomputeGA4SpendBeforeResponse(campaignId);
 
       res.json({
         success: true,
@@ -5939,7 +5979,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : new Date().toISOString().split("T")[0];
       const records = dateCol
         ? Array.from(dailySpendMap.entries()).map(([date, spend]) => ({
             campaignId,
@@ -5955,6 +5997,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency,
             sourceType: "csv",
           }];
+      const visibleSpendToDate = platformContext === "ga4"
+        ? Number(records.filter((record: any) => String(record.date) <= today).reduce((sum: number, record: any) => sum + Number(record.spend || 0), 0).toFixed(2))
+        : Number(totalSpend.toFixed(2));
       const source = await storage.replaceCsvSpendSourceWithRecords(
         campaignId,
         existingSourceId ? String(existingSourceId) : null,
@@ -5971,7 +6016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       await recalcCampaignSpend(campaignId);
-      scheduleGA4SpendPostResponseRecompute(campaignId);
+      await recomputeGA4SpendBeforeResponse(campaignId);
 
       res.json({
         success: true,
@@ -5979,7 +6024,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency,
         rowCount: parsedRows.length,
         keptRows: kept,
-        spendToDate: Number(totalSpend.toFixed(2)),
+        spendToDate: visibleSpendToDate,
+        importedRowsTotalSpend: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process CSV spend" });
@@ -6271,6 +6317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
       let totalSpend = 0;
+      let undatedSpend = 0;
       const dailySpendMap = new Map<string, number>(); // date -> spend
 
       for (const row of rows) {
@@ -6289,16 +6336,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Track daily spend if date column provided
         if (dateCol) {
-          const dateStr = String((row as any)[dateCol] ?? "").trim();
-          if (dateStr) {
-            // Normalize date to YYYY-MM-DD format
-            const date = new Date(dateStr);
-            if (!isNaN(date.getTime())) {
-              const normalizedDate = date.toISOString().split('T')[0];
-              dailySpendMap.set(normalizedDate, (dailySpendMap.get(normalizedDate) || 0) + spend);
-            }
-          }
+          const date = normalizeFinancialSourceDateKey((row as any)[dateCol]);
+          if (date) dailySpendMap.set(date, (dailySpendMap.get(date) || 0) + spend);
+          else undatedSpend += spend;
         }
+      }
+
+      if (platformContext === "ga4" && dateCol && undatedSpend > 0) {
+        return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
       }
 
       const campaign = await storage.getCampaign(campaignId);
@@ -6335,15 +6380,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (platformContext === 'ga4') {
+        const completedDate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate;
         const records = dateCol && dailySpendMap.size > 0
           ? Array.from(dailySpendMap.entries()).filter(([, spend]) => spend > 0).map(([date, spend]) => ({ campaignId, date, spend: String(Number(spend.toFixed(2))), currency, sourceType: 'google_sheets' }))
-          : [{ campaignId, date: new Date().toISOString().split('T')[0], spend: totalSpend.toFixed(2), currency, sourceType: 'google_sheets' }];
+          : [{ campaignId, date: completedDate, spend: totalSpend.toFixed(2), currency, sourceType: 'google_sheets' }];
+        const visibleSpendToDate = Number(records.filter((record: any) => String(record.date) <= completedDate).reduce((sum: number, record: any) => sum + Number(record.spend || 0), 0).toFixed(2));
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || 'Google Sheets', currency, mappingConfig: nextSpendMappingConfig, isActive: true,
         } as any, records as any);
         await recalcCampaignSpend(campaignId);
-        scheduleGA4SpendPostResponseRecompute(campaignId);
-        return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: Number(totalSpend.toFixed(2)) });
+        await recomputeGA4SpendBeforeResponse(campaignId);
+        return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: visibleSpendToDate, importedRowsTotalSpend: Number(totalSpend.toFixed(2)) });
       }
 
       let source: any = existingSheetsSpendSource || null;
@@ -6399,7 +6446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await recalcCampaignSpend(campaignId);
-      scheduleGA4SpendPostResponseRecompute(campaignId);
+      await recomputeGA4SpendBeforeResponse(campaignId);
 
       res.json({
         success: true,
@@ -8208,11 +8255,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
       }
 
+      const ownedClients = await storage.getClients(actorId);
+      const ownedClientIds = new Set((Array.isArray(ownedClients) ? ownedClients : []).map((client: any) => String(client?.id || "")));
       const clientId = req.query.clientId ? String(req.query.clientId) : null;
+      if (clientId) {
+        if (!ownedClientIds.has(clientId)) {
+          return res.status(404).json({ success: false, message: "Client not found" });
+        }
+      }
       const campaigns = await storage.getCampaigns();
       const visible = (Array.isArray(campaigns) ? campaigns : []).filter((c: any) => {
         const ownerId = String(c?.ownerId || "").trim();
-        if (ownerId && ownerId !== actorId) return false;
+        if (ownerId !== actorId) return false;
+        if (!ownedClientIds.has(String(c?.clientId || ""))) return false;
         // Hide draft campaigns – they only become visible after the user
         // clicks the final "Create" button which PATCHes status → "active".
         const status = String(c?.status || "").trim().toLowerCase();
@@ -8222,21 +8277,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return true;
       });
 
-      // Backward compatibility: claim any un-owned campaigns shown to this session.
-      const toClaim = visible.filter((c: any) => !String(c?.ownerId || "").trim());
-      if (toClaim.length > 0) {
-        await Promise.all(
-          toClaim.map((c: any) =>
-            storage.updateCampaign(String(c?.id || ""), { ownerId: actorId } as any).catch(() => null)
-          )
-        );
-      }
-
-      // Return with ownerId populated for consistency + calculated fields for dashboard table
+      // Return owner-scoped campaigns with calculated fields for the dashboard table.
       res.json(
         visible.map((c: any) => withReportingTimeZone({
           ...c,
-          ownerId: String(c?.ownerId || "").trim() ? c.ownerId : actorId,
+          ownerId: c.ownerId,
           // TODO: Calculate real values from platform connections and KPIs
           conversions: c.conversions || 0,
           revenue: c.revenue || 0,
@@ -8271,6 +8316,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[Campaign Creation] Converted spend from number to string:', sanitizedData.spend);
       }
       sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);
+      if (sanitizedData.clientId) {
+        const ownedClients = await storage.getClients(actorId);
+        if (!ownedClients.some((client: any) => String(client?.id || "") === String(sanitizedData.clientId))) {
+          return res.status(404).json({ success: false, message: "Client not found" });
+        }
+      }
 
       const validatedData = insertCampaignSchema.parse({ ...sanitizedData, ownerId: actorId });
       // Ensure ownerId is always set (even if schema strips it for some reason)
@@ -8352,12 +8403,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (Object.prototype.hasOwnProperty.call(sanitizedData, "reportingTimeZone")) {
         sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);
       }
+      if (sanitizedData.clientId) {
+        const actorId = getActorId(req as any);
+        const ownedClients = actorId ? await storage.getClients(actorId) : [];
+        if (!ownedClients.some((client: any) => String(client?.id || "") === String(sanitizedData.clientId))) {
+          return res.status(404).json({ success: false, message: "Client not found" });
+        }
+      }
       const validatedData = insertCampaignSchema.partial().parse(sanitizedData);
       // Never allow ownership to be modified by the client.
       delete (validatedData as any).ownerId;
       const isDraftActivation =
         String((existingCampaign as any)?.status || "").trim().toLowerCase() === "draft" &&
         String((validatedData as any)?.status || "").trim().toLowerCase() === "active";
+      const ga4DailyScopeChanged =
+        (Object.prototype.hasOwnProperty.call(validatedData, "ga4CampaignFilter") &&
+          JSON.stringify(getGA4CampaignFilterValues((validatedData as any).ga4CampaignFilter).sort()) !==
+          JSON.stringify(getGA4CampaignFilterValues((existingCampaign as any).ga4CampaignFilter).sort())) ||
+        (Object.prototype.hasOwnProperty.call(validatedData, "reportingTimeZone") &&
+          normalizeReportingTimeZone((validatedData as any).reportingTimeZone) !== normalizeReportingTimeZone((existingCampaign as any).reportingTimeZone));
 
       if (isDraftActivation) {
         const hasDataPath = await hasActivatableCampaignDataPath(campaignId, (validatedData as any)?.platform, existingCampaign);
@@ -8368,9 +8432,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const campaign = await storage.updateCampaign(campaignId, validatedData);
+      const campaign = ga4DailyScopeChanged
+        ? await storage.updateCampaignWithGA4DailyInvalidation(campaignId, validatedData)
+        : await storage.updateCampaign(campaignId, validatedData);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
+      }
+      if (ga4DailyScopeChanged) {
+        try {
+          await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
+        } catch (error: any) {
+          console.warn(`[Campaign Update] GA4 daily scope refresh failed for campaign ${campaignId}:`, error?.message || error);
+        }
       }
       res.json(withReportingTimeZone(campaign as any));
     } catch (error) {
@@ -8605,21 +8678,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const toDailyMetricUpserts = (series: any[]) => (Array.isArray(series) ? series : [])
-        .map((r: any) => ({
-          campaignId,
-          propertyId: String(selectedConnection.propertyId),
-          date: String(r?.date || "").trim(),
-          users: Number(r?.users || 0) || 0,
-          sessions: Number(r?.sessions || 0) || 0,
-          engagedSessions: r?.engagedSessions == null ? null : Math.max(0, Math.round(Number(r.engagedSessions) || 0)),
-          pageviews: Number(r?.pageviews || 0) || 0,
-          conversions: Number(r?.conversions || 0) || 0,
-          revenue: String(Number(r?.revenue || 0).toFixed(2)),
-          engagementRate: (r as any)?.engagementRate ?? null,
-          revenueMetric: (r as any)?.revenueMetric ?? null,
-          isSimulated: false,
-        }))
-        .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));
+        .map((r: any) => {
+          const date = String(r?.date || "").trim();
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > endDate) {
+            throw new Error("GA4 returned a daily metric outside the requested window");
+          }
+          const normalized = normalizeGA4InsightsDailyMetricValues(r);
+          if (!normalized) throw new Error("GA4 returned an invalid daily metric value");
+          return {
+            ...r,
+            ...normalized,
+            campaignId,
+            propertyId: String(selectedConnection.propertyId),
+            date,
+            revenue: normalized.revenue!.toFixed(2),
+            revenueMetric: r?.revenueMetric ?? null,
+            isSimulated: false,
+          };
+        });
 
       const hasCampaignFilter = Array.isArray(campaignFilter)
         ? campaignFilter.length > 0
@@ -8632,11 +8708,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           Number(r?.users || 0) > 0 ||
           Number(r?.pageviews || 0) > 0
         );
-        const hasConversionRevenue = list.some((r: any) =>
-          Number(r?.conversions || 0) > 0 ||
-          Number(r?.revenue || 0) > 0
-        );
-        return hasTraffic && !hasConversionRevenue;
+        const hasConversions = list.some((r: any) => Number(r?.conversions || 0) !== 0);
+        const hasRevenue = list.some((r: any) => Number(r?.revenue || 0) !== 0);
+        const hasObservedProviderRevenueShape = list
+          .filter((r: any) => Number(r?.sessions || 0) !== 0 || Number(r?.users || 0) !== 0 || Number(r?.pageviews || 0) !== 0)
+          .every((r: any) => String(r?.revenueMetric || "").trim().length > 0);
+        return hasTraffic && !hasObservedProviderRevenueShape && (!hasConversions || !hasRevenue);
       };
 
       // Read from persisted store first
@@ -8654,15 +8731,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           storage,
           startDate, // explicit YYYY-MM-DD
           String(selectedConnection.propertyId),
-          campaignFilter
+          campaignFilter,
+          endDate,
         );
         const upserts = toDailyMetricUpserts(series);
         providerRefreshRowCount = upserts.length;
         providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
 
-        if (upserts.length > 0) {
-          await storage.upsertGA4DailyMetrics(upserts as any);
-        }
+        await storage.replaceGA4DailyMetricsWindow(
+          campaignId,
+          String(selectedConnection.propertyId),
+          startDate,
+          endDate,
+          upserts as any,
+        );
         stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
         providerRefreshCompletedAt = new Date().toISOString();
         providerCoverageThroughDate = dataThroughDate;
@@ -8687,19 +8769,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             storage,
             startDate,
             String(selectedConnection.propertyId),
-            campaignFilter
+            campaignFilter,
+            endDate,
           );
           const upserts = toDailyMetricUpserts(series);
           providerRefreshRowCount = upserts.length;
           providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
-          const recoveredConversionRevenue = upserts.some((r: any) =>
-            Number(r?.conversions || 0) > 0 ||
-            Number(r?.revenue || 0) > 0
+          await storage.replaceGA4DailyMetricsWindow(
+            campaignId,
+            String(selectedConnection.propertyId),
+            startDate,
+            endDate,
+            upserts as any,
           );
-          if (recoveredConversionRevenue) {
-            await storage.upsertGA4DailyMetrics(upserts as any);
-            stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
-          }
+          stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
           providerRefreshCompletedAt = new Date().toISOString();
           providerCoverageThroughDate = dataThroughDate;
         }
@@ -8777,7 +8860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
+      const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
       const requestedPropertyId = String(req.query.propertyId || "").trim();
+      const insightsFinancialScope = validationReadOnly || String(req.query.insightsScope || "").trim() === "1";
       if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
 
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
@@ -8886,6 +8971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endDate: endDateUsed,
           revenueMetric: "",
           noCompletedWindow: true,
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
           message: "No completed GA4 reporting day is available for this campaign yet.",
           totals: {
             sessions: 0,
@@ -8900,12 +8986,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const attempt = async (token: string) => {
-        return await ga4Service.getTotalsWithRevenue(String(connection.propertyId), token, startDateUsed, endDateUsed, campaignFilter);
+        if (!insightsFinancialScope) {
+          return await ga4Service.getTotalsWithRevenue(
+            String(connection.propertyId),
+            token,
+            startDateUsed,
+            endDateUsed,
+            campaignFilter,
+          );
+        }
+        return await ga4Service.getTotalsWithRevenue(
+          String(connection.propertyId),
+          token,
+          startDateUsed,
+          endDateUsed,
+          campaignFilter,
+          String((campaign as any)?.currency || "USD").trim().toUpperCase(),
+        );
+      };
+      const validateCurrency = (result: any) => {
+        if (insightsFinancialScope) {
+          assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 native revenue", true);
+        }
+        return result;
       };
 
       try {
-        const result = await attempt(String(connection.accessToken));
-        return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...result });
+        const result = validateCurrency(await attempt(String(connection.accessToken)));
+        return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result });
       } catch (e: any) {
         const msg = String(e?.message || "");
         const isAuth =
@@ -8915,6 +9023,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           msg.toLowerCase().includes("request had invalid authentication credentials") ||
           msg.toLowerCase().includes("invalid_grant") ||
           msg.includes("401");
+        if (isAuth && validationReadOnly) {
+          return res.status(401).json({
+            success: false,
+            error: "TOKEN_EXPIRED",
+            requiresReauthorization: true,
+            validationReadOnly: true,
+            message: "GA4 token refresh is disabled for this read-only request.",
+          });
+        }
         if (isAuth && (connection as any).refreshToken) {
           const refresh = await ga4Service.refreshAccessToken(
             String((connection as any).refreshToken),
@@ -8926,8 +9043,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             refreshToken: String((connection as any).refreshToken),
             expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
           });
-          const result = await attempt(String(refresh.access_token));
-          return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...result });
+          const result = validateCurrency(await attempt(String(refresh.access_token)));
+          return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result });
         }
         throw e;
       }
@@ -9060,7 +9177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       };
       const fetchProviderTotals = async (token: string, fromDate = startDate, toDate = endDate) =>
-        ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter);
+        ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
       if (simulateRefreshFailure) {
         providerStatus = "live_provider_refresh_failed";
         providerError = "Simulated GA4 token refresh failure for validation; no token refresh was attempted and no token metadata was changed.";
@@ -9150,7 +9267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const providerTotals = formatProviderTotalsForValidation(providerResult);
       const currentValueProviderTotals = formatProviderTotalsForValidation(currentValueProviderResult);
 
-      const financialWindow = getGA4KPIFinancialSourceWindow();
+      const financialWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
       const [importedRevenueTotals, schedulerSpendTotals, spendSources, spendBreakdown] = await Promise.all([
         storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] })),
         storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] })),
@@ -9750,8 +9867,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Campaign ID is required" });
       }
 
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
       console.log(`[Integrated OAuth] Starting flow for campaign ${campaignId}`);
-      const authUrl = realGA4Client.generateAuthUrl(campaignId);
+      const authUrl = realGA4Client.generateAuthUrl(signGA4OAuthState(String(campaignId)));
 
       res.json({
         authUrl,
@@ -9855,7 +9975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       devLog(`[Google Sheets OAuth] Using redirect URI: ${redirectUri}`);
 
-      const state = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : String(campaignId);
+      const state = `sheets:${signGoogleSheetsOAuthState(String(campaignId), sheetsPurpose)}`;
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -9886,10 +10006,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Failed</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Failed</h2>
-              <p>Error: ${error}</p>
+              <p>Google Sheets authorization was not completed.</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'sheets_auth_error', error: '${error}' }, window.location.origin);
+                  window.opener.postMessage({ type: 'sheets_auth_error', error: 'Authorization failed' }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>
@@ -9933,6 +10053,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const ga4CampaignId = verified.campaignId;
         console.log('[GA4 OAuth Callback] State verified, campaignId:', ga4CampaignId);
+        const ga4ActorId = getActorId(req);
+        const ga4Campaign = ga4ActorId ? await storage.getCampaign(ga4CampaignId) : null;
+        if (!ga4ActorId || !ga4Campaign || String((ga4Campaign as any).ownerId || '').trim() !== ga4ActorId) {
+          return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2>Authentication Error</h2><p>Campaign not found.</p>
+            <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Campaign not found.'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          </body></html>`);
+        }
         const ga4ClientId = process.env.GOOGLE_CLIENT_ID!;
         const ga4ClientSecret = process.env.GOOGLE_CLIENT_SECRET!;
 
@@ -10070,7 +10198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[GA4 OAuth] Successfully connected campaign ${ga4CampaignId}, found ${ga4Properties.length} properties`);
 
-        const ga4PropertiesJson = JSON.stringify(ga4Properties);
+        const ga4PropertiesJson = serializeOAuthPopupJson(ga4Properties);
         return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
           <h2>Google Analytics Connected!</h2><p>Closing this window...</p>
           <script>
@@ -10087,11 +10215,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // ---- Google Sheets OAuth flow ----
-      const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
-      const purpose =
-        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue' || sheetsPurpose === 'custom_integration_revenue'
-          ? sheetsPurpose
-          : null;
+      if (!rawState.startsWith('sheets:')) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;"><h2>Authentication Error</h2><p>Invalid state.</p></body></html>`);
+      }
+      const verifiedSheetsState = verifyGoogleSheetsOAuthState(rawState.slice(7));
+      if (!verifiedSheetsState.ok) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;"><h2>Authentication Error</h2><p>${verifiedSheetsState.error}</p></body></html>`);
+      }
+      const campaignId = verifiedSheetsState.campaignId;
+      const purpose = verifiedSheetsState.purpose;
       devLog(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
 
       // Campaign access check (HTML-friendly for popup). This avoids creating/attaching tokens to campaigns
@@ -10124,13 +10256,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const ownerId = String((campaign as any).ownerId || "").trim();
       if (!ownerId) {
-        // Backward compatibility: claim un-owned campaigns to the first active session that accesses them.
-        try {
-          await storage.updateCampaign(String(campaignId), { ownerId: actorId } as any);
-        } catch {
-          // ignore
-        }
-      } else if (ownerId !== actorId) {
+        return sendPopupError("Campaign not found.");
+      }
+      if (ownerId !== actorId) {
         // Avoid leaking existence across sessions.
         return sendPopupError("Campaign not found.");
       }
@@ -10220,10 +10348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h2>Authentication Error</h2>
-            <p>${error.message || 'Failed to complete authentication'}</p>
+            <p>Failed to complete Google Sheets authentication.</p>
             <script>
               if (window.opener) {
-                window.opener.postMessage({ type: 'sheets_auth_error', error: '${error.message}' }, window.location.origin);
+                window.opener.postMessage({ type: 'sheets_auth_error', error: 'Authentication failed' }, window.location.origin);
               }
               setTimeout(() => window.close(), 2000);
             </script>
@@ -10235,12 +10363,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const HUBSPOT_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+  const getHubSpotOAuthStateSecret = (): string => {
+    const secret = process.env.HUBSPOT_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || process.env.APP_SECRET;
+    if (secret) return secret;
+    if (process.env.NODE_ENV === "production") throw new Error("HubSpot OAuth state secret is not configured");
+    return "dev-hubspot-oauth-state-secret";
+  };
+
   const signHubSpotOAuthState = (campaignId: string): string => {
-    const secret =
-      process.env.HUBSPOT_OAUTH_STATE_SECRET ||
-      process.env.SESSION_SECRET ||
-      process.env.APP_SECRET ||
-      "dev-hubspot-oauth-state-secret";
+    const secret = getHubSpotOAuthStateSecret();
     const payload = {
       c: String(campaignId || "").trim(),
       t: Date.now(),
@@ -10252,11 +10383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyHubSpotOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
-    const secret =
-      process.env.HUBSPOT_OAUTH_STATE_SECRET ||
-      process.env.SESSION_SECRET ||
-      process.env.APP_SECRET ||
-      "dev-hubspot-oauth-state-secret";
+    const secret = getHubSpotOAuthStateSecret();
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
     if (parts.length !== 2) return { ok: false, error: "Invalid state" };
@@ -10329,6 +10456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.body;
       if (!campaignId) return res.status(400).json({ message: "Campaign ID is required" });
+      const campaign = await ensureCampaignAccess(req as any, res as any, String(campaignId));
+      if (!campaign) return;
 
       const rawBaseUrl =
         process.env.APP_BASE_URL ||
@@ -10482,6 +10611,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lastDot = stateStr.lastIndexOf('.');
       const campaignId = lastDot > 0 ? decodeURIComponent(stateStr.slice(0, lastDot)) : stateStr;
       const nonce = lastDot > 0 ? stateStr.slice(lastDot + 1) : '';
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       cleanupSalesforcePkce();
       const pkce = nonce ? salesforcePkceStore.get(nonce) : null;
       const codeVerifier = pkce?.campaignId === String(campaignId) ? pkce.codeVerifier : null;
@@ -10616,11 +10747,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <script>
               try {
                 const bc = new BroadcastChannel('metricmind_oauth');
-                bc.postMessage({ type: 'salesforce_auth_success', orgId: ${JSON.stringify(orgId)}, orgName: ${JSON.stringify(orgName)} });
+                bc.postMessage({ type: 'salesforce_auth_success', orgId: ${serializeOAuthPopupJson(orgId)}, orgName: ${serializeOAuthPopupJson(orgName)} });
                 bc.close();
               } catch (e) {}
               if (window.opener) {
-                window.opener.postMessage({ type: 'salesforce_auth_success', orgId: ${JSON.stringify(orgId)}, orgName: ${JSON.stringify(orgName)} }, window.location.origin);
+                window.opener.postMessage({ type: 'salesforce_auth_success', orgId: ${serializeOAuthPopupJson(orgId)}, orgName: ${serializeOAuthPopupJson(orgName)} }, window.location.origin);
               }
               setTimeout(() => window.close(), 1200);
             </script>
@@ -10634,15 +10765,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h2>Authentication Error</h2>
-            <p>${error?.message || 'Failed to complete authentication'}</p>
+            <p>Failed to complete Salesforce authentication.</p>
             <script>
               try {
                 const bc = new BroadcastChannel('metricmind_oauth');
-                bc.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} });
+                bc.postMessage({ type: 'salesforce_auth_error', error: 'Authentication failed' });
                 bc.close();
               } catch (e) {}
               if (window.opener) {
-                window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} }, window.location.origin);
+                window.opener.postMessage({ type: 'salesforce_auth_error', error: 'Authentication failed' }, window.location.origin);
               }
               setTimeout(() => window.close(), 2000);
             </script>
@@ -10657,13 +10788,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/shopify/callback", async (req, res) => {
     const sendPopup = (args: { ok: boolean; type: string; payload?: any; title: string; body: string }) => {
       const { ok, type, payload, title, body } = args;
-      const payloadJson = payload ? JSON.stringify(payload) : "{}";
+      const payloadJson = payload ? serializeOAuthPopupJson(payload) : "{}";
+      const safeBody = escapeOAuthPopupHtml(body);
       return res.send(`
         <html>
           <head><title>${title}</title></head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h2>${ok ? "✓" : ""} ${title}</h2>
-            <p style="max-width: 820px; margin: 12px auto; color: #555;">${body}</p>
+            <p style="max-width: 820px; margin: 12px auto; color: #555;">${safeBody}</p>
             <script>
               // Shopify may set Cross-Origin-Opener-Policy (COOP) on its pages, which can break window.opener.
               // Use BroadcastChannel as a reliable same-origin signal back to the main app.
@@ -10852,10 +10984,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Failed</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Failed</h2>
-              <p>Error: ${error}</p>
+              <p>HubSpot authorization was not completed.</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'hubspot_auth_error', error: '${String(error)}' }, window.location.origin);
+                  window.opener.postMessage({ type: 'hubspot_auth_error', error: 'Authorization failed' }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>
@@ -10903,6 +11035,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaignId = verified.campaignId;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       const rawBaseUrl =
         process.env.APP_BASE_URL ||
@@ -10987,7 +11121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <p>You can now close this window.</p>
             <script>
               if (window.opener) {
-                window.opener.postMessage({ type: 'hubspot_auth_success', portalId: ${JSON.stringify(portalId)}, portalName: ${JSON.stringify(portalName)} }, window.location.origin);
+                window.opener.postMessage({ type: 'hubspot_auth_success', portalId: ${serializeOAuthPopupJson(portalId)}, portalName: ${serializeOAuthPopupJson(portalName)} }, window.location.origin);
               }
               setTimeout(() => window.close(), 1200);
             </script>
@@ -11001,10 +11135,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h2>Authentication Error</h2>
-            <p>${error?.message || 'Failed to complete authentication'}</p>
+            <p>Failed to complete HubSpot authentication.</p>
             <script>
               if (window.opener) {
-                window.opener.postMessage({ type: 'hubspot_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} }, window.location.origin);
+                window.opener.postMessage({ type: 'hubspot_auth_error', error: 'Authentication failed' }, window.location.origin);
               }
               setTimeout(() => window.close(), 2000);
             </script>
@@ -11703,7 +11837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Failed</title></head>
             <body>
               <h2>Authentication Failed</h2>
-              <p>Error: ${error}</p>
+              <p>Google Analytics authorization was not completed.</p>
               <button onclick="window.close()">Close</button>
             </body>
           </html>
@@ -11723,8 +11857,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      console.log(`[Integrated OAuth] Processing callback for campaign ${state} with code ${code}`);
-      const result = await realGA4Client.handleCallback(code as string, state as string);
+      const verifiedState = verifyGA4OAuthState(state);
+      if (!verifiedState.ok) {
+        return res.status(400).send(`<html><body><h2>Authentication Error</h2><p>${verifiedState.error}</p></body></html>`);
+      }
+      const callbackCampaignId = verifiedState.campaignId;
+      const campaign = await ensureCampaignAccess(req as any, res as any, callbackCampaignId);
+      if (!campaign) return;
+
+      console.log(`[Integrated OAuth] Processing callback for campaign ${callbackCampaignId}`);
+      const result = await realGA4Client.handleCallback(code as string, callbackCampaignId);
       console.log('[Integrated OAuth] Callback result:', result);
 
       if (result.success) {
@@ -11756,7 +11898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Failed</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2 style="color: #d93025;">Authentication Failed</h2>
-              <p>Error: ${result.error}</p>
+              <p>Google Analytics authentication failed.</p>
               <button onclick="closeWithError()" style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close</button>
               <script>
                 function closeWithError() {
@@ -11764,7 +11906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     if (window.opener) {
                       window.opener.postMessage({
                         type: 'auth_error',
-                        error: '${result.error}'
+                        error: 'Authentication failed'
                       }, window.location.origin);
                     }
                   } catch (e) {}
@@ -12397,6 +12539,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
+      const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
+      const insightsChannelAttribution = String(req.query.insightsChannelAttribution || '').trim() === '1';
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
@@ -12483,6 +12627,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit,
         campaignFilter,
         providerEndDate,
+        validationReadOnly,
+        insightsChannelAttribution,
       );
 
       res.json({
@@ -12493,6 +12639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
         totals: result.totals,
         rows: result.rows,
+        ...(validationReadOnly ? { validationReadOnly: true } : {}),
         ...(debug ? { meta: result.meta } : {}),
         lastUpdated: new Date().toISOString(),
       });
@@ -12836,9 +12983,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Analytics OAuth endpoints
-  app.post("/api/auth/google/url", (req, res) => {
+  app.post("/api/auth/google/url", async (req, res) => {
     try {
       const { campaignId, returnUrl } = req.body;
+
+      if (!campaignId) {
+        return res.status(400).json({ error: "Campaign ID is required" });
+      }
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -12855,7 +13008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "https://www.googleapis.com/auth/userinfo.email"
       ];
 
-      const state = Buffer.from(JSON.stringify({ campaignId, returnUrl })).toString('base64');
+      const state = signGA4OAuthState(String(campaignId));
 
       const params = {
         client_id: clientId,
@@ -12887,19 +13040,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Authorization code is required' });
       }
 
+      const verifiedState = verifyGA4OAuthState(state);
+      if (!verifiedState.ok) return res.status(400).json({ error: verifiedState.error });
+      const campaignId = verifiedState.campaignId;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-
       if (!clientId || !clientSecret) {
         return res.status(500).json({ error: 'OAuth not configured' });
-      }
-
-      let campaignId = 'unknown';
-      try {
-        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
-        campaignId = stateData.campaignId || 'unknown';
-      } catch (e) {
-        console.warn('Could not parse OAuth state:', e);
       }
 
       // Exchange authorization code for tokens
@@ -13015,7 +13165,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GA4 Check] Checking connection for campaign: ${campaignId}`);
 
       // Get all GA4 connections for this campaign
-      const ga4Connections = await storage.getGA4Connections(campaignId);
+      const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
+      const ga4Connections = await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly });
       // An OAuth placeholder without a selected property is setup state, not a usable analytics connection.
       const configuredGA4Connections = ga4Connections.filter((connection: any) =>
         String(connection?.propertyId || "").trim().length > 0
@@ -13031,6 +13182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const primaryConnection = usableGA4Connections.find(conn => conn.isPrimary) || usableGA4Connections[0];
         return res.json({
           connected: true,
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
           primaryPropertyId: primaryConnection.propertyId,
           totalConnections: usableGA4Connections.length,
           unsupportedLookbackConnectionCount,
@@ -13059,6 +13211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (unsupportedLookbackConnectionCount > 0) {
         return res.json({
           connected: false,
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
           totalConnections: 0,
           connections: [],
           unsupportedLookback: true,
@@ -13073,12 +13226,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const connection = connections.get(campaignId);
         return res.json({
           connected: true,
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
           properties: connection.properties || [],
           user: connection.userInfo
         });
       }
 
-      res.json({ connected: false, totalConnections: 0, connections: [] });
+      res.json({ connected: false, totalConnections: 0, connections: [], ...(validationReadOnly ? { validationReadOnly: true } : {}) });
     } catch (error) {
       console.error('Connection check error:', error);
       res.status(500).json({ error: 'Failed to check connection status' });
@@ -14322,7 +14476,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
-      const connections = await storage.getGA4Connections(campaignId);
+      const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
+      const connections = await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly });
       const usableConnections = connections.filter((connection: any) =>
         String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) === 30
       );
@@ -14332,6 +14487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
+        ...(validationReadOnly ? { validationReadOnly: true } : {}),
         unsupportedLookbackConnectionCount,
         connections: usableConnections.map(conn => ({
           id: conn.id,
@@ -14499,7 +14655,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const GA4_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
   const signGA4OAuthState = (campaignId: string): string => {
-    const secret = process.env.GA4_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-ga4-state-secret";
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GA4_OAUTH_STATE_SECRET,
+      purpose: "ga4",
+      label: "GA4",
+      developmentFallback: "dev-ga4-state-secret",
+    });
     const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
@@ -14507,7 +14668,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyGA4OAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
-    const secret = process.env.GA4_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-ga4-state-secret";
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GA4_OAUTH_STATE_SECRET,
+      purpose: "ga4",
+      label: "GA4",
+      developmentFallback: "dev-ga4-state-secret",
+    });
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
     if (parts.length !== 2) return { ok: false, error: "Invalid state" };
@@ -14523,6 +14689,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
     if (Date.now() - Number(payload.t) > GA4_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
     return { ok: true, campaignId: payload.c };
+  };
+
+  const signGoogleSheetsOAuthState = (campaignId: string, purpose?: string): string => {
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+      purpose: "google-sheets",
+      label: "Google Sheets",
+      developmentFallback: "dev-sheets-state-secret",
+    });
+    const payload = { c: String(campaignId || "").trim(), p: String(purpose || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
+    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const sig = createHmac("sha256", secret).update(payloadB64).digest();
+    return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
+  };
+
+  const verifyGoogleSheetsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; purpose: string | null } | { ok: false; error: string } => {
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.GOOGLE_SHEETS_OAUTH_STATE_SECRET,
+      purpose: "google-sheets",
+      label: "Google Sheets",
+      developmentFallback: "dev-sheets-state-secret",
+    });
+    const state = String(stateRaw || "").trim();
+    const parts = state.split(".");
+    if (parts.length !== 2) return { ok: false, error: "Invalid state" };
+    const [payloadB64, sigB64] = parts;
+    const expectedSig = createHmac("sha256", secret).update(payloadB64).digest();
+    const providedSig = Buffer.from(sigB64 || "", "base64url");
+    if (providedSig.length !== expectedSig.length || !timingSafeEqual(providedSig, expectedSig)) return { ok: false, error: "Tampered state" };
+    let payload: any;
+    try { payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")); } catch { return { ok: false, error: "Invalid state" }; }
+    if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
+    if (Date.now() - Number(payload.t) > GA4_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
+    const allowedPurposes = new Set(['spend', 'revenue', 'general', 'linkedin_revenue', 'google_ads_revenue', 'instagram_revenue', 'tiktok_revenue', 'google_sheets_revenue', 'custom_integration_revenue']);
+    const purpose = allowedPurposes.has(String(payload.p || "")) ? String(payload.p) : null;
+    return { ok: true, campaignId: String(payload.c), purpose };
   };
 
   /**
@@ -14574,16 +14776,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
 
-      // Debug logging
-      console.log('OAuth exchange request body:', {
-        campaignId: !!campaignId,
-        authCode: !!authCode,
-        clientId: !!clientId,
-        clientSecret: !!clientSecret,
-        clientSecretLength: clientSecret?.length || 0,
-        redirectUri: !!redirectUri
-      });
-
       if (!campaignId || !authCode || !clientId || !clientSecret || !redirectUri) {
         console.log('Missing required fields:', {
           campaignId: !campaignId,
@@ -14610,20 +14802,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         grant_type: 'authorization_code'
       };
 
-      console.log('Token exchange params:', {
-        code: !!authCode,
-        client_id: !!clientId,
-        client_secret: !!clientSecret,
-        client_secret_length: clientSecret.length,
-        redirect_uri: !!redirectUri,
-        grant_type: 'authorization_code'
-      });
-
-      // Create URLSearchParams and log exactly what's being sent
       const urlParams = new URLSearchParams(tokenParams);
       const requestBody = urlParams.toString();
-      console.log('Request body being sent to Google:', requestBody);
-      console.log('URLSearchParams entries:', Array.from(urlParams.entries()));
 
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -24616,8 +24796,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const GOOGLE_ADS_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+  const getGoogleAdsOAuthStateSecret = (): string => {
+    const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || process.env.APP_SECRET;
+    if (secret) return secret;
+    if (process.env.NODE_ENV === "production") throw new Error("Google Ads OAuth state secret is not configured");
+    return "dev-google-ads-state-secret";
+  };
+
   const signGoogleAdsOAuthState = (campaignId: string, spendOnly?: boolean): string => {
-    const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-google-ads-state-secret";
+    const secret = getGoogleAdsOAuthStateSecret();
     const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex"), s: spendOnly ? 1 : 0 };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
@@ -24625,7 +24812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
-    const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-google-ads-state-secret";
+    const secret = getGoogleAdsOAuthStateSecret();
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
     if (parts.length !== 2) return { ok: false, error: "Invalid state" };
@@ -24649,15 +24836,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/google-ads/connect", oauthRateLimiter, async (req, res) => {
     try {
       const { campaignId } = req.body;
-      if (!campaignId) return res.status(400).json({ success: false, message: "Campaign ID is required" });
+      const parsedCampaignId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedCampaignId.success) return res.status(400).json({ success: false, message: "Campaign ID is required" });
+
+      const accessOk = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
+      if (!accessOk) return;
 
       const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
-      if (!clientId || !clientSecret) {
+      if (!clientId || !clientSecret || !developerToken) {
         return res.status(500).json({
-          message: "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET.",
+          message: "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.",
           setupRequired: true,
         });
       }
@@ -24698,8 +24889,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (authError) {
         console.error(`[Google Ads OAuth] Error: ${authError}`);
         return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Error</h2><p>${authError}</p>
-          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'${authError}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          <h2>Authentication Error</h2><p>Google Ads authorization was not completed.</p>
+          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'Google Ads authorization was not completed'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
         </body></html>`);
       }
 
@@ -24713,13 +24904,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const verified = verifyGoogleAdsOAuthState(state);
       if (!verified.ok) {
         return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Error</h2><p>${verified.error}</p>
-          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'${verified.error}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          <h2>Authentication Error</h2><p>Google Ads authorization state is invalid or expired.</p>
+          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'Google Ads authorization state is invalid or expired'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
         </body></html>`);
       }
 
       const campaignId = verified.campaignId;
       const spendOnly = verified.spendOnly;
+
+      const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!accessOk) return;
+
       const clientId = process.env.GOOGLE_ADS_CLIENT_ID!;
       const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
@@ -24744,18 +24939,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           developerToken,
           customerId: '0', // placeholder
         });
-        customers = await tempClient.getAccessibleCustomers();
+        customers = (await tempClient.getAccessibleCustomers()).filter((customer: any) => customer?.manager !== true);
       } catch (e: any) {
         console.warn('[Google Ads OAuth] Could not list customers:', e.message);
       }
 
-      // Send results back to popup
-      const tokenData = JSON.stringify({
+      // Send only a short-lived encrypted, campaign-and-owner-bound package to the browser.
+      const authorization = buildGoogleAdsOAuthAuthorization({
+        campaignId,
+        actorId: String(getActorId(req as any) || ""),
         accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || '',
-        expiresIn: tokens.expires_in || 3600,
+        refreshToken: tokens.refresh_token || "",
+        tokenExpiresIn: tokens.expires_in || 3600,
+        customers,
+        spendOnly,
       });
-      const customersJson = JSON.stringify(customers);
+      const customersJson = serializeOAuthPopupJson(customers);
 
       res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
         <h2>Google Ads Connected!</h2><p>Closing this window...</p>
@@ -24763,8 +24962,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if(window.opener){
             window.opener.postMessage({
               type:'google_ads_auth_success',
-              campaignId:'${campaignId}',
-              tokens:${tokenData},
+              campaignId:${serializeOAuthPopupJson(campaignId)},
+              authorization:${serializeOAuthPopupJson(authorization)},
               customers:${customersJson},
               spendOnly:${spendOnly ? 'true' : 'false'}
             },window.location.origin);
@@ -24775,8 +24974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Google Ads OAuth] Callback error:', error);
       res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-        <h2>Authentication Failed</h2><p>${error.message || 'Unknown error'}</p>
-        <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'${(error.message || 'Authentication failed').replace(/'/g, "\\'")}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        <h2>Authentication Failed</h2><p>Google Ads authentication failed.</p>
+        <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'Google Ads authentication failed'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
       </body></html>`);
     }
   });
@@ -24787,25 +24986,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/google-ads/:campaignId/select-customer", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
-      const { customerId, customerName, accessToken, refreshToken, expiresIn, managerAccountId } = req.body;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      const { customerId, authorization } = req.body;
 
-      if (!customerId) return res.status(400).json({ error: "Customer ID is required" });
+      if (!customerId || !authorization) return res.status(400).json({ error: "Google Ads authorization and customer ID are required" });
+
+      const pending = resolveGoogleAdsOAuthAuthorization({
+        authorization,
+        campaignId: String(campaignId),
+        actorId: String(getActorId(req as any) || ""),
+        customerId: String(customerId),
+      });
+      if (!pending) {
+        return res.status(400).json({ error: "Google Ads authorization is invalid or expired" });
+      }
+      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly } = pending;
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      if (!customerCurrency || customerCurrency !== campaignCurrency) {
+        return res.status(400).json({ error: `Google Ads account currency ${customerCurrency || "is unavailable"}; select an account using ${campaignCurrency}` });
+      }
+      const campaignTimeZone = normalizeReportingTimeZone((campaign as any)?.reportingTimeZone);
+      if (!customerTimeZone || normalizeReportingTimeZone(customerTimeZone) !== campaignTimeZone) {
+        return res.status(400).json({ error: `Google Ads account timezone ${customerTimeZone || "is unavailable"}; select an account using ${campaignTimeZone}` });
+      }
 
       const clientId = process.env.GOOGLE_ADS_CLIENT_ID || '';
       const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET || '';
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
 
       const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
+      const { GoogleAdsClient, mapGoogleAdsDailyInsights } = await import('./googleAdsClient');
+      const provider = new GoogleAdsClient({ accessToken, developerToken, customerId: String(customerId), managerAccountId });
+      const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
+      const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
+      const endDate = getReportingDateWindow(1, campaignTimeZone).endDate;
+      const initialDailyMetrics = startDate <= endDate
+        ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
+        : [];
 
-      // Delete existing connection if any
-      await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
-      await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
-      await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});
+      if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
 
-      const spendOnly = !!(req.body as any)?.spendOnly;
-      await storage.createGoogleAdsConnection({
+      await storage.replaceGoogleAdsConnection({
         campaignId,
         customerId,
         customerName: customerName || null,
@@ -24817,8 +25039,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         developerToken,
         method: 'oauth',
         expiresAt,
-        spendOnly,
-      } as any);
+        spendOnly: !!spendOnly,
+      } as any, initialDailyMetrics as any);
 
       console.log(`[Google Ads] Customer ${customerId} connected to campaign ${campaignId} (spendOnly: ${spendOnly})`);
       res.json({ success: true, message: 'Google Ads customer connected' });
@@ -24838,12 +25060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const { customerId, customerName } = req.body;
 
-      await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
-      await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
-      await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});
-
       const spendOnly = !!(req.body as any)?.spendOnly;
-      await storage.createGoogleAdsConnection({
+      if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
+      await storage.replaceGoogleAdsConnection({
         campaignId,
         customerId: customerId || '123-456-7890',
         customerName: customerName || 'Test Google Ads Account',
@@ -24907,7 +25126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection) {
         return res.status(404).json({ error: "Google Ads connection not found" });
       }
-      await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
+      if (!(connection as any).spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
       const deleted = await storage.deleteGoogleAdsConnection(campaignId);
       if (!deleted) {
         return res.status(404).json({ error: "Google Ads connection not found" });
@@ -24924,16 +25143,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-ads/:campaignId/daily-metrics", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const connection = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.json({ success: true, metrics: [] });
       const spendPreview = String((req.query as any)?.spendPreview || "").toLowerCase() === "1" || String((req.query as any)?.spendPreview || "").toLowerCase() === "true";
       if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });
       if ((connection as any).spendOnly && String((connection as any).method || "") === "test_mode") return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
-      const end = (endDate as string) || new Date().toISOString().slice(0, 10);
-      const start = (startDate as string) || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+      const end = datePattern.test(String(endDate || "")) ? String(endDate) : new Date().toISOString().slice(0, 10);
+      const requestedStart = datePattern.test(String(startDate || "")) ? String(startDate) : new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const rawCampaignStart = new Date((campaign as any)?.startDate || "1900-01-01");
+      const campaignStart = Number.isNaN(rawCampaignStart.getTime()) ? "1900-01-01" : rawCampaignStart.toISOString().slice(0, 10);
+      const start = requestedStart < campaignStart ? campaignStart : requestedStart;
+      if (start > end) return res.status(400).json({ error: "Google Ads date range is outside the campaign window" });
       const selectedCampaignIds = (() => {
         try {
           const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
@@ -24945,7 +25169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedSet = new Set(selectedCampaignIds);
       const metrics = (await storage.getGoogleAdsDailyMetrics(campaignId, start, end))
         .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId || "")));
-      res.json({ success: true, metrics });
+      res.json({ success: true, metrics, startDate: start, endDate: end, currency: String((campaign as any)?.currency || "USD") });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get metrics' });
     }
@@ -24963,9 +25187,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
       const { refreshGoogleAdsForCampaign } = await import('./google-ads-scheduler');
-      await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true });
+      const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true });
 
-      res.json({ success: true, message: 'Google Ads data refreshed' });
+      res.json({ success: true, message: 'Google Ads data refreshed', ...refresh });
     } catch (error: any) {
       console.error('[Google Ads] Refresh error:', error);
       res.status(500).json({ error: error.message || 'Failed to refresh data' });
@@ -27245,7 +27469,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!okKpi) return;
       const timeframe = req.query.timeframe as string || "30d";
 
-      const analytics = await storage.getKPIAnalytics(id, timeframe);
+      let analytics = await storage.getKPIAnalytics(id, timeframe);
+      if (String(req.query.ga4Scope || "") === "1") {
+        if (String((okKpi as any)?.platformType || "").toLowerCase() !== "google_analytics") {
+          return res.status(404).json({ message: "GA4 analytics scope not found" });
+        }
+        const campaignId = String((okKpi as any)?.campaignId || "").trim();
+        const propertyId = String(req.query.propertyId || "").trim();
+        const campaign = campaignId ? await storage.getCampaign(campaignId) : null;
+        const connections = campaignId ? await storage.getGA4Connections(campaignId) : [];
+        if (!campaign || !connections.some((connection: any) => String(connection?.propertyId || "") === propertyId)) {
+          return res.status(404).json({ message: "GA4 analytics scope not found" });
+        }
+        const marker = buildGA4InsightsHistoryScopeMarker(
+          propertyId,
+          parseGA4CampaignFilter((campaign as any).ga4CampaignFilter),
+          (campaign as any).reportingTimeZone,
+          (campaign as any).currency,
+        );
+        const progress = filterGA4InsightsHistoryByScope(analytics.progress, marker);
+        const latest = progress[0] as any;
+        const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const recent = progress.filter((point: any) => new Date(point.recordedAt) >= cutoff);
+        const latestValue = Number(recent[0]?.value);
+        const earliestValue = Number(recent[recent.length - 1]?.value);
+        const percentage = recent.length >= 2 && Number.isFinite(latestValue) && Number.isFinite(earliestValue) && earliestValue !== 0
+          ? ((latestValue - earliestValue) / Math.abs(earliestValue)) * 100
+          : 0;
+        analytics = {
+          ...analytics,
+          progress,
+          rollingAverage7d: Number(latest?.rollingAverage7d || 0) || 0,
+          rollingAverage30d: Number(latest?.rollingAverage30d || 0) || 0,
+          trendAnalysis: { direction: latest?.trendDirection || "neutral", percentage, period: timeframe },
+        };
+      }
       res.json(analytics);
     } catch (error) {
       console.error('KPI analytics error:', error);
@@ -28277,7 +28537,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, id);
       if (!existing) return;
-      const analytics = await storage.getBenchmarkAnalytics(id);
+      let analytics = await storage.getBenchmarkAnalytics(id);
+      if (String(req.query.ga4Scope || "") === "1") {
+        if (String((existing as any)?.platformType || "").toLowerCase() !== "google_analytics") {
+          return res.status(404).json({ message: "GA4 analytics scope not found" });
+        }
+        const campaignId = String((existing as any)?.campaignId || "").trim();
+        const propertyId = String(req.query.propertyId || "").trim();
+        const campaign = campaignId ? await storage.getCampaign(campaignId) : null;
+        const connections = campaignId ? await storage.getGA4Connections(campaignId) : [];
+        if (!campaign || !connections.some((connection: any) => String(connection?.propertyId || "") === propertyId)) {
+          return res.status(404).json({ message: "GA4 analytics scope not found" });
+        }
+        const marker = buildGA4InsightsHistoryScopeMarker(
+          propertyId,
+          parseGA4CampaignFilter((campaign as any).ga4CampaignFilter),
+          (campaign as any).reportingTimeZone,
+          (campaign as any).currency,
+        );
+        const history = filterGA4InsightsHistoryByScope(analytics.history, marker);
+        const variances = history.map((point: any) => Number(point?.variance)).filter(Number.isFinite);
+        const recent = variances.slice(-3);
+        const improving = recent.length >= 2 && recent.every((value, index) => index === 0 || value >= recent[index - 1]);
+        const declining = recent.length >= 2 && recent.every((value, index) => index === 0 || value <= recent[index - 1]);
+        analytics = {
+          ...analytics,
+          history,
+          averageVariance: variances.length ? variances.reduce((sum, value) => sum + value, 0) / variances.length : 0,
+          performanceTrend: improving ? "improving" : declining ? "declining" : "neutral",
+          lastPerformanceRating: (history[history.length - 1] as any)?.performanceRating || "average",
+        };
+      }
       res.json(analytics);
     } catch (error) {
       console.error('Benchmark analytics fetch error:', error);

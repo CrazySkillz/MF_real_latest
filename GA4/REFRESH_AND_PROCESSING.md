@@ -106,7 +106,7 @@ This scheduler now runs the GA4 daily refresh pipeline:
 1. finds campaigns with a GA4 connection
 2. resolves the campaign's GA4 campaign filter
 3. fetches GA4 time-series data
-4. upserts rows into `ga4_daily_metrics`
+4. atomically replaces the exact authorized campaign/property/date window in `ga4_daily_metrics`, including successful empty provider responses
 5. recomputes GA4 KPI and Benchmark values from the refreshed daily facts
 6. runs KPI and Benchmark alert checks after recompute
 
@@ -114,7 +114,8 @@ Important meaning:
 
 - it keeps persisted GA4 daily facts current, and those exact property/campaign-scoped rows feed the Overview Summary and Trends completed-day windows
 - GA4 native daily revenue remains native GA4 fact data in `ga4_daily_metrics`; this pipeline must not create synthetic imported `revenue_records` for `ga4_daily_metrics`
-- it is campaign-scoped and property-scoped
+- it is campaign-scoped and refreshes every active property independently
+- a saved campaign-filter or reporting-timezone change invalidates only that campaign's prior daily facts before scoped refresh, so old-scope rows cannot remain visible
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 - it does not replace the external value auto-refresh scheduler or the report delivery scheduler
 
@@ -180,7 +181,7 @@ The GA4 analytics page has live query refetches in addition to the background sc
 - `/api/campaigns/:id/ga4-landing-pages` and `/api/campaigns/:id/ga4-conversion-events` use the selected GA4 Overview date range and refetch on page load/reconnect for the selected property and saved GA4 campaign scope
 - `/ga4-daily` reads persisted daily rows first; if the selected campaign/property has no stored rows for the requested window, it attempts an on-demand Data API backfill, persists the rows, and returns the stored result
 - `/ga4-daily` returns backward-compatible refresh evidence (`providerRefreshAttempted`, `providerRefreshOutcome`, row count, and `providerCoverageThroughDate`) alongside its existing expected/latest/stale fields; successful coverage is distinct from the latest returned activity date, and `empty` or absent activity dates are not converted into zero-valued metric rows
-- if persisted selected-campaign daily rows already have traffic but no conversions or native revenue, `/ga4-daily` may self-repair them by rerunning the same selected-campaign daily import and upserting only when the refetch recovers conversion or revenue values
+- if persisted selected-campaign daily rows already have traffic but no conversions or native revenue, `/ga4-daily` may self-repair them by rerunning the same selected-campaign daily import; conversions and revenue are evaluated independently, and a successful response replaces the exact requested window rather than leaving absent old rows behind
 - `Landing Pages` and `Conversion Events` are not reconstructed from `ga4_daily_metrics`; they fetch row-level GA4 Data API views directly and use exact-match fallback supplementation only when GA4 returns compatible row-level values
 - numeric live or live-test GA4 property IDs can correctly show row-level `Conversions = 0` when GA4 returns zero conversions for the exact table grain; production properties with conversion-bearing rows should populate through the same live API path
 
@@ -208,6 +209,8 @@ Current eligible sources include:
 - LinkedIn Ads spend
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
+
+No ad-platform spend connector is enabled for the current live GA4 Insights release. Google Ads, LinkedIn, Meta/Facebook, and Instagram are later-release platforms and must not feed GA4 Insights. Existing provider schedulers remain outside this certification and do not qualify an ad-platform source for the current release.
 
 LinkedIn and Meta schedulers persist their analytics in their canonical platform daily tables. They must not also append those windows to generic `spend_records` under pseudo source IDs such as `linkedin_daily_metrics` or `meta_daily_metrics`; generic financial spend must remain backed by a real campaign-scoped `spend_sources` row.
 
@@ -243,7 +246,7 @@ GA4 daily scheduled-refresh validation:
 4. After the scheduled time, confirm:
    - `[GA4 Daily] Pipeline starting (trigger=scheduled)`
    - `[GA4 Daily] Pipeline done (trigger=scheduled, elapsedSeconds=...)`
-5. In Insights Trends, confirm `Last refreshed` is at or after `Expected refresh` and no stale warning appears.
+5. In Insights Trends, confirm the visible `Last refreshed` value is current. In the authenticated `ga4-daily` response, confirm `lastCompletedRefreshAt` is at or after `expectedRefreshAt` and `refreshIsStale=false`; the live Trends header intentionally does not render `Expected refresh`.
 
 Current deployed evidence:
 
@@ -287,6 +290,7 @@ Ad-platform spend auto-refresh rule:
 - edit or refresh mode must validate the stable spend source ID before updating records; a stale or wrong-platform source ID must fail closed instead of creating a new source
 - scheduler refresh must not broaden spend to all campaigns available in the connected account
 - scheduler refresh must not append duplicate rows on repeated runs
+- later-release GA4 Google Ads spend remains outside the current Insights certification; if enabled in a future revision, its dedicated scheduler and materialization path require a separate complete validation
 - scheduler failures should log source-specific phrases: `LinkedIn spend reprocess failed`, `Meta spend reprocess failed`, `Google Ads spend reprocess failed`, and `Google Sheets spend reprocess failed`
 - internal scheduler self-calls should have a bounded timeout so one stalled provider refresh cannot prevent the full auto-refresh cycle from completing
 - the LinkedIn refresh phase inside the external auto-refresh scheduler should also have a bounded timeout so CRM/ecommerce revenue reprocess can still run when LinkedIn refresh stalls
@@ -370,7 +374,8 @@ Important meaning:
 - KPI alerts must run only after both the KPI grid state and the KPI `Executive snapshot` state are coherent with the latest recomputed values
 - for GA4 mock/test flows, the stored KPI value used by alerts must be refreshed from the same total-construction model as the live KPI cards
 - `/api/notifications` must also resolve GA4 financial KPI visibility from the same selected financial-source model as the live KPI cards, so stale `performance-alert` rows disappear when the refreshed Revenue/ROAS/ROI/CPA value no longer breaches
-- if the exact report-date daily row is missing for a GA4 campaign, the GA4 KPI recompute path should fall back to the latest available persisted GA4 daily row instead of skipping that campaign's alert reconciliation
+- if the exact report-date daily row is missing, an earlier current value may remain as last-good state, but the KPI recompute path must not record that value as target-day history
+- real-property financial KPI values require a complete live campaign-to-date GA4 response and campaign/native/imported/spend currency parity; retained daily totals or a configured-lookback breakdown must not substitute for that financial window
 - if duplicate GA4 KPI rows exist for the same `campaign + metric`, only the newest row should remain eligible to emit the active alert
 
 ## After Overview Refresh: Benchmark Recompute And Alert Checks
@@ -386,7 +391,8 @@ Required order:
 Important meaning:
 
 - Benchmark alerts must run only after both the benchmark grid state and the Benchmark `Executive snapshot` state are coherent with the latest recomputed values
-- if the exact report-date daily row is missing for a GA4 campaign, the GA4 benchmark recompute path should fall back to the latest available persisted GA4 daily row instead of skipping that campaign's alert reconciliation
+- if the exact report-date daily row is missing, an earlier current value may remain as last-good state, but the benchmark recompute path must not record that value as target-day history
+- real-property financial Benchmark values follow the same live campaign-to-date and currency-parity requirements as financial KPI values
 
 ## Ad Comparison Refresh
 
@@ -417,11 +423,13 @@ The current `Insights` tab is downstream of:
 Trend history gates:
 
 - `Daily` requires at least 2 daily rows
-- `7d` requires at least 14 daily rows
-- `30d` requires at least 60 daily rows
+- `7d` requires complete coverage of two adjacent 7-calendar-day windows
+- `30d` requires complete coverage of two adjacent 30-calendar-day windows
 - `Monthly` requires at least 2 calendar months
 
 These requirements are history requirements, not event-count requirements. Running a seed script repeatedly on the same UTC day can increase current metrics, but it does not create multiple daily-history rows for trend comparisons.
+
+KPI/Benchmark snapshot history used by live Insights is eligible only when its versioned marker matches the selected GA4 property, saved campaign filter, campaign reporting timezone, and campaign currency. Legacy or mismatched history is retained but withheld from the live tab.
 
 ## Reports Refresh
 

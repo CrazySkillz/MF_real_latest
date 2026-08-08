@@ -235,14 +235,14 @@ Implementation note:
 - `/api/campaigns/:id/ga4-daily` now returns `expectedRefreshAt`, `refreshScheduleTimeZone`, `lastCompletedRefreshAt`, and `refreshIsStale`
 - expected refresh is computed from `dataThroughDate` plus the configured GA4 daily scheduler time and timezone
 - `refreshIsStale` is true only after the expected refresh time has passed and the latest completed daily refresh timestamp is missing or older than that expected refresh
-- GA4 Insights Trends shows `Expected refresh` beside the existing completed-day-cutoff/timezone/last-refreshed metadata
+- at that revision, GA4 Insights Trends showed `Expected refresh` beside the completed-day-cutoff/timezone/last-refreshed metadata; the current live header intentionally shows only `Completed-day cutoff`, `Latest imported day`, and `Last refreshed`, while the API retains expected-refresh and timezone metadata for freshness logic
 - GA4 Insights Trends shows a factual warning when `refreshIsStale` is true; metric values and history gating are unchanged
 
 Local validation:
 
 - `npm test -- --run server/ga4-daily-scheduler-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-ui-regression.test.ts`
 - `npm run check`
-- deployed/user validation confirmed the fresh-state path after commit `82f8784d`: Trends showed `Expected refresh`, `Last refreshed` was later than expected refresh, and no stale warning appeared
+- historical deployed/user validation confirmed the fresh-state path after commit `82f8784d`: Trends then showed `Expected refresh`, `Last refreshed` was later than expected refresh, and no stale warning appeared
 - stale-warning path remains unforced in deployed validation because the observed refresh was current, not late
 
 Validation:

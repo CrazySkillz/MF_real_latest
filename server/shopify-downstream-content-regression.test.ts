@@ -121,6 +121,7 @@ const revenueSource = {
   id: "shopify-source-1",
   sourceType: "shopify",
   displayName: "Shopify",
+  currency: "USD",
   isActive: true,
   mappingConfig: {
     platformContext: "ga4",
@@ -173,7 +174,14 @@ function setCommonShopifyFinancialMocks() {
   storageMock.getGA4Connections.mockResolvedValue([
     { id: "ga4-1", campaignId: campaign.id, propertyId: "properties/123", method: "access_token", accessToken: "ga4-token", isPrimary: true },
   ]);
-  storageMock.getGA4Connection.mockResolvedValue(null);
+  storageMock.getGA4Connection.mockResolvedValue({
+    id: "ga4-1",
+    campaignId: campaign.id,
+    propertyId: "properties/123",
+    method: "access_token",
+    accessToken: "ga4-token",
+    isPrimary: true,
+  });
   storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
   storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
   storageMock.getRevenueSources.mockResolvedValue([revenueSource]);
@@ -182,7 +190,7 @@ function setCommonShopifyFinancialMocks() {
     { sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", revenue: 199.98 },
   ]);
   storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
-  storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 199.98, sourceIds: [revenueSource.id] });
+  storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 199.98, currency: "USD", sourceIds: [revenueSource.id] });
   storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [] });
   storageMock.getPlatformKPIs.mockResolvedValue([revenueKpi]);
   storageMock.updateKPI.mockResolvedValue({});
@@ -207,6 +215,7 @@ function setCommonShopifyFinancialMocks() {
   ga4ServiceMock.getTimeSeriesData.mockResolvedValue([dailyRow]);
   ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
     revenueMetric: "purchaseRevenue",
+    currencyCode: "USD",
     totals: { sessions: 10, users: 5, conversions: 2, pageviews: 20, revenue: 100 },
   });
 }
@@ -320,7 +329,7 @@ describe("Shopify downstream value/content regression guard", () => {
   it("persists GA4 KPI and Benchmark row values from the Shopify imported revenue total", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-04", suppressAlerts: true });
 
-    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-05", "ga4");
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-04", "ga4");
     expect(storageMock.updateKPI).toHaveBeenCalledWith(revenueKpi.id, { currentValue: "299.98" });
     expect(storageMock.updateBenchmark).toHaveBeenCalledWith(revenueBenchmark.id, { currentValue: "299.98" });
   });
@@ -356,7 +365,7 @@ describe("Shopify downstream value/content regression guard", () => {
       expect(metadata.currentValue).toBe("299.98");
       expect(metadata.thresholdValue).toBe("350");
       expect(metadata.actionUrl).toBe(`/campaigns/${campaign.id}/ga4-metrics?tab=kpis&highlight=${revenueKpi.id}`);
-      expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-05", "ga4");
+      expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-04", "ga4");
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }

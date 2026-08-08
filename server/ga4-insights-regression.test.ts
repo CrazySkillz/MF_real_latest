@@ -111,6 +111,79 @@ describe("GA4 Insights regression guard", () => {
     expect(renderSection).toContain("groupInsights.map((i) =>");
   });
 
+  it("labels tracker totals as per-finding counts without changing their calculation", () => {
+    const content = ga4MetricsFile();
+    const trackerStart = content.indexOf('data-testid="insights-trackers"');
+    const trackerEnd = content.indexOf('data-testid="insights-findings"', trackerStart);
+    const trackerSection = content.slice(trackerStart, trackerEnd);
+
+    expect(trackerStart).toBeGreaterThan(-1);
+    expect(trackerEnd).toBeGreaterThan(trackerStart);
+    expect(trackerSection).toContain("Total findings");
+    expect(trackerSection).toContain("High-severity findings");
+    expect(trackerSection).toContain("Medium-severity findings");
+    expect(trackerSection).toContain("Shared unverified-source effects are consolidated.");
+    expect(content).toContain("{groupInsights.length} shown");
+  });
+  it("withholds transient tracker counts and findings until all initial inputs settle", () => {
+    const content = ga4MetricsFile();
+    const gateStart = content.indexOf("const insightsInitialLoading =");
+    const gateEnd = content.indexOf("const INSIGHT_CATEGORY_GROUPS = [", gateStart);
+    const gateSection = content.slice(gateStart, gateEnd);
+    const trackerStart = content.indexOf('data-testid="insights-trackers"');
+    const trackerEnd = content.indexOf('data-testid="insights-findings"', trackerStart);
+    const trackerSection = content.slice(trackerStart, trackerEnd);
+    const findingsEnd = content.indexOf("</CardContent>", trackerEnd);
+    const findingsSection = content.slice(trackerEnd, findingsEnd);
+
+    expect(gateStart).toBeGreaterThan(-1);
+    expect(gateEnd).toBeGreaterThan(gateStart);
+    expect(gateSection).toContain('kpiListState === "loading"');
+    expect(gateSection).toContain('benchmarkListState === "loading"');
+    expect(gateSection).toContain('trafficKpiInputState === "loading"');
+    expect(gateSection).toContain('revenueKpiInputState === "loading"');
+    expect(gateSection).toContain('spendKpiInputState === "loading"');
+    expect(gateSection).toContain("kpiAnalyticsQueries.some");
+    expect(gateSection).toContain("benchmarkAnalyticsQueries.some");
+    expect(trackerSection).toContain('insightsInitialLoading ? "?" : insights.length');
+    expect(findingsSection).toContain("insightsInitialLoading ? (");
+    expect(findingsSection).toContain("Preparing verified findings");
+  });
+
+  it("consolidates unverified target checks instead of counting one source failure as many issues", () => {
+    const content = ga4MetricsFile();
+    const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names", insightsStart);
+    const section = content.slice(insightsStart, insightsEnd);
+
+    expect(section).toContain("const unverifiedTargets = [");
+    expect(section).toContain('id: "integrity:targets_unverified"');
+    expect(section).toContain("saved target evaluation");
+    expect(section).toContain("No KPI or Benchmark performance conclusion is generated from these values.");
+    expect(section).not.toContain("for (const item of unverifiedKpis)");
+    expect(section).not.toContain("for (const item of unverifiedBenchmarks)");
+  });
+  it("keeps target and scheduler findings factual instead of applying unsupported business judgments", () => {
+    const content = ga4MetricsFile();
+    const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names", insightsStart);
+    const section = content.slice(insightsStart, insightsEnd);
+
+    expect(section).toContain('title: `${String((k as any)?.name || metric)} Below Saved Target`');
+    expect(section).toContain('const configuredPriority = String((k as any)?.priority || "medium")');
+    expect(section).toContain('if (attPct >= 100) continue;');
+    expect(section).toContain("const periodMismatchLabels = [");
+    expect(section).toContain('Affected: ${periodMismatchLabels.join(", ")}.');
+    expect(section).toContain("trend history is unavailable");
+    expect(section).toContain("Confirm the daily KPI/Benchmark analytics job completed successfully");
+    expect(section).not.toContain("ROAS is strong");
+    expect(content).not.toContain("const POSITIVE_ROAS_STRONG");
+    expect(content).not.toContain("const KPI_BEHIND_PCT");
+    expect(content).not.toContain("const KPI_NEEDS_ATTENTION_PCT");
+  });
+
+
+
   it("flags invalid KPI and Benchmark targets before generating performance guidance", () => {
     const content = ga4MetricsFile();
     const helperStart = content.indexOf("const isBoundedRateMetric =");
@@ -131,7 +204,7 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).toContain("integrity:bench_invalid_config");
     expect(insightsSection).toContain("if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above");
     expect(insightsSection).toContain("if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above");
-    expect(insightsSection).toContain("This KPI is not used for behind-target guidance until the saved target is corrected.");
+    expect(insightsSection).toContain("This KPI is not used for saved-target guidance until the saved target is corrected.");
     expect(insightsSection).toContain("This Benchmark is not used for behind-benchmark guidance until the saved benchmark value is corrected.");
   });
 
@@ -160,7 +233,7 @@ describe("GA4 Insights regression guard", () => {
     expect(renderSection).toContain("Confidence: {i.confidence}");
   });
 
-  it("makes What to investigate next intro copy reflect available daily history", () => {
+  it("keeps the What to investigate next page header stable while report context remains history-aware", () => {
     const content = ga4MetricsFile();
     const copyStart = content.indexOf("const insightsActionDescription = useMemo(() => {");
     const copyEnd = content.indexOf("// Collect GA4 campaign names from the current campaign's saved GA4 scope.", copyStart);
@@ -172,13 +245,14 @@ describe("GA4 Insights regression guard", () => {
     expect(copyStart).toBeGreaterThan(-1);
     expect(copyEnd).toBeGreaterThan(copyStart);
     expect(copySection).toContain("!insightsRollups.last3.complete || !insightsRollups.prior3.complete");
-    expect(copySection).toContain("Trend and anomaly checks need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days");
+    expect(copySection).toContain("Current 3-day window ${current3Coverage}; prior window ${prior3Coverage}");
     expect(copySection).toContain("!insightsRollups.last7.complete || !insightsRollups.prior7.complete");
-    expect(copySection).toContain("Short-window trend checks are active");
-    expect(copySection).toContain("full 7-day vs prior 7-day analysis starts after ${INSIGHTS_MIN_HISTORY_DAYS} days");
-    expect(copySection).toContain("We compare the last 7 days vs the previous 7 days");
-    expect(renderSection).toContain("<CardDescription>{insightsActionDescription}</CardDescription>");
-    expect(renderSection).not.toContain("when enough daily history exists");
+    expect(copySection).toContain("Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}");
+    expect(copySection).toContain("both adjacent 7-day calendar windows must be complete");
+    expect(copySection).toContain("Both windows are complete, so 7-day comparisons run");
+    expect(copySection).toContain("imported row${availableDays === 1 ? \"\" : \"s\"} in the 60-day response");
+    expect(copySection).not.toContain("completed GA4 day${availableDays");
+    expect(renderSection).not.toContain("<CardDescription>");
   });
 
   it("keeps What to investigate next recommendations worded as checks rather than causal conclusions", () => {
@@ -194,7 +268,7 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).toContain('accounts for ${ch.topSessionShare.toFixed(0)}% of sessions; check whether its volume or quality changed.');
     expect(insightsSection).toContain("Check top-performing channels before considering budget increases.");
     expect(insightsSection).toContain("Check which channels contributed to the increase before considering scaling.");
-    expect(insightsSection).toContain("Review high-ROAS channels before considering spend increases or new audience tests.");
+    expect(insightsSection).not.toContain("Review high-ROAS channels before considering spend increases or new audience tests.");
     expect(insightsSection).toContain("Review whether the target should be raised before changing budget allocation.");
     expect(insightsSection).not.toContain("drives ${ch.topRevenueShare.toFixed(0)}% of revenue");
     expect(insightsSection).not.toContain("drives ${ch.topSessionShare.toFixed(0)}% of sessions");
@@ -204,6 +278,28 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).not.toContain("This KPI is performing well.");
     expect(pdfContent).toContain("Review source and medium mix for the largest acquisition-channel changes.");
     expect(pdfContent).not.toContain("dropped first");
+  });
+
+  it("labels channel share with its raw breakdown denominator", () => {
+    const content = ga4MetricsFile();
+
+    expect(content).toContain("% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions");
+    expect(content).not.toContain("{channelAnalysis.topSessionShare.toFixed(0)}% of sessions");
+  });
+
+  it("withholds mismatched channel attribution from the Data Summary and recommendations", () => {
+    const content = ga4MetricsFile();
+
+    expect(content).toContain("const insightsChannelBreakdownMatchesDaily =");
+    expect(content).toContain('activeTab === "insights" ? "&insightsChannelAttribution=1" : ""');
+    expect(content).toContain("channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions");
+    expect(content).toContain("channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions");
+    expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");
+    expect(content).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
+    expect(content).toContain("Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.");
+    expect(content).toContain("{dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.topSessionChannel && (");
+    expect(content).toContain("{dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels && dataSummaryChannelAnalysis.channels.length >= 1 && (");
+    expect(content).not.toContain("Channel figures use a separate GA4 breakdown and are not a breakdown of the");
   });
 
   it("keeps GA4 Insights report output aligned with grouped and evidence-aware findings", () => {

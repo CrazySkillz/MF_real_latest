@@ -245,7 +245,9 @@ describe("GA4 UI regression guard", () => {
     );
     expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
     expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
-    expect(ga4Metrics).toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
+    expect(ga4Metrics).toContain('const financialRevenueAvailable = activeTab === "insights"');
+    expect(ga4Metrics).toContain("? ga4ToDateResp !== undefined && importedRevenueAvailable && revenueMetricAvailable");
+    expect(ga4Metrics).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
     expect(ga4Metrics).toMatch(/spendSourceDefinitionsKnownEmpty\) &&\r?\n\s+spendMetricAvailable;/);
     expect(ga4Metrics).not.toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;");
     expect(ga4Metrics).not.toContain("      spendSourceDefinitionsKnownEmpty);");
@@ -340,7 +342,7 @@ describe("GA4 UI regression guard", () => {
     expect(createSection).not.toContain("conversions: Number(financialConversions || 0),");
   });
 
-  it("keeps Insights CPA aligned to Overview financial conversions", () => {
+  it("keeps report CPA aligned to Overview financial conversions without duplicating it in Data Summary", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const browserReportStart = ga4Metrics.indexOf("if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0))");
     const browserReportEnd = ga4Metrics.indexOf("if (!includeInsightsActions)", browserReportStart);
@@ -355,8 +357,9 @@ describe("GA4 UI regression guard", () => {
     expect(liveEnd).toBeGreaterThan(liveStart);
     expect(browserReportSection).toContain("financialConversions > 0 && financialSpend > 0");
     expect(browserReportSection).toContain("formatMoney(financialCPA)");
-    expect(liveSection).toContain("financialConversions > 0");
-    expect(liveSection).toContain("formatMoney(financialCPA)");
+    expect(liveSection).not.toContain("financialConversions > 0");
+    expect(liveSection).not.toContain("formatMoney(financialCPA)");
+    expect(liveSection).not.toContain('data-testid="insights-summary-cpa"');
     expect(ga4Metrics).not.toContain("financialSpend / breakdownTotals.conversions");
   });
 
@@ -587,24 +590,26 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const availableMonths = new Set(");
     expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;');
     expect(ga4Metrics).toContain('insightsRollups.last7.complete && insightsRollups.prior7.complete');
-    expect(ga4Metrics).toContain('insightsRollups.last30.complete && insightsRollups.prior30.complete');
-    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;');
+    expect(ga4Metrics).toContain('const complete30DayRows = insightsTrendMode === "30d"');
+    expect(ga4Metrics).toContain(': complete30DayRows.length > 0');
+    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} imported daily rows`;');
     expect(ga4Metrics).toContain("Both adjacent calendar windows must contain every completed reporting day.");
+    expect(ga4Metrics).toContain("30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.");
     expect(ga4Metrics).toContain("Missing dates are not assumed to be zero.");
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
     expect(ga4Metrics).toContain('const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
     expect(ga4Metrics).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);");
     expect(ga4Metrics).toContain("const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);");
     expect(ga4Metrics).not.toContain("const trendsRefreshScheduleTimeZone =");
-    expect(ga4Metrics).toContain("const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4InsightsDailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);");
+    expect(ga4Metrics).not.toContain("const trendsExpectedRefreshLabel =");
     expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(ga4InsightsTimeSeries[ga4InsightsTimeSeries.length - 1]?.date || "").trim();');
     expect(ga4Metrics).toContain('const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";');
     expect(ga4Metrics).toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");
-    expect(ga4Metrics).toContain("Reporting timezone");
+    expect(ga4Metrics).not.toContain("<span>Reporting timezone <span");
     expect(ga4Metrics).toContain("Last refreshed <span");
-    expect(ga4Metrics).toContain("Expected refresh <span");
-    expect(ga4Metrics).toContain("Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run.");
+    expect(ga4Metrics).not.toContain("Expected refresh <span");
+    expect(ga4Metrics).not.toContain("Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run.");
     expect(ga4Metrics).toContain('`${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`');
     expect(ga4Metrics).not.toContain('`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day${dailyRows.length === 1 ? "" : "s"}`');
     expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.");
@@ -648,7 +653,7 @@ describe("GA4 UI regression guard", () => {
     expect(mapSection).not.toContain("Loading spreadsheet data");
   });
 
-  it("limits the v1 spend chooser to supported sources including Google Sheets", () => {
+  it("keeps the Overview spend chooser independent from the Insights certification boundary", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooserStart = spendModal.indexOf('{step === "select" && (');
     const chooserEnd = spendModal.indexOf('{step === "ad_platform" && (', chooserStart);
@@ -784,10 +789,19 @@ describe("GA4 UI regression guard", () => {
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics"], exact: false });');
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });');
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`], exact: false });');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsDailyReadOnly]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId]');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId]');
-    expect(ga4Metrics).toContain("queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId]");
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly]');
+    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
     expect(ga4Metrics).not.toContain("ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&dateRange=");
+  });
+
+  it("uses one campaign-currency GA4 financial request across Overview and Insights", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).not.toContain("const insightsFinancialScope = activeTab === \"insights\";");
+    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
+    expect(ga4Metrics).toContain('&insightsScope=1${insightsValidationReadOnly ? "&readOnly=1" : ""}');
+    expect(ga4Metrics).not.toContain('insightsFinancialScope ? "&insightsScope=1" : ""');
   });
 });

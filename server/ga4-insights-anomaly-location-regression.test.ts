@@ -8,7 +8,7 @@ describe("GA4 Insights anomaly location copy", () => {
     const categoryStart = content.indexOf("const getInsightCategory =");
     const categoryEnd = content.indexOf("const getInsightDataBasis =", categoryStart);
     const placeholderStart = content.indexOf('id: "anomaly:not-enough-history"');
-    const placeholderEnd = content.indexOf("// 4) Positive signals", placeholderStart);
+    const placeholderEnd = content.indexOf("// 4) Positive saved-target signals", placeholderStart);
     const categorySection = content.slice(categoryStart, categoryEnd);
     const placeholderSection = content.slice(placeholderStart, placeholderEnd);
 
@@ -19,7 +19,9 @@ describe("GA4 Insights anomaly location copy", () => {
     expect(categorySection).toContain('id.startsWith("anomaly:")');
     expect(categorySection).toContain(') return "trends";');
     expect(placeholderSection).toContain("Trend signals need more history");
-    expect(placeholderSection).toContain("This Trend signals section will show anomaly or positive momentum cards");
-    expect(placeholderSection).toContain("Full 7-day vs prior 7-day anomaly checks start after ${INSIGHTS_MIN_HISTORY_DAYS} days.");
+    expect(placeholderSection).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
+    expect(placeholderSection).toContain("Prior window ${insightsRollups.prior3.startDate}");
+    expect(placeholderSection).toContain("Both adjacent calendar windows must be complete before comparisons run");
+    expect(placeholderSection).not.toContain("Full 7-day vs prior 7-day anomaly checks start after");
   });
 });

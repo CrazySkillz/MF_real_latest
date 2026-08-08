@@ -88,8 +88,8 @@ describe('HubSpot GA4 mapping and downstream variant matrix', () => {
     );
     const recompute = section(
       routes,
-      'const scheduleGA4RevenuePostResponseRecompute',
-      'const scheduleGA4SpendPostResponseRecompute'
+      'const recomputeCampaignDerivedValues',
+      '// When "revenue to date"'
     );
 
     expect(saveRoute).toContain('campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries())');

@@ -10,6 +10,8 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
   getRevenueTotalForRange: vi.fn(),
   getSpendTotalForRange: vi.fn(),
+  getRevenueSources: vi.fn(),
+  getSpendSources: vi.fn(),
   getPlatformKPIs: vi.fn(),
   updateKPI: vi.fn(),
   getKPIProgress: vi.fn(),
@@ -68,17 +70,20 @@ describe("GA4 custom KPI recompute preservation", () => {
     vi.setSystemTime(new Date("2026-06-28T12:00:00.000Z"));
     resetMocks();
 
-    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-06-01T00:00:00.000Z" });
-    storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "service_account" }]);
+    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-06-01T00:00:00.000Z", reportingTimeZone: "UTC", currency: "USD" });
+    storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "access_token", accessToken: "token" }]);
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-06-27" && endDate === "2026-06-27") return [dailyRow];
       if (startDate === "2026-06-01" && endDate === "2026-06-27") return [dailyRow];
       return [];
     });
     storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
-    storageMock.getGA4Connection.mockResolvedValue(null);
-    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, sourceIds: ["revenue-current-day"] });
-    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 200, sourceIds: ["spend-current-day"] });
+    storageMock.getGA4Connection.mockResolvedValue({ propertyId: "properties/123", method: "access_token", accessToken: "token" });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, sourceIds: ["revenue-current-day"], currency: "USD" });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 200, sourceIds: ["spend-current-day"], currency: "USD" });
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-current-day", sourceType: "csv", currency: "USD", isActive: true }]);
+    storageMock.getSpendSources.mockResolvedValue([{ id: "spend-current-day", sourceType: "csv", currency: "USD", isActive: true }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "USD", totals: { ...dailyRow, revenue: 1000 } });
     storageMock.getPlatformKPIs.mockResolvedValue([
       { id: "kpi-revenue", metric: "Revenue", currentValue: "12.00" },
       { id: "kpi-custom-name", metric: "", name: "Qualified Pipeline", currentValue: "42.00" },
@@ -123,7 +128,7 @@ describe("GA4 custom KPI recompute preservation", () => {
     expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({
       kpiId: "kpi-revenue",
       value: "1300",
-      notes: "auto:ga4_daily:2026-06-27",
+      notes: "auto:ga4_daily:2026-06-27;ga4_scope_v1:123:UTC:USD:%5B%5D",
     }));
     expect(result.kpiIdsUpdated).toEqual(["kpi-revenue"]);
     expect(result.kpiIdsSkipped).toEqual(["kpi-custom-name", "kpi-custom-marker"]);

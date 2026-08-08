@@ -10,6 +10,8 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
   getRevenueTotalForRange: vi.fn(),
   getSpendTotalForRange: vi.fn(),
+  getRevenueSources: vi.fn(),
+  getSpendSources: vi.fn(),
   getPlatformKPIs: vi.fn(),
   updateKPI: vi.fn(),
   getKPIProgress: vi.fn(),
@@ -63,9 +65,10 @@ describe("GA4 KPI authoritative reporting window", () => {
       id: "campaign-1",
       startDate: "2026-06-01T00:00:00.000Z",
       reportingTimeZone: "America/Los_Angeles",
+      currency: "USD",
     });
     storageMock.getGA4Connections.mockResolvedValue([
-      { propertyId: "properties/123", isPrimary: true, method: "service_account" },
+      { propertyId: "properties/123", isPrimary: true, method: "access_token", accessToken: "token" },
     ]);
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-07-30" && endDate === "2026-07-30") return [trafficRows[1]];
@@ -74,9 +77,12 @@ describe("GA4 KPI authoritative reporting window", () => {
       return [];
     });
     storageMock.getLatestGA4DailyMetric.mockResolvedValue(trafficRows[1]);
-    storageMock.getGA4Connection.mockResolvedValue(null);
-    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0 });
-    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 1000 });
+    storageMock.getGA4Connection.mockResolvedValue({ propertyId: "properties/123", method: "access_token", accessToken: "token" });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [], currency: "USD" });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 1000, sourceIds: ["spend-source"], currency: "USD" });
+    storageMock.getRevenueSources.mockResolvedValue([]);
+    storageMock.getSpendSources.mockResolvedValue([{ id: "spend-source", sourceType: "csv", currency: "USD", isActive: true }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "USD", totals: lifetimeRow });
     storageMock.getPlatformKPIs.mockResolvedValue([
       { id: "users", metric: "users" },
       { id: "sessions", metric: "sessions" },
@@ -134,7 +140,7 @@ describe("GA4 KPI authoritative reporting window", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "10" });
     expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({
       recordedAt: new Date("2026-07-30T23:59:59.000Z"),
-      notes: "auto:ga4_daily:2026-07-30",
+      notes: "auto:ga4_daily:2026-07-30;ga4_scope_v1:123:America%2FLos_Angeles:USD:%5B%5D",
     }));
   });
 });

@@ -306,10 +306,10 @@ Checkpoint after Journey 1:
 Status note: GA4 Insights production-readiness validation passed for the current GA4 code scope. Keep the checks below as future regression validation, not as evidence that the current status is still pending.
 - [ ] Click the **Insights** tab
 - [ ] Scroll to **Executive Financials** section: Revenue ≈ $240,352, Spend = $0
-- [ ] Scroll to **Data Summary** section: Sessions/Conversions/CR/Revenue cards populated
-- [ ] `Data Summary -> Revenue` matches Overview / Executive Financials revenue, including imported revenue after revenue-source changes
+- [ ] Scroll to **Data Summary** section: Sessions, Conversions, conversion rate, Top Channel, and the reconciled Channel Breakdown are populated for the same recent-30-day reporting dates
+- [ ] `Executive Financials -> Revenue` matches Overview revenue, including imported revenue after revenue-source changes
 - [ ] **Channel Breakdown table**: shows traffic channels from simulation
-- [ ] Scroll to **What changed, what to do next** section:
+- [ ] Scroll to **What to investigate next** section:
   - Informational insights with blue **"Info"** badge (not "Low")
   - **"Spend missing"** integrity insight should appear (revenue exists but no spend)
 
@@ -611,7 +611,7 @@ Checkpoint after Journey 7:
 - [ ] **Overview tab**: note Total Spend, ROAS, ROI, CPA, Profit values
 - [ ] **KPIs tab**: note ROAS KPI current value, CPA KPI current value
 - [ ] **Benchmarks tab**: note ROAS Benchmark current value, CPA Benchmark current value
-- [ ] **Insights tab**: note Data Summary financial row values (Spend, Profit, ROAS, CPA)
+- [ ] **Insights tab**: note Executive Financials values (Spend, Revenue, Profit, ROAS, ROI)
 
 ### Step 2: Add CSV Spend
 - [ ] Overview tab → click "+" on Total Spend card → select **CSV**
@@ -625,7 +625,7 @@ Checkpoint after Journey 7:
 - [ ] **Overview tab**: ROAS decreased (same revenue ÷ higher spend), CPA increased, ROI decreased, Profit decreased
 - [ ] **KPIs tab**: ROAS KPI current value decreased, CPA KPI current value increased, progress bars updated
 - [ ] **Benchmarks tab**: ROAS Benchmark current value decreased, CPA Benchmark current value increased
-- [ ] **Insights tab**: Data Summary financial row reflects new Spend, Profit, ROAS, CPA values
+- [ ] **Insights tab**: Executive Financials reflects the new Spend, Profit, ROAS, and ROI values
 - [ ] **Insights tab**: any spend-related insights updated (e.g., ROAS insight may change severity)
 
 ### Step 4: Add LinkedIn Ads (Test Mode)

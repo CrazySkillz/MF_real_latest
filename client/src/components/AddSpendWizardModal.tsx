@@ -169,7 +169,7 @@ export function AddSpendWizardModal(props: {
   const [selectedAdPlatformCampaignIds, setSelectedAdPlatformCampaignIds] = useState<string[]>([]);
   const [googleAdsSpendCustomers, setGoogleAdsSpendCustomers] = useState<GoogleAdsSpendCustomer[]>([]);
   const [selectedGoogleAdsCustomerId, setSelectedGoogleAdsCustomerId] = useState<string>("");
-  const [googleAdsPendingTokens, setGoogleAdsPendingTokens] = useState<{ accessToken?: string; refreshToken?: string; expiresIn?: number } | null>(null);
+  const [googleAdsPendingAuthorization, setGoogleAdsPendingAuthorization] = useState<unknown | null>(null);
 
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
@@ -237,7 +237,7 @@ export function AddSpendWizardModal(props: {
       setSelectedAdPlatformCampaignIds([]);
       setGoogleAdsSpendCustomers([]);
       setSelectedGoogleAdsCustomerId("");
-      setGoogleAdsPendingTokens(null);
+      setGoogleAdsPendingAuthorization(null);
   }, [props.open, props.initialSource]);
 
   // Prefill when editing an existing spend source (e.g., after ROAS/ROI are computed).
@@ -1233,9 +1233,14 @@ export function AddSpendWizardModal(props: {
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to import spend");
+      const importedSpend = Number(json?.spendToDate);
+      const importedCurrency = String(json?.currency || props.currency || "USD").trim().toUpperCase();
+      const importedSpendLabel = Number.isFinite(importedSpend)
+        ? new Intl.NumberFormat(undefined, { style: "currency", currency: importedCurrency }).format(importedSpend)
+        : "the verified server total";
       toast({
         title: "Spend imported",
-        description: `Imported $${selectedSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })} from ${selectedCampaigns.length} ${platformLabel} campaign(s).`,
+        description: `Imported ${importedSpendLabel} from ${selectedCampaigns.length} ${platformLabel} campaign(s).`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
@@ -1281,7 +1286,7 @@ export function AddSpendWizardModal(props: {
   const connectGoogleAdsSpendCustomer = async () => {
     if (selectedPlatform !== "google_ads") return;
     const selected = googleAdsSpendCustomers.find((customer) => String(customer.id) === selectedGoogleAdsCustomerId);
-    if (!selected || !googleAdsPendingTokens?.accessToken) {
+    if (!selected || !googleAdsPendingAuthorization) {
       toast({ title: "Google Ads account required", description: "Select a Google Ads account to continue.", variant: "destructive" });
       return;
     }
@@ -1294,11 +1299,7 @@ export function AddSpendWizardModal(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: selected.id,
-          customerName: selected.descriptiveName,
-          accessToken: googleAdsPendingTokens.accessToken,
-          refreshToken: googleAdsPendingTokens.refreshToken,
-          expiresIn: googleAdsPendingTokens.expiresIn,
-          managerAccountId: selected.manager ? selected.id : undefined,
+          authorization: googleAdsPendingAuthorization,
           spendOnly: true,
         }),
       });
@@ -1317,7 +1318,7 @@ export function AddSpendWizardModal(props: {
       setIsAdPlatformTestMode(false);
       setGoogleAdsSpendCustomers([]);
       setSelectedGoogleAdsCustomerId("");
-      setGoogleAdsPendingTokens(null);
+      setGoogleAdsPendingAuthorization(null);
       await fetchAdPlatformPreview("google_ads");
       toast({ title: "Connected to Google Ads", description: "Google Ads spend data is ready to preview and import." });
     } catch (e: any) {
@@ -1389,7 +1390,7 @@ export function AddSpendWizardModal(props: {
           window.removeEventListener("message", handleMessage);
           if (platform === "google_ads") {
             const customers = Array.isArray(event.data.customers) ? event.data.customers : [];
-            setGoogleAdsPendingTokens(event.data.tokens || null);
+            setGoogleAdsPendingAuthorization(event.data.authorization || null);
             setGoogleAdsSpendCustomers(customers);
             setSelectedGoogleAdsCustomerId(customers.length === 1 ? String(customers[0]?.id || "") : "");
             setIsAdPlatformConnecting(false);
@@ -1914,7 +1915,7 @@ export function AddSpendWizardModal(props: {
                                 ? "Use Meta test data to validate the spend import flow."
                                 : `Connect your ${selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.`}
                             </p>
-                            {selectedPlatform === "google_ads" && googleAdsPendingTokens ? (
+                            {selectedPlatform === "google_ads" && googleAdsPendingAuthorization ? (
                               <div className="space-y-3">
                                 {googleAdsSpendCustomers.length > 0 ? (
                                   <>

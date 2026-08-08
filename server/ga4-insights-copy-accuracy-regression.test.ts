@@ -19,7 +19,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
     expect(page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
-    expect(section).toContain("{executiveFinancialsDescription}");
+    expect(section).not.toContain("{executiveFinancialsDescription}");
     expect(section).not.toContain(" Range:");
     expect(page).toContain("if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;");
     expect(page).toContain("if (hasSpend && hasRevenue) return `Uses source-backed spend-to-date and total revenue from ${revenueText}.`;");
@@ -32,7 +32,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(scheduledPdf).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
   });
 
-  it("describes 7d and 30d Trends as totals for non-rate metrics and weighted averages for rates", () => {
+  it("uses the requested Trends bullets while preserving rolling metric semantics", () => {
     const page = readClient();
     const scheduledPdf = readScheduledPdf();
     const sectionStart = page.indexOf('<CardTitle className="text-lg">Trends</CardTitle>');
@@ -41,9 +41,9 @@ describe("GA4 Insights copy accuracy", () => {
 
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
-    expect(section).toContain(
-      "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months."
-    );
+    expect(section).toContain("<li>Daily shows day-by-day values.</li>");
+    expect(section).toContain("<li>7d/30d show rolling totals.</li>");
+    expect(section).toContain("<li>Monthly compares calendar months.</li>");
     expect(section).toContain("Completed-day cutoff");
     expect(page).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
     expect(scheduledPdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");

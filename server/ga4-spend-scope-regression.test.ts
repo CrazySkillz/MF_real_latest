@@ -54,7 +54,8 @@ describe("GA4 spend source-scope regression guard", () => {
 
     expect(page).toContain("spendBreakdownResp?.totalSpend ?? spendToDateResp?.spendToDate ?? 0");
     expect(page).not.toContain("spendBreakdownResp?.totalSpend || spendToDateResp?.spendToDate");
-    expect(routes).toContain('getSpendTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), platformContext)');
+    expect(routes).toContain('const startDate = "1900-01-01"');
+    expect(routes).toContain("storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)");
     expect(routes).toContain("const uiSpend = (Array.isArray(spendSources) && spendSources.length > 0)");
     expect(routes).toContain("? spendBreakdownTotal");
     expect(routes).not.toContain("spendBreakdownTotal || parseNum((campaign as any)?.spend)");
@@ -98,6 +99,6 @@ describe("GA4 spend source-scope regression guard", () => {
     expect(scheduler).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
     expect(scheduler).not.toContain("storage.getSpendTotalForRange(campaignId, startDate, endDate)");
     expect(autoRefresh).toContain("storage.getSpendSources(campaignId)");
-    expect(autoRefresh).toContain('storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate)');
+    expect(autoRefresh).toContain('storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate)');
   });
 });

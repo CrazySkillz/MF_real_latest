@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 export const GA4_INSIGHTS_CERTIFICATION_RECORD = "GA4/certifications/ga4-insights.json";
 export const GA4_INSIGHTS_REQUIRED_DEPENDENCIES = [
+  "GA4/README.md",
   "GA4/INSIGHTS.md",
   "GA4/INSIGHTS_PRODUCTION_READINESS.md",
   "GA4/FINANCIAL_SOURCES.md",
@@ -16,16 +17,30 @@ export const GA4_INSIGHTS_REQUIRED_DEPENDENCIES = [
   "shared/metric-math.ts",
   "shared/ga4-kpi-consumer-state.ts",
   "shared/ga4-kpi-live-value.ts",
+  "shared/ga4-kpi-metric-identity.ts",
+  "shared/ga4-traffic-window.ts",
+  "shared/kpi-math.ts",
+  "shared/schema.ts",
   "server/routes-oauth.ts",
+  "server/index.ts",
+  "server/internal-request-auth.ts",
+  "server/db.ts",
   "server/storage.ts",
   "server/analytics.ts",
+  "server/real-ga4-client.ts",
   "server/ga4-daily-scheduler.ts",
   "server/ga4-kpi-benchmark-jobs.ts",
   "server/utils/reporting-timezone.ts",
+  "server/utils/tokenVault.ts",
   "server/ga4-insights-certification-gate.ts",
   "server/ga4-insights-certification-gate.test.ts",
   "server/ga4-insights-production-path.test.ts",
   "server/ga4-insights-live-production-regression.test.ts",
+  "server/ga4-insights-auth-scope-regression.test.ts",
+  "server/ga4-daily-scheduler-regression.test.ts",
+  "server/ga4-kpi-real-path-parity-regression.test.ts",
+  "server/ga4-source-lifecycle-recompute-regression.test.ts",
+  "server/csv-revenue-downstream-propagation.test.ts",
   "scripts/ga4-insights-live-readonly.ts",
   "scripts/ga4-insights-scheduler-validation.ts",
   "package.json",
@@ -80,6 +95,13 @@ const checkEvidence = (label: string, evidence: any, ready: boolean, errors: str
     if (typeof item.evidence !== "string" || !item.evidence.trim()) {
       errors.push(`${label} ${item.id} has no evidence`);
     }
+    if (
+      ready &&
+      typeof item.evidence === "string" &&
+      /(?:machine|controlling)\s+(?:record|status)[^.\n]*\bUNVERIFIED\b/i.test(item.evidence)
+    ) {
+      errors.push(`${label} ${item.id} evidence contradicts ready status`);
+    }
     if (ready && !["passed", "not_applicable"].includes(item.status)) {
       errors.push(`${label} ${item.id} is ${item.status} while status claims ready`);
     }
@@ -124,6 +146,16 @@ export function evaluateGA4InsightsCertification(
       if (!excluded.includes(required)) errors.push(`excludedSurfaces must name ${required}`);
     }
   }
+  const fingerprint = value.configurationFingerprint;
+  if (!isObject(fingerprint)) errors.push("configurationFingerprint must be an object");
+  else {
+    if (fingerprint.algorithm !== "sha256") errors.push("configurationFingerprint algorithm must be sha256");
+    if (typeof fingerprint.canonicalBoundary !== "string" || !fingerprint.canonicalBoundary.trim()) {
+      errors.push("configurationFingerprint canonicalBoundary is required");
+    } else if (fingerprint.value !== hashGA4InsightsCertificationText(fingerprint.canonicalBoundary)) {
+      errors.push("configurationFingerprint does not match canonicalBoundary");
+    }
+  }
 
   const dependencies = Array.isArray(value.dependencies) ? value.dependencies : [];
   const byPath = new Map(dependencies.map((item: any) => [item?.path, item]));
@@ -159,6 +191,12 @@ export function evaluateGA4InsightsCertification(
       const current = content.slice(start, end);
       if (!current.includes(`<!-- ga4-insights-certification-status: ${value.status} -->`)) errors.push("status marker does not match record");
       if (!ready && /Status:\s*\*\*PRODUCTION_READY\*\*/i.test(current)) errors.push("current status contradicts UNVERIFIED record");
+    }
+    if (
+      ready &&
+      /(?:machine|controlling)\s+(?:record|status)\s+(?:is\s+|remains\s+)?`?UNVERIFIED`?/i.test(content)
+    ) {
+      errors.push("statusDocument contradicts ready status outside the controlling marker");
     }
   }
   checkEvidence("requiredTests", value.requiredTests, ready, errors);

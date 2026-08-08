@@ -4,7 +4,8 @@ import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
-import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness, selectRevenueRecordTotal } from "./utils/revenue-record-total";
+import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
+import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -17,6 +18,8 @@ const devLog = (...args: any[]) => {
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
+export const selectMaterializedRevenueTotal = (aggregate: number, subCampaign: number, hasAggregate: boolean) =>
+  hasAggregate ? aggregate : subCampaign;
 
 const spendPlatformContextPredicate = (platformContext?: SpendPlatformContext) => {
   if (!platformContext) return undefined;
@@ -109,6 +112,7 @@ export interface IStorage {
   getCampaign(id: string): Promise<Campaign | undefined>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  updateCampaignWithGA4DailyInvalidation(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
   deleteCampaignCascade(id: string): Promise<boolean>;
 
@@ -127,7 +131,7 @@ export interface IStorage {
   createPerformanceData(data: InsertPerformanceData): Promise<PerformanceData>;
 
   // GA4 Connections
-  getGA4Connections(campaignId: string): Promise<GA4Connection[]>;
+  getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean }): Promise<GA4Connection[]>;
   getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined>;
   getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
@@ -138,6 +142,7 @@ export interface IStorage {
 
   // GA4 Daily Metrics (daily facts)
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
+  replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[]): Promise<{ replaced: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
   getLatestGA4DailyMetric(campaignId: string, propertyId: string): Promise<GA4DailyMetric | undefined>;
 
@@ -282,6 +287,7 @@ export interface IStorage {
   // Google Ads Connections
   getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined>;
   createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection>;
+  replaceGoogleAdsConnection(connection: InsertGoogleAdsConnection, dailyMetrics?: InsertGoogleAdsDailyMetric[]): Promise<GoogleAdsConnection>;
   updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined>;
   deleteGoogleAdsConnection(campaignId: string): Promise<boolean>;
   deleteGoogleAdsDailyMetrics(campaignId: string): Promise<boolean>;
@@ -289,6 +295,7 @@ export interface IStorage {
   // Google Ads Daily Metrics
   getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]>;
   upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
+  replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[]): Promise<{ replaced: number }>;
   updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
   updateMetaDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ metaCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
   updateLinkedInDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ linkedinCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
@@ -566,6 +573,19 @@ export class DatabaseStorage implements IStorage {
     return campaign || undefined;
   }
 
+  async updateCampaignWithGA4DailyInvalidation(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
+    return db.transaction(async (tx: any) => {
+      const [campaign] = await tx
+        .update(campaigns)
+        .set(updateData)
+        .where(eq(campaigns.id, id))
+        .returning();
+      if (!campaign) return undefined;
+      await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, id));
+      return campaign;
+    });
+  }
+
   async deleteCampaign(id: string): Promise<boolean> {
     const result = await db
       .delete(campaigns)
@@ -742,14 +762,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // GA4 Connection methods
-  async getGA4Connections(campaignId: string): Promise<GA4Connection[]> {
+  async getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean }): Promise<GA4Connection[]> {
     const rows = await db
       .select()
       .from(ga4Connections)
       .where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.connectedAt);
     // Lazy backfill: encrypt legacy plaintext tokens.
-    await Promise.all(
+    if (options?.migrateLegacyTokens !== false) await Promise.all(
       rows.map(async (r: any) => {
         const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
         const hasEnc = Boolean(r?.encryptedTokens);
@@ -994,6 +1014,58 @@ export class DatabaseStorage implements IStorage {
     }
 
     return { upserted: input.length };
+  }
+
+  async replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[]): Promise<{ replaced: number }> {
+    const cid = String(campaignId || "").trim();
+    const pid = String(propertyId || "").trim();
+    const start = String(startDate || "").trim();
+    const end = String(endDate || "").trim();
+    if (!cid || !pid || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) {
+      throw new Error("Invalid GA4 daily replacement scope");
+    }
+    const inputRows = Array.isArray(rows) ? rows : [];
+    const normalizedRows = inputRows.map((row: any) => {
+      const normalized = normalizeGA4InsightsDailyMetricValues(row);
+      return normalized ? { ...row, ...normalized } : null;
+    });
+    if (normalizedRows.some((row) => !row)) throw new Error("GA4 daily replacement contains an invalid metric value");
+    const scoped = normalizedRows.filter((row: any) =>
+      String(row.campaignId || "") === cid &&
+      String(row.propertyId || "") === pid &&
+      String(row.date || "") >= start &&
+      String(row.date || "") <= end
+    );
+    if (scoped.length !== inputRows.length) {
+      throw new Error("GA4 daily replacement row scope mismatch");
+    }
+
+    await db.transaction(async (tx: any) => {
+      await tx.delete(ga4DailyMetrics).where(and(
+        eq(ga4DailyMetrics.campaignId, cid),
+        eq(ga4DailyMetrics.propertyId, pid),
+        sql`${ga4DailyMetrics.date} >= ${start} AND ${ga4DailyMetrics.date} <= ${end}`,
+      ));
+      for (const row of scoped as any[]) {
+        await tx.insert(ga4DailyMetrics).values({
+          ...row,
+          campaignId: cid,
+          propertyId: pid,
+          date: String(row.date),
+          users: row.users,
+          sessions: row.sessions,
+          engagedSessions: row.engagedSessions == null ? null : Math.round(row.engagedSessions),
+          pageviews: row.pageviews,
+          conversions: row.conversions,
+          revenue: String(row?.revenue ?? "0"),
+          engagementRate: row?.engagementRate ?? null,
+          revenueMetric: row?.revenueMetric ?? null,
+          isSimulated: Boolean(row?.isSimulated),
+          updatedAt: new Date(),
+        } as any);
+      }
+    });
+    return { replaced: scoped.length };
   }
 
   async getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]> {
@@ -1283,6 +1355,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         spend: spendRecords.spend,
         currency: spendRecords.currency,
+        sourceCurrency: spendSources.currency,
         spendSourceId: spendRecords.spendSourceId,
       })
       .from(spendRecords)
@@ -1299,15 +1372,19 @@ export class DatabaseStorage implements IStorage {
 
     let total = 0;
     const sourceIds = new Set<string>();
-    let currency: string | undefined = undefined;
+    const currencies = new Set<string>();
     for (const r of rows as any[]) {
       const v = parseFloat(String((r as any).spendRecords?.spend ?? (r as any).spend ?? "0"));
       if (!Number.isNaN(v)) total += v;
       const sid = String((r as any).spendRecords?.spendSourceId ?? (r as any).spendSourceId);
       if (sid) sourceIds.add(sid);
-      const cur = (r as any).spendRecords?.currency ?? (r as any).currency;
-      if (!currency && cur) currency = String(cur);
+      for (const cur of [(r as any).spendRecords?.currency ?? (r as any).currency, (r as any).sourceCurrency]) {
+        const normalized = String(cur || "").trim().toUpperCase();
+        if (normalized) currencies.add(normalized);
+      }
     }
+    if (currencies.size > 1) throw new Error("Spend source currencies do not match");
+    const currency = Array.from(currencies)[0];
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
@@ -1319,6 +1396,7 @@ export class DatabaseStorage implements IStorage {
         sourceType: spendSources.sourceType,
         spend: spendRecords.spend,
         currency: spendRecords.currency,
+        sourceCurrency: spendSources.currency,
       })
       .from(spendRecords)
       .innerJoin(spendSources, sql`${spendSources.id}::text = ${spendRecords.spendSourceId}`)
@@ -1332,6 +1410,7 @@ export class DatabaseStorage implements IStorage {
       ));
 
     const totals = new Map<string, { displayName: string; sourceType: string; spend: number; currency?: string }>();
+    const currencies = new Set<string>();
     for (const r of rows as any[]) {
       const sid = String(r.spendSourceId ?? r.spendRecords?.spendSourceId);
       const v = parseFloat(String(r.spend ?? r.spendRecords?.spend ?? "0"));
@@ -1344,7 +1423,12 @@ export class DatabaseStorage implements IStorage {
       };
       existing.spend += v;
       totals.set(sid, existing);
+      for (const cur of [r.currency ?? r.spendRecords?.currency, r.sourceCurrency]) {
+        const normalized = String(cur || "").trim().toUpperCase();
+        if (normalized) currencies.add(normalized);
+      }
     }
+    if (currencies.size > 1) throw new Error("Spend source currencies do not match");
 
     return Array.from(totals.entries()).map(([sourceId, data]) => ({
       sourceId, displayName: data.displayName, sourceType: data.sourceType,
@@ -1924,6 +2008,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
       .where(and(
         eq(revenueRecords.campaignId, campaignId),
+        eq(revenueSources.campaignId, campaignId),
         eq(revenueSources.isActive, true),
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
@@ -1941,25 +2026,32 @@ export class DatabaseStorage implements IStorage {
       ? assertGa4RevenueCurrencyIntegrity(rows as any[], (campaign as any)?.currency || 'USD')
       : undefined;
 
-    const totalsBySource = new Map<string, { aggregate: number; attributed: number; hasAggregate: boolean }>();
+    const totalsBySource = new Map<string, { aggregate: number; subCampaign: number; hasAggregate: boolean }>();
     const sourceIds = new Set<string>();
+    const currencies = new Set<string>();
     let currency: string | undefined = validatedCurrency;
     for (const r of rows as any[]) {
       const v = parseFloat(String((r as any).revenueRecords?.revenue ?? (r as any).revenue ?? "0"));
       if (Number.isNaN(v)) continue;
       const sid = String((r as any).revenueRecords?.revenueSourceId ?? (r as any).revenueSourceId);
       if (sid) sourceIds.add(sid);
-      const existing = totalsBySource.get(sid) || { aggregate: 0, attributed: 0, hasAggregate: false };
-      if ((r as any).subCampaignUrn ?? (r as any).revenueRecords?.subCampaignUrn) existing.attributed += v;
-      else {
-        existing.aggregate += v;
-        existing.hasAggregate = true;
-      }
+      const existing = totalsBySource.get(sid) || { aggregate: 0, subCampaign: 0, hasAggregate: false };
+      if ((r as any).subCampaignUrn ?? (r as any).revenueRecords?.subCampaignUrn) existing.subCampaign += v;
+      else { existing.aggregate += v; existing.hasAggregate = true; }
       totalsBySource.set(sid, existing);
-      const cur = (r as any).revenueRecords?.currency ?? (r as any).currency;
-      if (!currency && cur) currency = String(cur);
+      for (const cur of [(r as any).revenueRecords?.currency ?? (r as any).currency, (r as any).sourceCurrency]) {
+        const normalized = String(cur || "").trim().toUpperCase();
+        if (normalized) currencies.add(normalized);
+      }
     }
-    const total = Array.from(totalsBySource.values()).reduce((sum, item) => sum + selectRevenueRecordTotal(item), 0);
+    if (platformContext !== 'ga4') {
+      if (currencies.size > 1) throw new Error("Imported revenue source currencies do not match");
+      currency = Array.from(currencies)[0];
+    }
+    const total = Array.from(totalsBySource.values()).reduce(
+      (sum, item) => sum + selectMaterializedRevenueTotal(item.aggregate, item.subCampaign, item.hasAggregate),
+      0,
+    );
     return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
@@ -1979,6 +2071,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
       .where(and(
         eq(revenueRecords.campaignId, campaignId),
+        eq(revenueSources.campaignId, campaignId),
         eq(revenueSources.isActive, true),
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
@@ -1992,7 +2085,8 @@ export class DatabaseStorage implements IStorage {
       assertGa4RevenueCurrencyIntegrity(rows as any[], (campaign as any)?.currency || 'USD');
     }
 
-    const totals = new Map<string, { displayName: string; sourceType: string; aggregate: number; attributed: number; hasAggregate: boolean; currency?: string }>();
+    const totals = new Map<string, { displayName: string; sourceType: string; aggregate: number; subCampaign: number; hasAggregate: boolean; currency?: string }>();
+    const currencies = new Set<string>();
     for (const r of rows as any[]) {
       const sid = String(r.revenueSourceId ?? r.revenueRecords?.revenueSourceId);
       const v = parseFloat(String(r.revenue ?? r.revenueRecords?.revenue ?? "0"));
@@ -2001,21 +2095,23 @@ export class DatabaseStorage implements IStorage {
         displayName: String(r.displayName ?? r.revenueSources?.displayName ?? 'Unknown'),
         sourceType: String(r.sourceType ?? r.revenueSources?.sourceType ?? 'unknown'),
         aggregate: 0,
-        attributed: 0,
+        subCampaign: 0,
         hasAggregate: false,
         currency: r.currency ?? r.revenueRecords?.currency,
       };
-      if (r.subCampaignUrn ?? r.revenueRecords?.subCampaignUrn) existing.attributed += v;
-      else {
-        existing.aggregate += v;
-        existing.hasAggregate = true;
-      }
+      if (r.subCampaignUrn ?? r.revenueRecords?.subCampaignUrn) existing.subCampaign += v;
+      else { existing.aggregate += v; existing.hasAggregate = true; }
       totals.set(sid, existing);
+      for (const cur of [r.currency ?? r.revenueRecords?.currency, r.sourceCurrency]) {
+        const normalized = String(cur || "").trim().toUpperCase();
+        if (normalized) currencies.add(normalized);
+      }
     }
+    if (currencies.size > 1) throw new Error("Imported revenue source currencies do not match");
 
     return Array.from(totals.entries()).map(([sourceId, data]) => ({
       sourceId, displayName: data.displayName, sourceType: data.sourceType,
-      revenue: Number(selectRevenueRecordTotal(data).toFixed(2)), currency: data.currency,
+      revenue: Number(selectMaterializedRevenueTotal(data.aggregate, data.subCampaign, data.hasAggregate).toFixed(2)), currency: data.currency,
     }));
   }
 
@@ -3575,6 +3671,34 @@ export class DatabaseStorage implements IStorage {
     return hydrateDecryptedTokens(gadsConnection) as any;
   }
 
+  async replaceGoogleAdsConnection(connection: InsertGoogleAdsConnection, dailyMetrics: InsertGoogleAdsDailyMetric[] = []): Promise<GoogleAdsConnection> {
+    assertProductionTokenEncryptionConfigured();
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+    const connectionData: any = {
+      ...connection,
+      accessToken: null,
+      refreshToken: null,
+      clientSecret: null,
+      encryptedTokens: enc as any,
+      selectedCampaignIds: null,
+      campaignUtmMap: null,
+      lastRefreshAt: null,
+    };
+    return await db.transaction(async (tx: any) => {
+      await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, connection.campaignId));
+      await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, connection.campaignId));
+      const [created] = await tx.insert(googleAdsConnections).values(connectionData).returning();
+      if (dailyMetrics.length > 0) {
+        await tx.insert(googleAdsDailyMetrics).values(dailyMetrics.map((metric: any) => ({ ...metric, campaignId: connection.campaignId })) as any);
+      }
+      return hydrateDecryptedTokens(created) as any;
+    });
+  }
+
   async updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined> {
     const [existing] = await db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
     if (!existing) return undefined;
@@ -3671,6 +3795,28 @@ export class DatabaseStorage implements IStorage {
       upserted++;
     }
     return { upserted };
+  }
+
+  async replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[]): Promise<{ replaced: number }> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
+      throw new Error("Invalid Google Ads replacement window");
+    }
+    if (metrics.some((metric: any) =>
+      String(metric?.campaignId || "") !== campaignId ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(String(metric?.date || "")) ||
+      String(metric.date) < startDate || String(metric.date) > endDate
+    )) throw new Error("Google Ads replacement row is outside the authorized scope");
+    return await db.transaction(async (tx: any) => {
+      await tx.delete(googleAdsDailyMetrics).where(and(
+        eq(googleAdsDailyMetrics.campaignId, campaignId),
+        gte(googleAdsDailyMetrics.date, startDate),
+        lte(googleAdsDailyMetrics.date, endDate),
+      ));
+      if (metrics.length > 0) {
+        await tx.insert(googleAdsDailyMetrics).values(metrics.map((metric: any) => ({ ...metric, campaignId })) as any);
+      }
+      return { replaced: metrics.length };
+    });
   }
 
   async updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {

@@ -75,12 +75,12 @@ export class RealGA4Client {
     }
   }
 
-  generateAuthUrl(campaignId: string): string {
+  generateAuthUrl(state: string): string {
     const baseUrl = this.getBaseUrl();
 
     if (!this.oauth2Client) {
       // Return simulation URL if no real OAuth configured
-      return `${baseUrl}/api/auth/google/simulation-auth?state=${campaignId}`;
+      return `${baseUrl}/api/auth/google/simulation-auth?state=${encodeURIComponent(state)}`;
     }
 
     const scopes = [
@@ -91,7 +91,7 @@ export class RealGA4Client {
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      state: campaignId,
+      state,
       prompt: 'consent'
     });
   }

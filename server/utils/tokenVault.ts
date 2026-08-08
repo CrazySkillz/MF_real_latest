@@ -63,6 +63,30 @@ export function assertProductionTokenEncryptionConfigured(): void {
   }
 }
 
+export function resolveOAuthStateSigningSecret(input: {
+  specificSecret?: string;
+  purpose: string;
+  label: string;
+  developmentFallback: string;
+}): string {
+  const baseSecret = String(
+    input.specificSecret ||
+    process.env.SESSION_SECRET ||
+    process.env.TOKEN_ENCRYPTION_KEY ||
+    process.env.ENCRYPTION_KEY ||
+    "",
+  ).trim();
+  if (!baseSecret) {
+    if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+      throw new Error(`${input.label} OAuth state secret is not configured`);
+    }
+    return input.developmentFallback;
+  }
+  return createHmac("sha256", baseSecret)
+    .update(`metricmind:oauth-state:${input.purpose}:v1`, "utf8")
+    .digest("base64url");
+}
+
 export function encryptString(plain: string): EncryptedBlobV1 {
   const key = getKey();
   const iv = randomBytes(12); // recommended for GCM

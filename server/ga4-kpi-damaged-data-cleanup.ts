@@ -176,11 +176,11 @@ async function buildFinancialInputs(campaign: any, propertyId: string, date: str
 
 async function inspectFinancialSourceWindowDrift(result: CleanupResult, options: CleanupOptions) {
   const campaigns = await getCampaigns(options);
-  const newWindow = getGA4KPIFinancialSourceWindow();
 
   for (const campaign of campaigns) {
     const campaignId = String(campaign?.id || "");
     if (!campaignId) continue;
+    const newWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
     const rows = (await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]))
       .filter(isFinancialSourceWindowKpi);
     if (rows.length === 0) continue;

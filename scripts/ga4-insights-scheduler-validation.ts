@@ -48,6 +48,18 @@ try {
   const row = inventory.rows[0];
   const propertyId = String(row.property_id);
   const expected = getReportingDateWindow(60, row.reporting_time_zone);
+  const googleAdsInventory = await client.query(`
+    SELECT s.id, s.mapping_config, a.method, a.spend_only
+    FROM spend_sources s
+    LEFT JOIN google_ads_connections a ON a.campaign_id = s.campaign_id
+    WHERE s.campaign_id = $1 AND s.is_active = true AND s.source_type = 'ad_platforms'
+      AND COALESCE(s.platform_context, 'ga4') = 'ga4'
+  `, [CAMPAIGN_ID]);
+  const googleAdsSources = googleAdsInventory.rows.filter((source: any) => {
+    try { return String(JSON.parse(String(source.mapping_config || "{}"))?.platform || "").toLowerCase() === "google_ads"; }
+    catch { return false; }
+  });
+  if (googleAdsSources.length > 0) throw new Error("Google Ads spend is active outside the current GA4 Insights release boundary");
 
   const healthResponse = await fetch(`${BASE_URL}/api/health`);
   const health: any = await healthResponse.json();
@@ -62,7 +74,7 @@ try {
   await page.waitForFunction(() => Boolean((window as any).Clerk?.session?.id), undefined, { timeout: 60000 });
   sessionId = await page.evaluate(() => String((window as any).Clerk?.session?.id || ""));
 
-  const dailyPath = `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}`;
+  const dailyPath = `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=60&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`;
   const before = await request(page, dailyPath);
   if (!before.ok) throw new Error(`Pre-run daily read failed (${before.status})`);
   const run = await request(page, `/api/campaigns/${CAMPAIGN_ID}/ga4-daily-scheduler/run-now`, "POST");
@@ -78,7 +90,12 @@ try {
   if (after.body?.startDate !== expected.startDate || after.body?.endDate !== expected.endDate || after.body?.dataThroughDate !== expected.dataThroughDate) {
     throw new Error("Post-run completed-day window parity failed");
   }
-  if (after.body?.freshness?.status === "error") throw new Error("Post-run daily freshness reports an error");
+  if (after.body?.refreshIsStale !== false) throw new Error("Post-run daily response is stale or lacks verified freshness");
+  if (after.body?.providerRefreshOutcome === "failed" || after.body?.providerRefreshWarning) {
+    throw new Error("Post-run daily provider refresh reports a failure");
+  }
+
+  const googleAdsScheduler = { activeSource: false, releaseBoundary: "excluded" };
 
   console.log(JSON.stringify({
     status: "passed",
@@ -94,9 +111,10 @@ try {
       lastRunFinishedAt: run.body.after.lastRunFinishedAt,
       alertsSuppressed: true,
     },
+    googleAdsScheduler,
     dailyRowsBefore: Array.isArray(before.body?.data) ? before.body.data.length : 0,
     dailyRowsAfter: Array.isArray(after.body?.data) ? after.body.data.length : 0,
-    mutationBoundary: "authorized campaign daily refresh and direct KPI/Benchmark recompute only",
+    mutationBoundary: "authorized campaign GA4 daily refresh and direct KPI/Benchmark recompute only",
   }, null, 2));
   await context.close();
 } finally {

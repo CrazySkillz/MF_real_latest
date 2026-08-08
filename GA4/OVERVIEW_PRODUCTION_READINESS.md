@@ -15,7 +15,7 @@ Only evidence from the same deployed commit, production-data state, and document
 
 ## Current Decision — Stable Cross-Session Answer
 
-**UNVERIFIED at the current revision. The 2026-08-08 Total Revenue audit invalidated historical HubSpot, Shopify, and CSV source certifications, found a HubSpot currency-relabeling defect and an aggregate-grain total defect, and found that native GA4 revenue requests do not currently set or validate campaign currency. The imported-source forward fix is local only; current persisted-data and deployed-provider evidence are not established.**
+**UNVERIFIED at the current revision. The current local Total Revenue safeguards distinguish missing records from explicit zero, validate imported-source currency/provenance, preserve authoritative zero and negative aggregate totals, and align native GA4 revenue with the campaign-currency request. Deployment, persisted-data inventory, and provider evidence remain open.**
 
 ## Intended Release Scope
 

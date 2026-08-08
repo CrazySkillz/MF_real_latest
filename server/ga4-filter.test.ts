@@ -1,5 +1,6 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { ga4Service } from "./analytics";
+import { filterGA4InsightsBreakdownRowsToImportedDates } from "../shared/ga4-insights";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -156,6 +157,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          metadata: { currencyCode: "USD" },
           rows: isPageLocationScope
             ? [{ metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "108" }, { value: "531.349929" }] }]
             : [{ metricValues: [{ value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }] }],
@@ -181,7 +183,10 @@ describe("GA4 campaign value picker", () => {
       engagedSessions: 0,
       engagementRate: 0,
     });
+    expect(result.currencyCode).toBeUndefined();
+    expect(result.reportingTimeZone).toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === undefined)).toBe(true);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
     expect(fallbackBody.dateRanges[0].endDate).toBe("today");
@@ -197,6 +202,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          metadata: { currencyCode: "USD", timeZone: "Europe/Amsterdam" },
           rows: isCampaignNameScope
             ? [{ metricValues: [{ value: "7" }, { value: "123.456" }] }]
             : isPageLocationScope
@@ -213,6 +219,7 @@ describe("GA4 campaign value picker", () => {
       "2026-06-01",
       "2026-06-17",
       "summer_sale",
+      "USD",
     );
 
     expect(result.totals).toEqual({
@@ -224,12 +231,55 @@ describe("GA4 campaign value picker", () => {
       engagedSessions: 54,
       engagementRate: 0.64,
     });
+    expect(result.currencyCode).toBe("USD");
+    expect(result.reportingTimeZone).toBe("Europe/Amsterdam");
     expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const trafficBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     const supplementBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body || "{}"));
     expect(JSON.stringify(trafficBody.dimensionFilter)).toContain("pageLocation");
     expect(JSON.stringify(supplementBody.dimensionFilter)).toContain('"fieldName":"campaignName"');
     expect(supplementBody.metrics).toEqual([{ name: "conversions" }, { name: "totalRevenue" }]);
+  });
+
+  it("keeps any nonzero native conversion/revenue field authoritative", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const isSupplement = (body?.metrics || []).length === 2;
+      return {
+        ok: true,
+        json: async () => ({ rows: [{ metricValues: isSupplement
+          ? [{ value: "7" }, { value: "123.45" }]
+          : [{ value: "85" }, { value: "80" }, { value: "4" }, { value: "100" }, { value: "0" }, { value: "50" }, { value: "0.5" }]
+        }] }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTotalsWithRevenue(
+      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale",
+    );
+
+    expect(result.totals).toMatchObject({ sessions: 85, conversions: 4, revenue: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats negative native revenue as authoritative instead of empty", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ rows: [{ metricValues: [
+        { value: "85" }, { value: "80" }, { value: "4" }, { value: "100" },
+        { value: "-25.5" }, { value: "50" }, { value: "0.5" },
+      ] }] }),
+    } as any));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTotalsWithRevenue(
+      "properties/123", "token", "2026-06-01", "2026-06-17", "summer_sale",
+    );
+
+    expect(result.totals.revenue).toBe(-25.5);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("uses pageLocation UTM fallback for daily time series when campaign dimensions are empty", async () => {
@@ -288,6 +338,37 @@ describe("GA4 campaign value picker", () => {
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
     expect(fallbackBody.dateRanges).toEqual([{ startDate: "2026-06-01", endDate: "2026-06-30" }]);
     expect(fallbackBody.dimensions).toEqual([{ name: "date" }]);
+  });
+
+  it("propagates an explicit completed-day end date through the persisted daily fetch wrapper", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ rows: [] }),
+    } as any));
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    await ga4Service.getTimeSeriesData(
+      "campaign-1",
+      storage,
+      "2026-06-01",
+      "properties/123",
+      "summer_sale",
+      "2026-06-30",
+    );
+
+    expect(fetchMock).toHaveBeenCalled();
+    for (const [, init] of fetchMock.mock.calls) {
+      const body = JSON.parse(String((init as any)?.body || "{}"));
+      expect(body.dateRanges).toEqual([{ startDate: "2026-06-01", endDate: "2026-06-30" }]);
+    }
   });
 
   it("supplements daily conversion and revenue values without changing daily traffic totals", async () => {
@@ -368,7 +449,7 @@ describe("GA4 campaign value picker", () => {
                 { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "5" }, { value: "80" }] },
               ]
             : [
-                { dimensionValues: [{ value: "20260618" }], metricValues: [{ value: "85" }, { value: "108" }, { value: "3" }, { value: "80" }, { value: "50" }, { value: "54" }, { value: "0.64" }] },
+                { dimensionValues: [{ value: "20260618" }], metricValues: [{ value: "85" }, { value: "108" }, { value: "3" }, { value: "80" }, { value: "-50" }, { value: "54" }, { value: "0.64" }] },
                 { dimensionValues: [{ value: "20260619" }], metricValues: [{ value: "40" }, { value: "55" }, { value: "0" }, { value: "38" }, { value: "0" }, { value: "20" }, { value: "0.5" }] },
               ],
         }),
@@ -379,7 +460,7 @@ describe("GA4 campaign value picker", () => {
     const result = await ga4Service.getTimeSeriesWithToken("properties/123", "token", "2026-06-01", "summer_sale");
 
     expect(result).toEqual([
-      expect.objectContaining({ date: "2026-06-18", sessions: 85, conversions: 3, revenue: 50 }),
+      expect.objectContaining({ date: "2026-06-18", sessions: 85, conversions: 3, revenue: -50 }),
       expect.objectContaining({ date: "2026-06-19", sessions: 40, conversions: 5, revenue: 80 }),
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -429,6 +510,114 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.metricAggregations).toEqual(["TOTAL"]);
   });
 
+  it("produces a renderable Insights channel table from full provider traffic and exact imported dates", async () => {
+    const standardRow = (source: string, medium: string, campaign: string, sessions: string) => ({
+      dimensionValues: ["20260708", "Paid Social", source, medium, campaign, "desktop", "NL"]
+        .map((value) => ({ value })),
+      metricValues: [sessions, sessions, sessions, "0", sessions].map((value) => ({ value })),
+    });
+    const standardRows = [
+      standardRow("google", "display", "yesop_retargeting", "21"),
+      standardRow("facebook", "paid_social", "yesop_paid_social", "17"),
+      standardRow("newsletter", "email", "yesop_email_nurture", "16"),
+    ];
+    const landingRow = (date: string, url: string, sessions: string) => ({
+      dimensionValues: [date, url].map((value) => ({ value })),
+      metricValues: [sessions, sessions, sessions].map((value) => ({ value })),
+    });
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const filter = JSON.stringify(body?.dimensionFilter || {});
+      const isLandingUtm = dimensions.length === 2 && dimensions.includes("pageLocation");
+      const isChannelUtm = dimensions.length === 1 && dimensions[0] === "date";
+      const channelSessions = filter.includes("utm_source=google") ? "200"
+        : filter.includes("utm_source=facebook") ? "140"
+        : "109";
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isChannelUtm
+            ? [{
+                dimensionValues: [{ value: "20260708" }],
+                metricValues: [channelSessions, channelSessions, channelSessions].map((value) => ({ value })),
+              }]
+            : isLandingUtm
+            ? [
+                landingRow("20260708", "/landing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "200"),
+                landingRow("20260708", "/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "140"),
+                landingRow("20260708", "/landing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "109"),
+                landingRow("20260708", "/pricing?utm_source=google&utm_medium=display&utm_campaign=yesop_retargeting", "108"),
+                landingRow("20260708", "/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=yesop_paid_social", "107"),
+                landingRow("20260708", "/pricing?utm_source=newsletter&utm_medium=email&utm_campaign=yesop_email_nurture", "91"),
+              ]
+            : standardRows,
+          totals: [{
+            metricValues: (isLandingUtm
+              ? ["448", "449", "449"]
+              : isChannelUtm
+              ? [channelSessions, channelSessions, channelSessions]
+              : ["54", "54", "54", "0", "54"]
+            ).map((value) => ({ value })),
+          }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({
+      id: "conn-1", propertyId: "properties/123", accessToken: "token",
+    })) };
+
+    const result = await ga4Service.getAcquisitionBreakdown(
+      "campaign-1", storage, "2026-07-08", "123", 2000,
+      ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06", false, true,
+    );
+
+    expect(result.totals.sessions).toBe(449);
+    expect(result.totals.conversions).toBe(54);
+    expect(result.rows.reduce((sum, item) => sum + item.sessions, 0)).toBe(449);
+    expect(result.rows[0]).toMatchObject({ source: "google", medium: "display" });
+    const displayedRows = filterGA4InsightsBreakdownRowsToImportedDates(
+      result.rows,
+      [{ date: "2026-07-08" }, { date: "2026-07-09" }, { date: "2026-07-10" }, { date: "2026-07-12" }],
+      "2026-07-08",
+      "2026-08-06",
+    );
+    const displayedSessions = displayedRows.reduce((sum, item) => sum + item.sessions, 0);
+    const displayedConversions = displayedRows.reduce((sum, item) => sum + item.conversions, 0);
+    expect({ displayedSessions, displayedConversions }).toEqual({
+      displayedSessions: 449,
+      displayedConversions: 54,
+    });
+    const tableShouldRender =
+      displayedRows.length > 0 &&
+      "2026-07-08" === "2026-07-08" &&
+      "2026-08-06" === "2026-08-06" &&
+      displayedSessions === 449 &&
+      displayedConversions === 54;
+    expect(tableShouldRender).toBe(true);
+    const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
+    expect(landingBody.dimensions).toEqual([
+      { name: "date" },
+      { name: "pageLocation" },
+    ]);
+    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("pageLocation");
+    expect(JSON.stringify(landingBody.dimensionFilter)).not.toContain("sessionCampaignName");
+    expect(landingBody.metrics).toEqual([
+      { name: "sessions" }, { name: "totalUsers" }, { name: "engagedSessions" },
+    ]);
+    const channelBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body || "{}"));
+    expect(channelBody.dimensions).toEqual([{ name: "date" }]);
+    expect(JSON.stringify(channelBody.dimensionFilter)).toContain("utm_source=google");
+
+    const defaultResult = await ga4Service.getAcquisitionBreakdown(
+      "campaign-1", storage, "2026-07-08", "123", 2000,
+      ["yesop_retargeting", "yesop_paid_social", "yesop_email_nurture"], "2026-08-06",
+    );
+    expect(defaultResult.totals.sessions).toBe(54);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
   it('paginates acquisition rows to the provider rowCount', async () => {
     const row = (campaign: string, sessions: string) => ({
       dimensionValues: ['20260618', 'Paid Search', 'google', 'cpc', campaign, 'desktop', 'NL']
@@ -465,6 +654,29 @@ describe("GA4 campaign value picker", () => {
     expect(result.meta.rowCount).toBe(3);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body || '{}')).offset).toBe(2);
+  });
+
+  it("does not refresh or persist an acquisition token in read-only mode", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      text: async () => '{"code":401,"message":"unauthenticated"}',
+    })) as any);
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "expired",
+        refreshToken: "refresh",
+      })),
+      updateGA4ConnectionTokens: vi.fn(),
+    };
+    const refresh = vi.spyOn(ga4Service, "refreshAccessToken");
+
+    await expect(ga4Service.getAcquisitionBreakdown(
+      "campaign-1", storage, "2026-07-06", "123", 2000, "summer_sale", "2026-08-04", true,
+    )).rejects.toThrow("TOKEN_EXPIRED");
+    expect(refresh).not.toHaveBeenCalled();
+    expect(storage.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
   it('fails closed when a required acquisition page is empty', async () => {

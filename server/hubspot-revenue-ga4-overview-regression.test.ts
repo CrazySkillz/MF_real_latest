@@ -210,9 +210,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(breakdownMethod).toContain("platformContext === 'ga4'");
     expect(breakdownMethod).toContain("eq(revenueSources.platformContext, platformContext as any)");
 
-    expect(totalMethod).toContain("const totalsBySource = new Map<string, { aggregate: number; attributed: number; hasAggregate: boolean }>();");
-    expect(totalMethod).toContain("selectRevenueRecordTotal(item)");
-    expect(breakdownMethod).toContain("selectRevenueRecordTotal(data)");
+    expect(totalMethod).toContain("const totalsBySource = new Map<string, { aggregate: number; subCampaign: number; hasAggregate: boolean }>();");
+    expect(totalMethod).toContain("selectMaterializedRevenueTotal(item.aggregate, item.subCampaign, item.hasAggregate)");
+    expect(breakdownMethod).toContain("selectMaterializedRevenueTotal(data.aggregate, data.subCampaign, data.hasAggregate)");
   });
 
   it("scheduler reprocesses saved HubSpot revenue mappings with platform context and stable source IDs", () => {
@@ -802,7 +802,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const jobInputBlock = sliceBetween(
       jobs,
-      "const financialSourceWindow = getGA4KPIFinancialSourceWindow();",
+      "const financialSourceWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);",
       "      // 1) KPI progress points"
     );
     const campaignTotalsBlock = sliceBetween(
@@ -823,8 +823,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(computeBlock).toContain('if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));');
     expect(jobInputBlock).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
     expect(jobInputBlock).toContain("const financialInputsPromise = Promise.allSettled([");
-    expect(jobInputBlock).toContain("const [importedRevenueResult, spendTotalResult] = await financialInputsPromise;");
-    expect(jobInputBlock).toContain("const importedRevenueValue = importedRevenueResult.status === \"fulfilled\"");
+    expect(jobInputBlock).toContain("const [importedRevenueResult, spendTotalResult, revenueSourcesResult, spendSourcesResult] = await financialInputsPromise;");
+    expect(jobInputBlock).toContain("let importedRevenueValue = importedRevenueResult.status === \"fulfilled\" && revenueSourcesResult.status === \"fulfilled\"");
+    expect(jobInputBlock).toContain("assertGA4InsightsFinancialCurrencyScope(");
     expect(jobInputBlock).toContain("importedRevenue: round2(importedRevenueValue ?? 0),");
     expect(jobs).toContain("const isGA4FinancialKpiMetric = (metricOrName: string) => {");
     expect(jobInputBlock).toContain("const financialInputs = financialCandidateAvailable ? {");

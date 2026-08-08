@@ -3,8 +3,9 @@ import { ga4Service } from "./analytics";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
-import { getLatestCompleteReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
+import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -18,6 +19,14 @@ type GA4DailyRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
 type GA4DailyRefreshPipelineOptions = {
   campaignId?: string;
   suppressAlerts?: boolean;
+};
+export type GA4DailyRefreshResult = {
+  campaignIdsProcessed: string[];
+  campaignIdsSkipped: string[];
+  campaignIdsFailed: string[];
+  propertyIdsProcessed: string[];
+  propertyIdsFailed: string[];
+  rowsUpserted: number;
 };
 
 const ga4DailySchedulerStatus = {
@@ -61,6 +70,17 @@ export function getGA4DailyRecomputeFailure(
   const benchmarkFailures = result.benchmarkIdsFailed.length;
   if (campaignFailures === 0 && kpiFailures === 0 && benchmarkFailures === 0) return null;
   return `GA4 KPI/Benchmark recompute incomplete (${campaignFailures} campaign, ${kpiFailures} KPI, ${benchmarkFailures} Benchmark failures)`;
+}
+
+export function getGA4DailyRefreshFailure(result: GA4DailyRefreshResult, campaignId: string): string | null {
+  if (!campaignId) {
+    return result.campaignIdsFailed.length > 0
+      ? `GA4 daily refresh failed for ${result.campaignIdsFailed.length} campaign(s)`
+      : null;
+  }
+  if (result.campaignIdsFailed.includes(campaignId)) return "GA4 daily refresh failed for the target campaign";
+  if (!result.campaignIdsProcessed.includes(campaignId)) return "GA4 daily refresh skipped the target campaign";
+  return null;
 }
 
 const parseBoundedInt = (value: any, fallback: number, min: number, max: number) => {
@@ -158,7 +178,7 @@ const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
     timeZoneName: "short",
   }).format(date);
 
-export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
+export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOptions = {}): Promise<GA4DailyRefreshResult> {
   const campaignId = String(opts.campaignId || "").trim();
   const lookbackDays = Math.min(
     Math.max(parseInt(process.env.GA4_DAILY_LOOKBACK_DAYS || "90", 10) || 90, 7),
@@ -166,64 +186,82 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
   );
 
   const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  start.setUTCDate(start.getUTCDate() - (lookbackDays - 1));
-  const startISO = formatISODateUTC(start);
-
-  console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}, start=${startISO}${campaignId ? `, campaignId=${campaignId}` : ""})`);
+  console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}${campaignId ? `, campaignId=${campaignId}` : ""})`);
 
   const campaigns = campaignId
     ? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]
     : await storage.getCampaigns().catch(() => []);
-  let processed = 0;
   let upserted = 0;
+  const campaignIdsProcessed: string[] = [];
+  const campaignIdsSkipped: string[] = [];
+  const campaignIdsFailed: string[] = [];
+  const propertyIdsProcessed: string[] = [];
+  const propertyIdsFailed: string[] = [];
 
   for (const c of campaigns) {
-    try {
-      const conns = await storage.getGA4Connections(String((c as any)?.id || ""));
-      const primary = conns.find((x: any) => x?.isPrimary) || conns[0];
-      if (!primary?.propertyId) continue;
-
-      const campaignFilter = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
-
-      const series = await ga4Service.getTimeSeriesData(
-        String((c as any)?.id || ""),
-        storage,
-        startISO, // explicit start date
-        String(primary.propertyId),
-        campaignFilter
-      );
-
-      const rows = Array.isArray(series) ? series : [];
-      if (rows.length === 0) continue;
-
-      const toUpsert = rows
-        .map((r: any) => ({
-          campaignId: String((c as any)?.id || ""),
-          propertyId: String(primary.propertyId),
+    const currentCampaignId = String((c as any)?.id || "");
+    const conns = await storage.getGA4Connections(currentCampaignId).catch(() => [] as any[]);
+    const activeConnections = conns.filter((connection: any) =>
+      connection?.isActive !== false && String(connection?.propertyId || "").trim()
+    );
+    if (activeConnections.length === 0) { campaignIdsSkipped.push(currentCampaignId); continue; }
+    const campaignFilter = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
+    const reportingWindow = getReportingDateWindow(lookbackDays, (c as any)?.reportingTimeZone, now);
+    let failed = false;
+    for (const connection of activeConnections) {
+      try {
+        const series = await ga4Service.getTimeSeriesData(
+          currentCampaignId,
+          storage,
+          reportingWindow.startDate,
+          String(connection.propertyId),
+          campaignFilter,
+          reportingWindow.endDate,
+        );
+        const rows = Array.isArray(series) ? series : [];
+        const normalizedRows = rows.map((r: any) => normalizeGA4InsightsDailyMetricValues({
+          campaignId: currentCampaignId,
+          propertyId: String(connection.propertyId),
           date: String(r?.date || "").trim(),
-          users: Number(r?.users || 0) || 0,
-          sessions: Number(r?.sessions || 0) || 0,
-          engagedSessions: r?.engagedSessions == null ? null : Math.max(0, Math.round(Number(r.engagedSessions) || 0)),
-          pageviews: Number(r?.pageviews || 0) || 0,
-          conversions: Number(r?.conversions || 0) || 0,
-          revenue: String(Number(r?.revenue || 0).toFixed(2)),
+          users: r?.users,
+          sessions: r?.sessions,
+          engagedSessions: r?.engagedSessions,
+          pageviews: r?.pageviews,
+          conversions: r?.conversions,
+          revenue: r?.revenue ?? 0,
           engagementRate: (r as any)?.engagementRate ?? null,
           revenueMetric: (r as any)?.revenueMetric ?? null,
           isSimulated: false,
-        }))
-        .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));
+        }));
+        if (normalizedRows.some((row) => !row)) throw new Error("GA4 returned an invalid daily metric value");
+        const toUpsert = normalizedRows as any[];
+        if (toUpsert.some((row: any) =>
+          !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date || "")) ||
+          row.date < reportingWindow.startDate ||
+          row.date > reportingWindow.endDate
+        )) throw new Error("GA4 returned a daily row outside the requested completed-day window");
 
-      const res = await storage.upsertGA4DailyMetrics(toUpsert as any);
-      upserted += Number(res?.upserted || 0);
-      processed += 1;
-    } catch (e: any) {
-      // Don't let one bad connection break the scheduler
-      console.warn(`[GA4 Daily] Refresh failed for campaign ${(c as any)?.id}:`, e?.message || e);
+        const res = await storage.replaceGA4DailyMetricsWindow(
+          currentCampaignId,
+          String(connection.propertyId),
+          reportingWindow.startDate,
+          reportingWindow.endDate,
+          toUpsert as any,
+        );
+        upserted += Number(res?.replaced || 0);
+        propertyIdsProcessed.push(String(connection.propertyId));
+      } catch (e: any) {
+        failed = true;
+        propertyIdsFailed.push(String(connection.propertyId));
+        console.warn(`[GA4 Daily] Refresh failed for campaign ${currentCampaignId}, property ${String(connection.propertyId)}:`, e?.message || e);
+      }
     }
+    if (failed) campaignIdsFailed.push(currentCampaignId);
+    else campaignIdsProcessed.push(currentCampaignId);
   }
 
-  console.log(`[GA4 Daily] Refresh done (campaignsProcessed=${processed}, rowsUpserted=${upserted})`);
+  console.log(`[GA4 Daily] Refresh done (campaignsProcessed=${campaignIdsProcessed.length}, campaignsFailed=${campaignIdsFailed.length}, rowsUpserted=${upserted})`);
+  return { campaignIdsProcessed, campaignIdsSkipped, campaignIdsFailed, propertyIdsProcessed, propertyIdsFailed, rowsUpserted: upserted };
 }
 
 async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
@@ -250,7 +288,9 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   ga4DailySchedulerStatus.lastRunStatus = "running";
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
-    await refreshAllGA4DailyMetrics({ campaignId });
+    const refreshResult = await refreshAllGA4DailyMetrics({ campaignId });
+    const refreshFailure = getGA4DailyRefreshFailure(refreshResult, campaignId);
+    if (refreshFailure) throw new Error(refreshFailure);
 
     const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
     ga4DailySchedulerStatus.lastRecomputeRecordedAt = new Date();

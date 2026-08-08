@@ -260,8 +260,11 @@ describe("Latest Day Revenue regression guard", () => {
     expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.startDate)");
     expect(revenueToDateRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
     expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
-    expect(revenueToDateRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
-    expect(revenueBreakdownRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
+    for (const route of [revenueToDateRoute, revenueBreakdownRoute]) {
+      expect(route).toContain('const endDate = platformContext === "ga4"');
+      expect(route).toContain('getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate');
+      expect(route).toContain(': new Date().toISOString().slice(0, 10);');
+    }
   });
 
   it("Total Spend source provenance is not narrowed by campaign pacing metadata", () => {

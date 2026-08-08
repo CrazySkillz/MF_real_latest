@@ -156,11 +156,12 @@ export function resolveGA4DailyFreshness(input: {
   now?: Date;
 }) {
   const coverage = String(input.providerCoverageThroughDate || "").trim();
-  const providerCoverageIsCurrent =
-    /^\d{4}-\d{2}-\d{2}$/.test(coverage) && coverage >= input.dataThroughDate;
-  const oldestDueMissingDailyDate = providerCoverageIsCurrent ? null : input.oldestDueMissingDailyDate;
   const refreshedAt = input.lastCompletedRefreshAt ? new Date(input.lastCompletedRefreshAt).getTime() : NaN;
   const expectedAt = input.expectedRefreshAt?.getTime() ?? NaN;
+  const completedRefreshIsCurrent = Number.isFinite(refreshedAt) && Number.isFinite(expectedAt) && refreshedAt >= expectedAt;
+  const providerCoverageIsCurrent =
+    (/^\d{4}-\d{2}-\d{2}$/.test(coverage) && coverage >= input.dataThroughDate) || completedRefreshIsCurrent;
+  const oldestDueMissingDailyDate = providerCoverageIsCurrent ? null : input.oldestDueMissingDailyDate;
   const now = input.now || new Date();
 
   return {

@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { transformSync } from "esbuild";
 import {
   evaluateGA4InsightsCertification,
   GA4_INSIGHTS_REQUIRED_DEPENDENCIES,
   GA4_INSIGHTS_REQUIRED_EXTERNAL_GATES,
+  hashGA4InsightsCertificationText,
 } from "./ga4-insights-certification-gate";
 
 const sha = "a".repeat(40);
 const hash = "b".repeat(64);
+const canonicalBoundary = "property 123; campaign abc; Europe/Amsterdam; USD";
 const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
   schemaVersion: 1,
   sectionId: "ga4-insights-live",
@@ -22,6 +26,11 @@ const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
     sourceRules: ["selected property and saved filter"],
     windowRules: ["completed campaign-reporting days"],
     ownershipRules: ["campaign access"],
+  },
+  configurationFingerprint: {
+    algorithm: "sha256",
+    value: hashGA4InsightsCertificationText(canonicalBoundary),
+    canonicalBoundary,
   },
   dependencies: GA4_INSIGHTS_REQUIRED_DEPENDENCIES.map((path) => ({ path, role: "boundary", sha256: status === "PRODUCTION_READY" ? hash : null })),
   statusDocument: {
@@ -47,6 +56,12 @@ const context = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
 });
 
 describe("GA4 Insights machine certification gate", () => {
+  it("compiles both executable production validation scripts", () => {
+    for (const path of ["scripts/ga4-insights-live-readonly.ts", "scripts/ga4-insights-scheduler-validation.ts"]) {
+      expect(() => transformSync(readFileSync(path, "utf8"), { loader: "ts", format: "esm" })).not.toThrow();
+    }
+  });
+
   it("accepts a consistent UNVERIFIED record with pending external evidence", () => {
     expect(evaluateGA4InsightsCertification(record(), context())).toEqual({ ok: true, errors: [] });
   });
@@ -60,6 +75,26 @@ describe("GA4 Insights machine certification gate", () => {
     value.externalGates[0].status = "pending";
     expect(evaluateGA4InsightsCertification(value, context("PRODUCTION_READY")).errors).toContain(
       "externalGates exact_sha_deployment is pending while status claims ready",
+    );
+  });
+
+  it("rejects ready evidence that says the machine status is UNVERIFIED", () => {
+    const value = record("PRODUCTION_READY");
+    value.requiredTests[0].evidence = "The machine checker passed while the machine status remained UNVERIFIED.";
+    expect(evaluateGA4InsightsCertification(value, context("PRODUCTION_READY")).errors).toContain(
+      "requiredTests tests evidence contradicts ready status",
+    );
+  });
+
+  it("rejects a ready document with a contradictory status outside the controlling marker", () => {
+    const contradictory = {
+      ...context("PRODUCTION_READY"),
+      readText: (path: string) => path === "GA4/INSIGHTS_PRODUCTION_READINESS.md"
+        ? `<!-- ga4-insights-current-status -->\n<!-- ga4-insights-certification-status: PRODUCTION_READY -->\nStatus: **PRODUCTION_READY**\n<!-- /ga4-insights-current-status -->\n\nThe machine record remains UNVERIFIED.`
+        : "content",
+    };
+    expect(evaluateGA4InsightsCertification(record("PRODUCTION_READY"), contradictory).errors).toContain(
+      "statusDocument contradicts ready status outside the controlling marker",
     );
   });
 
@@ -80,5 +115,13 @@ describe("GA4 Insights machine certification gate", () => {
   it("rejects a changed certified dependency", () => {
     const changed = { ...context("PRODUCTION_READY"), sha256: () => "c".repeat(64) };
     expect(evaluateGA4InsightsCertification(record("PRODUCTION_READY"), changed).errors.some((error) => error.includes("changed since certification"))).toBe(true);
+  });
+
+  it("rejects a configuration fingerprint that does not match its canonical boundary", () => {
+    const value = record();
+    value.configurationFingerprint.value = "c".repeat(64);
+    expect(evaluateGA4InsightsCertification(value, context()).errors).toContain(
+      "configurationFingerprint does not match canonicalBoundary",
+    );
   });
 });

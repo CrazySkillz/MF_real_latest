@@ -33,6 +33,57 @@ export function getGA4KpiReportingWindowLabel(metric: unknown, name?: unknown): 
   return "Saved custom value (no standard GA4 reporting window)";
 }
 
+export type GA4InsightTargetPeriodCompatibility = {
+  comparable: boolean;
+  currentWindow: string;
+  configuredPeriod: string;
+  reason: string | null;
+};
+
+export function resolveGA4InsightTargetPeriodCompatibility(input: {
+  metric?: unknown;
+  name?: unknown;
+  timeframe?: unknown;
+  trackingPeriod?: unknown;
+  period?: unknown;
+}): GA4InsightTargetPeriodCompatibility {
+  const identity = resolveGA4KpiMetricIdentity(input.metric, input.name);
+  const currentWindow = getGA4KpiReportingWindowLabel(input.metric, input.name);
+  const configuredPeriod = String(input.period ?? input.timeframe ?? "").trim().toLowerCase();
+  const normalizedPeriod = configuredPeriod.replace(/[^a-z0-9]+/g, "");
+  if (!identity) {
+    return {
+      comparable: false,
+      currentWindow,
+      configuredPeriod: configuredPeriod || "not specified",
+      reason: "A standard GA4 reporting window cannot be verified for this custom value.",
+    };
+  }
+
+  const financial = identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa";
+  if (financial) {
+    const comparable = ["campaigntodate", "todate", "lifetime"].includes(normalizedPeriod);
+    return {
+      comparable,
+      currentWindow,
+      configuredPeriod: configuredPeriod || "not specified",
+      reason: comparable ? null : "The current value is campaign-to-date, but the saved target period is not campaign-to-date.",
+    };
+  }
+
+  const trackingPeriod = Number(input.trackingPeriod);
+  const hasExplicitTrackingPeriod = Number.isFinite(trackingPeriod) && trackingPeriod > 0;
+  const comparable = hasExplicitTrackingPeriod
+    ? trackingPeriod === 30
+    : ["30day", "30days", "rolling30day", "rolling30days"].includes(normalizedPeriod);
+  return {
+    comparable,
+    currentWindow,
+    configuredPeriod: configuredPeriod || "not specified",
+    reason: comparable ? null : "The current value covers 30 completed reporting days, but the saved target period does not.",
+  };
+}
+
 export function resolveGA4KpiConsumerState(input: {
   metric?: unknown;
   name?: unknown;

@@ -6658,6 +6658,9 @@ export default function GA4Metrics() {
                                   {revenueSourceDisplayLabel(s)}{dateLabel}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
+                                {isShopify && cfg?.developmentStoreTestOrdersIncluded ? (
+                                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Development-store test data</p>
+                                ) : null}
                                 {shopifyFreshnessText ? <p className="text-xs text-muted-foreground/70">{shopifyFreshnessText}</p> : null}
                               </div>
                               <div className="flex items-center gap-2">

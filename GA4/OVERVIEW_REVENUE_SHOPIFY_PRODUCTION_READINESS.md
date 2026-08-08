@@ -16,6 +16,14 @@ mutation, bounds the post-commit response wait while preserving recomputation,
 and retains the existing bounded read-only inventory check. Current status
 remains UNVERIFIED until this revision is committed, deployed, and validated.
 
+The current working revision also isolates test-account validation: Shopify
+orders with `test = true` remain excluded by default and can be included only
+when Shopify GraphQL confirms `Shop.plan.partnerDevelopment = true`. Verified
+development stores use the wizard's existing 3,650-day source-to-date validation
+window; normal merchant stores retain the campaign reporting window and test-order
+exclusion. The review and Revenue Sources modal label included values as test data.
+Provider verification failure defaults closed and does not enable test orders.
+
 This is the canonical Shopify Revenue readiness document as of 2026-07-15 for deployed Current Commit 9.3 (`a2735192`), the completed exact-source provider repair, the Current Commit 8 reconciliation, the platform-isolated owner-scoped production inventory, the exact transactional GA4 test-source cleanup, and the final all-pass certification evidence documented below.
 
 The earlier Shopify clean-certification statements in `GA4/README.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, `GA4/OVERVIEW_VALIDATION_RUNNER.md`, and `GA4-MANUAL-TEST-PLAN.md` are not evidence for this conclusion. Current Commit 8 replaced those conclusions with pointers to this document while retaining their historical packets as bounded evidence only. Current Commit 9's first deployed owner-scoped inventory reported three test campaigns. Exact follow-up evidence proved only `5317190c-d536-45d4-85c0-9d941cfba9f4` had a GA4 Shopify source; the other two Shopify sources belong to LinkedIn and Meta. Current Commits 9.1 and 9.2 correctly made no changes when their preconditions failed. Deployed Current Commit 9.3 preserved the LinkedIn/Meta sources, isolated the GA4 inventory, and limited cleanup to the one exact GA4 source/connection. The cleanup and independent post-cleanup inventory then satisfied the documented certification gate.
@@ -245,8 +253,9 @@ Findings:
 **Current Commit 2 implemented locally:** matched Shopify revenue now uses an explicit fail-closed eligibility policy:
 
 - include non-test, non-cancelled `paid` and `partially_refunded` orders with a positive current total
+- permit otherwise eligible test orders only when Shopify confirms the connected shop is a Partner development store
 - exclude `pending`, `authorized`, `partially_paid`, `refunded`, and `voided` orders
-- exclude test, cancelled, and zero-current-total orders
+- exclude test orders for every unverified or normal merchant store, and exclude cancelled and zero-current-total orders everywhere
 - fail closed for missing test classification, missing/unknown financial status, or missing/invalid current total on a campaign-matching candidate
 - use `current_total_price` as the only revenue amount because Shopify defines the current total after returns/refunds/order adjustments
 
@@ -254,14 +263,14 @@ Partially paid orders are deliberately excluded. The current order total is not 
 
 Focused executable policy tests cover paid, partially refunded, pending, authorized, partially paid, refunded, voided, test, cancelled, zero-total, missing classification, unsupported status, missing amount, and multiple discount codes. Static route guards prove the shared save, recalculation, and selectable-value paths call the centralized policy; a real provider packet remains not locally verifiable.
 
-Official basis: Shopify documents the REST order financial-status meanings and identifies current total as the post-return/refund-adjusted order value: [REST Order resource](https://shopify.dev/docs/api/admin-rest/latest/resources/order) and [GraphQL Order resource](https://shopify.dev/docs/api/admin-graphql/latest/objects/Order).
+Official basis: Shopify documents the REST order financial-status meanings and identifies current total as the post-return/refund-adjusted order value: [REST Order resource](https://shopify.dev/docs/api/admin-rest/latest/resources/order) and [GraphQL Order resource](https://shopify.dev/docs/api/admin-graphql/latest/objects/Order). Shopify exposes authoritative development-store status through [ShopPlan.partnerDevelopment](https://shopify.dev/docs/api/admin-graphql/latest/objects/ShopPlan).
 
 ### Refunds, cancellations, and order changes
 
 - Refunds are not modeled as separate financial events.
 - A later refund is intentionally restated on the original order's campaign-reporting-timezone `created_at` date when the full campaign-window snapshot is fetched again.
 - Fully refunded and cancelled orders are excluded; partially refunded orders use their current total.
-- GA4 fetches from campaign `startDate`, falling back to campaign `createdAt`; pre-campaign orders are intentionally outside the source window.
+- Normal GA4 merchant stores fetch from campaign `startDate`, falling back to campaign `createdAt`; a verified Partner development store uses the wizard's existing 3,650-day source-to-date validation window so its historical test orders can exercise the import lifecycle.
 - The route does not merge an incremental `updated_at_min` result into a full snapshot. That would make replacement incomplete unless every unchanged order were also retained.
 
 Status: eligibility, current amount, order-ID deduplication, original-date restatement, reporting-timezone conversion, and fail-closed window behavior are proven locally. Real provider order/refund mutation convergence remains not locally verifiable.
@@ -294,7 +303,7 @@ No currency conversion is attempted or invented. This follows Shopify's definiti
 ### Date findings
 
 - GA4 uses campaign reporting timezone for both order dates and the source window.
-- Campaign `startDate` is authoritative; campaign `createdAt` is the fallback when no start date exists.
+- Campaign `startDate` is authoritative for normal merchant stores and campaign `createdAt` is the fallback; only a Shopify-verified Partner development store uses the isolated 3,650-day validation window.
 - Invalid, future, pre-window, and otherwise out-of-window matched order dates fail before replacement.
 - A complete result with no matched eligible orders writes one zero row on the campaign-timezone current date; no positive revenue is re-dated.
 

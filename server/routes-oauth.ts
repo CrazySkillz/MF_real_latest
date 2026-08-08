@@ -9,7 +9,7 @@ import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches } from './utils/shopify-revenue';
-import { getShopifyApiVersion, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -33191,6 +33191,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const deduplicatedOrders = deduplicateShopifyOrders(orders);
+    let developmentStoreTestOrdersIncluded = false;
+    let developmentStoreVerification = 'not_needed';
+    if (deduplicatedOrders.some((order: any) => order?.test === true)) {
+      try {
+        developmentStoreTestOrdersIncluded = await isShopifyPartnerDevelopmentStore({ shopDomain, accessToken, apiVersion });
+        developmentStoreVerification = 'verified';
+      } catch {
+        developmentStoreVerification = 'failed_closed';
+      }
+    }
     if (audit) Object.assign(audit, {
       queryComplete: true,
       apiVersion,
@@ -33202,10 +33212,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       rawOrderCount: orders.length,
       deduplicatedOrderCount: deduplicatedOrders.length,
       duplicateOrderCount: orders.length - deduplicatedOrders.length,
+      developmentStoreTestOrdersIncluded,
+      developmentStoreVerification,
       ordering: 'created_at asc',
       pageSize: 250,
     });
-    return deduplicatedOrders;
+    return { orders: deduplicatedOrders, developmentStoreTestOrdersIncluded };
   };
 
   const shopifyRequiresMerchantApproval = (err: any): boolean => {
@@ -33325,7 +33337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch orders from Shopify
       const apiVersion = getShopifyApiVersion();
       const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
-      const orders = await shopifyFetchAllOrders({
+      const { orders, developmentStoreTestOrdersIncluded } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
         apiVersion,
@@ -33357,7 +33369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : [getFieldValue(o).trim()].filter(Boolean);
         const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
-        const confirmedRevenue = getShopifyConfirmedRevenueAmounts(o);
+        const confirmedRevenue = getShopifyConfirmedRevenueAmounts(o, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded });
         if (!confirmedRevenue) continue;
         matchedOrders.push(o);
         totalRevenue += confirmedRevenue.shopAmount;
@@ -33607,7 +33619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Default: last 90 days
       const createdAtMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-      const orders = await shopifyFetchAllOrders({
+      const { orders } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
         apiVersion,
@@ -33681,7 +33693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = getShopifyApiVersion();
       const createdAtMin = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-      const orders = await shopifyFetchAllOrders({
+      const { orders, developmentStoreTestOrdersIncluded } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
         apiVersion,
@@ -33704,7 +33716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const counts = new Map<string, number>();
       const sample: string[] = [];
       for (const o of orders) {
-        if (!getShopifyConfirmedRevenueAmounts(o)) continue;
+        if (!getShopifyConfirmedRevenueAmounts(o, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded })) continue;
         const values = field === "tags"
           ? getShopifyOrderTags(o)
           : field === "discount_code"
@@ -33728,6 +33740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         values,
         debug: {
           ordersFetched: Array.isArray(orders) ? orders.length : 0,
+          developmentStoreTestOrdersIncluded,
           nonEmptyValues: values.length,
           sampleValues: sample,
         },
@@ -33872,17 +33885,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (platformCtx === 'ga4' && !Number.isFinite(campaignWindowStartAt.getTime())) {
         throw new Error('Campaign has no valid Shopify reporting-window start');
       }
-      const createdAtMin = platformCtx === 'ga4'
-        ? campaignWindowStartAt.toISOString()
-        : fallbackCreatedAtMin.toISOString();
+      const verifiedDevelopmentStore = platformCtx === 'ga4'
+        ? await isShopifyPartnerDevelopmentStore({ shopDomain: conn.shopDomain, accessToken: conn.accessToken, apiVersion }).catch(() => false)
+        : false;
+      const providerOrderWindowStartAt = platformCtx === 'ga4' && !verifiedDevelopmentStore
+        ? campaignWindowStartAt
+        : fallbackCreatedAtMin;
+      const createdAtMin = providerOrderWindowStartAt.toISOString();
       const providerQueryAudit: Record<string, any> = {};
-      const orders = await shopifyFetchAllOrders({
+      const orderBatch = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
         apiVersion,
         createdAtMin,
         audit: providerQueryAudit,
       });
+      const orders = orderBatch.orders;
+      const developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded;
 
       const getFieldValue = (o: any): string => {
         const utm = getUtmFromOrder(o);
@@ -33916,7 +33935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
         selectedCandidateOrderCount++;
-        const amt = getShopifyConfirmedRevenueAmounts(o);
+        const amt = getShopifyConfirmedRevenueAmounts(o, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded });
         if (!amt) continue;
         matchedOrders.push(o);
         matchedAmounts.push(amt);
@@ -33954,7 +33973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           financialStatus: String(order?.financial_status || ''),
           cancelledAt: String(order?.cancelled_at || ''),
           test: order?.test === true,
-          amount: getShopifyConfirmedRevenueAmounts(order)?.shopAmount ?? null,
+          amount: getShopifyConfirmedRevenueAmounts(order, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded })?.shopAmount ?? null,
         })).sort((a: any, b: any) => a.id.localeCompare(b.id)))).digest('hex'),
         resolvedRevenueCurrency,
       });
@@ -33964,7 +33983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (platformCtx === 'ga4') {
         ga4ReportingTimeZone = normalizeReportingTimeZone((camp as any)?.reportingTimeZone);
         ga4EndDate = getShopifyOrderReportingDate({ created_at: new Date().toISOString() }, ga4ReportingTimeZone);
-        ga4StartDate = getShopifyOrderReportingDate({ created_at: campaignWindowStartAt.toISOString() }, ga4ReportingTimeZone);
+        ga4StartDate = getShopifyOrderReportingDate({ created_at: providerOrderWindowStartAt.toISOString() }, ga4ReportingTimeZone);
         if (ga4StartDate > ga4EndDate) throw new Error('Campaign start date is after the Shopify reporting window');
         for (const order of matchedOrders) {
           getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone, ga4StartDate, ga4EndDate);
@@ -34000,7 +34019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               campaignMappings,
             },
             providerOrders: matchedOrders.map((order: any) => {
-              const amounts = getShopifyConfirmedRevenueAmounts(order)!;
+              const amounts = getShopifyConfirmedRevenueAmounts(order, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded })!;
               return {
                 id: order.id,
                 updatedAt: order.updated_at,
@@ -34056,6 +34075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
           presentmentCurrency,
           providerQueryAudit,
+          developmentStoreTestOrdersIncluded,
           ...(currentRepairConfirmation ? { repairConfirmation: currentRepairConfirmation } : {}),
         });
       }
@@ -34122,6 +34142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
           providerQueryAudit,
+          developmentStoreTestOrdersIncluded,
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         }, existingConnConfig, refreshSuccessEvent);
         shopifyConnectionId = String(shopifyConn.id);
@@ -34177,6 +34198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
           providerQueryAudit,
+          developmentStoreTestOrdersIncluded,
           currency: resolvedRevenueCurrency,
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
             campaignValue,
@@ -34211,7 +34233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? [{ campaignId, date: ga4EndDate!, revenue: 0 as any, currency: cur, sourceType: 'shopify' }]
             : matchedOrders.map((order: any) => {
               const orderDate = getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone!, ga4StartDate!, ga4EndDate!);
-              const amounts = getShopifyConfirmedRevenueAmounts(order);
+              const amounts = getShopifyConfirmedRevenueAmounts(order, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded });
               if (!amounts) throw new Error(`Shopify order ${String(order.id)} lost confirmed-revenue eligibility`);
               return {
                 campaignId,
@@ -34233,7 +34255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const o of matchedOrders) {
             const orderDate = String(o?.created_at || "").split("T")[0];
             if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
-              const amt = getShopifyConfirmedRevenueAmounts(o);
+              const amt = getShopifyConfirmedRevenueAmounts(o, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded });
               if (!amt) continue;
               revenueByDate.set(orderDate, (revenueByDate.get(orderDate) || 0) + amt.shopAmount);
               const orderCrmValue = matchedCampaignValueByOrderId.get(String(o.id)) || getFieldValue(o).trim();

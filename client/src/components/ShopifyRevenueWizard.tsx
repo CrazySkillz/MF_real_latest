@@ -1024,6 +1024,11 @@ export function ShopifyRevenueWizard(props: {
                   )}
                 </div>
               </div>
+              {preview?.developmentStoreTestOrdersIncluded && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                  Shopify development-store test orders are included for validation. This is test revenue.
+                </div>
+              )}
               {isRepair && preview?.repairConfirmation && (
                 <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
                   Confirm the Shopify preview above. Refresh from Shopify atomically replaces only this source's records and preserves the last-good records if replacement fails.

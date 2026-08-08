@@ -42,6 +42,16 @@ describe('Shopify confirmed-revenue policy', () => {
     }))).toBeNull();
   });
 
+  it('includes test orders only for a verified development-store caller', () => {
+    expect(getShopifyConfirmedRevenueAmounts(order({ test: true }), {
+      includeDevelopmentStoreTestOrders: true,
+    })).toMatchObject({ shopAmount: 100, shopCurrency: 'USD' });
+    expect(getShopifyConfirmedRevenueAmounts(order({
+      test: true,
+      cancelled_at: '2026-07-01T00:00:00Z',
+    }), { includeDevelopmentStoreTestOrders: true })).toBeNull();
+  });
+
   it('fails closed when classification or current revenue is missing or unsupported', () => {
     expect(() => getShopifyConfirmedRevenueAmounts(order({ test: undefined })))
       .toThrow('missing test classification');

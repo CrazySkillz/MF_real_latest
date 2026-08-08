@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
 import {
   getShopifyApiVersion,
+  isShopifyPartnerDevelopmentStore,
   normalizeShopifyDomain,
   requireShopifyOrderScope,
   requireShopifyOrderWindowScopes,
@@ -127,6 +128,37 @@ describe('Shopify provider hardening', () => {
       shopDomain: 'store.myshopify.com', accessToken: 'secret', endpoint: 'https://evil.example/admin/api/2026-07/orders.json',
       fetchImpl: vi.fn(),
     })).rejects.toThrow('escaped the connected shop boundary');
+  });
+
+  it('verifies development stores from Shopify plan authority', async () => {
+    const fetchImpl = vi.fn(async (_url: any, init: any) => new Response(JSON.stringify({
+      data: { shop: { plan: { partnerDevelopment: true } } },
+    }), { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } }));
+    await expect(isShopifyPartnerDevelopmentStore({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07', fetchImpl,
+    })).resolves.toBe(true);
+    expect(fetchImpl).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({
+      method: 'POST',
+      body: expect.stringContaining('partnerDevelopment'),
+    }));
+  });
+
+  it('keeps normal Shopify stores out of development-store validation mode', async () => {
+    await expect(isShopifyPartnerDevelopmentStore({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07',
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({
+        data: { shop: { plan: { partnerDevelopment: false } } },
+      }), { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } })),
+    })).resolves.toBe(false);
+  });
+
+  it('fails closed when Shopify omits development-store authority', async () => {
+    await expect(isShopifyPartnerDevelopmentStore({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07',
+      fetchImpl: vi.fn(async () => new Response('{data:{shop:{}}}', {
+        status: 200, headers: { 'X-Shopify-API-Version': '2026-07' },
+      })),
+    })).rejects.toThrow('verification failed');
   });
 
   it('fails closed in production without a dedicated encryption key', () => {

@@ -298,6 +298,7 @@ Important meaning:
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
 - Shopify attribution keys include `UTM Campaign`, `UTM Source`, `UTM Medium`, `Discount code`, and `Tags`; tags are matched as exact individual Shopify order tags and are useful for no-card admin validation because Shopify order tags can be edited directly in Shopify Admin
+- Shopify test orders remain excluded for normal or unverified stores; only a store that Shopify GraphQL confirms as a Partner development store may include otherwise eligible test orders for validation, using the existing 3,650-day source-to-date window and visible test-data labels
 - Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
 - Shopify `Review Settings` should show revenue breakdown rows as campaign/value label plus amount only; do not append order-count text such as `(1 order)` to those amount rows
 - Shopify revenue edit mode should preserve the saved Shopify connection method on the first screen; token/Admin API connections should not fall back to showing OAuth when navigating back

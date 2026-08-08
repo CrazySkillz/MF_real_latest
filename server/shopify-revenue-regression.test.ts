@@ -56,7 +56,7 @@ describe("Shopify revenue regression guard", () => {
 
     expect(routes).toContain('order=created_at%20asc&created_at_min=');
     expect(routes).toContain('const deduplicatedOrders = deduplicateShopifyOrders(orders);');
-    expect(routes).toContain('return deduplicatedOrders;');
+    expect(routes).toContain('return { orders: deduplicatedOrders, developmentStoreTestOrdersIncluded };');
     expect(saveRoute).toContain('getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone, ga4StartDate, ga4EndDate)');
     expect(saveRoute).toContain('const campaignWindowStartAt = hasValidCampaignStart ? campaignStartAt! : campaignCreatedAt;');
     expect(saveRoute).toContain('externalId: String(order.id)');
@@ -79,9 +79,9 @@ describe("Shopify revenue regression guard", () => {
     );
 
     expect(saveRoute).toContain('const metric = "current_total_price";');
-    expect(saveRoute).toContain('const amt = getShopifyConfirmedRevenueAmounts(o);');
-    expect(valuesRoute).toContain('if (!getShopifyConfirmedRevenueAmounts(o)) continue;');
-    expect(routes).toContain('const confirmedRevenue = getShopifyConfirmedRevenueAmounts(o);');
+    expect(saveRoute).toContain('includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded');
+    expect(valuesRoute).toContain('includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded');
+    expect(routes).toContain('const confirmedRevenue = getShopifyConfirmedRevenueAmounts(o, { includeDevelopmentStoreTestOrders: developmentStoreTestOrdersIncluded });');
     expect(routes).toContain("throw new Error('Shopify orders response is incomplete')");
     expect(routes).toContain("throw new Error('Shopify orders pagination repeated a cursor URL')");
     expect(wizard).toContain('const revenueMetric = "current_total_price";');
@@ -237,7 +237,7 @@ describe("Shopify revenue regression guard", () => {
       'app.post("/api/campaigns/:id/chat"',
     );
 
-    expect(saveRoute).toContain("const orders = await shopifyFetchAllOrders({");
+    expect(saveRoute).toContain("const orderBatch = await shopifyFetchAllOrders({");
     expect(saveRoute).toContain("apiVersion,");
     expect(saveRoute).toContain("createdAtMin,");
     expect(saveRoute).toContain("audit: providerQueryAudit,");
@@ -274,6 +274,19 @@ describe("Shopify revenue regression guard", () => {
       expect(block).toContain("shopifyFetchAllOrders({");
       expect(block).not.toContain("orders.json?status=any&limit=250");
     }
+  });
+
+  it('isolates test-order revenue to Shopify-verified development stores', () => {
+    const routes = read(ROUTES_FILE);
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+    const ga4Metrics = read(GA4_METRICS_FILE);
+    expect(routes).toContain('developmentStoreTestOrdersIncluded = await isShopifyPartnerDevelopmentStore');
+    expect(routes).toContain('developmentStoreVerification = \'failed_closed\'');
+    expect(routes).toContain('platformCtx === \'ga4\' && !verifiedDevelopmentStore');
+    expect(routes).toContain('developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded');
+    expect(routes).toContain('developmentStoreTestOrdersIncluded,');
+    expect(wizard).toContain('Shopify development-store test orders are included for validation. This is test revenue.');
+    expect(ga4Metrics).toContain('Development-store test data');
   });
 
   it("keeps Shopify save portable across campaign and mapping variants", () => {

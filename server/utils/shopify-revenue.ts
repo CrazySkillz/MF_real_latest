@@ -158,11 +158,14 @@ export const getShopifyOrderReportingDateWithinWindow = (
   return orderDate;
 };
 
-export const getShopifyConfirmedRevenueAmounts = (order: any): ShopifyConfirmedRevenueAmounts | null => {
+export const getShopifyConfirmedRevenueAmounts = (
+  order: any,
+  options: { includeDevelopmentStoreTestOrders?: boolean } = {},
+): ShopifyConfirmedRevenueAmounts | null => {
   if (typeof order?.test !== 'boolean') {
     throw new Error('Shopify order is missing test classification');
   }
-  if (order.test || order?.cancelled_at) return null;
+  if ((order.test && options.includeDevelopmentStoreTestOrders !== true) || order?.cancelled_at) return null;
 
   const financialStatus = String(order?.financial_status || '').trim().toLowerCase();
   if (!financialStatus) throw new Error('Shopify order is missing financial_status');

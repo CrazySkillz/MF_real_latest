@@ -73,6 +73,8 @@ export async function shopifyAdminFetch(args: {
   shopDomain: string;
   accessToken: string;
   endpoint: string;
+  method?: 'GET' | 'POST';
+  body?: string;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   max429Retries?: number;
@@ -103,10 +105,12 @@ export async function shopifyAdminFetch(args: {
     let response: Response;
     try {
       response = await fetchImpl(url, {
+        method: args.method || 'GET',
         headers: {
           'X-Shopify-Access-Token': args.accessToken,
           'Content-Type': 'application/json',
         },
+        ...(args.body === undefined ? {} : { body: args.body }),
         signal,
       });
     } catch (error) {
@@ -138,4 +142,23 @@ export async function shopifyAdminFetch(args: {
     }
     return response;
   }
+}
+
+export async function isShopifyPartnerDevelopmentStore(args: {
+  shopDomain: string;
+  accessToken: string;
+  apiVersion: string;
+  fetchImpl?: typeof fetch;
+}): Promise<boolean> {
+  const response = await shopifyAdminFetch({
+    ...args,
+    endpoint: `/admin/api/${getShopifyApiVersion(args.apiVersion)}/graphql.json`,
+    method: 'POST',
+    body: JSON.stringify({ query: 'query MetricMindShopPlan { shop { plan { partnerDevelopment } } }' }),
+  });
+  const json: any = await response.json().catch(() => ({}));
+  if (!response.ok || json?.errors || typeof json?.data?.shop?.plan?.partnerDevelopment !== 'boolean') {
+    throw new Error('Shopify development-store verification failed');
+  }
+  return json.data.shop.plan.partnerDevelopment;
 }

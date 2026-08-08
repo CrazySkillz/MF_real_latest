@@ -138,6 +138,25 @@ describe("GA4 Insights regression guard", () => {
     expect(section).not.toContain("for (const item of unverifiedKpis)");
     expect(section).not.toContain("for (const item of unverifiedBenchmarks)");
   });
+  it("keeps target and scheduler findings factual instead of applying unsupported business judgments", () => {
+    const content = ga4MetricsFile();
+    const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names", insightsStart);
+    const section = content.slice(insightsStart, insightsEnd);
+
+    expect(section).toContain('title: `${String((k as any)?.name || metric)} Below Saved Target`');
+    expect(section).toContain('const configuredPriority = String((k as any)?.priority || "medium")');
+    expect(section).toContain('if (attPct >= 100) continue;');
+    expect(section).toContain("const periodMismatchLabels = [");
+    expect(section).toContain('Affected: ${periodMismatchLabels.join(", ")}.');
+    expect(section).toContain("trend history is unavailable");
+    expect(section).toContain("Confirm the daily KPI/Benchmark analytics job completed successfully");
+    expect(section).not.toContain("ROAS is strong");
+    expect(content).not.toContain("const POSITIVE_ROAS_STRONG");
+    expect(content).not.toContain("const KPI_BEHIND_PCT");
+    expect(content).not.toContain("const KPI_NEEDS_ATTENTION_PCT");
+  });
+
 
 
   it("flags invalid KPI and Benchmark targets before generating performance guidance", () => {
@@ -160,7 +179,7 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).toContain("integrity:bench_invalid_config");
     expect(insightsSection).toContain("if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above");
     expect(insightsSection).toContain("if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above");
-    expect(insightsSection).toContain("This KPI is not used for behind-target guidance until the saved target is corrected.");
+    expect(insightsSection).toContain("This KPI is not used for saved-target guidance until the saved target is corrected.");
     expect(insightsSection).toContain("This Benchmark is not used for behind-benchmark guidance until the saved benchmark value is corrected.");
   });
 
@@ -225,7 +244,7 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).toContain('accounts for ${ch.topSessionShare.toFixed(0)}% of sessions; check whether its volume or quality changed.');
     expect(insightsSection).toContain("Check top-performing channels before considering budget increases.");
     expect(insightsSection).toContain("Check which channels contributed to the increase before considering scaling.");
-    expect(insightsSection).toContain("Review high-ROAS channels before considering spend increases or new audience tests.");
+    expect(insightsSection).not.toContain("Review high-ROAS channels before considering spend increases or new audience tests.");
     expect(insightsSection).toContain("Review whether the target should be raised before changing budget allocation.");
     expect(insightsSection).not.toContain("drives ${ch.topRevenueShare.toFixed(0)}% of revenue");
     expect(insightsSection).not.toContain("drives ${ch.topSessionShare.toFixed(0)}% of sessions");

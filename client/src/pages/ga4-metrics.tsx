@@ -252,11 +252,7 @@ const POSITIVE_SESSIONS_MIN_PRIOR = 50;
 const POSITIVE_REVENUE_UP_PCT = 20;
 const POSITIVE_CONVERSIONS_UP_PCT = 15;
 const POSITIVE_CONVERSIONS_MIN_PRIOR = 5;
-const POSITIVE_ROAS_STRONG = 3;
 const POSITIVE_KPI_EXCEEDS_PCT = 110;
-// KPI underperformance bands
-const KPI_BEHIND_PCT = 70;
-const KPI_NEEDS_ATTENTION_PCT = 90;
 // Minimum daily history for anomaly detection
 const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabels: string[], ga4NoCompletedWindow = false) => {
   const hasSpend = spendLabels.length > 0;
@@ -4642,7 +4638,6 @@ export default function GA4Metrics() {
     if (
       id.startsWith("financial:") ||
       id === "info:ga4_revenue_and_imported_revenue_included" ||
-      id === "positive:roas:lifetime" ||
       id === "info:revenue_summary"
     ) return "finance";
     return "context";
@@ -4656,7 +4651,7 @@ export default function GA4Metrics() {
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
     if (id === "financial:revenue_missing" || id === "financial:spend_missing") return "Source configuration";
-    if (id.startsWith("financial:") || id === "positive:roas:lifetime") return "Revenue/spend to-date totals";
+    if (id.startsWith("financial:")) return "Revenue/spend to-date totals";
     if (id === "info:ga4_revenue_and_imported_revenue_included") return "GA4 native + imported revenue";
     if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
@@ -4684,7 +4679,7 @@ export default function GA4Metrics() {
     if (id.includes(":3d") || id === "info:short_window") return "Low";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) return "Medium";
     if (id.startsWith("kpi:") || id.startsWith("bench:") || id.startsWith("positive:kpi:")) return "Medium";
-    if (id.startsWith("financial:") || id === "info:ga4_revenue_and_imported_revenue_included" || id === "positive:roas:lifetime") return "High";
+    if (id.startsWith("financial:") || id === "info:ga4_revenue_and_imported_revenue_included") return "High";
     return "Medium";
   };
 
@@ -4773,12 +4768,16 @@ export default function GA4Metrics() {
       !getBenchmarkInsightPeriodCompatibility(b).comparable
     );
     const periodMismatchCount = periodMismatchKpis.length + periodMismatchBenchmarks.length;
+    const periodMismatchLabels = [
+      ...periodMismatchKpis.map((k: any) => `${String(k?.name || k?.metric || "KPI")} (target ${String(k?.targetValue ?? "not set")})`),
+      ...periodMismatchBenchmarks.map((b: any) => `${String(b?.name || b?.metric || "Benchmark")} (benchmark ${String(b?.benchmarkValue ?? "not set")})`),
+    ];
     if (periodMismatchCount > 0) {
       out.push({
         id: "integrity:target_period_mismatch",
         severity: "medium",
         title: "Target reporting periods need review",
-        description: `${periodMismatchCount} verified saved target${periodMismatchCount === 1 ? "" : "s"} are not evaluated because their saved periods do not match the reporting windows of their current values.`,
+        description: `${periodMismatchCount} verified saved target${periodMismatchCount === 1 ? "" : "s"} are not evaluated because their saved periods do not match the reporting windows of their current values. Affected: ${periodMismatchLabels.join(", ")}.`,
         recommendation: "Review each affected target period and compare it only with a value calculated for the same period.",
       });
     }
@@ -4841,7 +4840,7 @@ export default function GA4Metrics() {
         id: `integrity:kpi_invalid_config:${String(item.k?.id || name)}`,
         severity: "high",
         title: `KPI configuration needs review: ${name}`,
-        description: `"${name}" cannot be evaluated reliably. ${item.reason} This KPI is not used for behind-target guidance until the saved target is corrected.`,
+        description: `"${name}" cannot be evaluated reliably. ${item.reason} This KPI is not used for saved-target guidance until the saved target is corrected.`,
         recommendation: "Edit the KPI target, then recheck Insights before making budget, creative, or landing-page decisions from this KPI.",
       });
     }
@@ -4985,9 +4984,15 @@ export default function GA4Metrics() {
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
-      if (attPct >= KPI_NEEDS_ATTENTION_PCT) continue; // Only flag KPIs below attainment threshold
+      if (attPct >= 100) continue;
 
-      const sev: InsightItem["severity"] = attPct < KPI_BEHIND_PCT ? "high" : "medium";
+      const configuredPriority = String((k as any)?.priority || "medium").trim().toLowerCase();
+      const sev: InsightItem["severity"] =
+        configuredPriority === "high" || configuredPriority === "critical"
+          ? "high"
+          : configuredPriority === "low"
+            ? "low"
+            : "medium";
       const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
       const effectiveTarget = (getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? "";
       const analytics = insightsAnalyticsHistoryMatchesSelectedProperty
@@ -5023,7 +5028,7 @@ export default function GA4Metrics() {
       out.push({
         id: `kpi:${String((k as any)?.id || metric)}`,
         severity: sev,
-        title: `${metric} ${attPct < KPI_BEHIND_PCT ? "Behind Target" : "Needs Attention"}`,
+        title: `${String((k as any)?.name || metric)} Below Saved Target`,
         description: (() => {
           const unit = String((k as any)?.unit || "%");
           const suffix = unit === "%" ? "%" : unit === "$" ? "" : "";
@@ -5160,9 +5165,9 @@ export default function GA4Metrics() {
       out.push({
         id: "info:scheduler_no_history",
         severity: "low",
-        title: `${missing.join(" and ")} trend tracking will activate after the daily analytics job runs`,
-        description: `Streak and trend data for ${missing.join("/")} insights require at least one daily analytics snapshot. This data is recorded automatically by the background scheduler.`,
-        recommendation: "No setup action needed; check again after the next daily KPI/Benchmark analytics job.",
+        title: `${missing.join(" and ")} trend history is unavailable`,
+        description: `No daily analytics snapshot is available for ${missing.join("/")} insights. Streak and trend context is withheld until a successful snapshot exists.`,
+        recommendation: "Confirm the daily KPI/Benchmark analytics job completed successfully before using streak or trend context.",
       });
     }
 
@@ -5360,17 +5365,7 @@ export default function GA4Metrics() {
       });
     }
 
-    // 4) Positive signals that don't depend on daily history
-    if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && Number(financialROAS || 0) >= POSITIVE_ROAS_STRONG) {
-      out.push({
-        id: "positive:roas:lifetime",
-        severity: "low",
-        title: `ROAS is strong at ${Number(financialROAS).toFixed(2)}x`,
-        description: `Campaign ROAS is ${Number(financialROAS).toFixed(2)}x to date, above a 1.0x revenue-to-spend ratio. Profitability still depends on margin and other costs.`,
-        recommendation: "Review high-ROAS channels before considering spend increases or new audience tests.",
-      });
-    }
-
+    // 4) Positive saved-target signals
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
       if (!getKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;

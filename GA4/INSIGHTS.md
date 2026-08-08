@@ -141,9 +141,14 @@ Current meaning:
 - findings are grouped by investigation type
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
 - KPI target findings require an explicit 30-day tracking period for 30-day traffic values; campaign-to-date financial values require a campaign-to-date target
+- below-target KPI findings use factual `Below Saved Target` wording and the priority saved on that KPI; attainment percentage does not invent severity
+- every verified, period-compatible KPI below its saved target is shown; arbitrary attainment bands do not hide a miss
 - Benchmark findings require an explicitly matching reporting period; incompatible targets are withheld and summarized as one configuration finding
+- the period-mismatch finding identifies each affected saved target and value
 - cards include data-basis and confidence labels
 - unverified KPI and Benchmark evaluations are consolidated into one data-readiness finding instead of presenting one shared source failure as many business issues
+- missing snapshot history is reported as unavailable and does not assume that a future scheduler run will succeed
+- generic total-ROAS strength findings are withheld because ROAS alone does not prove profitability or a channel-level scaling opportunity
 - intro copy is history-aware
 - recommendations are phrased as checks, not proven causal conclusions
 

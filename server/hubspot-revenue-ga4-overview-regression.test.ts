@@ -64,6 +64,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(routes).toContain("const signHubSpotOAuthState = (campaignId: string): string => {");
     expect(routes).toContain("const verifyHubSpotOAuthState = (stateRaw: unknown)");
     expect(routes).toContain("process.env.HUBSPOT_OAUTH_STATE_SECRET");
+    expect(routes).toContain('purpose: "hubspot"');
     expect(routes).toContain('createHmac("sha256", secret).update(payloadB64).digest();');
     expect(routes).toContain("timingSafeEqual(providedSig, expectedSig)");
 

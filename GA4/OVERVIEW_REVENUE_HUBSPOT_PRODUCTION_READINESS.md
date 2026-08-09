@@ -3,10 +3,10 @@
 ## Mandatory status
 
 **Current status: UNVERIFIED on the current revision. The historical H10d
-certification is invalidated. A local forward-path currency fix is present but
-is not deployed, and existing persisted HubSpot revenue requires read-only
-candidate inventory plus provider-authoritative refresh evidence before any
-clean status can be reconsidered.**
+certification is invalidated. The forward-path currency fix is deployed at
+`2742aec4b8008d02edda0c4fdd929b062d5b9eed`, but provider-authoritative
+refresh evidence remains blocked until the confirmed HubSpot OAuth initiation
+regression is corrected and deployed.**
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
@@ -43,6 +43,18 @@ Current currency-provenance follow-up (2026-08-09):
   existing atomic replacement
 - no historical backfill or production-data mutation is included; deployment
   and provider-authoritative refresh validation remain required
+
+Current OAuth initiation blocker (2026-08-09):
+
+- production preview proved the stored HubSpot connection has neither a usable
+  access token nor a refresh token, so reconnect is required before refresh
+- reconnect fails before opening HubSpot because the HubSpot-only state-secret
+  resolver ignores the configured token-encryption secret used safely by the
+  other OAuth paths
+- the local correction preserves all previously supported HubSpot secret
+  behavior and adds only the purpose-separated token-encryption-key fallback
+- no connection, source, mapping, revenue record, or total is modified by this
+  correction; deployment and a user-authorized reconnect remain required
 
 Historical H10d baseline (history only):
 

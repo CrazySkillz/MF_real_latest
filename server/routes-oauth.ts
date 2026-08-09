@@ -10377,10 +10377,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const HUBSPOT_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
   const getHubSpotOAuthStateSecret = (): string => {
-    const secret = process.env.HUBSPOT_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || process.env.APP_SECRET;
-    if (secret) return secret;
-    if (process.env.NODE_ENV === "production") throw new Error("HubSpot OAuth state secret is not configured");
-    return "dev-hubspot-oauth-state-secret";
+    const configuredSecret =
+      process.env.HUBSPOT_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || process.env.APP_SECRET;
+    if (configuredSecret) return configuredSecret;
+    return resolveOAuthStateSigningSecret({
+      purpose: "hubspot",
+      label: "HubSpot",
+      developmentFallback: "dev-hubspot-oauth-state-secret",
+    });
   };
 
   const signHubSpotOAuthState = (campaignId: string): string => {

@@ -240,8 +240,8 @@ describe("GA4 Insights authentication and tenant scope", () => {
     const salesforceCallbackEnd = source.indexOf("// Shopify OAuth callback", salesforceCallbackStart);
     const salesforceCallback = source.slice(salesforceCallbackStart, salesforceCallbackEnd);
 
-    expect(hubspotSecret).toContain('process.env.NODE_ENV === "production"');
-    expect(hubspotSecret).toContain("HubSpot OAuth state secret is not configured");
+    expect(hubspotSecret).toContain("resolveOAuthStateSigningSecret");
+    expect(hubspotSecret).toContain('purpose: "hubspot"');
     expect(hubspotCallback).toContain("ensureCampaignAccess");
     expect(hubspotCallback.indexOf("ensureCampaignAccess")).toBeLessThan(hubspotCallback.indexOf("https://api.hubapi.com/oauth/v1/token"));
     expect(salesforceConnect).toContain("ensureCampaignAccess");

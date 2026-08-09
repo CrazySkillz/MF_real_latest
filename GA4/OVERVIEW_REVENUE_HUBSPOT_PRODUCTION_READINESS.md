@@ -31,6 +31,19 @@ Current controlling audit (2026-08-08):
 - historical rows without source-level provider-currency provenance remain
   candidates, not proven damage and not safe cleanup targets
 
+Current currency-provenance follow-up (2026-08-09):
+
+- read-only production inventory found three active GA4 HubSpot sources whose
+  amounts reconcile but whose pre-fix mappings lack provider currency
+- matched deals can omit `hs_currency` when they use the HubSpot account's
+  company currency, so the existing fail-closed guard prevented scheduler
+  refresh from supplying that missing provenance
+- the local fix uses HubSpot's read-only account currency only for matched deals
+  missing `hs_currency`; mixed or unavailable currency still fails before the
+  existing atomic replacement
+- no historical backfill or production-data mutation is included; deployment
+  and provider-authoritative refresh validation remain required
+
 Historical H10d baseline (history only):
 
 - audit date: 2026-07-12

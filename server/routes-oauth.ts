@@ -56,6 +56,7 @@ import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-curren
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
+import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
@@ -18548,6 +18549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pages = 0;
       let seen = 0;
       let importedDealCount = 0;
+      let missingCurrencyDealCount = 0;
       let invalidConfirmedRevenueDateCount = 0;
       const requestedConfirmedRevenueCursors = new Set<string>();
       while (pages < MAX_HUBSPOT_PAGES) {
@@ -18628,6 +18630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
           if (c) currencies.add(c.toUpperCase());
+          else missingCurrencyDealCount += 1;
 
           if (convValueProp) {
             const cvRaw = props[convValueProp];
@@ -18665,15 +18668,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (currencies.size > 1) {
+      let accountCurrency = "";
+      if (platformCtx === "ga4" && importedDealCount > 0 && missingCurrencyDealCount > 0) {
+        const accountResp = await fetchWithTimeout('https://api.hubapi.com/account-info/v3/details', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).catch(() => null);
+        if (accountResp?.ok) {
+          const accountInfo: any = await accountResp.json().catch(() => ({}));
+          accountCurrency = String(accountInfo?.companyCurrency || "").trim().toUpperCase();
+        }
+      }
+      const resolvedCurrency = resolveHubspotRevenueCurrency(currencies, missingCurrencyDealCount, accountCurrency);
+      if (resolvedCurrency.currencies.length > 1) {
         return res.status(400).json({
-          error: `Multiple currencies found for the selected deals (${Array.from(currencies).join(', ')}). Please filter HubSpot deals to a single currency.`,
-          currencies: Array.from(currencies),
+          error: `Multiple currencies found for the selected deals (${resolvedCurrency.currencies.join(', ')}). Please filter HubSpot deals to a single currency.`,
+          currencies: resolvedCurrency.currencies,
         });
       }
-      const hubspotRevenueCurrency = currencies.size === 1
-        ? String(Array.from(currencies)[0] || "").trim().toUpperCase()
-        : "";
+      const hubspotRevenueCurrency = resolvedCurrency.currency;
       if (platformCtx === "ga4" && importedDealCount > 0 && !hubspotRevenueCurrency) {
         return res.status(422).json({
           error: "HubSpot did not return a currency for the selected revenue deals. No revenue changes were saved.",

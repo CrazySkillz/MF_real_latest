@@ -53,6 +53,9 @@ describe("GA4 Overview revenue currency and total integrity", () => {
     );
 
     expect(route).toContain("HUBSPOT_REVENUE_CURRENCY_UNAVAILABLE");
+    expect(route).toContain("missingCurrencyDealCount");
+    expect(route).toContain("https://api.hubapi.com/account-info/v3/details");
+    expect(route).toContain("resolveHubspotRevenueCurrency(currencies, missingCurrencyDealCount, accountCurrency)");
     expect(route).toContain("HUBSPOT_REVENUE_CURRENCY_MISMATCH");
     expect(route).toContain("hubspotRevenueCurrency !== campaignCurrency");
     expect(route).toContain("currency: hubspotRevenueCurrency || campaignCurrency,");

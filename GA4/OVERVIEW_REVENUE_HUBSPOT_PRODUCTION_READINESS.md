@@ -3,10 +3,11 @@
 ## Mandatory status
 
 **Current status: UNVERIFIED on the current revision. The historical H10d
-certification is invalidated. The forward-path currency fix is deployed at
-`2742aec4b8008d02edda0c4fdd929b062d5b9eed`, but provider-authoritative
-refresh evidence remains blocked until the confirmed HubSpot OAuth initiation
-regression is corrected and deployed.**
+certification is invalidated. The currency and OAuth initiation fixes are
+deployed through `287493fffce61c2e99b27607bb66052250881050`, and the
+provider-authoritative manual refresh passed. A post-reconnect production
+scheduler execution has not yet been observed, so clean certification must not
+be claimed.**
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
@@ -41,20 +42,31 @@ Current currency-provenance follow-up (2026-08-09):
 - the local fix uses HubSpot's read-only account currency only for matched deals
   missing `hs_currency`; mixed or unavailable currency still fails before the
   existing atomic replacement
-- no historical backfill or production-data mutation is included; deployment
-  and provider-authoritative refresh validation remain required
+- no historical backfill was performed; the three existing source IDs were
+  refreshed in place only after their exact provider totals and USD currency
+  passed preview verification
 
-Current OAuth initiation blocker (2026-08-09):
+Current OAuth initiation resolution and refresh evidence (2026-08-09):
 
 - production preview proved the stored HubSpot connection has neither a usable
   access token nor a refresh token, so reconnect is required before refresh
 - reconnect fails before opening HubSpot because the HubSpot-only state-secret
   resolver ignores the configured token-encryption secret used safely by the
   other OAuth paths
-- the local correction preserves all previously supported HubSpot secret
+- the deployed correction preserves all previously supported HubSpot secret
   behavior and adds only the purpose-separated token-encryption-key fallback
-- no connection, source, mapping, revenue record, or total is modified by this
-  correction; deployment and a user-authorized reconnect remain required
+- production served the exact fix revision, OAuth initiation returned 200 with
+  the expected HubSpot authorization host, and the user-authorized reconnect
+  completed
+- all three deployed provider previews returned exact USD totals of $4,000,
+  $5,100, and $7,000 before any source refresh
+- all three existing source IDs were then atomically refreshed in place;
+  persisted source and record currency provenance is USD, HubSpot remains
+  $16,100, imported revenue remains $16,799.99, native GA4 revenue was
+  $48,868.37, and combined Total Revenue was $65,668.36
+- the remaining external gate is one production scheduler execution after this
+  reconnect followed by read-only confirmation of the same source identities,
+  USD provenance, and totals
 
 Historical H10d baseline (history only):
 

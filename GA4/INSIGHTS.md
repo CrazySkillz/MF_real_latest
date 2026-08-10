@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`GA4 Insights is UNVERIFIED. The previous certification was invalidated because the Daily Trends chart connected observations across missing calendar days and its regression test incorrectly required that behavior. GA4/certifications/ga4-insights.json is the controlling machine record.`
+`GA4 Insights is PRODUCTION_READY for exact deployed runtime 3e6b46c6c65721df21b437109ea698f615f8a353 and the dependency/configuration boundary recorded on 2026-08-10 (Europe/Amsterdam). GA4/certifications/ga4-insights.json is the controlling machine record; any listed dependency or configuration change invalidates this revision-specific certification.`
 
 ## Document Ownership
 

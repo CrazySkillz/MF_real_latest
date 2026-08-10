@@ -91,10 +91,10 @@ Current standard-template output rule:
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
 - `Ad Comparison` report leader cards, charts, selected-metric totals, and
-  `All Campaigns` use the same native 30-completed-day rows as live; imported
-  source-to-date revenue cannot create or adjust ranked rows
-- `Ad Comparison` report Revenue Breakdown shows the same 30-day native row
-  sum plus separate exact materialized source-to-date rows, with no combined
+  `All Campaigns` use the same native import-to-date rows as live; imported
+  external revenue cannot create or adjust ranked rows
+- `Ad Comparison` report Revenue Breakdown shows the same native import-to-date
+  row sum plus separate exact materialized source-to-date rows, with no combined
   total; browser and scheduled paths fail closed when selected required inputs
   are unavailable
 - `Insights` should follow the live Insights order

@@ -111,4 +111,22 @@ describe('GA4 Ad Comparison accumulation window', () => {
       .toBeLessThan(breakdownRoute.indexOf("if (windowMode === 'import-to-date')"));
     expect(breakdownRoute).toContain('storage.getGA4Connection(campaignId, propertyId)');
   });
+
+  it('keeps the browser Ad Comparison report on the live import-to-date rows', () => {
+    const page = read('client/src/pages/ga4-metrics.tsx');
+    const reportPreflight = page.slice(
+      page.indexOf('if (sections.ads) {'),
+      page.indexOf('const { jsPDF } = await import('),
+    );
+    const reportSection = page.slice(
+      page.indexOf('// ========== AD COMPARISON =========='),
+      page.indexOf('// ========== INSIGHTS =========='),
+    );
+
+    expect(page).toMatch(/activeTab === .campaigns. \|\| activeTab === .reports./);
+    expect(reportPreflight).toContain('adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError');
+    expect(reportSection).toContain('const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];');
+    expect(reportSection).toContain('GA4 Revenue (Imported to Date)');
+    expect(reportSection).not.toContain('GA4 Revenue (30 completed days)');
+  });
 });

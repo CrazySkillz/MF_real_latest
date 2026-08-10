@@ -1955,7 +1955,7 @@ export default function GA4Metrics() {
     isPlaceholderData: adComparisonBreakdownPlaceholder,
   } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-ad-comparison-breakdown", "import-to-date", selectedGA4PropertyId],
-    enabled: activeTab === "campaigns" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: (activeTab === "campaigns" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -3047,7 +3047,7 @@ export default function GA4Metrics() {
       const needsRevenueBreakdown =
         reportType !== 'custom' || adsSubsections.revenueBreakdown === true;
       const unavailable: string[] = [];
-      if (campaignBreakdownUnavailable || breakdownError) {
+      if (adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError) {
         unavailable.push('Campaign breakdown');
       }
       if (needsRevenueBreakdown && adComparisonRevenueState !== 'ready') {
@@ -3406,7 +3406,7 @@ export default function GA4Metrics() {
       const includeAdsAllCampaigns = reportType !== "custom" || adsSubsections.allCampaigns !== false;
       const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
       const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
-      const rows = Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : [];
+      const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];
       const selectedMetric = adComparisonMetric;
       const metricLabels: Record<string, string> = {
         sessions: "Sessions",
@@ -3529,7 +3529,7 @@ export default function GA4Metrics() {
           }
 
           const adSummaryCards: [string, string][] = [
-            [selectedMetric === "revenue" ? "GA4 Revenue (30 Completed Days)" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+            [selectedMetric === "revenue" ? "GA4 Revenue (Imported to Date)" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
             ["Campaigns Compared", String(sortedByMetric.length)],
           ];
           const sumW = (CW - 4) / 2;
@@ -3589,7 +3589,7 @@ export default function GA4Metrics() {
           y += 4;
           const breakdownRows: { label: string; amount: string; muted?: boolean; bold?: boolean }[] = [
             {
-              label: "GA4 Revenue (30 completed days)",
+              label: "GA4 Revenue (Imported to Date)",
               amount: fC(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)),
             },
             ...revenueDisplaySources

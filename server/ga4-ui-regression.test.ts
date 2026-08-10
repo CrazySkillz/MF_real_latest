@@ -480,7 +480,7 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("[...campaignBreakdownAgg]");
   });
 
-  it("keeps source-to-date imported revenue out of 30-day Ad Comparison values", () => {
+  it("keeps external imported revenue out of native Ad Comparison values", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
@@ -506,7 +506,7 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).toContain("const ga4RevenueForBreakdown = Number(ga4Revenue.toFixed(2));");
     expect(breakdownSection).toContain("{formatMoney(ga4RevenueForBreakdown)}");
     expect(breakdownSection).not.toContain("Total Revenue</td>");
-    expect(pdfBreakdownSection).toContain('label: "GA4 Revenue (30 completed days)"');
+    expect(pdfBreakdownSection).toContain('label: "GA4 Revenue (Imported to Date)"');
     expect(pdfBreakdownSection).toContain("comparisonRows.reduce");
   });
 

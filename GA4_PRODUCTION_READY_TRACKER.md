@@ -17,7 +17,7 @@ Rule: do not add new items here unless the root cause is confirmed in code or pr
 
 Campaign-level KPI/Benchmark production-readiness is tracked separately in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` because those rules apply to every connected platform, not only GA4.
 
-Shopify Revenue current status (2026-07-15): **production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is the canonical complete evidence record. Dormant OAuth and non-GA4 Shopify sources are excluded from that certification.
+Shopify Revenue current status (2026-08-10): **clean-certified and production-ready for exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the recorded GA4 Overview boundary**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is canonical. Dormant OAuth, non-GA4 Shopify sources, future stores, and generalized provider behavior are excluded.
 
 ## May 2026 GA4 Report-Template Scope
 
@@ -37,7 +37,7 @@ Shopify Revenue current status (2026-07-15): **production-ready and clean-certif
 
 ## Current Status
 
-The tracked May 2026 GA4 report-template blockers are complete, but GA4 Overview is not production-ready or clean-certified. Whole-Overview Current Commits 1-7 are closed for their documented bounded packets; Current Commits 8-10 remain open. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Only individually proven GA4 patterns may be reused for Overview, report routes, scheduled report handling, source-backed PDF generation, direct snapshot PDF output, and report email safety.
+The tracked May 2026 GA4 report-template blockers are complete. GA4 Overview is clean-certified and production-ready for deployed runtime `8ba694060411a2a05663a4915652767e4e3ba713` and the exact campaign/property/configuration/source/data boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. That Overview decision does not certify later Reports changes, scheduled delivery, other tabs, other campaigns, or future configurations.
 
 This status does not close the newer findings below. Later shared report/source infrastructure changes can affect GA4 even when the visible GA4 page is not directly edited.
 
@@ -301,13 +301,13 @@ Validation:
 
 ## Next Step
 
-Whole-Overview Current Commit 8 is next: collect bounded production freshness/provider evidence. GA4 Overview remains not production-ready or clean-certified; Current Commits 9-10 remain queued after Commit 8. Use `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the canonical scope and status.
+No implementation or validation step remains inside the exact certified Overview boundary. The next product-section work may proceed under its own readiness document; any later edit to a listed Overview dependency must first invalidate and reassess the affected Overview certification.
 
 ## Current Unverified Areas
 
 The following are deployed/provider or production-data validation gates for broader GA4 confidence. They do not reopen GA4 Overview local code readiness unless they produce a specific code or data defect:
 
-- full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each remaining uncertified GA4 revenue source family: Salesforce, Google Sheets, and legacy Manual; Shopify's enabled Admin API token scope is complete in its canonical readiness document, while HubSpot and CSV have their own separately bounded certifications
+- full lifecycle validation for future or excluded GA4 revenue configurations: Salesforce, an unconfigured future Google Sheets Revenue source, legacy Manual, new Shopify stores, new HubSpot mappings, and unlisted CSV variants. The exact enabled Shopify, three HubSpot, and one CSV sources are certified only inside the recorded Overview boundary
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 spend source family: Google Sheets, CSV, LinkedIn Ads, Meta, Google Ads, and legacy Manual
 - real GA4 property validation for Ad Comparison, reports, OAuth/token refresh, and longer Insights trend windows after enough live daily history exists
 - deployed scheduled email receipt and provider-event delivery status
@@ -356,13 +356,13 @@ Pass criteria:
 
 Validate each source family separately.
 
-Revenue source families:
+Revenue source families for future/broader configurations:
 
-- Shopify — production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope; use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
-- HubSpot
+- Shopify — the exact enabled source is clean-certified inside the recorded Overview boundary; future stores remain unverified
+- HubSpot — the three exact enabled source IDs are clean-certified inside the recorded Overview boundary; future mappings remain unverified
 - Salesforce
-- Google Sheets
-- CSV
+- Google Sheets — chooser is deployed; an unconfigured future Revenue source is outside the certification
+- CSV — the exact enabled source is clean-certified inside the recorded Overview boundary; unlisted variants remain unverified
 - existing legacy Manual revenue, if present
 
 Spend source families:

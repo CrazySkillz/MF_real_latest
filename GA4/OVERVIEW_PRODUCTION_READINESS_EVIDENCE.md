@@ -14,7 +14,7 @@ This file is the canonical production-readiness record for the complete GA4 `Ove
 
 A previous readiness statement, passing test suite, or source-family certification is not proof for the complete Overview. A clean certification requires current evidence for every included visible value, fallback, source lifecycle, negative case, production-data boundary, and downstream consumer.
 
-## Fresh Audit Identity
+## Historical Audit Identity (2026-07-15)
 
 - Audit date: `2026-07-15`
 - Branch: `main`
@@ -30,25 +30,23 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**UNVERIFIED. Commit `9c0ef7e8` restored cumulative Summary reads but failed deployed parity for a retained connection: missing `importStartDate` fell back to OAuth `connectedAt`, selecting `2026-06-29` instead of the validated `2026-07-02` boundary. The local corrective follow-up excludes the exact three extra days but still requires deployment/API/UI/Overview-report parity, a timer-fired no-drop run, and OAuth durability on or after `2026-08-07`.**
+**CLEAN-CERTIFIED AND PRODUCTION-READY for deployed runtime commit `8ba694060411a2a05663a4915652767e4e3ba713`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, the supported 30-completed-day Overview model, campaign currency USD, and the enabled source set recorded below.**
 
-Current Commit 20 corrective evidence: the 29 June, 30 June, and 1 July controlled packets total exactly 330 Sessions, 330 Users, and 42 Conversions. Those amounts exactly explain the deployed change from 866 / 867 / 110 to 1,196 / 1,197 / 152. The correction retains explicit `importStartDate` values, retains dynamic per-selection dates for new connections, carries the boundary through the existing draft-to-final campaign transfer, and applies the verified `2026-07-02` cutover only to pre-field retained connections. It changes no production fact or connection row. Eight focused/adjacent files pass 170/170 tests; TypeScript, the production build, and `git diff --check` pass. The numerical guard verifies 866 / 867 / 110 / 68.4% / 12.7%; deployment remains unproven.
+Certification closure on `2026-08-10` proved, at the same deployed revision and data state:
 
-Commit 17's bounded forward implementation deployed as `36676deb`; the user confirmed the existing GA4 campaign's Total Revenue, Total Spend, and Revenue/Spend source lists remained unchanged. The retained-source disposition is now closed as keep/support. Provider-cycle rollback remains a named scheduler/provider exclusion, and no production cleanup is authorized.
+- native GA4 revenue `$52,532.70 USD`, imported revenue `$16,799.99 USD`, and Total Revenue `$69,332.69 USD`
+- all five imported revenue source IDs present, materialized, available, and USD: Shopify `$99.99`; HubSpot `$5,100`, `$7,000`, and `$4,000`; CSV `$600`
+- a normal timer firing at `2026-08-10T08:00:00.002Z`; property `542352127` updated at `08:00:21.147`, retained 21 unique dates through `2026-08-09`, and had zero duplicate dates
+- observed post-publish OAuth durability for the same GA4 connection, including successful authenticated reads and the timer-fired persisted refresh after `2026-08-07`
+- the final deterministic/read-only pack, deployed UI/API parity, exact source identity, valid-zero/unavailable distinction, currency fail-closed behavior, and reviewed retained-source disposition
 
-Commit 18's fail-closed downstream correction and corrective scheduler-backed Summary are deployed. The bounded 30-day metric-correction follow-up passed on `2026-08-01`. Deterministic fail-closed and downstream coverage is included in the final 19-file / 190-test reconciliation; named scheduler/provider executions remain explicit exclusions rather than implied deployed fixtures.
+The process-wide GA4 scheduler reported failures for 17 obsolete campaigns that the user explicitly excluded from this target certification. That result is not represented as a globally healthy scheduler; the target campaign/property pass is proven by its exact persisted date, timestamp, row-count, duplicate, value, and source-identity evidence.
 
-Commit 19 runtime `ba2e4329` is deployed. The user confirmed the existing `GA4 single` / `ga4_mock` page shows `Last 30 completed days` and loads its metric cards normally. Unsupported missing/60/90-day persistence rejection is automated/code-path proven at that deployed source commit and was deliberately not production-injected. The bounded Commit 19 implementation is closed without production-data mutation. The user reviewed and explicitly approved keeping all four visible retained Spend sources, closing their disposition question. On `2026-08-01`, the post-publish Google Sheets reconnect completed and the user changed the mapped sheet while leaving Overview open, used no manual refresh, and confirmed the displayed value updated automatically. The final non-scheduler production reconciliation therefore passes for its documented scope; OAuth durability remains pending until `2026-08-07` or later.
-
-The earlier unconditional clean-certified answer remains retracted because current-release timer-fired GA4 scheduler evidence and OAuth durability have not yet passed. Commits 1–19 close their documented bounded packets, and future 60/90-day options remain outside the current release. The retained-source review is complete, the stale Google Sheets reconnect blocker is closed, and the deterministic/read-only pack passes. The current-release GA4 daily scheduled run is now an included gate; unrelated scheduled delivery, startup refresh, and hypothetical future-provider behavior remain outside the Overview decision.
-
-This status applies to the complete included Overview scope below. It does not revoke a narrower source-family certification where that source's own exact scope remains proven, but no narrow certification can make the complete Overview ready while shared totals, fallbacks, other active sources, or downstream consumers remain unsafe.
-
-Commit 16 deployed as `747192ff`. The user queried the authenticated connection response for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / property `542352127` and confirmed `lookbackDays` is `30`; this proves that the deployed client contract receives the saved 30-day window and explains the correction from the previous erroneous 90-day fallback. Commit 19 later made 30 days the only supported production window. Provider-value parity, retained-source disposition, downstream deterministic coverage, and the deterministic/read-only pack have since passed. B10 now contains the current-release timer-fired GA4 scheduler gate and the external OAuth durability gate.
+Google Ads, redundant campaigns with obsolete data, future source configurations, future 60/90-day options, startup-triggered refresh, scheduled report delivery, and future provider behavior remain excluded. Historical pending/unverified statements below describe the evidence state at their recorded date; they do not override this controlling current status.
 
 The durable answer is:
 
-`The implemented 30-day Overview gates and Google Sheets automatic-update observation have passed. Formal clean certification remains pending one timer-fired GA4 daily scheduler run on the current deployed release and the OAuth durability check due on or after 2026-08-07.`
+`GA4 Overview is clean-certified and production-ready for deployed runtime 8ba694060411a2a05663a4915652767e4e3ba713 and the exact recorded campaign, property, 30-completed-day model, enabled USD source set, and production-data state. Named exclusions are not implied passes.`
 
 ## Scope
 
@@ -107,32 +105,32 @@ This inventory was derived from current render code, query code, API routes, sto
 
 | Visible value or state | Current source and transform | Window/scope | Current status |
 | --- | --- | --- | --- |
-| Sessions | Sum of persisted GA4 daily rows fetched for the exact selected property and saved campaign filter | fixed supported 30 completed-day lookback | Corrective Commit 18 follow-up is deployed; the existing 30-day UI and exact daily response both returned 866. Future 60/90-day options are outside this release. |
-| Users | Sum of persisted daily `totalUsers` rows for the exact selected property/filter | configured completed-day lookback | Explicitly a sum of daily users, not a cross-day deduplicated user count; the existing 30-day UI and exact daily response both returned 867. |
-| Conversions | Same coherent Summary source object | configured completed-day lookback | Commit 3 locally renders unavailable instead of zero only when no successful or last-good Summary source exists. |
-| Engagement Rate | engaged sessions divided by sessions from the selected Summary source | configured completed-day lookback | Valid zero is preserved and no campaign-to-date/latest-day cross-source fallback remains. |
-| Conversion Rate | Summary conversions divided by Summary sessions | source chosen by Summary hierarchy | Formula is correct when inputs are valid; inherits mixed-window/freshness/error blockers. |
-| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, persisted daily where available to the caller, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date section with explicitly ordered fallbacks | Maximum selection is removed; zero/negative are valid and provider-empty objects fall through. Commit 3 locally makes missing required revenue inputs unavailable instead of `$0`. |
-| Financial conversions | Taken from the same object selected for native financial revenue | same ordered financial candidate | Source pairing and selection order are locally covered. |
-| Imported revenue | Active GA4/null-context `revenue_records` joined to active sources, aggregated to date | `1900-01-01` through today | Platform scoping is traced; source-family lifecycle and target-data completeness are not complete. |
-| Total Revenue | selected GA4 native revenue + imported revenue | mixes selected native window with imported lifetime | Additivity is tested; window meaning and active source safety block certification. |
-| Revenue source count | active imported source rows plus GA4 native when a native revenue metric is configured or the ordered native value is non-zero | current loaded values | Configured native valid-zero and negative values retain GA4-native provenance. Deployed missing/zero/negative fixture evidence remains Commit 15. |
+| Sessions | Sum of persisted GA4 daily rows for the exact selected property and saved campaign filter | fixed initial 30 completed days plus later completed-day accumulation | Deployed UI/API parity and the exact timer-fired persistence check passed; 21 unique dates were retained through `2026-08-09` with zero duplicates. Future 60/90-day setup is excluded. |
+| Users | Sum of persisted daily `totalUsers` rows for the exact selected property/filter | same fixed initial boundary plus accumulation | Explicitly a sum of daily users, not a cross-day deduplicated user count; UI/API parity and the timer-backed persisted boundary passed. |
+| Conversions | Same coherent persisted Summary source object | same fixed initial boundary plus accumulation | Missing data remains unavailable rather than zero; valid zero is preserved. The deterministic and deployed parity packets passed for the certified boundary. |
+| Engagement Rate | engaged sessions divided by sessions from the selected Summary source | same persisted Summary boundary | Valid zero is preserved and no campaign-to-date/latest-day cross-source fallback remains; formula/source parity passed. |
+| Conversion Rate | Summary conversions divided by Summary sessions | same persisted Summary boundary | Uses one coherent source; zero sessions remains unavailable instead of inventing a ratio. |
+| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, persisted daily where available to the caller, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date with explicitly ordered continuity fallbacks | Campaign-to-date provider returned `$52,532.70 USD`; requested/observed currency matched. Zero/negative are authoritative, provider-empty falls through, and unverified currency fails closed. |
+| Financial conversions | Taken from the same object selected for native financial revenue | same ordered financial candidate | Source pairing, selection order, valid-zero behavior, and downstream financial use passed for the certified boundary. |
+| Imported revenue | Active GA4/null-context `revenue_records` joined to active sources and aggregated to date | `1900-01-01` through today | Five exact materialized sources were present and USD, totaling `$16,799.99`; missing materialization remains unavailable and source/record currency mismatch fails closed. |
+| Total Revenue | selected campaign-to-date GA4 native revenue + source-backed imported revenue to date | campaign lifetime/to date | Exact current result `$69,332.69 USD`; additive source list, source identities, currency, valid-zero, unavailable, and downstream parity passed. |
+| Revenue source count | five active imported source rows plus configured GA4 native revenue | current loaded values | The certified modal contains six contributions. Configured native and imported authoritative zero remain sources; a missing materialized source is unavailable. |
 | Pipeline Proxy | Same-scope active HubSpot/Salesforce source plus successful endpoint value or same-scope saved fallback | current-stage cached/on-demand provider data | Correctly excluded from confirmed revenue. GA4 requests `platformContext=ga4`; both CRM selectors fail closed when no exact campaign/source scope matches. |
-| Total Spend | scoped materialized spend breakdown; scoped source-backed lifetime total is the fallback only when breakdown data is absent | active `ga4` plus legacy null-context spend sources for the selected campaign | Commit 4 deployed validation confirms Total Spend agrees with the Spend Sources list and remains correct after refresh for the observed campaign. Foreign-context and active-source-with-zero-record production fixtures remain open. |
-| Profit | Total Revenue - Total Spend | same financial inputs | Commit 3 locally renders the loss when revenue is valid zero and both configured inputs are available. |
-| ROAS | Total Revenue / Total Spend | same financial inputs | Commit 3 locally renders `0.00x` for positive spend and valid zero revenue; only missing/zero spend blocks the ratio. |
-| ROI | (Total Revenue - Total Spend) / Total Spend | same financial inputs | Commit 3 locally renders `-100%` for positive spend and valid zero revenue. |
-| CPA | Total Spend / financial conversions | spend plus conversions from selected native financial candidate | Formula is covered; source window, spend boundary, failure, and zero-state blockers remain. |
-| Revenue Sources modal | merged source definitions and revenue breakdown rows | active GA4/null-context revenue sources | Commit 3 locally distinguishes source-list failure from an empty source set and retains last-good rows during background failure. Freshness gaps remain. |
-| Spend Sources modal | merged GA4-scoped active source definitions and spend breakdown rows | active `ga4` plus legacy null-context spend sources | Commit 3 distinguishes failure from empty; Commit 4 enforces the source boundary and passed bounded deployed total/list parity. |
-| Pipeline Proxy modal | positive same-scope HubSpot/Salesforce provider entries | selected source configs | Cross-context fallback is blocked; deployed same-scope positive-value evidence remains Commit 15. |
-| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property/filter and fixed supported 30 completed-day lookback | Row allocation and local window parity are covered; live provider completeness remains unproven. |
-| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 20 | Commit 3 locally separates initial loading, successful empty rows, last-good data after refetch failure, and unavailable error. |
-| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter and configured completed-day lookback; API limit 50, UI renders 25 | Commit 3 locally applies the same explicit state contract. |
-| Overview request warning | combined error state for connection, GA4, table, revenue, spend, source-list, and configured Pipeline Proxy queries | affected request set | Commit 3 locally distinguishes last-successful cached content from inputs with no usable data. |
+| Total Spend | scoped materialized spend breakdown; scoped source-backed lifetime total only when breakdown is absent | active `ga4` plus reviewed legacy null-context spend sources for the selected campaign | The four configured sources were reconciled to the Spend Sources modal and explicitly retained; valid zero does not fall through to cached campaign spend. Foreign contexts are excluded. |
+| Profit | Total Revenue - Total Spend | same available financial inputs | Uses the certified totals; valid zero revenue produces the negative-spend loss, while missing input remains unavailable. |
+| ROAS | Total Revenue / Total Spend | same available financial inputs | Valid zero revenue with positive spend renders `0.00x`; missing or zero spend blocks the ratio. |
+| ROI | (Total Revenue - Total Spend) / Total Spend | same available financial inputs | Valid zero revenue with positive spend renders `-100%`; missing or zero spend blocks the ratio. |
+| CPA | Total Spend / financial conversions | spend plus conversions from the selected native financial candidate | Uses paired financial conversions and scoped spend; missing or non-positive conversions remain unavailable. |
+| Revenue Sources modal | configured GA4-native contribution plus active source definitions joined to materialized breakdown totals | active GA4/null-context revenue sources | Six contributions reconcile to Total Revenue; valid `$0` remains visible and only a missing materialized record renders `Unavailable`. Shopify freshness/test labels are omitted from the compact row. |
+| Spend Sources modal | merged GA4-scoped active source definitions and materialized spend breakdown rows | active `ga4` plus reviewed legacy null-context sources | Four reviewed sources reconcile to Total Spend; source-list failure remains distinct from an empty set. |
+| Pipeline Proxy modal | positive same-scope HubSpot/Salesforce provider entries | selected source configs | Cross-context fallback is blocked and unavailable remains explicit; Pipeline Proxy never enters Total Revenue. |
+| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property/filter and fixed supported 30 completed-day detail window | Exact mappings allocate only matched imported revenue; unmatched revenue is not invented or spread across rows. Included browser/downstream parity passed. |
+| Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter and configured completed-day detail window; API limit 50, UI renders 20 | Initial loading, successful empty, last-good background failure, and unavailable states remain distinct; no campaign-level revenue allocation is invented. |
+| Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter and configured completed-day detail window; API limit 50, UI renders 25 | Uses the same explicit state contract and does not allocate imported campaign revenue into event rows. |
+| Overview request warning | combined error state for visible connection, GA4, table, revenue, spend, source-list, and configured Pipeline Proxy queries | affected request set | Last-successful cached content is distinguished from inputs with no usable data; hidden/duplicate requests do not create a false page-wide warning. |
 | Freshness | daily endpoint returns `refreshIsStale`, provider coverage, latest activity, warning, and expected refresh | persisted daily path | Normal detail is stable in Connection Details; the Overview header does not insert late success text, while actual stale/provider failures retain an explicit warning. |
-| Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Commit 3 locally refuses an Overview PDF when a selected subsection lacks required inputs; broader downstream/deployed parity remains open. |
-| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Commit 3 locally makes selected Overview subsections fail closed on required provider/storage failures while retaining optional unselected-section fallbacks. Current production/deployed parity remains unproven. |
+| Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Included browser Overview report parity passed and required inputs fail closed. Scheduled/server delivery remains the separate excluded row below. |
+| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Scheduled report/PDF/email delivery is explicitly outside the Overview certification and remains governed by the Reports readiness record; it is not represented as an Overview pass. |
 | Direct Overview comparisons/deltas | none rendered in Overview | not applicable | No direct comparison value exists to certify. Trends/deltas appear only in downstream Insights/Campaign DeepDive and are audited there. |
 
 ## Dynamic Source-Family Inventory
@@ -141,19 +139,19 @@ This inventory was derived from current render code, query code, API routes, sto
 
 | Family | New GA4 setup exposure | Readiness consequence |
 | --- | --- | --- |
-| Shopify Revenue | visible | Narrow Admin API token certification exists; shared Overview remains blocked. |
-| HubSpot Revenue | visible | Narrow certification history exists; current broad regression guard is red and shared Overview remains blocked. |
-| Google Sheets Revenue | restored locally; deployment required | Current Commit 21 restores the chooser and scoped process API through the existing atomic source/record path. Independent provider/lifecycle certification remains open. |
-| CSV Revenue | visible | Bounded dated-import certification exists; does not certify all Overview paths. |
+| Shopify Revenue | visible | Exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` is clean-certified inside the recorded Overview boundary; future stores and dormant OAuth are excluded. |
+| HubSpot Revenue | visible | Exact enabled source IDs `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` are clean-certified inside the recorded Overview boundary; future mappings are excluded. |
+| Google Sheets Revenue | visible and deployed | Current Commit 21 restored the chooser and scoped process API through the existing atomic source/record path. No Google Sheets Revenue source is configured in the certified target; a future source requires its own provider/lifecycle evidence. |
+| CSV Revenue | visible | Exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` is clean-certified inside the recorded Overview boundary; unlisted CSV variants are excluded. |
 | Salesforce Revenue | hidden for new v1 setup | Existing active rows remain readable and can feed totals/proxy; production inventory contains one active null-context source. |
 | Manual Revenue | blocked for create/edit; exact delete retained | Not a supported GA4 source. The owner-scoped inventory found none; any future retained row requires exact reviewed deletion. |
-| Google Ads Spend | visible | Standalone provider audit excluded, but values feed included Total Spend and derived values. |
-| Google Sheets Spend | restored locally; deployment required | Current Commit 21 restores the chooser and scoped process API. Omitted-context creation remains blocked. Retained-source reconnect and one deployed no-click mapped-value update were user-confirmed on `2026-08-01`. |
-| CSV Spend | visible | New GA4 sources require a Date column in UI and API. Existing undated sources are retained only for continuity and remain unproven. |
+| Google Ads Spend | visible | Google Ads is excluded from this certification and is not represented as an included value source. |
+| Google Sheets Spend | visible and deployed | The configured retained source, post-publish reconnect, and one no-click mapped-value update are included in the exact Overview boundary. Generalized cadence/failure/future-source behavior remains excluded. |
+| CSV Spend | visible | The reviewed configured CSV sources are included in the exact Overview boundary. New GA4 sources require a Date column; unlisted/undated future variants are not inferred. |
 | Manual Spend | blocked for create/edit; exact delete retained | The exact `Summer splash` `$400` source was deleted on `2026-07-30`; post-delete inventory and `$14,045.83` Total Spend passed. Any other retained row remains lifecycle/disposition work. |
 | LinkedIn/Meta Spend | hidden for new GA4 setup | Explicit foreign contexts are excluded from GA4 totals. Existing orphan scheduler rows remain separately inventoried production-data cleanup work and are not visible source-backed totals. |
 
-### Target-database active source snapshot
+### Historical target-database active source snapshot
 
 Read-only aggregate queries were run against the configured target database on `2026-07-15`. No tokens, source identifiers, campaign identifiers, mappings, or secrets were printed or changed.
 
@@ -188,50 +186,50 @@ All two active Google Sheets revenue sources and all three active Google Sheets 
 | Path | Current trace | Result |
 | --- | --- | --- |
 | UI scope | `ga4-metrics.tsx` -> campaign query -> selected property -> saved campaign filter | Campaign/property intent is explicit. |
-| GA4 daily | `/ga4-daily` -> reporting-timezone window -> stored rows -> due-day provider backfill -> upsert -> response freshness | Access and selected property are guarded; production freshness is not established. |
+| GA4 daily | `/ga4-daily` -> reporting-timezone window -> stored rows -> due-day provider backfill -> upsert -> response freshness | Access/property scope, persisted UI/API parity, and exact timer-fired target freshness passed. |
 | GA4 to-date | `/ga4-to-date` -> selected connection -> campaign start/created date through prior UTC day -> live provider | Used for the explicitly labeled campaign-to-date financial contract, not as a configured-lookback Summary fallback. |
 | Breakdown | `/ga4-breakdown` -> `getAcquisitionBreakdown` -> client aggregation/render | Selected property/filter and fixed supported 30-day window are explicit. |
-| Landing Pages | `/ga4-landing-pages` -> provider report -> exact-key supplement -> client first 20 rows | Exact-match safety covered; failure visibility is not. |
-| Conversion Events | `/ga4-conversion-events` -> provider report -> exact-event supplement -> client first 25 rows | Exact-match safety covered; failure visibility is not. |
-| Revenue | setup/refresh -> `revenue_sources`/`revenue_records` -> active GA4-context joins -> totals/breakdown/modal | Platform context is guarded; all family lifecycles and damaged-data boundaries are not. |
-| Spend | setup/refresh -> `spend_sources`/`spend_records` -> active GA4/legacy-null joins -> totals/breakdown/modal | Commit 4 scopes the full browser/server path and passed bounded deployed total/list/refresh parity. The active-source-with-zero-record production fixture remains unproven. |
-| Delete | UI source modal -> campaign/source delete route -> deactivate/delete rows -> invalidation/recompute | Route ownership checks are locally present; every active source family has not been revalidated end to end. |
-| Browser report | loaded Overview values -> client PDF composition | Directly inherits loaded-value defects. |
-| Scheduled report | report scheduler/test/manual snapshot -> server GA4 PDF builder -> source reads/formulas | Narrow guards pass; complete live parity remains unproven. |
+| Landing Pages | `/ga4-landing-pages` -> provider report -> exact-key supplement -> client first 20 rows | Exact-match safety and explicit loading/empty/last-good/unavailable behavior are covered for the certified boundary. |
+| Conversion Events | `/ga4-conversion-events` -> provider report -> exact-event supplement -> client first 25 rows | Exact-match safety and explicit state handling are covered for the certified boundary. |
+| Revenue | setup/refresh -> `revenue_sources`/`revenue_records` -> active GA4-context joins -> totals/breakdown/modal | Exact enabled Shopify, HubSpot, and CSV source identities, materialization, USD provenance, totals, and refresh behavior passed. Future source instances are excluded. |
+| Spend | setup/refresh -> `spend_sources`/`spend_records` -> active GA4/legacy-null joins -> totals/breakdown/modal | The four reviewed configured sources reconcile to Total Spend; materialized zero is preserved, missing materialization is unavailable, and foreign contexts/cached spend cannot substitute. |
+| Delete | UI source modal -> campaign/source delete route -> exact transactional source/record boundary -> invalidation/recompute | Campaign/source ownership and exact-source removal are covered for enabled/reviewed source paths; unrelated and future source variants remain excluded. |
+| Browser report | loaded Overview values -> client PDF composition | Included Overview browser-report parity passed and required missing inputs fail closed. |
+| Scheduled report | report scheduler/test/manual snapshot -> server GA4 PDF builder -> source reads/formulas | Scheduled PDF/email delivery is outside the Overview certification and remains governed by Reports readiness. |
 
 ## Downstream Propagation Matrix
 
 | Consumer | Overview-originated dependency | Current evidence | Status |
 | --- | --- | --- | --- |
-| Overview cards/tables | direct | current code trace plus focused tests | Blocked by confirmed defects. |
-| Source modals | revenue/spend/proxy provenance and lifecycle | code trace; partial family evidence | Not complete. |
-| KPIs | Revenue, Sessions, Users, Conversions, Engagement Rate, Conversion Rate, ROAS, ROI, CPA | current client formulas plus separate KPI readiness history | Narrow tests pass, but unsafe Overview inputs can propagate; not certified as part of this audit. |
-| Benchmarks | same financial and GA4 current values | current client/server paths plus separate Benchmark readiness history | Narrow tests pass, but unsafe inputs can propagate. |
-| Alerts/notifications | persisted KPI/Benchmark breaches and source refresh failures | separate lifecycle docs/tests | Current Overview source mixes and failures have not all been proven. |
+| Overview cards/tables | direct | current code trace, deterministic packet, and deployed UI/API parity | Passed for the exact certified boundary. |
+| Source modals | revenue/spend/proxy provenance and lifecycle | exact enabled source IDs, amounts, availability, and configured-source reconciliation | Passed for the exact certified boundary; future source instances are excluded. |
+| KPIs | Revenue, Sessions, Users, Conversions, Engagement Rate, Conversion Rate, ROAS, ROI, CPA | shared input-selection/fail-closed parity tests | Overview-originated inputs passed for this boundary; the KPI tab retains its own controlling certification status. |
+| Benchmarks | same financial and GA4 current values | shared input-selection/fail-closed parity tests | Overview-originated inputs passed for this boundary; the Benchmark tab retains its own controlling certification status. |
+| Alerts/notifications | persisted KPI/Benchmark breaches and source refresh failures | fail-closed current-value and source-refresh regression packet | Overview-originated value/failure propagation passed; delivery and separate alert-section certification are not implied. |
 | Ad Comparison | GA4-native campaign rows from the fixed initial-import boundary through the latest completed day, plus separate source-to-date imported provenance | live client props and guarded GA4/revenue APIs | `PRODUCTION_READY` for exact deployed revision `83d12427` and the recorded boundary; Reports-owned output is outside the tab boundary. |
-| Insights | Summary, financial values, availability, CPA, freshness | current page formulas and focused parity tests | Inherits unsafe source/window/error semantics; current Insights worktree is also independently modified and excluded from this audit output. |
-| GA4 Reports | browser and server values, KPIs, Benchmarks, source provenance | report tests and prior deployed packets | Named Campaign DeepDive visibility defer and future variant evidence remain; unsafe Overview inputs block complete parity. |
-| Campaign DeepDive Performance Summary | source-aware aggregate and fallback values | tracker says revenue/spend/scheduler paths are partially reviewed | Not complete. |
-| Campaign DeepDive Budget & Financial | aggregate revenue/spend/ROI/ROAS/CPA | local and limited deployed evidence | Live source-refresh validation remains outstanding. |
-| Campaign DeepDive Platform Comparison | GA4 parent revenue and aggregate financial totals | GA4-only evidence exists | Live multi-source validation remains outstanding. |
-| Campaign DeepDive Trend Analysis | daily aggregate, snapshots, deltas | local code/tests | Final live historical validation remains outstanding. |
-| Campaign DeepDive Executive Summary | aggregate financial and health values | local/deployed history | Inherits current aggregate/source defects and future source gates. |
-| Campaign DeepDive Custom Report | aggregate, KPI, Benchmark, Trend and report sections | local rendering tests | Deployed scheduled email/attachment value evidence remains outstanding. |
+| Insights | Summary, financial values, availability, CPA, freshness | shared exact-boundary parity tests | Overview-originated inputs passed; Insights retains its own revision-bound certification and is not certified by this decision. |
+| GA4 Reports | browser and server values, KPIs, Benchmarks, source provenance | browser report parity and fail-closed tests | Browser Overview output passed; scheduled PDF/email delivery and later Reports changes remain excluded. |
+| Campaign DeepDive Performance Summary | source-aware aggregate and fallback values | deterministic aggregate parity plus bounded deployed comparisons | Overview-originated current inputs passed; the separate section is not certified by this decision. |
+| Campaign DeepDive Budget & Financial | aggregate revenue/spend/ROI/ROAS/CPA | deterministic financial parity and bounded deployed comparisons | Overview-originated current inputs passed; future source mixes remain excluded. |
+| Campaign DeepDive Platform Comparison | GA4 parent revenue and aggregate financial totals | deterministic aggregate source/availability packet | Overview-originated current inputs passed; broader platform combinations remain separately controlled. |
+| Campaign DeepDive Trend Analysis | daily aggregate, snapshots, deltas | compatible current-input and fail-closed packet | Overview-originated compatible inputs passed; historical/snapshot section certification is not implied. |
+| Campaign DeepDive Executive Summary | aggregate financial and health values | deterministic current aggregate and availability packet | Overview-originated inputs passed; the separate section keeps its own status. |
+| Campaign DeepDive Custom Report | aggregate, KPI, Benchmark, Trend and report sections | browser rendering/fail-closed packet | Browser input propagation passed; scheduled delivery remains excluded. |
 
 ## Lifecycle Matrix
 
 | Lifecycle | Proven | Unproven or failed |
 | --- | --- | --- |
 | GA4 connect/select | campaign access, selected property, one primary in current target snapshot; configured window parity fixed by Commit 2; deployed 30-day scope passed | future token/provider behavior; future 60/90-day options are excluded from this release |
-| GA4 refresh/on-demand backfill | route and scheduler logic, refresh-token material present, and deployed 30-day provider coverage/activity evidence | current timer-fired and on-demand trigger evidence |
-| Revenue add | guarded routes and active GA4-context joins; Google Sheets chooser/API restored locally | Google Sheets deployed new-source and complete failure/rollback packet; hidden legacy paths |
-| Revenue edit/refresh | HubSpot/Shopify/CSV have bounded evidence; Google Sheets uses atomic exact-source replacement | Google Sheets deployed provider/idempotency packet; current HubSpot broad guard is red |
-| Revenue delete/deactivate | ownership and active-source exclusion tests | complete active-family browser/provider rerun not current |
-| Spend add | CSV/Google Sheets/Google Ads routes exist | Google Sheets and excluded provider correctness cannot be inferred; no-date CSV enabled |
-| Spend edit/refresh | stable-source tests plus Commit 4 context-write/self-heal guards | Google Sheets automatic mutation evidence remains incomplete |
-| Spend delete/deactivate | ownership, platform-scoped source resolution, active join behavior, and zero-record handling | complete active-family deployed rerun remains open |
-| Scheduler/reprocess | local paths and selected deployed packets exist | every active source family, normal timer execution, and exact downstream parity are not currently proven |
-| Existing-data cleanup | narrower Shopify/CSV/KPI cleanups have documented boundaries | current orphan spend and spend-cache drift have no reviewed cleanup boundary |
+| GA4 refresh/on-demand backfill | guarded route/scheduler logic, exact target provider coverage, and normal timer-fired persistence through the expected completed date | startup-triggered and future configuration behavior remain excluded |
+| Revenue add | enabled Shopify/HubSpot/CSV guarded paths and deployed chooser exposure; Google Sheets setup is visible | a future unconfigured Google Sheets Revenue source and hidden legacy paths are excluded |
+| Revenue edit/refresh | exact enabled HubSpot and Shopify IDs refreshed in place; CSV exact-source edit/reprocess is bounded; Google Sheets uses atomic exact-source replacement | future source/provider variants are excluded |
+| Revenue delete/deactivate | campaign ownership, exact source/record transaction, active-source exclusion, and unrelated-source preservation | future source instances remain subject to fresh validation |
+| Spend add | configured CSV/Google Sheets paths and chooser exposure follow the scoped source pattern | Google Ads and unlisted future provider/source variants are excluded |
+| Spend edit/refresh | stable source identity, context guards, CSV replacement, and one Google Sheets no-click update are recorded | generalized Google Sheets cadence/failure behavior is excluded |
+| Spend delete/deactivate | ownership, platform-scoped source resolution, transactional exact-source removal, active joins, and zero-record handling | future source instances remain subject to fresh validation |
+| Scheduler/reprocess | normal GA4 target timer run plus exact enabled HubSpot/Shopify source refresh identity and values passed | process-wide obsolete-campaign failures and future provider events are excluded, not hidden |
+| Existing-data cleanup | target inventory and retained-source disposition are reviewed; exact historical cleanups have bounded records | no cleanup is authorized; unrelated obsolete-campaign data remains outside the certification |
 
 ## Confirmed Blockers
 
@@ -272,7 +270,7 @@ The original target evidence motivating the fix remains:
 
 ### B7. Retained Google Sheets paths feed included totals — resolved for the documented non-scheduler scope
 
-Current Commit 5 removes Google Sheets Revenue and Spend from new GA4 source setup and rejects new direct-API creation without mutating saved sources. Current Commit 6 completed their exact owner-scoped inventory. The final target inventory found no active retained Google Sheets Revenue and one intentional Google Sheets Spend source. Its current amount matched the deployed source modal; post-publish reconnect and one no-click automatic update were user-confirmed on `2026-08-01`. Exhaustive polling/failure behavior is not inferred. The remaining whole-Overview gates are the current-release GA4 daily scheduled run and OAuth durability.
+Current Commit 5 temporarily removed Google Sheets Revenue and Spend from new GA4 source setup without mutating saved sources. Current Commit 21 later restored both chooser paths and deployed them while preserving campaign access, explicit GA4 context, mapping validation, and atomic exact-source persistence. The final target inventory found no active retained Google Sheets Revenue and one intentional Google Sheets Spend source. Its amount matched the deployed source modal; post-publish reconnect and one no-click automatic update were user-confirmed on `2026-08-01`. Exhaustive polling/failure behavior and an unconfigured future Google Sheets Revenue source are not inferred.
 
 ### B8. Hidden/legacy sources still affect current values — resolved by exact inventory and reviewed disposition
 
@@ -286,7 +284,7 @@ The final campaign inventory and deployed source modal then matched the four act
 
 Root cause: the GA4 client omitted `platformContext=ga4`; the endpoint treated absent/invalid context as permission to search GA4, LinkedIn, and Meta, then selected the newest source when no exact GA4-scope match existed. Current Commit 6 passes GA4 explicitly, requires one supported explicit context for every caller, searches only that context, rejects mapping-context mismatches, and returns `404` rather than substituting another source when no exact scoped source exists. Local regression coverage passes and the code is deployed. The completed owner-scoped inventory found no active retained Salesforce source among the owner's active GA4 campaigns, so a Salesforce UI check was not applicable.
 
-### B10. Daily freshness — implementation and current 30-day parity closed; OAuth durability pending
+### B10. Daily freshness — implementation, current 30-day parity, timer-fired target run, and OAuth durability closed for the certified connection
 
 The target snapshot has 35 active access-token connections. All have refresh-token material and expired `expires_at` metadata, so provider refresh may be possible but was not invoked during this read-only audit. Only 9 campaigns have persisted daily rows, 26 have none, and every stored campaign's latest date is older than yesterday (`2026-01-03` through `2026-07-12`). On-demand backfill may repair this, but no live provider call or deployed browser proof was run.
 
@@ -302,9 +300,9 @@ Deployed coverage/activity validation passed after `950c5091`: the user confirme
 
 Remaining Current Commit 8 read-only investigation on `2026-07-30` used only `SELECT` transactions and `/health/scheduler`; no application GA4 endpoint was called because `/ga4-daily`, provider-validation, and manual scheduler routes can refresh tokens or persist rows. Owner-scoped inventory found three active, primary, non-empty 90-day connections (`myGA4`, `another1`, and `insta3`), but each uses property `yesop`, which `isYesopMockProperty(...)` explicitly classifies as simulated. The other relevant 90-day row, `Summer splash`, has an empty Property ID and correctly fails closed. Therefore no suitable live 90-day fixture exists in the validated account without creating, editing, or reconnecting production data, which was explicitly prohibited.
 
-At `2026-07-30T15:14:09.442Z`, deployed `/health/scheduler` reported a healthy current process started at `2026-07-30T15:07:27.669Z`, `started=true`, `timerScheduled=true`, UTC `03:00`, `runOnStartup=false`, next run `2026-07-31T03:00:00.000Z`, `lastRunStatus=idle`, no error, and `totalScheduledRuns=0`. Stored-row timestamps include historical updates near configured schedule times, but rows do not persist trigger identity, so they are not timer-fired proof. Current timer-fired behavior remains unproven until a post-run health capture records `lastRunTrigger=scheduled`, `lastRunStatus=success`, and an incremented `totalScheduledRuns`.
+Historical capture at `2026-07-30T15:14:09.442Z`: deployed `/health/scheduler` reported a process started at `2026-07-30T15:07:27.669Z`, `started=true`, `timerScheduled=true`, UTC `03:00`, `runOnStartup=false`, next run `2026-07-31T03:00:00.000Z`, `lastRunStatus=idle`, no error, and `totalScheduledRuns=0`. At that date stored-row timestamps were not sufficient timer-fired proof. This historical gap is superseded by the exact `2026-08-10` target property/date/update/duplicate evidence in the controlling current status.
 
-The `2026-07-29` reconnect incident did not by itself close B10. Reconnect classification deployed as `efaa6f60`; the post-publish GA4 consent flow completed, and the user confirmed on `2026-07-30` that GA4 connected, the intended campaign selection and metrics loaded, and the state remained correct after refresh. The later 30-day UI/API parity packet passed. Automatic renewal and more-than-seven-day durability remain open, and timer-fired GA4 daily scheduler execution on the current release is now an included certification gate.
+The `2026-07-29` reconnect incident did not by itself close B10. Reconnect classification deployed as `efaa6f60`; the post-publish GA4 consent flow completed, and the user confirmed on `2026-07-30` that GA4 connected, the intended campaign selection and metrics loaded, and the state remained correct after refresh. The later 30-day UI/API parity packet passed. The same connection remained provider-usable after `2026-08-07`, and the normal `2026-08-10` timer refreshed the exact certified property through the expected completed date, closing the bounded durability and timer-fired gates without claiming future credential behavior.
 
 ### B11. Baseline source-family regression suite was red; resolved by Current Commit 1
 
@@ -381,17 +379,17 @@ No cleanup was run. The forward producer is deployed and immediate no-growth val
 | Case | Required behavior | Current result |
 | --- | --- | --- |
 | Campaign access denied | fail closed | Proven on traced endpoints. |
-| Missing property/connection | explicit unavailable/reconnect state | Mostly guarded; several secondary queries silently return null/empty. |
-| Provider/token failure | retain stable data with explicit stale/error provenance | Commit 3 locally retains last-successful client data with an error warning and marks inputs unavailable when no last-good value exists; provider/token and deployed failure injection remain open. |
-| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Commit 2 preserves Summary/financial-source zero; Commit 3 locally preserves zero/empty response semantics and renders zero-revenue Profit/ROAS/ROI correctly. |
+| Missing property/connection | explicit unavailable/reconnect state | Included Overview routes fail closed; the deployed empty-property placeholder rendered unavailable while exact saved financial-source review/removal remained reachable. Future configurations remain excluded. |
+| Provider/token failure | retain stable data with explicit stale/error provenance | Deterministic guards retain last-successful data with an error warning and mark inputs unavailable when no last-good value exists. Unsafe production failure injection is deliberately not required or claimed. |
+| Valid zero Sessions/Conversions/Revenue | preserve zero as a value | Summary and financial paths preserve authoritative zero; zero revenue with positive spend renders the correct loss, `0.00x` ROAS, and `-100%` ROI. |
 | Incompatible windows | reject, normalize, or clearly label | Commit 2 fixed completed-day Summary/tables and labeled campaign-to-date financials; Commit 19 now rejects unsupported missing/60/90-day writes and fails closed on retained non-30 rows. The deployed 30-day smoke passed. |
-| Source with no materialized records | return source-backed zero without stale substitution | Commit 4 returns zero and retains the configured source identity; production fixture evidence remains open. |
+| Source with no materialized records | render that source and the combined total unavailable; do not substitute `$0` | Deployed source/total logic distinguishes aggregate record presence from amount, so an authoritative materialized `$0` remains valid while a missing materialized record is unavailable. |
 | Inactive source | exclude from total | Proven by active joins. |
-| Orphan record | exclude and inventory | Excluded by inner join; large damaged inventory remains. |
-| Foreign spend context | exclude from GA4 | Commit 4 excludes explicit non-GA4 contexts from GA4 reads; production fixture evidence remains open. |
-| Hidden legacy source | either migrate, explicitly support, or fail closed | GA4 Manual create/edit is blocked and exact deletion is retained; every other retained contributor still requires lifecycle proof or explicit disposition under Commit 17. |
-| Table request failure | explicit error, not empty truth | Commit 3 locally renders explicit unavailable errors and retains last-successful table rows on background refresh failure. |
-| Pipeline source context mismatch | fail closed | HubSpot and Salesforce selectors require exact platform/campaign scope and return unavailable on mismatch; deployed same-scope positive evidence remains Commit 15. |
+| Orphan record | exclude and inventory | Inner joins exclude orphan rows. The certified target inventory found no included revenue damage; obsolete-campaign orphan history remains outside the boundary and was not cleaned by certification. |
+| Foreign spend context | exclude from GA4 | Explicit non-GA4 contexts are excluded from GA4 reads; only the reviewed GA4/legacy-null target source set is included. |
+| Hidden legacy source | either explicitly retain, delete by exact scope, or fail closed | GA4 Manual create/edit is blocked, exact deletion is retained, and every current target contributor has an explicit keep/support disposition. |
+| Table request failure | explicit error, not empty truth | Tables render explicit unavailable errors and retain last-successful rows on background failure; failure is not converted to a successful empty set. |
+| Pipeline source context mismatch | fail closed | HubSpot and Salesforce selectors require exact platform/campaign scope and return unavailable on mismatch; Pipeline Proxy is excluded from Total Revenue. |
 
 ## Validation Evidence
 
@@ -578,7 +576,7 @@ Validation rules:
 
 Passing before seven elapsed days proves immediate connectivity only. It does not prove durability.
 
-Current classification: **requires external validation on 2026-08-07 or later**.
+Current classification: **passed for the certified connection**. On `2026-08-10`, without another reconnect being used as evidence, authenticated provider-backed reads and the normal timer-fired persisted refresh succeeded for the same campaign/property. Automatic renewal was not claimed unless directly observed, and future credential durability remains outside the certification.
 
 ## Final Non-Scheduler Validation Pack
 
@@ -595,7 +593,7 @@ Completed read-only run on `2026-08-01`:
 - `shopifyInventoryScopeComplete=false`; the current campaign-local run does not independently prove provider order/refund lineage, historical completeness/convergence, or privileged cross-campaign overlap. The separate canonical Shopify readiness record remains the authority for its bounded enabled Admin API token scope.
 - `overviewPack(...)`, `commit16Pack(...)`, `/ga4-daily`, provider-validation, refresh, report creation/send, and scheduler-trigger endpoints were not called because they can renew tokens, persist daily rows, recompute, snapshot, or otherwise mutate state
 - subsequent deployed evidence on `2026-08-01`: the user completed the post-publish Google Sheets reconnect, changed the mapped sheet, left Overview open without manually refreshing, and confirmed the displayed value updated automatically
-- result: **the deterministic/read-only 30-day pack passed; current-release timer-fired GA4 scheduler validation and OAuth durability remain certification gates**
+- result: **the deterministic/read-only 30-day pack passed; the later `2026-08-10` timer-fired target run and OAuth durability evidence closed the remaining certification gates**
 
 - Summary, financial cards, source lists, and Campaign Breakdown retain the documented property/campaign/window/source boundaries
 - valid zero remains a value and unavailable data never becomes a misleading zero
@@ -607,11 +605,11 @@ Completed read-only run on `2026-08-01`:
 
 Any unavailable production fixture must be covered by deterministic regression evidence and a proven fail-closed deployed contract; it cannot be described as an observed production failure.
 
-Current classification: **the deterministic/read-only pack and bounded Google Sheets automatic-update observation passed; the current-release GA4 scheduled-run gate remains open; no cleanup was authorized or performed**.
+Current classification: **passed for the certified boundary**. The deterministic/read-only pack, bounded Google Sheets automatic-update observation, exact timer-fired target run, and observed OAuth durability passed; no cleanup was authorized or performed.
 
 ## Scheduler Certification Boundary
 
-The planned clean-certification decision includes one normal timer-fired GA4 daily scheduler run on the current deployed release. Required evidence is `lastRunTrigger=scheduled`, `lastRunStatus=success`, an incremented scheduled-run count, continued valid campaign-scoped 30-day Overview values, and no duplicate or damaged-row growth in a post-run read-only check.
+The clean-certification decision includes one normal timer-fired GA4 daily scheduler run on the current deployed release. The `2026-08-10T08:00:00.002Z` timer fired, and the certified property updated at `08:00:21.147`, retained 21 unique dates through `2026-08-09`, and had zero duplicate dates. Because the process-wide status also included 17 excluded obsolete-campaign failures, certification uses exact target persistence evidence and does not claim global scheduler success.
 
 The decision excludes:
 
@@ -635,13 +633,13 @@ Detailed source IDs, counts, amounts, and findings remain in the [evidence ledge
 
 ## Source-Family Authority Note
 
-HubSpot Revenue remains **clean-certified and production-ready for its validated documented GA4 Overview scope** under the separate canonical `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. That bounded source-family decision does not make the complete Overview ready and is not revoked by this whole-tab status.
+HubSpot Revenue is **clean-certified and production-ready for the three exact enabled source IDs inside the certified GA4 Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. Shopify and the current CSV source have the same exact-boundary treatment in their canonical source-family records. These bounded decisions support, but do not broaden, the whole-tab certification to future sources or configurations.
 
 Historical-ledger note: packets preserved in the evidence/history ledgers remain bounded evidence only. They do not override the current whole-tab decision or the latest canonical source-family decision.
 
 ## Clean-Certification Decision Rule
 
-The documented initial-30-day-import Overview scope may be called clean-certified only after all of these are true at the same deployed commit and production-data state:
+The documented initial-30-day-import Overview scope is clean-certified because all of these are true at the same deployed commit and production-data state:
 
 1. Current Commit 20 is committed, deployed, and proves that Summary API, UI, and Overview report use one fixed initial-import boundary.
 2. One current-release timer-fired GA4 daily scheduler run proves that a zero-activity completed day does not drop the oldest imported day or reduce unchanged totals.
@@ -650,15 +648,15 @@ The documented initial-30-day-import Overview scope may be called clean-certifie
 5. The evidence ledger and history ledger record the exact results.
 6. No canonical document contains a contradictory readiness statement.
 
-If all six pass, the allowed statement is:
+All six passed. The allowed statement is:
 
 **GA4 Overview is clean-certified and production-ready for the documented initial-30-completed-day import plus completed-day accumulation scope at the recorded deployed commit and production-data state. Current-release GA4 daily scheduled execution and Google Sheets automatic propagation are included. Future 60/90-day options, startup-triggered refresh, scheduled report delivery, future source configurations, and future provider behavior are not included.**
 
-Until then, the exact answer is: **GA4 Overview is unverified while Current Commit 20 deployment/parity, the current-release scheduled-run no-drop check, and OAuth durability remain open.**
+Current answer: **GA4 Overview is clean-certified and production-ready for the exact recorded deployed SHA, campaign, property, 30-completed-day model, enabled USD source set, and production-data state.**
 
-## Original Final Certification Gate
+## Original Final Certification Gate (historical requirements, now satisfied for the certified boundary)
 
-The pre-split final gate remains controlling and is preserved here:
+The pre-split final gate is preserved here as historical acceptance criteria. The controlling current status above records its scoped completion.
 
 GA4 Overview may be called clean-certified only when all of the following are true at the same current commit and target-data state:
 
@@ -675,5 +673,5 @@ GA4 Overview may be called clean-certified only when all of the following are tr
 - no named downstream validation relevant to the claimed scope remains open
 - this canonical file is updated with exact evidence and no contradictory clean-ready statement remains
 
-Until then, the exact answer is: **GA4 Overview is unverified while Current Commit 20 deployment/parity, the current-release scheduled-run no-drop check, and OAuth durability remain open.**
+Current result: **the gate passed for the exact certified boundary; named exclusions remain unproven and are not implied passes.**
 <!-- END MOVED ACTIVE GATE SPECIFICATIONS -->

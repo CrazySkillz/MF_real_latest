@@ -22,16 +22,22 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Remaining Production Blockers
 
-GA4 Overview has an active blocker queue in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current Commits 1-7 are closed for their documented bounded packets. The exact `Summer splash` `$400` Manual Spend cleanup and post-delete owner inventory passed on `2026-07-30`. Freshness/provider, broader retained-source review, and downstream-proof blockers remain under whole-Overview Current Commits 8-10.
+No blocker remains inside the exact GA4 Overview boundary clean-certified on `2026-08-10`: deployed runtime `8ba694060411a2a05663a4915652767e4e3ba713`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, the supported 30-completed-day model, and the recorded enabled USD source set. Google Ads, obsolete campaigns, future configurations, future 60/90-day options, startup-triggered refresh, and scheduled report delivery remain outside that decision rather than silently passing.
 
 ## Latest Readiness Review
 
-Overview-specific update on 2026-07-30:
+Overview-specific update on 2026-08-10:
 
-- GA4 Overview is not production-ready or clean-certified.
+- GA4 Overview is clean-certified and production-ready for the exact revision/configuration/data boundary above.
 - The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
-- Current Commits 1-7 are closed for their documented bounded packets; this includes the exact `$400` deletion, resulting `$14,045.83` Total Spend, and post-delete inventory evidence.
-- Whole-Overview Current Commits 8-10 remain open; the complete Overview is not certified.
+- Native GA4 revenue was `$52,532.70 USD`; five materialized imported sources remained `$16,799.99 USD`; Total Revenue remained `$69,332.69 USD`.
+- The exact target GA4 timer run, OAuth durability, enabled source identity/provenance, reviewed retained-source disposition, and deterministic/read-only reconciliation passed.
+- Process-wide failures from obsolete campaigns are not represented as globally healthy and are excluded from the target certification.
+
+Historical Overview status on 2026-07-30:
+
+- Current Commits 1-7 were closed for their documented bounded packets; this included the exact `$400` deletion, resulting `$14,045.83` Total Spend, and post-delete inventory evidence.
+- Whole-Overview Current Commits 8-10 were still open at that date. This historical status is superseded by the 2026-08-10 controlling decision.
 
 Reviewed on 2026-05-10:
 
@@ -42,13 +48,13 @@ Reviewed on 2026-05-10:
 
 Current conclusion:
 
-- GA4 Overview remains not production-ready while the canonical blocker queue is open.
-- Current Commits 1-7 are complete for their bounded packets; Current Commits 8-10 remain open.
-- Separate GA4 tabs and source-family certifications keep only their own documented scope and do not certify the complete Overview.
+- GA4 Overview is clean-certified and production-ready only for the exact documented revision, configuration, campaign/property, source set, and production-data state.
+- Separate GA4 tabs retain their own controlling readiness status; Overview certification does not certify Reports, KPI, Benchmark, Ad Comparison, or Insights revisions.
+- Any change inside the listed Overview dependency/configuration boundary invalidates the certification until reviewed.
 
-## Required Production Validation
+## Broader GA4 Production Validation Outside The Certified Overview Boundary
 
-1. Complete real GA4 validation against a live GA4 property. This is deployed/provider evidence, not a known local Overview code blocker:
+1. Complete real GA4 validation for other properties/configurations and separately controlled tabs. The exact certified Overview fixture is already closed:
    - campaign creation
    - OAuth connect
    - property selection

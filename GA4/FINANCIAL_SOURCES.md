@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: Commit 15's bounded parser/parity packet closed at deployed commit `e0f8baf2`: runner `2026-07-31.12` passed all 14 endpoints with no reauthorization, Revenue `16700 = 16700`, Spend `2698.75 = 2698.75`, and `overallPass: true` at `2026-07-31T12:45:47.407Z`. On `2026-08-01`, the user matched and approved keeping the same four visible Spend sources totaling $2,698.75; their presence is intentional, not damage. The post-publish Google Sheets reconnect and one no-click automatic mapped-value update were then user-confirmed. The deterministic/read-only whole-Overview pack passes, while formal clean certification remains pending one current-release timer-fired GA4 daily scheduled run and the `2026-08-07` OAuth durability gate. No cleanup was performed. The durable source is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+Production-readiness note: **GA4 Overview is clean-certified and production-ready for the exact campaign/property/deployed-SHA boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.** At runtime `8ba694060411a2a05663a4915652767e4e3ba713`, native GA4 revenue was `$52,532.70 USD`, five enabled imported sources totaled `$16,799.99 USD`, and Total Revenue was `$69,332.69 USD`. The timer-fired target refresh, currency checks, exact source IDs, and zero-duplicate persisted result passed on `2026-08-10`. Google Ads, obsolete campaigns, future source configurations, and scheduled report delivery are excluded. No cleanup was performed.
 
 Campaign DeepDive financial provenance rule:
 
@@ -65,6 +65,10 @@ Where:
 - GA4 native revenue comes from this campaign's GA4 scope and uses the same selected scoped GA4 financial source as Overview in fixed order: campaign-to-date provider totals, persisted daily totals where available to the caller, then configured-lookback breakdown only when earlier complete candidates are absent; valid zero and negative values remain authoritative, and conversions stay on that same source for CPA
 - imported revenue comes from active GA4-context revenue sources attached to this campaign
 - when a GA4 native revenue metric is configured, valid zero retains GA4-native source provenance; absence of both native capability and an active imported source is unavailable, not a fabricated `$0`
+- native GA4 financial requests use the campaign currency and verify the response metadata before combination; missing or mismatched currency fails closed
+- every enabled imported source and each of its materialized records must match campaign currency before combination; the system does not convert currency or relabel/rewrite historical rows
+- imported aggregation is selected by materialized-record presence, not amount truthiness: an authoritative materialized `$0` remains a valid source value
+- an active imported source with no materialized aggregate is shown as `Unavailable`; other source amounts remain visible, but imported revenue and `Total Revenue` fail closed instead of treating the missing source as `$0`
 
 Important clarification:
 
@@ -225,7 +229,7 @@ Revenue source options:
 
 Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Upload CSV Revenue is clean-certified for its validated documented scope. Google Sheets Revenue is re-enabled by Current Commit 21 but is not independently clean-certified until its remaining source-family gates are proven.
 
-Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility and a newly created source lifecycle remain unproven.
+Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility is proven at runtime `8ba694060411a2a05663a4915652767e4e3ba713`, while a newly configured future Google Sheets Revenue lifecycle remains outside the certification.
 
 Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
 
@@ -277,7 +281,7 @@ Executive-UX note:
 
 ## Revenue Source 1: Shopify Journey
 
-Current status (2026-08-08): Shopify Revenue is **UNVERIFIED on the current revision**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is canonical; the 2026-07-15 packet is bounded history only. Dormant OAuth and non-GA4 Shopify sources remain excluded.
+Current status (2026-08-10): the enabled GA4 Shopify source is **clean-certified inside the exact current Overview boundary**. It retained source ID `3a68fcce-fffd-4dbf-ab03-7a63e46c5372`, verified USD provenance, and `$99.99` after provider and scheduler validation. Dormant OAuth, non-GA4 Shopify sources, and future store configurations remain excluded.
 
 The user journey is:
 
@@ -292,6 +296,14 @@ The user journey is:
 9. the system saves a Shopify revenue source for this campaign
 10. the system materializes normalized revenue records for the matched Shopify orders
 11. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
+
+Current implemented refresh behavior:
+
+- the user-facing action is `Refresh from Shopify`; the older `Repair from Shopify` wording is not current UI behavior
+- refresh atomically replaces only the exact source's records and retains the last-good records when provider validation or replacement fails
+- provider pagination/requests and the post-commit recompute wait are bounded, so the wizard cannot wait indefinitely on `Processing...`
+- verified Partner development stores may include eligible test orders only for validation; the Review step labels that revenue as test data, while the compact Revenue Sources row omits operational test/freshness labels and refresh timestamps
+- the Revenue Sources list remains internally scrollable when needed, hides the native scrollbar, and preserves underlying page position when closed
 
 Important meaning:
 
@@ -363,7 +375,7 @@ Important meaning:
 - in the GA4 Overview `Revenue Sources` modal, HubSpot rows should show the mapped platform campaign name under `HubSpot (Deals)` when saved `campaignMappings` provide one; if no mapping is saved, fall back to the source type label `HubSpot`
 - HubSpot imported revenue should enter Campaign Breakdown only through exact saved `campaignMappings`; the recorded deployed 4.11 evidence proves one `yesop_retargeting` mapped-row delta and does not prove other rows, other campaigns, or alternate mappings
 - HubSpot-backed GA4 report values should use the same source-backed financial total and exact mapped Campaign Breakdown formula; Current Commit 4.12 records local guards and deployed evidence for the configured `GA4 Overview Report` packet only
-- HubSpot-backed GA4 KPI/Benchmark financial values use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded). HubSpot Revenue is **UNVERIFIED on the current revision**; the canonical status and revalidation boundary is `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`, and H10d is bounded history only.
+- HubSpot-backed GA4 KPI/Benchmark financial values use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded). The three exact enabled HubSpot source IDs are clean-certified inside the recorded Overview boundary; `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is canonical, and H10d is bounded history only.
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step
@@ -711,7 +723,7 @@ Important current-state note:
 - deployed Google Sheets spend refresh code does not by itself prove durable OAuth credentials; recurring disconnects were traced to the Google OAuth app being `External + Testing`
 - Publishing status is now `In production`; the post-publish GA4 reconnect and immediate UI validation passed on `2026-07-30`. The post-publish Google Sheets reconnect and one deployed no-click automatic mapped-value update were user-confirmed on `2026-08-01`. Automatic token renewal and more-than-seven-day durability proof remain open; broader Google branding/data-access verification remains outside the whole-Overview non-scheduler decision
 - Google Sheets spend must not be described as durably connected until the more-than-seven-day gate passes; exact broader source-family exclusions are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` and do not block the whole-Overview non-scheduler decision
-- Google Sheets Revenue/Spend setup is re-enabled locally by Current Commit 21; existing Google Sheets Spend automatic update was observed once after post-publish reconnect, while deployed chooser visibility, Revenue source-family evidence, and OAuth durability remain open
+- Google Sheets Revenue/Spend setup is deployed through Current Commit 21; existing Google Sheets Spend automatic update was observed once after post-publish reconnect. The current Overview certification includes that configured Spend source and bounded observation, but does not certify an unconfigured future Google Sheets Revenue source or generalized provider behavior
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
 ## Spend Source 3: CSV Journey

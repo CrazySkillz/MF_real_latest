@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This ledger preserves the chronological Current Commit 0-20 queue and its UI-validation record moved from the canonical readiness index on `2026-08-01`.
+This ledger preserves the chronological Current Commit 0-22 queue and its UI-validation record.
 
-Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current certification decision and active Commit 19 gate. Use [`OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md) for detailed inventories, traces, blockers, and validation evidence.
+Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current clean-certified decision and exact revision/configuration boundary. Use [`OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md) for detailed inventories, traces, blockers, and validation evidence.
 
-The moved content below is preserved verbatim so chronology and bounded completion claims remain auditable.
+The earlier entries below preserve the status that was true at their recorded point in time, including then-current `unverified` statements. They are historical and cannot override Current Commit 22 or the controlling current-status document.
 
-## Current Commit Queue
+## Historical Commit Queue
 
 Current Commit 0 is this documentation-only baseline. It lowers the status, records the dynamic inventories, and makes no runtime or data change.
 
@@ -347,6 +347,22 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 - Smallest safe fix: remove only the two GA4 chooser exclusions and two new-source rejection branches. Preserve campaign access, explicit Spend `platformContext`, mapping validation, provider failure handling, exact-source edit/delete, atomic source/record replacement, recomputation, and existing refresh behavior.
 - Production-data boundary: no campaign, connection, source, record, mapping, token, total, or provider data was created, edited, deleted, reconnected, or refreshed.
 - Local evidence: the focused eight-file Google Sheets chooser/mapping/additivity/lifecycle/refresh packet passed 98/98 tests; TypeScript, the production build, and `git diff --check` passed. A broader source-safety run passed 86/87; its only failure is a pre-existing static assertion expecting direct Spend deletion instead of the existing transactional helper and is outside this change path. Deployment and chooser visibility remain unproven.
+
+### Current Commit 22 — Exact scoped Overview clean certification — passed
+
+- Certified runtime: `8ba694060411a2a05663a4915652767e4e3ba713`.
+- Certified production boundary: campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, supported 30-completed-day model with subsequent completed-day accumulation, campaign currency USD, and the exact enabled source set recorded in the canonical readiness index.
+- Total Revenue evidence: native GA4 `$52,532.70 USD`; imported revenue `$16,799.99 USD`; Total Revenue `$69,332.69 USD`.
+- Imported-source evidence: Shopify source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` remained `$99.99 USD`; HubSpot sources `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` remained `$5,100`, `$7,000`, and `$4,000 USD`; CSV source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` remained `$600 USD`. All five were present, materialized, and available.
+- Currency evidence: native GA4 was requested and verified in campaign currency before combination; enabled source and record currencies were USD; mismatch/missing provenance fails closed without conversion or historical rewrite.
+- Timer evidence: production configuration was UTC hour 8, minute 0, with startup refresh disabled. The normal timer fired at `2026-08-10T08:00:00.002Z`; property `542352127` updated at `08:00:21.147`, persisted through `2026-08-09`, retained 21 unique stored dates, and had zero duplicate dates.
+- OAuth evidence: the same post-publish GA4 connection remained provider-usable after `2026-08-07`; authenticated reads and the normal timer-fired persisted refresh succeeded without using a new reconnect as durability evidence.
+- External-source evidence: all three HubSpot IDs refreshed in place with verified USD provenance; Shopify retained `$99.99`; CSV retained `$600`. Source identity, last-good protection, and valid-zero/unavailable semantics remained intact.
+- Process-wide limitation: the GA4 daily job reported failures for 17 obsolete campaigns that the user explicitly excluded. This is not represented as a globally healthy scheduler; the certified target pass is supported by exact target property/date/timestamp/row/duplicate evidence. The external-source scheduler similarly surfaces process-wide provider failures rather than falsely reporting global success.
+- Validation evidence: the final non-mutating Overview reconciliation passed 19 files / 190 tests, deployed public health passed, UI/API parity and reviewed retained-source disposition passed, and focused later revenue/scheduler regression packets, TypeScript, and the production build passed on the certified runtime line. No globally green repository-suite claim is made for unrelated untouched failures.
+- Mutation boundary: the final certification checks did not perform cleanup, bulk rewrite, deletion, schema migration, source replacement, or historical currency rewrite. Earlier provider refresh actions were user-authorized and retained exact source identity.
+- Exclusions: Google Ads, obsolete/redundant campaigns, future configurations, future 60/90-day options, startup-triggered refresh, scheduled report/PDF/email delivery, and future provider behavior.
+- Result: **CLEAN-CERTIFIED AND PRODUCTION-READY for this exact revision, configuration, campaign/property, enabled source set, and production-data state.** Any later change to a listed dependency/configuration boundary or newly discovered consumer invalidates the affected certification until reviewed.
 
 ## UI Validation Requirement
 

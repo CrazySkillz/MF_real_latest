@@ -376,7 +376,7 @@ Checkpoint after Journey 2:
 
 ## Journey 3: Add A Supported Spend Source (Unlocks Financial Metrics)
 
-**Why**: GA4 doesn't track spend. In the current GA4 UI, new spend setup is limited to Google Ads and dated Upload CSV; retained exact-source continuity may still contribute where documented. GA4 Manual Spend creation and editing are blocked in UI and API, while exact reviewed deletion remains available for legacy cleanup. Refreshing GA4 metrics does not import spend.
+**Why**: GA4 doesn't track spend. In the current GA4 UI, new spend setup includes Google Ads, Google Sheets, and dated Upload CSV; retained exact-source continuity may still contribute where documented. GA4 Manual Spend creation and editing are blocked in UI and API, while exact reviewed deletion remains available for legacy cleanup. Refreshing GA4 metrics does not import spend.
 
 Checkpoint after Journey 3:
 
@@ -843,7 +843,7 @@ Checkpoint after Journey 8:
 - [ ] After Shopify edit/re-import, verify revenue, KPI, Benchmark, Reports, and Notifications requests refetch; the recorded Current Commit 6 deployed packet closed this cache/refetch check only, not report PDF contents, KPI/Benchmark row-value parity, notification row values, or email delivery
 - [x] Current Commit 6a deployed packet is recorded closed only for the validated Admin API token campaign/report/email path; repeat Shopify-specific value/content validation for future report/email sends, other report variants, OAuth, or future provider changes
 - [x] The historical second-campaign portability packet is retained as bounded evidence only; it is not the canonical Current Commit 8 certification result
-- [x] Shopify Revenue is production-ready and clean-certified for the currently enabled GA4 Overview Admin API token scope as of 2026-07-15. Use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` for the canonical complete evidence and exclusions; dormant OAuth and non-GA4 Shopify sources are not included.
+- [x] Shopify Revenue is clean-certified for exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the GA4 Overview boundary certified on 2026-08-10. Use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` for the canonical evidence and exclusions; dormant OAuth, non-GA4 sources, future stores, and generalized provider behavior are not included.
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts

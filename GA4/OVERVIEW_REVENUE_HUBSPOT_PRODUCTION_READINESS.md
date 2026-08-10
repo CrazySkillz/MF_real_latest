@@ -2,12 +2,12 @@
 
 ## Mandatory status
 
-**Current status: UNVERIFIED on the current revision. The historical H10d
-certification is invalidated. The currency and OAuth initiation fixes are
-deployed through `287493fffce61c2e99b27607bb66052250881050`, and the
-provider-authoritative manual refresh passed. A post-reconnect production
-scheduler execution has not yet been observed, so clean certification must not
-be claimed.**
+**Current status: CLEAN-CERTIFIED AND PRODUCTION-READY for the three enabled
+HubSpot source IDs inside the exact GA4 Overview boundary at deployed runtime
+`8ba694060411a2a05663a4915652767e4e3ba713`, campaign
+`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, and USD.
+Future HubSpot configurations, other campaigns, and future provider behavior
+are excluded.**
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
@@ -64,9 +64,13 @@ Current OAuth initiation resolution and refresh evidence (2026-08-09):
   persisted source and record currency provenance is USD, HubSpot remains
   $16,100, imported revenue remains $16,799.99, native GA4 revenue was
   $48,868.37, and combined Total Revenue was $65,668.36
-- the remaining external gate is one production scheduler execution after this
-  reconnect followed by read-only confirmation of the same source identities,
-  USD provenance, and totals
+- the post-reconnect external scheduler refreshed the same source IDs in place
+  at `2026-08-10T07:08:42.760Z`, `07:09:00.184Z`, and `07:09:17.688Z`
+- read-only reconciliation confirmed `$5,100`, `$7,000`, and `$4,000`, verified
+  source and record currency USD, HubSpot `$16,100`, imported revenue
+  `$16,799.99`, native GA4 `$52,532.70`, and Total Revenue `$69,332.69`
+- whole-process failures from obsolete campaigns are outside this exact source
+  boundary and are not represented as a global scheduler pass
 
 Historical H10d baseline (history only):
 
@@ -1662,10 +1666,4 @@ Not proven by local H9:
 
 ## Certification gate
 
-**Current decision: UNVERIFIED.** The deployed H10c commit
-`0df257a6fe47f65e1489ede6202a954588ad3c65` and H10d reconciliation are
-historical evidence only. Current clean certification requires the local
-currency/total fix to be committed and deployed, focused and adjacent tests to
-pass, the exact dependency boundary to be recorded, and read-only inventory plus
-provider-authoritative validation to establish the current persisted-data state.
-Automatic cleanup remains forbidden.
+**Current decision: CLEAN-CERTIFIED AND PRODUCTION-READY for the exact three-source boundary stated above.** The currency/total/OAuth fixes are deployed, focused and adjacent tests passed, all three source IDs survived provider-authoritative manual and scheduler refresh, USD provenance is persisted, and current read-only totals reconcile. Historical H10 evidence remains history only; this decision is bound to runtime `8ba694060411a2a05663a4915652767e4e3ba713` and the recorded source IDs. Automatic cleanup remains forbidden.

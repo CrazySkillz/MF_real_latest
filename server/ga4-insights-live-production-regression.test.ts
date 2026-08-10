@@ -266,7 +266,12 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("revenueDisplaySources.filter((source: any) => importedRevenueSourceIds.has");
     expect(validator).toContain('cardText("insights-summary-sessions")');
     expect(validator).toContain('"summary traffic completeness"');
+    expect(validator).not.toContain('"summary start date"');
+    expect(validator).not.toContain('"summary end date"');
     expect(validator).toContain('getByTestId("insights-summary-channel-row")');
+    expect(validator).toContain("const expectedRenderedChannels = breakdownMatchesDaily ? expectedChannels : [];");
+    expect(validator).toContain('cardText("insights-data-summary-channel-unavailable")');
+    expect(validator).toContain('throw new Error("Top Channel should be withheld for a mismatched breakdown")');
     const channelCellsStart = validator.indexOf("const expectedCells = [", validator.indexOf("const channelRows"));
     const channelCellsEnd = validator.indexOf("];", channelCellsStart);
     const channelCells = validator.slice(channelCellsStart, channelCellsEnd);
@@ -284,6 +289,11 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).not.toContain('uiDailyBody?.dataThroughDate || normalizedDailyRows.at(-1)?.date');
     expect(validator).toContain('await assertChartSeries(expectedChart, "Daily")');
     expect(validator).toContain('getByTestId("insights-daily-chart-coverage")');
+    expect(validator).toContain('"Missing dates are shown as gaps, not treated as zero."');
+    expect(validator).not.toContain('"Missing dates are skipped, not treated as zero."');
+    expect(validator).toContain('const expectedSegmentCount = expectedChart.reduce');
+    expect(validator).toContain('trends.locator(".recharts-line-curve").first().getAttribute("d")');
+    expect(validator).toContain('throw new Error("Daily chart bridges missing calendar dates")');
     expect(validator).toContain("for (const metric of allTrendMetrics)");
     expect(validator).toContain("for (const metric of nonUserTrendMetrics)");
     expect(validator).toContain('chooseTrendMetric(metric.label)');

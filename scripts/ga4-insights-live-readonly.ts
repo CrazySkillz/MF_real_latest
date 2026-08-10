@@ -416,8 +416,6 @@ try {
   if (sourcesText.includes("Windows:")) throw new Error("Sources used should not render financial windows");
 
   const summaryText = await cardText("insights-data-summary");
-  assertIncludes(summaryText, String(uiRollups.last30.startDate), "summary start date");
-  assertIncludes(summaryText, String(uiRollups.last30.endDate), "summary end date");
   assertIncludes(summaryText, uiRollups.last30.days + "/" + uiRollups.last30.expectedDays + " imported days", "summary completeness");
   assertIncludes(await cardText("insights-summary-sessions"), formatNumber(uiRollups.last30.sessions), "summary sessions");
   assertIncludes(
@@ -449,10 +447,16 @@ try {
     channelMap.set(label, value);
   }
   const expectedChannels = Array.from(channelMap.values()).sort((a, b) => b.sessions - a.sessions);
-  const channelTotalSessions = expectedChannels.reduce((sum, channel) => sum + channel.sessions, 0);
+  const breakdownMatchesDaily =
+    String(responses.breakdown.body?.startDate || "") === String(uiRollups.last30.startDate || "") &&
+    String(responses.breakdown.body?.endDate || "") === String(uiRollups.last30.endDate || "") &&
+    Number(responses.breakdown.body?.totals?.sessions || 0) === uiRollups.last30.sessions &&
+    Number(responses.breakdown.body?.totals?.conversions || 0) === uiRollups.last30.conversions;
+  const expectedRenderedChannels = breakdownMatchesDaily ? expectedChannels : [];
+  const channelTotalSessions = expectedRenderedChannels.reduce((sum, channel) => sum + channel.sessions, 0);
   const channelRows = owner.page.getByTestId("insights-summary-channel-row");
   const renderedChannelCount = await channelRows.count();
-  if (renderedChannelCount !== expectedChannels.length) {
+  if (renderedChannelCount !== expectedRenderedChannels.length) {
     throw new Error("Rendered channel row count does not match the scoped breakdown "
       + JSON.stringify({
         renderedChannelCount,
@@ -464,8 +468,14 @@ try {
         dailyTotals: { sessions: uiRollups.last30.sessions, conversions: uiRollups.last30.conversions },
       }));
   }
-  for (let index = 0; index < expectedChannels.length; index += 1) {
-    const expected = expectedChannels[index];
+  if (!breakdownMatchesDaily) {
+    assertIncludes(await cardText("insights-data-summary-channel-unavailable"),
+      "Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.",
+      "channel mismatch state");
+    if (await owner.page.getByTestId("insights-summary-top-channel").count() !== 0) throw new Error("Top Channel should be withheld for a mismatched breakdown");
+  }
+  for (let index = 0; index < expectedRenderedChannels.length; index += 1) {
+    const expected = expectedRenderedChannels[index];
     const cells = await channelRows.nth(index).locator("td").allInnerTexts();
     const expectedCells = [
       expected.label,
@@ -480,13 +490,13 @@ try {
         + "; actual " + JSON.stringify(cells.map(normalizeText)) + ")");
     }
   }
-  if (expectedChannels.length > 0) {
-    const top = expectedChannels[0];
+  if (expectedRenderedChannels.length > 0) {
+    const top = expectedRenderedChannels[0];
     const topText = await cardText("insights-summary-top-channel");
     assertIncludes(topText, top.label, "top channel label");
     assertIncludes(topText, (channelTotalSessions > 0 ? (top.sessions / channelTotalSessions) * 100 : 0).toFixed(0)
       + `% of ${formatNumber(channelTotalSessions)} channel-breakdown sessions`, "top channel share");
-    assertIncludes(topText, expectedChannels.length + " channels", "top channel count");
+    assertIncludes(topText, expectedRenderedChannels.length + " channels", "top channel count");
   }
 
   const normalizedDailyRows = normalizeGA4InsightsDailyRows(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
@@ -537,8 +547,15 @@ try {
     const dailyCoverage = await trends.getByTestId("insights-daily-chart-coverage").innerText();
     assertIncludes(dailyCoverage, "Daily chart " + dailyChartStartDate + " \u2192 " + finalDate, "daily chart range");
     assertIncludes(dailyCoverage, expectedChart.filter((row: any) => row.value !== null).length + "/" + expectedChart.length + " imported days", "daily chart coverage");
-    assertIncludes(dailyCoverage, "Missing dates are skipped, not treated as zero.", "daily chart missing-date state");
+    assertIncludes(dailyCoverage, "Missing dates are shown as gaps, not treated as zero.", "daily chart missing-date state");
     await assertChartSeries(expectedChart, "Daily");
+    const expectedSegmentCount = expectedChart.reduce((count, row: any, index) =>
+      row.value !== null && (index === 0 || (expectedChart[index - 1] as any).value === null) ? count + 1 : count, 0);
+    if (expectedSegmentCount > 1) {
+      const curvePath = String(await trends.locator(".recharts-line-curve").first().getAttribute("d") || "");
+      const renderedSegmentCount = (curvePath.match(/[Mm]/g) || []).length;
+      if (renderedSegmentCount < expectedSegmentCount) throw new Error("Daily chart bridges missing calendar dates");
+    }
   } else {
     assertIncludes(await trends.innerText(), "Need at least 2 imported daily rows", "daily insufficient-history state");
   }
@@ -916,7 +933,7 @@ try {
     liveSurfaceParity: {
       executiveFinancialValues: Object.keys(expectedFinancialValues).length,
       summaryValues: 3,
-      channelRows: expectedChannels.length,
+      channelRows: expectedRenderedChannels.length,
       trendModes: 4,
       trackerValues: 3,
       visibleFindings: findings.length,

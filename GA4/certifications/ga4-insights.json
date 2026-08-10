@@ -1,11 +1,11 @@
 {
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
-    "status":  "PRODUCTION_READY",
-    "lastReviewedSha":  "1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e",
-    "certifiedSha":  "1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e",
-    "deployedSha":  "1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e",
-    "invalidationReason":  null,
+    "status":  "UNVERIFIED",
+    "lastReviewedSha":  "dfc9eaff35554cfc8e32d992dc78a4918b5bc5f8",
+    "certifiedSha":  null,
+    "deployedSha":  null,
+    "invalidationReason":  "Daily Trends connected non-consecutive observations across missing calendar days, and the prior regression test incorrectly required that misleading rendering.",
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [

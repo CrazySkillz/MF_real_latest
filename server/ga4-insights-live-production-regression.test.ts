@@ -86,11 +86,11 @@ describe("live GA4 Insights production boundary", () => {
     expect(page.indexOf('data-testid="insights-monthly-comparison-note"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
     expect(page).toContain("Monthly comparison requires two adjacent complete calendar months. Partial months are shown but not compared.");
     expect(page).toContain('data-testid="insights-trend-metric"');
-    expect(page).toContain("Missing dates are skipped, not treated as zero.");
+    expect(page).toContain("Missing dates are shown as gaps, not treated as zero.");
     expect(page).toContain("value: row ? (isRate");
     expect(page).toContain(": null,");
-    expect(page).toContain('connectNulls={insightsTrendMode === "daily"}');
-    expect(page).not.toContain("connectNulls={false}");
+    expect(page).toContain("connectNulls={false}");
+    expect(page).not.toContain('connectNulls={insightsTrendMode === "daily"}');
     expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false}');
   });
 

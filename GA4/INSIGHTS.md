@@ -8,7 +8,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-`Clean certification status as of 2026-08-08 (Europe/Amsterdam): GA4 Insights is PRODUCTION_READY for exact deployed SHA 1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e and the recorded dependency/configuration boundary. All local, authenticated API/UI parity, tenant-isolation, deterministic scheduler, and persistence gates passed. This certification is revision-bound; a relevant implementation, dependency, configuration, or contradictory production change invalidates it until recertified. GA4/certifications/ga4-insights.json is the controlling machine record.`
+`GA4 Insights is UNVERIFIED. The previous certification was invalidated because the Daily Trends chart connected observations across missing calendar days and its regression test incorrectly required that behavior. GA4/certifications/ga4-insights.json is the controlling machine record.`
 
 ## Document Ownership
 

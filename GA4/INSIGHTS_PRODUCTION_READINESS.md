@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Status: **PRODUCTION_READY**
+Status: **UNVERIFIED**
 
-Certified and deployed implementation SHA: `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e`
+Certified and deployed implementation SHA: none.
 
-Clean certification date: `2026-08-08` (`Europe/Amsterdam`). This is the current clean, production-ready certification record for future reference. It applies only to the exact deployed implementation and recorded dependency/configuration boundary below; relevant future changes invalidate it until recertified.
+Invalidated on `2026-08-10` (`Europe/Amsterdam`): the Daily Trends chart connected non-consecutive observations across missing calendar days, and the prior regression test incorrectly required that misleading rendering.
 
 Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
-Open findings for the reported channel-table defect: Critical `0`; Major `0`; Minor `0`.
+Open findings: Critical `0`; Major `2`; Minor `0`.
 
-Decision: **PRODUCTION_READY** for the live GA4 Insights tab on exact deployed SHA `1ae85d88928e306e52f02d7a0e3c1ecd9ad5719e` and the recorded dependency/configuration boundary. The complete 44-file/478-test shared boundary, TypeScript, production build, authenticated owner API/UI value parity, non-owner tenant isolation, deterministic campaign-scoped scheduler, and post-scheduler persistence checks all passed. Reports-owned behavior remains outside this certification.
+Decision: **UNVERIFIED**. Major finding 1 is the misleading Daily Trends connection across missing dates. Major finding 2 is the regression/certification guard that encoded that defect. The previous evidence remains historical and cannot certify a corrected revision. Reports-owned behavior remains outside this certification.
 
 <!-- /ga4-insights-current-status -->
 

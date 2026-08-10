@@ -126,6 +126,9 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("'GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: '");
     expect(adsSection).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(adsSection).toContain("payload.adComparisonBreakdownAgg");
+    expect(adsSection).toContain("Top Campaigns by ${metricLabels[selectedMetric]}");
+    expect(adsSection).toContain("Campaigns Compared");
+    expect(adsSection).toContain("payload.adComparisonSourceRevenueBreakdowns.get");
     expect(adsSection).toContain("GA4 Revenue (Imported to Date)");
     expect(adsSection).toContain("const allCampaignRows = rows.map");
     expect(adsSection).not.toContain("rows.slice(0, 20)");

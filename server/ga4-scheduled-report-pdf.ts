@@ -23,7 +23,7 @@ const defaultCustomReportSubsections = {
   overview: { summary: false, revenue: false, spend: false, performance: false, campaignBreakdown: false, landingPages: false, conversionEvents: false },
   kpis: { items: false },
   benchmarks: { items: false },
-  ads: { summary: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
+  ads: { summary: false, topCampaigns: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
   insights: { summaryCards: false, trends: false, dataSummary: false, actions: false },
 };
 
@@ -493,7 +493,7 @@ async function buildGA4ReportPayload(report: any) {
     ? benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId)
     : benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]);
 
-  const [metrics, breakdown, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
+  const [metrics, breakdown, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, adComparisonRevenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
     ga4Service.getAcquisitionBreakdown(campaignId, storage, acquisitionRange, propertyId, 2000, campaignFilter).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     adComparisonRequirements.included && adComparisonWindow
@@ -506,6 +506,10 @@ async function buildGA4ReportPayload(report: any) {
     storage.getRevenueSources(campaignId, "ga4").catch((e) => { logPartFailure("revenue sources", e); return [] as any[]; }),
     storage.getSpendSources(campaignId, "ga4").catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
     storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
+    adComparisonRequirements.revenueBreakdown && adComparisonWindow
+      ? storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, adComparisonWindow.endDate, "ga4")
+          .catch((e) => { logPartFailure("ad comparison revenue breakdown", e); return [] as any[]; })
+      : Promise.resolve([] as any[]),
     storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
     loadPlatformKPIs,
     loadPlatformBenchmarks,
@@ -580,7 +584,7 @@ async function buildGA4ReportPayload(report: any) {
   }
   if (
     adComparisonRequirements.revenueBreakdown &&
-    (failedParts.has('revenue sources') || failedParts.has('revenue breakdown'))
+    (failedParts.has('revenue sources') || failedParts.has('ad comparison revenue breakdown'))
   ) {
     unavailableAdComparisonParts.push('Imported revenue provenance');
   }
@@ -676,6 +680,20 @@ async function buildGA4ReportPayload(report: any) {
         revenue: null,
         mappingConfig: source.mappingConfig,
       }));
+  const adComparisonRevenueDisplaySources = adComparisonRequirements.revenueBreakdown
+    ? (adComparisonRevenueBreakdown.length > 0
+        ? adComparisonRevenueBreakdown.map((row: any) => ({
+            ...row,
+            mappingConfig: revenueSources.find((source: any) => String(source?.id) === String(row?.sourceId))?.mappingConfig || null,
+          }))
+        : revenueSources.filter((source: any) => source?.isActive !== false).map((source: any) => ({
+            sourceId: source.id,
+            sourceType: source.sourceType,
+            displayName: source.displayName,
+            revenue: null,
+            mappingConfig: source.mappingConfig,
+          })))
+    : [];
 
   const spendDisplaySources = spendBreakdown.length > 0
     ? spendBreakdown.map((row: any) => ({
@@ -810,6 +828,17 @@ async function buildGA4ReportPayload(report: any) {
       return [String(source?.sourceId || ""), totals];
     })
   );
+  const adComparisonSourceRevenueBreakdowns = new Map<string, any[]>(
+    adComparisonRevenueDisplaySources.map((source: any) => {
+      const cfg = parseMappingConfig(source?.mappingConfig);
+      const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
+        ? cfg.campaignValueRevenueTotals.filter(
+            (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
+          )
+        : [];
+      return [String(source?.sourceId || ""), totals];
+    })
+  );
   const insightsRollups = buildTrendRollups(dailyRows);
   const currency = String((campaign as any)?.currency || "USD");
   const formatMoney = (value: number) => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -826,6 +855,7 @@ async function buildGA4ReportPayload(report: any) {
     dailyRows,
     breakdownTotals,
     revenueDisplaySources,
+    adComparisonRevenueDisplaySources,
     spendDisplaySources,
     platformKPIs: Array.isArray(platformKPIs) ? platformKPIs : [],
     benchmarks: Array.isArray(benchmarks) ? benchmarks : [],
@@ -841,8 +871,10 @@ async function buildGA4ReportPayload(report: any) {
     executiveFinancialsDescription,
     campaignBreakdownAgg,
     adComparisonBreakdownAgg,
+    adComparisonWindow,
     campaignBreakdownMatchedExternalRevenue,
     sourceRevenueBreakdowns,
+    adComparisonSourceRevenueBreakdowns,
     insightsRollups,
     insightsFreshness: {
       dataThroughDate: reportingWindow.dataThroughDate,
@@ -1043,9 +1075,19 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textSec);
   doc.text(`Campaign: ${String(campaignName || (payload.campaign as any)?.name || "—")}`, MX + 6, y + 7);
-  doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, MX + CW / 2, y + 7);
-  doc.text(`Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`, MX + 6, y + 15);
-  doc.text(`Window: ${windowStart} to ${windowEnd} (UTC)`, MX + CW / 2, y + 15);
+  const standaloneAdComparison = reportType === "ads";
+  if (standaloneAdComparison) {
+    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, MX + CW / 2, y + 7);
+    const propertyIdLabel = String(payload.connection?.propertyId || "").replace(/^properties\//, "");
+    const propertyNameLabel = String(payload.connection?.displayName || payload.connection?.propertyName || "");
+    doc.text(`Property: ${propertyNameLabel}${propertyIdLabel ? ` (${propertyIdLabel})` : ""}`, MX + 6, y + 15);
+    const campaignFilterLabel = String((payload.campaign as any)?.ga4CampaignFilter || "").trim();
+    if (campaignFilterLabel) doc.text(`Filter: ${campaignFilterLabel}`, MX + CW / 2, y + 15);
+  } else {
+    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, MX + CW / 2, y + 7);
+    doc.text(`Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`, MX + 6, y + 15);
+    doc.text(`Window: ${windowStart} to ${windowEnd} (UTC)`, MX + CW / 2, y + 15);
+  }
   y += 30;
 
   if (sections.overview) {
@@ -1151,67 +1193,121 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
 
   if (sections.ads) {
     const s = cfg.subsections?.ads || {};
-    const includeSummary = reportType !== "custom" || s.summary === true;
-    const includeAllCampaigns = reportType !== "custom" || s.allCampaigns === true;
-    const includeBestWorst = reportType !== "custom" || s.bestWorst === true;
-    const includeRevenueBreakdown = reportType !== "custom" || s.revenueBreakdown === true;
+    const includeTopCampaigns = reportType !== "custom" || s.topCampaigns === true || s.summary === true;
+    const includeAllCampaigns = reportType !== "custom" || s.allCampaigns !== false;
+    const includeBestWorst = reportType !== "custom" || s.bestWorst !== false;
+    const includeRevenueBreakdown = reportType !== "custom" || s.revenueBreakdown !== false;
     sectionTitle("Ad Comparison", COLORS.ads, 24);
     const rows = payload.adComparisonBreakdownAgg.map((row: any) => {
       const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));
       return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row?.sessions || 0) : 0 };
     });
-    if (includeSummary) {
-      metricCards([
-        ["Campaigns", formatNumber(rows.length)],
-        ["Total Sessions", formatNumber(rows.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0))],
-        ["GA4 Revenue (Imported to Date)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
-      ], 3);
+    const selectedMetric = "sessions";
+    const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
+    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatGA4AdComparisonCardPct(value) : formatNumber(value);
+    const sortedByMetric = [...rows].sort((a: any, b: any) => Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0));
+    const totalMetric = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
+    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, selectedMetric);
+    if (includeBestWorst && sortedByMetric.length > 1) {
+      y += 4;
+      checkPage(28);
+      const colW = (CW - 8) / 3;
+      const rankCards = [
+        { title: "BEST PERFORMING", name: String(bestPerforming?.name || ""), detail: `${formatMetricValue(selectedMetric, Number(bestPerforming?.[selectedMetric] || 0))} Sessions - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`, color: COLORS.success, x: MX },
+        { title: "MOST EFFICIENT", name: String(mostEfficient?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))} CR - ${formatMoney(Number(mostEfficient?.revenue || 0))} revenue`, color: COLORS.info, x: MX + colW + 4 },
+        { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
+      ];
+      rankCards.forEach((card) => {
+        doc.setFillColor(...COLORS.white); doc.setDrawColor(...card.color);
+        doc.setLineWidth(0.6); doc.roundedRect(card.x, y, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
+        doc.setFillColor(...card.color); doc.circle(card.x + 8, y + 9, 2, "F");
+        doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...card.color); doc.text(card.title, card.x + 13, y + 7);
+        doc.setFontSize(8); doc.setTextColor(...COLORS.text); doc.text(card.name.slice(0, 22), card.x + 13, y + 14);
+        doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec); doc.text(card.detail.slice(0, 32), card.x + 13, y + 20);
+      });
+      y += 30;
+    }
+    if (includeTopCampaigns && sortedByMetric.length > 0) {
+      const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({ name: String(row?.name || "(not set)"), value: Number(row?.[selectedMetric] || 0) }));
+      checkPage(70);
+      doc.setFillColor(...COLORS.white); doc.setDrawColor(...COLORS.cardBorder); doc.roundedRect(MX, y, CW, 52, 3, 3, "FD");
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.text); doc.text(`Top Campaigns by ${metricLabels[selectedMetric]}`, MX + 6, y + 7);
+      const chartX = MX + 40, chartY = y + 15, chartW = CW - 48, chartH = 19;
+      const maxValue = Math.max(...chartData.map((item) => item.value), 1);
+      const slotW = chartW / chartData.length;
+      const barW = Math.max(12, Math.min(28, slotW * 0.56));
+      doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH); doc.line(chartX, chartY, chartX, chartY + chartH);
+      chartData.forEach((item, index) => {
+        const px = chartX + index * slotW + (slotW - barW) / 2;
+        const barH = Math.max(1, (item.value / maxValue) * (chartH - 2));
+        doc.setFillColor(...COLORS.ads); doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+        doc.setFontSize(5.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...(barH >= 8 ? COLORS.white : COLORS.text));
+        doc.text(formatMetricValue(selectedMetric, item.value), px + barW / 2, barH >= 8 ? chartY + chartH - barH + 4 : chartY + chartH - barH - 1.5, { align: "center" });
+        const nameLines = doc.splitTextToSize(item.name, Math.max(slotW - 4, 18)).slice(0, 2) as string[];
+        if (nameLines.length > 1 && doc.getTextWidth(nameLines[1]) > slotW - 4) nameLines[1] = nameLines[1].slice(0, 18);
+        doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.text);
+        nameLines.forEach((line, lineIndex) => doc.text(line, px + barW / 2, chartY + chartH + 5 + lineIndex * 4, { align: "center" }));
+      });
+      doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
+      y += 58;
+      metricCards([[`Total ${metricLabels[selectedMetric]}`, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
     }
     if (includeAllCampaigns) {
-      const allCampaignRows = rows.map((row: any) => [
-        String(row?.name || "(not set)"),
-        formatNumber(row?.sessions || 0),
-        formatNumber(row?.conversions || 0),
-        formatPct(row?.conversionRate || 0),
-        formatMoney(Number(row?.revenue || 0)),
-      ]);
-      addSimpleTable(
-        "All Campaigns",
-        ["CAMPAIGN", "SESSIONS", "CONV", "CR", "REVENUE"],
-        allCampaignRows,
-        [72, 24, 20, 20, 48],
-        COLORS.ads
-      );
-    }
-    if (includeBestWorst && rows.length > 0) {
-      const selectedMetric = "sessions";
-      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, selectedMetric);
-      metricCards([
-        ["Best Performing", `${String(bestPerforming?.name || "").slice(0, 18)} (${formatNumber(bestPerforming?.sessions || 0)} sessions)`],
-        ["Most Efficient", `${String(mostEfficient?.name || "").slice(0, 18)} (${formatGA4AdComparisonCardPct(mostEfficient?.conversionRate || 0)})`],
-        ["Needs Attention", `${String(needsAttention?.name || "").slice(0, 18)} (${formatGA4AdComparisonCardPct(needsAttention?.conversionRate || 0)}, ${formatNumber(needsAttention?.sessions || 0)} sessions)`],
-      ], 3, 28);
+      const colXs = [MX + 4, MX + 18, MX + 82, MX + 104, MX + 124, MX + 144, MX + CW - 8];
+      sectionTitle("All Campaigns", COLORS.ads);
+      checkPage(14);
+      doc.setFillColor(...COLORS.cardBg); doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+      doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textTert);
+      ["#", "CAMPAIGN", "SESSIONS", "USERS", "CONV", "REVENUE", "CR"].forEach((header, index) => doc.text(header, colXs[index], y + 5.5));
+      y += 10;
+      const allCampaignRows = rows.map((row: any, index: number) => ({ row, index }));
+      allCampaignRows.forEach(({ row, index }: { row: any; index: number }) => {
+        checkPage(9);
+        const sessions = Number(row?.sessions || 0), users = Number(row?.users || 0);
+        const conversions = Number(row?.conversions || 0), revenue = Number(row?.revenue || 0);
+        const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+        doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+        doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec);
+        doc.text(String(index + 1), colXs[0], y + 4);
+        doc.setTextColor(...COLORS.text); doc.text(String(row?.name || "(not set)").slice(0, 28), colXs[1], y + 4);
+        doc.setTextColor(...COLORS.textSec);
+        doc.text(formatNumber(sessions), colXs[2], y + 4); doc.text(formatNumber(users), colXs[3], y + 4);
+        doc.text(formatNumber(conversions), colXs[4], y + 4); doc.text(formatMoney(revenue), colXs[5], y + 4);
+        doc.text(formatGA4AdComparisonCardPct(conversionRate).replace(".00%", "%"), colXs[6], y + 4);
+        y += 8;
+      });
     }
     if (includeRevenueBreakdown) {
-      const revenueBreakdownRows = [
-        ["GA4 Revenue (Imported to Date)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
-        ...payload.revenueDisplaySources
+      y += 4;
+      const revenueBreakdownRows: { label: string; amount: string; muted?: boolean }[] = [
+        { label: "GA4 Revenue (Imported to Date)", amount: formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)) },
+        ...payload.adComparisonRevenueDisplaySources
           .filter((source: any) => source?.revenue != null)
           .flatMap((source: any) => [
-            [`${String(source?.displayName || source?.sourceType || "Revenue")} (source-to-date; excluded from ranking)`, formatMoney(Number(source?.revenue || 0))],
-            ...(payload.sourceRevenueBreakdowns.get(String(source?.sourceId || "")) || []).map((item: any) => [
-              `  ${String(item?.campaignValue || "")}`,
-              formatMoney(Number(item?.revenue || 0)),
-            ]),
+            { label: `${String(source?.displayName || source?.sourceType || "Revenue")} (source-to-date; excluded from ranking)`, amount: formatMoney(Number(source?.revenue || 0)) },
+            ...(payload.adComparisonSourceRevenueBreakdowns.get(String(source?.sourceId || ""))
+              || payload.sourceRevenueBreakdowns.get(String(source?.sourceId || ""))
+              || []).map((item: any) => ({
+              label: String(item?.campaignValue || ""), amount: formatMoney(Number(item?.revenue || 0)), muted: true,
+            })),
           ]),
       ];
-      addSimpleTable(
-        "Revenue Breakdown",
-        ["SOURCE", "AMOUNT"],
-        revenueBreakdownRows,
-        [120, 64],
-        COLORS.ads
-      );
+      const fullSectionHeight = 18 + 10 + revenueBreakdownRows.length * 8 + 4;
+      if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) { addFooter(); doc.addPage(); y = 18; }
+      sectionTitle("Revenue Breakdown", COLORS.ads);
+      checkPage(10);
+      doc.setFillColor(...COLORS.cardBg); doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+      doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textTert);
+      doc.text("SOURCE", MX + 4, y + 5.5); doc.text("AMOUNT", MX + CW - 4, y + 5.5, { align: "right" });
+      y += 10;
+      revenueBreakdownRows.forEach((row) => {
+        checkPage(8);
+        doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+        doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...(row.muted ? COLORS.textSec : COLORS.text));
+        doc.text(row.label.slice(0, 42), MX + (row.muted ? 8 : 4), y + 4);
+        doc.text(row.amount, MX + CW - 4, y + 4, { align: "right" });
+        y += 8;
+      });
     }
   }
 

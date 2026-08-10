@@ -73,6 +73,8 @@ vi.mock("jspdf", () => ({
     setDrawColor() {}
     setLineWidth() {}
     line() {}
+    circle() {}
+    getTextWidth(value: any) { return String(value).length * 2; }
     addPage() {}
     splitTextToSize(value: any) {
       return [String(value)];
@@ -264,7 +266,7 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("Revenue Sources");
     expect(text).toContain("Shopify");
     expect(text).toContain("USD 199.98");
-    expect(text).toContain("GA4 REVENUE (IMPORTED TO DATE)");
+    expect(text).toContain("GA4 Revenue (Imported to Date)");
     expect(text).toContain("Shopify (source-to-date; exclud");
     expect(text).toContain("shopify_campaign");
     expect(text).toContain("Revenue KPI");
@@ -293,7 +295,11 @@ describe("Shopify downstream value/content regression guard", () => {
         rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700 }],
       })
       .mockResolvedValueOnce({
-        rows: [{ campaign: "ad_import_to_date", sessions: 138, users: 138, conversions: 138, revenue: 30839 }],
+        rows: [
+          { campaign: "ad_import_to_date", sessions: 55, users: 55, conversions: 55, revenue: 12409.8 },
+          { campaign: "ad_email", sessions: 43, users: 43, conversions: 43, revenue: 8952.6 },
+          { campaign: "ad_social", sessions: 40, users: 40, conversions: 40, revenue: 9476.6 },
+        ],
       });
 
     await buildGA4ScheduledPdfAttachment({
@@ -306,7 +312,7 @@ describe("Shopify downstream value/content regression guard", () => {
           sections: { overview: true, ads: true },
           subsections: {
             overview: { campaignBreakdown: true },
-            ads: { summary: true, allCampaigns: true, revenueBreakdown: true },
+            ads: { summary: true, bestWorst: true, allCampaigns: true, revenueBreakdown: true },
           },
         }),
       },
@@ -321,7 +327,14 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("ad_import_to_date");
     expect(text).toContain("138");
     expect(text).toContain("USD 30,839.00");
-    expect(text).toContain("GA4 REVENUE (IMPORTED TO DATE)");
+    expect(text).toContain("GA4 Revenue (Imported to Date)");
+    expect(text).toContain("BEST PERFORMING");
+    expect(text).toContain("MOST EFFICIENT");
+    expect(text).toContain("NEEDS ATTENTION");
+    expect(text).toContain("Top Campaigns by Sessions");
+    expect(text).toContain("TOTAL SESSIONS");
+    expect(text).toContain("CAMPAIGNS COMPARED");
+    expect(text).toContain("USERS");
     expect(text).not.toContain("GA4 REVENUE (30 DAYS)");
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
       1,

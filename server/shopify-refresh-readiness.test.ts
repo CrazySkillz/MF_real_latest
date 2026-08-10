@@ -152,7 +152,7 @@ describe("Shopify refresh lifecycle wiring", () => {
     expect(scheduler).toContain("refreshRunId } : {}");
     expect(scheduler).toContain("if (shopCfg) shopCfg.refreshRunId = refreshRunId;");
     expect(scheduler).toContain("setTimeout(() => {");
-    expect(scheduler).toContain("runDailyAutoRefreshOnce()");
+    expect(scheduler).toContain('runDailyAutoRefreshOnce("scheduled")');
   });
 
   it("exposes Shopify freshness in provenance, DeepDive risk, and scheduled aggregates without source-list clutter", () => {

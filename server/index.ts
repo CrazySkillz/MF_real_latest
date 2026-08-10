@@ -7,7 +7,7 @@ import { startReportScheduler, getSchedulerMetrics } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
 import { startMetaScheduler } from "./meta-scheduler";
 import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
-import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
+import { getAutoRefreshSchedulerStatus, startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { getGA4DailySchedulerStatus, startGA4DailyScheduler } from "./ga4-daily-scheduler";
 import { startGoogleAdsScheduler } from "./google-ads-scheduler";
 import { startInstagramScheduler } from "./instagram-scheduler";
@@ -186,6 +186,7 @@ process.on('uncaughtException', (error: Error) => {
         res.json({
           status: 'healthy',
           scheduler: metrics,
+          autoRefreshScheduler: getAutoRefreshSchedulerStatus(),
           ga4DailyScheduler: getGA4DailySchedulerStatus(),
           timestamp: new Date().toISOString(),
         });

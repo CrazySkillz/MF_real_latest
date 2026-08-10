@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getAutoRefreshSchedulerConfig, getNextAutoRefreshRunAt } from "./auto-refresh-scheduler";
+import {
+  getAutoRefreshRunFailure,
+  getAutoRefreshSchedulerConfig,
+  getAutoRefreshSchedulerStatus,
+  getNextAutoRefreshRunAt,
+} from "./auto-refresh-scheduler";
 
 const schedulerFile = () =>
   readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf-8");
@@ -12,7 +17,37 @@ const routesFile = () =>
 const ga4MetricsFile = () =>
   readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
 
+const serverIndexFile = () =>
+  readFileSync(join(process.cwd(), "server", "index.ts"), "utf-8");
+
 describe("GA4 external value auto-refresh regression guard", () => {
+  it("reports scheduler execution and fails closed when an attempted provider refresh fails", () => {
+    const scheduler = schedulerFile();
+    const serverIndex = serverIndexFile();
+
+    expect(getAutoRefreshRunFailure({
+      providerJobsAttempted: 3,
+      providerJobsSucceeded: 2,
+      campaignErrors: 0,
+      recomputeFailed: false,
+      linkedInRefreshFailed: false,
+    })).toBe("Auto-refresh incomplete (1 provider job failed)");
+    expect(getAutoRefreshRunFailure({
+      providerJobsAttempted: 3,
+      providerJobsSucceeded: 3,
+      campaignErrors: 0,
+      recomputeFailed: false,
+      linkedInRefreshFailed: false,
+    })).toBeNull();
+    expect(getAutoRefreshSchedulerStatus()).toMatchObject({
+      lastRunStatus: "idle",
+      totalRuns: 0,
+      totalScheduledRuns: 0,
+    });
+    expect(scheduler).toContain('runDailyAutoRefreshOnce("scheduled")');
+    expect(serverIndex).toContain("autoRefreshScheduler: getAutoRefreshSchedulerStatus(),");
+  });
+
   it("schedules external refresh by configured reporting timezone instead of server local time", () => {
     const content = schedulerFile();
     const config = getAutoRefreshSchedulerConfig({

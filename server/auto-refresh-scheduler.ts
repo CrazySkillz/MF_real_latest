@@ -34,6 +34,36 @@ type AutoRefreshSchedulerConfig = {
   runOnStartup: boolean;
   googleSheetsSpendIntervalMinutes: number;
 };
+type AutoRefreshRunTrigger = "startup" | "scheduled" | "manual";
+type AutoRefreshRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
+export type AutoRefreshRunSummary = {
+  campaignsScanned: number;
+  providerJobsAttempted: number;
+  providerJobsSucceeded: number;
+  providerJobsSkipped: number;
+  campaignErrors: number;
+  recomputeFailed: boolean;
+  linkedInRefreshFailed: boolean;
+};
+
+const autoRefreshSchedulerStatus = {
+  startedAt: null as Date | null,
+  config: null as AutoRefreshSchedulerConfig | null,
+  nextRunAt: null as Date | null,
+  lastRunStartedAt: null as Date | null,
+  lastRunFinishedAt: null as Date | null,
+  lastRunTrigger: null as AutoRefreshRunTrigger | null,
+  lastRunStatus: "idle" as AutoRefreshRunStatus,
+  lastSkippedAt: null as Date | null,
+  lastErrorTime: null as Date | null,
+  lastError: null as string | null,
+  lastRunSummary: null as AutoRefreshRunSummary | null,
+  totalRuns: 0,
+  totalStartupRuns: 0,
+  totalScheduledRuns: 0,
+  totalManualRuns: 0,
+  totalSkippedRuns: 0,
+};
 const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;
 const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;
 
@@ -55,6 +85,45 @@ export function getAutoRefreshSchedulerConfig(env: NodeJS.ProcessEnv = process.e
 
 export function getNextAutoRefreshRunAt(now = new Date(), config: AutoRefreshSchedulerConfig = getAutoRefreshSchedulerConfig()): Date {
   return getNextDailyRunAt(now, config.reportingTimeZone, config.hour, config.minute);
+}
+
+const toIsoOrNull = (value: Date | null) => value ? value.toISOString() : null;
+
+export function getAutoRefreshRunFailure(summary: Pick<
+  AutoRefreshRunSummary,
+  "providerJobsAttempted" | "providerJobsSucceeded" | "campaignErrors" | "recomputeFailed" | "linkedInRefreshFailed"
+>): string | null {
+  const failures: string[] = [];
+  const providerFailures = Math.max(0, summary.providerJobsAttempted - summary.providerJobsSucceeded);
+  if (providerFailures > 0) failures.push(`${providerFailures} provider job${providerFailures === 1 ? "" : "s"} failed`);
+  if (summary.campaignErrors > 0) failures.push(`${summary.campaignErrors} campaign error${summary.campaignErrors === 1 ? "" : "s"}`);
+  if (summary.recomputeFailed) failures.push("KPI/Benchmark recompute failed");
+  if (summary.linkedInRefreshFailed) failures.push("LinkedIn refresh failed");
+  return failures.length > 0 ? `Auto-refresh incomplete (${failures.join("; ")})` : null;
+}
+
+export function getAutoRefreshSchedulerStatus() {
+  return {
+    started: Boolean(autoRefreshSchedulerStatus.startedAt),
+    timerScheduled: Boolean((global as any).__autoRefreshSchedulerTimer),
+    inProgress: Boolean((global as any).__autoRefreshInProgress),
+    config: autoRefreshSchedulerStatus.config || getAutoRefreshSchedulerConfig(),
+    startedAt: toIsoOrNull(autoRefreshSchedulerStatus.startedAt),
+    nextRunAt: toIsoOrNull(autoRefreshSchedulerStatus.nextRunAt),
+    lastRunStartedAt: toIsoOrNull(autoRefreshSchedulerStatus.lastRunStartedAt),
+    lastRunFinishedAt: toIsoOrNull(autoRefreshSchedulerStatus.lastRunFinishedAt),
+    lastRunTrigger: autoRefreshSchedulerStatus.lastRunTrigger,
+    lastRunStatus: autoRefreshSchedulerStatus.lastRunStatus,
+    lastSkippedAt: toIsoOrNull(autoRefreshSchedulerStatus.lastSkippedAt),
+    lastErrorTime: toIsoOrNull(autoRefreshSchedulerStatus.lastErrorTime),
+    lastError: autoRefreshSchedulerStatus.lastError,
+    lastRunSummary: autoRefreshSchedulerStatus.lastRunSummary,
+    totalRuns: autoRefreshSchedulerStatus.totalRuns,
+    totalStartupRuns: autoRefreshSchedulerStatus.totalStartupRuns,
+    totalScheduledRuns: autoRefreshSchedulerStatus.totalScheduledRuns,
+    totalManualRuns: autoRefreshSchedulerStatus.totalManualRuns,
+    totalSkippedRuns: autoRefreshSchedulerStatus.totalSkippedRuns,
+  };
 }
 
 const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
@@ -663,20 +732,41 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
     (global as any).__googleSheetsSpendRefreshInProgress = false;
   }
 }
-export async function runDailyAutoRefreshOnce(): Promise<void> {
+export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "manual"): Promise<void> {
   // Give the daily job priority without overlapping a Sheets spend refresh.
   if ((global as any).__autoRefreshInProgress) {
+    autoRefreshSchedulerStatus.totalSkippedRuns += 1;
+    autoRefreshSchedulerStatus.lastRunTrigger = trigger;
+    autoRefreshSchedulerStatus.lastRunStatus = "skipped";
+    autoRefreshSchedulerStatus.lastSkippedAt = new Date();
     console.log("[Auto Refresh] Skipping run (daily refresh already in progress)");
     return;
   }
   // Claim priority before waiting so another Sheets spend interval cannot start.
   (global as any).__autoRefreshInProgress = true;
+  const startedAt = Date.now();
+  autoRefreshSchedulerStatus.totalRuns += 1;
+  if (trigger === "startup") autoRefreshSchedulerStatus.totalStartupRuns += 1;
+  else if (trigger === "scheduled") autoRefreshSchedulerStatus.totalScheduledRuns += 1;
+  else autoRefreshSchedulerStatus.totalManualRuns += 1;
+  autoRefreshSchedulerStatus.lastRunStartedAt = new Date();
+  autoRefreshSchedulerStatus.lastRunFinishedAt = null;
+  autoRefreshSchedulerStatus.lastRunTrigger = trigger;
+  autoRefreshSchedulerStatus.lastRunStatus = "running";
+  autoRefreshSchedulerStatus.lastError = null;
+  autoRefreshSchedulerStatus.lastRunSummary = null;
   while ((global as any).__googleSheetsSpendRefreshInProgress) {
     console.log("[Auto Refresh] Waiting for Google Sheets spend refresh to finish");
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
-  const startedAt = Date.now();
   const refreshRunId = randomUUID();
+  let campaignsScanned = 0;
+  let attempted = 0;
+  let succeeded = 0;
+  let skipped = 0;
+  let campaignErrors = 0;
+  let anyCampaignRecomputeFailed = false;
+  let linkedInRefreshFailed = true;
   console.log("\n=== DAILY AUTO-REFRESH + AUTO-PROCESS RUNNING ===");
   console.log(`Timestamp: ${new Date().toISOString()}`);
   console.log(`Run ID: ${refreshRunId}`);
@@ -687,6 +777,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
       console.log("[Auto Refresh] Step 1/2: Refreshing LinkedIn data for all campaigns...");
       const linkedInTimeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_LINKEDIN_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
       await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);
+      linkedInRefreshFailed = false;
       console.log("[Auto Refresh] ✅ LinkedIn refresh complete");
     } catch (e: any) {
       console.error("[Auto Refresh] ⚠️ LinkedIn refresh failed (continuing to revenue reprocess):", e?.message || e);
@@ -695,12 +786,9 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     // 2) Re-process revenue for providers that have a saved mappingConfig.
     console.log("[Auto Refresh] Step 2/2: Re-processing revenue mappings (HubSpot/Salesforce/Shopify)...");
     const campaigns = await storage.getCampaigns();
+    campaignsScanned = campaigns.length;
 
-    let attempted = 0;
-    let succeeded = 0;
-    let skipped = 0;
     let anyCampaignUpdated = false;
-    let anyCampaignRecomputeFailed = false;
 
     for (const campaign of campaigns) {
       const campaignId = campaign.id;
@@ -933,6 +1021,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           }
         }
       } catch (e: any) {
+        campaignErrors++;
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
       }
     }
@@ -953,8 +1042,32 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     console.log(`   Provider jobs succeeded: ${succeeded}`);
     console.log(`   Provider jobs skipped (no mapping/disabled): ${skipped}`);
     console.log(`   Run ID: ${refreshRunId}`);
+    const summary: AutoRefreshRunSummary = {
+      campaignsScanned,
+      providerJobsAttempted: attempted,
+      providerJobsSucceeded: succeeded,
+      providerJobsSkipped: skipped,
+      campaignErrors,
+      recomputeFailed: anyCampaignRecomputeFailed,
+      linkedInRefreshFailed,
+    };
+    autoRefreshSchedulerStatus.lastRunSummary = summary;
+    const failure = getAutoRefreshRunFailure(summary);
+    if (failure) {
+      autoRefreshSchedulerStatus.lastRunStatus = "failed";
+      autoRefreshSchedulerStatus.lastErrorTime = new Date();
+      autoRefreshSchedulerStatus.lastError = failure;
+    } else {
+      autoRefreshSchedulerStatus.lastRunStatus = "success";
+    }
+  } catch (e: any) {
+    autoRefreshSchedulerStatus.lastRunStatus = "failed";
+    autoRefreshSchedulerStatus.lastErrorTime = new Date();
+    autoRefreshSchedulerStatus.lastError = e?.message || String(e);
+    throw e;
   } finally {
     (global as any).__autoRefreshInProgress = false;
+    autoRefreshSchedulerStatus.lastRunFinishedAt = new Date();
     const elapsedMs = Date.now() - startedAt;
     console.log(`=== AUTO-REFRESH COMPLETE (${Math.round(elapsedMs / 1000)}s) ===\n`);
   }
@@ -971,6 +1084,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
  */
 export function startDailyAutoRefreshScheduler(): void {
   const config = getAutoRefreshSchedulerConfig();
+  autoRefreshSchedulerStatus.config = config;
   if (!config.enabled) {
     console.log("[Auto Refresh] Scheduler disabled via AUTO_REFRESH_ENABLED=false");
     return;
@@ -986,6 +1100,7 @@ export function startDailyAutoRefreshScheduler(): void {
   console.log(`   Scheduled time: ${config.hour.toString().padStart(2, "0")}:${config.minute.toString().padStart(2, "0")} (${config.reportingTimeZone})`);
   console.log(`   Google Sheets spend interval: ${config.googleSheetsSpendIntervalMinutes} minute(s)`);
 
+  autoRefreshSchedulerStatus.startedAt = new Date();
   const googleSheetsSpendIntervalMs = config.googleSheetsSpendIntervalMinutes * 60 * 1000;
   const runGoogleSheetsSpendRefresh = () => {
     void runGoogleSheetsSpendAutoRefreshOnce().catch((e: any) => {
@@ -997,9 +1112,10 @@ export function startDailyAutoRefreshScheduler(): void {
   const scheduleNextRun = () => {
     const nextRun = getNextAutoRefreshRunAt(new Date(), config);
     const msUntilNextRun = Math.max(1000, nextRun.getTime() - Date.now());
+    autoRefreshSchedulerStatus.nextRunAt = nextRun;
     console.log(`[Auto Refresh] Next scheduled run at ${nextRun.toISOString()} (${formatSchedulerLocalTime(nextRun, config.reportingTimeZone)}, timezone=${config.reportingTimeZone}, expectedCompleteDay=${getLatestCompleteReportingDate(config.reportingTimeZone, nextRun)})`);
     (global as any).__autoRefreshSchedulerTimer = setTimeout(() => {
-      runDailyAutoRefreshOnce()
+      runDailyAutoRefreshOnce("scheduled")
         .catch((e: any) => console.error("[Auto Refresh] Scheduled run failed:", e?.message || e))
         .finally(scheduleNextRun);
     }, msUntilNextRun);
@@ -1007,7 +1123,7 @@ export function startDailyAutoRefreshScheduler(): void {
 
   if (config.runOnStartup) {
     console.log("[Auto Refresh] Running once on startup (AUTO_REFRESH_RUN_ON_STARTUP=true)...");
-    runDailyAutoRefreshOnce();
+    runDailyAutoRefreshOnce("startup");
   }
 
   scheduleNextRun();

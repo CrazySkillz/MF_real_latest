@@ -71,6 +71,41 @@ const escapeOAuthPopupHtml = (value: unknown): string => String(value ?? "")
   .replace(/"/g, "&quot;")
   .replace(/'/g, "&#39;");
 
+const REPORT_SCHEDULE_FREQUENCIES = new Set(["daily", "weekly", "monthly", "quarterly"]);
+
+export function isValidReportScheduleFrequency(value: string): boolean {
+  return REPORT_SCHEDULE_FREQUENCIES.has(value);
+}
+
+export function isValidReportScheduleTime(value: string): boolean {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return false;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+export function isValidReportScheduleDayOfWeek(value: number): boolean {
+  return Number.isInteger(value) && value >= 0 && value <= 6;
+}
+
+export function isValidReportScheduleDayOfMonth(value: number): boolean {
+  return Number.isInteger(value) && value >= 0 && value <= 31;
+}
+
+export function isValidReportScheduleQuarterTiming(value: string): boolean {
+  return value === "start" || value === "end";
+}
+
+export function isValidReportScheduleTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date(0));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
     ...campaign,
@@ -27846,32 +27881,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const time = String(body?.scheduleTime || "").trim();
         const recipients = Array.isArray(body?.scheduleRecipients) ? body.scheduleRecipients : null;
 
-        if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
-        if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
-        if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
+        if (!isValidReportScheduleFrequency(freq)) return res.status(400).json({ success: false, message: "scheduleFrequency must be daily, weekly, monthly, or quarterly" });
+        if (!isValidReportScheduleTimeZone(tz)) return res.status(400).json({ success: false, message: "scheduleTimeZone must be a valid IANA timezone" });
+        if (!isValidReportScheduleTime(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
         if (!recipients?.some((recipient: unknown) => String(recipient || "").trim())) {
           return res.status(400).json({ success: false, message: "scheduleRecipients must include at least one recipient when scheduleEnabled=true" });
         }
 
         if (freq === "weekly") {
           const dow = Number(body?.scheduleDayOfWeek);
-          if (!Number.isFinite(dow) || dow < 0 || dow > 6) {
+          if (!isValidReportScheduleDayOfWeek(dow)) {
             return res.status(400).json({ success: false, message: "scheduleDayOfWeek must be 0-6 for weekly schedules" });
           }
         }
         if (freq === "monthly") {
           const dom = Number(body?.scheduleDayOfMonth);
-          if (!Number.isFinite(dom) || dom < 0 || dom > 31) {
+          if (!isValidReportScheduleDayOfMonth(dom)) {
             return res.status(400).json({ success: false, message: "scheduleDayOfMonth must be 0 (last) or 1-31 for monthly schedules" });
           }
         }
         if (freq === "quarterly") {
           const qt = String(body?.quarterTiming || "").toLowerCase();
-          if (qt !== "start" && qt !== "end") {
+          if (!isValidReportScheduleQuarterTiming(qt)) {
             return res.status(400).json({ success: false, message: "quarterTiming must be 'start' or 'end' for quarterly schedules" });
           }
           const dom = Number(body?.scheduleDayOfMonth);
-          if (!Number.isFinite(dom) || dom < 0 || dom > 31) {
+          if (!isValidReportScheduleDayOfMonth(dom)) {
             return res.status(400).json({ success: false, message: "scheduleDayOfMonth must be 0 (last) or 1-31 for quarterly schedules" });
           }
         }
@@ -27944,11 +27979,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const time = String(body?.scheduleTime ?? (existing as any)?.scheduleTime ?? "").trim();
         const recipients = Array.isArray(body?.scheduleRecipients) ? body.scheduleRecipients : (Array.isArray((existing as any)?.scheduleRecipients) ? (existing as any).scheduleRecipients : null);
 
-        if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
-        if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
-        if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
+        if (!isValidReportScheduleFrequency(freq)) return res.status(400).json({ success: false, message: "scheduleFrequency must be daily, weekly, monthly, or quarterly" });
+        if (!isValidReportScheduleTimeZone(tz)) return res.status(400).json({ success: false, message: "scheduleTimeZone must be a valid IANA timezone" });
+        if (!isValidReportScheduleTime(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
         if (!recipients?.some((recipient: unknown) => String(recipient || "").trim())) {
           return res.status(400).json({ success: false, message: "scheduleRecipients must include at least one recipient when scheduleEnabled=true" });
+        }
+
+        if (freq === "weekly") {
+          const dow = Number(body?.scheduleDayOfWeek ?? (existing as any)?.scheduleDayOfWeek);
+          if (!isValidReportScheduleDayOfWeek(dow)) {
+            return res.status(400).json({ success: false, message: "scheduleDayOfWeek must be 0-6 for weekly schedules" });
+          }
+        }
+        if (freq === "monthly") {
+          const dom = Number(body?.scheduleDayOfMonth ?? (existing as any)?.scheduleDayOfMonth);
+          if (!isValidReportScheduleDayOfMonth(dom)) {
+            return res.status(400).json({ success: false, message: "scheduleDayOfMonth must be 0 (last) or 1-31 for monthly schedules" });
+          }
+        }
+        if (freq === "quarterly") {
+          const qt = String(body?.quarterTiming ?? (existing as any)?.quarterTiming ?? "").toLowerCase();
+          if (!isValidReportScheduleQuarterTiming(qt)) {
+            return res.status(400).json({ success: false, message: "quarterTiming must be 'start' or 'end' for quarterly schedules" });
+          }
+          const dom = Number(body?.scheduleDayOfMonth ?? (existing as any)?.scheduleDayOfMonth);
+          if (!isValidReportScheduleDayOfMonth(dom)) {
+            return res.status(400).json({ success: false, message: "scheduleDayOfMonth must be 0 (last) or 1-31 for quarterly schedules" });
+          }
         }
       }
 

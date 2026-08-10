@@ -878,16 +878,17 @@ export default function GA4Metrics() {
     },
   });
   // GA4 Reports (stored as platform reports)
-  const { data: ga4Reports, isLoading: ga4ReportsLoading } = useQuery<any[]>({
+  const { data: ga4Reports, isLoading: ga4ReportsLoading, isError: ga4ReportsError } = useQuery<any[]>({
     queryKey: ["/api/platforms/google_analytics/reports", campaignId],
     enabled: !!campaignId && !insightsValidationReadOnly,
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const resp = await fetch(`/api/platforms/google_analytics/reports?campaignId=${encodeURIComponent(String(campaignId))}`);
-      if (!resp.ok) return [];
-      const json = await resp.json().catch(() => []);
-      return Array.isArray(json) ? json : [];
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(json?.message || "Failed to load saved reports");
+      if (!Array.isArray(json)) throw new Error("Invalid saved reports response");
+      return json;
     },
   });
 
@@ -8091,6 +8092,16 @@ export default function GA4Metrics() {
                         <div className="h-24 bg-muted rounded" />
                         <div className="h-24 bg-muted rounded" />
                       </div>
+                    ) : ga4ReportsError ? (
+                      <Card className="border-border">
+                        <CardContent className="p-10 text-center">
+                          <FileText className="w-10 h-10 text-muted-foreground/70 mx-auto mb-3" />
+                          <div className="text-foreground font-medium">Reports unavailable</div>
+                          <div className="text-sm text-muted-foreground/70 mt-1">
+                            We couldn't load saved reports. Refresh the page and try again.
+                          </div>
+                        </CardContent>
+                      </Card>
                     ) : Array.isArray(ga4Reports) && ga4Reports.length > 0 ? (
                       <div className="grid grid-cols-1 gap-4">
                         {ga4Reports.map((r: any) => (

@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "sectionId": "ga4-reports",
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "6157b7fec5a9a6f615b6e62b2d24e67c792decfe",
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "The historical whole-section claim is invalidated. The isolated candidate contains uncommitted Reports fixes and a complete classified inventory, but dependency hashes are not frozen and exact-SHA deployed UI, numerical PDF parity, scheduler, provider delivery, inbox, production-data, and affected upstream certification gates remain pending.",
+  "configurationBoundary": {
+    "scope": "GA4 Reports and Campaign DeepDive report surfaces",
+    "includedSurfaces": [
+      "GA4 Reports tab and Standard Reports library",
+      "browser-generated ad hoc GA4 PDF reports",
+      "server-generated test-send, manual, and scheduled GA4 PDF reports",
+      "report snapshots and direct snapshot JSON/PDF routes",
+      "Campaign DeepDive custom reports and scheduled-report visibility"
+    ],
+    "excludedSurfaces": [
+      "independent certification of non-GA4 connected-platform reports",
+      "email-provider behavior outside recorded provider events",
+      "production-data cleanup not bounded by a proven damaged-row inventory"
+    ],
+    "sourceRules": [
+      "use the saved campaign, GA4 property, source filter, KPI, benchmark, and financial-source configuration",
+      "do not replace a missing selected source value with an unrelated aggregate",
+      "preserve revenue, spend, attribution, and source-provenance semantics across every consumer"
+    ],
+    "windowRules": [
+      "use the report-type live or persisted reporting window documented for the surface",
+      "apply completed-day and reporting-timezone rules consistently",
+      "prove browser and server artifact parity for the same authoritative fixture"
+    ],
+    "ownershipRules": [
+      "enforce tenant, client, campaign, platform, report, and snapshot ownership boundaries",
+      "fail closed when campaign or platform ownership cannot be proven",
+      "require snapshot and report campaign-platform consistency"
+    ],
+    "deliveryRules": [
+      "a generated PDF is required but does not prove numerical correctness",
+      "provider API acceptance is not confirmed delivery",
+      "sent snapshots and last-sent bookkeeping must represent confirmed successful sends",
+      "scheduler processing must be deduplicated and idempotent"
+    ]
+  },
+  "dependencies": [
+    { "path": "AGENTS.md", "role": "repository operating and anti-overclaim contract", "sha256": null },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics-layer boundary", "sha256": null },
+    { "path": "PRODUCTION_READINESS.md", "role": "repository production-readiness standard", "sha256": null },
+    { "path": "GA4/README.md", "role": "GA4 canonical reference index", "sha256": null },
+    { "path": "GA4/REPORTS.md", "role": "Reports product contract", "sha256": null },
+    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "Reports controlling readiness status", "sha256": null },
+    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and processing contract", "sha256": null },
+    { "path": "client/src/pages/ga4-metrics.tsx", "role": "GA4 Reports tab UI and browser artifact consumer", "sha256": null },
+    { "path": "client/src/pages/reports.tsx", "role": "report library UI consumer", "sha256": null },
+    { "path": "client/src/lib/reportStorage.ts", "role": "browser report persistence boundary", "sha256": null },
+    { "path": "shared/schema.ts", "role": "shared report and persistence contracts", "sha256": null },
+    { "path": "shared/ga4-financial-source.ts", "role": "GA4 financial-source semantics", "sha256": null },
+    { "path": "shared/ga4-kpi-consumer-state.ts", "role": "shared KPI consumer-state semantics", "sha256": null },
+    { "path": "server/routes-oauth.ts", "role": "report API, access, CRUD, generation, and delivery routes", "sha256": null },
+    { "path": "server/storage.ts", "role": "report and snapshot persistence boundary", "sha256": null },
+    { "path": "server/report-scheduler.ts", "role": "scheduled report discovery and processing", "sha256": null },
+    { "path": "server/ga4-scheduled-report-pdf.ts", "role": "server GA4 PDF rendering", "sha256": null },
+    { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "report preflight KPI and benchmark processing", "sha256": null },
+    { "path": "server/analytics.ts", "role": "report analytics transformation boundary", "sha256": null },
+    { "path": "server/services/email-service.ts", "role": "report email composition and provider submission", "sha256": null },
+    { "path": "server/utils/mailgun-delivery.ts", "role": "provider delivery-event confirmation", "sha256": null },
+    { "path": "server/utils/reporting-timezone.ts", "role": "report scheduling and reporting-timezone rules", "sha256": null },
+    { "path": "server/report-email-regression.test.ts", "role": "report scheduler and email regression evidence", "sha256": null },
+    { "path": "server/custom-report-regression.test.ts", "role": "report UI, CRUD, and custom-report regression evidence", "sha256": null },
+    { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "production KPI path parity evidence", "sha256": null },
+    { "path": "server/ga4-kpi-report-consumer-regression.test.ts", "role": "KPI report-consumer parity evidence", "sha256": null },
+    { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Insights and report parity evidence", "sha256": null },
+    { "path": "server/ga4-reports-certification-gate.ts", "role": "machine certification and invalidation gate", "sha256": null },
+    { "path": "server/ga4-reports-certification-gate.test.ts", "role": "machine gate regression evidence", "sha256": null },
+    { "path": "package.json", "role": "certification command and dependency configuration", "sha256": null },
+    { "path": "render.yaml", "role": "deployed scheduler and runtime configuration boundary", "sha256": null }
+  ],
+  "statusDocument": {
+    "path": "GA4/REPORTS_PRODUCTION_READINESS.md",
+    "startMarker": "<!-- ga4-reports-current-status -->",
+    "endMarker": "<!-- /ga4-reports-current-status -->"
+  },
+  "requiredTests": [
+    {
+      "id": "reports_certification_gate",
+      "status": "passed",
+      "evidence": "npm run check:ga4-reports-certification passed on the isolated candidate; this proves internal UNVERIFIED-record consistency only."
+    },
+    {
+      "id": "focused_reports_regressions",
+      "status": "passed",
+      "evidence": "The current isolated candidate passed the focused Reports regression packet; exact final counts are recorded in GA4/REPORTS_PRODUCTION_READINESS.md."
+    },
+    {
+      "id": "protected_overview_insights_regressions",
+      "status": "passed",
+      "evidence": "The protected Overview and Insights targeted packet passed 15 files and 124 tests without changing live Overview or Insights runtime code."
+    },
+    {
+      "id": "typescript",
+      "status": "passed",
+      "evidence": "npm run check passed after the record, checker, and checker tests were added."
+    },
+    {
+      "id": "production_build",
+      "status": "passed",
+      "evidence": "npm run build passed; Vite transformed 3,466 modules and the production server bundle completed."
+    },
+    {
+      "id": "complete_numerical_failure_matrix",
+      "status": "pending",
+      "evidence": "The complete classified matrix is documented, but rows requiring exact-SHA browser/server numeric parity, deployed scheduler execution, provider events, inbox receipt, and production-data evidence remain pending."
+    }
+  ],
+  "externalGates": [
+    { "id": "exact_sha_deployment", "status": "pending", "evidence": "No certified or deployed SHA is recorded." },
+    { "id": "upstream_section_certifications", "status": "pending", "evidence": "The isolated candidate passed 124 protected Overview and Insights behavior tests, but the Insights hash gate detected changed shared dependencies. Candidate recertification is required; the deployed certified SHA remains unchanged." },
+    { "id": "browser_server_pdf_value_parity", "status": "pending", "evidence": "Current exact-SHA parity across all browser and server artifact consumers is incomplete." },
+    { "id": "report_crud_tenant_isolation", "status": "pending", "evidence": "Current exact-SHA complete create, update, delete, access, and cross-tenant negative evidence is incomplete." },
+    { "id": "deployed_scheduled_visibility", "status": "pending", "evidence": "Current deployed Campaign DeepDive scheduled-report visibility has not been revalidated." },
+    { "id": "scheduler_snapshot_truthfulness", "status": "pending", "evidence": "Current deployed scheduler idempotency, failure, snapshot, and bookkeeping evidence is incomplete." },
+    { "id": "provider_confirmed_delivery", "status": "pending", "evidence": "Current provider delivery events for the exact deployed SHA are not recorded." },
+    { "id": "recipient_inbox_receipt", "status": "pending", "evidence": "Current recipient inbox receipt for the exact deployed SHA is not recorded." },
+    { "id": "production_database_integrity", "status": "pending", "evidence": "Production indexes and existing damaged report rows have not been audited for this revision." },
+    { "id": "dependency_hashes", "status": "pending", "evidence": "Dependency hashes remain null until a certification candidate revision is frozen." }
+  ]
+}

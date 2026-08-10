@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import {
+  isValidReportScheduleDayOfMonth,
+  isValidReportScheduleDayOfWeek,
+  isValidReportScheduleFrequency,
+  isValidReportScheduleQuarterTiming,
+  isValidReportScheduleTime,
+  isValidReportScheduleTimeZone,
+} from "./routes-oauth";
 
 const REPORT_SCHEDULER_FILE = join(__dirname, "report-scheduler.ts");
 const GA4_SCHEDULED_PDF_FILE = join(__dirname, "ga4-scheduled-report-pdf.ts");
@@ -232,6 +240,23 @@ describe("scheduled report email regression guard", () => {
     expect(routesSource).not.toContain("Test report email sent successfully! Check your inbox.");
   });
 
+  it("does not describe non-Mailgun provider acceptance as confirmed delivery", () => {
+    const source = readReportScheduler();
+    const successFlag = source.indexOf("success: true", source.indexOf("export async function sendTestReport"));
+    const successStart = source.lastIndexOf("return {", successFlag);
+    const successBlock = source.slice(
+      successStart,
+      source.indexOf("};", successFlag),
+    );
+
+    expect(successFlag).toBeGreaterThan(-1);
+    expect(successStart).toBeGreaterThan(-1);
+    expect(successBlock).toContain('audit.provider === "mailgun-api"');
+    expect(successBlock).toContain("Test report email accepted by the provider; delivery was not confirmed");
+    expect(successBlock).toContain('deliveryStatus: audit.provider === "mailgun-api" ? "delivered" : "accepted"');
+    expect(successBlock).not.toContain('message: "Test report email delivered successfully"');
+  });
+
   it("does not create scheduled Mailgun snapshots until delivery is confirmed", () => {
     const source = readReportScheduler();
     const confirmationBlock = source.slice(
@@ -266,10 +291,45 @@ describe("scheduled report email regression guard", () => {
   it("requires recipients when saving scheduled platform reports", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
 
+    expect(routesSource).toContain('const REPORT_SCHEDULE_FREQUENCIES = new Set(["daily", "weekly", "monthly", "quarterly"])');
+    expect(routesSource.match(/isValidReportScheduleFrequency\(freq\)/g)).toHaveLength(2);
+    expect(routesSource.match(/isValidReportScheduleTimeZone\(tz\)/g)).toHaveLength(2);
+    expect(routesSource.match(/isValidReportScheduleTime\(time\)/g)).toHaveLength(2);
+    expect(routesSource.match(/isValidReportScheduleDayOfWeek\(dow\)/g)).toHaveLength(2);
+    expect(routesSource.match(/isValidReportScheduleDayOfMonth\(dom\)/g)).toHaveLength(4);
+    expect(routesSource.match(/isValidReportScheduleQuarterTiming\(qt\)/g)).toHaveLength(2);
+    expect(routesSource).toContain("scheduleFrequency must be daily, weekly, monthly, or quarterly");
+    expect(routesSource).toContain("scheduleTimeZone must be a valid IANA timezone");
     expect(routesSource).toContain("scheduleRecipients must include at least one recipient when scheduleEnabled=true");
     expect(routesSource).toContain("nextScheduleEnabled");
     expect(routesSource).toContain('String(body?.scheduleFrequency ?? (existing as any)?.scheduleFrequency ?? "")');
     expect(routesSource).not.toContain("Email recipients are optional");
+  });
+
+  it("rejects invalid schedule frequency, clock time, and IANA timezone values", () => {
+    for (const frequency of ["daily", "weekly", "monthly", "quarterly"]) {
+      expect(isValidReportScheduleFrequency(frequency)).toBe(true);
+    }
+    expect(isValidReportScheduleFrequency("hourly")).toBe(false);
+    expect(isValidReportScheduleTime("0:00")).toBe(true);
+    expect(isValidReportScheduleTime("23:59")).toBe(true);
+    expect(isValidReportScheduleTime("24:00")).toBe(false);
+    expect(isValidReportScheduleTime("09:60")).toBe(false);
+    expect(isValidReportScheduleTime("99:99")).toBe(false);
+    expect(isValidReportScheduleTimeZone("UTC")).toBe(true);
+    expect(isValidReportScheduleTimeZone("Europe/Amsterdam")).toBe(true);
+    expect(isValidReportScheduleTimeZone("Not/A_Zone")).toBe(false);
+    expect(isValidReportScheduleDayOfWeek(0)).toBe(true);
+    expect(isValidReportScheduleDayOfWeek(6)).toBe(true);
+    expect(isValidReportScheduleDayOfWeek(6.5)).toBe(false);
+    expect(isValidReportScheduleDayOfWeek(7)).toBe(false);
+    expect(isValidReportScheduleDayOfMonth(0)).toBe(true);
+    expect(isValidReportScheduleDayOfMonth(31)).toBe(true);
+    expect(isValidReportScheduleDayOfMonth(1.5)).toBe(false);
+    expect(isValidReportScheduleDayOfMonth(32)).toBe(false);
+    expect(isValidReportScheduleQuarterTiming("start")).toBe(true);
+    expect(isValidReportScheduleQuarterTiming("end")).toBe(true);
+    expect(isValidReportScheduleQuarterTiming("middle")).toBe(false);
   });
 
   it("discovers scheduled platform reports through an explicit shared-table scheduler path", () => {

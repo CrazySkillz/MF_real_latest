@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Production-readiness status: GA4 Reports is production-ready for the current code implementation. The only named deferred validation is `Campaign DeepDive Scheduled Report Visibility`, which will be validated when the Campaign DeepDive section is refined. Deployed GA4 Overview Report email delivery has user-confirmed evidence from the 2026-07-03 Overview report packet; future scheduled/test deliveries and report variants require their own runtime evidence if separately questioned. The durable readiness decision lives in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Production-readiness status: GA4 Reports is not currently clean-certified as a whole section because KPI-bearing and KPI-derived report output is `UNVERIFIED`. Historical non-KPI report mechanics remain bounded evidence. The controlling decision and Reports Current Commits 7-9 live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section remains
 `UNVERIFIED`. Local browser/scheduled output guards pass, but the deployed
 revision and direct-consumer parity gates in
@@ -96,6 +96,7 @@ Current standard-template output rule:
 - `Ad Comparison` report Revenue Breakdown shows the same 30-day native row
   sum plus separate exact materialized source-to-date rows, with no combined
   total; browser and scheduled paths fail closed when selected required inputs
+  are unavailable
 - `Insights` should follow the live Insights order
 - `Insights` report output should include the report-supported Trends freshness context: `Completed-day cutoff`, reporting timezone, and last refreshed timestamp. The live Trends UI additionally shows `Latest imported day`; report output should not be documented as showing that label unless the report renderer is explicitly extended.
 - `Insights` report Trends charts should use the same visual chart contract as the live UI for the data rendered: zero-based y-axis, light gridlines, muted axes, blue line/bar styling, and readable date labels such as `MM-DD` for daily/rolling charts. Scheduled/server output currently renders its supported sessions trend rather than a persisted live dropdown selection.
@@ -307,7 +308,7 @@ Important meaning:
 
 ## Current-State Note
 
-The current GA4 Reports implementation is production-ready for the current code implementation. The only named deferred validation is `Campaign DeepDive Scheduled Report Visibility`; deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet, while future scheduled/test deliveries and report variants require their own runtime evidence if separately questioned.
+The current GA4 Reports implementation is not clean-certified as a whole section while KPI-bearing output is unverified. Earlier report CRUD/delivery/PDF packets remain historical bounded evidence, not a current numerical certification.
 
 Aligned and production-ready:
 

@@ -126,7 +126,7 @@ const reportIncludesKPISection = (report: any): boolean => {
   if (reportType === "kpis") return true;
   if (reportType !== "custom") return false;
   const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
-  return Boolean(cfg.sections?.kpis || cfg.subsections?.kpis?.items || cfg.selectedKpiIds.length > 0);
+  return Boolean(cfg.sections?.kpis && cfg.subsections?.kpis?.items && cfg.selectedKpiIds.length > 0);
 };
 
 const reportIncludesBenchmarkSection = (report: any): boolean => {
@@ -134,7 +134,7 @@ const reportIncludesBenchmarkSection = (report: any): boolean => {
   if (reportType === "benchmarks" || reportType === "insights") return true;
   if (reportType !== "custom") return false;
   const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
-  return Boolean(cfg.sections?.benchmarks || cfg.subsections?.benchmarks?.items || cfg.sections?.insights || cfg.selectedBenchmarkIds.length > 0);
+  return Boolean(cfg.sections?.insights || (cfg.sections?.benchmarks && cfg.subsections?.benchmarks?.items && cfg.selectedBenchmarkIds.length > 0));
 };
 
 const getOverviewReportRequirements = (report: any) => {
@@ -839,8 +839,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const sections = reportType === "custom"
     ? cfg.sections
     : { overview: reportType === "overview", kpis: reportType === "kpis", benchmarks: reportType === "benchmarks", ads: reportType === "ads", insights: reportType === "insights" };
-  const selectedCustomKpiIds = new Set(cfg.selectedKpiIds || []);
-  const selectedCustomBenchmarkIds = new Set(cfg.selectedBenchmarkIds || []);
+  const selectedCustomKpiIds = reportType === "custom" ? new Set(cfg.selectedKpiIds || []) : null;
+  const selectedCustomBenchmarkIds = reportType === "custom" ? new Set(cfg.selectedBenchmarkIds || []) : null;
   const PW = 210, MX = 16, CW = PW - MX * 2;
   let y = 18;
 
@@ -1339,8 +1339,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
   }
 
-  if (sections.kpis) {
-    const items = payload.platformKPIs.filter((item: any) => selectedCustomKpiIds.size === 0 || selectedCustomKpiIds.has(String(item.id)));
+  if (sections.kpis && (reportType !== "custom" || cfg.subsections?.kpis?.items === true)) {
+    const items = payload.platformKPIs.filter((item: any) => !selectedCustomKpiIds || selectedCustomKpiIds.has(String(item.id)));
     if (items.length > 0) {
       addSimpleTable(
         "Key Performance Indicators",
@@ -1356,8 +1356,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
   }
 
-  if (sections.benchmarks) {
-    const items = payload.benchmarks.filter((item: any) => selectedCustomBenchmarkIds.size === 0 || selectedCustomBenchmarkIds.has(String(item.id)));
+  if (sections.benchmarks && (reportType !== "custom" || cfg.subsections?.benchmarks?.items === true)) {
+    const items = payload.benchmarks.filter((item: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.has(String(item.id)));
     if (items.length > 0) {
       addSimpleTable(
         "Performance Benchmarks",

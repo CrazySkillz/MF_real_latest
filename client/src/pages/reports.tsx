@@ -356,13 +356,14 @@ export default function Reports() {
     enabled: !!campaignContextId,
   });
 
-  const { data: backendScheduledReports = [], refetch: refetchBackendScheduledReports } = useQuery<any[]>({
+  const { data: backendScheduledReports = [], isError: backendScheduledReportsError, refetch: refetchBackendScheduledReports } = useQuery<any[]>({
     queryKey: [`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports`, campaignContextId],
     queryFn: async () => {
       const response = await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports?campaignId=${encodeURIComponent(campaignContextId)}`, { credentials: "include" });
-      if (!response.ok) return [];
-      const json = await response.json().catch(() => []);
-      return Array.isArray(json) ? json : [];
+      const json = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(json?.message || "Failed to load scheduled reports");
+      if (!Array.isArray(json)) throw new Error("Invalid scheduled reports response");
+      return json;
     },
     enabled: !!campaignContextId,
     refetchOnWindowFocus: true,
@@ -2248,6 +2249,14 @@ export default function Reports() {
             </div>
 
             {/* Reports Tabs */}
+            {backendScheduledReportsError && backendScheduledReports.length === 0 && campaignContextId && (
+              <Card className="border-border">
+                <CardContent className="py-6 text-center">
+                  <p className="font-medium text-foreground">Reports unavailable</p>
+                  <p className="mt-1 text-sm text-muted-foreground">We couldn't load saved scheduled reports. Refresh the page and try again.</p>
+                </CardContent>
+              </Card>
+            )}
             <Tabs defaultValue="standard" className="space-y-6">
               <TabsList>
                 <TabsTrigger value="standard">Standard Reports</TabsTrigger>
@@ -2257,7 +2266,7 @@ export default function Reports() {
 
               <TabsContent value="scheduled" className="space-y-6">
                 <div className="grid gap-6">
-                  {storedScheduledReports.length === 0 ? (
+                  {storedScheduledReports.length === 0 && !backendScheduledReportsError ? (
                     <Card>
                       <CardContent className="py-12">
                         <div className="text-center text-muted-foreground/70">

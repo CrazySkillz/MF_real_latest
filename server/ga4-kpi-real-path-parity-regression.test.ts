@@ -761,6 +761,35 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(text).toContain("200");
   });
 
+  it("does not expand an empty Custom Report KPI/Benchmark selection to every saved row", async () => {
+    const emptySelectionReport = {
+      ...report,
+      id: "ga4-empty-selection-report",
+      configuration: JSON.stringify({
+        sections: { overview: false, kpis: true, benchmarks: true, ads: false, insights: false },
+        subsections: { kpis: { items: true }, benchmarks: { items: true } },
+        selectedKpiIds: [],
+        selectedBenchmarkIds: [],
+      }),
+    };
+
+    expect(await preflightGA4ReportKPIConsumers(emptySelectionReport, "2026-07-31", { suppressAlerts: true })).toEqual({ ok: true });
+    expect(storageMock.getPlatformKPIs).not.toHaveBeenCalled();
+    expect(storageMock.getPlatformBenchmarks).not.toHaveBeenCalled();
+
+    pdfTextCalls.length = 0;
+    const buffer = await buildGA4ScheduledPdfAttachment({
+      report: emptySelectionReport,
+      reportName: emptySelectionReport.name,
+      windowStart: "2026-07-02",
+      windowEnd: "2026-07-31",
+      campaignName: campaign.name,
+    });
+    const text = pdfTextCalls.join("\n");
+    expect(buffer.length).toBeGreaterThan(100);
+    for (const row of [...kpiRows, ...benchmarkRows]) expect(text).not.toContain(row.name);
+  });
+
   it("feeds the fixture through the shared direct, test-send, manual, and scheduled report preflight/builder", async () => {
     const preflight = await preflightGA4ReportKPIConsumers(report, "2026-07-31", { suppressAlerts: true });
     expect(preflight.ok).toBe(true);

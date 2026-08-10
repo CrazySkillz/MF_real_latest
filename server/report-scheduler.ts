@@ -253,11 +253,13 @@ function reportIncludesGA4BenchmarkSection(report: any): boolean {
     ...(Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : []),
     ...(Array.isArray(cfg?.benchmarks) ? cfg.benchmarks : []),
   ].map((id: any) => String(id || "").trim()).filter(Boolean);
-  return Boolean(cfg?.sections?.benchmarks || cfg?.subsections?.benchmarks?.items || cfg?.sections?.insights || selectedBenchmarkIds.length > 0);
+  return Boolean(cfg?.sections?.insights || (cfg?.sections?.benchmarks && cfg?.subsections?.benchmarks?.items && selectedBenchmarkIds.length > 0));
 }
 
 function getGA4ReportSelectedBenchmarkIds(report: any): Set<string> {
+  if (String((report as any)?.reportType || "").trim().toLowerCase() !== "custom") return new Set();
   const cfg = parseReportConfiguration((report as any)?.configuration);
+  if (cfg?.sections?.insights) return new Set();
   return new Set([
     ...(Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : []),
     ...(Array.isArray(cfg?.benchmarks) ? cfg.benchmarks : []),
@@ -272,10 +274,11 @@ function reportIncludesGA4KPISection(report: any): boolean {
   const selectedKpiIds = Array.isArray(cfg?.selectedKpiIds)
     ? cfg.selectedKpiIds.map((id: any) => String(id || "").trim()).filter(Boolean)
     : [];
-  return Boolean(cfg?.sections?.kpis || cfg?.subsections?.kpis?.items || selectedKpiIds.length > 0);
+  return Boolean(cfg?.sections?.kpis && cfg?.subsections?.kpis?.items && selectedKpiIds.length > 0);
 }
 
 function getGA4ReportSelectedKPIIds(report: any): Set<string> {
+  if (String((report as any)?.reportType || "").trim().toLowerCase() !== "custom") return new Set();
   const cfg = parseReportConfiguration((report as any)?.configuration);
   return new Set((Array.isArray(cfg?.selectedKpiIds) ? cfg.selectedKpiIds : [])
     .map((id: any) => String(id || "").trim())
@@ -301,6 +304,7 @@ export async function preflightGA4ReportKPIConsumers(
   if (String((report as any)?.platformType || "").trim().toLowerCase() !== "google_analytics") return { ok: true };
   const campaignId = String((report as any)?.campaignId || "").trim();
   if (!campaignId) return { ok: false, error: "GA4 report campaign is missing" };
+  if (!reportIncludesGA4KPISection(report) && !reportIncludesGA4BenchmarkSection(report)) return { ok: true };
   try {
     let requiredKpiIds = new Set<string>();
     if (reportIncludesGA4KPISection(report)) {
@@ -2608,7 +2612,9 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
 
     return {
       success: true,
-      message: "Test report email delivered successfully",
+      message: audit.provider === "mailgun-api"
+        ? "Test report email delivered successfully"
+        : "Test report email accepted by the provider; delivery was not confirmed",
       recipients,
       providerResponseId: audit.providerResponseId,
       deliveryStatus: audit.provider === "mailgun-api" ? "delivered" : "accepted",

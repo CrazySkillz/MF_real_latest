@@ -11,6 +11,7 @@
     "check:ga4-kpi-certification": "tsx server/ga4-kpi-certification-gate.ts",
     "check:ga4-ad-comparison-certification": "tsx server/ga4-ad-comparison-certification-gate.ts",
     "check:ga4-insights-certification": "tsx server/ga4-insights-certification-gate.ts",
+    "check:ga4-reports-certification": "tsx server/ga4-reports-certification-gate.ts",
     "test": "vitest run --pool forks",
     "test:current-version": "tsx scripts/ga4-kpi-current-version-test-boundary.ts current",
     "test:deferred": "tsx scripts/ga4-kpi-current-version-test-boundary.ts deferred",

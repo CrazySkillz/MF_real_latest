@@ -267,6 +267,23 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("if (campaignContextId) refetchBackendScheduledReports();");
   });
 
+  it("keeps report-list failures distinct from successful empty report libraries", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const ga4 = readFileSync(join(process.cwd(), "client/src/pages/ga4-metrics.tsx"), "utf-8");
+
+    expect(ga4).toContain("isError: ga4ReportsError");
+    expect(ga4).toContain('throw new Error(json?.message || "Failed to load saved reports")');
+    expect(ga4).toContain('throw new Error("Invalid saved reports response")');
+    expect(ga4).toContain("ga4ReportsError ? (");
+    expect(reports).toContain("isError: backendScheduledReportsError");
+    expect(reports).toContain('throw new Error(json?.message || "Failed to load scheduled reports")');
+    expect(reports).toContain('throw new Error("Invalid scheduled reports response")');
+    expect(reports).toContain("backendScheduledReportsError && backendScheduledReports.length === 0 && campaignContextId");
+    expect(reports).toContain("storedScheduledReports.length === 0 && !backendScheduledReportsError");
+    expect(ga4).toContain("Reports unavailable");
+    expect(reports).toContain("Reports unavailable");
+  });
+
   it("renders scheduled Campaign DeepDive PDFs with selected section body content", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 

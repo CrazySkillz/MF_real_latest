@@ -22,7 +22,7 @@ describe("GA4 Insights report parity", () => {
     const reportSection = page.slice(reportStart, reportEnd);
 
     const scheduledStart = pdf.indexOf("if (sections.insights) {");
-    const scheduledEnd = pdf.indexOf("if (sections.kpis) {", scheduledStart);
+    const scheduledEnd = pdf.indexOf("if (sections.kpis", scheduledStart);
     const scheduledSection = pdf.slice(scheduledStart, scheduledEnd);
 
     expect(liveStart).toBeGreaterThan(-1);
@@ -32,14 +32,12 @@ describe("GA4 Insights report parity", () => {
     expect(scheduledStart).toBeGreaterThan(-1);
     expect(scheduledEnd).toBeGreaterThan(scheduledStart);
 
-    const expectedCopy = [
-      "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.",
-      "Completed-day cutoff",
-      "Total across revenue sources",
-    ];
+    const reportTrendCopy =
+      "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.";
+    const sharedCopy = ["Completed-day cutoff"];
 
     for (const section of [liveSection, reportSection, scheduledSection]) {
-      for (const copy of expectedCopy) {
+      for (const copy of sharedCopy) {
         expect(section).toContain(copy);
       }
       expect(section).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
@@ -48,12 +46,21 @@ describe("GA4 Insights report parity", () => {
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
     }
+    expect(liveSection).toContain("Daily shows day-by-day values.");
+    expect(liveSection).toContain("7d/30d show rolling totals.");
+    expect(liveSection).toContain("Monthly compares calendar months.");
+    expect(reportSection).toContain(reportTrendCopy);
+    expect(scheduledSection).toContain(reportTrendCopy);
+    expect(reportSection).toContain("Total across revenue sources");
+    expect(scheduledSection).toContain("Total across revenue sources");
     expect(liveSection).toContain("Exact completed-day window");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");
     }
     expect(page).toContain("if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;");
-    expect(liveSection).toContain("{executiveFinancialsDescription}");
+    expect(liveSection).toContain('data-testid="insights-financial-sources"');
+    expect(liveSection).toContain('Spend</span>: {spendSourceLabels.length > 0');
+    expect(liveSection).toContain('{revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ")');
     expect(reportSection).toContain("wrapPdfText(executiveFinancialsDescription, CW - 8)");
     expect(pdf).toContain("buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels)");
     expect(scheduledSection).toContain("payload.executiveFinancialsDescription");
@@ -78,7 +85,7 @@ describe("GA4 Insights report parity", () => {
     const reportSection = page.slice(reportStart, reportEnd);
 
     const scheduledStart = pdf.indexOf("if (sections.insights) {");
-    const scheduledEnd = pdf.indexOf("if (sections.kpis) {", scheduledStart);
+    const scheduledEnd = pdf.indexOf("if (sections.kpis", scheduledStart);
     const scheduledSection = pdf.slice(scheduledStart, scheduledEnd);
 
     expect(reportSection).toContain("const top = items.slice(0, 12);");

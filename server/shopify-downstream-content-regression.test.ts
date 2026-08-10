@@ -241,6 +241,8 @@ describe("Shopify downstream value/content regression guard", () => {
         reportType: "custom",
         configuration: JSON.stringify({
           sections: { overview: true, kpis: true, benchmarks: true, ads: true },
+          selectedKpiIds: [revenueKpi.id],
+          selectedBenchmarkIds: [revenueBenchmark.id],
           subsections: {
             overview: { revenue: true, performance: true, campaignBreakdown: true },
             kpis: { items: true },
@@ -262,7 +264,7 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("Revenue Sources");
     expect(text).toContain("Shopify");
     expect(text).toContain("USD 199.98");
-    expect(text).toContain("GA4 REVENUE (30 DAYS)");
+    expect(text).toContain("GA4 REVENUE (IMPORTED TO DATE)");
     expect(text).toContain("Shopify (source-to-date; exclud");
     expect(text).toContain("shopify_campaign");
     expect(text).toContain("Revenue KPI");
@@ -281,6 +283,64 @@ describe("Shopify downstream value/content regression guard", () => {
       "1900-01-01",
       "2026-07-05",
       "ga4",
+    );
+  });
+
+  it("keeps scheduled Ad Comparison on import-to-date rows without changing Overview rows", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "" });
+    ga4ServiceMock.getAcquisitionBreakdown.mockReset()
+      .mockResolvedValueOnce({
+        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700 }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ campaign: "ad_import_to_date", sessions: 138, users: 138, conversions: 138, revenue: 30839 }],
+      });
+
+    await buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-window-parity",
+        campaignId: campaign.id,
+        name: "Window parity",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          sections: { overview: true, ads: true },
+          subsections: {
+            overview: { campaignBreakdown: true },
+            ads: { summary: true, allCampaigns: true, revenueBreakdown: true },
+          },
+        }),
+      },
+      reportName: "Window parity",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    });
+
+    const text = pdfTextCalls.join("\n");
+    expect(text).toContain("overview_window");
+    expect(text).toContain("ad_import_to_date");
+    expect(text).toContain("138");
+    expect(text).toContain("USD 30,839.00");
+    expect(text).toContain("GA4 REVENUE (IMPORTED TO DATE)");
+    expect(text).not.toContain("GA4 REVENUE (30 DAYS)");
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
+      1,
+      campaign.id,
+      storageMock,
+      "30daysAgo",
+      "properties/123",
+      2000,
+      undefined,
+    );
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
+      2,
+      campaign.id,
+      storageMock,
+      "2026-07-02",
+      "properties/123",
+      2000,
+      undefined,
+      "2026-07-04",
     );
   });
 

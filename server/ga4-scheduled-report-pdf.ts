@@ -1,6 +1,6 @@
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
@@ -456,6 +456,12 @@ async function buildGA4ReportPayload(report: any) {
   const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
   const reportLookbackRange = `${lookbackDays}daysAgo`;
   const adComparisonRequirements = getAdComparisonReportRequirements(report);
+  const adComparisonWindow = adComparisonRequirements.included
+    ? resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
+    : null;
+  if (adComparisonRequirements.included && !adComparisonWindow) {
+    throw new Error('GA4_AD_COMPARISON_IMPORT_WINDOW_UNAVAILABLE');
+  }
   const acquisitionRange = adComparisonRequirements.included
     ? '30daysAgo'
     : reportLookbackRange;
@@ -487,9 +493,13 @@ async function buildGA4ReportPayload(report: any) {
     ? benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId)
     : benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]);
 
-  const [metrics, breakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
+  const [metrics, breakdown, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
     ga4Service.getAcquisitionBreakdown(campaignId, storage, acquisitionRange, propertyId, 2000, campaignFilter).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    adComparisonRequirements.included && adComparisonWindow
+      ? ga4Service.getAcquisitionBreakdown(campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter, adComparisonWindow.endDate)
+          .catch((e) => { logPartFailure("ad comparison breakdown", e); return { rows: [] }; })
+      : Promise.resolve({ rows: [] }),
     ga4Service.getLandingPagesReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
     ga4Service.getConversionEventsReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
     ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
@@ -564,7 +574,7 @@ async function buildGA4ReportPayload(report: any) {
   const unavailableAdComparisonParts: string[] = [];
   if (
     adComparisonRequirements.included &&
-    failedParts.has('acquisition breakdown')
+    failedParts.has('ad comparison breakdown')
   ) {
     unavailableAdComparisonParts.push('Campaign breakdown');
   }
@@ -735,6 +745,31 @@ async function buildGA4ReportPayload(report: any) {
     })
     .sort((a, b) => b.sessions - a.sessions);
 
+  const adComparisonByCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+  for (const row of Array.isArray((adComparisonBreakdown as any)?.rows) ? (adComparisonBreakdown as any).rows : []) {
+    const name = String((row as any)?.campaign || "(not set)").trim();
+    const current = adComparisonByCampaign.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+    current.sessions += Number((row as any)?.sessions || 0);
+    current.users += Number((row as any)?.users || 0);
+    current.conversions += Number((row as any)?.conversions || 0);
+    current.revenue += Number((row as any)?.revenue || 0);
+    adComparisonByCampaign.set(name, current);
+  }
+  const adComparisonBreakdownAgg = Array.from(adComparisonByCampaign.values())
+    .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)))
+    .map((row) => {
+      const revenue = Number(Number(row.revenue || 0).toFixed(2));
+      const sessions = Number(row.sessions || 0);
+      const conversions = Number(row.conversions || 0);
+      return {
+        ...row,
+        revenue,
+        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+        revenuePerSession: sessions > 0 ? revenue / sessions : 0,
+      };
+    })
+    .sort((a, b) => b.sessions - a.sessions);
+
   const rowCounts = new Map<string, number>();
   const rowNameByKey = new Map<string, string>();
   for (const row of campaignBreakdownAgg) {
@@ -805,6 +840,7 @@ async function buildGA4ReportPayload(report: any) {
     importedRevenueForFinancials,
     executiveFinancialsDescription,
     campaignBreakdownAgg,
+    adComparisonBreakdownAgg,
     campaignBreakdownMatchedExternalRevenue,
     sourceRevenueBreakdowns,
     insightsRollups,
@@ -1120,7 +1156,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const includeBestWorst = reportType !== "custom" || s.bestWorst === true;
     const includeRevenueBreakdown = reportType !== "custom" || s.revenueBreakdown === true;
     sectionTitle("Ad Comparison", COLORS.ads, 24);
-    const rows = payload.campaignBreakdownAgg.map((row: any) => {
+    const rows = payload.adComparisonBreakdownAgg.map((row: any) => {
       const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));
       return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row?.sessions || 0) : 0 };
     });
@@ -1128,7 +1164,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       metricCards([
         ["Campaigns", formatNumber(rows.length)],
         ["Total Sessions", formatNumber(rows.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0))],
-        ["GA4 Revenue (30 Days)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
+        ["GA4 Revenue (Imported to Date)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
       ], 3);
     }
     if (includeAllCampaigns) {
@@ -1158,7 +1194,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     if (includeRevenueBreakdown) {
       const revenueBreakdownRows = [
-        ["GA4 Revenue (30 completed days)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
+        ["GA4 Revenue (Imported to Date)", formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0))],
         ...payload.revenueDisplaySources
           .filter((source: any) => source?.revenue != null)
           .flatMap((source: any) => [

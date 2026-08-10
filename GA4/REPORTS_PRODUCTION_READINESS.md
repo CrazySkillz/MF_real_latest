@@ -21,7 +21,7 @@ This file defines whether that implementation is production-ready, what has been
 
 August 10, 2026 controlling override: GA4 Reports is **not currently clean-certified as a whole section**. The current local value, lifecycle, failure, and downstream matrices are recorded below. Exact-row report preflight, report-list error-state separation, provider-acceptance wording, and complete schedule-field guards are implemented locally, but several numerical and deployed rows remain partially reviewed or externally unverified. Dependency hashes, exact-SHA deployment evidence, upstream certification checks, and current delivery evidence are not frozen. Historical proof remains bounded evidence only.
 
-August 10 deployed validation found that the browser Ad Comparison PDF used the general selected-date-range rows while the live Ad Comparison tab used its dedicated import-to-date rows. A Reports-only fix now loads and renders the dedicated rows on the Reports tab and fails closed while they are unverified; deployment and exact UI/PDF revalidation remain pending. Scheduled/server Ad Comparison parity remains separately unverified.
+August 10 deployed validation found that the browser Ad Comparison PDF used the general selected-date-range rows while the live Ad Comparison tab used its dedicated import-to-date rows. The deployed browser fix now matches the live UI by user validation. The scheduled/server builder is locally isolated onto the same import-to-date window without changing its existing Overview rows; deployment and exact scheduled artifact revalidation remain pending.
 
 Current dependent queue:
 

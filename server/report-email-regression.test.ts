@@ -119,11 +119,14 @@ describe("scheduled report email regression guard", () => {
 
     expect(adsStart).toBeGreaterThan(-1);
     expect(adsEnd).toBeGreaterThan(adsStart);
-    expect(source).toContain("const acquisitionRange = adComparisonRequirements.included");
-    expect(source).toContain("? '30daysAgo'");
+    expect(source).toContain("resolveGA4ImportToDateWindow");
+    expect(source).toContain("const adComparisonWindow = adComparisonRequirements.included");
+    expect(source).toContain("adComparisonWindow.startDate");
     expect(source).toContain("const importedRevenueStartDate = '1900-01-01';");
     expect(source).toContain("'GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: '");
     expect(adsSection).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
+    expect(adsSection).toContain("payload.adComparisonBreakdownAgg");
+    expect(adsSection).toContain("GA4 Revenue (Imported to Date)");
     expect(adsSection).toContain("const allCampaignRows = rows.map");
     expect(adsSection).not.toContain("rows.slice(0, 20)");
     expect(adsSection).not.toContain("Unallocated External Revenue");

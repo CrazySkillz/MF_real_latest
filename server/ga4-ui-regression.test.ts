@@ -629,7 +629,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZoneLabel}");
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
-    expect(pdf).toContain('import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow } from "./utils/reporting-timezone";');
+    expect(pdf).toContain("GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow");
     expect(pdf).toContain("const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);");
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");

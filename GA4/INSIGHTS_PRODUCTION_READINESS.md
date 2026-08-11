@@ -7,7 +7,7 @@
 
 Status: **PRODUCTION_READY**
 
-Certified and deployed implementation SHA: `3e6b46c6c65721df21b437109ea698f615f8a353`.
+Certified and deployed implementation SHA: `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`.
 
 Clean certification date: `2026-08-10` (`Europe/Amsterdam`).
 
@@ -16,6 +16,8 @@ Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb69148656725625
 Open findings: Critical `0`; Major `0`; Minor `0`.
 
 Decision: **PRODUCTION_READY** for the exact live-tab, dependency, and non-secret configuration boundary below. The corrected Daily chart renders missing calendar dates as gaps, all required local and exact-SHA production gates passed, and no Critical or Major finding remains. Reports-owned behavior remains outside this certification.
+
+August 10, 2026 exact-SHA carry-forward: all six changed file-level dependencies were reviewed and are limited to Reports branches, Reports regression coverage, and the Reports certification command; no live Insights calculation, query, renderer, scheduler, source, or persistence behavior changed. The complete protected boundary passed 44 files / 494 tests. The authenticated production validator passed on deployed `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`, including owner UI/API parity, the sparse Daily chart gaps, tenant isolation, signed OAuth configuration, USD/Amsterdam/property/filter scope, and unchanged campaign persistence. Its database transaction was read-only and rolled back; the temporary Clerk-only isolation user was deleted and all created sessions were revoked. The deterministic scheduler evidence carries forward because its runtime/configuration dependencies did not change.
 
 <!-- /ga4-insights-current-status -->
 
@@ -202,7 +204,7 @@ An analytics request failure produces an integrity finding. It is not converted 
 
 ## Findings
 
-Current findings are Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability; none is an active blocker for certified SHA `3e6b46c6c65721df21b437109ea698f615f8a353`.
+Current findings are Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability; none is an active blocker for certified SHA `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`.
 
 ### Historical Critical Findings (closed)
 
@@ -358,10 +360,10 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 ## Current And Historical Local Evidence
 
-Current controlling local results for certified runtime `3e6b46c6c65721df21b437109ea698f615f8a353` and evidence guard `11c65b9136b56c76c65794a2e0bc44cf4342916c`:
+Current controlling local results for certified runtime `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` and evidence guard `11c65b9136b56c76c65794a2e0bc44cf4342916c`:
 
 - final focused certification-gate and live-validator packet: 2 files, 22 tests passed
-- complete Insights/shared dependency boundary: 44 files, 492 tests passed
+- complete Insights/shared dependency boundary: 44 files, 494 tests passed
 - `npm run check`: passed
 - `npm run build`: passed, 3,466 client modules and bundled production server
 - `npm run check:ga4-insights-certification`: passed on the final `PRODUCTION_READY` machine record
@@ -396,14 +398,14 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 Historical out-of-scope repository result: the complete `server/source-safety-regression.test.ts` file reported 77 passed and 10 failed, and all ten failures were Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets passed independently as recorded above. Those Instagram failures neither executed nor supplied a value to live GA4 Insights and were not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `3e6b46c6c65721df21b437109ea698f615f8a353`
+## Current Production Evidence - `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`
 
 | Gate | Result |
 |---|---|
-| exact Render revision | PASS: `/api/health` returned exact production commit `3e6b46c6c65721df21b437109ea698f615f8a353`. |
+| exact Render revision | PASS: `/api/health` returned exact production commit `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`. |
 | authenticated owner API/UI parity | PASS: property `542352127`, three saved filters, USD response currency, Amsterdam response timezone, 5 Executive Financial values, 3 Data Summary values, 3 channel rows, 4 Trends modes, 3 tracker values, and 10 visible findings all matched the exact page-consumed responses. The Daily chart showed `2026-07-12 = 111`, `2026-08-08 = 108`, and `2026-08-09 = 106` across 29 calendar slots and three imported observations; the SVG contained separate path segments across the missing dates. |
 | tenant isolation and cleanup | PASS: one explicitly authorized ephemeral Clerk-only non-owner received `404`; its session was revoked, the exact user was deleted, and campaign persistence was unchanged. |
-| deterministic direct-input scheduler | PASS: the authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute completed successfully at `2026-08-10T11:38:55.023Z`; alerts were suppressed and daily rows remained 21 before and after. |
+| deterministic direct-input scheduler | PASS by bounded carry-forward: the authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute completed successfully at `2026-08-10T11:38:55.023Z`; alerts were suppressed and daily rows remained 21 before and after. The exact diff to `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` does not change scheduler/runtime configuration dependencies, and the full protected scheduler packet passed without triggering another production recompute. |
 | post-scheduler parity and persistence | PASS: immediate follow-up parity matched native revenue `52,532.70`, imported revenue `16,799.99`, total revenue `69,332.69`, spend `2,699.75`, profit `66,632.94`, ROAS `25.6812`, ROI `2468.12%`, CPA `11.39`, and conversions `237`; the validation transaction was read-only and rolled back, and campaign-scoped persistence remained semantically unchanged. |
 | dependency and configuration boundary | PASS: all 84 dependency hashes matched; the canonical non-secret boundary is property `542352127`, campaign `fc734ddaf728`, `Europe/Amsterdam`, USD, three saved filters, Google Ads inactive/excluded, LinkedIn/Meta/Instagram disabled, and signed GA4/Sheets OAuth configuration passed. Its reproducible SHA-256 fingerprint is `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`. |
 

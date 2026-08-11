@@ -14,8 +14,6 @@ export const GA4_REPORTS_REQUIRED_DEPENDENCIES = [
   "GA4/REPORTS_PRODUCTION_READINESS.md",
   "GA4/REFRESH_AND_PROCESSING.md",
   "client/src/pages/ga4-metrics.tsx",
-  "client/src/pages/reports.tsx",
-  "client/src/lib/reportStorage.ts",
   "shared/schema.ts",
   "shared/ga4-financial-source.ts",
   "shared/ga4-kpi-consumer-state.ts",
@@ -29,7 +27,6 @@ export const GA4_REPORTS_REQUIRED_DEPENDENCIES = [
   "server/utils/mailgun-delivery.ts",
   "server/utils/reporting-timezone.ts",
   "server/report-email-regression.test.ts",
-  "server/custom-report-regression.test.ts",
   "server/ga4-kpi-real-path-parity-regression.test.ts",
   "server/ga4-kpi-report-consumer-regression.test.ts",
   "server/ga4-insights-report-parity-regression.test.ts",
@@ -126,7 +123,7 @@ export function evaluateGA4ReportsCertification(
   const boundary = value.configurationBoundary;
   if (!isObject(boundary)) errors.push("configurationBoundary must be an object");
   else {
-    if (boundary.scope !== "GA4 Reports and Campaign DeepDive report surfaces") errors.push("invalid Reports scope");
+    if (boundary.scope !== "GA4 Reports tab and GA4 report delivery surfaces") errors.push("invalid Reports scope");
     for (const field of ["includedSurfaces", "sourceRules", "windowRules", "ownershipRules", "deliveryRules", "excludedSurfaces"]) {
       if (!Array.isArray(boundary[field]) || boundary[field].length === 0) errors.push(`empty boundary ${field}`);
     }

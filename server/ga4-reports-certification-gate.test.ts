@@ -16,9 +16,9 @@ const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
   deployedSha: status === "PRODUCTION_READY" ? sha : null,
   invalidationReason: status === "PRODUCTION_READY" ? null : "current exact-SHA evidence is incomplete",
   configurationBoundary: {
-    scope: "GA4 Reports and Campaign DeepDive report surfaces",
+    scope: "GA4 Reports tab and GA4 report delivery surfaces",
     includedSurfaces: ["Reports tab and server-generated report artifacts"],
-    excludedSurfaces: ["other connected-platform certification"],
+    excludedSurfaces: ["Campaign DeepDive and other connected-platform certification"],
     sourceRules: ["saved campaign source configuration"],
     windowRules: ["report-type time-window parity"],
     ownershipRules: ["campaign and platform access"],

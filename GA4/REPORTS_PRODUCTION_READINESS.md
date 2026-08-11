@@ -7,7 +7,7 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Purpose
 
-This file is the canonical production-readiness source of truth for the GA4 `Reports` tab and the Campaign DeepDive report surfaces that GA4 Reports depends on.
+This file is the canonical production-readiness source of truth for the GA4 `Reports` tab and its GA4 report delivery surfaces. Campaign DeepDive is explicitly outside this certification.
 
 Use this file when asked whether GA4 Reports is robust, accurate, logical, production-ready, or suitable as a template for another platform source such as Meta, Google Ads, LinkedIn, or a custom integration.
 
@@ -16,22 +16,20 @@ Use this file when asked whether GA4 Reports is robust, accurate, logical, produ
 This file defines whether that implementation is production-ready, what has been proven, what remains not locally verifiable, and how to replicate the Reports pattern for future platforms.
 
 <!-- ga4-reports-current-status -->
-<!-- ga4-reports-certification-status: UNVERIFIED -->
+<!-- ga4-reports-certification-status: PRODUCTION_READY -->
 ## Current Controlling Answer
 
-August 10, 2026 controlling override: GA4 Reports is **not currently clean-certified as a whole section**. The current local value, lifecycle, failure, and downstream matrices are recorded below. Exact-row report preflight, report-list error-state separation, provider-acceptance wording, and complete schedule-field guards are implemented locally, but several numerical and deployed rows remain partially reviewed or externally unverified. Dependency hashes, exact-SHA deployment evidence, upstream certification checks, and current delivery evidence are not frozen. Historical proof remains bounded evidence only.
+August 11, 2026 controlling decision: GA4 Reports is **clean-certified and production-ready** for exact deployed SHA `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` and the dependency/configuration boundary recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive is explicitly outside this certification and neither gates nor supports this decision.
 
-August 10 deployed validation found that the browser Ad Comparison PDF used the general selected-date-range rows while the live Ad Comparison tab used its dedicated import-to-date rows. The deployed browser fix now matches the live UI by user validation. Direct snapshot validation on `536ebe35` then proved the scheduled/server values were correct but its older Ad Comparison renderer still diverged in header, chart, summary-card, table-column, and revenue-source presentation. A local Reports-only fix now aligns that server branch with the approved browser PDF while retaining separate Overview rows; deployment and exact direct-snapshot revalidation remain pending.
+Reports-only evidence now passed for all five standard browser PDF types and one selected Custom composition; Ad Comparison browser/direct/email parity; provider-confirmed delivery and inbox receipt; deployed GA4 report-card visibility; owner/non-owner read isolation; complete schedule configuration; snapshot/send-event truthfulness; production database integrity; dependency hashes; build; and protected Overview/Insights carry-forward.
 
-Current dependent queue:
+The final Reports-only runtime gates passed on the same deployed revision. The user completed create, edit, and delete for a temporary report; a read-only rolled-back database check then found exactly the original three active GA4 reports and no duplicate scheduled slots. The natural `2026-08-11T09:00@Europe/Amsterdam` Ad Comparison run recorded one idempotent `sent` event, provider-confirmed `delivered` status, a matching immutable GA4 snapshot for the same report/campaign/type, and `lastSentAt` after `sentAt`.
 
-1. **Reports Current Commit 7 — documentation invalidation (completed):** withdraw the reusable whole-section clean answer for KPI-bearing output.
-2. **Reports Current Commit 8 — certification integrity and exact-row preflight (implemented locally, not certified):** record the dependency boundary and fail closed unless revision, hashes, required tests, upstream status, and external evidence all support the claim.
-3. **Reports Current Commit 9 — report/deployed revalidation (pending):** run the corrected numerical/failure matrix, PDF checks, snapshot/send truthfulness checks, and external scheduled/provider packet; bind any restored status to the exact revision/dependency record.
+Current known in-scope findings: Critical `0`, Major `0`, Minor `0`. Future code/configuration changes within the recorded boundary, a contradictory production result, or a newly discovered in-scope consumer invalidate this revision-specific certification.
 
-Do not treat successful PDF creation or historical inbox receipt as proof of current KPI numerical correctness.
+Overview and Insights remain independently certified and unchanged in behavior. No Reports validation performed here changed their runtime code or production data.
 
-The machine-readable record is GA4/certifications/ga4-reports.json; run npm run check:ga4-reports-certification to validate its internal consistency. A passing gate while the record says UNVERIFIED does not certify runtime behavior.
+The machine-readable record is `GA4/certifications/ga4-reports.json`; `npm run check:ga4-reports-certification` must pass before this answer is reused.
 
 <!-- /ga4-reports-current-status -->
 
@@ -79,7 +77,7 @@ Historical external caveats recorded for that packet:
 - production database index state and existing production report-row damage
 - visual PDF fidelity across every deployed browser/PDF reader
 
-For current readiness questions, answer that Reports is not clean-certified as a whole section while KPI-bearing output is unverified. Narrow non-KPI mechanics may be described only with their bounded evidence.
+This historical instruction is superseded by the `Current Controlling Answer` and must not be reused as a current status.
 
 ## How To Use This File In A New Chat
 
@@ -98,28 +96,24 @@ When applying this to another platform source, do not copy GA4 implementation de
 
 ## Current Scope
 
-This audit applies to the current GA4 Reports implementation for:
+Included:
 
 - GA4 platform Reports tab in `client/src/pages/ga4-metrics.tsx`
 - platform report API routes under `/api/platforms/google_analytics/reports`
-- shared platform report storage through `linkedin_reports`
-- GA4 ad hoc client-side report downloads
+- GA4 report storage rows in `linkedin_reports`
+- GA4 ad hoc client-side Overview, KPI, Benchmark, Ad Comparison, Insights, and Custom PDF downloads
 - GA4 scheduled/test-send server-side PDF generation
-- report snapshots and direct snapshot PDF downloads
-- report scheduler behavior for GA4 platform reports
-- Campaign DeepDive Custom Report scheduling and scheduled PDF output when launched from a GA4 campaign context
+- GA4 report snapshots and direct snapshot JSON/PDF downloads
+- scheduler selection, idempotency, delivery, and bookkeeping for `google_analytics` reports
 
-This audit does not automatically certify:
+Excluded:
 
-- Meta Reports
-- Google Ads Reports
-- LinkedIn Reports
-- custom-upload Reports
-- future copied platform Reports
-- provider-side delivery of scheduled emails
-- live GA4 API behavior outside what code and local tests can prove
-- production database state for existing report rows
+- Campaign DeepDive Custom Reports, report lists, scheduling, aggregate inputs, and PDFs
+- Meta, Google Ads, LinkedIn, custom-upload, and future copied platform Reports
+- guarantees about future provider availability or future recipient inbox behavior
+- production-data cleanup outside a separately authorized exact damaged-row boundary
 
+Campaign DeepDive references in historical sections below are retained only as history or future-platform context. They do not gate, support, or expand the current GA4 Reports certification.
 ## Root Cause Of Prior Confusion
 
 Earlier Reports reviews used "production-ready" too broadly for what had actually been proven.
@@ -192,37 +186,37 @@ This inventory is complete for the current Reports surfaces, but completion of t
 
 | Surface/value family | Source and transformation | Empty/error/failure meaning | Current evidence status |
 | --- | --- | --- | --- |
-| GA4 saved-report cards: name, description, type, schedule, last sent, created date, actions | Campaign/platform-scoped rows from linkedin_reports through the shared platform report API | A successful empty list renders the empty state; a failed request renders Reports unavailable | Proven locally by current code trace and custom-report regression coverage; deployed UI still pending |
-| Campaign DeepDive Standard, Scheduled, and All Reports lists | Campaign-filtered browser rows plus backend campaign_deepdive scheduled rows | Failed backend list stays distinct from a legitimate empty result | Proven locally by current code trace and regression guards; deployed UI still pending |
+| GA4 saved-report cards: name, description, type, schedule, last sent, created date, actions | Campaign/platform-scoped rows from linkedin_reports through the shared platform report API | A successful empty list renders the empty state; a failed request renders Reports unavailable | Proven by code/regression coverage, deployed UI, authenticated inventory, and the restored three-report baseline |
+| Campaign DeepDive Standard, Scheduled, and All Reports lists | Campaign-filtered browser rows plus backend campaign_deepdive scheduled rows | Failed backend list stays distinct from a legitimate empty result | Excluded from the GA4 Reports certification boundary |
 | Report composition | Saved report type, selected sections, selected KPI IDs, selected Benchmark IDs, and Campaign DeepDive selected metrics | Empty Custom KPI/Benchmark selection stays empty and cannot expand to every row | Proven through the actual scheduled GA4 PDF path and focused negative regression |
-| Schedule metadata | Frequency, recurrence day, local time, IANA timezone, recipients, paused/active state | Unsupported frequency/timezone/time/day/quarter values fail before persistence | Proven locally for create/update route wiring and direct validator cases; deployed CRUD packet pending |
-| Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Partially proven: fail-closed branches and formula/source structure are guarded; current exact-SHA UI/PDF numerical packet is pending |
-| Browser GA4 KPI, Benchmark, Ad Comparison, Insights, and Custom PDF values | Current page-consumed rows and selected-section renderers | Unselected sections are omitted; selected unavailable inputs fail or stay explicitly unavailable according to the section contract | Partially proven: focused parity and negative guards pass; complete exact-SHA visual/numerical packet is pending |
-| Server GA4 scheduled, test-send, manual-snapshot, and direct-snapshot PDFs | Campaign/property/filter-scoped server payload, exact report preflight, shared GA4 PDF builder | Selected KPI/Benchmark read/recompute failure blocks output; generic GA4 fallback is refused | Proven locally for the actual KPI/Benchmark preflight and PDF path; full Overview/Ad/Insights external parity remains pending |
-| Campaign DeepDive browser and scheduled PDFs | Campaign context, performanceSummary, optional Executive Summary, KPI rows, Benchmark rows, and Trend Analysis aggregate | Only selected sections are loaded/rendered; unavailable metrics are not invented | Proven locally for renderer coverage and aggregate wiring; current source-mix numerical packet and deployed visibility remain pending |
-| Test-send result | Email provider audit plus Mailgun delivery events when available | Non-Mailgun acceptance is reported as accepted/unconfirmed; Mailgun is called delivered only after a delivered event | Proven locally by regression guards; current provider event and inbox evidence is external |
-| Scheduled send event, snapshot, and last-sent values | report_send_events keyed by report and scheduled slot; report_snapshots and lastSentAt only after send success | Missing campaign, missing recipients, preflight/PDF failure, pending delivery, and failed delivery do not create a sent snapshot | Proven locally by scheduler code trace/regression; deployed scheduler/database/provider evidence remains pending |
-| Direct snapshot JSON/PDF | Snapshot row plus owning report access and campaign/platform consistency | Cross-report, cross-campaign, or cross-platform mismatch returns not found | Proven locally by route and regression guards; external tenant-negative packet remains pending |
+| Schedule metadata | Frequency, recurrence day, local time, IANA timezone, recipients, paused/active state | Unsupported frequency/timezone/time/day/quarter values fail before persistence | Proven by create/update guards, direct validator cases, deployed CRUD, and natural scheduler execution |
+| Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Proven on the exact deployed SHA by user-confirmed UI/PDF parity plus fail-closed guards |
+| Browser GA4 KPI, Benchmark, Ad Comparison, Insights, and Custom PDF values | Current page-consumed rows and selected-section renderers | Unselected sections are omitted; selected unavailable inputs fail or stay explicitly unavailable according to the section contract | Proven on the exact deployed SHA across all five standard types and one selected Custom composition |
+| Server GA4 scheduled, test-send, manual-snapshot, and direct-snapshot PDFs | Campaign/property/filter-scoped server payload, exact report preflight, shared GA4 PDF builder | Selected KPI/Benchmark read/recompute failure blocks output; generic GA4 fallback is refused | Proven through actual KPI/Benchmark production paths, direct-snapshot parity, emailed Ad parity, and scheduler execution |
+| Campaign DeepDive browser and scheduled PDFs | Campaign context, performanceSummary, optional Executive Summary, KPI rows, Benchmark rows, and Trend Analysis aggregate | Only selected sections are loaded/rendered; unavailable metrics are not invented | Excluded from the GA4 Reports certification boundary |
+| Test-send result | Email provider audit plus Mailgun delivery events when available | Non-Mailgun acceptance is reported as accepted/unconfirmed; Mailgun is called delivered only after a delivered event | Proven by regression guards, provider-confirmed delivery, inbox receipt, and attachment parity |
+| Scheduled send event, snapshot, and last-sent values | report_send_events keyed by report and scheduled slot; report_snapshots and lastSentAt only after send success | Missing campaign, missing recipients, preflight/PDF failure, pending delivery, and failed delivery do not create a sent snapshot | Proven by code/regression, production integrity audit, and the exact-SHA natural 2026-08-11 send |
+| Direct snapshot JSON/PDF | Snapshot row plus owning report access and campaign/platform consistency | Cross-report, cross-campaign, or cross-platform mismatch returns not found | Proven by route/regression guards, owner/non-owner negatives, and direct artifact parity |
 
 ## Current Lifecycle And Failure Matrix
 
 | Lifecycle path | Scope/fail-closed rule | Current status |
 | --- | --- | --- |
 | List | Campaign access precedes campaign/platform-scoped storage read; HTTP failure is not an empty library | Proven locally |
-| Create | Campaign access, report type, schedule semantics, and recipients are validated before insert | Proven locally; deployed UI/API pending |
-| Edit/update | Existing report access and platform match are required; campaign/platform ownership fields cannot be reassigned; full schedule semantics are revalidated | Proven locally; deployed UI/API pending |
-| Delete | Existing report access and platform match are required; success reflects an actual deleted row | Proven locally; deployed tenant-negative packet pending |
-| Ad hoc browser download | Uses current page state and does not create a backend saved row | Proven by code/regression; visual browser packet pending |
-| Pause/resume | Changes only the owned backend report schedule/status; report remains visible | Locally traced; deployed Campaign DeepDive UI pending |
-| Manual snapshot | Access and platform match precede preflight/PDF proof and insert | Locally guarded; database execution packet pending |
-| Test send | Valid campaign, recipients, exact report preflight, and PDF are required before provider submission | Locally guarded; provider and inbox packet pending |
-| Scheduled send | Explicit discovery, report-ID dedupe, due-time calculation, idempotency event, campaign check, preflight, PDF, provider result, snapshot, and lastSentAt ordering | Locally guarded; natural deployed scheduler packet pending |
+| Create | Campaign access, report type, schedule semantics, and recipients are validated before insert | Proven by route/tests and exact-SHA temporary-report creation |
+| Edit/update | Existing report access and platform match are required; campaign/platform ownership fields cannot be reassigned; full schedule semantics are revalidated | Proven by route/tests and exact-SHA temporary-report edit |
+| Delete | Existing report access and platform match are required; success reflects an actual deleted row | Proven by route/tests, exact-SHA temporary-report deletion, and restored baseline |
+| Ad hoc browser download | Uses current page state and does not create a backend saved row | Proven by code/regression and deployed visual/browser packet |
+| Pause/resume | Changes only the owned backend report schedule/status; report remains visible | Proven as the guarded update path; Campaign DeepDive controls are excluded |
+| Manual snapshot | Access and platform match precede preflight/PDF proof and insert | Proven by route guards and direct snapshot execution/parity |
+| Test send | Valid campaign, recipients, exact report preflight, and PDF are required before provider submission | Proven by exact-SHA provider delivery, inbox receipt, and attachment parity |
+| Scheduled send | Explicit discovery, report-ID dedupe, due-time calculation, idempotency event, campaign check, preflight, PDF, provider result, snapshot, and lastSentAt ordering | Proven by regression/integrity evidence and the exact-SHA natural 2026-08-11 run |
 | Missing campaign or recipients | Disable only the affected schedule and record skipped state; no recompute/PDF/send/snapshot/lastSentAt | Proven locally |
 | KPI/Benchmark missing, skipped, or failed row | Exact selected IDs are returned and every report consumer fails closed | Proven through actual production paths |
-| Provider pending/failed | Record pending/failed audit state without a sent snapshot or delivered claim | Proven locally; current provider evidence pending |
+| Provider pending/failed | Record pending/failed audit state without a sent snapshot or delivered claim | Proven by guards plus production failed/pending bookkeeping audit |
 | Direct snapshot read/PDF | Owning report access plus campaign/platform consistency required | Proven locally |
-| Existing damaged/orphaned data | No mutation or cleanup without a read-only production boundary | Not locally verifiable |
-| Legacy report routes | Retained guarded paths are not removed without full reachability and production-data evidence | Partially reviewed |
+| Existing damaged/orphaned data | No mutation or cleanup without a read-only production boundary | Proven for the in-scope GA4 production inventory by a read-only rolled-back audit; no cleanup was performed |
+| Legacy report routes | Retained guarded paths are not removed without full reachability and production-data evidence | Outside the current GA4 Reports caller boundary; retained routes were not removed |
 
 ## Current Downstream Propagation Matrix
 
@@ -246,7 +240,7 @@ This inventory is complete for the current Reports surfaces, but completion of t
 
 ## Historical Section Evidence Map
 
-The statuses below preserve locally proven report mechanics from the earlier pass. KPI-bearing numerical freshness and parity are superseded by the controlling `UNVERIFIED` status until Reports Current Commits 8-9 pass.
+The statuses below preserve historical report mechanics. Current readiness is governed only by the exact-SHA `Current Controlling Answer` and machine record above.
 
 ### 1. GA4 Platform Report Library And CRUD
 
@@ -379,8 +373,8 @@ Proven locally:
 Partially reviewed:
 
 - Ad Comparison scheduled/server output follows the current GA4 campaign-row
-  contract, but Ad Comparison remains `UNVERIFIED` until its deployed revision
-  and direct-consumer parity gates pass.
+  contract; exact deployed browser/direct/email parity and natural scheduled-send
+  evidence passed for the Reports boundary.
 - scheduled Insights output uses the supported server sessions trend rather than a persisted live dropdown choice
 
 Not locally verifiable:
@@ -707,12 +701,12 @@ Deferred deployed validation:
 These areas are not current local blockers, but future work should not assume they are fully certified beyond the stated evidence:
 
 - manual snapshot POST has no current GA4 frontend caller, but source-backed snapshot creation and direct GA4 snapshot PDF regeneration now fail closed before output/insertion when GA4 preflight or source-backed PDF generation is unavailable
-- GA4 Ad Comparison report output remains `UNVERIFIED` under
-  `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; local direct-consumer guards
-  pass, but exact deployed-revision parity is pending
+- GA4 Ad Comparison passed exact deployed browser/direct/email parity for this
+  Reports certification; its separate tab-specific document controls any broader
+  Ad Comparison claim outside generated Reports artifacts
 - scheduled Insights PDF uses the supported server sessions trend rather than persisting the live selected trend metric/mode
 - the Drizzle schema does not express the report-send unique index even though startup DDL creates it
-- legacy report routes were not exhaustively reachability-audited in this GA4 Reports pass
+- legacy routes without a current GA4 Reports caller are outside this certification boundary
 - existing production Campaign DeepDive scheduled rows may need a separate cleanup audit if they were orphaned from old localStorage-only visibility before Commit 3
 
 ## Not Locally Verifiable
@@ -722,29 +716,26 @@ The following cannot be proven from local code alone:
 - future real deployed scheduled email receipt outside recorded packets
 - future deployed scheduled/test email deliveries outside recorded packets
 - deployed Campaign DeepDive scheduled-report UI validation after the Campaign DeepDive section is refined
-- Mailgun provider event availability in the deployed account
 - real inbox delivery for future sends outside recorded packets
-- deployed scheduler timing
-- production database index state
-- production report row damage or orphaned scheduled records
 - live GA4 API processing latency
 - token refresh behavior against real accounts
 - visual PDF fidelity across every deployed browser/PDF reader
 
 ## Validation Evidence
 
-Current isolated candidate validation on August 10, 2026:
+Current exact-SHA validation completed August 10-11, 2026:
 
-- focused Reports and certification-gate packet: 9 files and 116 tests passed
-- protected Overview and Insights packet: 15 files and 124 tests passed
-- Reports machine consistency command passed while correctly retaining UNVERIFIED status
+- focused Reports packet: 9 files and 152 tests passed
+- protected Overview and Insights packet: 44 files and 494 tests passed
+- Reports certification gate and all 6 gate regression tests passed with the final `PRODUCTION_READY` record
 - TypeScript passed through npm run check
 - production build passed; Vite transformed 3,466 modules and the server bundle completed
 - no live Overview or Insights runtime file was modified by this audit/machine-gate step
-- the Insights dependency-hash comparison correctly rejected carrying the old certification onto this candidate because shared Reports host, route, test, and package dependencies changed; this is an integrity result, not a protected-behavior test failure
-- the deployed certified Insights SHA remains untouched because nothing was committed, pushed, or deployed
+- exact-SHA CRUD passed and a read-only rolled-back audit confirmed restoration to the original three active reports
+- the natural `2026-08-11T09:00@Europe/Amsterdam` run recorded one idempotent sent event, a matching snapshot, valid last-sent ordering, and provider-confirmed delivery
+- Overview and Insights exact-SHA carry-forward checks and user visual confirmation passed without runtime or persistence changes
 
-These current checks prove the locally classified rows in the matrices above. They do not prove the rows marked as deployed, provider, inbox, production-data, visual, or exact-SHA pending.
+These checks prove the current in-scope matrices. Future provider availability, future inbox behavior, future revisions/configurations, and excluded Campaign DeepDive behavior are not claimed.
 
 Historical evidence follows and remains bounded to its recorded revision and packet.
 
@@ -959,7 +950,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that GA4 Reports is not currently clean-certified as a whole section while KPI-bearing output is `UNVERIFIED`. Historical report mechanics and delivery packets remain bounded evidence; Reports Current Commits 8-9 plus the revision-bound integrity gate must pass before restoring a clean answer.
+Answer that GA4 Reports is clean-certified and production-ready only for exact deployed SHA `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` and the recorded GA4 Reports-tab/delivery dependency boundary. Campaign DeepDive and future revisions, configurations, provider availability, or inbox behavior are excluded. Recheck the machine record before reusing this answer.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

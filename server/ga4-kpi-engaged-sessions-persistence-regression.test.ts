@@ -29,9 +29,11 @@ describe("GA4 KPI exact engaged-session persistence", () => {
 
     expect(analytics).toContain("{ name: 'engagedSessions' }");
     expect(analytics).toContain("const engagedSessions = Number.parseInt(String(row.metricValues[5]?.value || '0'), 10) || 0;");
-    expect(scheduler).toContain("engagedSessions: r?.engagedSessions == null ? null");
+    expect(scheduler).toContain("const normalizedRows = rows.map((r: any) => normalizeGA4InsightsDailyMetricValues({");
+    expect(scheduler).toContain("engagedSessions: r?.engagedSessions,");
     expect(jobs).toContain("engagedSessions: r?.engagedSessions == null ? null");
-    expect(routes).toContain("engagedSessions: r?.engagedSessions == null ? null");
+    expect(routes).toContain("const normalized = normalizeGA4InsightsDailyMetricValues(r);");
+    expect(routes).toContain("...normalized,");
     expect(routes).toContain("engagedSessions: engagedSessions");
     expect(routes).toContain("engagedSessions: d.engagedSessions");
     expect(routes).toContain("addDerivedGA4EngagedSessions(row || {}).engagedSessions");

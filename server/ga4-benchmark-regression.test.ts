@@ -104,7 +104,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(reportSection).toContain("const consumerState = getBenchmarkConsumerState(b);");
     expect(reportSection).toContain("Last-good value (not verified)");
     expect(insightsSection).toContain("const unverifiedBenchmarks");
-    expect(insightsSection).toContain("No Benchmark performance conclusion or breach is generated from this value.");
+    expect(insightsSection).toContain("No KPI or Benchmark performance conclusion is generated from these values.");
   });
 
   it("routes GA4 benchmark notifications to ga4-metrics benchmarks", () => {

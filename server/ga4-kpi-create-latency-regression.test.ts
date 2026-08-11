@@ -53,7 +53,7 @@ describe("GA4 KPI create latency regression", () => {
     expect(jobs).toContain("const [campaignKpisResult, campaignBenchmarksResult, connectionsResult] = await Promise.allSettled([");
     expect(jobs).toContain("const [reportingRows, toDateRows] = await Promise.all([");
     expect(jobs).toContain("const financialInputsPromise = Promise.allSettled([");
-    expect(jobs).toContain("const [importedRevenueResult, spendTotalResult] = await financialInputsPromise;");
+    expect(jobs).toContain("const [importedRevenueResult, spendTotalResult, revenueSourcesResult, spendSourcesResult] = await financialInputsPromise;");
     expect(jobs).toContain("providerFinancialCandidate");
   });
 });

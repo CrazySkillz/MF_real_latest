@@ -532,36 +532,44 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
         const valueNum = computeKpiValue(metricOrName, metricInputs);
         try {
-          // A row is reported updated only after its current value and applicable daily progress write succeed.
-          const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
-          if (!updated) throw new Error("KPI current-value update did not change a row");
-
           const existing = await storage.getKPIProgress(kpiId);
           const existingPts = filterGA4InsightsHistoryByScope(Array.isArray(existing) ? existing : [], historyScopeMarker)
             .map((p: any) => ({
+              id: String(p?.id || ""),
               value: Number(p?.value || 0) || 0,
               recordedAt: p?.recordedAt ? new Date(p.recordedAt) : new Date(0),
             }))
             .filter((p) => Number.isFinite(p.recordedAt.getTime()))
             .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
 
-          const already = existingPts.some((p) => isoDateUTC(p.recordedAt) === date);
-          if (hasExactDailyRow && !already) {
-            const prev = existingPts.length > 0 ? existingPts[0].value : null;
+          const sameDatePts = existingPts.filter((p) => isoDateUTC(p.recordedAt) === date);
+          if (hasExactDailyRow && (sameDatePts.length > 1 || (sameDatePts.length === 1 && !sameDatePts[0].id))) {
+            throw new Error("KPI same-date progress is ambiguous");
+          }
+          const otherDatePts = existingPts.filter((p) => isoDateUTC(p.recordedAt) !== date);
+          const progressData = hasExactDailyRow ? (() => {
+            const prev = otherDatePts.length > 0 ? otherDatePts[0].value : null;
             const newPoint = { value: valueNum, recordedAt };
-            const rolling7 = computeRollingAverage(existingPts, 7, newPoint);
-            const rolling30 = computeRollingAverage(existingPts, 30, newPoint);
-            const trendDirection = computeTrendDirection(prev, valueNum);
-
-            await storage.recordKPIProgress({
+            return {
               kpiId,
               value: String(round2(valueNum)),
-              rollingAverage7d: String(round2(rolling7)),
-              rollingAverage30d: String(round2(rolling30)),
-              trendDirection,
+              rollingAverage7d: String(round2(computeRollingAverage(otherDatePts, 7, newPoint))),
+              rollingAverage30d: String(round2(computeRollingAverage(otherDatePts, 30, newPoint))),
+              trendDirection: computeTrendDirection(prev, valueNum),
               recordedAt,
               notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
-            } as any);
+            };
+          })() : null;
+
+          // A row is reported updated only after its current value and applicable daily progress write succeed.
+          const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
+          if (!updated) throw new Error("KPI current-value update did not change a row");
+
+          if (progressData && sameDatePts.length === 1) {
+            const progress = await storage.updateKPIProgress(sameDatePts[0].id, progressData as any);
+            if (!progress) throw new Error("KPI same-date progress update did not change a row");
+          } else if (progressData) {
+            await storage.recordKPIProgress(progressData as any);
             kpisRecorded += 1;
           }
           kpiIdsUpdated.add(kpiId);

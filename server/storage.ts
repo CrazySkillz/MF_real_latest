@@ -386,6 +386,7 @@ export interface IStorage {
 
   // KPI Progress
   getKPIProgress(kpiId: string): Promise<KPIProgress[]>;
+  updateKPIProgress(id: string, progress: Partial<InsertKPIProgress> & { recordedAt?: Date }): Promise<KPIProgress | undefined>;
   getLatestKPIPeriod(kpiId: string): Promise<KPIPeriod | null>;
   recordKPIProgress(progress: InsertKPIProgress): Promise<KPIProgress>;
 
@@ -4387,6 +4388,15 @@ export class DatabaseStorage implements IStorage {
 
   async getKPIProgress(kpiId: string): Promise<KPIProgress[]> {
     return db.select().from(kpiProgress).where(eq(kpiProgress.kpiId, kpiId)).orderBy(desc(kpiProgress.recordedAt));
+  }
+
+  async updateKPIProgress(id: string, progressData: Partial<InsertKPIProgress> & { recordedAt?: Date }): Promise<KPIProgress | undefined> {
+    const [progress] = await db
+      .update(kpiProgress)
+      .set(progressData)
+      .where(eq(kpiProgress.id, id))
+      .returning();
+    return progress;
   }
 
   async getLatestKPIPeriod(kpiId: string): Promise<any> {

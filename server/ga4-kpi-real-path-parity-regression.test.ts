@@ -22,6 +22,7 @@ const storageMock = vi.hoisted(() => ({
   getPlatformKPIs: vi.fn(),
   updateKPI: vi.fn(),
   getKPIProgress: vi.fn(),
+  updateKPIProgress: vi.fn(),
   recordKPIProgress: vi.fn(),
   getPlatformBenchmarks: vi.fn(),
   updateBenchmark: vi.fn(),
@@ -86,6 +87,7 @@ vi.mock("jspdf", () => ({
 }));
 
 import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
+import { buildGA4InsightsHistoryScopeMarker } from "../shared/ga4-insights";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { buildGA4ScheduledPdfAttachment } from "./ga4-scheduled-report-pdf";
 import { preflightGA4ReportKPIConsumers, buildPdfAttachmentForReport } from "./report-scheduler";
@@ -241,6 +243,7 @@ function setAuthoritativeFixture() {
     return row;
   });
   storageMock.getKPIProgress.mockResolvedValue([]);
+  storageMock.updateKPIProgress.mockResolvedValue({});
   storageMock.recordKPIProgress.mockResolvedValue({});
   storageMock.getPlatformBenchmarks.mockImplementation(async () => benchmarkRows);
   storageMock.updateBenchmark.mockImplementation(async (id: string, update: any) => {
@@ -318,6 +321,82 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(body.map((row: any) => [row.metric, Number(row.currentValue)])).toEqual(
       kpiRows.map((row) => [row.metric, Number(expectedByMetric[row.metric])]),
     );
+  });
+
+  it("updates the exact scoped same-date KPI progress row when its source total changes", async () => {
+    const sessionsKpi = kpiRows.find((row) => row.metric === "sessions")!;
+    const marker = buildGA4InsightsHistoryScopeMarker(
+      connection.propertyId,
+      campaign.ga4CampaignFilter,
+      campaign.reportingTimeZone,
+      campaign.currency,
+    );
+    const progressRows = [
+      {
+        id: "progress-sessions-current",
+        kpiId: sessionsKpi.id,
+        value: "90",
+        rollingAverage7d: "70",
+        rollingAverage30d: "70",
+        trendDirection: "up",
+        recordedAt: new Date("2026-07-31T23:59:59.000Z"),
+        notes: `auto:ga4_daily:2026-07-31;${marker}`,
+      },
+      {
+        id: "progress-sessions-previous",
+        kpiId: sessionsKpi.id,
+        value: "50",
+        rollingAverage7d: "50",
+        rollingAverage30d: "50",
+        trendDirection: "neutral",
+        recordedAt: new Date("2026-07-30T23:59:59.000Z"),
+        notes: `auto:ga4_daily:2026-07-30;${marker}`,
+      },
+    ];
+    storageMock.getKPIProgress.mockImplementation(async (kpiId: string) =>
+      kpiId === sessionsKpi.id ? progressRows : [],
+    );
+    storageMock.updateKPIProgress.mockImplementation(async (id: string, update: any) => {
+      const row = progressRows.find((item) => item.id === id);
+      if (!row) return undefined;
+      Object.assign(row, update);
+      return row;
+    });
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    expect(result.kpiIdsFailed).toEqual([]);
+    expect(Number(sessionsKpi.currentValue)).toBe(100);
+    expect(storageMock.updateKPIProgress).toHaveBeenCalledWith("progress-sessions-current", expect.objectContaining({
+      value: "100",
+      rollingAverage7d: "75",
+      rollingAverage30d: "75",
+      trendDirection: "up",
+      recordedAt: new Date("2026-07-31T23:59:59.000Z"),
+      notes: `auto:ga4_daily:2026-07-31;${marker}`,
+    }));
+    expect(storageMock.recordKPIProgress).not.toHaveBeenCalledWith(expect.objectContaining({ kpiId: sessionsKpi.id }));
+  });
+
+  it("fails a KPI closed when scoped same-date progress is ambiguous", async () => {
+    const sessionsKpi = kpiRows.find((row) => row.metric === "sessions")!;
+    const marker = buildGA4InsightsHistoryScopeMarker(
+      connection.propertyId,
+      campaign.ga4CampaignFilter,
+      campaign.reportingTimeZone,
+      campaign.currency,
+    );
+    storageMock.getKPIProgress.mockImplementation(async (kpiId: string) => kpiId === sessionsKpi.id ? [
+      { id: "duplicate-a", value: "90", recordedAt: new Date("2026-07-31T23:59:59.000Z"), notes: marker },
+      { id: "duplicate-b", value: "91", recordedAt: new Date("2026-07-31T23:59:59.000Z"), notes: marker },
+    ] : []);
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
+
+    expect(result.kpiIdsFailed).toContain(sessionsKpi.id);
+    expect(result.kpiIdsUpdated).not.toContain(sessionsKpi.id);
+    expect(storageMock.updateKPI).not.toHaveBeenCalledWith(sessionsKpi.id, expect.anything());
+    expect(storageMock.updateKPIProgress).not.toHaveBeenCalled();
   });
 
   it("lists only campaigns whose campaign owner and client owner both match the actor", async () => {

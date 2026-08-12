@@ -5,19 +5,19 @@
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Status: **PRODUCTION_READY**
+Status: **PRODUCTION_READY** for the exact recorded boundary.
 
-Certified and deployed implementation SHA: `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`.
+Certified deployed implementation SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`.
 
-Clean certification date: `2026-08-10` (`Europe/Amsterdam`).
+Final re-verification date: `2026-08-12` (`Europe/Amsterdam`).
 
 Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
 Open findings: Critical `0`; Major `0`; Minor `0`.
 
-Decision: **PRODUCTION_READY** for the exact live-tab, dependency, and non-secret configuration boundary below. The corrected Daily chart renders missing calendar dates as gaps, all required local and exact-SHA production gates passed, and no Critical or Major finding remains. Reports-owned behavior remains outside this certification.
+Decision: the live GA4 Insights tab is clean-certified and production-ready for the exact SHA, configuration, and dependency boundary recorded here. Reports-owned behavior remains outside this certification.
 
-August 10, 2026 exact-SHA carry-forward: all six changed file-level dependencies were reviewed and are limited to Reports branches, Reports regression coverage, and the Reports certification command; no live Insights calculation, query, renderer, scheduler, source, or persistence behavior changed. The complete protected boundary passed 44 files / 494 tests. The authenticated production validator passed on deployed `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`, including owner UI/API parity, the sparse Daily chart gaps, tenant isolation, signed OAuth configuration, USD/Amsterdam/property/filter scope, and unchanged campaign persistence. Its database transaction was read-only and rolled back; the temporary Clerk-only isolation user was deleted and all created sessions were revoked. The deterministic scheduler evidence carries forward because its runtime/configuration dependencies did not change.
+August 12, 2026 exact-SHA re-verification: the KPI same-date history correction intentionally affects the history consumed by Insights, so this connection was not assumed unchanged. The authenticated production validator passed on deployed `ee22f0e470826f1cb247115497c9a15229d0142d`: all Executive Financials, Data Summary, channel, Daily/7d/30d/Monthly Trends, tracker, and visible finding values matched the scoped APIs; Daily rendered 111, 108, 106, and 103 on the exact imported dates with gaps elsewhere; tenant isolation failed closed; and campaign persistence remained unchanged. The campaign-scoped manual scheduler run succeeded with all 12 KPIs and both Benchmarks updated and none skipped/failed. The complete protected boundary passed 44 files / 496 tests; TypeScript and the production build passed. A natural timer firing on this SHA is not claimed.
 
 <!-- /ga4-insights-current-status -->
 
@@ -360,10 +360,10 @@ Existing damaged-data cleanup is not authorized by this audit. No cleanup is req
 
 ## Current And Historical Local Evidence
 
-Current controlling local results for certified runtime `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` and evidence guard `11c65b9136b56c76c65794a2e0bc44cf4342916c`:
+Current controlling local results for exact deployed runtime `ee22f0e470826f1cb247115497c9a15229d0142d`:
 
-- final focused certification-gate and live-validator packet: 2 files, 22 tests passed
-- complete Insights/shared dependency boundary: 44 files, 494 tests passed
+- final certification-gate packet: 1 file, 10 tests passed; the standalone checker passed
+- complete Insights/shared dependency boundary: 44 files, 496 tests passed
 - `npm run check`: passed
 - `npm run build`: passed, 3,466 client modules and bundled production server
 - `npm run check:ga4-insights-certification`: passed on the final `PRODUCTION_READY` machine record

@@ -13,9 +13,58 @@
     "ga4-ad-comparison": {
       "blocking": false,
       "reason": "GA4 Ad Comparison has a separate certification boundary from the GA4 KPI tab."
+    },
+    "external-certifications": {
+      "blocking": false,
+      "reason": "HubSpot section certification documentation has a separate invalidated boundary from the GA4 KPI tab."
     }
   },
   "tests": [
+    {
+      "group": "google-ads",
+      "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+      "fullName": "GA4 Google Ads scheduler materialization uses the actual provider facts, exact selected scope, completed day, and downstream recompute"
+    },
+    {
+      "group": "google-ads",
+      "file": "server/google-ads-production-regression.test.ts",
+      "fullName": "Google Ads production readiness regression guard preserves selected Google Ads campaign filtering across UI, API, aggregate, scheduler, and snapshots"
+    },
+    {
+      "group": "google-ads",
+      "file": "server/google-ads-production-regression.test.ts",
+      "fullName": "Google Ads production readiness regression guard keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source"
+    },
+    {
+      "group": "google-ads",
+      "file": "server/google-ads-production-regression.test.ts",
+      "fullName": "Google Ads production readiness regression guard routes GA4 Overview Google Ads spend through production OAuth customer selection and provider refresh"
+    },
+    {
+      "group": "external-certifications",
+      "file": "server/hubspot-h10d-certification-doc.test.ts",
+      "fullName": "HubSpot current certification invalidation documentation records one controlling UNVERIFIED status while retaining H10d as history"
+    },
+    {
+      "group": "external-certifications",
+      "file": "server/hubspot-h10d-certification-doc.test.ts",
+      "fullName": "HubSpot current certification invalidation documentation keeps GA4 entry points aligned to the current invalidated status"
+    },
+    {
+      "group": "google-ads",
+      "file": "server/source-safety-regression.test.ts",
+      "fullName": "source safety regression guards ad-platform spend routes preserve source identity for Meta and Google Ads edits"
+    },
+    {
+      "group": "google-ads",
+      "file": "server/source-safety-regression.test.ts",
+      "fullName": "source safety regression guards Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted"
+    },
+    {
+      "group": "google-ads",
+      "file": "server/source-safety-regression.test.ts",
+      "fullName": "source safety regression guards Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections"
+    },
     {
       "group": "ga4-ad-comparison",
       "file": "server/ga4-ad-comparison-certification-gate.test.ts",

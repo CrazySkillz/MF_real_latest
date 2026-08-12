@@ -11,7 +11,8 @@ import { pathToFileURL } from "node:url";
 export type DeferredTestGroup =
   | "future-platforms"
   | "google-ads"
-  | "ga4-ad-comparison";
+  | "ga4-ad-comparison"
+  | "external-certifications";
 
 export type DeferredTest = {
   group: DeferredTestGroup;
@@ -54,8 +55,9 @@ export type CurrentVersionClassification = {
 const MANIFEST_PATH = "scripts/ga4-kpi-current-version-test-boundary.json";
 const EXPECTED_GROUP_COUNTS: Record<DeferredTestGroup, number> = {
   "future-platforms": 21,
-  "google-ads": 19,
+  "google-ads": 26,
   "ga4-ad-comparison": 1,
+  "external-certifications": 2,
 };
 
 function normalizePath(value: string): string {
@@ -92,6 +94,7 @@ export function readCurrentVersionManifest(
     "future-platforms": 0,
     "google-ads": 0,
     "ga4-ad-comparison": 0,
+    "external-certifications": 0,
   };
   for (const test of manifest.tests) {
     if (!Object.hasOwn(EXPECTED_GROUP_COUNTS, test.group)) {

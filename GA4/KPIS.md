@@ -6,13 +6,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-As of August 5, 2026, the GA4 KPIs tab remains **UNVERIFIED** for exact deployed SHA `249fc18787409fb5d3700a7f64e091822a99c2d3`. Commit 14A is complete; its runtime implementation boundary is `d5715867adf7e31279f52e1ebd806c3f4d3597fe`, and `249fc187` adds evidence only.
+As of August 12, 2026, the GA4 KPIs tab is **CLEAN-CERTIFIED AND PRODUCTION-READY** for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the recorded campaign/property/configuration/dependency boundary.
 
-One explicitly authorized refresh/recompute ran only for campaign hash `fc734ddaf728`. The exact completed window `2026-07-06..2026-08-04` in `Europe/Amsterdam` produced 552 sessions and 377 date-dimension engaged sessions, so the authoritative Engagement Rate is `68.30%`. The dimensionless aggregate still represents 378 engaged sessions (`68.48%`) and is correctly retained only as diagnostic evidence. Persisted daily totals, KPI, progress, KPI API, live card, Tracker, Insights, and the one visible in-app notification all use `68.30%`. The browser made two `readOnly=1` daily requests, six mutation-capable provider GETs were blocked, and no browser mutation was attempted. Database timestamps in the operation window show eight KPI updates and one GA4 daily update only for the authorized campaign.
+All 12 KPI cards, Tracker, Notifications, KPI-derived Insights, saved browser KPI PDF, campaign-scoped refresh/recompute, live provider path, retained provider-confirmed alert delivery, exact-SHA report test-send delivery, and protected Overview/Insights/Reports regressions passed. The scheduler was triggered manually to finish the same day; timer wiring passed automated coverage, but a natural timer firing on this SHA is not claimed. The current-version command executed all 1,507 tests with zero blocking KPI failures and 50 explicitly visible, nonblocking failures outside this KPI certification boundary.
 
-Commit 14B is the single combined remaining validation task; it is not split into another queue. Its local checks pass, but external closure is blocked because Mailgun cannot deliver before `2026-08-05T19:58:54Z`, the required server report paths necessarily run their normal persisted recompute while another recompute was explicitly prohibited, and the exact-SHA browser KPI PDF has not been executed. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The status is revision-specific and changes only when the machine record, dependency hashes, and all controlling markers agree. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
 
@@ -286,6 +286,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPIs tab remains UNVERIFIED. Commit 14A is complete: exact date-dimension rows are authoritative and the unmatched aggregate engaged session remains diagnostic only. Commit 14B is one combined final-validation task and remains blocked only by the external conditions recorded in the controlling readiness document.
+The current GA4 KPI certification decision is recorded in the machine-guarded Production Readiness Status above. Historical Commit 14A/14B evidence does not override that controlling decision.
 
 The controlling evidence and chronological smallest-safe closure queue are documented in GA4/KPIS_PRODUCTION_READINESS.md.

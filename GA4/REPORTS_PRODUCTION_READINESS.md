@@ -19,15 +19,15 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: PRODUCTION_READY -->
 ## Current Controlling Answer
 
-August 11, 2026 controlling decision: GA4 Reports is **clean-certified and production-ready** for exact deployed SHA `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` and the dependency/configuration boundary recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive is explicitly outside this certification and neither gates nor supports this decision.
+August 12, 2026 controlling decision: GA4 Reports is **clean-certified and production-ready** for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the recorded dependency/configuration boundary. Campaign DeepDive remains outside the boundary.
 
 Reports-only evidence now passed for all five standard browser PDF types and one selected Custom composition; Ad Comparison browser/direct/email parity; provider-confirmed delivery and inbox receipt; deployed GA4 report-card visibility; owner/non-owner read isolation; complete schedule configuration; snapshot/send-event truthfulness; production database integrity; dependency hashes; build; and protected Overview/Insights carry-forward.
 
-The final Reports-only runtime gates passed on the same deployed revision. The user completed create, edit, and delete for a temporary report; a read-only rolled-back database check then found exactly the original three active GA4 reports and no duplicate scheduled slots. The natural `2026-08-11T09:00@Europe/Amsterdam` Ad Comparison run recorded one idempotent `sent` event, provider-confirmed `delivered` status, a matching immutable GA4 snapshot for the same report/campaign/type, and `lastSentAt` after `sentAt`.
+The only Reports runtime change since the prior certification is Commit 7's test-send delivery confirmation/persistence correction. On exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d`, the controlled saved-report test send returned success with provider-confirmed `delivered` status and a provider response ID; the report configuration was restored unchanged, snapshots remained zero, scheduled send events remained zero, and exactly one audit row was added. The browser KPI PDF independently matched all selected KPI values, targets, window labels, and states. Scheduled selection, snapshot truthfulness, report calculations, and report output contracts were unchanged; the 5-file / 71-test Reports packet and 44-file / 496-test protected Overview/Insights packet passed.
 
 Current known in-scope findings: Critical `0`, Major `0`, Minor `0`. Future code/configuration changes within the recorded boundary, a contradictory production result, or a newly discovered in-scope consumer invalidate this revision-specific certification.
 
-Overview and Insights remain independently certified and unchanged in behavior. No Reports validation performed here changed their runtime code or production data.
+Overview was carried forward after its relevant behavior and dependency boundary were confirmed unchanged. Insights was independently reverified because corrected KPI history changes its trend input. No Reports validation performed here changed their runtime code or production data.
 
 The machine-readable record is `GA4/certifications/ga4-reports.json`; `npm run check:ga4-reports-certification` must pass before this answer is reused.
 
@@ -723,16 +723,16 @@ The following cannot be proven from local code alone:
 
 ## Validation Evidence
 
-Current exact-SHA validation completed August 10-11, 2026:
+Current exact-SHA validation completed August 12, 2026:
 
-- focused Reports packet: 9 files and 152 tests passed
-- protected Overview and Insights packet: 44 files and 494 tests passed
+- focused Reports packet: 5 files and 71 tests passed
+- protected Overview and Insights packet: 44 files and 496 tests passed
 - Reports certification gate and all 6 gate regression tests passed with the final `PRODUCTION_READY` record
 - TypeScript passed through npm run check
 - production build passed; Vite transformed 3,466 modules and the server bundle completed
 - no live Overview or Insights runtime file was modified by this audit/machine-gate step
 - exact-SHA CRUD passed and a read-only rolled-back audit confirmed restoration to the original three active reports
-- the natural `2026-08-11T09:00@Europe/Amsterdam` run recorded one idempotent sent event, a matching snapshot, valid last-sent ordering, and provider-confirmed delivery
+- the prior natural `2026-08-11T09:00@Europe/Amsterdam` run remains retained evidence for the unchanged scheduled-selection/snapshot path; the exact-SHA controlled test-send separately proved provider-confirmed delivery and truthful persistence without creating a scheduled event or snapshot
 - Overview and Insights exact-SHA carry-forward checks and user visual confirmation passed without runtime or persistence changes
 
 These checks prove the current in-scope matrices. Future provider availability, future inbox behavior, future revisions/configurations, and excluded Campaign DeepDive behavior are not claimed.

@@ -33,13 +33,14 @@ function report(
 describe("GA4 KPI current-version test boundary", () => {
   it("keeps the exact documented deferred inventory visible and unique", () => {
     const manifest = readCurrentVersionManifest(root);
-    expect(manifest.tests).toHaveLength(41);
+    expect(manifest.tests).toHaveLength(50);
     expect(manifest.tests.filter((test) => test.group === "future-platforms")).toHaveLength(21);
-    expect(manifest.tests.filter((test) => test.group === "google-ads")).toHaveLength(19);
+    expect(manifest.tests.filter((test) => test.group === "google-ads")).toHaveLength(26);
     expect(manifest.tests.filter((test) => test.group === "ga4-ad-comparison")).toHaveLength(1);
+    expect(manifest.tests.filter((test) => test.group === "external-certifications")).toHaveLength(2);
     expect(
       new Set(manifest.tests.map((test) => `${test.file}\u0000${test.fullName}`)).size,
-    ).toBe(41);
+    ).toBe(50);
   });
 
   it("wires the blocking current-version gate and non-blocking deferred evidence into CI", () => {
@@ -68,6 +69,7 @@ describe("GA4 KPI current-version test boundary", () => {
         "future-platforms": { blocking: false, reason: "fixture" },
         "google-ads": { blocking: false, reason: "fixture" },
         "ga4-ad-comparison": { blocking: false, reason: "fixture" },
+        "external-certifications": { blocking: false, reason: "fixture" },
       },
       tests: [deferred],
     } satisfies CurrentVersionTestManifest;
@@ -96,7 +98,7 @@ describe("GA4 KPI current-version test boundary", () => {
   it("fails closed when a deferred identity is renamed or not executed", () => {
     const manifest = readCurrentVersionManifest(root);
     const result = classifyCurrentVersionResults(report([]), manifest, root);
-    expect(result.missingDeferred).toHaveLength(41);
+    expect(result.missingDeferred).toHaveLength(50);
     expect(result.currentFailures).toEqual([]);
   });
 

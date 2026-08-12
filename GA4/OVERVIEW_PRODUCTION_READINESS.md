@@ -15,11 +15,11 @@ Only evidence from the same deployed commit, production-data state, and document
 
 ## Current Decision — Stable Cross-Session Answer
 
-**CLEAN-CERTIFIED AND PRODUCTION-READY for the documented current-production boundary at deployed runtime commit `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`: campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, the supported 30-completed-day Overview model, campaign currency USD, and the enabled source set recorded below. Google Ads, redundant campaigns with obsolete data, future source configurations, future 60/90-day options, scheduled report delivery, and future provider behavior are excluded.**
+**CLEAN-CERTIFIED AND PRODUCTION-READY for the documented current-production boundary at deployed runtime commit `ee22f0e470826f1cb247115497c9a15229d0142d`: campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, the supported 30-completed-day Overview model, campaign currency USD, and the enabled source set recorded below. Google Ads, redundant campaigns with obsolete data, future source configurations, future 60/90-day options, scheduled report delivery, and future provider behavior are excluded.**
 
 ## Revision, Configuration, And Dependency Boundary
 
-- Certified runtime SHA: `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`
+- Certified runtime SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`
 - Certified production configuration: `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, hour `8`, minute `0`, `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false`
 - Certified campaign/property/currency: `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` / `542352127` / `USD`
 - Certified client boundary: `client/src/pages/ga4-metrics.tsx`, `client/src/components/AddRevenueWizardModal.tsx`, `client/src/components/HubSpotRevenueWizard.tsx`, `client/src/components/ShopifyRevenueWizard.tsx`, and `client/src/components/AddSpendWizardModal.tsx`
@@ -43,7 +43,7 @@ The initial production target is:
 Future 60/90-day options are outside this release and require later implementation and validation.
 
 ## Certification Evidence
-| Exact-SHA carry-forward | **Passed** | Compared the certified runtime boundary with deployed `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`. Only `client/src/pages/ga4-metrics.tsx` and `server/routes-oauth.ts` changed inside the listed Overview runtime dependencies, and their diffs are confined to the separately validated Insights gap correction and Reports-only branches. The protected boundary passed 44 files / 494 tests, authenticated read-only production parity retained USD/Amsterdam/property/filter and `$69,332.69` financial reconciliation with unchanged persistence, and the user confirmed the deployed Overview UI remained correct. No recompute or cleanup was performed. |
+| Exact-SHA carry-forward | **Passed** | Compared the prior certified boundary with deployed `ee22f0e470826f1cb247115497c9a15229d0142d`. Relevant runtime diffs are confined to KPI same-date history, mutation-free notification validation, and KPI browser-PDF/test-send behavior; no Overview query, calculation, source, card, or report value changed. The protected boundary passed 44 files / 496 tests, and the exact-SHA authenticated validation retained the documented campaign/property/filter/timezone/currency boundary with unchanged persistence. No Overview recompute or cleanup was performed. |
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |

@@ -16,9 +16,32 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### Current Commit 14B final-validation attempt - August 5, 2026 (controlling status)
+### August 12, 2026 clean certification (controlling status)
+
+**Result: CLEAN-CERTIFIED AND PRODUCTION-READY for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d`.** Open in-scope findings: Critical `0`; Major `0`; Minor `0`.
+
+Exact current-version evidence:
+
+- authenticated read-only production validation passed for all 12 campaign-scoped GA4 KPI cards, Tracker totals, breached Notifications, KPI-derived Insights findings, and the saved browser KPI PDF; the validation attempted no application mutation and observed unchanged campaign persistence
+- the campaign-scoped GA4 daily pipeline was triggered manually at `2026-08-12T09:39:38.605Z`, after the user declined to wait for the next timer slot; it completed successfully for campaign hash `fc734ddaf728`, property `542352127`, updated all 12 KPIs and both Benchmarks, skipped/failed none, and suppressed alerts. This proves the production scheduler work path; automated timer-wiring tests passed, but a natural timer firing on this SHA is not claimed
+- provider-confirmed KPI alert evidence exists for the exact campaign after the traffic-alert correction: three latest retained events are `delivered`, each has a provider response ID and delivered timestamp. Later commits changed only KPI PDF/validation or Reports files, so the alert sender, resolver, scheduler, audit, and notification dependency boundary is unchanged
+- the exact-SHA saved report test-send passed with provider-confirmed `delivered` status and a provider response ID; its report configuration, snapshots, and scheduled send events remained unchanged. The saved browser KPI PDF independently matched every selected KPI value, target, window label, and state
+- the dedicated exact-SHA Insights validator passed after the corrected KPI history was written; all financial, summary, channel, trend, tracker, and finding values matched scoped production inputs, tenant isolation failed closed, and persistence remained unchanged
+- `npm run test:current-version` executed all 1,507 tests: 1,457 passed, exactly 50 visible nonblocking failures were classified to future platforms, Google Ads, GA4 Ad Comparison, or the independently invalidated HubSpot certification docs, and zero KPI current-version failures remained. The protected Insights packet passed 44 files / 496 tests; the protected Reports packet passed 5 files / 71 tests; TypeScript and the production build passed
+
+Protected-section result:
+
+- Overview behavior is unchanged. The four changed files inside its documented runtime boundary were inspected: their diffs are limited to KPI same-date history, mutation-free notification validation, and KPI browser-PDF labeling. No Overview query, calculation, source, card, or report value changed
+- Insights is reverified on the exact deployed SHA because it consumes KPI history. Its corrected trend is now proven rather than assumed
+- Reports is reverified on the exact deployed SHA because it shares KPI PDF/preflight and report-delivery files. Commit 7 affects only test-send delivery persistence/confirmation; scheduled selection, snapshot truthfulness, report calculations, and report output contracts are unchanged and remain regression-covered
+
+Limitations are explicit: future provider availability, future email delivery, future source/configuration changes, Google Ads, future platforms, GA4 Ad Comparison, and independently invalidated HubSpot certification documentation are not certified by this KPI decision. A natural timer firing on this SHA is also not claimed. These exclusions remain the boundary of any final revision-specific certification.
+
+## Historical Status And Evidence (non-authoritative)
+
+### Current Commit 14B final-validation attempt - August 5, 2026 (historical)
 
 **Result: UNVERIFIED for exact deployed SHA `249fc18787409fb5d3700a7f64e091822a99c2d3`.** Commit 14A is complete: its runtime boundary is `d5715867adf7e31279f52e1ebd806c3f4d3597fe`, and `249fc187` adds evidence only. Commit 14B was handled as one combined task and no runtime defect was found, but the external report/delivery evidence could not pass under the exact authorization and provider state below. No additional gate or implementation queue is created.
 
@@ -53,7 +76,7 @@ Precise Commit 14B blockers:
 
 Production inventory before any Commit 14B action identified exactly report hash `e322c0dbf3a6` on campaign hash `fc734ddaf728`, owner hash `1900b95d7361`, one existing recipient, configuration hash `635669498371`, nine snapshots, and 40 send events. No report, snapshot, send-event, KPI, token, connection, source, recipient, schedule, or configuration mutation was performed. Certification can change to `PRODUCTION_READY` only after the browser artifact and the normal recompute-backed report paths complete on one exact deployed boundary and provider-confirmed delivery exists. No clean certification or production-readiness claim is made.
 
-## Historical Status And Evidence (non-authoritative)
+## Earlier Historical Status And Evidence (non-authoritative)
 
 ### Current Commit 13 local validation - August 4, 2026 (historical)
 
@@ -815,10 +838,10 @@ Historical certification rule:
 
 - completing the local fix queue makes GA4 KPIs eligible for production-readiness certification; it does not by itself make them production-ready
 - the historical final answer was allowed to remain `production-ready for the current GA4 code scope` only while the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and test coverage remained covered by current code and validation evidence
-Current future-chat answer:
+Historical future-chat answer (superseded by the August 12 controlling status):
 
-- Answer that GA4 KPIs are not production-ready and remain `UNVERIFIED` until Current Commits 1-10 pass.
-- Do not carry the June certification forward. It is historical and was invalidated by later dependency changes plus newly proven gaps.
+- At that time, GA4 KPIs remained `UNVERIFIED` until Current Commits 1-10 passed.
+- This historical instruction must not override the controlling status at the top of this document.
 - The audit shape remains reusable as a template; neither the historical certification nor future GA4 fixes prove another source ready.
 
 ## How To Use This File In A New Chat

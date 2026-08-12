@@ -52,7 +52,11 @@ export async function resolveAlertCurrentValueForDecision<T extends {
   metric?: unknown;
   name?: unknown;
   platformType?: unknown;
-}>(row: T, cache?: Map<string, Promise<any>>): Promise<T & Record<string, any>> {
+}>(
+  row: T,
+  cache?: Map<string, Promise<any>>,
+  options: { allowCredentialRefresh?: boolean } = {},
+): Promise<T & Record<string, any>> {
   const resolved = await resolveCampaignCurrentValueForAlert(row, cache);
   if (!isGA4Platform((resolved as any)?.platformType)) return resolved as T & Record<string, any>;
 
@@ -160,7 +164,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             || message.toLowerCase().includes("invalid authentication credentials")
             || message.toLowerCase().includes("request had invalid authentication credentials")
             || message.toLowerCase().includes("invalid_grant");
-          if (isAuth && connection?.refreshToken && connection?.id) {
+          if (isAuth && options.allowCredentialRefresh !== false && connection?.refreshToken && connection?.id) {
             const refresh = await ga4Service.refreshAccessToken(
               String(connection.refreshToken),
               connection.clientId || undefined,
@@ -192,6 +196,8 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             propertyId,
             2000,
             parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
+            undefined,
+            options.allowCredentialRefresh === false,
           );
           const candidate = (breakdown as any)?.totals;
           breakdownFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;

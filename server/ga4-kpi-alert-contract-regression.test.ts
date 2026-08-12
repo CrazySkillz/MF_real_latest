@@ -136,6 +136,64 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     });
   });
 
+  it("preserves normal credential refresh but forbids it in notification validation read-only mode", async () => {
+    const oauthConnection = {
+      ...connection,
+      method: "access_token",
+      accessToken: "expired-access-token",
+      refreshToken: "refresh-token",
+    };
+    storageMock.getGA4Connections.mockResolvedValue([oauthConnection]);
+    storageMock.getGA4Connection.mockResolvedValue(oauthConnection);
+    ga4ServiceMock.getTotalsWithRevenue
+      .mockRejectedValueOnce(new Error("401 unauthenticated"))
+      .mockResolvedValueOnce({
+        totals: { users: 7, sessions: 8, pageviews: 9, conversions: 1, revenue: 2 },
+      });
+    ga4ServiceMock.refreshAccessToken.mockResolvedValue({ access_token: "new-access-token", expires_in: 3600 });
+
+    const normal = await resolveAlertCurrentValueForDecision(row("users"));
+
+    expect(normal).toMatchObject({ currentValue: "7", __alertDecisionEligible: true });
+    expect(ga4ServiceMock.refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(storageMock.updateGA4ConnectionTokens).toHaveBeenCalledTimes(1);
+
+    ga4ServiceMock.getTotalsWithRevenue.mockReset().mockRejectedValue(new Error("401 unauthenticated"));
+    ga4ServiceMock.refreshAccessToken.mockReset();
+    storageMock.updateGA4ConnectionTokens.mockReset();
+
+    const readOnly = await resolveAlertCurrentValueForDecision(
+      row("users"),
+      undefined,
+      { allowCredentialRefresh: false },
+    );
+
+    expect(readOnly).toMatchObject({ currentValue: "0", __alertDecisionEligible: true });
+    expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it("disables credential refresh in the read-only financial fallback", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      totals: { users: 1, sessions: 2, pageviews: 3, conversions: 1, revenue: 10 },
+    });
+
+    const revenue = await resolveAlertCurrentValueForDecision(
+      row("revenue"),
+      undefined,
+      { allowCredentialRefresh: false },
+    );
+
+    expect(revenue).toMatchObject({ currentValue: "10", __alertDecisionEligible: true });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledTimes(1);
+    const breakdownArgs = ga4ServiceMock.getAcquisitionBreakdown.mock.calls[0];
+    expect(breakdownArgs[6]).toBeUndefined();
+    expect(breakdownArgs[7]).toBe(true);
+    expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
   it("routes every GA4 alert consumer through the shared resolver and decision predicate", () => {
     const files = [
       "kpi-scheduler.ts",

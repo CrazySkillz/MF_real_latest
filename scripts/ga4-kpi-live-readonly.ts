@@ -22,6 +22,7 @@ import {
   resolveKpiThresholdPolicy,
 } from "../shared/kpi-math";
 import { computeCpa, computeRoiPercent } from "../shared/metric-math";
+import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "../server/utils/ga4-kpi-alert-dedupe";
 
 const BASE_URL = String(process.env.GA4_KPI_VALIDATION_BASE_URL || "https://marketforensics.onrender.com").replace(/\/$/, "");
 const EXPECTED_SHA = String(process.env.GA4_KPI_VALIDATION_EXPECTED_SHA || "").trim();
@@ -51,7 +52,7 @@ type KpiRow = {
   alert_condition: string | null;
 };
 
-type PageInput = { ok: boolean; status: number; body: any; url: string };
+type PageInput = { ok: boolean; status: number; body: any; headers: Record<string, string>; url: string };
 
 const hash = (value: unknown) => createHash("sha256").update(String(value ?? "")).digest("hex").slice(0, 12);
 const normalizeText = (value: unknown) => String(value ?? "").replace(/,/g, "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -199,7 +200,7 @@ const pageInput = async (response: any): Promise<PageInput> => {
   const text = await response.text();
   let body: any = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-  return { ok: response.ok(), status: response.status(), body, url: response.url() };
+  return { ok: response.ok(), status: response.status(), body, headers: await response.allHeaders(), url: response.url() };
 };
 
 const expectedResponse = (page: Page, path: string) => {
@@ -215,6 +216,7 @@ const expectedResponse = (page: Page, path: string) => {
 };
 
 const corePaths = (propertyId: string) => ({
+  notifications: "/api/notifications?readOnly=1",
   connectionStatus: `/api/ga4/check-connection/${CAMPAIGN_ID}?readOnly=1`,
   connections: `/api/campaigns/${CAMPAIGN_ID}/ga4-connections?readOnly=1`,
   daily: `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=30&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
@@ -298,7 +300,6 @@ try {
   const blockedUnsafeGets: string[] = [];
   const readOnlyRewrites: string[] = [];
   const unsafeGetPatterns = [
-    /\/api\/notifications$/,
     /\/api\/campaigns\/[^/]+\/ga4-diagnostics$/,
     /\/api\/campaigns\/[^/]+\/ga4-landing-pages$/,
     /\/api\/campaigns\/[^/]+\/ga4-conversion-events$/,
@@ -307,6 +308,7 @@ try {
     /\/api\/report-snapshots\/[^/]+\/pdf$/,
   ];
   const readOnlyGetPatterns = [
+    /\/api\/notifications$/,
     /\/api\/ga4\/check-connection\/[^/]+$/,
     /\/api\/campaigns\/[^/]+\/ga4-connections$/,
     /\/api\/campaigns\/[^/]+\/ga4-daily$/,
@@ -353,6 +355,10 @@ try {
   }
   for (const name of ["connectionStatus", "connections", "daily", "breakdown", "toDate"]) {
     if (inputs[name]?.body?.validationReadOnly !== true) failures.push(`${name} page input did not confirm read-only mode`);
+  }
+  if (inputs.notifications?.headers?.["x-ga4-validation-read-only"] !== "1"
+    || inputs.notifications?.headers?.["x-ga4-credential-refresh-allowed"] !== "0") {
+    failures.push("Notifications did not confirm the no-refresh read-only contract");
   }
   if (inputs.daily?.body?.providerRefreshAttempted !== false) {
     failures.push("The exact KPI daily page input attempted a provider refresh");
@@ -460,6 +466,14 @@ try {
     });
     return { kpi, liveValue, state, progress: computeProgress(kpi, liveValue) };
   });
+  const isExpectedAlertBreached = (row: any) => {
+    const threshold = Number(row.kpi.alertThreshold);
+    if (!row.kpi.alertsEnabled || !row.state.eligible || !Number.isFinite(threshold)) return false;
+    const condition = String(row.kpi.alertCondition || "below");
+    if (condition === "above") return row.liveValue > threshold;
+    if (condition === "equals") return Math.abs(row.liveValue - threshold) < 0.01;
+    return row.liveValue < threshold;
+  };
 
   await page.locator("#ga4-kpis-section").waitFor({ state: "visible", timeout: 60000 });
   await page.waitForFunction((ids) => ids.every((id) => {
@@ -488,12 +502,7 @@ try {
     const showCurrent = expected.state.eligible || expected.state.code === "insufficient_data" || expected.state.code === "stale";
     const expectedCurrent = showCurrent ? formatCardValue(expected.liveValue, expected.kpi.unit, currency) : "—";
     const expectedTarget = formatCardValue(expected.kpi.targetValue, expected.kpi.unit, currency);
-    const threshold = Number(expected.kpi.alertThreshold);
-    const expectedPulse = Boolean(expected.kpi.alertsEnabled && expected.state.eligible && Number.isFinite(threshold) && (
-      String(expected.kpi.alertCondition || "below") === "above" ? expected.liveValue > threshold
-        : String(expected.kpi.alertCondition || "below") === "equals" ? Math.abs(expected.liveValue - threshold) < 0.01
-          : expected.liveValue < threshold
-    ));
+    const expectedPulse = isExpectedAlertBreached(expected);
     const checks = {
       name: normalizeText(dom.text).includes(normalizeText(expected.kpi.name)),
       current: dom.current === expectedCurrent,
@@ -538,12 +547,55 @@ try {
     const metadata = parseJson(notification?.metadata);
     return metadata?.kpiId && inventoryIds.has(String(metadata.kpiId));
   });
+  const isPerformanceAlert = (notification: any) => {
+    const metadata = parseJson(notification?.metadata);
+    return String(notification?.type || "").trim().toLowerCase() === "performance-alert"
+      || String(metadata?.alertType || "").trim().toLowerCase() === "performance-alert"
+      || (/\b(kpi|benchmark)\s+alert\b/i.test(String(notification?.title || "")) && Boolean(metadata?.kpiId || metadata?.benchmarkId));
+  };
+  const activePersistedAlerts = persistedKpiNotifications.filter((notification: any) => {
+    const metadata = parseJson(notification?.metadata);
+    return isPerformanceAlert(notification) && !metadata?.dismissedAt && !metadata?.resolved;
+  });
   const persistedNotificationEvidence = expectedRows.map((row: any) => ({
     kpiHash: hash(row.kpi.id),
     persistedCount: persistedKpiNotifications.filter((notification: any) => String(parseJson(notification?.metadata)?.kpiId || "") === String(row.kpi.id)).length,
     alertAuditCount: persistedAlertRows.rows.filter((alert: any) => String(alert?.kpi_id || "") === String(row.kpi.id)).length,
   }));
-  failures.push("Notifications consumer parity is unverified: its deployed GET path can refresh GA4 tokens, so the read-only validator blocked it before execution");
+  const latestIdsByKey = getLatestGA4KPIIdsByDuplicateKey(apiKpis);
+  const expectedNotificationKpiIds = new Set(expectedRows
+    .filter((row: any) => isExpectedAlertBreached(row))
+    .filter((row: any) => isLatestGA4KPIForDuplicateKey(row.kpi, latestIdsByKey))
+    .filter((row: any) => activePersistedAlerts.some((notification: any) => String(parseJson(notification?.metadata)?.kpiId || "") === String(row.kpi.id)))
+    .map((row: any) => String(row.kpi.id)));
+  const apiNotifications = Array.isArray(inputs.notifications?.body) ? inputs.notifications.body : [];
+  if (!Array.isArray(inputs.notifications?.body)) failures.push("Notifications read-only response was not an array");
+  const actualKpiNotifications = apiNotifications.filter((notification: any) => {
+    const metadata = parseJson(notification?.metadata);
+    return String(notification?.campaignId || "") === CAMPAIGN_ID
+      && inventoryIds.has(String(metadata?.kpiId || ""))
+      && isPerformanceAlert(notification);
+  });
+  const actualNotificationKpiIds = actualKpiNotifications.map((notification: any) => String(parseJson(notification?.metadata)?.kpiId || ""));
+  const uniqueActualNotificationKpiIds = new Set(actualNotificationKpiIds);
+  const notificationRows = actualKpiNotifications.map((notification: any) => {
+    const metadata = parseJson(notification?.metadata);
+    const row = expectedRows.find((candidate: any) => String(candidate.kpi.id) === String(metadata?.kpiId || ""));
+    const checks = {
+      expected: Boolean(row && expectedNotificationKpiIds.has(String(row.kpi.id))),
+      current: Boolean(row && Math.abs(Number(metadata?.currentValue) - Number(row.liveValue)) <= 0.01),
+      threshold: Boolean(row && Math.abs(Number(metadata?.thresholdValue) - Number(row.kpi.alertThreshold)) <= 0.01),
+      condition: Boolean(row && String(metadata?.alertCondition || "below") === String(row.kpi.alertCondition || "below")),
+      itemType: String(metadata?.itemType || "") === "kpi",
+      title: Boolean(row && normalizeText(notification?.title).includes(normalizeText(row.kpi.name))),
+    };
+    return { kpiHash: hash(metadata?.kpiId), checks, exact: Object.values(checks).every(Boolean) };
+  });
+  const notificationParity = actualNotificationKpiIds.length === uniqueActualNotificationKpiIds.size
+    && expectedNotificationKpiIds.size === uniqueActualNotificationKpiIds.size
+    && [...expectedNotificationKpiIds].every((id) => uniqueActualNotificationKpiIds.has(id))
+    && notificationRows.every((row: any) => row.exact);
+  if (!notificationParity) failures.push("Deployed Notifications do not match exact breached, persisted, latest-KPI card values");
 
   await page.getByRole("tab", { name: "Insights", exact: true }).click();
   await page.getByTestId("insights-findings").waitFor({ state: "visible", timeout: 120000 });
@@ -562,21 +614,38 @@ try {
     });
     const target = Number(row.kpi.targetValue);
     const invalidTarget = !Number.isFinite(target) || target <= 0;
-    let expectedId: string | null = null;
-    if (row.state.code === "blocked") expectedId = `integrity:kpi_blocked:${row.kpi.id}`;
-    else if (invalidTarget) expectedId = `integrity:kpi_invalid_config:${row.kpi.id}`;
-    else if (row.state.eligible && compatibility.comparable && row.progress.attainmentPct < 100) expectedId = `kpi:${row.kpi.id}`;
-    else if (row.state.eligible && compatibility.comparable && Number(row.progress.effectiveDeltaPct || 0) >= 10) expectedId = `positive:kpi:${row.kpi.id}`;
-    const finding = expectedId ? findingRows.find((item) => item.id === expectedId) : null;
-    const consolidatedUnverified = row.state.eligible || row.state.code === "blocked"
-      ? true
-      : findingRows.some((item) => item.id === "integrity:targets_unverified" && normalizeText(item.description).includes(normalizeText(row.kpi.name)));
-    const periodMismatch = compatibility.comparable || !row.state.eligible
-      ? true
-      : findingRows.some((item) => item.id === "integrity:target_period_mismatch" && normalizeText(item.description).includes(normalizeText(row.kpi.name)));
-    const exact = (!expectedId || Boolean(finding)) && consolidatedUnverified && periodMismatch;
+    let directExpectedId: string | null = null;
+    if (row.state.code === "blocked") directExpectedId = `integrity:kpi_blocked:${row.kpi.id}`;
+    else if (invalidTarget) directExpectedId = `integrity:kpi_invalid_config:${row.kpi.id}`;
+    else if (row.state.eligible && compatibility.comparable && row.progress.attainmentPct < 100) directExpectedId = `kpi:${row.kpi.id}`;
+    else if (row.state.eligible && compatibility.comparable && Number(row.progress.effectiveDeltaPct || 0) >= 10) directExpectedId = `positive:kpi:${row.kpi.id}`;
+    const directFinding = directExpectedId ? findingRows.find((item) => item.id === directExpectedId) : null;
+    const consolidatedFinding = findingRows.find((item) => item.id === "integrity:targets_unverified"
+      && normalizeText(item.description).includes(normalizeText(row.kpi.name)));
+    const periodMismatchFinding = findingRows.find((item) => item.id === "integrity:target_period_mismatch"
+      && normalizeText(item.description).includes(normalizeText(row.kpi.name)));
+    const requiresConsolidatedFinding = !row.state.eligible && row.state.code !== "blocked" && !invalidTarget;
+    let expectedMode = "direct_or_absent";
+    let exact = false;
+    if (consolidatedFinding) {
+      expectedMode = "consolidated_unverified";
+      exact = !directFinding && !periodMismatchFinding;
+    } else if (requiresConsolidatedFinding) {
+      expectedMode = "consolidated_unverified";
+    } else if (row.state.eligible && !compatibility.comparable) {
+      expectedMode = "period_mismatch";
+      exact = Boolean(periodMismatchFinding) && !directFinding;
+    } else {
+      exact = (!directExpectedId || Boolean(directFinding)) && !periodMismatchFinding;
+    }
     if (!exact) failures.push(`${hash(row.kpi.id)}: KPI-derived Insights context parity failed`);
-    insightsEvidence.push({ kpiHash: hash(row.kpi.id), expectedId, observed: finding?.id || null, consolidatedUnverified, periodMismatch, exact });
+    insightsEvidence.push({
+      kpiHash: hash(row.kpi.id),
+      expectedMode,
+      expectedId: expectedMode === "consolidated_unverified" ? "integrity:targets_unverified" : directExpectedId,
+      observed: consolidatedFinding?.id || periodMismatchFinding?.id || directFinding?.id || null,
+      exact,
+    });
   }
 
   const reports = (Array.isArray(inputs.reports?.body) ? inputs.reports.body : [])
@@ -646,7 +715,10 @@ try {
     currency,
     kpiCount: apiKpis.length,
     failures,
-    pageInputs: Object.fromEntries(Object.entries(inputs).map(([name, response]) => [name, { status: response.status, readOnly: response.body?.validationReadOnly === true }])),
+    pageInputs: Object.fromEntries(Object.entries(inputs).map(([name, response]) => [name, {
+      status: response.status,
+      readOnly: response.body?.validationReadOnly === true || response.headers?.["x-ga4-validation-read-only"] === "1",
+    }])),
     sourceWindows: {
       traffic: { startDate: inputs.daily?.body?.startDate || null, endDate: inputs.daily?.body?.endDate || null, importedDays: dailyRows.length },
       nativeFinancial: { startDate: inputs.toDate?.body?.startDate || null, endDate: inputs.toDate?.body?.endDate || null },
@@ -658,8 +730,10 @@ try {
     cards: cardEvidence,
     alertsAndNotifications: {
       cardAlertPulseParity: cardEvidence.every((item) => item.checks.alertPulse),
+      exact: notificationParity,
       persistedRows: persistedNotificationEvidence,
-      deployedNotificationsApi: "blocked_unverified_until_a_no-refresh_read-only_contract_exists",
+      visibleRows: notificationRows,
+      deployedNotificationsApi: "read_only_no_credential_refresh_confirmed",
     },
     insights: insightsEvidence,
     browserPdf: pdfEvidence,
@@ -669,7 +743,6 @@ try {
     persistenceSemanticStateUnchanged: changedPersistenceComponents.length === 0,
     scheduler: scheduler?.ga4DailyScheduler || null,
     limitations: [
-      "The deployed Notifications GET is intentionally not called because its current-value enrichment can refresh GA4 tokens.",
       "Server snapshot/test-send/scheduled report paths are intentionally not called because their KPI preflight persists recomputation.",
       "This validator creates only a short-lived owner session in Clerk and revokes it during cleanup.",
     ],

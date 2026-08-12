@@ -15,10 +15,15 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(validator).toContain('if (request.method() !== "GET")');
     expect(validator).toContain("blockedApplicationMutations");
     expect(validator).toContain("blockedUnsafeGets");
-    expect(validator).toContain('/\\/api\\/notifications$/');
+    const unsafeGetPatterns = validator.slice(validator.indexOf("const unsafeGetPatterns"), validator.indexOf("const readOnlyGetPatterns"));
+    const readOnlyGetPatterns = validator.slice(validator.indexOf("const readOnlyGetPatterns"), validator.indexOf("await page.route"));
+    expect(unsafeGetPatterns).not.toContain('/\\/api\\/notifications$/');
+    expect(readOnlyGetPatterns).toContain('/\\/api\\/notifications$/');
     expect(validator).toContain('/\\/api\\/report-snapshots\\/[^/]+\\/pdf$/');
     expect(validator).toContain('url.searchParams.set("readOnly", "1")');
     expect(validator).toContain('inputs[name]?.body?.validationReadOnly !== true');
+    expect(validator).toContain('inputs.notifications?.headers?.["x-ga4-validation-read-only"] !== "1"');
+    expect(validator).toContain('inputs.notifications?.headers?.["x-ga4-credential-refresh-allowed"] !== "0"');
     expect(validator).toContain('inputs.daily?.body?.providerRefreshAttempted !== false');
     expect(validator).toContain("readPersistenceFingerprint");
     expect(validator).toContain("persistenceFingerprintBefore");
@@ -39,9 +44,12 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(validator).toContain("deployed KPI card/input/state/alert parity failed");
     expect(validator).toContain("Deployed KPI Tracker does not match");
     expect(validator).toContain("persistedKpiNotifications");
-    expect(validator).toContain("Notifications consumer parity is unverified");
+    expect(validator).toContain("Deployed Notifications do not match exact breached, persisted, latest-KPI card values");
+    expect(validator).toContain('deployedNotificationsApi: "read_only_no_credential_refresh_confirmed"');
     expect(validator).toContain('getByRole("tab", { name: "Insights", exact: true }).click()');
     expect(validator).toContain('getByTestId("insights-finding")');
+    expect(validator).toContain('expectedMode = "consolidated_unverified"');
+    expect(validator).toContain("!directFinding && !periodMismatchFinding");
     expect(validator).toContain("KPI-derived Insights context parity failed");
     expect(validator).toContain('getByRole("tab", { name: "Reports", exact: true }).click()');
     expect(validator).toContain('getByRole("button", { name: "Download" })');
@@ -50,18 +58,19 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(validator).not.toContain("/api/report-snapshots/${");
   });
 
-  it("adds evidence-only files outside the protected Insights and Reports dependency boundaries", () => {
-    const changedPaths = new Set([
-      "scripts/ga4-kpi-live-readonly.ts",
-      "server/ga4-kpi-live-readonly-regression.test.ts",
-    ]);
-    for (const recordPath of ["GA4/certifications/ga4-insights.json", "GA4/certifications/ga4-reports.json"]) {
-      const record = JSON.parse(read(recordPath));
-      const dependencies = new Set((record.dependencies || []).map((dependency: any) => String(dependency.path || "")));
-      expect([...changedPaths].filter((path) => dependencies.has(path))).toEqual([]);
-    }
-
+  it("isolates the no-refresh validation contract from default Notifications behavior", () => {
     const validator = read("scripts", "ga4-kpi-live-readonly.ts");
+    const routes = read("server", "routes-oauth.ts");
+    const resolver = read("server", "utils", "ga4-alert-current-value.ts");
+
+    expect(routes).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> =>");
+    expect(routes).toContain("const resolveNotificationAlertRowForRequest = async (row: any, validationReadOnly: boolean)");
+    expect(routes).toContain("? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false })");
+    expect(routes).toContain(": resolveNotificationAlertRow(row);");
+    expect(routes).toContain('res.setHeader("X-GA4-Validation-Read-Only", "1")');
+    expect(routes).toContain('res.setHeader("X-GA4-Credential-Refresh-Allowed", "0")');
+    expect(resolver).toContain("options.allowCredentialRefresh !== false");
+    expect(resolver).toContain("options.allowCredentialRefresh === false");
     expect(validator).not.toContain("UPDATE ");
     expect(validator).not.toContain("INSERT INTO ");
     expect(validator).not.toContain("DELETE FROM ");

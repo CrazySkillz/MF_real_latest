@@ -6665,6 +6665,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   const resolveNotificationAlertRow = async (row: any): Promise<any> =>
     resolveAlertCurrentValueForDecision(row);
+  const resolveNotificationAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
+    validationReadOnly
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false })
+      : resolveNotificationAlertRow(row);
   const isResolvedAlertRowBreached = (resolved: any): boolean =>
     isAlertDecisionBreached(resolved);
   const isLatestGA4NotificationKPI = async (kpi: any): Promise<boolean> => {
@@ -6739,6 +6743,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/notifications", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
+      const validationReadOnly = String((req.query as any)?.readOnly || "").trim() === "1";
+      if (validationReadOnly) {
+        res.setHeader("X-GA4-Validation-Read-Only", "1");
+        res.setHeader("X-GA4-Credential-Refresh-Allowed", "0");
+      }
       const actorId = getActorId(req as any);
       if (!actorId) {
         return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
@@ -6768,7 +6777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
               if (!isPerformanceAlert) return n;
               if (!(await isLatestGA4NotificationKPI(kpi))) return null;
-              const resolvedKpi = await resolveNotificationAlertRow(kpi);
+              const resolvedKpi = await resolveNotificationAlertRowForRequest(kpi, validationReadOnly);
               if (!isResolvedAlertRowBreached(resolvedKpi)) return null;
               return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");
             }
@@ -6777,7 +6786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
               if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
               if (!isPerformanceAlert) return n;
-              const resolvedBenchmark = await resolveNotificationAlertRow(benchmark);
+              const resolvedBenchmark = await resolveNotificationAlertRowForRequest(benchmark, validationReadOnly);
               if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;
               return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");
             }
@@ -6811,7 +6820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
           if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
           if (!(await isLatestGA4NotificationKPI(kpi))) return null;
-          const resolvedKpi = await resolveNotificationAlertRow(kpi);
+          const resolvedKpi = await resolveNotificationAlertRowForRequest(kpi, validationReadOnly);
           return isResolvedAlertRowBreached(resolvedKpi)
             ? enrichPerformanceAlertNotification(n, resolvedKpi, "kpi")
             : null;
@@ -6819,7 +6828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (meta?.benchmarkId) {
           const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
           if (!benchmark || String((benchmark as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
-          const resolvedBenchmark = await resolveNotificationAlertRow(benchmark);
+          const resolvedBenchmark = await resolveNotificationAlertRowForRequest(benchmark, validationReadOnly);
           return isResolvedAlertRowBreached(resolvedBenchmark)
             ? enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark")
             : null;

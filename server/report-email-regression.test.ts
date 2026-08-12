@@ -238,10 +238,15 @@ describe("scheduled report email regression guard", () => {
   it("does not report Mailgun test-send success until delivery is confirmed", () => {
     const schedulerSource = readReportScheduler();
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const testSendSource = schedulerSource.slice(
+      schedulerSource.indexOf("export async function sendTestReport"),
+      schedulerSource.indexOf("export function startReportScheduler"),
+    );
 
     expect(schedulerSource).toContain("waitForMailgunDelivery");
-    expect(schedulerSource).toContain('delivery.status !== "delivered"');
-    expect(schedulerSource).toContain("Mailgun accepted the email, but delivery was not confirmed yet");
+    expect(testSendSource).toContain("const deliveryConfirmation = await confirmScheduledReportEmailDelivery(reportId)");
+    expect(testSendSource).not.toContain("const delivery = await waitForMailgunDelivery(");
+    expect(testSendSource).toContain('deliveryConfirmation.status === "pending_delivery" ? "pending"');
     expect(routesSource).toContain("deliveryStatus: result.deliveryStatus");
     expect(routesSource).not.toContain("Test report email sent successfully! Check your inbox.");
   });

@@ -2594,18 +2594,16 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     }
 
     if (audit.provider === "mailgun-api") {
-      const delivery = await waitForMailgunDelivery(
-        audit.providerResponseId,
-        audit.mailgunRegion ? { region: audit.mailgunRegion } : {},
-      );
-      console.log(`[Report Scheduler] Mailgun delivery status for test report "${report.name}": ${delivery.status}${delivery.error ? ` (${delivery.error})` : ""}`);
-      if (delivery.status !== "delivered") {
+      const deliveryConfirmation = await confirmScheduledReportEmailDelivery(reportId);
+      const deliveryStatus = deliveryConfirmation.status === "pending_delivery" ? "pending" : deliveryConfirmation.status;
+      console.log(`[Report Scheduler] Mailgun delivery status for test report "${report.name}": ${deliveryStatus}${deliveryConfirmation.error ? ` (${deliveryConfirmation.error})` : ""}`);
+      if (!deliveryConfirmation.sent) {
         return {
           success: false,
-          message: delivery.status === "failed" ? `Mailgun delivery failed: ${delivery.error || "unknown error"}` : "Mailgun accepted the email, but delivery was not confirmed yet",
+          message: deliveryConfirmation.error || "Mailgun accepted the email, but delivery was not confirmed yet",
           recipients,
           providerResponseId: audit.providerResponseId,
-          deliveryStatus: delivery.status,
+          deliveryStatus,
         };
       }
     }

@@ -288,7 +288,7 @@ try {
         }
       }
 
-      await page.goto(`${BASE_URL}/campaigns/${encodeURIComponent(first.campaign_id)}/ga4-metrics?tab=benchmarks`, {
+      await page.goto(`${BASE_URL}/campaigns/${encodeURIComponent(first.campaign_id)}/ga4-metrics?tab=benchmarks&readOnly=1`, {
         waitUntil: "domcontentloaded",
         timeout: 60000,
       });
@@ -430,7 +430,7 @@ try {
         }
       }
 
-      const notificationsResponse = await api(page, "/api/notifications");
+      const notificationsResponse = await api(page, "/api/notifications?readOnly=1");
       const notifications = Array.isArray(notificationsResponse.body) ? notificationsResponse.body : [];
       const comparisonById = new Map(providerComparisons.map((comparison: any) => [String(comparison?.id || ""), comparison]));
       const notificationEvidence: any[] = [];

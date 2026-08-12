@@ -378,7 +378,8 @@ describe("GA4 Benchmark regression guard", () => {
 
     expect(validator).toContain('await client.query("BEGIN TRANSACTION READ ONLY")');
     expect(validator).toContain('if (route.request().method() !== "GET")');
-    expect(validator).toContain('await api(page, "/api/notifications")');
+    expect(validator).toContain('await api(page, "/api/notifications?readOnly=1")');
+    expect(validator).toContain('/ga4-metrics?tab=benchmarks&readOnly=1');
     expect(validator).toContain('getByRole("tab", { name: "Insights", exact: true }).click()');
     expect(validator).toContain("await pdfText(await downloadBuffer(download))");
     expect(validator).toContain("/send-events");

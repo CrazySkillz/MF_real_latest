@@ -236,6 +236,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   for (const campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "");
     if (!campaignId) continue;
+    const campaignOwnerId = String((campaign as any)?.ownerId || "").trim();
+    if (!campaignOwnerId) {
+      campaignIdsSkipped.add(campaignId);
+      continue;
+    }
     let campaignKpis: any[] = [];
     let campaignBenchmarks: any[] = [];
 

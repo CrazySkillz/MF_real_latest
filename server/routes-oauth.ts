@@ -6758,13 +6758,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import("./db");
       if (db) {
         const { notifications, campaigns } = await import("../shared/schema");
-        const { eq, desc, or, isNull } = await import("drizzle-orm");
+        const { eq, desc } = await import("drizzle-orm");
 
         const rows = await db
           .select({ n: notifications })
           .from(notifications)
           .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
-          .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")))
+          .where(eq((campaigns as any).ownerId, actorId))
           .orderBy(desc((notifications as any).createdAt));
         const visible = rows.map((r: any) => r.n).filter((n: any) => !isNotificationDismissed(n));
         const scopedRows = await Promise.all(visible.map(async (n: any) => {
@@ -6805,7 +6805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownedIds = (Array.isArray(campaignsAll) ? campaignsAll : [])
         .filter((c: any) => {
           const ownerId = String(c?.ownerId || "").trim();
-          return !ownerId || ownerId === actorId;
+          return ownerId === actorId;
         })
         .map((c: any) => String(c?.id || ""))
         .filter(Boolean);
@@ -6858,12 +6858,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
       const { notifications, campaigns } = await import("../shared/schema");
-      const { eq, and, inArray, or, isNull } = await import("drizzle-orm");
+      const { eq, and, inArray } = await import("drizzle-orm");
 
       const owned = await db
         .select({ id: (campaigns as any).id })
         .from(campaigns as any)
-        .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")));
+        .where(eq((campaigns as any).ownerId, actorId));
       const ownedCampaignIds = (owned || []).map((r: any) => String(r?.id || "")).filter(Boolean);
 
       if (ownedCampaignIds.length === 0) {
@@ -6896,12 +6896,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
       const { notifications, campaigns } = await import("../shared/schema");
-      const { eq, inArray, or, isNull } = await import("drizzle-orm");
+      const { eq, inArray } = await import("drizzle-orm");
 
       const owned = await db
         .select({ id: (campaigns as any).id })
         .from(campaigns as any)
-        .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")));
+        .where(eq((campaigns as any).ownerId, actorId));
       const ownedCampaignIds = (owned || []).map((r: any) => String(r?.id || "")).filter(Boolean);
 
       if (ownedCampaignIds.length === 0) {
@@ -25719,7 +25719,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!existingBenchmark) {
         const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
         if (!existing) return;
-        const benchmark = await storage.updateBenchmark(benchmarkId, updates);
+        const validatedUpdates = insertBenchmarkSchema.partial().parse({
+          ...updates,
+          campaignId: (existing as any).campaignId,
+          platformType: (existing as any).platformType,
+        }) as any;
+        delete validatedUpdates.campaignId;
+        delete validatedUpdates.platformType;
+        const benchmark = await storage.updateBenchmark(benchmarkId, validatedUpdates);
         if (!benchmark) {
           return res.status(404).json({ message: "Benchmark not found" });
         }

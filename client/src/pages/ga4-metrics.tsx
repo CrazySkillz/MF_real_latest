@@ -288,7 +288,7 @@ export default function GA4Metrics() {
   }, []);
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
-  const insightsValidationReadOnly = activeTab === "insights" && new URLSearchParams(search).get("readOnly") === "1";
+  const insightsValidationReadOnly = new URLSearchParams(search).get("readOnly") === "1";
   const insightsDailyReadOnly = activeTab === "insights" || insightsValidationReadOnly;
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
   useEffect(() => {

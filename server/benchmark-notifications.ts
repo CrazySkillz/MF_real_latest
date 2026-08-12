@@ -178,6 +178,11 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
       continue;
     }
+    const campaignOwnerId = String((campaign as any).ownerId || "").trim();
+    if (!campaignOwnerId) {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
 
     const actionUrl = buildBenchmarkActionUrl(b);
     const metadata = JSON.stringify({

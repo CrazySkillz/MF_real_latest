@@ -71,6 +71,7 @@ describe("GA4 KPI persisted financial source window", () => {
 
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
+      ownerId: "owner-1",
       startDate: "2026-06-01T00:00:00.000Z",
       currency: "USD",
       reportingTimeZone: "Europe/Amsterdam",

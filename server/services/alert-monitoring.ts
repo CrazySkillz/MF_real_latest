@@ -73,8 +73,9 @@ class AlertMonitoringService {
   private async getExistingCampaignName(campaignId: unknown, requireClient = false): Promise<string | null> {
     const id = String(campaignId || '').trim();
     if (!id) return null;
-    const [campaign] = await db.select({ name: campaigns.name, clientId: campaigns.clientId }).from(campaigns).where(eq(campaigns.id, id)).limit(1);
+    const [campaign] = await db.select({ name: campaigns.name, clientId: campaigns.clientId, ownerId: campaigns.ownerId }).from(campaigns).where(eq(campaigns.id, id)).limit(1);
     if (!campaign?.name) return null;
+    if (!String(campaign?.ownerId || '').trim()) return null;
     if (requireClient && campaign.clientId) {
       const [client] = await db.select({ id: clients.id }).from(clients).where(eq(clients.id, campaign.clientId)).limit(1);
       if (!client?.id) return null;

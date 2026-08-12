@@ -94,6 +94,9 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(insights).toContain("Target reporting periods need review");
     expect(pdf).toContain("const consumerState = getKpiConsumerState(k);");
     expect(pdf).toContain("Last-good value (not verified)");
+    expect(pdf).toContain('getGA4KpiReportingWindowLabel("sessions")');
+    expect(pdf).toContain('getGA4KpiReportingWindowLabel("revenue")');
+    expect(pdf).not.toContain("Traffic/rate: 30 completed reporting days in campaign timezone. Financial: campaign-to-date.");
     expect(pdf).toContain('kpiTracker.scored > 0 ? `${Number(kpiTracker.avgPct || 0).toFixed(1)}%` : "—"');
     expect(cards).toContain("kpi.alertsEnabled && consumerState.eligible");
     expect(cards).toContain('const hasAlertThreshold = kpi.alertThreshold !== null && typeof kpi.alertThreshold !== "undefined"');

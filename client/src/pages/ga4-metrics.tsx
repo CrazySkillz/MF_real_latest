@@ -4061,7 +4061,8 @@ export default function GA4Metrics() {
     if (sections.kpis) {
       sectionTitle("Key Performance Indicators", C.kpis, 60);
       doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-      doc.text("Traffic/rate: 30 completed reporting days in campaign timezone. Financial: campaign-to-date.", MX + 4, y); y += 7;
+      doc.text(`Traffic/rate: ${getGA4KpiReportingWindowLabel("sessions")}.`, MX + 4, y); y += 4;
+      doc.text(`Financial: ${getGA4KpiReportingWindowLabel("revenue")}.`, MX + 4, y); y += 7;
       const kpiSubsections = customSubsections.kpis || {};
       const includeKpiTracker = reportType !== "custom";
       const includeKpiItems = reportType !== "custom" || kpiSubsections.items === true;

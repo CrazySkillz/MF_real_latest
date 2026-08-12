@@ -880,7 +880,7 @@ export default function GA4Metrics() {
   // GA4 Reports (stored as platform reports)
   const { data: ga4Reports, isLoading: ga4ReportsLoading, isError: ga4ReportsError } = useQuery<any[]>({
     queryKey: ["/api/platforms/google_analytics/reports", campaignId],
-    enabled: !!campaignId && !insightsValidationReadOnly,
+    enabled: !!campaignId && (!insightsValidationReadOnly || activeTab === "reports"),
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { chromium, type Browser, type BrowserContext, type Download, type Page } from "playwright";
 import { PDFParse } from "pdf-parse";
 import { pool } from "../server/db";
+import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
 
 const BASE_URL = process.env.GA4_BENCHMARK_BETA_BASE_URL || "https://marketforensics.onrender.com";
@@ -21,6 +22,7 @@ type InventoryRow = {
   name: string;
   current_value: string | null;
   benchmark_value: string;
+  period: string | null;
   unit: string;
   alerts_enabled: boolean;
   alert_threshold: string | null;
@@ -165,6 +167,7 @@ try {
       b.name,
       b.current_value,
       b.benchmark_value,
+      b.period,
       b.unit,
       b.alerts_enabled,
       b.alert_threshold,
@@ -391,8 +394,8 @@ try {
         await page.getByRole("tab", { name: "Insights", exact: true }).click();
         await page.getByText("What to investigate next", { exact: true }).waitFor({ state: "visible", timeout: 60000 });
         const expectedInsightTitles = rows
-          .map((row) => ({ row, threshold: thresholdFor(row) }))
-          .filter(({ threshold }) => threshold.status === "behind" || threshold.status === "needs_attention")
+          .map((row) => ({ row, threshold: thresholdFor(row), compatibility: resolveGA4InsightTargetPeriodCompatibility(row) }))
+          .filter(({ threshold, compatibility }) => compatibility.comparable && (threshold.status === "behind" || threshold.status === "needs_attention"))
           .map(({ row, threshold }) => `${row.name} ${threshold.status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`);
         await page.waitForFunction((titles) => {
           const text = String(document.body?.innerText || "");
@@ -402,7 +405,8 @@ try {
         insightsParity = true;
         for (const row of rows) {
           const threshold = thresholdFor(row);
-          const actionable = threshold.status === "behind" || threshold.status === "needs_attention";
+          const compatibility = resolveGA4InsightTargetPeriodCompatibility(row);
+          const actionable = compatibility.comparable && (threshold.status === "behind" || threshold.status === "needs_attention");
           const title = `${row.name} ${threshold.status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`;
           const titlePresent = insightsText.includes(normalizedEvidenceText(title));
           const negativeTitlePresent = insightsText.includes(normalizedEvidenceText(`${row.name} Behind Benchmark`))

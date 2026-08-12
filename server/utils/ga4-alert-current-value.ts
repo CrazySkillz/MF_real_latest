@@ -124,20 +124,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       hasAuthoritativeEngagementInput = true;
     } else {
       const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
-      if (connection?.method === "access_token" && connection?.accessToken) {
-        const assignLiveTotals = (live: any) => {
-          ga4Inputs = {
-            users: Math.round(Number(live?.totals?.users || 0) || 0),
-            sessions: Math.round(Number(live?.totals?.sessions || 0) || 0),
-            pageviews: Math.round(Number(live?.totals?.pageviews || 0) || 0),
-            conversions: Math.round(Number(live?.totals?.conversions || 0) || 0),
-            ga4Revenue: Number((Number(live?.totals?.revenue || 0) || 0).toFixed(2)),
-            // KPI Engagement Rate is defined by the exact completed-day rows. A
-            // dimensionless GA4 aggregate can differ and must not overwrite it.
-            engagementRate: ga4Inputs.engagementRate,
-          };
-          hasGA4SourceInput = true;
-        };
+      if (usesFinancialSource && connection?.method === "access_token" && connection?.accessToken) {
         const attempt = (token: string, fromDate: string) =>
           ga4Service.getTotalsWithRevenue(
             String(connection.propertyId || propertyId),
@@ -148,11 +135,8 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             String((campaign as any)?.currency || "USD").trim().toUpperCase(),
           );
         const assignProviderInputs = async (token: string) => {
-          assignLiveTotals(await attempt(token, startDate));
-          if (usesFinancialSource) {
-            const candidate = (await attempt(token, financialStartDate))?.totals;
-            providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
-          }
+          const candidate = (await attempt(token, financialStartDate))?.totals;
+          providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
         };
         try {
           await assignProviderInputs(String(connection.accessToken));

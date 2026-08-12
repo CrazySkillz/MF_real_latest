@@ -136,6 +136,32 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     });
   });
 
+  it("keeps traffic alerts on the same completed-day rows as the live KPI cards", async () => {
+    const oauthConnection = {
+      ...connection,
+      method: "access_token",
+      accessToken: "access-token",
+    };
+    storageMock.getGA4Connections.mockResolvedValue([oauthConnection]);
+    storageMock.getGA4Connection.mockResolvedValue(oauthConnection);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{
+      ...sourceRow,
+      users: 80,
+      sessions: 100,
+      conversions: 20,
+    }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      totals: { users: 90, sessions: 120, pageviews: 140, conversions: 30, revenue: 2 },
+    });
+
+    const sessions = await resolveAlertCurrentValueForDecision(row("sessions"));
+    const conversionRate = await resolveAlertCurrentValueForDecision(row("conversionRate"));
+
+    expect(sessions).toMatchObject({ currentValue: "100", __alertDecisionEligible: true });
+    expect(conversionRate).toMatchObject({ currentValue: "20", __alertDecisionEligible: true });
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
   it("preserves normal credential refresh but forbids it in notification validation read-only mode", async () => {
     const oauthConnection = {
       ...connection,
@@ -147,14 +173,14 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     storageMock.getGA4Connection.mockResolvedValue(oauthConnection);
     ga4ServiceMock.getTotalsWithRevenue
       .mockRejectedValueOnce(new Error("401 unauthenticated"))
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         totals: { users: 7, sessions: 8, pageviews: 9, conversions: 1, revenue: 2 },
       });
     ga4ServiceMock.refreshAccessToken.mockResolvedValue({ access_token: "new-access-token", expires_in: 3600 });
 
-    const normal = await resolveAlertCurrentValueForDecision(row("users"));
+    const normal = await resolveAlertCurrentValueForDecision(row("revenue"));
 
-    expect(normal).toMatchObject({ currentValue: "7", __alertDecisionEligible: true });
+    expect(normal).toMatchObject({ currentValue: "2", __alertDecisionEligible: true });
     expect(ga4ServiceMock.refreshAccessToken).toHaveBeenCalledTimes(1);
     expect(storageMock.updateGA4ConnectionTokens).toHaveBeenCalledTimes(1);
 
@@ -163,7 +189,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     storageMock.updateGA4ConnectionTokens.mockReset();
 
     const readOnly = await resolveAlertCurrentValueForDecision(
-      row("users"),
+      row("revenue"),
       undefined,
       { allowCredentialRefresh: false },
     );

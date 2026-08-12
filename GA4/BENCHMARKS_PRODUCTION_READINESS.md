@@ -16,6 +16,8 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
+August 12, 2026 local candidate status: `UNVERIFIED` at `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. The candidate changes the recorded Benchmark dependency boundary. Prior Beta Ready and deployed evidence below remains preserved for its exact earlier revision, but it does not certify this candidate; exact-SHA deployment and production validation remain pending.
+
 August 3, 2026 controlling assessment: GA4 Benchmarks are **Beta Ready** for a closed beta at deployed implementation commit `b42c51e9ebcc12d74851cc640c86038513a57828`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`. Production certification remains `UNVERIFIED` only until Benchmark Current Commit 14 captures one successful natural timer-fired GA4 daily run on the unchanged reviewed boundary.
 
 <!-- ga4-benchmark-production-certification-status: UNVERIFIED -->

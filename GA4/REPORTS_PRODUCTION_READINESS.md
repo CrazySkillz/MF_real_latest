@@ -16,10 +16,12 @@ Use this file when asked whether GA4 Reports is robust, accurate, logical, produ
 This file defines whether that implementation is production-ready, what has been proven, what remains not locally verifiable, and how to replicate the Reports pattern for future platforms.
 
 <!-- ga4-reports-current-status -->
-<!-- ga4-reports-certification-status: PRODUCTION_READY -->
+<!-- ga4-reports-certification-status: UNVERIFIED -->
 ## Current Controlling Answer
 
-August 12, 2026 controlling decision: GA4 Reports is **clean-certified and production-ready** for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the recorded dependency/configuration boundary. Campaign DeepDive remains outside the boundary.
+August 12, 2026 candidate decision: GA4 Reports remains **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. Shared Reports dependencies changed and the candidate is not deployed. Campaign DeepDive remains outside the boundary.
+
+Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and all supporting evidence remain preserved below and in the machine record as historical revision-specific evidence. They do not certify the local candidate.
 
 Reports-only evidence now passed for all five standard browser PDF types and one selected Custom composition; Ad Comparison browser/direct/email parity; provider-confirmed delivery and inbox receipt; deployed GA4 report-card visibility; owner/non-owner read isolation; complete schedule configuration; snapshot/send-event truthfulness; production database integrity; dependency hashes; build; and protected Overview/Insights carry-forward.
 
@@ -29,7 +31,7 @@ Current known in-scope findings: Critical `0`, Major `0`, Minor `0`. Future code
 
 Overview was carried forward after its relevant behavior and dependency boundary were confirmed unchanged. Insights was independently reverified because corrected KPI history changes its trend input. No Reports validation performed here changed their runtime code or production data.
 
-The machine-readable record is `GA4/certifications/ga4-reports.json`; `npm run check:ga4-reports-certification` must pass before this answer is reused.
+The machine-readable record is `GA4/certifications/ga4-reports.json`; its exact-SHA deployment and external gates must pass before a production-ready answer is restored.
 
 <!-- /ga4-reports-current-status -->
 

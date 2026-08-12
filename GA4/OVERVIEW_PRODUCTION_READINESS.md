@@ -17,6 +17,8 @@ Only evidence from the same deployed commit, production-data state, and document
 
 **CLEAN-CERTIFIED AND PRODUCTION-READY for the documented current-production boundary at deployed runtime commit `ee22f0e470826f1cb247115497c9a15229d0142d`: campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4 property `542352127`, the supported 30-completed-day Overview model, campaign currency USD, and the enabled source set recorded below. Google Ads, redundant campaigns with obsolete data, future source configurations, future 60/90-day options, scheduled report delivery, and future provider behavior are excluded.**
 
+**Local candidate override (controlling for repository HEAD): UNVERIFIED at `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. Shared Overview dependencies changed and the candidate is not deployed. The prior exact-SHA statement above is preserved evidence only and does not certify this candidate.**
+
 ## Revision, Configuration, And Dependency Boundary
 
 - Certified runtime SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`

@@ -6,13 +6,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of August 12, 2026, the GA4 KPIs tab is **CLEAN-CERTIFIED AND PRODUCTION-READY** for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the recorded campaign/property/configuration/dependency boundary.
+As of August 12, 2026, the GA4 KPIs tab is **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. Shared KPI dependencies changed and the candidate is not deployed. Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` remains preserved as historical revision-specific evidence only.
 
 All 12 KPI cards, Tracker, Notifications, KPI-derived Insights, saved browser KPI PDF, campaign-scoped refresh/recompute, live provider path, retained provider-confirmed alert delivery, exact-SHA report test-send delivery, and protected Overview/Insights/Reports regressions passed. The scheduler was triggered manually to finish the same day; timer wiring passed automated coverage, but a natural timer firing on this SHA is not claimed. The current-version command executed all 1,507 tests with zero blocking KPI failures and 50 explicitly visible, nonblocking failures outside this KPI certification boundary.
 
-The status is revision-specific and changes only when the machine record, dependency hashes, and all controlling markers agree. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The status is revision-specific. A production-ready answer can return only when the machine record, dependency hashes, controlling markers, exact deployed SHA, and external evidence agree. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
 

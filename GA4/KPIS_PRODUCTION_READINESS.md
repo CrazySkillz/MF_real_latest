@@ -16,13 +16,15 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### August 12, 2026 clean certification (controlling status)
+### August 12, 2026 local candidate status (controlling)
 
-**Result: CLEAN-CERTIFIED AND PRODUCTION-READY for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d`.** Open in-scope findings: Critical `0`; Major `0`; Minor `0`.
+**Result: UNVERIFIED for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`.** Shared KPI dependencies changed and the candidate is not deployed. Exact-SHA deployment and external revalidation remain pending.
 
-Exact current-version evidence:
+Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the evidence below remain preserved as historical revision-specific proof. They do not certify the local candidate.
+
+Previous exact-SHA evidence:
 
 - authenticated read-only production validation passed for all 12 campaign-scoped GA4 KPI cards, Tracker totals, breached Notifications, KPI-derived Insights findings, and the saved browser KPI PDF; the validation attempted no application mutation and observed unchanged campaign persistence
 - the campaign-scoped GA4 daily pipeline was triggered manually at `2026-08-12T09:39:38.605Z`, after the user declined to wait for the next timer slot; it completed successfully for campaign hash `fc734ddaf728`, property `542352127`, updated all 12 KPIs and both Benchmarks, skipped/failed none, and suppressed alerts. This proves the production scheduler work path; automated timer-wiring tests passed, but a natural timer firing on this SHA is not claimed

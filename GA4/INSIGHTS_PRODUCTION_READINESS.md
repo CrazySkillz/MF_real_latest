@@ -3,19 +3,19 @@
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Status: **PRODUCTION_READY** for the exact recorded boundary.
+Status: **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`.
 
-Certified deployed implementation SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`.
+Candidate reason: shared Insights dependencies changed and the candidate is not deployed. Exact-SHA deployment, authenticated parity, tenant isolation, scheduler, and dependency-hash evidence remain pending.
 
-Final re-verification date: `2026-08-12` (`Europe/Amsterdam`).
+Previous certified SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`. Its evidence is preserved in the machine record and below as historical revision-specific evidence; it does not certify the local candidate.
 
 Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
-Open findings: Critical `0`; Major `0`; Minor `0`.
+Candidate local validation found no new in-scope runtime regression. Production parity remains unverified until the pending external gates are rerun on the exact deployed candidate.
 
-Decision: the live GA4 Insights tab is clean-certified and production-ready for the exact SHA, configuration, and dependency boundary recorded here. Reports-owned behavior remains outside this certification.
+Decision: do not claim the local candidate is production-ready. Reports-owned behavior remains outside this certification.
 
 August 12, 2026 exact-SHA re-verification: the KPI same-date history correction intentionally affects the history consumed by Insights, so this connection was not assumed unchanged. The authenticated production validator passed on deployed `ee22f0e470826f1cb247115497c9a15229d0142d`: all Executive Financials, Data Summary, channel, Daily/7d/30d/Monthly Trends, tracker, and visible finding values matched the scoped APIs; Daily rendered 111, 108, 106, and 103 on the exact imported dates with gaps elsewhere; tenant isolation failed closed; and campaign persistence remained unchanged. The campaign-scoped manual scheduler run succeeded with all 12 KPIs and both Benchmarks updated and none skipped/failed. The complete protected boundary passed 44 files / 496 tests; TypeScript and the production build passed. A natural timer firing on this SHA is not claimed.
 

@@ -2,10 +2,14 @@
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
   "contractSha256": "b0679ad0d8a8a7597eff62c118444bbb4136671014f558f389e18fab0c735279",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
-  "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
+  "certifiedSha": null,
+  "invalidationReason": "Local candidate c7e708e27d73416a96cf9a79d0f875f60b725d6b changes shared KPI dependencies and is not deployed. Exact-SHA deployment and external revalidation are pending; prior certification evidence remains historical only.",
+  "previousCertification": {
+    "status": "PRODUCTION_READY",
+    "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d"
+  },
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "Actor-owned campaign, exact google_analytics platform rows, selected GA4 property, saved GA4 campaign filter, campaign-scoped revenue and spend sources, and campaign reporting timezone.",
@@ -284,32 +288,32 @@
   "externalGates": [
     {
       "id": "target_data_inventory",
-      "status": "passed",
+      "status": "pending",
       "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d for the certified campaign: authenticated inventory found exactly 12 campaign-scoped google_analytics KPI rows and the read-only validator observed unchanged KPI, progress, alert, notification, report, snapshot, and send-event persistence."
     },
     {
       "id": "deployed_state_matrix",
-      "status": "passed",
+      "status": "pending",
       "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d. The authenticated mutation-blocked browser validator matched all 12 cards, Tracker, Notifications, KPI-derived Insights, and the saved browser KPI PDF to the exact scoped inputs and observed unchanged persistence."
     },
     {
       "id": "timer_scheduler",
-      "status": "passed",
+      "status": "pending",
       "evidence": "PASSED for the exact deployed scheduler work path on ee22f0e470826f1cb247115497c9a15229d0142d. A user-authorized campaign-scoped manual trigger completed at 2026-08-12T09:39:38.605Z for campaign hash fc734ddaf728/property 542352127, updated all 12 KPIs and both Benchmarks, skipped/failed none, and suppressed alerts. Timer wiring passed automated regression; a natural timer firing on this SHA is explicitly not claimed."
     },
     {
       "id": "provider_and_token",
-      "status": "passed",
+      "status": "pending",
       "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d. The campaign-scoped scheduler call successfully used the configured GA4 property/filter and completed-day provider path; the separate read-only validator confirmed all page inputs and no token refresh/persistence. Auth, malformed-value, empty, stale, and provider-failure branches passed current production-path regressions; future provider availability is not claimed."
     },
     {
       "id": "alert_email_delivery",
-      "status": "passed",
+      "status": "pending",
       "evidence": "PASSED for the current alert dependency boundary. The exact campaign's three latest post-alert-correction KPI events are provider-confirmed delivered, each with provider response ID and delivered timestamp. The diff from that deployed alert correction through ee22f0e470826f1cb247115497c9a15229d0142d changes only KPI PDF/validation and Reports files; alert sender, current-value resolver, scheduler, audit, notification, schema, and storage dependencies are unchanged. Future deliveries are not claimed."
     },
     {
       "id": "browser_and_report_parity",
-      "status": "passed",
+      "status": "pending",
       "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d. The saved browser KPI PDF matched every selected KPI value, target, reporting-window label, and state. The controlled saved-report test-send ran the normal KPI/Benchmark preflight and returned provider-confirmed delivered with a provider response ID; configuration was restored, snapshots and scheduled send events were unchanged, and one audit row was added. Manual/direct/scheduled report behavior is carried only across unchanged shared builders and passing regressions; no new scheduled send is claimed."
     }
   ]

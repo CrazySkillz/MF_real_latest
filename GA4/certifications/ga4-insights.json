@@ -1,11 +1,16 @@
 {
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
-    "status":  "PRODUCTION_READY",
-    "lastReviewedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d",
-    "certifiedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d",
-    "deployedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d",
-    "invalidationReason":  null,
+    "status":  "UNVERIFIED",
+    "lastReviewedSha":  "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
+    "certifiedSha":  null,
+    "deployedSha":  null,
+    "invalidationReason":  "Local candidate c7e708e27d73416a96cf9a79d0f875f60b725d6b changes shared Insights dependencies and is not deployed. Exact-SHA deployment and external revalidation are pending; prior certification evidence remains historical only.",
+    "previousCertification":  {
+                                     "status":  "PRODUCTION_READY",
+                                     "certifiedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d",
+                                     "deployedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d"
+                                 },
     "configurationBoundary":  {
                                   "scope":  "live GA4 Insights tab only",
                                   "includedSurfaces":  [
@@ -499,32 +504,32 @@
     "externalGates":  [
                           {
                               "id":  "exact_sha_deployment",
-                              "status":  "passed",
+                              "status":  "pending",
                               "evidence":  "Render /api/health returned exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
-                              "status":  "passed",
+                              "status":  "pending",
                               "evidence":  "Authenticated production owner validation matched every live Insights value to scoped APIs on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d, including USD, Amsterdam, property 542352127, the saved filter scope, and separate SVG path segments across missing Daily dates; its read-only transaction rolled back and campaign-scoped persistence remained semantically unchanged."
                           },
                           {
                               "id":  "live_surface_value_parity",
-                              "status":  "passed",
+                              "status":  "pending",
                               "evidence":  "All Executive Financial, Data Summary, channel, Daily/7d/30d/Monthly Trends, tracker, and visible finding values matched page-consumed production inputs. Daily rendered 111, 108, 106, and 103 on exact imported dates with gaps elsewhere."
                           },
                           {
                               "id":  "tenant_isolation",
-                              "status":  "passed",
+                              "status":  "pending",
                               "evidence":  "An explicitly authorized ephemeral Clerk-only non-owner failed closed with HTTP 404; its session was revoked, the exact user was deleted, and campaign persistence was unchanged."
                           },
                           {
                               "id":  "deterministic_scheduler",
-                              "status":  "passed",
+                              "status":  "pending",
                               "evidence":  "The authorized campaign-only GA4 daily refresh and direct KPI/Benchmark recompute succeeded on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d at 2026-08-12T09:39:38.605Z with alerts suppressed; all 12 KPIs and both Benchmarks updated, none skipped/failed, and daily rows remained 22 before and after. Timer wiring is regression-covered; a natural timer firing on this SHA is not claimed."
                           },
                           {
                               "id":  "dependency_hashes",
-                              "status":  "passed",
+                              "status":  "pending",
                               "evidence":  "All 84 dependency hashes are recomputed from the final candidate boundary before the machine gate is allowed to restore PRODUCTION_READY. Authenticated exact-SHA output revalidated the canonical non-secret configuration boundary."
                           }
                       ],

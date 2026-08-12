@@ -6,6 +6,11 @@
   "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
   "reviewedImplementationGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
   "certifiedGitSha": null,
+  "candidateRevision": {
+    "runtimeGitSha": "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
+    "status": "UNVERIFIED",
+    "invalidationReason": "The local candidate changes the recorded Benchmark dependency boundary. Prior revision-specific evidence is preserved, but exact-SHA deployment and production validation remain pending."
+  },
   "reviewedAt": "2026-08-03",
   "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified and do not gate Benchmarks.",
   "revisionBoundary": {

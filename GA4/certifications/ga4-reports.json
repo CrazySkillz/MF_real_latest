@@ -1,11 +1,16 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-reports",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
-  "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
-  "deployedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "Local candidate c7e708e27d73416a96cf9a79d0f875f60b725d6b changes shared Reports dependencies and is not deployed. Exact-SHA deployment and external revalidation are pending; prior certification evidence remains historical only.",
+  "previousCertification": {
+    "status": "PRODUCTION_READY",
+    "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
+    "deployedSha": "ee22f0e470826f1cb247115497c9a15229d0142d"
+  },
   "configurationBoundary": {
     "scope": "GA4 Reports tab and GA4 report delivery surfaces",
     "includedSurfaces": [
@@ -110,15 +115,15 @@
     }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Render /api/health returned exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d." },
-    { "id": "upstream_section_certifications", "status": "passed", "evidence": "Overview carry-forward and Insights exact-SHA re-verification passed: 44 protected files and 496 tests, authenticated read-only production parity, tenant isolation, and unchanged persistence." },
-    { "id": "browser_server_pdf_value_parity", "status": "passed", "evidence": "Exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d: the saved browser KPI PDF matched every selected KPI value, target, window label, and state; the controlled saved-report test-send ran the same KPI/Benchmark preflight and delivered its generated PDF. Unchanged shared builders and passing report regressions retain prior standard-type coverage." },
-    { "id": "report_crud_tenant_isolation", "status": "passed", "evidence": "On exact deployed SHA, the user created, edited, and deleted a temporary GA4 report. A BEGIN TRANSACTION READ ONLY audit rolled back after confirming restoration to exactly the three original active report IDs. Owner list/events/snapshots returned 200; an ephemeral non-owner failed closed with 404 and was deleted with sessions revoked." },
-    { "id": "deployed_scheduled_visibility", "status": "passed", "evidence": "The deployed GA4 Reports tab visibly rendered the three saved scheduled GA4 report cards, and authenticated API inventory matched the campaign-scoped production rows. Campaign DeepDive visibility is excluded." },
-    { "id": "scheduler_snapshot_truthfulness", "status": "passed", "evidence": "Exact SHA 4f3b2b6f0fb47a76d4506888733b46233b6c90c4 naturally processed Ad report f117adb5-4db4-401c-8ad9-afc2cdbb9d09 at scheduled key 2026-08-11T09:00@Europe/Amsterdam. Event c78890e0-d4de-4c09-8a63-7e6b32070339 is sent; snapshot a1753021-d453-4dc2-b22a-4736bc1fe484 exists and matches report/campaign/platform/type; lastSentAt follows sentAt; the scheduled slot count is exactly one; and the associated Mailgun audit is delivered with provider response and delivered timestamp." },
-    { "id": "provider_confirmed_delivery", "status": "passed", "evidence": "Exact-SHA test send returned success true and deliveryStatus delivered with a provider response ID and delivered timestamp. Recipient identity is intentionally omitted from the machine record." },
-    { "id": "recipient_inbox_receipt", "status": "passed", "evidence": "The recipient confirmed the email arrived at yuzu.mastery@gmail.com and its attached Ad Comparison PDF opened and matched the live UI." },
-    { "id": "production_database_integrity", "status": "passed", "evidence": "BEGIN TRANSACTION READ ONLY audit: 9 GA4 reports, zero orphan active rows, zero invalid enabled schedules, zero campaign/platform snapshot mismatches, zero non-sent linked snapshots, zero duplicate scheduled slots, and the unique (report_id, scheduled_key) index is present. Historical delivered snapshots for deleted reports fail closed through report-access guards." },
-    { "id": "dependency_hashes", "status": "passed", "evidence": "All 28 listed Reports dependency hashes are recomputed from the final candidate boundary before the machine gate is allowed to restore PRODUCTION_READY." }
+    { "id": "exact_sha_deployment", "status": "pending", "evidence": "Render /api/health returned exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d." },
+    { "id": "upstream_section_certifications", "status": "pending", "evidence": "Overview carry-forward and Insights exact-SHA re-verification passed: 44 protected files and 496 tests, authenticated read-only production parity, tenant isolation, and unchanged persistence." },
+    { "id": "browser_server_pdf_value_parity", "status": "pending", "evidence": "Exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d: the saved browser KPI PDF matched every selected KPI value, target, window label, and state; the controlled saved-report test-send ran the same KPI/Benchmark preflight and delivered its generated PDF. Unchanged shared builders and passing report regressions retain prior standard-type coverage." },
+    { "id": "report_crud_tenant_isolation", "status": "pending", "evidence": "On exact deployed SHA, the user created, edited, and deleted a temporary GA4 report. A BEGIN TRANSACTION READ ONLY audit rolled back after confirming restoration to exactly the three original active report IDs. Owner list/events/snapshots returned 200; an ephemeral non-owner failed closed with 404 and was deleted with sessions revoked." },
+    { "id": "deployed_scheduled_visibility", "status": "pending", "evidence": "The deployed GA4 Reports tab visibly rendered the three saved scheduled GA4 report cards, and authenticated API inventory matched the campaign-scoped production rows. Campaign DeepDive visibility is excluded." },
+    { "id": "scheduler_snapshot_truthfulness", "status": "pending", "evidence": "Exact SHA 4f3b2b6f0fb47a76d4506888733b46233b6c90c4 naturally processed Ad report f117adb5-4db4-401c-8ad9-afc2cdbb9d09 at scheduled key 2026-08-11T09:00@Europe/Amsterdam. Event c78890e0-d4de-4c09-8a63-7e6b32070339 is sent; snapshot a1753021-d453-4dc2-b22a-4736bc1fe484 exists and matches report/campaign/platform/type; lastSentAt follows sentAt; the scheduled slot count is exactly one; and the associated Mailgun audit is delivered with provider response and delivered timestamp." },
+    { "id": "provider_confirmed_delivery", "status": "pending", "evidence": "Exact-SHA test send returned success true and deliveryStatus delivered with a provider response ID and delivered timestamp. Recipient identity is intentionally omitted from the machine record." },
+    { "id": "recipient_inbox_receipt", "status": "pending", "evidence": "The recipient confirmed the email arrived at yuzu.mastery@gmail.com and its attached Ad Comparison PDF opened and matched the live UI." },
+    { "id": "production_database_integrity", "status": "pending", "evidence": "BEGIN TRANSACTION READ ONLY audit: 9 GA4 reports, zero orphan active rows, zero invalid enabled schedules, zero campaign/platform snapshot mismatches, zero non-sent linked snapshots, zero duplicate scheduled slots, and the unique (report_id, scheduled_key) index is present. Historical delivered snapshots for deleted reports fail closed through report-access guards." },
+    { "id": "dependency_hashes", "status": "pending", "evidence": "All 28 listed Reports dependency hashes are recomputed from the final candidate boundary before the machine gate is allowed to restore PRODUCTION_READY." }
   ]
 }

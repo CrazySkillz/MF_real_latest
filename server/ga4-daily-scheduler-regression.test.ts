@@ -4,6 +4,7 @@ import { join } from "path";
 import { afterEach, vi } from "vitest";
 import { ga4Service } from "./analytics";
 import { getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { storage } from "./storage";
 
 const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
@@ -56,7 +57,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("export async function runGA4DailyRefreshPipeline(opts: GA4DailyRefreshPipelineOptions = {})");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
     expect(source).toContain("const campaigns = campaignId");
-    expect(source).toContain("await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);");
+    expect(source).toMatch(/runGA4DailyKPIAndBenchmarkJobs\(campaignId\s*\? \{ campaignId, suppressAlerts: true \}/);
     expect(source).toContain("[GA4 Daily] KPI/Benchmark recompute result");
     expect(source).toContain("kpiIdsUpdated: recomputeResult.kpiIdsUpdated");
     expect(source).toContain("kpiIdsSkipped: recomputeResult.kpiIdsSkipped");
@@ -94,6 +95,25 @@ describe("GA4 daily scheduler timing", () => {
     expect(getGA4DailyRecomputeFailure(base, false)).toBeNull();
     expect(getGA4DailyRecomputeFailure({ ...base, benchmarkIdsFailed: ["benchmark-failed"] }, false)).toContain("1 Benchmark");
     expect(getGA4DailyRecomputeFailure({ ...base, campaignsProcessed: 0 }, true)).toContain("target campaign");
+  });
+
+  it("isolates partial refresh failures from successfully refreshed campaign recompute", async () => {
+    const source = schedulerSource();
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([
+      { id: "campaign-ok" },
+      { id: "campaign-failed" },
+    ] as any);
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({
+      campaignIds: ["campaign-ok"],
+      suppressAlerts: true,
+    });
+
+    expect(result.campaignIdsSkipped).toEqual(["campaign-ok"]);
+    expect(source).toContain("campaignIds: refreshResult.campaignIdsProcessed");
+    expect(source.indexOf("const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs")).toBeLessThan(
+      source.indexOf("if (refreshFailure) throw new Error(refreshFailure);"),
+    );
   });
 
   it("fails a targeted run when its provider refresh failed or was skipped", () => {

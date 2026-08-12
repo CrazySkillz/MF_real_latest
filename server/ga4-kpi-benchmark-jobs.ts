@@ -210,11 +210,15 @@ export function computeBenchmarkRating(variancePct: number) {
   return "poor";
 }
 
-export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; date?: string; suppressAlerts?: boolean }) {
+export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; campaignIds?: string[]; date?: string; suppressAlerts?: boolean }) {
   const requestedDate = String(opts?.date || "").trim();
+  const requestedCampaignIds = Array.isArray(opts?.campaignIds)
+    ? new Set(opts.campaignIds.map((id) => String(id)))
+    : null;
   const campaigns = opts?.campaignId
     ? [await storage.getCampaign(String(opts.campaignId)).catch(() => undefined)].filter(Boolean) as any[]
-    : await storage.getCampaigns().catch(() => []);
+    : (await storage.getCampaigns().catch(() => []))
+      .filter((campaign: any) => !requestedCampaignIds || requestedCampaignIds.has(String(campaign?.id || "")));
 
   let reportedDate = requestedDate || getReportingDateWindow(1, "UTC").endDate;
   let processed = 0;

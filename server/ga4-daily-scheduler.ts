@@ -290,9 +290,13 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   try {
     const refreshResult = await refreshAllGA4DailyMetrics({ campaignId });
     const refreshFailure = getGA4DailyRefreshFailure(refreshResult, campaignId);
-    if (refreshFailure) throw new Error(refreshFailure);
+    if (campaignId && refreshFailure) throw new Error(refreshFailure);
 
-    const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId ? { campaignId, suppressAlerts: true } : undefined);
+    const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs(campaignId
+      ? { campaignId, suppressAlerts: true }
+      : refreshFailure
+        ? { campaignIds: refreshResult.campaignIdsProcessed, suppressAlerts: true }
+        : undefined);
     ga4DailySchedulerStatus.lastRecomputeRecordedAt = new Date();
     ga4DailySchedulerStatus.lastRecomputeEvidence = {
       campaignIdsProcessed: hashEvidenceIds(recomputeResult.campaignIdsProcessed),
@@ -318,6 +322,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     })}`);
     const recomputeFailure = getGA4DailyRecomputeFailure(recomputeResult, Boolean(campaignId));
     if (recomputeFailure) throw new Error(recomputeFailure);
+    if (refreshFailure) throw new Error(refreshFailure);
 
     if (!campaignId && !opts.suppressAlerts) {
       try {

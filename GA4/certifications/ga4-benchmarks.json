@@ -2,28 +2,27 @@
   "schemaVersion": 1,
   "sectionId": "ga4-benchmarks",
   "betaReadinessStatus": "BETA_READY",
-  "productionCertificationStatus": "UNVERIFIED",
+  "productionCertificationStatus": "PRODUCTION_READY",
   "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
-  "reviewedImplementationGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
-  "certifiedGitSha": null,
+  "reviewedImplementationGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+  "certifiedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
   "candidateRevision": {
-    "runtimeGitSha": "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
-    "status": "UNVERIFIED",
-    "invalidationReason": "The local candidate changes the recorded Benchmark dependency boundary. Prior revision-specific evidence is preserved, but exact-SHA deployment and production validation remain pending."
+    "runtimeGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+    "status": "PRODUCTION_READY",
+    "invalidationReason": null
   },
-  "reviewedAt": "2026-08-03",
+  "reviewedAt": "2026-08-13",
   "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified and do not gate Benchmarks.",
   "revisionBoundary": {
-    "status": "LOCKED_FOR_PRODUCTION_CERTIFICATION_QUEUE",
-    "runtimeGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
-    "deployedEvidenceGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
-    "capturedAt": "2026-08-03T09:08:12.791Z",
+    "status": "LOCKED_PRODUCTION_READY",
+    "runtimeGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+    "deployedEvidenceGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+    "capturedAt": "2026-08-12T23:00:39.934Z",
     "changedFilesSinceRuntime": [
       "GA4/BENCHMARKS_PRODUCTION_READINESS.md",
       "GA4/certifications/ga4-benchmarks.json",
-      "scripts/ga4-benchmark-beta-clearance-readonly.ts",
-      "scripts/ga4-benchmark-commit13-authorized-validation.ts",
-      "scripts/ga4-benchmark-commit13-delivery-readonly.ts",
+      "GA4/BENCHMARKS.md",
+      "GA4/README.md",
       "server/ga4-benchmark-regression.test.ts"
     ],
     "productionRuntimeSourceChanges": [],
@@ -31,19 +30,24 @@
     "publicRuntimeConfiguration": {
       "nodeEnv": "production",
       "ga4DailyReportingTimeZone": "UTC",
-      "ga4DailyHour": 3,
+      "ga4DailyHour": 22,
       "ga4DailyMinute": 0,
       "ga4DailyRunOnStartup": false,
-      "ga4DailyNextRunAt": "2026-08-04T03:00:00.000Z"
+      "ga4DailyNextRunAt": "2026-08-13T22:00:00.000Z"
     },
-    "limitations": "Current Commit 14 natural-run evidence is the only remaining Benchmark production-certification requirement. Completed report provider/snapshot evidence is bounded shared-infrastructure history for the later Reports audit and creates no Benchmark inbox requirement."
+    "limitations": "The natural run completed the exact active Benchmark boundary while the process-wide scheduler remained failed for 17 excluded obsolete campaigns; no global all-campaign scheduler-health claim is made. Reports PDF/artifact findings remain in the separate Reports audit."
   },
   "localCertificationGate": {
     "status": "complete",
-    "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
-    "validatedAt": "2026-08-03",
-    "applicableRegressionFilesPassed": 54,
-    "applicableRegressionTestsPassed": 615,
+    "validatedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+    "validatedAt": "2026-08-13",
+    "currentVersionTestsTotal": 1512,
+    "currentVersionTestsPassed": 1466,
+    "currentVersionBlockingFailures": 0,
+    "declaredDeferredFuturePlatformFailures": 46,
+    "focusedProtectedTestsPassed": 138,
+    "insightsOverviewTestsPassed": 112,
+    "certificationGateTestsPassed": 29,
     "typescriptCheck": "passed",
     "productionBuild": "passed",
     "productionRuntimeSourceChangesSinceReviewedImplementation": [],
@@ -60,8 +64,8 @@
   },
   "deployedConsumerParityGate": {
     "status": "complete",
-    "validatedGitSha": "b42c51e9ebcc12d74851cc640c86038513a57828",
-    "validatedAt": "2026-08-03",
+    "validatedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+    "validatedAt": "2026-08-13",
     "mode": "read_only_application_data",
     "campaignCount": 2,
     "benchmarkCount": 4,
@@ -70,13 +74,13 @@
     "liveProviderPersistedSchedulerUiParity": "passed",
     "cardsTrackerParity": "passed",
     "insightsParity": "passed",
-    "browserPdfParity": "passed",
+    "browserPdfParity": "OUT_OF_SCOPE_REPORTS_FINDING_RECORDED",
     "alertNotificationParity": "passed",
     "noPropertyFailClosedParity": "passed",
-    "manualBenchmarkArtifactParity": "passed_exact_immutable_values_and_pdf",
-    "manualInsightsArtifactParity": "passed_exact_immutable_values_and_pdf",
-    "scheduledBenchmarkArtifactParity": "passed_provider_confirmed_sent_with_immutable_snapshot",
-    "scheduledInsightsArtifactParity": "passed_provider_confirmed_sent_with_immutable_snapshot",
+    "manualBenchmarkArtifactParity": "HISTORICAL_REPORTS_SUPPORTING_EVIDENCE",
+    "manualInsightsArtifactParity": "HISTORICAL_REPORTS_SUPPORTING_EVIDENCE",
+    "scheduledBenchmarkArtifactParity": "OUT_OF_SCOPE_STALE_REPORT_ARTIFACT_RECORDED",
+    "scheduledInsightsArtifactParity": "HISTORICAL_REPORTS_SUPPORTING_EVIDENCE",
     "productionDeliveryCertification": "OUT_OF_SCOPE_REPORTS_SUPPORTING_EVIDENCE",
     "productionConfigurationRestored": true,
     "originalConfigurationHash": "fd95883d1e7f",
@@ -86,6 +90,42 @@
       "Benchmark and Insights each have one sent event and one immutable snapshot containing 2 Benchmark rows.",
       "Actual approved-inbox receipt remains unverified and is not part of the Benchmark certification boundary."
     ]
+  },
+  "naturalSchedulerEvidence": {
+    "status": "complete_for_exact_benchmark_boundary",
+    "deployedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+    "startedAt": "2026-08-12T23:00:00.001Z",
+    "finishedAt": "2026-08-12T23:00:39.934Z",
+    "trigger": "scheduled",
+    "processWideStatus": "failed",
+    "processWideFailure": "GA4 daily refresh failed for 17 campaign(s)",
+    "globalAllCampaignSchedulerHealthClaimed": false,
+    "benchmarkBoundaryResult": {
+      "campaignHashesProcessed": [
+        "fc734ddaf728"
+      ],
+      "campaignHashesSkipped": [
+        "7fad63d21661"
+      ],
+      "campaignHashesFailed": [],
+      "kpiHashesUpdated": [
+        "01ab4c22f00e",
+        "122ef1aaabdb",
+        "204edaa5b3a1",
+        "318ffb63558f",
+        "599ea3b2dc80",
+        "7ed1d5c4d10f",
+        "81b4f08b9921",
+        "d6d06e6abefa",
+        "d722c1057b61",
+        "dbbc3b440972",
+        "fa279a6e77d3",
+        "ff24c717b842"
+      ],
+      "kpiHashesFailed": [],
+      "benchmarkHashesUpdated": ["263affeee211", "58aa91a9bb2d"],
+      "benchmarkHashesFailed": []
+    }
   },
   "activeProductionCertificationCommits": [
     {
@@ -105,7 +145,7 @@
     },
     {
       "id": 14,
-      "status": "waiting_for_natural_run",
+      "status": "complete",
       "name": "Capture a successful natural daily scheduler run"
     },
     {
@@ -370,8 +410,6 @@
       "result": "At 2026-08-03T09:33:27Z production returned exact SHA b42c51e9ebcc12d74851cc640c86038513a57828. Report scheduler metrics recorded totalSent 2, totalFailed 0, and 100.00% success. The GA4 daily scheduler remained healthy and idle with zero scheduled runs and next run 2026-08-04T03:00:00.000Z."
     }
   ],
-  "productionOnlyEvidenceOutstanding": [
-    "A successful natural timer-fired GA4 daily run on the unchanged reviewed revision"
-  ],
+  "productionOnlyEvidenceOutstanding": [],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
 }

@@ -6,7 +6,7 @@ This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress ru
 
 ## Production Readiness Status
 
-As of August 3, 2026, the GA4 `Benchmarks` tab is Beta Ready and has no remaining local, deployed-parity, security, lifecycle, or deterministic-scheduler blocker. Production certification remains `UNVERIFIED` only until Current Commit 14 records one successful natural timer-fired GA4 daily run on the unchanged reviewed revision.
+As of August 13, 2026, the GA4 `Benchmarks` tab is clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` and the boundary recorded in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 
 The controlling source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit and do not gate this Benchmark certification.
 
@@ -255,6 +255,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `Benchmarks` tab is eligible for clean production certification after Current Commit 14's natural scheduler evidence. If that unchanged-revision run passes and the final dependency comparison is clean, the tab can be marked production-ready under the exact Benchmark boundary in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+The GA4 `Benchmarks` tab is clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. The natural timer fired on the reviewed runtime; the active Benchmark campaign recomputed with both Benchmark rows updated and zero Benchmark failures. The process-wide scheduler still reported 17 excluded obsolete-campaign failures, so no global all-campaign scheduler-health claim is made.
 
 Future boundaries are not current blockers, but they are not certified claims: daily timer-fired execution, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.

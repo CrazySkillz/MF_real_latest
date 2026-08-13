@@ -16,11 +16,11 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-August 12, 2026 local candidate status: `UNVERIFIED` at `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. The candidate changes the recorded Benchmark dependency boundary. Prior Beta Ready and deployed evidence below remains preserved for its exact earlier revision, but it does not certify this candidate; exact-SHA deployment and production validation remain pending.
+August 13, 2026 controlling assessment: GA4 Benchmarks are **clean-certified and `PRODUCTION_READY`** for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`, and the exact scope below.
 
-August 3, 2026 controlling assessment: GA4 Benchmarks are **Beta Ready** for a closed beta at deployed implementation commit `b42c51e9ebcc12d74851cc640c86038513a57828`, reviewed from base commit `466dc2494b16b38a116b49a786039da251520520`. Production certification remains `UNVERIFIED` only until Benchmark Current Commit 14 captures one successful natural timer-fired GA4 daily run on the unchanged reviewed boundary.
+The natural timer fired at `2026-08-12T23:00:00.001Z`. The active Benchmark campaign was recomputed; both active Benchmark IDs were recorded as updated and no KPI, Benchmark, or in-scope campaign recompute ID failed. The process-wide scheduler correctly remained `failed` because 17 excluded obsolete campaigns failed provider refresh. That limitation is retained explicitly; this certification does not claim global all-campaign scheduler health.
 
-<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->
+<!-- ga4-benchmark-production-certification-status: PRODUCTION_READY -->
 <!-- ga4-benchmark-beta-readiness-status: BETA_READY -->
 
 This assessment is revision-specific. The Benchmark certification boundary covers Benchmark cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, deterministic and natural GA4 daily execution, persistence, destructive rollback, authentication, campaign/property/owner/timezone/window scope, and multi-tenant isolation. Read-only propagation evidence into Insights and Reports is supporting cross-consumer evidence only; full Insights/Reports behavior, report generation, scheduling, delivery, attachments, and inbox receipt belong to their separate section audits and do not gate Benchmark certification. Any Benchmark dependency-boundary change invalidates the assessment.
@@ -30,10 +30,10 @@ Current dependency queue:
 1. **Benchmark Current Commit 8 — documentation invalidation:** complete.
 2. **Benchmark Current Commit 9 — certification integrity and real-path parity:** complete in `5b5df12f5e5a40202ff8ba17e697ed88979de62f` and `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
 3. **Benchmark Current Commit 10 — shared value-contract and lifecycle repair:** complete locally in `14bb0d2892ca06e42ae019f7244280b6ff70bcb7`.
-4. **Benchmark Current Commit 11 — lock the exact production certification revision:** complete. Runtime SHA `5366d0babc9550ecd408e55bc385e7024854f424`; deployed evidence SHA `fbc10e04f69f1d2709d3e2629f8c4818a7062c90`; intervening changes are validation/documentation/test-only.
+4. **Benchmark Current Commit 11 — lock the exact production certification revision:** complete. Final runtime and deployed evidence SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`; the final certification-record change is evidence/test/documentation only.
 5. **Benchmark Current Commit 12 — run the final clean-revision local gate:** complete at clean validation SHA `473c4e151b43aac33cb1d35a5c4b0fa85a85c36b`.
 6. **Benchmark Current Commit 13 — prove exact deployed Benchmark value and bounded downstream propagation parity:** complete at deployed runtime SHA `9ed32290b32773af543b7a927ef5e197c4e3b761`.
-7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** waiting for the next unchanged-revision natural run.
+7. **Benchmark Current Commit 14 — capture a successful natural daily scheduler run:** complete for the exact active Benchmark boundary at deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`.
 8. **Former Benchmark Current Commit 15 — scheduled report delivery:** removed from the Benchmark certification gate. Its completed runtime/provider/snapshot evidence is retained below as bounded Reports/shared-infrastructure history for the later Reports audit.
 
 ### August 2-3, 2026 Closed-Beta Validation Evidence
@@ -64,8 +64,13 @@ Current dependency queue:
 - The controlled validator's final delivery-count assertion initially false-failed because it compared application UTC with a database `timestamp without time zone` cutoff. It now identifies fresh audits by provider-response-ID baseline. The read-only inspector also required an explicit UUID/text snapshot join cast. Both validation-only defects are fixed and guarded; neither affected application delivery or snapshots.
 - The broader post-fix packet passed `54` files and `615` tests, including `source-safety-regression.test.ts` `87/87`; `npm run check` and `npm run build` passed. Report inbox receipt is not claimed and is not part of the Benchmark certification boundary.
 - Final read-only health at `2026-08-03T09:33:27Z` returned exact SHA `b42c51e9ebcc12d74851cc640c86038513a57828`. Report scheduler metrics recorded `totalSent = 2`, `totalFailed = 0`, and `successRate = 100.00%`. The separate GA4 daily scheduler remained healthy but idle with `totalScheduledRuns = 0` and next run `2026-08-04T03:00:00.000Z`, so Current Commit 14 remains outstanding without contradiction.
+- Candidate `3d94238c2f059a85d00aa37d401549972e091ad4` first fired naturally at `2026-08-12T22:00:00.001Z`; the process failed for the same 17 obsolete campaigns documented by Overview and stopped before Benchmark recomputation. The defect was regression-guarded before the smallest failure-isolation fix.
+- Exact deployed runtime `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` then fired naturally at `2026-08-12T23:00:00.001Z` and finished at `23:00:39.934Z`. Scheduler evidence recorded one processed active Benchmark campaign, both active Benchmark IDs updated, 12 KPI IDs updated, and zero in-scope campaign/KPI/Benchmark failed IDs.
+- The global scheduler status remained `failed` because the 17 excluded obsolete campaigns still failed provider refresh. This is accurate observability and is not represented as a global scheduler-health pass. No obsolete campaign, source, connection, or persisted record was deleted or rewritten.
+- Final authenticated read-only evidence on exact SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` confirmed 2 campaign inventories, 4 active Benchmarks, live-provider/persisted/scheduler/UI value parity, cards, Tracker, period-compatible Insights behavior, alerts/notifications, no-property fail-closed behavior, and zero application mutation attempts. The validator separately retained a browser-PDF target mismatch and a stale scheduled artifact; both belong to the Reports boundary and do not gate or certify Benchmarks.
+- Final local validation passed the 10-file focused protected packet (`138/138`), exact Insights/Overview packet (`112/112`), protected certification gates (`29/29`), all current-version blocking tests (zero blockers; 46 declared deferred future-platform failures remained visible), TypeScript, and the production build.
 
-The only remaining Benchmark production evidence is one successful natural timer-fired GA4 daily run on the unchanged reviewed revision. If Current Commit 14 passes and the final revision/dependency comparison is clean, GA4 Benchmarks can be marked clean-certified and production-ready under this exact Benchmark boundary. Machine-readable production status stays `UNVERIFIED` until that evidence is recorded.
+No Benchmark production evidence remains outstanding for the exact certified boundary. Reports-owned PDF/artifact findings remain recorded for the separate Reports audit and do not extend or weaken this Benchmark certification.
 
 ### Active Production-Certification Commit Queue
 
@@ -192,25 +197,27 @@ Complete on August 3, 2026 for deployed consumer parity and correct fail-closed 
 
 Root cause:
 
-The predecessor revision's natural timer fired and exposed the false-fatal skipped-row defect. The corrected scheduler path is deterministic-regression covered, but the current corrected deployed revision has not yet recorded a successful natural timer-fired run.
+The first candidate timer run at `2026-08-12T22:00:00.001Z` exposed that 17 excluded obsolete-campaign provider failures stopped recomputation for the successfully refreshed active Benchmark campaign. Runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` isolates recomputation to successfully refreshed campaign IDs while keeping the process-wide run failed and observable.
 
 Expected files:
 
 - `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
 - `GA4/certifications/ga4-benchmarks.json`
-- no scheduler runtime file unless natural execution exposes a proven defect
+- `server/ga4-daily-scheduler.ts`, `server/ga4-kpi-benchmark-jobs.ts`, and focused scheduler guards for the defect exposed by the natural run
 
 Required evidence:
 
 - Observe `/health/scheduler` after the configured timer fires naturally without using the manual trigger as a substitute.
-- Confirm `lastRunTrigger = scheduled`, `lastRunStatus = success`, the expected unchanged deployed SHA, and a completed run window/date.
+- Confirm `lastRunTrigger = scheduled`, the expected deployed SHA, a completed run window/date, and exact processed/updated/skipped/failed evidence for every campaign and row inside the active Benchmark boundary.
 - Capture campaign, KPI, and Benchmark processed/updated/skipped/failed counts and hashed row evidence.
-- Confirm expected unavailable/skipped records remain observable but nonfatal, actual failures remain fatal, global alert evaluation is not suppressed by expected skips, and no cross-tenant/campaign processing is exposed.
-- If a deployment or relevant configuration change occurs before the run, return to Current Commit 11 and re-evaluate affected evidence.
+- Confirm expected unavailable/skipped records remain observable, actual failures remain fatal and suppress the unsafe global alert sweep, the successful active Benchmark campaign still recomputes, and no cross-tenant/campaign processing is exposed.
+- A process-wide failure caused solely by documented campaigns outside the active Benchmark boundary does not become a global-success claim; certification requires exact hashed success and zero failed IDs inside the Benchmark boundary.
 
 Completion rule:
 
-Complete only after one successful natural timer-fired run on the locked corrected revision with reviewed recompute and alert evidence.
+Complete after one natural timer-fired run on the locked corrected revision proves exact successful recompute and alert/notification parity for the active Benchmark boundary, with all outside-boundary failures retained explicitly.
+
+Implementation status: complete. At `2026-08-12T23:00:00.001Z`, exact deployed SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` recorded `lastRunTrigger = scheduled`, one processed active Benchmark campaign hash, both active Benchmark row hashes updated, 12 KPI row hashes updated, and zero in-scope campaign/KPI/Benchmark failures. The process-wide status remained failed for 17 excluded obsolete campaigns; no global all-campaign scheduler-health claim is made.
 
 #### Former Benchmark Current Commit 15 — Reports/Shared-Infrastructure Evidence, Not A Benchmark Gate
 

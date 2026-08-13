@@ -339,7 +339,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4MetricsFile).toContain('chips: ["Targets", "Historical", "Goals"],');
   });
 
-  it("keeps closed-beta readiness separate from production certification", () => {
+  it("locks production certification to the exact deployed Benchmark boundary", () => {
     const record = JSON.parse(readFileSync(
       join(process.cwd(), "GA4", "certifications", "ga4-benchmarks.json"),
       "utf-8",
@@ -352,22 +352,21 @@ describe("GA4 Benchmark regression guard", () => {
     expect(record).toMatchObject({
       sectionId: "ga4-benchmarks",
       betaReadinessStatus: "BETA_READY",
-      productionCertificationStatus: "UNVERIFIED",
+      productionCertificationStatus: "PRODUCTION_READY",
       reviewedBaseGitSha: "466dc2494b16b38a116b49a786039da251520520",
-      reviewedImplementationGitSha: "b42c51e9ebcc12d74851cc640c86038513a57828",
-      certifiedGitSha: null,
+      reviewedImplementationGitSha: "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+      certifiedGitSha: "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
     });
-    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
+    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: PRODUCTION_READY -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
-    expect(record.productionOnlyEvidenceOutstanding).toEqual([
-      "A successful natural timer-fired GA4 daily run on the unchanged reviewed revision",
-    ]);
+    expect(record.productionOnlyEvidenceOutstanding).toEqual([]);
     expect(record.activeProductionCertificationCommits).toContainEqual(expect.objectContaining({
-      id: 15,
-      status: "removed_from_benchmark_gate_reports_scope",
+      id: 14,
+      status: "complete",
     }));
     expect(record.scope).toContain("Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified");
-    expect(readiness).toContain("The only remaining Benchmark production evidence is one successful natural timer-fired GA4 daily run");
+    expect(readiness).toContain("lastRunTrigger = scheduled");
+    expect(readiness).toContain("17 excluded obsolete campaigns");
   });
 
   it("keeps deployed consumer parity certification read-only and complete", () => {

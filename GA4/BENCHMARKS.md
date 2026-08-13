@@ -10,7 +10,7 @@ As of August 13, 2026, the GA4 `Benchmarks` tab is clean-certified and `PRODUCTI
 
 The controlling source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit and do not gate this Benchmark certification.
 
-Future-reference boundary rule: daily timer-fired execution, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness are not current blockers. They are also not certified claims; each requires fresh evidence before it can be claimed.
+Future-reference boundary rule: timer-fired executions beyond the exact `2026-08-12` certified run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness are not current blockers. They are also not certified claims; each requires fresh evidence before it can be claimed.
 
 For future platforms, use this file only as the functional Benchmark tab contract. Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -257,4 +257,4 @@ Important meaning:
 
 The GA4 `Benchmarks` tab is clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. The natural timer fired on the reviewed runtime; the active Benchmark campaign recomputed with both Benchmark rows updated and zero Benchmark failures. The process-wide scheduler still reported 17 excluded obsolete-campaign failures, so no global all-campaign scheduler-health claim is made.
 
-Future boundaries are not current blockers, but they are not certified claims: daily timer-fired execution, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.
+Future boundaries are not current blockers, but they are not certified claims: timer-fired executions beyond the exact `2026-08-12` certified run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.

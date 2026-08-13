@@ -364,7 +364,7 @@ describe("GA4 Benchmark regression guard", () => {
       id: 14,
       status: "complete",
     }));
-    expect(record.scope).toContain("Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified");
+    expect(record.scope).toContain("Reports generation, scheduling, delivery, attachments, and inbox receipt are outside this Benchmark certification");
     expect(readiness).toContain("lastRunTrigger = scheduled");
     expect(readiness).toContain("17 excluded obsolete campaigns");
   });

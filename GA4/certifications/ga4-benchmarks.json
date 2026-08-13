@@ -12,7 +12,7 @@
     "invalidationReason": null
   },
   "reviewedAt": "2026-08-13",
-  "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are separately certified and do not gate Benchmarks.",
+  "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are outside this Benchmark certification and are not certified by it.",
   "revisionBoundary": {
     "status": "LOCKED_PRODUCTION_READY",
     "runtimeGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",

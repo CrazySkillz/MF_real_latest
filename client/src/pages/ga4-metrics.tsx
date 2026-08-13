@@ -6356,7 +6356,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
-                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days, aggregated by UTM campaign</p>
+                        <p className="text-sm text-muted-foreground/70">GA4 metrics: last {GA4_DAILY_LOOKBACK_DAYS} completed days; Revenue includes exact campaign-matched source-to-date imports.</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

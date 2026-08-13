@@ -149,6 +149,14 @@ describe("GA4 UI regression guard", () => {
     expect(conversionMethod).toContain("dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }]");
   });
 
+  it("labels the Campaign Breakdown revenue window explicitly", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain(
+      "GA4 metrics: last {GA4_DAILY_LOOKBACK_DAYS} completed days; Revenue includes exact campaign-matched source-to-date imports.",
+    );
+  });
+
   it("returns the persisted GA4 window without exposing OAuth credentials", () => {
     const routes = readServer("routes-oauth.ts");
     const checkStart = routes.indexOf('app.get("/api/ga4/check-connection/:campaignId"');

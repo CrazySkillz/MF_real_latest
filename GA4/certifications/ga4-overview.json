@@ -5,7 +5,7 @@
   "lastReviewedSha": "29bc7fc1e80fe6554936dee8f0c90c141b5f816d",
   "certifiedSha": null,
   "deployedSha": "29bc7fc1e80fe6554936dee8f0c90c141b5f816d",
-  "invalidationReason": "The current runtime base is deployed and locally regression-clean, but fresh authenticated UI/API/source parity and one natural 22:00 UTC target persistence observation remain pending. The uncommitted certification-integrity changes do not create an exact-SHA production certification.",
+  "invalidationReason": "Runtime base 29bc7fc1e80fe6554936dee8f0c90c141b5f816d was deployed when reviewed and is locally regression-clean. The later evidence-only commits change no runtime files, but exact pushed-revision deployment, fresh authenticated UI/API/source parity, and one natural 22:00 UTC target persistence observation remain pending.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
@@ -168,8 +168,8 @@
   "externalGates": [
     {
       "id": "exact_sha_deployment",
-      "status": "passed",
-      "evidence": "Local main, local origin/main, remote main, and production /api/health all returned 29bc7fc1e80fe6554936dee8f0c90c141b5f816d."
+      "status": "pending",
+      "evidence": "Runtime base 29bc7fc1e80fe6554936dee8f0c90c141b5f816d matched local main, origin/main, remote main, and production health before the evidence-only commits. The exact pushed evidence revision still requires deployment confirmation."
     },
     {
       "id": "authenticated_ui_api_source_parity",

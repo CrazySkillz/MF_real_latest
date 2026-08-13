@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current production-certification status is **UNVERIFIED** on reviewed/deployed runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d`; no Overview runtime regression was proven, but the documented exact-current external gates remain pending. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current production-certification status is **UNVERIFIED**. Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` was deployed when reviewed, and no Overview runtime regression was proven; the later evidence-only commits change no runtime files, but the documented exact-current external gates remain pending. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
 
 <!-- /ga4-overview-current-status -->
 

@@ -17,7 +17,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- Overview is **UNVERIFIED for current production certification**. Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` matches `main`, `origin/main`, and deployment; local impact review and regression packets found no Overview runtime regression. Fresh authenticated parity and one natural `22:00 UTC` target persistence observation remain external gates. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
+- Overview is **UNVERIFIED for current production certification**. Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` was deployed when reviewed, and local impact review plus regression packets found no Overview runtime regression. The later evidence-only commits change no runtime files; exact pushed-revision deployment, fresh authenticated parity, and one natural `22:00 UTC` target persistence observation remain external gates. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–22 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 

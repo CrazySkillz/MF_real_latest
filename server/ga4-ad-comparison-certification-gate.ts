@@ -13,6 +13,7 @@ export const GA4_AD_COMPARISON_ACCUMULATION_WINDOW_RULE =
 export const GA4_AD_COMPARISON_REQUIRED_DEPENDENCIES = [
   'GA4/AD_COMPARISON.md',
   'GA4/AD_COMPARISON_PRODUCTION_READINESS.md',
+  'GA4-MANUAL-TEST-PLAN.md',
   'client/src/components/AddRevenueWizardModal.tsx',
   'client/src/components/HubSpotRevenueWizard.tsx',
   'client/src/components/ShopifyRevenueWizard.tsx',

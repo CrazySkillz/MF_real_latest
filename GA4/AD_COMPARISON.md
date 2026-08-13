@@ -8,11 +8,14 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`PRODUCTION_READY` for deployed runtime revision
-`83d124278647f3d2ccbe74b20f39c853dc0c8b44` and the recorded dependency and configuration boundary. The
-implementation uses the saved initial historical import boundary through the
-latest completed reporting day. The root cause, fix, and revision-specific
-production evidence are recorded in
+`PRODUCTION_READY` for exact deployed revision
+`defce1982c8c56854aa21c543612ab782811026e` and the recorded dependency and
+configuration boundary. The unavailable imported-source rendering defect is
+fixed; focused regressions, TypeScript, production build, exact-SHA provider,
+source-inventory, and live UI validation pass. The unavailable branch is proven
+by its deployed-code regression and was not created by mutating production data.
+The prior certification for `83d12427` is historical only. The root cause, fix,
+and evidence are recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
 boundary.

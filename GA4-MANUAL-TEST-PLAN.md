@@ -18,9 +18,12 @@ Important:
 
 Ad Comparison status for future reference:
 
-- GA4 Ad Comparison is production-ready for the current GA4 code scope
-- the only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured
-- do not treat that deferred evidence item as a known code blocker; use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` as the source of truth
+- GA4 Ad Comparison is `PRODUCTION_READY` for exact deployed revision
+  `defce1982c8c56854aa21c543612ab782811026e` and the recorded live-tab
+  dependency/configuration boundary
+- Reports-owned PDF, delivery, scheduling, snapshot, and library behavior is a
+  separate section and is not a deferred Ad Comparison validation item
+- use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` as the source of truth
 
 ## Purpose
 Use this plan to:
@@ -949,25 +952,27 @@ Checkpoint after Journey 8:
 - [ ] Best Performing may equal Needs Attention when the same campaign is highest for the selected metric but lowest exact CR; validate the card detail CR values instead of forcing distinct campaign names
 - [ ] Needs Attention does not choose a tiny trivial campaign when a larger weak performer exists, and close CR decisions display two decimal places on the cards
 - [ ] Users: tooltip explains that the same person can appear in more than one campaign row, so row totals may be higher than the true number of unique users
-- [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
-- [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
-- [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**
-- [x] Ad Comparison code fixes are locally validated except for deployed scheduled/server PDF revenue-provenance artifact evidence
-- [ ] Deferred until Mailgun is properly configured: generate a deployed scheduled/test-send GA4 report and confirm the scheduled/server PDF includes the expected Commit 2 Ad Comparison revenue-provenance rows
-- [ ] If **CSV revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **Google Sheets revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **HubSpot revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **Salesforce revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **Shopify revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **existing stored Manual revenue** is active from legacy data, verify it contributes to `Total Revenue (All Sources)` but does not invent campaign-row allocations; if shown in Ad Comparison it should remain effectively unallocated
-- [ ] For any active source with unmatched revenue, verify that unmatched remainder does not get added to a campaign row and is preserved as `Unallocated External Revenue`
-- [ ] Verify the sum of all source rows in `Revenue Breakdown` still reconciles to `Total Revenue`
-- [ ] Verify the matched revenue shown in the `Revenue Breakdown` subsections is consistent with the campaign-row increases seen in `All Campaigns`
-- [ ] In `All Campaigns`, `Unallocated External Revenue` appears immediately above `Total Revenue (All Sources)` after the campaign rows
-- [ ] That `All Campaigns` summary block remains visible even when the selected metric is not `Revenue`
-- [ ] In `Revenue Breakdown`, each external source with saved `campaignValueRevenueTotals` shows an indented per-campaign subsection directly under the source row
-- [ ] `Revenue Breakdown` does not show a duplicate standalone `Unallocated External Revenue` row when that value is already represented in the source subsection
-- [ ] `Total Revenue (All Sources)` still matches Overview after matched and unallocated revenue are shown
+- [ ] If imported revenue exists, `Revenue Breakdown` lists every active
+  GA4-context source separately; ranking, chart, summary, and `All Campaigns`
+  remain GA4-native
+- [ ] An available imported source shows its exact materialized source-to-date
+  amount and the `excluded from ranking` provenance
+- [ ] An unavailable imported source remains listed as `Unavailable`, does not
+  show a stale amount, and does not show configuration-backed subsection values
+- [ ] `No additional revenue sources connected` appears only when no active
+  imported source exists
+- [x] Exact deployed revision `defce198` passed focused regression, build,
+  provider, source-inventory, and rendered UI validation
+- [ ] For each active CSV, Google Sheets, HubSpot, Salesforce, Shopify, or
+  retained Manual source, verify its top-level Revenue Breakdown state is exact
+- [ ] For each available source with saved `campaignValueRevenueTotals`, verify
+  the indented subsection uses only those stored exact values
+- [ ] Revenue Breakdown preserves valid source zero and never falls back to a
+  source-definition or configuration total
+- [ ] Ad Comparison does not render imported, unallocated, or combined
+  all-source financial rows in `All Campaigns`
+- [ ] Ad Comparison does not render a combined `Total Revenue`, because native
+  and imported source values do not share a proven identical window
 
 ### Journey 11 Revenue Propagation Standard
 
@@ -997,15 +1002,20 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Benchmarks tab: Revenue Benchmark current value matches Overview `Total Revenue`
 - [ ] Benchmarks tab: ROAS and ROI Benchmark current values use Overview all-source revenue as the numerator
 - [ ] Benchmarks tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes
-- [ ] Ad Comparison `All Campaigns`: exact matched source revenue is added only to matching campaign rows
-- [ ] Ad Comparison `All Campaigns`: unmatched source revenue is not added to any campaign row and remains `Unallocated External Revenue`
-- [ ] Ad Comparison `All Campaigns`: `Unallocated External Revenue` appears immediately above `Total Revenue (All Sources)` after the campaign rows
-- [ ] Ad Comparison `All Campaigns`: the summary block remains visible even when the selected metric is not `Revenue`
-- [ ] Ad Comparison `Revenue Breakdown`: each source top-level amount matches the source amount
-- [ ] Ad Comparison `Revenue Breakdown`: each source with saved `campaignValueRevenueTotals` shows an indented per-campaign subsection directly under the source row
-- [ ] Ad Comparison `Revenue Breakdown`: subsection values match the saved campaign-value revenue totals and reconcile to the campaign-row increases in `All Campaigns`
-- [ ] Ad Comparison `Revenue Breakdown`: no duplicate standalone `Unallocated External Revenue` row appears when the value is already represented in a source subsection
-- [ ] Ad Comparison `Revenue Breakdown`: `Total Revenue` is the final row and matches Overview `Total Revenue`
+- [ ] Ad Comparison `All Campaigns`: rows use only native GA4 values from the
+  saved initial-import boundary through the latest completed day
+- [ ] Ad Comparison `All Campaigns`: imported source revenue does not create,
+  increase, or adjust campaign rows
+- [ ] Ad Comparison `Revenue Breakdown`: every active source has one top-level
+  row; available amounts match exact materialized source values
+- [ ] Ad Comparison `Revenue Breakdown`: unavailable sources show
+  `Unavailable` without a stale amount or subsection
+- [ ] Ad Comparison `Revenue Breakdown`: available sources with saved
+  `campaignValueRevenueTotals` show exact indented subsection values only
+- [ ] Ad Comparison `Revenue Breakdown`: no inferred, proportional,
+  unallocated, or combined all-source value is rendered
+- [ ] Ad Comparison native GA4 revenue equals the sum of the native
+  `All Campaigns` row revenue for the displayed comparison window
 - [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
 - [ ] Reports generated after the change use the updated revenue values from the current tab state
 
@@ -1013,14 +1023,18 @@ Latest mapped-revenue validation evidence:
 
 - [x] 2026-06-20: latest commits `44c68a2a`, `2713efd7`, and `8c4103fd` passed targeted validation for exact campaign-matched imported revenue propagation
 - [x] 2026-06-20: confirmed mapped imported revenue updates Overview `Campaign Breakdown` rows without allocating unmatched revenue
-- [x] 2026-06-20: confirmed mapped imported revenue updates GA4 `Ad Comparison` and report output where exact campaign-value mappings exist
+- [x] 2026-06-20: historical mapped-revenue evidence was superseded for Ad
+  Comparison by the native-ranking/separate-provenance contract; Reports retain
+  their own section contract
 - [x] 2026-06-20: confirmed `Total Revenue` remains additive: GA4 native revenue plus active imported revenue sources
 
 Required reconciliation checks:
 
 - [ ] `Overview Total Revenue = GA4 Revenue + sum(active imported revenue source amounts)`
-- [ ] `Ad Comparison Total Revenue (All Sources) = Overview Total Revenue`
-- [ ] `Ad Comparison matched campaign-row external revenue + Unallocated External Revenue = imported external revenue`, within normal rounding tolerance
+- [ ] `Ad Comparison native GA4 Revenue = sum(native All Campaigns row revenue)`
+- [ ] Each Ad Comparison imported source row equals its exact materialized
+  source-breakdown value or shows `Unavailable`; do not combine it with native
+  revenue because the windows are not proven identical
 - [ ] Editing a source replaces the old source amount; it must not create a duplicate source row or duplicate microcopy
 - [ ] Deleting a source removes only that source's contribution; unrelated source amounts and allocations remain intact
 

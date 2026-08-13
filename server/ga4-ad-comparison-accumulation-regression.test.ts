@@ -123,10 +123,22 @@ describe('GA4 Ad Comparison accumulation window', () => {
       page.indexOf('// ========== INSIGHTS =========='),
     );
 
+
     expect(page).toMatch(/activeTab === .campaigns. \|\| activeTab === .reports./);
     expect(reportPreflight).toContain('adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError');
     expect(reportSection).toContain('const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];');
     expect(reportSection).toContain('GA4 Revenue (Imported to Date)');
     expect(reportSection).not.toContain('GA4 Revenue (30 completed days)');
+  });
+
+  it('requires the live validator to prove imported source inventory and UI visibility', () => {
+    const validator = read('scripts/ga4-ad-comparison-live-readonly.ts');
+
+    expect(validator).toContain('/revenue-sources?platformContext=ga4');
+    expect(validator).toContain('/revenue-breakdown?platformContext=ga4');
+    expect(validator).toContain("materializedRevenueStatus === 'available'");
+    expect(validator).toContain('does not match its materialized breakdown');
+    expect(validator).toContain('Rendered Revenue Breakdown is missing source');
+    expect(validator).toContain('sourceInventory:');
   });
 });

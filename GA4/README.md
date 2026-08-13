@@ -98,7 +98,7 @@ Important meaning:
   Canonical whole-tab Benchmarks production-readiness source of truth. Current status: clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` and the recorded boundary. Reports generation/delivery is separate.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `PRODUCTION_READY` for exact deployed revision `83d12427`
+  Current status: `PRODUCTION_READY` for exact deployed revision `defce198`
   and the recorded dependency/configuration boundary. The live tab uses the
   saved initial-import boundary through the latest completed day. Reports-owned
   PDFs and all other Reports behavior are separate.
@@ -184,9 +184,9 @@ These are now part of the GA4 template contract:
 - exact campaign-matched imported revenue can propagate into GA4 Overview
   `Campaign Breakdown` and Reports-owned output under their own contracts.
   The live GA4 `Ad Comparison` ranking, chart, summaries, and All Campaigns
-  table deliberately remain native-only for one common 30-completed-day
-  window; imported revenue is source-to-date provenance in Revenue Breakdown
-  and cannot create or adjust ranked rows
+  table deliberately remain native-only from the saved initial-import boundary
+  through the latest completed day; imported revenue is source-to-date
+  provenance in Revenue Breakdown and cannot create or adjust ranked rows
 - HubSpot-specific report value propagation is guarded in Current Commit 4.12 by `GA4OverviewValidation.hubspotReportValuePack(...)` and static scheduled/server PDF formula checks; deployed evidence passed for the configured `GA4 Overview Report` packet and remains limited to that report/campaign/property
 - the `Add revenue source` chooser shows saved-source status for v1 revenue source families: Shopify and HubSpot show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, CSV shows `Uploaded` when an active CSV revenue source exists, and Salesforce revenue is hidden/deferred for v1
 - CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
@@ -197,13 +197,13 @@ These are now part of the GA4 template contract:
 - GA4 KPI whole-tab status remains UNVERIFIED for exact reviewed/deployed SHA 4287871f82a84afa70b50cd6cc0f1810040bb016; timestamped Engagement Rate parity and exact-SHA external server-report proof are the only documented blockers.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` and the section-specific boundary. Reports is assessed separately and is not certified by the Benchmark record.
-- GA4 `Ad Comparison` leader cards, chart, summary, live table, and Revenue Breakdown use the same native 30-completed-day campaign rows; source-to-date imported revenue remains separate provenance and cannot create or adjust ranked rows
+- GA4 `Ad Comparison` leader cards, chart, summary, and All Campaigns table use the same native initial-import-to-latest-completed-day campaign rows; source-to-date imported revenue remains separate provenance in Revenue Breakdown and cannot create or adjust ranked rows
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
   blocks previous-property placeholders, and retains valid source zero. Its
-  current machine status is `UNVERIFIED` only for the documented
-  committed-hash guard repair and fresh revision check. All PDF, saved-report,
-  snapshot, scheduler, delivery, and report-library behavior belongs to the
-  Reports certification
+  current machine status is `PRODUCTION_READY` for exact deployed revision
+  `defce198` and the recorded dependency/configuration boundary. All PDF,
+  saved-report, snapshot, scheduler, delivery, and report-library behavior
+  belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 imported daily rows; `7d` needs two complete adjacent 7-calendar-day windows; `30d` needs two complete adjacent 30-calendar-day windows; and `Monthly` needs 2 calendar months. Scattered rows outside the required rolling windows do not satisfy 7d/30d coverage.
 - GA4 reporting timezone is a campaign-level setting. `Create New Campaign` and `Edit Campaign` both expose a `Reporting Timezone` select, default new campaigns from the browser timezone when available, fall back to `UTC`, and save the selected IANA timezone through the campaign create/update payload. Dropdown labels remove underscores for readability while preserving exact saved values such as `America/New_York`.

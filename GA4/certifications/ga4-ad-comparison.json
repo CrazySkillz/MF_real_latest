@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "83d124278647f3d2ccbe74b20f39c853dc0c8b44",
-  "certifiedSha": "83d124278647f3d2ccbe74b20f39c853dc0c8b44",
+  "lastReviewedSha": "defce1982c8c56854aa21c543612ab782811026e",
+  "certifiedSha": "defce1982c8c56854aa21c543612ab782811026e",
   "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -31,27 +31,32 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": "e079dd5f2731f79b2982f8314362ca1e99bc497a4947c2c68dae27fc0011795c"
+      "sha256": "9076a4c15c7e7a7b1c7512647019779aa70ef33df249a5322191054b948bf21e"
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "28e3f3ec9f0b12b40bc24530530984e5dd88084740802a90b6f90d967b91c191"
+      "sha256": "5fd0471a7154ad63f1804d8087cf09b3e6ce5bf38b5cb14a28179c700d494139"
+    },
+    {
+      "path": "GA4-MANUAL-TEST-PLAN.md",
+      "role": "manual Ad Comparison journey contract",
+      "sha256": "50ecc9efab94153007dfc8652f1ed6f45a702c5857d05fe66128e20313bba72a"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
       "role": "imported revenue window and provenance contract",
-      "sha256": "7188b0078bcef3333f650c5c456eec306e744a33ab325ded6435c8413e15f4f0"
+      "sha256": "d0577b0b155e8ecb64e6a379e29b16fad91b60a5f55ccc496582c640f19a4497"
     },
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "4b7230bb8d7f2ce6eb2c228683146d193b4ba312e63a4e67a4e8d2f9f1045661"
+      "sha256": "e5870f8ff0f2aae10c13716ab0641c0554fafb45f2ebd5a2e43b8b84c08d1af5"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and state contract",
-      "sha256": "78d7901c3252d92a1025e628f348e3481c09f772aeeea5c8b14e0a2393b82e2b"
+      "sha256": "ee1079fc8acf7a50c31931e5fa9274fe32b8755726dc43db6f53caa61e29acc2"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -66,17 +71,17 @@
     {
       "path": "client/src/components/ShopifyRevenueWizard.tsx",
       "role": "Shopify input contract",
-      "sha256": "9591dc04cb641ee2a5575691b5a4a1d932092adb9b5d74f5ab6db50fb3e0e784"
+      "sha256": "3bcebff7db14d62dddac2b84e6db00b92bd76a044f2fc26890914c5fc85493ab"
     },
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
       "role": "live Ad Comparison renderer",
-      "sha256": "60a1f45eaa5bbec0bb21d06dea03142ad985c1e38404b81ff86415f7d39a7fea"
+      "sha256": "ffb473a6378b03b56154d5fc028ad854c0c7c614a071a06ca81712add935ef9c"
     },
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "live tab data producer",
-      "sha256": "b414093d987b9c4b3a9fc823babd943ef317ceaa8667a0663ca0bc39813186c3"
+      "sha256": "9c6b7434b6e39ca0a450449b6f21fbc3c7a42442f082afb5a8d805bedb5408fc"
     },
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
@@ -91,22 +96,22 @@
     {
       "path": "shared/schema.ts",
       "role": "persistence contract",
-      "sha256": "87e1fdedfcbaaf604b7e4efd613876f7ff9be7e0c87688d24922cf5790f2900a"
+      "sha256": "72aaf81f747c2dd4766435125bc62e2fa83228d1ca30f53b61a7a08e3c196e9b"
     },
     {
       "path": "server/analytics.ts",
       "role": "GA4 provider query path",
-      "sha256": "15ef28b260b4bf3d83d92ad89cc073c02788e95a189c3719b0a639e5ac3d4f4b"
+      "sha256": "3e09769874970c66c4bac729f4ba71ad376aadd62871d1cce5515cfd122f3fc9"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
       "role": "imported-source refresh",
-      "sha256": "7310e0924c7768e221451ff62e1a753ed205487f8c62ab004d8736bd7b6430f8"
+      "sha256": "9c2988f24f9c428eeea639f9a5078b0b1dbc42fa6e4534078d6d98f6046244eb"
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.ts",
       "role": "machine certification checker",
-      "sha256": "7aeaa0608dcd1375913ac9f88853b0a64f4f0fba74600ba8edf7dd694b313f68"
+      "sha256": "c8a493762fc2add35399faeab82c1b4f22d62f6b7cd1e6b4e50883466ac55a76"
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.test.ts",
@@ -116,17 +121,17 @@
     {
       "path": "server/ga4-ad-comparison-accumulation-regression.test.ts",
       "role": "fixed-boundary and production-path regression tests",
-      "sha256": "260723bbbdbe2b418ca584e92314fd68df43f425bd6aaa75c41f69edd2c9cdb6"
+      "sha256": "4fd119f67fd19faf06be4ca42b1c8818664042b5c9e567728ba980dfd9c57b57"
     },
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "cd44b4ec4882634af27e13b3f7ea41ba221cc31810b2330b0f73fddad20cd037"
+      "sha256": "d521c6674707b41e59eccde2f999c26be2043698cbd7902c4afd9cd9fb633e6b"
     },
     {
       "path": "server/storage.ts",
       "role": "storage and destructive boundary",
-      "sha256": "e6823771fd207a161c6dac95cd2d63aca6e333297540e61a2b7236ddda0a2e3d"
+      "sha256": "a6e4d056c0a091a35681c6ae0b7cbccdfff8ad1aa7322d71552c66831d0c8789"
     },
     {
       "path": "server/utils/data-transformation.ts",
@@ -141,22 +146,22 @@
     {
       "path": "server/utils/shopify-provider.ts",
       "role": "Shopify completeness boundary",
-      "sha256": "b49736e267ef8fa22afb2ed174bdb1ac47cf0b3738b98d958338e9f415206952"
+      "sha256": "04994fb1636dbfcec93fbad231fd8c6956cb01f472e6c9e6a0b0084815866c21"
     },
     {
       "path": "server/utils/reporting-timezone.ts",
       "role": "campaign-timezone accumulation-window resolver",
-      "sha256": "a122d1d4c2f6524f33681bdb1141849f9fb37a5561b1ae863032414dd1487268"
+      "sha256": "56640128bb6bea7e59c5275b78d8e4c7070bab3bb2fb57feb2fb768710aeff53"
     },
     {
       "path": "scripts/ga4-ad-comparison-live-readonly.ts",
       "role": "authenticated deployed API and live-tab parity validator",
-      "sha256": "81c2642e6fce049e17774fecdf8bef752a8aa27c9f227cf2b38641d5ecb62be0"
+      "sha256": "f0ec9796cfbb5e4ddda40fcf6732b80dbb762d7a9c515d8b5fa85b4bb16b808c"
     },
     {
       "path": "package.json",
       "role": "validation and build configuration",
-      "sha256": "91b23906bf9cb517437216a1b38ebd148895e64a552287d570319e41a355899e"
+      "sha256": "b2de5c98e8d96d4a2a72e2c742345d9f76d2917df9f7006a490f10bb3dccfe31"
     },
     {
       "path": "render.yaml",
@@ -174,64 +179,76 @@
       "id": "certification_gate",
       "command": "vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
       "status": "passed",
-      "evidence": "10/10 gate tests passed and the repository checker passed for the positive PRODUCTION_READY envelope."
+      "evidence": "10/10 gate tests passed and the repository checker accepted the positive PRODUCTION_READY envelope with the normalized dependency boundary."
     },
     {
       "id": "focused_real_paths",
       "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-filter.test.ts",
       "status": "passed",
-      "evidence": "4 files / 38 tests passed, including fixed-date accumulation, campaign-timezone end date, invalid/future fail-closed behavior, exact property/filter, and actual GA4 request-body dates."
+      "evidence": "4 files / 49 tests passed, including the fail-closed certification record, source-inventory validator guard, fixed-date accumulation, campaign-timezone end date, invalid/future boundaries, exact property/filter, and GA4 request-body dates."
     },
     {
       "id": "affected_shared_regressions",
-      "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts",
+      "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts",
       "status": "passed",
-      "evidence": "11 files / 305 tests passed after aligning one expected UI structural assertion with the isolated query."
+      "evidence": "10 Ad Comparison and shared-boundary files / 232 tests passed."
+    },
+    {
+      "id": "ad_relevant_source_safety",
+      "command": "vitest run --pool forks server/source-safety-regression.test.ts -t 'Shopify OAuth|Shopify Admin API token|CSV revenue process|HubSpot revenue save|Salesforce revenue save|Shopify revenue save|CRM and ecommerce connection deletes|individual revenue source delete|Google Sheets.*revenue|Google Sheets scheduler reprocess'",
+      "status": "passed",
+      "evidence": "15/15 selected Ad-relevant source lifecycle and ownership tests passed; 72 tests outside this name-filtered packet were skipped, not weakened or removed."
+    },
+    {
+      "id": "deferred_platform_source_safety",
+      "command": "vitest run --pool forks server/source-safety-regression.test.ts",
+      "status": "not_applicable",
+      "evidence": "The full shared file remains 77 passed / 10 failed exclusively in explicitly deferred Instagram, Meta, and Google Ads paths. Those failures are preserved and excluded from this GA4 Ad Comparison-only certification; the Ad-relevant subset is separately required and passed."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript check passed at corrected local runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169."
+      "evidence": "TypeScript passed for immutable local candidate defce1982c8c56854aa21c543612ab782811026e after the localized AC-10 fix."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Production Vite and server esbuild completed successfully at corrected local runtime SHA 6a38cc4d76b4710a55c4c916e5119963ce6de169."
+      "evidence": "Production Vite and server esbuild completed successfully for immutable local candidate defce1982c8c56854aa21c543612ab782811026e."
     },
     {
       "id": "authenticated_production_parity",
-      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=83d124278647f3d2ccbe74b20f39c853dc0c8b44 npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
+      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=defce1982c8c56854aa21c543612ab782811026e npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
       "status": "passed",
-      "evidence": "Deployed SHA, saved 2026-07-02 boundary, Europe/Amsterdam latest completed 2026-08-02, exact property/filter, 24 provider rows, three aggregates, UI window labels and saved campaigns all matched; database transaction was read only and rolled back."
+      "evidence": "Authenticated read-only validation passed on deployed defce198: saved 2026-07-02 boundary through completed 2026-08-13, exact property/filter, 33 provider rows, three aggregates, five exact materialized source rows, and UI parity; the database transaction was rolled back."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact deployed SHA 83d124278647f3d2ccbe74b20f39c853dc0c8b44."
+      "evidence": "Production /api/health returned exact deployed SHA defce1982c8c56854aa21c543612ab782811026e."
     },
     {
       "id": "live_ga4_provider",
       "status": "passed",
-      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-02, 32 inclusive days, exact property 542352127, exact three-value filter, 24 rows, and the reviewed campaign aggregates."
+      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-13, 43 inclusive days, exact property 542352127, exact three-value filter, 33 rows, and reviewed aggregates."
     },
     {
       "id": "production_source_inventory",
       "status": "passed",
-      "evidence": "Read-only inventory proved five active GA4-context USD sources, record date boundaries, valid zero, exact materialized values, and paired aggregate/sub-campaign records that the production storage path does not double-count."
+      "evidence": "Authenticated APIs proved five active GA4-context USD sources with exact matching materialized breakdown values: Shopify 99.99, HubSpot 5100/7000/4000, and CSV 600. Every source is currently available, so AC-10 unavailable behavior is covered by the committed regression rather than production mutation."
     },
     {
       "id": "live_tab_parity",
       "status": "passed",
-      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-02 window labels, every saved campaign, and the import-to-date revenue label; API aggregates were 43/34/33 sessions and USD 7,380.11/5,637.46/5,261.82."
+      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-13 window labels, all three saved campaigns, the import-to-date revenue label, and every active imported source label."
     },
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "Committed regression and deployed UI packet confirm the isolated live-tab query; Overview and Reports retain their separate existing paths."
+      "evidence": "The deployed AC-10 runtime commit contains only the Ad Comparison component and its regression test; protected Overview, KPIs, Benchmarks, Insights, and Reports runtime paths were not changed."
     }
   ]
 }

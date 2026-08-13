@@ -57,6 +57,7 @@ try {
   const inventory = await client.query(`
     SELECT
       c.owner_id,
+      c.currency,
       c.reporting_time_zone,
       c.ga4_campaign_filter,
       g.import_start_date,
@@ -123,6 +124,41 @@ try {
     if (!aggregates.has(campaign)) throw new Error(`Saved campaign is absent from provider rows: ${campaign}`);
   }
 
+  const revenueSourcesPath = `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/revenue-sources?platformContext=ga4`;
+  const revenueBreakdownPath = `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/revenue-breakdown?platformContext=ga4`;
+  const [revenueSourcesResponse, revenueBreakdownResponse] = await Promise.all([
+    api(page, revenueSourcesPath),
+    api(page, revenueBreakdownPath),
+  ]);
+  if (!revenueSourcesResponse.ok || revenueSourcesResponse.body?.success !== true) {
+    throw new Error(`Revenue sources endpoint failed (${revenueSourcesResponse.status})`);
+  }
+  if (!revenueBreakdownResponse.ok || revenueBreakdownResponse.body?.success !== true) {
+    throw new Error(`Revenue breakdown endpoint failed (${revenueBreakdownResponse.status})`);
+  }
+  const revenueSources = (Array.isArray(revenueSourcesResponse.body?.sources) ? revenueSourcesResponse.body.sources : [])
+    .filter((source: any) => source?.isActive !== false);
+  const revenueBreakdownRows = Array.isArray(revenueBreakdownResponse.body?.sources) ? revenueBreakdownResponse.body.sources : [];
+  const revenueBreakdownById = new Map(revenueBreakdownRows.map((source: any) => [String(source?.sourceId || ''), source]));
+  const campaignCurrency = String(row.currency || '').trim().toUpperCase();
+  for (const source of revenueSources) {
+    const sourceId = String(source?.id || '');
+    const breakdownSource: any = revenueBreakdownById.get(sourceId);
+    const materializedRevenueStatus = String(source?.materializedRevenueStatus || '');
+    if (materializedRevenueStatus === 'available') {
+      const sourceAmount = Number(source?.lastTotalRevenue);
+      const breakdownAmount = Number(breakdownSource?.revenue);
+      if (!breakdownSource || !Number.isFinite(sourceAmount) || sourceAmount !== breakdownAmount) {
+        throw new Error(`Revenue source ${hash(sourceId)} does not match its materialized breakdown`);
+      }
+      for (const currency of [source?.currency, breakdownSource?.currency]) {
+        if (currency && String(currency).trim().toUpperCase() !== campaignCurrency) throw new Error(`Revenue source ${hash(sourceId)} currency does not match campaign currency`);
+      }
+    } else if (materializedRevenueStatus !== 'unavailable' || breakdownSource || source?.lastTotalRevenue !== null) {
+      throw new Error(`Revenue source ${hash(sourceId)} has an invalid materialization state`);
+    }
+  }
+
   await page.goto(`${BASE_URL}/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-metrics?tab=campaigns`, {
     waitUntil: 'domcontentloaded',
     timeout: 60000,
@@ -134,6 +170,13 @@ try {
     if (!visibleText.includes(campaign)) throw new Error(`Rendered table is missing campaign ${campaign}`);
   }
   if (!visibleText.includes('GA4 Revenue (imported to date)')) throw new Error('Rendered revenue boundary label is missing');
+  for (const source of revenueSources) {
+    const displayName = String(source?.displayName || source?.sourceType || '').trim();
+    if (!displayName || !visibleText.includes(displayName)) {
+      throw new Error(`Rendered Revenue Breakdown is missing source ${hash(source?.id)}`);
+    }
+  }
+  if (revenueSources.some((source: any) => source?.materializedRevenueStatus === 'unavailable') && !visibleText.includes('Unavailable')) throw new Error('Rendered unavailable source state is missing');
 
   console.log(JSON.stringify({
     status: 'passed',
@@ -153,7 +196,14 @@ try {
       conversions: value.conversions,
       revenue: Number(value.revenue.toFixed(2)),
     }])),
-    uiParity: 'window labels and every saved campaign row rendered',
+    sourceInventory: revenueSources.map((source: any) => ({
+      sourceHash: hash(source?.id),
+      sourceType: String(source?.sourceType || ''),
+      materializedRevenueStatus: String(source?.materializedRevenueStatus || ''),
+      revenue: source?.lastTotalRevenue === null ? null : Number(source?.lastTotalRevenue),
+      currency: String(source?.currency || campaignCurrency),
+    })),
+    uiParity: 'window labels, every saved campaign row, and every active imported source label rendered',
     databaseTransaction: 'read only and rolled back',
   }, null, 2));
 } finally {

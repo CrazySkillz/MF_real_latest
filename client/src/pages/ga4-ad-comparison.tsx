@@ -36,7 +36,7 @@ interface GA4AdComparisonProps {
   onMetricChange: (metric: string) => void;
   formatNumber: (n: number) => string;
   formatMoney: (n: number) => string;
-  revenueDisplaySources?: Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number | null; mappingConfig?: any }>;
+  revenueDisplaySources?: Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number | null; mappingConfig?: any; materializedRevenueStatus?: 'available' | 'unavailable' }>;
 }
 
 const METRIC_OPTIONS = [
@@ -402,13 +402,17 @@ export default function GA4AdComparison({
                   <td className="px-3 py-2 text-foreground">GA4 Revenue (imported to date)</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
-                {(revenueState === 'ready' || revenueState === 'stale') && revenueDisplaySources.filter(s => s.revenue != null).map((s) => (
+                {(revenueState === 'ready' || revenueState === 'stale') && revenueDisplaySources.map((s) => (
                   <Fragment key={s.sourceId}>
                     <tr key={s.sourceId} className="border-b">
                       <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(Number(s.revenue))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {s.materializedRevenueStatus === 'unavailable' || s.revenue == null
+                          ? <span className="text-destructive text-xs">Unavailable</span>
+                          : formatMoney(Number(s.revenue))}
+                      </td>
                     </tr>
-                    {(sourceRevenueBreakdowns.get(s.sourceId) || []).map((item: any) => (
+                    {s.revenue != null && s.materializedRevenueStatus !== 'unavailable' && (sourceRevenueBreakdowns.get(s.sourceId) || []).map((item: any) => (
                       <tr key={`${s.sourceId}-${String(item?.campaignValue || "")}`} className="border-b bg-muted/20">
                         <td className="px-3 py-2 pl-8 text-muted-foreground">{String(item?.campaignValue || "")}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatMoney(Number(item?.revenue || 0))}</td>
@@ -426,7 +430,7 @@ export default function GA4AdComparison({
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs">Imported revenue provenance is loading.</td>
                   </tr>
                 )}
-                {revenueState === 'ready' && revenueDisplaySources.filter(s => s.revenue != null).length === 0 && (
+                {revenueState === 'ready' && revenueDisplaySources.length === 0 && (
                   <tr>
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>
                   </tr>

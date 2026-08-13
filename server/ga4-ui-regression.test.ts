@@ -597,6 +597,20 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("needsRevenueBreakdown && adComparisonRevenueState !== 'ready'");
   });
 
+  it("shows an active imported Ad Comparison source as unavailable when no exact materialized amount exists", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+
+    expect(adComparison).toContain("materializedRevenueStatus?: 'available' | 'unavailable'");
+    expect(adComparison).toContain("revenueDisplaySources.map((s) => (");
+    expect(adComparison).toContain("s.materializedRevenueStatus === 'unavailable' || s.revenue == null");
+    expect(adComparison).toContain(">Unavailable</span>");
+    expect(adComparison).toContain(
+      "s.revenue != null && s.materializedRevenueStatus !== 'unavailable' && (sourceRevenueBreakdowns.get(s.sourceId) || []).map",
+    );
+    expect(adComparison).toContain("revenueState === 'ready' && revenueDisplaySources.length === 0");
+    expect(adComparison).not.toContain("revenueDisplaySources.filter(s => s.revenue != null).map");
+  });
+
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 

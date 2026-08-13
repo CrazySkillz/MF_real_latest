@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "29bc7fc1e80fe6554936dee8f0c90c141b5f816d",
+  "lastReviewedSha": "82fc3a7887d14e370e29a27ae4349333bacc2f58",
   "certifiedSha": null,
-  "deployedSha": "29bc7fc1e80fe6554936dee8f0c90c141b5f816d",
-  "invalidationReason": "Runtime base 29bc7fc1e80fe6554936dee8f0c90c141b5f816d was deployed when reviewed and is locally regression-clean. The later evidence-only commits change no runtime files, but exact pushed-revision deployment, fresh authenticated UI/API/source parity, and one natural 22:00 UTC target persistence observation remain pending.",
+  "deployedSha": "82fc3a7887d14e370e29a27ae4349333bacc2f58",
+  "invalidationReason": "Exact current runtime 82fc3a7887d14e370e29a27ae4349333bacc2f58 is user-confirmed deployed. Authenticated UI/API/source parity, exact Campaign Breakdown reconciliation, and the read-only production-data inventory passed. One natural 22:00 UTC target persistence observation remains pending.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
@@ -36,7 +36,7 @@
     "windowRules": [
       "initial import is the 30 completed GA4 reporting days preceding setup in the campaign reporting timezone",
       "later completed reporting days append without dropping the oldest imported day",
-      "Summary uses scheduler-backed persisted daily values, Campaign Breakdown remains independent, and financial values remain explicitly campaign-to-date"
+      "Summary uses scheduler-backed persisted daily values; Campaign Breakdown keeps independent 30-completed-day GA4 rows and explicitly adds only exact campaign-matched source-to-date imported revenue"
     ],
     "ownershipRules": [
       "all reads and mutations require actor and campaign access",
@@ -144,37 +144,37 @@
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "28 files / 287 tests passed after the evidence-only certification changes."
+      "evidence": "The exact current Overview packet passed 28 files / 288 tests after the copy-only Campaign Breakdown disclosure change; its regression-first guard failed before the runtime edit and server/ga4-ui-regression.test.ts passed 40/40 afterward."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "10 files / 93 tests passed after the evidence-only certification changes."
+      "evidence": "10 files / 93 tests passed on the exact current candidate after the documentation update."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed after the evidence-only certification changes."
+      "evidence": "TypeScript passed on the exact current documentation candidate."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed after the evidence-only certification changes."
+      "evidence": "The production Vite and server esbuild completed on the exact current documentation candidate."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
-      "status": "pending",
-      "evidence": "Runtime base 29bc7fc1e80fe6554936dee8f0c90c141b5f816d matched local main, origin/main, remote main, and production health before the evidence-only commits. The exact pushed evidence revision still requires deployment confirmation."
+      "status": "passed",
+      "evidence": "The user confirmed Render deployed exact runtime 82fc3a7887d14e370e29a27ae4349333bacc2f58 after it was pushed to origin/main."
     },
     {
       "id": "authenticated_ui_api_source_parity",
-      "status": "pending",
-      "evidence": "No authenticated session was available for fresh read-only current-runtime UI/API/source parity."
+      "status": "passed",
+      "evidence": "Authenticated current-runtime evidence reconciled Summary, financial cards, Revenue Sources, Spend Sources, and all three Campaign Breakdown rows. Property 542352127 returned isSimulated=false."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
@@ -183,8 +183,8 @@
     },
     {
       "id": "production_data_integrity",
-      "status": "pending",
-      "evidence": "Prior exact-boundary production inventory remains historical; fresh authenticated current-runtime read-only reconciliation is required."
+      "status": "passed",
+      "evidence": "The fresh authenticated read-only inventory returned overallPass=true and zero findings in all nine recorded finding groups; exact revenue and spend source IDs and totals matched the deployed modals."
     }
   ]
 }

@@ -4,9 +4,9 @@
 
 This ledger preserves the chronological Current Commit 0-22 queue and its UI-validation record.
 
-Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current clean-certified decision and exact revision/configuration boundary. Use [`OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md) for detailed inventories, traces, blockers, and validation evidence.
+Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current decision and exact revision/configuration boundary. Use [`OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md) for detailed inventories, traces, blockers, and validation evidence.
 
-The earlier entries below preserve the status that was true at their recorded point in time, including then-current `unverified` statements. They are historical and cannot override Current Commit 22 or the controlling current-status document.
+The earlier entries below preserve the status that was true at their recorded point in time, including then-current `unverified` statements. They are historical and cannot override Current Commit 23 or the controlling current-status document.
 
 ## Historical Commit Queue
 
@@ -363,6 +363,19 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 - Mutation boundary: the final certification checks did not perform cleanup, bulk rewrite, deletion, schema migration, source replacement, or historical currency rewrite. Earlier provider refresh actions were user-authorized and retained exact source identity.
 - Exclusions: Google Ads, obsolete/redundant campaigns, future configurations, future 60/90-day options, startup-triggered refresh, scheduled report/PDF/email delivery, and future provider behavior.
 - Result: **CLEAN-CERTIFIED AND PRODUCTION-READY for this exact revision, configuration, campaign/property, enabled source set, and production-data state.** Any later change to a listed dependency/configuration boundary or newly discovered consumer invalidates the affected certification until reviewed.
+
+### Current Commit 23 — Current Overview candidate reconciliation and Campaign Breakdown disclosure — scheduler gate open
+
+- Current runtime: `82fc3a7887d14e370e29a27ae4349333bacc2f58`, user-confirmed deployed through Render on `2026-08-13`.
+- Current status: **UNVERIFIED**. The previous exact-SHA certification is historical and does not certify this runtime.
+- Authenticated parity passed for Summary, financial cards, Revenue Sources, Spend Sources, and the persisted source inventory; the inventory returned `overallPass=true` and zero findings in all nine recorded groups.
+- Property `542352127` returned `isSimulated=false`. The visible test values were seeded into the live GA4 property; the app did not generate its simulation response.
+- Campaign Breakdown reconciled exactly: `yesop_retargeting` = `$3,818.40` native + `$16,100.00` HubSpot = `$19,918.40`; `yesop_email_nurture` = `$2,881.00` native + `$600.00` CSV = `$3,481.00`; `yesop_paid_social` = `$3,165.40` native + `$99.99` Shopify = `$3,265.39`.
+- Sessions, Users, Conversions, and native revenue are separate fields returned by the GA4 breakdown query. Conversion rate is calculated as `Conversions / Sessions`; the seeded rows therefore render 100%.
+- Root issue: the old subtitle implied every column used the last 30 completed days, while displayed Revenue adds exact campaign-matched source-to-date imports.
+- Smallest safe fix: regression-first copy-only change to `GA4 metrics: last 30 completed days; Revenue includes exact campaign-matched source-to-date imports.` No formula, query, mapping, API, persistence, scheduler, or unrelated tab changed.
+- Validation: the new guard failed before the runtime edit; `server/ga4-ui-regression.test.ts` passed 40/40 afterward. The exact current focused Overview packet passed 28 files / 288 tests, and the affected shared-dependency packet passed 10 files / 93 tests. Commit `82fc3a78` contains only the subtitle and guard.
+- Remaining gate: observe one natural `22:00 UTC` run and prove exact target persistence read-only. No manual scheduler trigger or final combined GA4 certification is part of this packet.
 
 ## UI Validation Requirement
 

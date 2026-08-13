@@ -19,7 +19,7 @@ Only evidence from the same deployed commit, production-data state, and document
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-**Current production-certification status: UNVERIFIED.** Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` was deployed when reviewed. Read-only impact review plus the focused and affected-dependency regression packets found no Overview runtime regression. The later evidence-only commits change no runtime files; exact pushed-revision deployment, fresh authenticated UI/API/source parity, and one natural `22:00 UTC` target persistence observation remain external validation gates. These evidence changes do not create a new exact-SHA certification.
+**Current production-certification status: UNVERIFIED.** Exact current runtime `82fc3a7887d14e370e29a27ae4349333bacc2f58` is user-confirmed deployed. Authenticated UI/API/source parity and the read-only production-data inventory passed for the recorded campaign, live property `542352127`, USD source set, and persisted records. Campaign Breakdown reconciled all three visible rows exactly; the deployed subtitle now distinguishes its 30-day GA4 metrics from source-to-date imported revenue. The sole remaining external gate is one natural `22:00 UTC` target-persistence observation. No new exact-SHA certification exists until that gate passes and is recorded.
 
 The prior clean certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remains historical evidence for its exact campaign/property/configuration/data boundary only.
 
@@ -27,7 +27,7 @@ The prior clean certification at `ee22f0e470826f1cb247115497c9a15229d0142d` rema
 
 ## Revision, Configuration, And Dependency Boundary
 
-- Reviewed runtime base, observed deployed before the evidence-only commits: `29bc7fc1e80fe6554936dee8f0c90c141b5f816d`
+- Current reviewed and user-confirmed deployed runtime: `82fc3a7887d14e370e29a27ae4349333bacc2f58`
 - Current deployed scheduler configuration: `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, hour `22`, minute `0`, `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false`
 - Previous certified runtime SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`
 - Previous certified production configuration: `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, hour `8`, minute `0`, `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false`
@@ -56,7 +56,7 @@ Future 60/90-day options are outside this release and require later implementati
 
 | Gate | Status | Required outcome |
 | --- | --- | --- |
-| Current evidence candidate | **Local packets passed; external validation required** | Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` was deployed when reviewed; the later evidence-only commits change no runtime files. The certification gate passed 8 tests plus its standalone checker; the focused Overview packet passed 28 files / 287 tests; the affected shared-dependency packet passed 10 files / 93 tests; TypeScript, runner syntax, and production build passed. No runtime defect was proven and no production data was changed. Exact pushed-revision deployment, fresh authenticated parity, and the next natural `22:00 UTC` target persistence observation remain pending. |
+| Current evidence candidate | **Deployed and authenticated parity passed; one external validation remains** | Runtime `82fc3a7887d14e370e29a27ae4349333bacc2f58` is user-confirmed deployed. The current focused Overview packet passed 28 files / 288 tests and the affected shared-dependency packet passed 10 files / 93 tests; the copy-only Campaign Breakdown guard failed before the runtime edit and passed afterward. Current authenticated Summary/financial/source parity, exact Campaign Breakdown reconciliation, and the read-only zero-finding production inventory passed. Only the next natural `22:00 UTC` target-persistence observation remains pending. |
 | Previous exact-SHA carry-forward | **Historical pass** | Compared the earlier certified boundary with deployed `ee22f0e470826f1cb247115497c9a15229d0142d`. Relevant runtime diffs were confined to KPI same-date history, mutation-free notification validation, and KPI browser-PDF/test-send behavior; no Overview query, calculation, source, card, or report value changed. The protected boundary passed 44 files / 496 tests, and exact-SHA authenticated validation retained the documented campaign/property/filter/timezone/currency boundary with unchanged persistence. No Overview recompute or cleanup was performed. |
 | Total Revenue currency and persisted-data gate | **Passed in the certified boundary** | Native GA4 requested and returned USD; all five active imported source IDs were present, materialized, and USD. Native GA4 was `$52,532.70`, imported revenue was `$16,799.99`, and Total Revenue was `$69,332.69`. Missing materialization remains distinct from an authoritative `$0`; source/record currency mismatch fails closed. |
 | Current Commit 21 | **Deployed; bounded path closed** | Google Sheets is present in the GA4 Revenue and Spend choosers and new requests retain campaign access, GA4 context, mapping validation, and atomic exact-source persistence. The certified production-data boundary does not generalize to an unconfigured future Google Sheets Revenue source. |

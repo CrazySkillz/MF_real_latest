@@ -88,6 +88,7 @@ Important clarification:
   source-to-date imported revenue is separate provenance and is excluded from
   ranking
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
+- in that table, Sessions, Users, Conversions, and GA4-native revenue use the 30-completed-day GA4 breakdown query, while exact campaign-matched imported revenue is source-to-date; the subtitle must disclose both windows
 - `Overview -> Landing Pages` and `Overview -> Conversion Events` remain GA4-native row views and should keep the `GA4 Revenue` label
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`

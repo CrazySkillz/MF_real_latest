@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current production-certification status is **UNVERIFIED**. Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` was deployed when reviewed, and no Overview runtime regression was proven; the later evidence-only commits change no runtime files, but the documented exact-current external gates remain pending. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current production-certification status is **UNVERIFIED** at user-confirmed deployed runtime `82fc3a7887d14e370e29a27ae4349333bacc2f58`. Authenticated current-runtime UI/API/source parity and the read-only production-data inventory passed for the recorded campaign/property/source boundary. Campaign Breakdown reconciled exactly and its deployed subtitle now discloses the mixed revenue window. Only the natural `22:00 UTC` target-persistence observation remains open. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
 
 <!-- /ga4-overview-current-status -->
 
@@ -307,13 +307,23 @@ Columns:
 Important clarification:
 
 - the visible column label is `Revenue`, not `GA4 Revenue`, because the value can include exact campaign-matched imported revenue
+- the visible subtitle states `GA4 metrics: last 30 completed days; Revenue includes exact campaign-matched source-to-date imports.`
 - `Campaign Breakdown` revenue starts with GA4 revenue attributed to each GA4 campaign row
 - Campaign Breakdown row `Sessions`, `Users`, `Conversions`, and GA4-native `Revenue` remain the raw GA4 breakdown row values returned for the selected property and saved campaign scope; they are not scaled to Summary card totals
 - exact campaign-matched imported revenue may be added only when a source saves real campaign-value mappings that match a GA4 campaign row
+- the imported campaign-matched amount is source-to-date, not limited by the 30-completed-day GA4 row query
 - it is not a proportional allocation of imported external revenue
 - campaign financial cards and campaign-breakdown revenue should not be treated as interchangeable numbers
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one campaign row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
+
+Current deployed candidate evidence on `2026-08-13`:
+
+- property `542352127` returned `isSimulated=false`; the app read the live GA4 property, which contains user-seeded test data
+- `yesop_retargeting`: 17 Sessions, 17 Users, 17 Conversions, 100.0% conversion rate, `$3,818.40` native GA4 revenue, `$16,100.00` exact HubSpot imports, `$19,918.40` displayed Revenue
+- `yesop_email_nurture`: 14 Sessions, 14 Users, 14 Conversions, 100.0% conversion rate, `$2,881.00` native GA4 revenue, `$600.00` exact CSV import, `$3,481.00` displayed Revenue
+- `yesop_paid_social`: 11 Sessions, 11 Users, 11 Conversions, 100.0% conversion rate, `$3,165.40` native GA4 revenue, `$99.99` exact Shopify import, `$3,265.39` displayed Revenue
+- the 100% rates are `Conversions / Sessions`; they reflect the seeded values returned by GA4 and are not produced by copying Sessions into the other fields
 
 ### Landing Pages
 

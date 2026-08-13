@@ -4,7 +4,12 @@
 
 This file defines the GA4 `Overview` tab and the GA4-specific scope rules that feed the rest of the GA4 experience.
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: **CLEAN-CERTIFIED AND PRODUCTION-READY** for deployed runtime `8ba694060411a2a05663a4915652767e4e3ba713`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, the supported 30-completed-day model, and the recorded enabled USD source set. Google Ads, obsolete campaigns, future configurations, future 60/90-day options, and scheduled report delivery are excluded.
+<!-- ga4-overview-current-status -->
+<!-- ga4-overview-certification-status: UNVERIFIED -->
+
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current production-certification status is **UNVERIFIED** on reviewed/deployed runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d`; no Overview runtime regression was proven, but the documented exact-current external gates remain pending. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
+
+<!-- /ga4-overview-current-status -->
 
 Commit 2 deployment record: commit `5cff21ad` was pushed to `main` and deployed on `2026-07-16`. The user-confirmed bounded UI smoke check passed for one configured campaign/window: the four visible configured-window labels agreed, the Users provenance tooltip was correct, Revenue & Financial was labeled campaign-to-date, and the downloaded Overview report matched the observed screen values. This does not prove all 30/60/90 live provider variants or close later Overview blockers.
 
@@ -394,7 +399,7 @@ This failure-state contract does not close the later GA4 spend-context/cache, so
 
 ## Overview Tables Deployed Validation Checklist
 
-GA4 Overview is clean-certified for the exact current boundary recorded above. The following checklist is retained for future campaigns, source configurations, and scope expansions; it is not an open gate for the certified campaign/property.
+The prior exact-SHA Overview boundary was clean-certified. The current candidate remains unverified until the canonical readiness document's external gates close. The following checklist is retained for future campaigns, source configurations, and scope expansions.
 
 Connection and scope:
 

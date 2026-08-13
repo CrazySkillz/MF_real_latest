@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "sectionId": "ga4-overview",
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "29bc7fc1e80fe6554936dee8f0c90c141b5f816d",
+  "certifiedSha": null,
+  "deployedSha": "29bc7fc1e80fe6554936dee8f0c90c141b5f816d",
+  "invalidationReason": "The current runtime base is deployed and locally regression-clean, but fresh authenticated UI/API/source parity and one natural 22:00 UTC target persistence observation remain pending. The uncommitted certification-integrity changes do not create an exact-SHA production certification.",
+  "previousCertification": {
+    "status": "PRODUCTION_READY",
+    "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
+    "deployedSha": "ee22f0e470826f1cb247115497c9a15229d0142d"
+  },
+  "configurationBoundary": {
+    "platformType": "google_analytics",
+    "scope": "GA4 Overview tab for actor-owned campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, active property 542352127, saved campaign filter, campaign currency USD, supported 30-completed-day initial import, and the exact recorded enabled source set",
+    "includedSurfaces": [
+      "Overview Summary cards and completed-day traffic values",
+      "Revenue and Financial cards, Revenue Sources, Spend Sources, and Revenue Breakdown",
+      "Campaign Breakdown and browser Overview report",
+      "scheduler-backed GA4 daily persistence and imported-source refresh paths that feed Overview",
+      "Overview-originated value propagation covered by the recorded regression packet"
+    ],
+    "excludedSurfaces": [
+      "KPIs, Benchmarks, Ad Comparison, Insights, and Reports independent certification",
+      "LinkedIn, Instagram, Meta, TikTok, and Google Ads",
+      "redundant campaigns with obsolete data and unrelated historical rows",
+      "future source configurations and future 60/90-day options",
+      "startup-triggered refresh, scheduled report delivery, and future provider behavior"
+    ],
+    "sourceRules": [
+      "use only the exact actor-owned campaign, active GA4 property, saved campaign filter, GA4 or documented legacy-null financial context, and active materialized source set",
+      "native and imported financial values must use campaign-currency provenance and must distinguish unavailable or missing materialization from authoritative zero",
+      "source add, edit, delete, refresh, reconciliation, and totals must retain exact campaign, platform, source identity, and atomic replacement boundaries"
+    ],
+    "windowRules": [
+      "initial import is the 30 completed GA4 reporting days preceding setup in the campaign reporting timezone",
+      "later completed reporting days append without dropping the oldest imported day",
+      "Summary uses scheduler-backed persisted daily values, Campaign Breakdown remains independent, and financial values remain explicitly campaign-to-date"
+    ],
+    "ownershipRules": [
+      "all reads and mutations require actor and campaign access",
+      "property, campaign filter, source, platform context, currency, and reporting timezone remain campaign-scoped",
+      "scheduler work fails closed when campaign or platform ownership cannot be proven"
+    ]
+  },
+  "dependencies": [
+    { "path": "AGENTS.md", "role": "repository accuracy and anti-overclaim contract", "sha256": null },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": null },
+    { "path": "PRODUCTION_READINESS.md", "role": "production-readiness contract", "sha256": null },
+    { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 validation workflow", "sha256": null },
+    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": null },
+    { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": null },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": null },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md", "role": "Overview evidence ledger", "sha256": null },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md", "role": "Overview history ledger", "sha256": null },
+    { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial source contract", "sha256": null },
+    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and scheduler contract", "sha256": null },
+    { "path": "client/public/ga4-overview-validation-runner.js", "role": "bounded Overview validation runner", "sha256": null },
+    { "path": "client/src/pages/ga4-metrics.tsx", "role": "Overview UI and browser data consumer", "sha256": null },
+    { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "revenue source lifecycle UI", "sha256": null },
+    { "path": "client/src/components/AddSpendWizardModal.tsx", "role": "spend source lifecycle UI", "sha256": null },
+    { "path": "client/src/components/HubSpotRevenueWizard.tsx", "role": "HubSpot source input boundary", "sha256": null },
+    { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify source input boundary", "sha256": null },
+    { "path": "shared/schema.ts", "role": "shared persistence contracts", "sha256": null },
+    { "path": "shared/ga4-financial-source.ts", "role": "financial-source semantics", "sha256": null },
+    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": null },
+    { "path": "server/storage.ts", "role": "Overview storage and lifecycle paths", "sha256": null },
+    { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": null },
+    { "path": "server/ga4-daily-scheduler.ts", "role": "GA4 daily refresh path", "sha256": null },
+    { "path": "server/auto-refresh-scheduler.ts", "role": "imported-source refresh path", "sha256": null },
+    { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "shared post-refresh recompute dependency", "sha256": null },
+    { "path": "server/utils/reporting-timezone.ts", "role": "completed-day boundary", "sha256": null },
+    { "path": "server/utils/revenue-record-total.ts", "role": "imported revenue total", "sha256": null },
+    { "path": "server/utils/hubspot-currency.ts", "role": "HubSpot currency provenance", "sha256": null },
+    { "path": "server/utils/shopify-provider.ts", "role": "Shopify provider boundary", "sha256": null },
+    { "path": "server/utils/shopify-revenue.ts", "role": "Shopify revenue materialization", "sha256": null },
+    { "path": "server/ga4-30-day-production-scope-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-overview-initial-import-window-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-daily-scheduler-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-scheduler-observability-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-filter.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-ui-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-financial-rules.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-financial-source-parity.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-spend-scope-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/overview-revenue-currency-total-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/overview-revenue-materialization-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/revenue-additivity.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/spend-source-additivity.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-primary-connection-scope-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-reconnect-classification.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-reporting-day-cutoff-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-overview-retained-source-reconciliation.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-source-lifecycle-recompute-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/latest-day-revenue-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/latest-day-spend-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/campaign-current-value-financial-source-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/outcome-totals-ga4-fallback-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/performance-summary-scheduler-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/trend-analysis-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/shopify-revenue-regression.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/google-sheets-revenue-validation.test.ts", "role": "Overview focused regression evidence", "sha256": null },
+    { "path": "server/ga4-benchmark-safety-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/ga4-benchmark-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/campaign-scheduler-current-value-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/ga4-kpi-custom-preservation-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/ga4-kpi-financial-window-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/ga4-kpi-reporting-window-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/notification-visibility-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/endpoint-auth-audit.test.ts", "role": "post-certification affected-dependency evidence", "sha256": null },
+    { "path": "server/ga4-overview-certification-gate.ts", "role": "Overview certification-integrity checker", "sha256": null },
+    { "path": "server/ga4-overview-certification-gate.test.ts", "role": "Overview checker regression coverage", "sha256": null },
+    { "path": "package.json", "role": "validation command contract", "sha256": null },
+    { "path": "render.yaml", "role": "production deployment configuration", "sha256": null }
+  ],
+  "statusDocuments": [
+    {
+      "path": "GA4/README.md",
+      "startMarker": "<!-- ga4-overview-current-status -->",
+      "endMarker": "<!-- /ga4-overview-current-status -->"
+    },
+    {
+      "path": "GA4/OVERVIEW.md",
+      "startMarker": "<!-- ga4-overview-current-status -->",
+      "endMarker": "<!-- /ga4-overview-current-status -->"
+    },
+    {
+      "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md",
+      "startMarker": "<!-- ga4-overview-current-status -->",
+      "endMarker": "<!-- /ga4-overview-current-status -->"
+    }
+  ],
+  "requiredTests": [
+    {
+      "id": "certification_integrity",
+      "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
+      "status": "passed",
+      "evidence": "1 file / 8 gate tests passed and the repository checker passed for the fail-closed UNVERIFIED record."
+    },
+    {
+      "id": "focused_overview_regressions",
+      "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
+      "status": "passed",
+      "evidence": "28 files / 287 tests passed after the evidence-only certification changes."
+    },
+    {
+      "id": "affected_shared_dependencies",
+      "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
+      "status": "passed",
+      "evidence": "10 files / 93 tests passed after the evidence-only certification changes."
+    },
+    {
+      "id": "typescript",
+      "command": "npm run check",
+      "status": "passed",
+      "evidence": "TypeScript passed after the evidence-only certification changes."
+    },
+    {
+      "id": "production_build",
+      "command": "npm run build",
+      "status": "passed",
+      "evidence": "The production Vite and server esbuild completed after the evidence-only certification changes."
+    }
+  ],
+  "externalGates": [
+    {
+      "id": "exact_sha_deployment",
+      "status": "passed",
+      "evidence": "Local main, local origin/main, remote main, and production /api/health all returned 29bc7fc1e80fe6554936dee8f0c90c141b5f816d."
+    },
+    {
+      "id": "authenticated_ui_api_source_parity",
+      "status": "pending",
+      "evidence": "No authenticated session was available for fresh read-only current-runtime UI/API/source parity."
+    },
+    {
+      "id": "natural_daily_scheduler_target_persistence",
+      "status": "pending",
+      "evidence": "The current 22:00 UTC scheduler configuration was healthy and scheduled, but no natural target run had occurred since the observed process restart."
+    },
+    {
+      "id": "production_data_integrity",
+      "status": "pending",
+      "evidence": "Prior exact-boundary production inventory remains historical; fresh authenticated current-runtime read-only reconciliation is required."
+    }
+  ]
+}

@@ -14,17 +14,20 @@ Current GA4 tab production-readiness status:
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-- Local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b` is **UNVERIFIED** for Overview because shared dependencies changed and the candidate is not deployed. The immediately following Overview statements are preserved prior exact-SHA evidence only; they do not certify the candidate.
+<!-- ga4-overview-current-status -->
+<!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- The concise current Overview decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–22 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. Current status is **CLEAN-CERTIFIED AND PRODUCTION-READY** for deployed runtime `ee22f0e470826f1cb247115497c9a15229d0142d`, campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, the supported 30-completed-day model, and the enabled USD source set.
+- Overview is **UNVERIFIED for current production certification**. Runtime base `29bc7fc1e80fe6554936dee8f0c90c141b5f816d` matches `main`, `origin/main`, and deployment; local impact review and regression packets found no Overview runtime regression. Fresh authenticated parity and one natural `22:00 UTC` target persistence observation remain external gates. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
 
-- The Overview certification includes the target's `2026-08-10` timer-fired daily persistence, current-provider OAuth usability, native/imported currency parity, exact enabled-source provenance, and `$69,332.69` Total Revenue. Google Ads, obsolete campaigns, future source configurations, future 60/90-day options, scheduled report delivery, and future provider behavior are excluded. No production cleanup was performed or authorized.
+- The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–22 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
+
+<!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
 - GA4 KPIs are **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. Prior exact-SHA cards, Tracker, Notifications, KPI-derived Insights, browser KPI PDF, scheduler work-path, provider, delivery, and protected-regression evidence remains preserved for certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d`; it does not certify the candidate. Exact evidence and pending gates are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 - GA4 Benchmarks are **clean-certified and `PRODUCTION_READY`** for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` and the recorded GA4 Benchmark boundary. The natural scheduler run processed and updated the active Benchmark campaign while retaining explicit process-wide failure evidence for 17 excluded obsolete campaigns. Reports generation, delivery, and inbox receipt are outside this Benchmark certification and are not certified by it.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
 - Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
-- Certification integrity rule: GA4 readiness is valid only for the exact certified SHA/configuration/dependency boundary. A relevant upstream or downstream change automatically invalidates affected tabs. The GA4 KPI record is `GA4/certifications/ga4-kpis.json` and its checker is `npm run check:ga4-kpi-certification`. Current Commits 1-10 and the exact-SHA closure evidence implement and validate the guarded contracts. Copied formulas and source-text guards are structural evidence only.
+- Certification integrity rule: GA4 readiness is valid only for the exact certified SHA/configuration/dependency boundary. A relevant upstream or downstream change automatically invalidates affected tabs. The Overview record is `GA4/certifications/ga4-overview.json` and its checker is `npm run check:ga4-overview-certification`; the KPI record and checker remain separate. Copied formulas and source-text guards are structural evidence only.
 - Shopify Revenue status (2026-08-10): **clean-certified for exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the recorded Overview boundary**. Dormant OAuth, non-GA4 sources, future stores, and generalized provider behavior remain excluded.
 - Upload CSV Revenue status (2026-08-10): **clean-certified for exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` inside the recorded Overview boundary**. Unlisted CSV variants and an unconfigured future Google Sheets Revenue source remain excluded.
 - HubSpot Revenue status (2026-08-10): **clean-certified for exact enabled sources `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` inside the recorded Overview boundary**. Future mappings and unrelated historical rows remain excluded.
@@ -76,7 +79,7 @@ Important meaning:
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current status: **CLEAN-CERTIFIED AND PRODUCTION-READY** for the exact recorded campaign/property/deployed-SHA boundary.
+  Concise canonical current-status index. Current status: **UNVERIFIED** pending the documented exact-current external gates; prior exact-SHA certification is historical evidence only.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`

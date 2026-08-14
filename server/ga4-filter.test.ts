@@ -406,10 +406,40 @@ describe("GA4 campaign value picker", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
+    expect(fallbackBody.dateRanges).toEqual([{ startDate: "2026-06-19", endDate: "2026-08-13" }]);
     expect(result.map((row) => ({ date: row.date, sessions: row.sessions }))).toEqual([
       { date: "2026-06-18", sessions: 18 },
       { date: "2026-08-08", sessions: 8 },
     ]);
+  });
+
+  it("fails closed when the required UTM tail query fails", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const scope = JSON.stringify(JSON.parse(String(init?.body || "{}"))?.dimensionFilter || {});
+      if (scope.includes("pageLocation")) {
+        return { ok: false, text: async () => "provider unavailable" } as any;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          rows: [{
+            dimensionValues: [{ value: "20260618" }],
+            metricValues: ["18", "18", "1", "18", "10", "18", "1"].map((value) => ({ value })),
+          }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(ga4Service.getTimeSeriesWithToken(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "summer_sale",
+      "2026-08-13",
+    )).rejects.toThrow("provider unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("propagates an explicit completed-day end date through the persisted daily fetch wrapper", async () => {

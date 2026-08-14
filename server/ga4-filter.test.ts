@@ -375,6 +375,43 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.dimensions).toEqual([{ name: "date" }]);
   });
 
+  it("retains UTM-only daily dates when primary campaign rows are partial across the scheduler window", async () => {
+    const metricValues = (sessions: string) => [
+      { value: sessions },
+      { value: sessions },
+      { value: "1" },
+      { value: sessions },
+      { value: "10" },
+      { value: sessions },
+      { value: "1" },
+    ];
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const scope = JSON.stringify(JSON.parse(String(init?.body || "{}"))?.dimensionFilter || {});
+      const rows = scope.includes("pageLocation")
+        ? [
+            { dimensionValues: [{ value: "20260618" }], metricValues: metricValues("999") },
+            { dimensionValues: [{ value: "20260808" }], metricValues: metricValues("8") },
+          ]
+        : [{ dimensionValues: [{ value: "20260618" }], metricValues: metricValues("18") }];
+      return { ok: true, json: async () => ({ rows }) } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTimeSeriesWithToken(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "summer_sale",
+      "2026-08-13",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.map((row) => ({ date: row.date, sessions: row.sessions }))).toEqual([
+      { date: "2026-06-18", sessions: 18 },
+      { date: "2026-08-08", sessions: 8 },
+    ]);
+  });
+
   it("propagates an explicit completed-day end date through the persisted daily fetch wrapper", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

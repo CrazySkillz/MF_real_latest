@@ -2342,11 +2342,27 @@ export class GoogleAnalytics4Service {
       const res = await runWithRevenueFallback(campaignDimensionFilter);
       data = res.data;
       revenueMetric = res.revenueMetric;
-      if ((!Array.isArray(data?.rows) || data.rows.length === 0) && pageLocationCampaignFilter) {
+      const primaryRows = Array.isArray(data?.rows) ? data.rows : [];
+      const providerDateKey = (row: any) => String(row?.dimensionValues?.[0]?.value || "").replace(/-/g, "");
+      const completedEndDateKey = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(endDate) ? endDate.replace(/-/g, "") : "";
+      const latestPrimaryDateKey = primaryRows.reduce(
+        (latest: string, row: any) => providerDateKey(row) > latest ? providerDateKey(row) : latest,
+        "",
+      );
+      if (pageLocationCampaignFilter && (primaryRows.length === 0 || (completedEndDateKey && latestPrimaryDateKey < completedEndDateKey))) {
         const utmRes = await runWithRevenueFallback(pageLocationCampaignFilter).catch(() => null);
         if (utmRes && Array.isArray(utmRes.data?.rows) && utmRes.data.rows.length > 0) {
-          data = utmRes.data;
-          revenueMetric = utmRes.revenueMetric;
+          if (primaryRows.length === 0) {
+            data = utmRes.data;
+            revenueMetric = utmRes.revenueMetric;
+          } else {
+            const primaryDates = new Set(primaryRows.map(providerDateKey));
+            data = {
+              ...data,
+              rows: [...primaryRows, ...utmRes.data.rows.filter((row: any) => !primaryDates.has(providerDateKey(row)))]
+                .sort((a: any, b: any) => providerDateKey(a).localeCompare(providerDateKey(b))),
+            };
+          }
         }
       }
       

@@ -158,8 +158,12 @@ export function evaluateGA4ReportsCertification(
     if (start < 0 || end < 0) errors.push("statusDocument markers are missing");
     else {
       const current = content.slice(start, end);
+      const stableHeading = "## Stable Response For Future Chats";
+      const stableStart = content.indexOf(stableHeading);
+      const stableEnd = stableStart < 0 ? -1 : content.indexOf("\n## ", stableStart + stableHeading.length);
+      const stable = stableStart < 0 ? "" : content.slice(stableStart, stableEnd < 0 ? content.length : stableEnd);
       if (!current.includes(`<!-- ga4-reports-certification-status: ${value.status} -->`)) errors.push("status marker does not match record");
-      if (!ready && /GA4 Reports is (?:clean-certified|production-ready)/i.test(current)) errors.push("current status contradicts UNVERIFIED record");
+      if (!ready && /GA4 Reports is (?:clean-certified|production-ready)/i.test(`${current}\n${stable}`)) errors.push("current status contradicts UNVERIFIED record");
     }
   }
 

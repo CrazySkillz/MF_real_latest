@@ -547,8 +547,21 @@ async function buildGA4ReportPayload(report: any) {
     overviewDailyRows = dailyRows;
   }
   const overviewRequirements = getOverviewReportRequirements(report);
+  const activeRevenueSources = revenueSources.filter((source: any) => source?.isActive !== false);
+  const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));
+  const revenueBreakdownSourceIds = new Set(revenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
+  const adComparisonRevenueBreakdownSourceIds = new Set(adComparisonRevenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
+  const overviewMaterializedRevenueUnavailable = activeRevenueSources.some(
+    (source: any) => !revenueBreakdownSourceIds.has(String(source?.id || "")),
+  );
+  const adComparisonMaterializedRevenueUnavailable = activeRevenueSources.some(
+    (source: any) => !adComparisonRevenueBreakdownSourceIds.has(String(source?.id || "")),
+  );
   const hasImportedRevenueSource = revenueSources.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
   const unavailableOverviewParts: string[] = [];
+  if (overviewRequirements.revenue && overviewMaterializedRevenueUnavailable) {
+    unavailableOverviewParts.push("Revenue");
+  }
   if (overviewRequirements.summary && overviewDailyRows.length === 0 && (overviewStartDate < dailyStart || failedParts.has("time series"))) {
     unavailableOverviewParts.push("Summary");
   }
@@ -576,6 +589,9 @@ async function buildGA4ReportPayload(report: any) {
     throw new Error(`GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: ${Array.from(new Set(unavailableOverviewParts)).join(", ")}`);
   }
   const unavailableAdComparisonParts: string[] = [];
+  if (adComparisonRequirements.revenueBreakdown && adComparisonMaterializedRevenueUnavailable) {
+    unavailableAdComparisonParts.push('Imported revenue provenance');
+  }
   if (
     adComparisonRequirements.included &&
     failedParts.has('ad comparison breakdown')
@@ -901,6 +917,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
   const payload = await buildGA4ReportPayload(report);
+  const lookbackDays = [30, 60, 90].includes(Number(payload.connection?.lookbackDays))
+    ? Number(payload.connection.lookbackDays)
+    : 90;
   const reportType = String(report?.reportType || "overview").toLowerCase();
   const rawCfg = parseReportConfiguration(report?.configuration);
   const cfg = normalizeCustomReportConfig(rawCfg);
@@ -968,15 +987,22 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       y += cellH + 4;
     }
   };
-  const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[], color: C3 = COLORS.overview) => {
+  const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[], color: C3 = COLORS.overview, note?: string) => {
     if (rows.length === 0) return;
-    const fullHeight = 18 + 10 + rows.length * 8 + 4;
+    const fullHeight = 18 + (note ? 6 : 0) + 10 + rows.length * 8 + 4;
     if (fullHeight <= 250 && y + fullHeight > 274) {
       addFooter();
       doc.addPage();
       y = 18;
     }
     sectionTitle(title, color);
+    if (note) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COLORS.textSec);
+      doc.text(note, MX, y + 2);
+      y += 6;
+    }
     doc.setFillColor(...COLORS.cardBg);
     doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
     doc.setFontSize(6.5);
@@ -1122,7 +1148,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["SOURCE", "AMOUNT"],
         [
           ...(payload.ga4HasRevenueMetric ? [["GA4 Revenue", formatMoney(payload.ga4RevenueForFinancials)]] : []),
-          ...payload.revenueDisplaySources.map((source: any) => [String(source?.displayName || source?.sourceType || "Revenue"), formatMoney(Number(source?.revenue || 0))]),
+          ...payload.revenueDisplaySources.map((source: any) => [String(source?.displayName || source?.sourceType || "Revenue"), formatMoney(Number(source?.revenue))]),
         ],
         [120, 64],
         COLORS.overview
@@ -1156,7 +1182,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           formatMoney(Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2))),
         ]),
         [52, 22, 20, 28, 26, 36],
-        COLORS.overview
+        COLORS.overview,
+        `GA4 metrics: last ${lookbackDays} completed days; Revenue includes exact campaign-matched source-to-date imports.`,
       );
     }
     if (includeLandingPages) {
@@ -1281,10 +1308,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       y += 4;
       const revenueBreakdownRows: { label: string; amount: string; muted?: boolean }[] = [
         { label: "GA4 Revenue (Imported to Date)", amount: formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)) },
-        ...payload.adComparisonRevenueDisplaySources
-          .filter((source: any) => source?.revenue != null)
-          .flatMap((source: any) => [
-            { label: `${String(source?.displayName || source?.sourceType || "Revenue")} (source-to-date; excluded from ranking)`, amount: formatMoney(Number(source?.revenue || 0)) },
+        ...payload.adComparisonRevenueDisplaySources.flatMap((source: any) => [
+            { label: `${String(source?.displayName || source?.sourceType || "Revenue")} (source-to-date; excluded from ranking)`, amount: formatMoney(Number(source?.revenue)) },
             ...(payload.adComparisonSourceRevenueBreakdowns.get(String(source?.sourceId || ""))
               || payload.sourceRevenueBreakdowns.get(String(source?.sourceId || ""))
               || []).map((item: any) => ({

@@ -97,6 +97,43 @@ describe("scheduled report email regression guard", () => {
     expect(campaignBreakdownBlock).not.toContain("GA4 REVENUE");
   });
 
+  it("fails scheduled GA4 Reports closed when active imported revenue is not materialized", () => {
+    const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+    const guardStart = source.indexOf("const overviewRequirements = getOverviewReportRequirements(report);");
+    const guardEnd = source.indexOf("const lastDailyRefreshAt", guardStart);
+    const guardSection = source.slice(guardStart, guardEnd);
+
+    expect(guardStart).toBeGreaterThan(-1);
+    expect(guardEnd).toBeGreaterThan(guardStart);
+    expect(guardSection).toContain("const activeRevenueSources = revenueSources.filter(");
+    expect(guardSection).toContain("const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));");
+    expect(guardSection).toContain("revenueBreakdown.filter(hasMaterializedRevenue).map");
+    expect(guardSection).toContain("adComparisonRevenueBreakdown.filter(hasMaterializedRevenue).map");
+    expect(guardSection).toContain("const revenueBreakdownSourceIds = new Set(");
+    expect(guardSection).toContain("const adComparisonRevenueBreakdownSourceIds = new Set(");
+    expect(guardSection).toContain("const overviewMaterializedRevenueUnavailable = activeRevenueSources.some(");
+    expect(guardSection).toContain("const adComparisonMaterializedRevenueUnavailable = activeRevenueSources.some(");
+    expect(guardSection).toContain('!revenueBreakdownSourceIds.has(String(source?.id || ""))');
+    expect(guardSection).toContain('!adComparisonRevenueBreakdownSourceIds.has(String(source?.id || ""))');
+    expect(guardSection).toContain("overviewRequirements.revenue && overviewMaterializedRevenueUnavailable");
+    expect(guardSection).toContain("adComparisonRequirements.revenueBreakdown && adComparisonMaterializedRevenueUnavailable");
+    expect(source).not.toContain("formatMoney(Number(source?.revenue || 0))");
+    expect(source).not.toContain(".filter((source: any) => source?.revenue != null)");
+  });
+
+  it("discloses the mixed Campaign Breakdown window in scheduled GA4 Reports", () => {
+    const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+    const breakdownStart = source.indexOf("if (includeCampaignBreakdown)");
+    const breakdownEnd = source.indexOf("if (includeLandingPages)", breakdownStart);
+    const breakdownSection = source.slice(breakdownStart, breakdownEnd);
+
+    expect(breakdownStart).toBeGreaterThan(-1);
+    expect(breakdownEnd).toBeGreaterThan(breakdownStart);
+    expect(breakdownSection).toContain(
+      "GA4 metrics: last ${lookbackDays} completed days; Revenue includes exact campaign-matched source-to-date imports.",
+    );
+  });
+
   it("keeps GA4 scheduled Total Revenue on the selected scoped financial source", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
 

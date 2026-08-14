@@ -3023,6 +3023,9 @@ export default function GA4Metrics() {
         ? normalizedReportConfig.sections
         : { overview: reportType === "overview", kpis: reportType === "kpis", benchmarks: reportType === "benchmarks", ads: reportType === "ads", insights: reportType === "insights" };
     const customSubsections = reportType === "custom" ? normalizedReportConfig.subsections || {} : {};
+    const materializedRevenueUnavailable = revenueDisplaySources.some(
+      (source: any) => source?.materializedRevenueStatus === "unavailable" || source?.revenue == null,
+    );
     if (sections.overview) {
       const overviewSubsections = customSubsections.overview || {};
       const needsSummary = reportType !== "custom" || overviewSubsections.summary === true;
@@ -3034,6 +3037,7 @@ export default function GA4Metrics() {
       const unavailable: string[] = [];
       if (needsSummary && !overviewSummaryAvailable) unavailable.push("Summary");
       if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");
+      if (needsRevenue && materializedRevenueUnavailable) unavailable.push("Revenue");
       if (needsSpend && (!financialSpendAvailable || spendSourcesError || (spendToDateError && spendBreakdownError))) unavailable.push("Spend");
       if (needsCampaignBreakdown && campaignBreakdownUnavailable) unavailable.push("Campaign Breakdown");
       if (needsLandingPages && landingPagesError) unavailable.push("Landing Pages");
@@ -3053,6 +3057,7 @@ export default function GA4Metrics() {
       if (needsRevenueBreakdown && adComparisonRevenueState !== 'ready') {
         unavailable.push('Imported revenue provenance');
       }
+      if (needsRevenueBreakdown && materializedRevenueUnavailable) unavailable.push('Imported revenue provenance');
       if (unavailable.length > 0) {
         throw new Error(
           `Cannot generate the Ad Comparison report while these inputs are unavailable or stale: ${unavailable.join(', ')}. Refresh the page and try again.`,
@@ -3128,9 +3133,9 @@ export default function GA4Metrics() {
     const fC = (n: number) => `${cur} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fP = (n: number) => formatPct(Number(n || 0));
     const fN = (n: number) => `${Math.round(Number(n || 0)).toLocaleString()}`;
-    const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
+    const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[], note?: string) => {
       if (rows.length === 0) return;
-      const fullSectionHeight = 18 + 10 + rows.length * 8 + 4;
+      const fullSectionHeight = 18 + (note ? 6 : 0) + 10 + rows.length * 8 + 4;
       if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
         addPageFooter();
         doc.addPage();
@@ -3138,6 +3143,11 @@ export default function GA4Metrics() {
       }
       checkPage(36);
       sectionTitle(title, C.overview);
+      if (note) {
+        doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+        doc.text(note, MX, y + 2);
+        y += 6;
+      }
       doc.setFillColor(...C.cardBg);
       doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
       doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
@@ -3329,7 +3339,7 @@ export default function GA4Metrics() {
           const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
             ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
             : "";
-          return [revenueSourceDisplayLabel(s) + dateLabel, fC(Number(s.revenue != null ? s.revenue : rev))] as [string, string];
+          return [revenueSourceDisplayLabel(s) + dateLabel, fC(Number(s.revenue))] as [string, string];
         }),
       ]);
       }
@@ -3356,19 +3366,22 @@ export default function GA4Metrics() {
       y += 2;
       }
 
-      if (includeOverviewCampaignBreakdown) addSimpleTable(
-        "Campaign Breakdown",
-        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
-        (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
-          String(c?.name || "(not set)"),
-          fN(Number(c?.sessions || 0)),
-          fN(Number(c?.users || 0)),
-          fN(Number(c?.conversions || 0)),
-          fP(Number(c?.conversionRate || 0)),
-          fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
-        ]),
-        [52, 22, 20, 28, 26, 36]
-      );
+      if (includeOverviewCampaignBreakdown) {
+        addSimpleTable(
+          "Campaign Breakdown",
+          ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
+          (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
+            String(c?.name || "(not set)"),
+            fN(Number(c?.sessions || 0)),
+            fN(Number(c?.users || 0)),
+            fN(Number(c?.conversions || 0)),
+            fP(Number(c?.conversionRate || 0)),
+            fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
+          ]),
+          [52, 22, 20, 28, 26, 36],
+          `GA4 metrics: last ${GA4_DAILY_LOOKBACK_DAYS} completed days; Revenue includes exact campaign-matched source-to-date imports.`,
+        );
+      }
 
       if (includeOverviewLandingPages) addSimpleTable(
         "Landing Pages",
@@ -3592,12 +3605,10 @@ export default function GA4Metrics() {
               label: "GA4 Revenue (Imported to Date)",
               amount: fC(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)),
             },
-            ...revenueDisplaySources
-              .filter((source: any) => source.revenue != null)
-              .flatMap((source: any) => [
+            ...revenueDisplaySources.flatMap((source: any) => [
                 {
                   label: `${String(source.displayName || source.sourceType || "Source")} (source-to-date; excluded from ranking)`,
-                  amount: fC(Number(source.revenue || 0)),
+                  amount: fC(Number(source.revenue)),
                 },
                 ...(sourceRevenueBreakdowns.get(String(source.sourceId || "")) || []).map((item: any) => ({
                   label: String(item?.campaignValue || ""),

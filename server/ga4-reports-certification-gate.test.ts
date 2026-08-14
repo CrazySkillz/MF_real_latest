@@ -116,4 +116,26 @@ describe("GA4 Reports machine certification gate", () => {
       "current status contradicts UNVERIFIED record",
     );
   });
+
+  it("rejects a reusable readiness claim outside the current-status block while UNVERIFIED", () => {
+    const contradictory = {
+      ...context(),
+      readText: (path: string) =>
+        path === "GA4/REPORTS_PRODUCTION_READINESS.md"
+          ? [
+              "<!-- ga4-reports-current-status -->",
+              "<!-- ga4-reports-certification-status: UNVERIFIED -->",
+              "GA4 Reports is not currently clean-certified",
+              "<!-- /ga4-reports-current-status -->",
+              "## Stable Response For Future Chats",
+              "GA4 Reports is production-ready",
+            ].join("\n")
+          : path === "package.json"
+            ? '"check:ga4-reports-certification"'
+            : "content",
+    };
+    expect(evaluateGA4ReportsCertification(record(), contradictory).errors).toContain(
+      "current status contradicts UNVERIFIED record",
+    );
+  });
 });

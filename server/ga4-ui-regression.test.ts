@@ -611,6 +611,35 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("revenueDisplaySources.filter(s => s.revenue != null).map");
   });
 
+  it("fails browser-generated GA4 Reports closed when imported revenue is not materialized", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const guardStart = ga4Metrics.indexOf("const downloadGA4Report = async");
+    const guardEnd = ga4Metrics.indexOf('const { jsPDF } = await import("jspdf")', guardStart);
+    const guardSection = ga4Metrics.slice(guardStart, guardEnd);
+
+    expect(guardStart).toBeGreaterThan(-1);
+    expect(guardEnd).toBeGreaterThan(guardStart);
+    expect(guardSection).toContain("const materializedRevenueUnavailable = revenueDisplaySources.some(");
+    expect(guardSection).toContain('source?.materializedRevenueStatus === "unavailable" || source?.revenue == null');
+    expect(guardSection).toContain('if (needsRevenue && materializedRevenueUnavailable) unavailable.push("Revenue");');
+    expect(guardSection).toContain("if (needsRevenueBreakdown && materializedRevenueUnavailable) unavailable.push('Imported revenue provenance');");
+    expect(ga4Metrics).not.toContain("s.revenue != null ? s.revenue : rev");
+    expect(ga4Metrics).not.toContain(".filter((source: any) => source.revenue != null)");
+  });
+
+  it("discloses the mixed Campaign Breakdown window in browser-generated GA4 Reports", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const breakdownStart = ga4Metrics.indexOf("if (includeOverviewCampaignBreakdown)");
+    const breakdownEnd = ga4Metrics.indexOf("if (includeOverviewLandingPages)", breakdownStart);
+    const breakdownSection = ga4Metrics.slice(breakdownStart, breakdownEnd);
+
+    expect(breakdownStart).toBeGreaterThan(-1);
+    expect(breakdownEnd).toBeGreaterThan(breakdownStart);
+    expect(breakdownSection).toContain(
+      "GA4 metrics: last ${GA4_DAILY_LOOKBACK_DAYS} completed days; Revenue includes exact campaign-matched source-to-date imports.",
+    );
+  });
+
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 

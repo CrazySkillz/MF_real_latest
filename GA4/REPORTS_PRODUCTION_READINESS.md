@@ -19,15 +19,15 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: UNVERIFIED -->
 ## Current Controlling Answer
 
-August 14, 2026 candidate decision: GA4 Reports remains **UNVERIFIED**. The Reports implementation candidate is committed on local `main` at `79179cf2208289f7491ac8f8b765827ab21c3eab`; production remains on `defce1982c8c56854aa21c543612ab782811026e` pending Render auto-deployment. Campaign DeepDive remains outside the boundary.
+August 14, 2026 candidate decision: the GA4 Reports fix packet is **RELEASE_CANDIDATE_READY**. Implementation commit `79179cf2208289f7491ac8f8b765827ab21c3eab` was verified deployed within Render revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`. Campaign DeepDive remains outside the boundary.
 
-Two later Reports regressions were proven and corrected in the current working tree: browser/server PDFs now fail closed when an active imported-revenue source lacks an exact materialized row, and Campaign Breakdown PDFs disclose that GA4 metrics use the completed-day window while exact matched imported revenue is source-to-date. The certification gate now also rejects a reusable readiness claim outside the controlling status block.
+Two later Reports regressions were proven and corrected: browser/server PDFs now fail closed when an active imported-revenue source lacks a finite exact materialized row, and Campaign Breakdown PDFs disclose that GA4 metrics use the completed-day window while exact matched imported revenue is source-to-date. The certification gate now also rejects a reusable readiness claim outside the controlling status block.
 
-Local evidence for implementation candidate `79179cf2208289f7491ac8f8b765827ab21c3eab` is limited to the six-file Reports/regression packet (117 tests), `npm run check`, and `npm run build`, all passing. The build transformed 3,466 modules and completed the server bundle. Deployment, browser/server artifact inspection, delivery, inbox receipt, database integrity, and required external gates have not been revalidated for this candidate.
+Evidence for this release candidate: the six-file Reports/regression packet passed 117 tests; `npm run check` passed; `npm run build` passed after transforming 3,466 modules and completing the server bundle; Render health returned HTTP 200 at exact revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`; the app entry and deployed GA4 bundle returned HTTP 200; the deployed bundle contained the mixed-window disclosure; the unauthenticated Reports-list route failed closed with HTTP 401; scheduler health returned HTTP 200; and the user confirmed the Campaign Breakdown note in generated deployed PDFs.
 
-Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and all supporting evidence remain preserved below and in the machine record as historical revision-specific evidence. They do not certify the current working tree or deployed production.
+The unavailable-materialized-revenue branch was not intentionally induced against production data; its proof is deterministic regression coverage. No report send, snapshot creation, production database audit, or complete browser/server numerical parity packet was performed for this revision. Previous certification evidence remains historical and does not fill those current gaps.
 
-No final combined GA4 certification was performed. The machine-readable record is `GA4/certifications/ga4-reports.json`; an exact candidate SHA, deployment, and the required external gates are still required before readiness can be certified.
+No final combined GA4 certification was performed, exactly as requested. The machine-readable status remains `UNVERIFIED` because its schema has no release-candidate state and the final certification gates remain incomplete; that does not negate the release-candidate-ready decision above.
 
 <!-- /ga4-reports-current-status -->
 
@@ -948,7 +948,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that GA4 Reports remains **UNVERIFIED**. Implementation candidate `79179cf2208289f7491ac8f8b765827ab21c3eab` contains locally tested fixes but is not yet proven deployed or externally revalidated. Recheck the controlling status block and machine record before reusing this answer.
+Answer that the GA4 Reports fix packet is **RELEASE_CANDIDATE_READY** and was verified deployed within revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`. Do not describe it as a final combined GA4 certification; the remaining external gates are recorded above and in the machine record.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

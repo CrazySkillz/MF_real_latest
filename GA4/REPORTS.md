@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Production-readiness status: GA4 Reports is not currently clean-certified as a whole section because KPI-bearing and KPI-derived report output is `UNVERIFIED`. Historical non-KPI report mechanics remain bounded evidence. The controlling decision and Reports Current Commits 7-9 live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Current status: the GA4 Reports fix packet is `RELEASE_CANDIDATE_READY` and was verified deployed within Render revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`. This is not a final combined GA4 certification. The exact evidence and remaining external gates live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section remains
 `UNVERIFIED`. Local browser/scheduled output guards pass, but the deployed
 revision and direct-consumer parity gates in
@@ -308,7 +308,7 @@ Important meaning:
 
 ## Current-State Note
 
-The current GA4 Reports implementation is not clean-certified as a whole section while KPI-bearing output is unverified. Earlier report CRUD/delivery/PDF packets remain historical bounded evidence, not a current numerical certification.
+The current GA4 Reports fix packet is release-candidate ready. Final combined GA4 certification, current-revision delivery/inbox proof, production database integrity, and complete browser/server numerical parity remain separate gates and are not implied by this status.
 
 Aligned and production-ready:
 

@@ -386,13 +386,14 @@ describe("GA4 campaign value picker", () => {
       { value: "1" },
     ];
     const fetchMock = vi.fn(async (_url: string, init: any) => {
-      const scope = JSON.stringify(JSON.parse(String(init?.body || "{}"))?.dimensionFilter || {});
+      const body = JSON.parse(String(init?.body || "{}"));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      const [range] = body?.dateRanges || [];
       const rows = scope.includes("pageLocation")
-        ? [
-            { dimensionValues: [{ value: "20260618" }], metricValues: metricValues("999") },
-            { dimensionValues: [{ value: "20260808" }], metricValues: metricValues("8") },
-          ]
-        : [{ dimensionValues: [{ value: "20260618" }], metricValues: metricValues("18") }];
+        ? (range.startDate === "2026-07-15" && range.endDate === "2026-08-13"
+            ? [{ dimensionValues: [{ value: "20260808" }], metricValues: metricValues("8") }]
+            : [])
+        : [{ dimensionValues: [{ value: "20260712" }], metricValues: metricValues("18") }];
       return { ok: true, json: async () => ({ rows }) } as any;
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -405,21 +406,28 @@ describe("GA4 campaign value picker", () => {
       "2026-08-13",
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
-    expect(fallbackBody.dateRanges).toEqual([{ startDate: "2026-06-19", endDate: "2026-08-13" }]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const fallbackRanges = fetchMock.mock.calls.slice(1).map((call) =>
+      JSON.parse(String(call[1]?.body || "{}"))?.dateRanges?.[0],
+    );
+    expect(fallbackRanges).toEqual([
+      { startDate: "2026-07-13", endDate: "2026-07-14" },
+      { startDate: "2026-07-15", endDate: "2026-08-13" },
+    ]);
     expect(result.map((row) => ({ date: row.date, sessions: row.sessions }))).toEqual([
-      { date: "2026-06-18", sessions: 18 },
+      { date: "2026-07-12", sessions: 18 },
       { date: "2026-08-08", sessions: 8 },
     ]);
   });
 
   it("fails closed when the required UTM tail query fails", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
-      const scope = JSON.stringify(JSON.parse(String(init?.body || "{}"))?.dimensionFilter || {});
-      if (scope.includes("pageLocation")) {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      if (scope.includes("pageLocation") && body?.dateRanges?.[0]?.startDate === "2026-07-15") {
         return { ok: false, text: async () => "provider unavailable" } as any;
       }
+      if (scope.includes("pageLocation")) return { ok: true, json: async () => ({ rows: [] }) } as any;
       return {
         ok: true,
         json: async () => ({
@@ -439,7 +447,7 @@ describe("GA4 campaign value picker", () => {
       "summer_sale",
       "2026-08-13",
     )).rejects.toThrow("provider unavailable");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("propagates an explicit completed-day end date through the persisted daily fetch wrapper", async () => {

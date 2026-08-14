@@ -2229,6 +2229,7 @@ export class GoogleAnalytics4Service {
         revenueMetric: 'totalRevenue' | 'purchaseRevenue',
         scopeFilter: any = campaignDimensionFilter,
         startDate: string = dateRange,
+        queryEndDate: string = endDate,
       ) => {
         const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
@@ -2240,7 +2241,7 @@ export class GoogleAnalytics4Service {
             dateRanges: [
               {
                 startDate,
-                endDate,
+                endDate: queryEndDate,
               },
             ],
             dimensions: [{ name: 'date' }],
@@ -2278,13 +2279,17 @@ export class GoogleAnalytics4Service {
 
       let data: any;
       let revenueMetric: 'totalRevenue' | 'purchaseRevenue' = 'totalRevenue';
-      const runWithRevenueFallback = async (scopeFilter: any = campaignDimensionFilter, startDate: string = dateRange) => {
+      const runWithRevenueFallback = async (
+        scopeFilter: any = campaignDimensionFilter,
+        startDate: string = dateRange,
+        queryEndDate: string = endDate,
+      ) => {
         try {
-          return await run('totalRevenue', scopeFilter, startDate);
+          return await run('totalRevenue', scopeFilter, startDate, queryEndDate);
         } catch (e: any) {
           const msg = String(e?.message || e || '').toLowerCase();
           if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
-            return await run('purchaseRevenue', scopeFilter, startDate);
+            return await run('purchaseRevenue', scopeFilter, startDate, queryEndDate);
           }
           throw e;
         }
@@ -2361,16 +2366,37 @@ export class GoogleAnalytics4Service {
               Number(latestPrimaryDateKey.slice(6, 8)) + 1,
             )).toISOString().slice(0, 10)
           : dateRange;
-        const utmRes = await runWithRevenueFallback(pageLocationCampaignFilter, fallbackStartDate);
-        if (utmRes && Array.isArray(utmRes.data?.rows) && utmRes.data.rows.length > 0) {
+        const utmResults: any[] = [];
+        if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fallbackStartDate) && completedEndDateKey) {
+          const chunks: Array<{ startDate: string; endDate: string }> = [];
+          let chunkEnd = endDate;
+          while (chunkEnd >= fallbackStartDate) {
+            const chunkStartCandidate = new Date(`${chunkEnd}T00:00:00.000Z`);
+            chunkStartCandidate.setUTCDate(chunkStartCandidate.getUTCDate() - 29);
+            const chunkStart = chunkStartCandidate.toISOString().slice(0, 10) > fallbackStartDate
+              ? chunkStartCandidate.toISOString().slice(0, 10)
+              : fallbackStartDate;
+            chunks.unshift({ startDate: chunkStart, endDate: chunkEnd });
+            const previousChunkEnd = new Date(`${chunkStart}T00:00:00.000Z`);
+            previousChunkEnd.setUTCDate(previousChunkEnd.getUTCDate() - 1);
+            chunkEnd = previousChunkEnd.toISOString().slice(0, 10);
+          }
+          for (const chunk of chunks) {
+            utmResults.push(await runWithRevenueFallback(pageLocationCampaignFilter, chunk.startDate, chunk.endDate));
+          }
+        } else {
+          utmResults.push(await runWithRevenueFallback(pageLocationCampaignFilter, fallbackStartDate));
+        }
+        const utmRows = utmResults.flatMap((result) => Array.isArray(result?.data?.rows) ? result.data.rows : []);
+        if (utmRows.length > 0) {
           if (primaryRows.length === 0) {
-            data = utmRes.data;
-            revenueMetric = utmRes.revenueMetric;
+            data = { ...utmResults[0].data, rows: utmRows };
+            revenueMetric = utmResults[0].revenueMetric;
           } else {
             const primaryDates = new Set(primaryRows.map(providerDateKey));
             data = {
               ...data,
-              rows: [...primaryRows, ...utmRes.data.rows.filter((row: any) => !primaryDates.has(providerDateKey(row)))]
+              rows: [...primaryRows, ...utmRows.filter((row: any) => !primaryDates.has(providerDateKey(row)))]
                 .sort((a: any, b: any) => providerDateKey(a).localeCompare(providerDateKey(b))),
             };
           }

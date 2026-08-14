@@ -107,9 +107,9 @@ Important meaning:
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
   Canonical live-tab Insights production-readiness source of truth. Clean re-certification status as of `2026-08-12` (`Europe/Amsterdam`): `PRODUCTION_READY` for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the recorded dependency/configuration boundary. Reports-owned behavior is outside this certification; relevant future changes require recertification.
 - `GA4/REPORTS.md`
-  Covers GA4 report creation, scheduling, downloads, report-library behavior, and current-state caveats. Current status: `PRODUCTION_READY` for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d`; Campaign DeepDive is excluded.
+  Covers GA4 report creation, scheduling, downloads, report-library behavior, and current-state caveats. Current status: **UNVERIFIED** for implementation candidate `79179cf2208289f7491ac8f8b765827ab21c3eab`, pending proven deployment and external revalidation; prior certification evidence is historical only. Campaign DeepDive is excluded.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`
-  Canonical GA4 Reports-tab production-readiness source of truth. Current status: clean-certified and production-ready for exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the recorded dependency/configuration boundary. Campaign DeepDive is outside this boundary.
+  Canonical GA4 Reports-tab production-readiness source of truth. Current status: **UNVERIFIED** for implementation candidate `79179cf2208289f7491ac8f8b765827ab21c3eab`, pending proven deployment and external revalidation. Campaign DeepDive is outside this boundary.
 - `GA4/REFRESH_AND_PROCESSING.md`
   Covers schedulers, cross-tab dependency order, recomputation rules, and current-state notes for background freshness.
 - `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`

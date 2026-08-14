@@ -19,19 +19,15 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: UNVERIFIED -->
 ## Current Controlling Answer
 
-August 12, 2026 candidate decision: GA4 Reports remains **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. Shared Reports dependencies changed and the candidate is not deployed. Campaign DeepDive remains outside the boundary.
+August 14, 2026 candidate decision: GA4 Reports remains **UNVERIFIED**. The Reports implementation candidate is committed on local `main` at `79179cf2208289f7491ac8f8b765827ab21c3eab`; production remains on `defce1982c8c56854aa21c543612ab782811026e` pending Render auto-deployment. Campaign DeepDive remains outside the boundary.
 
-Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and all supporting evidence remain preserved below and in the machine record as historical revision-specific evidence. They do not certify the local candidate.
+Two later Reports regressions were proven and corrected in the current working tree: browser/server PDFs now fail closed when an active imported-revenue source lacks an exact materialized row, and Campaign Breakdown PDFs disclose that GA4 metrics use the completed-day window while exact matched imported revenue is source-to-date. The certification gate now also rejects a reusable readiness claim outside the controlling status block.
 
-Reports-only evidence now passed for all five standard browser PDF types and one selected Custom composition; Ad Comparison browser/direct/email parity; provider-confirmed delivery and inbox receipt; deployed GA4 report-card visibility; owner/non-owner read isolation; complete schedule configuration; snapshot/send-event truthfulness; production database integrity; dependency hashes; build; and protected Overview/Insights carry-forward.
+Local evidence for implementation candidate `79179cf2208289f7491ac8f8b765827ab21c3eab` is limited to the six-file Reports/regression packet (117 tests), `npm run check`, and `npm run build`, all passing. The build transformed 3,466 modules and completed the server bundle. Deployment, browser/server artifact inspection, delivery, inbox receipt, database integrity, and required external gates have not been revalidated for this candidate.
 
-The only Reports runtime change since the prior certification is Commit 7's test-send delivery confirmation/persistence correction. On exact deployed SHA `ee22f0e470826f1cb247115497c9a15229d0142d`, the controlled saved-report test send returned success with provider-confirmed `delivered` status and a provider response ID; the report configuration was restored unchanged, snapshots remained zero, scheduled send events remained zero, and exactly one audit row was added. The browser KPI PDF independently matched all selected KPI values, targets, window labels, and states. Scheduled selection, snapshot truthfulness, report calculations, and report output contracts were unchanged; the 5-file / 71-test Reports packet and 44-file / 496-test protected Overview/Insights packet passed.
+Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and all supporting evidence remain preserved below and in the machine record as historical revision-specific evidence. They do not certify the current working tree or deployed production.
 
-Current known in-scope findings: Critical `0`, Major `0`, Minor `0`. Future code/configuration changes within the recorded boundary, a contradictory production result, or a newly discovered in-scope consumer invalidate this revision-specific certification.
-
-Overview was carried forward after its relevant behavior and dependency boundary were confirmed unchanged. Insights was independently reverified because corrected KPI history changes its trend input. No Reports validation performed here changed their runtime code or production data.
-
-The machine-readable record is `GA4/certifications/ga4-reports.json`; its exact-SHA deployment and external gates must pass before a production-ready answer is restored.
+No final combined GA4 certification was performed. The machine-readable record is `GA4/certifications/ga4-reports.json`; an exact candidate SHA, deployment, and the required external gates are still required before readiness can be certified.
 
 <!-- /ga4-reports-current-status -->
 
@@ -952,7 +948,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that GA4 Reports is clean-certified and production-ready only for exact deployed SHA `4f3b2b6f0fb47a76d4506888733b46233b6c90c4` and the recorded GA4 Reports-tab/delivery dependency boundary. Campaign DeepDive and future revisions, configurations, provider availability, or inbox behavior are excluded. Recheck the machine record before reusing this answer.
+Answer that GA4 Reports remains **UNVERIFIED**. Implementation candidate `79179cf2208289f7491ac8f8b765827ab21c3eab` contains locally tested fixes but is not yet proven deployed or externally revalidated. Recheck the controlling status block and machine record before reusing this answer.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

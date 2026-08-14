@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-reports",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
+  "lastReviewedSha": "79179cf2208289f7491ac8f8b765827ab21c3eab",
   "certifiedSha": null,
   "deployedSha": null,
-  "invalidationReason": "Local candidate c7e708e27d73416a96cf9a79d0f875f60b725d6b changes shared Reports dependencies and is not deployed. Exact-SHA deployment and external revalidation are pending; prior certification evidence remains historical only.",
+  "invalidationReason": "Reports implementation candidate 79179cf2208289f7491ac8f8b765827ab21c3eab is committed locally but is not yet proven deployed; production remains defce1982c8c56854aa21c543612ab782811026e pending Render auto-deployment. Exact-SHA deployment, final certification, and external revalidation are pending; prior certification evidence remains historical only.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
@@ -86,32 +86,32 @@
     {
       "id": "reports_certification_gate",
       "status": "passed",
-      "evidence": "npm run check:ga4-reports-certification passed with the final PRODUCTION_READY record; all 6 certification-gate regression tests passed."
+      "evidence": "The current UNVERIFIED record passed npm run check:ga4-reports-certification; all 7 certification-gate regression tests passed."
     },
     {
       "id": "focused_reports_regressions",
       "status": "passed",
-      "evidence": "The exact deployed candidate passed the complete dependency-listed Reports regression packet: 5 files and 71 tests."
+      "evidence": "Implementation candidate 79179cf2208289f7491ac8f8b765827ab21c3eab passed the six-file Reports/regression packet: 117 tests."
     },
     {
       "id": "protected_overview_insights_regressions",
-      "status": "passed",
-      "evidence": "The complete protected Overview and Insights boundary passed 44 files and 496 tests; authenticated read-only production parity also passed without changing persistence."
+      "status": "pending",
+      "evidence": "The protected Overview and Insights boundary was not rerun for this uncommitted Reports candidate; previous exact-revision evidence remains historical only."
     },
     {
       "id": "typescript",
       "status": "passed",
-      "evidence": "npm run check passed after the record, checker, and checker tests were added."
+      "evidence": "npm run check passed for implementation candidate 79179cf2208289f7491ac8f8b765827ab21c3eab."
     },
     {
       "id": "production_build",
       "status": "passed",
-      "evidence": "npm run build passed; Vite transformed 3,466 modules and the production server bundle completed."
+      "evidence": "npm run build passed for implementation candidate 79179cf2208289f7491ac8f8b765827ab21c3eab; Vite transformed 3,466 modules and the server bundle completed."
     },
     {
       "id": "complete_numerical_failure_matrix",
-      "status": "passed",
-      "evidence": "Reports-only exact-SHA browser parity passed for all five standard types and one selected Custom composition; server/direct/email Ad Comparison parity, KPI/Benchmark actual paths, failure branches, delivery, isolation, database integrity, exact-SHA CRUD, and a natural exact-SHA scheduled send passed."
+      "status": "pending",
+      "evidence": "New deterministic regressions cover missing materialized imported revenue and Campaign Breakdown mixed-window disclosure; the complete exact-SHA browser/server, delivery, isolation, and production-data matrix remains pending."
     }
   ],
   "externalGates": [

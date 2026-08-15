@@ -5,17 +5,23 @@
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Status: **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`.
+Section status: **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`, validated within current deployed revision `e8a83b2a095700b715b08c80fca9f0c714026d93`.
 
-Candidate reason: shared Insights dependencies changed and the candidate is not deployed. Exact-SHA deployment, authenticated parity, tenant isolation, scheduler, and dependency-hash evidence remain pending.
+Machine status: **UNVERIFIED** because the machine schema has no release-candidate state and this session intentionally excludes final production certification and the final combined GA4 certification.
 
-Previous certified SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`. Its evidence is preserved in the machine record and below as historical revision-specific evidence; it does not certify the local candidate.
+Previous certified SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`. Its evidence is preserved in the machine record and below as historical revision-specific evidence; it does not certify the current candidate.
 
-Configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
+Previous certified configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
-Candidate local validation found no new in-scope runtime regression. Production parity remains unverified until the pending external gates are rerun on the exact deployed candidate.
+Current local validation: the protected boundary passed 44 files / 505 tests and TypeScript passed. Current deployed health returns exact revision `e8a83b2a095700b715b08c80fca9f0c714026d93`. All 84 dependency hashes for the release-candidate commit boundary are locked in the machine record.
 
-Decision: do not claim the local candidate is production-ready. Reports-owned behavior remains outside this certification.
+August 15, 2026 exact-current read-only validation: property `542352127`, `Europe/Amsterdam`, USD, three saved filters, five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and five visible findings matched the page-consumed inputs. Financial totals reconciled at native revenue `$55,966.70`, imported revenue `$16,799.99`, total revenue `$72,766.69`, spend `$2,699.75`, profit `$70,066.94`, ROAS `26.9531`, ROI `2595.31%`, CPA `$10.76`, and `251` conversions. The read-only transaction rolled back and campaign-scoped persistence remained unchanged. The current response correctly exposed the pre-target stale state: latest stored activity `2026-08-10`, data-through `2026-08-14`, no provider warning, and next configured natural target `2026-08-15T22:00:00.000Z`.
+
+Natural scheduler carry-forward: on deployed scheduler-fix SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`, the timer fired naturally at `2026-08-14T20:35:00.001Z` and finished at `20:35:40.499Z`, after its temporary `20:35 UTC` target. All 22 retained daily rows carried scheduler-run timestamps, all 12 KPIs and both Benchmarks updated with zero skips or failures, and no later application repair occurred. The process-wide run still failed for 17 excluded obsolete campaigns, so no global scheduler-health claim is made.
+
+Later-change classification through deployed `e8a83b2a`: `950307b6`, `1a93d8d8`, and `3d762260` are legitimate KPI/Benchmark freshness-consumer and Notification changes; `7366051f`, `d6656e11`, `c6487555`, `ab26b36b`, and `e8a83b2a` are evidence/documentation changes. Eight recorded Insights dependencies changed after `85f5233e`; three are documentation, two are regression tests, and the runtime changes are confined to KPI/Benchmark freshness consumption and Notification visibility. None changes `server/ga4-daily-scheduler.ts`, `server/analytics.ts`, daily storage, reporting-timezone helpers, timer wiring, or scheduler configuration parsing. Current production configuration is `UTC`, `22:00`, with GA4 startup refresh disabled.
+
+Decision: the live GA4 Insights section is release-candidate ready at the exact boundaries above. Do not call it production-ready. Reports-owned behavior remains outside this decision.
 
 August 12, 2026 exact-SHA re-verification: the KPI same-date history correction intentionally affects the history consumed by Insights, so this connection was not assumed unchanged. The authenticated production validator passed on deployed `ee22f0e470826f1cb247115497c9a15229d0142d`: all Executive Financials, Data Summary, channel, Daily/7d/30d/Monthly Trends, tracker, and visible finding values matched the scoped APIs; Daily rendered 111, 108, 106, and 103 on the exact imported dates with gaps elsewhere; tenant isolation failed closed; and campaign persistence remained unchanged. The campaign-scoped manual scheduler run succeeded with all 12 KPIs and both Benchmarks updated and none skipped/failed. The complete protected boundary passed 44 files / 496 tests; TypeScript and the production build passed. A natural timer firing on this SHA is not claimed.
 
@@ -204,7 +210,7 @@ An analytics request failure produces an integrity finding. It is not converted 
 
 ## Findings
 
-Current findings are Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability; none is an active blocker for certified SHA `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`.
+Historical certified-boundary findings were Critical `0`, Major `0`, and Minor `0`. Every item below is a closed historical finding retained for root-cause traceability. The current release-candidate review found no new in-scope runtime regression.
 
 ### Historical Critical Findings (closed)
 
@@ -358,15 +364,15 @@ No Minor finding changes a visible numeric result after the fixes above.
 
 Existing damaged-data cleanup is not authorized by this audit. No cleanup is required for the removed client-only channel allocation because it was not persisted.
 
-## Current And Historical Local Evidence
+## Historical Local Evidence
 
-Current controlling local results for exact deployed runtime `ee22f0e470826f1cb247115497c9a15229d0142d`:
+Historical controlling local results for exact deployed runtime `ee22f0e470826f1cb247115497c9a15229d0142d`:
 
 - final certification-gate packet: 1 file, 10 tests passed; the standalone checker passed
 - complete Insights/shared dependency boundary: 44 files, 496 tests passed
 - `npm run check`: passed
 - `npm run build`: passed, 3,466 client modules and bundled production server
-- `npm run check:ga4-insights-certification`: passed on the final `PRODUCTION_READY` machine record
+- historical `npm run check:ga4-insights-certification`: passed on that revision's final `PRODUCTION_READY` machine record
 
 The table below preserves earlier supporting evidence; it does not override the current exact-SHA packet.
 
@@ -398,7 +404,7 @@ Source-text assertions are structural evidence only. Numeric calendar and monthl
 
 Historical out-of-scope repository result: the complete `server/source-safety-regression.test.ts` file reported 77 passed and 10 failed, and all ten failures were Instagram route-extraction assertions. The in-scope revenue, spend, and GA4 subsets passed independently as recorded above. Those Instagram failures neither executed nor supplied a value to live GA4 Insights and were not Insights findings, limitations, or deferred Insights work.
 
-## Current Production Evidence - `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`
+## Historical Production Evidence - `4f3b2b6f0fb47a76d4506888733b46233b6c90c4`
 
 | Gate | Result |
 |---|---|
@@ -518,7 +524,7 @@ The following packet is historical and cannot validate the corrected revision:
 
 ## Certification Gates And Invalidation Rule
 
-All required gates passed on the frozen boundary:
+All required gates passed on the historical frozen boundary:
 
 1. focused and affected shared/auth/isolation/source/scheduler tests passed
 2. TypeScript and production build passed
@@ -537,7 +543,7 @@ The certification remains valid only for the recorded SHA, dependencies, configu
 - The current production property/filter has sparse activity rows and does not contain two complete adjacent 7-day or 30-day windows. The correct live behavior is an exact coverage/unavailable state, not a fabricated comparison.
 - Google Ads has no authorized live test account and is excluded from this certification. LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs in this release.
 - Reports, PDFs, scheduled reports, report schedulers, and email delivery are outside the Insights certification definition.
-- Remaining production-only validation inside the certified boundary: none.
+- The historical `ee22f0e470826f1cb247115497c9a15229d0142d` boundary had no remaining production-only validation. The current release-candidate boundary is recorded in the controlling status block; final production certification and the final combined GA4 certification remain intentionally unperformed.
 
 ## Historical Note
 

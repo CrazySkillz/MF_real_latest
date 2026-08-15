@@ -199,6 +199,26 @@ export function evaluateGA4InsightsCertification(
       errors.push("statusDocument contradicts ready status outside the controlling marker");
     }
   }
+  for (const path of ["GA4/INSIGHTS.md", "GA4/README.md"]) {
+    if (!byPath.has(path) || !context.exists(path)) {
+      errors.push(`${path} must be an existing status mirror dependency`);
+      continue;
+    }
+    const content = context.readText(path);
+    const start = content.indexOf(doc.startMarker);
+    const end = start < 0 ? -1 : content.indexOf(doc.endMarker, start + doc.startMarker.length);
+    if (start < 0 || end < 0) {
+      errors.push(`${path} current status markers are missing`);
+      continue;
+    }
+    const current = content.slice(start, end);
+    if (!current.includes(`<!-- ga4-insights-certification-status: ${value.status} -->`)) {
+      errors.push(`${path} current status marker does not match record`);
+    }
+    if (!ready && /\bPRODUCTION_READY\b/.test(current)) {
+      errors.push(`${path} current status contradicts UNVERIFIED record`);
+    }
+  }
   checkEvidence("requiredTests", value.requiredTests, ready, errors);
   checkEvidence("externalGates", value.externalGates, ready, errors);
   const externalIds = new Set(Array.isArray(value.externalGates) ? value.externalGates.map((item: any) => item?.id) : []);

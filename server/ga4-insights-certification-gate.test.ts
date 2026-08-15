@@ -47,7 +47,7 @@ const record = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
 });
 const context = (status: "UNVERIFIED" | "PRODUCTION_READY" = "UNVERIFIED") => ({
   exists: () => true,
-  readText: (path: string) => path === "GA4/INSIGHTS_PRODUCTION_READINESS.md"
+  readText: (path: string) => ["GA4/INSIGHTS_PRODUCTION_READINESS.md", "GA4/INSIGHTS.md", "GA4/README.md"].includes(path)
     ? `<!-- ga4-insights-current-status -->\n<!-- ga4-insights-certification-status: ${status} -->\nStatus: **${status}**\n<!-- /ga4-insights-current-status -->`
     : "content",
   sha256: () => hash,
@@ -95,6 +95,18 @@ describe("GA4 Insights machine certification gate", () => {
     };
     expect(evaluateGA4InsightsCertification(record("PRODUCTION_READY"), contradictory).errors).toContain(
       "statusDocument contradicts ready status outside the controlling marker",
+    );
+  });
+
+  it("rejects an unverified record when a current status mirror still claims readiness", () => {
+    const contradictory = {
+      ...context(),
+      readText: (path: string) => path === "GA4/INSIGHTS.md"
+        ? `<!-- ga4-insights-current-status -->\n<!-- ga4-insights-certification-status: UNVERIFIED -->\nGA4 Insights is PRODUCTION_READY.\n<!-- /ga4-insights-current-status -->`
+        : context().readText(path),
+    };
+    expect(evaluateGA4InsightsCertification(record(), contradictory).errors).toContain(
+      "GA4/INSIGHTS.md current status contradicts UNVERIFIED record",
     );
   });
 

@@ -416,7 +416,7 @@ It refreshes because:
 
 Readiness note: GA4 Ad Comparison uses an isolated provider query from the saved
 initial-import boundary through the campaign-timezone latest completed day. It
-is `PRODUCTION_READY` for exact deployed revision `83d12427` and the
+is `PRODUCTION_READY` for exact deployed revision `7374e824` and the
 recorded boundary. It has no independent scheduler; Reports-owned generation
 and delivery remain outside the tab boundary.
 

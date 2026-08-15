@@ -98,7 +98,7 @@ Important clarification:
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
 Production-readiness note: GA4 Ad Comparison is `PRODUCTION_READY` for exact
-deployed revision `83d12427` and the recorded boundary. Its native rows
+deployed revision `7374e824` and the recorded boundary. Its native rows
 resolve from the saved initial-import boundary through the latest completed day.
 Reports-owned output remains outside the tab-only boundary.
 

@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "defce1982c8c56854aa21c543612ab782811026e",
-  "certifiedSha": "defce1982c8c56854aa21c543612ab782811026e",
+  "lastReviewedSha": "7374e824ee625032cd6967f81edb22fb1001a15e",
+  "certifiedSha": "7374e824ee625032cd6967f81edb22fb1001a15e",
   "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -31,32 +31,32 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": "9076a4c15c7e7a7b1c7512647019779aa70ef33df249a5322191054b948bf21e"
+      "sha256": "e8109f98c7bd0da262a3d8ab2314cff73eeee2f5ab7cee2509609828864db5ec"
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "5fd0471a7154ad63f1804d8087cf09b3e6ce5bf38b5cb14a28179c700d494139"
+      "sha256": "f76f8de25b3d34b638c1c61135c3afb7963e3d6469ccd85f0e66e1dabc4de4f0"
     },
     {
       "path": "GA4-MANUAL-TEST-PLAN.md",
       "role": "manual Ad Comparison journey contract",
-      "sha256": "50ecc9efab94153007dfc8652f1ed6f45a702c5857d05fe66128e20313bba72a"
+      "sha256": "3fee73b66aca3c0067391fa42c20bf6c8d1780cc0d167f928a9de8bcf993e44e"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
       "role": "imported revenue window and provenance contract",
-      "sha256": "d0577b0b155e8ecb64e6a379e29b16fad91b60a5f55ccc496582c640f19a4497"
+      "sha256": "0dc6b0cfb0b85e571a5e3c95aa87078a5a4693d0df859e24c09a157433bdb54c"
     },
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "e5870f8ff0f2aae10c13716ab0641c0554fafb45f2ebd5a2e43b8b84c08d1af5"
+      "sha256": "77d9d2fe6d9411efaf16e857c2a22de95d178d10d37dc63f618961aa0dc97a93"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and state contract",
-      "sha256": "ee1079fc8acf7a50c31931e5fa9274fe32b8755726dc43db6f53caa61e29acc2"
+      "sha256": "92f17eda44aedc49cf2aa161e04a8bb7b09627915113355d8144e0911cca820d"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -81,7 +81,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "live tab data producer",
-      "sha256": "9c6b7434b6e39ca0a450449b6f21fbc3c7a42442f082afb5a8d805bedb5408fc"
+      "sha256": "ea9b7928a7b4b9b0377ed08853b12d8dd76725be95ee3144b1d5e2d8fba57a1e"
     },
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
@@ -101,7 +101,7 @@
     {
       "path": "server/analytics.ts",
       "role": "GA4 provider query path",
-      "sha256": "3e09769874970c66c4bac729f4ba71ad376aadd62871d1cce5515cfd122f3fc9"
+      "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -126,7 +126,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "d521c6674707b41e59eccde2f999c26be2043698cbd7902c4afd9cd9fb633e6b"
+      "sha256": "4162a5834ec89a2653035c3cae05ff7b49e27410f0eda52abd6eb90035ffb15a"
     },
     {
       "path": "server/storage.ts",
@@ -185,13 +185,13 @@
       "id": "focused_real_paths",
       "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-filter.test.ts",
       "status": "passed",
-      "evidence": "4 files / 49 tests passed, including the fail-closed certification record, source-inventory validator guard, fixed-date accumulation, campaign-timezone end date, invalid/future boundaries, exact property/filter, and GA4 request-body dates."
+      "evidence": "4 files / 51 tests passed, including the fail-closed certification record, source-inventory validator guard, fixed-date accumulation, campaign-timezone end date, invalid/future boundaries, exact property/filter, and GA4 request-body dates."
     },
     {
       "id": "affected_shared_regressions",
       "command": "vitest run --pool forks server/ga4-ad-comparison-accumulation-regression.test.ts server/ga4-ad-comparison-certification-gate.test.ts server/ga4-filter.test.ts server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/endpoint-auth-audit.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts",
       "status": "passed",
-      "evidence": "10 Ad Comparison and shared-boundary files / 232 tests passed."
+      "evidence": "10 Ad Comparison and shared-boundary files / 236 tests passed."
     },
     {
       "id": "ad_relevant_source_safety",
@@ -209,31 +209,31 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed for immutable local candidate defce1982c8c56854aa21c543612ab782811026e after the localized AC-10 fix."
+      "evidence": "TypeScript passed for the current documentation/evidence candidate over deployed runtime 7374e824ee625032cd6967f81edb22fb1001a15e; no application-runtime file changed in this rebase."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Production Vite and server esbuild completed successfully for immutable local candidate defce1982c8c56854aa21c543612ab782811026e."
+      "evidence": "Production Vite and server esbuild completed successfully for the current documentation/evidence candidate over deployed runtime 7374e824ee625032cd6967f81edb22fb1001a15e; no application-runtime file changed in this rebase."
     },
     {
       "id": "authenticated_production_parity",
-      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=defce1982c8c56854aa21c543612ab782811026e npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
+      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=7374e824ee625032cd6967f81edb22fb1001a15e npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
       "status": "passed",
-      "evidence": "Authenticated read-only validation passed on deployed defce198: saved 2026-07-02 boundary through completed 2026-08-13, exact property/filter, 33 provider rows, three aggregates, five exact materialized source rows, and UI parity; the database transaction was rolled back."
+      "evidence": "Authenticated read-only validation passed on deployed 7374e824: saved 2026-07-02 boundary through completed 2026-08-14, 44 inclusive days, exact property/filter, 33 provider rows, three reviewed aggregates, five exact materialized source rows, and UI parity; the database transaction was rolled back."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact deployed SHA defce1982c8c56854aa21c543612ab782811026e."
+      "evidence": "Production /api/health returned exact deployed SHA 7374e824ee625032cd6967f81edb22fb1001a15e."
     },
     {
       "id": "live_ga4_provider",
       "status": "passed",
-      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-13, 43 inclusive days, exact property 542352127, exact three-value filter, 33 rows, and reviewed aggregates."
+      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-14, 44 inclusive days, exact property 542352127, exact three-value filter, 33 rows, and reviewed aggregates: retargeting 60/60/60/USD 13674, paid social 45/45/45/USD 10691.80, and email nurture 47/47/47/USD 9907.20."
     },
     {
       "id": "production_source_inventory",
@@ -243,12 +243,12 @@
     {
       "id": "live_tab_parity",
       "status": "passed",
-      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-13 window labels, all three saved campaigns, the import-to-date revenue label, and every active imported source label."
+      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-14 window labels, all three saved campaigns, the import-to-date revenue label, and every active imported source label."
     },
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "The deployed AC-10 runtime commit contains only the Ad Comparison component and its regression test; protected Overview, KPIs, Benchmarks, Insights, and Reports runtime paths were not changed."
+      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 7374e824. Reviewed post-fix changes in listed shared dependencies are legitimate KPI/Reports, GA4 daily time-series, and notification work; none changes the cumulative Ad Comparison endpoint or live renderer. Current focused and affected regressions plus exact-SHA live parity passed."
     }
   ]
 }

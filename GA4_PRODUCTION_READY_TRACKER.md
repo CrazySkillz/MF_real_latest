@@ -315,7 +315,7 @@ The following are deployed/provider or production-data validation gates for broa
 
 - full lifecycle validation for future or excluded GA4 revenue configurations: Salesforce, an unconfigured future Google Sheets Revenue source, legacy Manual, new Shopify stores, new HubSpot mappings, and unlisted CSV variants. The exact enabled Shopify, three HubSpot, and one CSV sources are certified only inside the recorded Overview boundary
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 spend source family: Google Sheets, CSV, LinkedIn Ads, Meta, Google Ads, and legacy Manual
-- real GA4 property validation for Ad Comparison, reports, OAuth/token refresh, and longer Insights trend windows after enough live daily history exists
+- real GA4 property validation remains for reports, OAuth/token refresh, and longer Insights trend windows after enough live daily history exists; Ad Comparison exact-SHA live validation is complete under `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
 - deployed scheduled email receipt and provider-event delivery status
 - existing damaged-data cleanup boundaries for duplicate or orphan financial source records
 

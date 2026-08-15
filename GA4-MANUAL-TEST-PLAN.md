@@ -19,7 +19,7 @@ Important:
 Ad Comparison status for future reference:
 
 - GA4 Ad Comparison is `PRODUCTION_READY` for exact deployed revision
-  `defce1982c8c56854aa21c543612ab782811026e` and the recorded live-tab
+  `7374e824ee625032cd6967f81edb22fb1001a15e` and the recorded live-tab
   dependency/configuration boundary
 - Reports-owned PDF, delivery, scheduling, snapshot, and library behavior is a
   separate section and is not a deferred Ad Comparison validation item
@@ -961,7 +961,7 @@ Checkpoint after Journey 8:
   show a stale amount, and does not show configuration-backed subsection values
 - [ ] `No additional revenue sources connected` appears only when no active
   imported source exists
-- [x] Exact deployed revision `defce198` passed focused regression, build,
+- [x] Exact deployed revision `7374e824` passed focused regression, build,
   provider, source-inventory, and rendered UI validation
 - [ ] For each active CSV, Google Sheets, HubSpot, Salesforce, Shopify, or
   retained Manual source, verify its top-level Revenue Breakdown state is exact

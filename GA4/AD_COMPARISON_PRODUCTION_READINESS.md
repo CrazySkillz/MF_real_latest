@@ -5,7 +5,7 @@
 ## Controlling Current Status
 
 **Status: PRODUCTION_READY for exact deployed revision
-`defce1982c8c56854aa21c543612ab782811026e` and the recorded
+`7374e824ee625032cd6967f81edb22fb1001a15e` and the recorded
 dependency/configuration boundary. The defined live-tab section is
 release-candidate ready; this is not a final combined GA4 certification.**
 
@@ -13,7 +13,7 @@ Finding AC-10 proved that an active imported source without an exact materialize
 amount was hidden as an empty source list. The localized renderer fix now shows
 that source as `Unavailable`, preserves valid zero and other exact source amounts,
 and suppresses stale configuration-backed subsection values. The focused packet
-passes 49/49 tests; the affected Ad-only packet passes 232/232, and the
+passes 51/51 tests; the affected Ad-only packet passes 236/236, and the
 Ad-relevant source-safety subset passes 15/15. TypeScript and the production
 build pass. Exact-SHA
 provider, five-source inventory, and rendered campaign/source parity also pass.
@@ -21,8 +21,14 @@ No unavailable source currently exists in the production fixture, so that
 negative branch is covered by the deployed-code regression rather than a live
 production mutation.
 
-The prior `PRODUCTION_READY` record for `83d12427` is historical only. Later
-dependency changes and AC-10 invalidate it for the current candidate.
+The localized AC-10 implementation commit `defce198` is an ancestor of the
+current deployed revision. Between those revisions, reviewed changes in
+`ga4-metrics.tsx`, `analytics.ts`, and `routes-oauth.ts` are confined to
+KPI/Reports inputs, GA4 daily time-series handling, and KPI/Benchmark
+notification freshness. They do not alter the cumulative Ad Comparison endpoint
+or live renderer. The current regression and exact-SHA live packet re-establish
+the positive boundary. Prior `PRODUCTION_READY` records for `defce198` and
+`83d12427` are historical only.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
@@ -179,7 +185,7 @@ production-configuration change invalidates the certification.
 | AC-07 | Major | React Query previous-property placeholder rows could appear under a newly selected property. | Fixed: placeholder rows are excluded until current-property data is verified |
 | AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
 | AC-09 | Critical | Ad Comparison conflated the 30-day initial import depth with a permanent rolling display window, so older valid campaign values fell out after day 30 and rankings/totals diverged from the campaign accumulation contract. | Fixed locally in `6a38cc4d`: isolated server-resolved saved-import-boundary query through the campaign-timezone latest completed day; deployment/live parity remains a certification gate |
-| AC-10 | Major | Active imported sources with no exact materialized amount were filtered out, so the table could claim there were no additional sources instead of showing the source as unavailable. | Fixed and deployed in `defce198`: render the source as `Unavailable`, retain valid zero and other exact values, and suppress unavailable-source subsections; regression and exact-SHA live available-source/UI evidence pass |
+| AC-10 | Major | Active imported sources with no exact materialized amount were filtered out, so the table could claim there were no additional sources instead of showing the source as unavailable. | Fixed in `defce198` and present in deployed `7374e824`: render the source as `Unavailable`, retain valid zero and other exact values, and suppress unavailable-source subsections; current regression and exact-SHA live available-source/UI evidence pass |
 
 Historical AC-04 concerned Reports-owned browser/scheduled PDF parity. It was
 fixed in the broader implementation commit but is outside this tab-only
@@ -308,28 +314,37 @@ Broader repository run:
 These gates certify only historical revision `83d12427`; they do not certify the
 current candidate.
 
-### Current exact-SHA gates for `defce198`
+### Current exact-SHA gates for `7374e824`
 
-- deployed revision: passed; `/api/health` returned exact SHA `defce1982`
+- deployed revision: passed; `/api/health` returned exact SHA
+  `7374e824ee625032cd6967f81edb22fb1001a15e`
 - provider/window: passed for property `542352127`, `Europe/Amsterdam`, saved
-  start `2026-07-02`, completed end `2026-08-13`, exact three-value filter, and
-  33 provider rows
+  start `2026-07-02`, completed end `2026-08-14`, 44 inclusive days, exact
+  three-value filter, and 33 provider rows
+- reviewed native aggregates: `yesop_retargeting` 60 sessions / 60 users / 60
+  conversions / USD 13,674; `yesop_paid_social` 45 / 45 / 45 / USD 10,691.80;
+  `yesop_email_nurture` 47 / 47 / 47 / USD 9,907.20
 - campaign UI parity: passed; all three saved campaigns and exact window labels
   rendered
 - imported source inventory/UI: passed; five active USD sources matched exact
-  materialized breakdown values and every source label rendered
+  materialized breakdown values (Shopify 99.99, HubSpot 4,000/7,000/5,100, CSV
+  600) and every source label rendered
 - AC-10 unavailable state: committed regression passed; not live-mutated because
   every current production source is materialized and available
-- affected Ad-only regressions: 10 files / 232 tests passed
+- focused real-path regressions: 4 files / 51 tests passed
+- affected Ad-only regressions: 10 files / 236 tests passed
 - Ad-relevant source lifecycle safety: 15/15 selected tests passed; 72 unrelated
   tests were skipped by name filter, including the explicitly deferred platform
   paths
+- later shared-file changes: reviewed and classified as legitimate newer
+  KPI/Reports, GA4 daily time-series, and notification work; none changes the
+  cumulative Ad Comparison endpoint or live renderer
 - persistence safety: passed; read-only transaction rolled back; temporary
   authentication-session cleanup was requested in the validator's `finally`
 
 All required local and exact-SHA production gates pass for the defined live-tab
 boundary. The machine record is `PRODUCTION_READY` for exact deployed revision
-`defce1982c8c56854aa21c543612ab782811026e` and the recorded normalized
+`7374e824ee625032cd6967f81edb22fb1001a15e` and the recorded normalized
 dependency hashes. This section-only result does not perform or imply the final
 combined GA4 certification.
 

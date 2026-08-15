@@ -105,7 +105,7 @@ Important meaning:
   Canonical whole-tab Benchmarks production-readiness source of truth. Current status: **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`, with authenticated read-only validation passed within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814` and current production wrapper SHA `c6487555c55726427afed8342312b8393498303b`. Machine status remains `UNVERIFIED` because the final combined GA4 certification was not performed; the `650ce59c` certification is historical only. Reports generation/delivery is separate.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `PRODUCTION_READY` for exact deployed revision `7374e824`
+  Current status: `PRODUCTION_READY` for exact deployed revision `892ff339`
   and the recorded dependency/configuration boundary. The live tab uses the
   saved initial-import boundary through the latest completed day. Reports-owned
   PDFs and all other Reports behavior are separate.
@@ -208,7 +208,7 @@ These are now part of the GA4 template contract:
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
   blocks previous-property placeholders, and retains valid source zero. Its
   current machine status is `PRODUCTION_READY` for exact deployed revision
-  `7374e824` and the recorded dependency/configuration boundary. All PDF,
+  `892ff339` and the recorded dependency/configuration boundary. All PDF,
   saved-report, snapshot, scheduler, delivery, and report-library behavior
   belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.

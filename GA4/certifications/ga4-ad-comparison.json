@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "7374e824ee625032cd6967f81edb22fb1001a15e",
-  "certifiedSha": "7374e824ee625032cd6967f81edb22fb1001a15e",
+  "lastReviewedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+  "certifiedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
   "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -31,12 +31,12 @@
     {
       "path": "GA4/AD_COMPARISON.md",
       "role": "functional contract",
-      "sha256": "e8109f98c7bd0da262a3d8ab2314cff73eeee2f5ab7cee2509609828864db5ec"
+      "sha256": "93c8850f07b99be81d1e8d1df4708ea7d3e3d13a557a83b29de77a8fbf950e72"
     },
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "f76f8de25b3d34b638c1c61135c3afb7963e3d6469ccd85f0e66e1dabc4de4f0"
+      "sha256": "544433df1ca522fe1cbe5b0f93f69acc3442d69497bdc543ee00e4e6e4c204cd"
     },
     {
       "path": "GA4-MANUAL-TEST-PLAN.md",
@@ -51,7 +51,7 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "77d9d2fe6d9411efaf16e857c2a22de95d178d10d37dc63f618961aa0dc97a93"
+      "sha256": "895b62c1a461a908a3a93baac2777a80f5732bb79bd0dcc2a778f5b94f8ef44d"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
@@ -126,7 +126,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "4162a5834ec89a2653035c3cae05ff7b49e27410f0eda52abd6eb90035ffb15a"
+      "sha256": "42b0b423a4b81c56e2f7f4fe0cffb908129715959501d95698173c997854319d"
     },
     {
       "path": "server/storage.ts",
@@ -209,26 +209,26 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed for the current documentation/evidence candidate over deployed runtime 7374e824ee625032cd6967f81edb22fb1001a15e; no application-runtime file changed in this rebase."
+      "evidence": "TypeScript passed for deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817; this certification rebind changes documentation/evidence only."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Production Vite and server esbuild completed successfully for the current documentation/evidence candidate over deployed runtime 7374e824ee625032cd6967f81edb22fb1001a15e; no application-runtime file changed in this rebase."
+      "evidence": "Production Vite and server esbuild completed successfully for deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817; this certification rebind changes documentation/evidence only."
     },
     {
       "id": "authenticated_production_parity",
-      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=7374e824ee625032cd6967f81edb22fb1001a15e npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
+      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=892ff3396ec9c9332008128897e5703cc6bb3817 npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
       "status": "passed",
-      "evidence": "Authenticated read-only validation passed on deployed 7374e824: saved 2026-07-02 boundary through completed 2026-08-14, 44 inclusive days, exact property/filter, 33 provider rows, three reviewed aggregates, five exact materialized source rows, and UI parity; the database transaction was rolled back."
+      "evidence": "Authenticated read-only validation passed on deployed 892ff339: saved 2026-07-02 boundary through completed 2026-08-14, 44 inclusive days, exact property/filter, 33 provider rows, three reviewed aggregates, five exact materialized source rows, and UI parity; the database transaction was rolled back."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact deployed SHA 7374e824ee625032cd6967f81edb22fb1001a15e."
+      "evidence": "Production /api/health returned exact deployed SHA 892ff3396ec9c9332008128897e5703cc6bb3817."
     },
     {
       "id": "live_ga4_provider",
@@ -248,7 +248,7 @@
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 7374e824. Reviewed post-fix changes in listed shared dependencies are legitimate KPI/Reports, GA4 daily time-series, and notification work; none changes the cumulative Ad Comparison endpoint or live renderer. Current focused and affected regressions plus exact-SHA live parity passed."
+      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 892ff339. The only listed dependency changed after the prior 7374e824 boundary is routes-oauth.ts; its exact diff adds a Reports-only direct snapshot PDF fail-closed guard. It does not change the cumulative Ad Comparison endpoint or live renderer. Protected Ad behavior/source-safety regressions and exact-SHA live parity passed."
     }
   ]
 }

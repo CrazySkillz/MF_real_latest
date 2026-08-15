@@ -33,6 +33,16 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(validator).toContain('/sessions/${encodeURIComponent(auth.sessionId)}/revoke');
   });
 
+  it("ignores only minute-refresh metadata in persistence fingerprints", () => {
+    const validator = read("scripts", "ga4-kpi-live-readonly.ts");
+
+    expect(validator).toContain("mapping_config::jsonb - 'lastSyncedAt'");
+    expect(validator).toContain("to_jsonb(x) - 'id' - 'created_at'");
+    expect(validator).toContain("to_jsonb(x) - 'updated_at'");
+    expect(validator).not.toContain("to_jsonb(x) - 'spend'");
+    expect(validator).not.toContain("to_jsonb(x) - 'current_value'");
+  });
+
   it("checks exact KPI cards, Tracker, alerts, Insights, and browser PDF consumers", () => {
     const validator = read("scripts", "ga4-kpi-live-readonly.ts");
 

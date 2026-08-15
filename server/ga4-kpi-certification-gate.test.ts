@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   calculateCertificationContractSha256,
@@ -80,6 +82,22 @@ const context = (content = dependencyContent) => ({
 });
 
 describe("GA4 KPI certification integrity gate", () => {
+  it("keeps secondary KPI summaries aligned to the release-candidate narrative and UNVERIFIED machine record", () => {
+    const readme = readFileSync(resolve(process.cwd(), "GA4/README.md"), "utf8");
+    const thresholds = readFileSync(resolve(process.cwd(), "GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md"), "utf8");
+    const readmeKpiEntry = readme.slice(
+      readme.indexOf("- `GA4/KPIS_PRODUCTION_READINESS.md`"),
+      readme.indexOf("- `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`"),
+    );
+    const thresholdStatus = thresholds.slice(0, thresholds.indexOf("## Purpose"));
+
+    expect(readmeKpiEntry).toContain("Current status: **RELEASE_CANDIDATE_READY**");
+    expect(readmeKpiEntry).not.toMatch(/clean-certified|production-ready for exact deployed SHA/i);
+    expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **RELEASE_CANDIDATE_READY**");
+    expect(thresholdStatus).toContain("machine record remains `UNVERIFIED`");
+    expect(thresholdStatus).not.toContain("GA4 KPIs are production-ready");
+  });
+
   it("accepts a complete UNVERIFIED record with pending evidence", () => {
     const result = evaluateGA4KpiCertification(baseRecord(), context());
     expect(result).toEqual({ ok: true, errors: [] });

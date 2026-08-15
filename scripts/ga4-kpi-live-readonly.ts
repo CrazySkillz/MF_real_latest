@@ -342,8 +342,8 @@ try {
     await route.continue();
   });
 
-  const paths = corePaths(propertyId);
-  const pendingInputs = Object.entries(paths).map(async ([name, path]) => [name, await expectedResponse(page, path)] as const);
+  const { reports: reportsPath, ...initialPaths } = corePaths(propertyId);
+  const pendingInputs = Object.entries(initialPaths).map(async ([name, path]) => [name, await expectedResponse(page, path)] as const);
   await page.goto(`${BASE_URL}/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-metrics?tab=kpis&readOnly=1`, {
     waitUntil: "domcontentloaded",
     timeout: 60000,
@@ -458,7 +458,9 @@ try {
       metric: kpi?.metric,
       name: kpi?.name,
       listState: "ready",
-      trafficState: inputs.daily.ok && inputs.breakdown.ok ? "ready" : "unavailable",
+      trafficState: !inputs.daily.ok || !inputs.breakdown.ok
+        ? "unavailable"
+        : inputs.daily?.body?.refreshIsStale === true ? "stale" : "ready",
       revenueState: inputs.toDate.ok && inputs.revenue.ok && inputs.revenueSources.ok && inputs.revenueBreakdown.ok ? "ready" : "unavailable",
       spendState: inputs.spend.ok && inputs.spendSources.ok && inputs.spendBreakdown.ok ? "ready" : "unavailable",
       missingDependencies: missing,
@@ -598,7 +600,12 @@ try {
   if (!notificationParity) failures.push("Deployed Notifications do not match exact breached, persisted, latest-KPI card values");
 
   await page.getByRole("tab", { name: "Insights", exact: true }).click();
-  await page.getByTestId("insights-findings").waitFor({ state: "visible", timeout: 120000 });
+  await page.getByTestId("insights-trackers").waitFor({ state: "visible", timeout: 120000 });
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="insights-trackers"]')?.getAttribute("data-findings") !== null,
+    undefined,
+    { timeout: 120000 },
+  );
   const findingRows = await page.getByTestId("insights-finding").evaluateAll((nodes) => nodes.map((node) => ({
     id: String(node.getAttribute("data-insight-id") || ""),
     title: String(node.getAttribute("data-title") || ""),
@@ -648,6 +655,12 @@ try {
     });
   }
 
+  const reportsResponsePromise = expectedResponse(page, reportsPath);
+  await page.getByRole("tab", { name: "Reports", exact: true }).click();
+  inputs.reports = await reportsResponsePromise;
+  if (!inputs.reports.ok) failures.push(`reports page input failed (${inputs.reports.status}): ${responseReason(inputs.reports)}`);
+  await page.getByText("Reports", { exact: true }).first().waitFor({ state: "visible", timeout: 60000 });
+
   const reports = (Array.isArray(inputs.reports?.body) ? inputs.reports.body : [])
     .filter((report: any) => String(report?.status || "active") === "active");
   const report = reports.find((item: any) => String(item?.reportType || "").trim().toLowerCase() === "kpis")
@@ -656,8 +669,6 @@ try {
   if (!report) {
     failures.push("No active saved browser report includes KPI items, so exact deployed KPI PDF output is unverified");
   } else {
-    await page.getByRole("tab", { name: "Reports", exact: true }).click();
-    await page.getByText("Reports", { exact: true }).first().waitFor({ state: "visible", timeout: 60000 });
     try {
       const heading = page.locator("h3").filter({ hasText: String(report.name || "") }).first();
       await heading.waitFor({ state: "visible", timeout: 60000 });

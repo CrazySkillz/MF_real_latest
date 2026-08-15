@@ -8,11 +8,11 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of August 12, 2026, the GA4 KPIs tab is **UNVERIFIED** for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`. Shared KPI dependencies changed and the candidate is not deployed. Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` remains preserved as historical revision-specific evidence only.
+As of August 15, 2026, the GA4 KPIs tab is **RELEASE_CANDIDATE_READY** for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95` and the recorded campaign/property/source boundary. This is not a `PRODUCTION_READY` certification and is not the final combined GA4 certification.
 
-All 12 KPI cards, Tracker, Notifications, KPI-derived Insights, saved browser KPI PDF, campaign-scoped refresh/recompute, live provider path, retained provider-confirmed alert delivery, exact-SHA report test-send delivery, and protected Overview/Insights/Reports regressions passed. The scheduler was triggered manually to finish the same day; timer wiring passed automated coverage, but a natural timer firing on this SHA is not claimed. The current-version command executed all 1,507 tests with zero blocking KPI failures and 50 explicitly visible, nonblocking failures outside this KPI certification boundary.
+The final KPI-only production check passed on that exact SHA: all 12 cards, Tracker, Notifications, all 12 KPI-derived Insights findings, every selected browser-PDF KPI row, and stored values matched; the validator recorded no unsafe GET, no application mutation, and unchanged semantic persistence. Commit `950307b6e1863fb2580a885679655044dec0ca23` separated KPI/PDF traffic freshness from the Insights Trends freshness state, and commit `1a93d8d88debba4baefd666aa063c59b10b00e95` made visible KPI Notifications fail closed when the same stored traffic input is stale. Benchmark notification behavior was not changed.
 
-The status is revision-specific. A production-ready answer can return only when the machine record, dependency hashes, controlling markers, exact deployed SHA, and external evidence agree. The controlling evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The machine record remains `UNVERIFIED` because its schema has no release-candidate state and the final combined GA4 certification was intentionally not performed. The exact release-candidate evidence and remaining certification limitations are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
 
@@ -231,6 +231,7 @@ Expected behavior:
 - breached KPIs show a red pulsing circle indicator on the KPI card
 - breached KPI alerts should appear in the bell icon and notifications center
 - enabled KPI alerts should not appear in the bell icon or main Notifications page unless the alert condition is currently breached; once the KPI no longer breaches, stale `performance-alert` rows should be hidden/resolved instead of remaining visible
+- traffic-dependent KPI Notifications must also be hidden when the stored 30-day GA4 traffic input is stale, matching the card's fail-closed state; `CPA` inherits this guard because it requires traffic plus spend, while financial-only `Revenue`, `ROAS`, and `ROI` continue to use their financial input states
 - for GA4 financial KPI alerts such as `Revenue`, `Total Revenue`, `ROAS`, `ROI`, and `CPA`, the Notifications current value and breach check must use the same selected GA4 financial-source model as the live KPI card; an existing active alert should disappear after refetch/recompute when the card value no longer breaches, and users should not need to create a new alert
 - bell and Notifications `View KPI` navigation should always open the correct campaign, the `KPIs` tab, and the exact KPI card
 - if the user is already on the same GA4 campaign page, the URL change must still switch to the correct KPI tab/item instead of staying on the previously open tab
@@ -286,6 +287,6 @@ Important meaning:
 
 ## Current-State Note
 
-The current GA4 KPI certification decision is recorded in the machine-guarded Production Readiness Status above. Historical Commit 14A/14B evidence does not override that controlling decision.
+The GA4 KPI tab is release-candidate ready on exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95`. Historical Commit 14A/14B evidence does not override this controlling decision, and the machine `UNVERIFIED` marker must not be misread as denying the release-candidate state.
 
-The controlling evidence and chronological smallest-safe closure queue are documented in GA4/KPIS_PRODUCTION_READINESS.md.
+The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

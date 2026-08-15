@@ -18,28 +18,29 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### August 12, 2026 local candidate status (controlling)
+### August 15, 2026 release-candidate decision (controlling)
 
-**Result: UNVERIFIED for local candidate `c7e708e27d73416a96cf9a79d0f875f60b725d6b`.** Shared KPI dependencies changed and the candidate is not deployed. Exact-SHA deployment and external revalidation remain pending.
+**Result: RELEASE_CANDIDATE_READY for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95`.** At verification time, local `main`, `origin/main`, and the production health endpoint all resolved to that SHA. This is a KPI-only release-candidate decision, not a `PRODUCTION_READY` certification and not the final combined GA4 certification.
 
-Previous certified SHA `ee22f0e470826f1cb247115497c9a15229d0142d` and the evidence below remain preserved as historical revision-specific proof. They do not certify the local candidate.
+Changes after the previous certified boundary are classified as follows:
 
-Previous exact-SHA evidence:
+- legitimate newer shared work: ownerless-campaign fail-closed KPI/Benchmark jobs and alert suppression, exact-owner notification visibility, read-only validation routing, and successful-campaign isolation in the GA4 daily scheduler
+- unaffected KPI behavior: later Overview certification/copy changes and unrelated certification documentation do not change KPI values, formulas, CRUD, source precedence, alerts, or report payloads
+- corrected KPI regressions: commit `950307b6e1863fb2580a885679655044dec0ca23` prevents Insights Trends freshness from contaminating KPI card/PDF state; commit `1a93d8d88debba4baefd666aa063c59b10b00e95` makes visible KPI Notifications use the same stale stored-traffic guard as KPI cards
+- explicitly unaffected protected behavior: the Notification fix keeps Benchmark notification resolution on its existing path and does not change Overview, Ad Comparison, Insights calculations, Reports runtime, or unrelated behavior
 
-- authenticated read-only production validation passed for all 12 campaign-scoped GA4 KPI cards, Tracker totals, breached Notifications, KPI-derived Insights findings, and the saved browser KPI PDF; the validation attempted no application mutation and observed unchanged campaign persistence
-- the campaign-scoped GA4 daily pipeline was triggered manually at `2026-08-12T09:39:38.605Z`, after the user declined to wait for the next timer slot; it completed successfully for campaign hash `fc734ddaf728`, property `542352127`, updated all 12 KPIs and both Benchmarks, skipped/failed none, and suppressed alerts. This proves the production scheduler work path; automated timer-wiring tests passed, but a natural timer firing on this SHA is not claimed
-- provider-confirmed KPI alert evidence exists for the exact campaign after the traffic-alert correction: three latest retained events are `delivered`, each has a provider response ID and delivered timestamp. Later commits changed only KPI PDF/validation or Reports files, so the alert sender, resolver, scheduler, audit, and notification dependency boundary is unchanged
-- the exact-SHA saved report test-send passed with provider-confirmed `delivered` status and a provider response ID; its report configuration, snapshots, and scheduled send events remained unchanged. The saved browser KPI PDF independently matched every selected KPI value, target, window label, and state
-- the dedicated exact-SHA Insights validator passed after the corrected KPI history was written; all financial, summary, channel, trend, tracker, and finding values matched scoped production inputs, tenant isolation failed closed, and persistence remained unchanged
-- `npm run test:current-version` executed all 1,507 tests: 1,457 passed, exactly 50 visible nonblocking failures were classified to future platforms, Google Ads, GA4 Ad Comparison, or the independently invalidated HubSpot certification docs, and zero KPI current-version failures remained. The protected Insights packet passed 44 files / 496 tests; the protected Reports packet passed 5 files / 71 tests; TypeScript and the production build passed
+Release-candidate evidence:
 
-Protected-section result:
+- `npm run test:current-version` executed 1,536 tests: 1,489 passed, 47 explicitly deferred failures remained visible and nonblocking, and zero blocking current-version failures remained
+- the focused Notification/adjacent KPI packet passed 5 files / 51 tests; the real-path parity file passed 34/34; `npm run check` and the certification-integrity checker passed
+- the exact-SHA authenticated read-only validator returned `candidate_evidence_passed` with exactly 12 campaign-scoped GA4 KPIs
+- all 12 KPI cards were exact, including visible value, target, reporting window, state, and alert pulse; the Tracker was exact at 12 total, 4 scored, 4 above, 0 near, 0 below, and 100 average
+- Notifications were exact with no visible rows for stale traffic-dependent KPI alerts; historical notification/audit rows remained persisted rather than being deleted
+- all 12 KPI-derived Insights findings were exact, and every selected browser-PDF KPI row matched name, window, current value, target, and state
+- no unsafe GET or application mutation was attempted, and the before/after database comparison recorded `persistenceSemanticStateUnchanged: true`
+- the natural timer fired on deployed SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` at `2026-08-14T20:35:00.001Z`; the target recompute updated all 12 KPIs with zero KPI skips and zero KPI failures. The process-wide run failed because of 17 excluded obsolete campaigns, so it is not described as globally successful. Later commits `950307b6` and `1a93d8d8` did not change the scheduler or KPI recompute pipeline; an exact-`1a93d8d8` natural timer run is not claimed.
 
-- Overview behavior is unchanged. The four changed files inside its documented runtime boundary were inspected: their diffs are limited to KPI same-date history, mutation-free notification validation, and KPI browser-PDF labeling. No Overview query, calculation, source, card, or report value changed
-- Insights is reverified on the exact deployed SHA because it consumes KPI history. Its corrected trend is now proven rather than assumed
-- Reports is reverified on the exact deployed SHA because it shares KPI PDF/preflight and report-delivery files. Commit 7 affects only test-send delivery persistence/confirmation; scheduled selection, snapshot truthfulness, report calculations, and report output contracts are unchanged and remain regression-covered
-
-Limitations are explicit: future provider availability, future email delivery, future source/configuration changes, Google Ads, future platforms, GA4 Ad Comparison, and independently invalidated HubSpot certification documentation are not certified by this KPI decision. A natural timer firing on this SHA is also not claimed. These exclusions remain the boundary of any final revision-specific certification.
+The release-candidate gate is closed. The machine record remains `UNVERIFIED` because its schema supports only `UNVERIFIED` or `PRODUCTION_READY`; it has no release-candidate state. Exact-current natural-timer execution, future provider/token behavior, future alert delivery, mutation-backed server report paths, and final combined GA4 certification remain separate and are not implied by this decision.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -857,7 +858,7 @@ Read in this order:
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Answer that GA4 KPIs are not production-ready. Start with the controlling August 1 status and Current Commits 0-10. Historical local/deployed evidence may narrow what needs retesting, but it cannot restore readiness without the certification integrity and parity gates.
+Answer that GA4 KPIs are **RELEASE_CANDIDATE_READY** for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95`. Do not call them `PRODUCTION_READY` and do not imply that final combined GA4 certification was performed. The machine record remains `UNVERIFIED` only because its schema has no release-candidate state and final-certification gates remain separate.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 

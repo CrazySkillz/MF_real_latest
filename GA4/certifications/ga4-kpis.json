@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
-  "contractSha256": "b0679ad0d8a8a7597eff62c118444bbb4136671014f558f389e18fab0c735279",
+  "contractSha256": "7446c4a5848d8a70ed5cdf00d815b4655fed21eaf8d6038996f76c9a8411e42e",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "c7e708e27d73416a96cf9a79d0f875f60b725d6b",
+  "lastReviewedSha": "1a93d8d88debba4baefd666aa063c59b10b00e95",
   "certifiedSha": null,
-  "invalidationReason": "Local candidate c7e708e27d73416a96cf9a79d0f875f60b725d6b changes shared KPI dependencies and is not deployed. Exact-SHA deployment and external revalidation are pending; prior certification evidence remains historical only.",
+  "invalidationReason": "The GA4 KPI tab is RELEASE_CANDIDATE_READY for exact deployed implementation SHA 1a93d8d88debba4baefd666aa063c59b10b00e95. Machine status remains UNVERIFIED because this schema has no release-candidate state and the final combined GA4 certification plus final-certification-only external gates were intentionally not completed.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d"
@@ -48,15 +48,15 @@
     { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "campaign and platform architecture contract", "sha256": "cc98048f4b26a4792514c0f5e94dd87f200d82935145cb0895a46495a3b91eee" },
     { "path": "PRODUCTION_READINESS.md", "role": "repository readiness gate contract", "sha256": "bbfc3717eb5bf75fb3d3d9f30670f6fafce4f880301f53f3e71cba8f8a5df9c6" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 invalidation and validation workflow", "sha256": "88436841c59de69721826c9d4c00133c4e0b14d01ca5ba2b78a6c38b79bd8442" },
-    { "path": "GA4/README.md", "role": "GA4 status index and cross-tab contract", "sha256": "c60e0275e0058456d36a59ca7cf01825288807e095636e22e85a32ca68b9fc63" },
+    { "path": "GA4/README.md", "role": "GA4 status index and cross-tab contract", "sha256": "053d830aa7d2bfb65a368bbf5a4cc2420ddb633f25fcb944a33ad1694c5a6911" },
     { "path": "GA4/OVERVIEW.md", "role": "upstream GA4 metric and financial card contract", "sha256": "433e72709b096e212af32eb8dc48247a403eb407d07683d7a4bcc4c11b14ce64" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "upstream Overview readiness boundary", "sha256": "bd624b2046bb25918ce0b9a6918946af2ea5e0b64cb09fa1e1cf0e4507275851" },
     { "path": "GA4/FINANCIAL_SOURCES.md", "role": "revenue and spend source contract", "sha256": "bc6533524e217250a5d962e2d0b629c0df4a1a1b4517f453b6031ef47c07e898" },
-    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and cross-tab processing order", "sha256": "79e95223c105d5a5e4ea7e7dce18e84e67263e51ba7c805b3e3c9e1525306298" },
+    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and cross-tab processing order", "sha256": "76814cb83da362b688318713a7ccd5fd66c512900be550cb5cf3e9063e75b85b" },
     { "path": "GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md", "role": "reporting date and timezone contract", "sha256": "7d8df1bd054be0a756f3d4b17acbcb1d1c2ba61ad882ef84925850a9677d37d1" },
-    { "path": "GA4/KPIS.md", "role": "functional KPI contract and status document", "sha256": "3fa2a36345f882e00cee064da450dcd07936d566fcc895a31480e1ca61db8922" },
-    { "path": "GA4/KPIS_PRODUCTION_READINESS.md", "role": "canonical KPI readiness decision and status document", "sha256": "8519c9591521e21aec2705c5a72d7e80cfc7d74e104bf823dede08c9980472bf" },
-    { "path": "GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md", "role": "threshold and sufficiency policy", "sha256": "634ae6c25d80f16bc400dd313741295be93172bcc2bfa314b2971643b44ac5e9" },
+    { "path": "GA4/KPIS.md", "role": "functional KPI contract and status document", "sha256": "b30d5614deffb41f7364c9c6c88111d42dfc37550ef12ea19292e0fea180cfee" },
+    { "path": "GA4/KPIS_PRODUCTION_READINESS.md", "role": "canonical KPI readiness decision and status document", "sha256": "61c1902225da67ba66764f059dd157c7ffb02e8ae1a0e51ba6891fd863385ac7" },
+    { "path": "GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md", "role": "threshold and sufficiency policy", "sha256": "fc63f104a15f9f07415c716184751f798045451d59ce3ebfb6a0332433f1e91c" },
     { "path": "GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md", "role": "alert notification and email lifecycle contract", "sha256": "0e6ab1d9832c5207a548ae11f3ad7e638096d2e348dcc608160b8115b025e387" },
     { "path": "GA4/BENCHMARKS.md", "role": "shared job Benchmark functional dependency", "sha256": "1a43cfcde5c53aaf2e69976798df66f044477b4a388ff57dadb044ec85dbcdf9" },
     { "path": "GA4/BENCHMARKS_PRODUCTION_READINESS.md", "role": "shared job Benchmark readiness dependency", "sha256": "56fa4681f7c89d2088ceb208b94e4876399250e170f2075959b197ea960ffec0" },
@@ -66,12 +66,14 @@
     { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "downstream Reports readiness dependency", "sha256": "18ecd93c7ba576dfe14f00fe3d376ef86bc53e4ea358937e67dd48134bf8f2b5" },
     { "path": "package.json", "role": "checker and test command contract", "sha256": "1ff79f286a70292bbb760be927930dd49fdbbea8f6da137928da08c0575ba458" },
     { "path": ".github/workflows/test.yml", "role": "blocking current-version and non-blocking deferred CI integration", "sha256": "632f38dee24e6a113372183c99fe19d2ba9c74c1c7689dfacb55634409d8b6ce" },
-    { "path": "scripts/ga4-kpi-current-version-test-boundary.json", "role": "exact retained deferred test identity and release-scope manifest", "sha256": "6bc4cd156f3e1f0f17d24bfa3836e5a8f72f9dcb4f0047e1951dd45acdaaa26b" },
+    { "path": "scripts/ga4-kpi-current-version-test-boundary.json", "role": "exact retained deferred test identity and release-scope manifest", "sha256": "b34ee0e4668eb232a31348a7fb8fc3542b160a9a453961a41a567a33ff05cb5c" },
     { "path": "scripts/ga4-kpi-current-version-test-boundary.ts", "role": "current-version failure classifier and deferred-suite runner", "sha256": "c99eb0fa990b220127d8f1d28e6cdcfb6627e13e20782621786acaf9d6932fae" },
-    { "path": "server/ga4-kpi-current-version-test-boundary.test.ts", "role": "release-boundary inventory, fail-closed classification, and CI wiring regression", "sha256": "36868fd9803537b456f3839420d8c91289d6bbdf9abf9f1e246224398f622a82" },
-    { "path": "server/ga4-kpi-certification-gate.ts", "role": "certification invalidation checker", "sha256": "76cea96b0dea6bd1a0e60131d70ddd8ceec87b310f79720e270ff503f5609a67" },
-    { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": "7e856b9f388d5c36d68d05872e5825765b1b38684d5e97d735c8305af70315bb" },
-    { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": "ab47555572bb7877082a705f541e6f6f7dd2d5caf806332c280e82bcccd56d13" },
+    { "path": "scripts/ga4-kpi-live-readonly.ts", "role": "exact-SHA authenticated mutation-blocked deployed KPI validator", "sha256": "f86ecd9ef957023e1ff29eecc160290477c2fa9542f90b6d0450371194b6902d" },
+    { "path": "server/ga4-kpi-current-version-test-boundary.test.ts", "role": "release-boundary inventory, fail-closed classification, and CI wiring regression", "sha256": "20a6fce535e82871c7d9bdbed326725f0068e3223cf3ac01b26b1f197e4b932d" },
+    { "path": "server/ga4-kpi-live-readonly-regression.test.ts", "role": "deployed validator safety, sequencing, and consumer coverage regression", "sha256": "16a09b10afe9de70cffdd7d5bc23a0f484afffd770bf91b2d87a89bf699a4b26" },
+    { "path": "server/ga4-kpi-certification-gate.ts", "role": "certification invalidation checker", "sha256": "ec4589e651babb3fc74a549a2cdb0ab9b8c4aafd7ec33903aab6ef3b737d78a5" },
+    { "path": "server/ga4-kpi-certification-gate.test.ts", "role": "certification checker regression coverage", "sha256": "d13900c0393672f5899616c927857417d6638c7006bd2f9cf8307f0bcccdfeb3" },
+    { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "real-path live, persisted, notification, Insights, and report parity guard", "sha256": "0d33168db4dd3ff5473f3f56799e8de27073ee5c9b82ab1264225c42b20510ad" },
     { "path": "server/campaign-current-value-financial-source-regression.test.ts", "role": "campaign current-value financial precedence and unavailable preservation regression", "sha256": "d39d4afe7b20b09c42720eeaaf8ece04a20390221463f6d0bf4ee41ddaea2a85" },
     { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "source-backed imported revenue KPI and Benchmark downstream regression", "sha256": "00a65a1732ea4ed4fb121c5b44d2678c561d991fe1cde45112163d619631e71d" },
     { "path": "server/ga4-kpi-metric-identity-regression.test.ts", "role": "standard and legacy metric identity contract regression", "sha256": "26b55cb6d60c406b61b2f73e1e612e91016a22d3d704330a49f379db9dd0412e" },
@@ -79,7 +81,7 @@
     { "path": "server/ga4-kpi-engaged-sessions-persistence-regression.test.ts", "role": "exact engaged-session provider, persistence, migration, valid-zero, and legacy-fallback regression", "sha256": "8be35e1c91745ca947253289b859d26ab11b7b4acda75676a703f2911923849a" },
     { "path": "server/ga4-filter.test.ts", "role": "GA4 provider response-order and campaign-filter regression", "sha256": "c62a9855ed3132306c24ff90dfa606aadeee334da37403f5ac953d26e7809a2a" },
     { "path": "server/ga4-kpi-persistence-destructive-safety.test.ts", "role": "KPI progress capacity and transactional delete/retry scope regression", "sha256": "d46817011d371a0a44cee59c8119c024f68922e6839cacd42166e7b1c1885f6c" },
-    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": "381bc73001e57994a0892a516ce05ce1de89e19865795188990c46e1f92caf05" },
+    { "path": "client/src/pages/ga4-metrics.tsx", "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF", "sha256": "3386dd843108c0ca3ef92ec66c9240f6a8d79e7d39382e2ddd2bc1b2e02b7909" },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "financial revenue source lifecycle producer", "sha256": "722ebb8b6b4795bf4edc5e729191a0b39d0895a998e5ebc7dc20f9ee9c71f5da" },
     { "path": "client/src/components/AddSpendWizardModal.tsx", "role": "financial spend source lifecycle producer", "sha256": "d71f758456e18570b48924f6d4e8e18d834fd28c22019b7c3bc86339164dfe35" },
     { "path": "client/src/pages/notifications.tsx", "role": "Notifications value and action consumer", "sha256": "ab9244e87c36ba2f80b73a669ef0adebc5028af9d6081643785bbd06e73e8085" },
@@ -87,7 +89,7 @@
     { "path": "client/src/pages/executive-summary.tsx", "role": "downstream KPI progress and risk consumer", "sha256": "da77f3255f67bef069f3c38cd48f58a8684570aa4cf51566033df58c8c79f6e0" },
     { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "a33a9b4ae9632f9a1ea64fda981dda3a9453ce0710cb5be4a949b67f07b7dcc9" },
     { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "7b69399ee0e655fe3a60825f7d60f400ce9d12dbfe85fed27b4df0a6fbfadd20" },
-    { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": "ef2a0dc948e17f1921de94951c94f0ce0e97e266bb9c30ce1a688a4fa90d088d" },
+    { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": "e1bca32a9b94c303aecaec3ff664c8d7b761b411e75d047c7e4af480c42d72dd" },
     { "path": "server/storage.ts", "role": "KPI, progress, source, notification, and delete persistence", "sha256": "43def7bdfc3b3dfd1a4c39051e07ac1cbc17a3df116069866f3b9ccff8b98d28" },
     { "path": "server/real-ga4-client.ts", "role": "live GA4 provider query producer", "sha256": "469081cfb7c206594b96df6f37761154b4193ee24c953f56a397c7ec954cddbc" },
     { "path": "server/analytics.ts", "role": "live GA4 daily provider query and exact engaged-session producer", "sha256": "807642cfd5fa9255599b5de7aaa74bfe929f6bb3005455a9d0e0e68da1e2ac0e" },
@@ -106,7 +108,7 @@
     { "path": "server/utils/alert-email-audit.ts", "role": "alert email evidence and retry state", "sha256": "fa8d9f12fcf434452dcb9fbf532815d5d1ffaecfd35dd6d46d559dc8181defe2" },
     { "path": "server/utils/alert-evaluation.ts", "role": "shared threshold evaluation", "sha256": "655856cc3fd814928520660d9d729a4a8fe66b473e6a6f1ebb4948303175c237" },
     { "path": "server/utils/alert-decision.ts", "role": "shared blocked, insufficient, unavailable, and threshold alert decision", "sha256": "f4cca949adf879a4bfd39acdff10ade483e68c94a1b9c26d1663208a87e99585" },
-    { "path": "server/utils/ga4-alert-current-value.ts", "role": "shared GA4 source-resolved alert current value and eligibility", "sha256": "afcbe971c20f18a164344143a009ca8c73a5161f73cf8cdd84bd466f6a9191a9" },
+    { "path": "server/utils/ga4-alert-current-value.ts", "role": "shared GA4 source-resolved alert current value and eligibility", "sha256": "ac048bcb826ae605d208882a4f7dbb226c134c1de932ba70e015760b4b221c91" },
     { "path": "server/utils/campaign-current-values.ts", "role": "alert and campaign current-value resolver", "sha256": "2bd57001dc15645193817cc53e5c1f10eb562943610cc25d5a9a5fa0d56cc5b6" },
     { "path": "server/utils/ga4-kpi-alert-dedupe.ts", "role": "GA4 duplicate alert eligibility", "sha256": "985002d7b41a74c85cf304f1250a651975ba59d9c7e054648f7d5d7e8f8c13a7" },
     { "path": "server/utils/reporting-timezone.ts", "role": "campaign reporting date calculation", "sha256": "e54911caaddabf0619c66c7a71def4c1ec5c862b5371c4094c7ce5772c8a7af9" },
@@ -130,7 +132,7 @@
     { "path": "server/ga4-kpi-damaged-data-cleanup-regression.test.ts", "role": "damaged-data boundary regression", "sha256": "ec8bfc292e51209592f110d9445510f6358dac01485011a9e0a0b05ca567dbd6" },
     { "path": "server/ga4-kpi-benchmark-summary-regression.test.ts", "role": "tracker and sufficiency regression", "sha256": "0941f5fb756934ff27580ead67bff93016f3bbd7ab7c018e7200b6553a5d44d5" },
     { "path": "server/ga4-kpi-benchmark-roas-regression.test.ts", "role": "financial formula regression", "sha256": "05e682d9dcffc8a5c65c57989712a60c8beaef0a0daaae34dd4288d9a85156d5" },
-    { "path": "server/ga4-kpi-regression.test.ts", "role": "KPI UI and route contract regression", "sha256": "088c8befdaf288394e17ceabf74502f7dc1d12ee1bbfe22842a20374a78f8ecf" },
+    { "path": "server/ga4-kpi-regression.test.ts", "role": "KPI UI and route contract regression", "sha256": "61f4a9e3a0e95522295e174f03ce3e3f51c8b360899f9653f3612123e6cf0cd1" },
     { "path": "server/ga4-kpi-create-latency-regression.test.ts", "role": "KPI create duplicate-work and fail-closed fallback regression", "sha256": "2f535ccf5f3f8fa50a7e9a5600867b716503e1afb703316109176ec930b582ae" },
     { "path": "server/ga4-cross-tab-consistency.test.ts", "role": "cross-tab structural consistency regression", "sha256": "cd1ff9ef50a6cbe6a2394d0e9ed2708232430f16d74468a7e597179cdea4ac0a" },
     { "path": "server/ga4-daily-scheduler-regression.test.ts", "role": "daily scheduler regression", "sha256": "48248291c7a64108dbe977fad7a47ed778c10581287f8b84abcab059298c5295" },
@@ -144,7 +146,7 @@
     { "path": "server/campaign-alert-current-value-regression.test.ts", "role": "alert current-value resolver regression", "sha256": "d95fae2f6d7ef6c08123271999302b6ab07e778e616775a3b443d01236182336" },
     { "path": "server/ga4-kpi-alert-contract-regression.test.ts", "role": "Commit 6 source, sufficiency, last-good, and cross-consumer alert contract regression", "sha256": "532049eb748fa22d16a160a669485fa76de9e63b8a282e4ff4ce7f5f4e4d3965" },
     { "path": "server/ga4-kpi-ui-browser-state-regression.test.ts", "role": "Commit 7 UI, tracker, Insights, breach-pulse, and browser-PDF state regression", "sha256": "f31f87c9fd194d8221e26b655a9e38d1bf96346827ffd062b1ec7fb266932e86" },
-    { "path": "server/notification-visibility-regression.test.ts", "role": "notification and bell regression", "sha256": "1173db688687f751a64d4f042a344814f0feeae12f50db1d6b2489db035fd75b" },
+    { "path": "server/notification-visibility-regression.test.ts", "role": "notification and bell regression", "sha256": "8acaa3d771fd5ec26d5381c408e5cc1e02f44377018f5b933279cd459ab84d9d" },
     { "path": "server/alert-email-regression.test.ts", "role": "immediate and scheduled email alert decision wiring regression", "sha256": "0dbf46feadbc519ad4824b1c6cd9d4a7b256350a4debfd65f384daa168a6ef55" },
     { "path": "server/alert-email-audit-regression.test.ts", "role": "email audit regression", "sha256": "06eea437e3773c8648311f7260384eabbb2f6280884d5adb30db32c1455ebaf3" },
     { "path": "server/alert-email-delivery-regression.test.ts", "role": "email delivery-state regression", "sha256": "f68517df89e1193e82a001926debccff1d8377d04e200eff14d9e48ec9587f0f" },
@@ -180,7 +182,13 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "August 12 candidate boundary: the certification regression and standalone checker are rerun after every record/status/hash synchronization; no ready claim is permitted until both pass together."
+      "evidence": "August 15 documentation synchronization: the focused certification/validator/Notification packet passed 3 files / 51 tests and the standalone checker passed. The record remains deliberately UNVERIFIED because the schema has no release-candidate state; RELEASE_CANDIDATE_READY is the controlling narrative decision, not a PRODUCTION_READY machine certification."
+    },
+    {
+      "id": "deployed_read_only_validator_contract",
+      "command": "npm test -- server/ga4-kpi-live-readonly-regression.test.ts",
+      "status": "passed",
+      "evidence": "August 15: 1 file / 5 tests passed. The deployed validator contract covers exact-SHA health, actor/campaign scope, mutation blocking, cards, Tracker, Notifications, Insights, browser PDF, stored values, scheduler evidence capture, and before/after semantic persistence comparison."
     },
     {
       "id": "kpi_core_regressions",
@@ -192,7 +200,7 @@
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "Commit 14A correction: 1 file / 21 tests passed, including a dimensionless-aggregate 61 versus date-dimension 60 engaged-session mismatch through persisted recompute, notification enrichment, exact read-only diagnostics, and mutation-free browser daily-state access."
+      "evidence": "August 15 affected rerun: 1 file / 34 tests passed. Its Notification parity case retains the deterministic reporting clock while proving date-dimension Engagement Rate remains authoritative."
     },
     {
       "id": "metric_identity_contract",
@@ -258,63 +266,63 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "August 12 final candidate: all 1,507 tests executed; 1,457 passed; zero blocking KPI current-version failures; exactly 50 retained nonblocking failures remained visible and exactly classified."
+      "evidence": "August 15 release-candidate boundary: all 1,536 tests executed; 1,489 passed; zero blocking current-version failures; 47 retained nonblocking deferred failures remained visible and exactly classified."
     },
     {
       "id": "deferred_release_suites",
       "command": "npm run test:deferred",
       "status": "not_applicable",
-      "evidence": "August 12 current-version execution ran and displayed all 50 retained nonblocking identities. They remain outside the KPI release boundary and are not represented as validated or passing."
+      "evidence": "The August 13 current-version execution ran all 50 retained identities: 47 failed visibly and three passed. They remain outside the KPI release boundary and are not promoted into KPI evidence."
     },
     {
       "id": "full_ci_suite",
       "command": "npm run test",
       "status": "not_applicable",
-      "evidence": "The complete August 12 execution ran all 1,507 tests through the fail-closed current-version classifier: 1,457 passed and exactly 50 visible failures were nonblocking external/future boundaries. The raw unclassified command is not represented as globally clean."
+      "evidence": "The complete August 15 execution ran all 1,536 tests through the fail-closed current-version classifier: 1,489 passed, 47 visible failures were nonblocking deferred boundaries, and zero blocking failures remained. The raw unclassified command is not represented as globally clean."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on the August 12 final candidate working tree."
+      "evidence": "npm run check passed after the August 15 KPI PDF-freshness and KPI-only Notification corrections."
     },
     {
       "id": "production_build",
       "command": "npm run build",
-      "status": "passed",
-      "evidence": "npm run build passed on the August 12 final candidate working tree; 3,466 client modules transformed and the server bundle completed."
+      "status": "pending",
+      "evidence": "Not rerun in this session because the user prohibited overwriting artifacts without explicit approval. The exact committed SHA is deployed and serving health, but that is not represented as a local working-tree build."
     }
   ],
   "externalGates": [
     {
       "id": "target_data_inventory",
-      "status": "pending",
-      "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d for the certified campaign: authenticated inventory found exactly 12 campaign-scoped google_analytics KPI rows and the read-only validator observed unchanged KPI, progress, alert, notification, report, snapshot, and send-event persistence."
+      "status": "passed",
+      "evidence": "On exact deployed SHA 1a93d8d88debba4baefd666aa063c59b10b00e95, authenticated inventory found exactly 12 actor-owned campaign-scoped google_analytics KPI rows. The final read-only validator recorded persistenceSemanticStateUnchanged=true."
     },
     {
       "id": "deployed_state_matrix",
-      "status": "pending",
-      "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d. The authenticated mutation-blocked browser validator matched all 12 cards, Tracker, Notifications, KPI-derived Insights, and the saved browser KPI PDF to the exact scoped inputs and observed unchanged persistence."
+      "status": "passed",
+      "evidence": "On exact deployed SHA 1a93d8d88debba4baefd666aa063c59b10b00e95, the authenticated mutation-blocked validator matched all 12 cards, Tracker, Notifications, all 12 KPI-derived Insights findings, every selected browser-PDF KPI row, and stored values in one run. It attempted no unsafe GET or application mutation and recorded unchanged semantic persistence."
     },
     {
       "id": "timer_scheduler",
       "status": "pending",
-      "evidence": "PASSED for the exact deployed scheduler work path on ee22f0e470826f1cb247115497c9a15229d0142d. A user-authorized campaign-scoped manual trigger completed at 2026-08-12T09:39:38.605Z for campaign hash fc734ddaf728/property 542352127, updated all 12 KPIs and both Benchmarks, skipped/failed none, and suppressed alerts. Timer wiring passed automated regression; a natural timer firing on this SHA is explicitly not claimed."
+      "evidence": "The natural timer fired on deployed SHA 85f5233ebfc298afc35f4c24e0930c1a66fbd07c at 2026-08-14T20:35:00.001Z and the target recompute updated all 12 KPIs with zero KPI skips and zero KPI failures. The process-wide run failed for 17 excluded obsolete campaigns and is not called globally successful. Later commits 950307b6 and 1a93d8d8 did not change scheduler/recompute code; production 1a93d8d8 has not itself reached a natural timer slot, so exact-current timer certification remains pending."
     },
     {
       "id": "provider_and_token",
       "status": "pending",
-      "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d. The campaign-scoped scheduler call successfully used the configured GA4 property/filter and completed-day provider path; the separate read-only validator confirmed all page inputs and no token refresh/persistence. Auth, malformed-value, empty, stale, and provider-failure branches passed current production-path regressions; future provider availability is not claimed."
+      "evidence": "On exact deployed SHA 1a93d8d88debba4baefd666aa063c59b10b00e95 all validator page inputs returned 200, Notifications explicitly disabled credential refresh, and the validator attempted no unsafe GET or application mutation. Future provider refresh/token behavior is not claimed by this read-only release-candidate check."
     },
     {
       "id": "alert_email_delivery",
       "status": "pending",
-      "evidence": "PASSED for the current alert dependency boundary. The exact campaign's three latest post-alert-correction KPI events are provider-confirmed delivered, each with provider response ID and delivered timestamp. The diff from that deployed alert correction through ee22f0e470826f1cb247115497c9a15229d0142d changes only KPI PDF/validation and Reports files; alert sender, current-value resolver, scheduler, audit, notification, schema, and storage dependencies are unchanged. Future deliveries are not claimed."
+      "evidence": "Historical provider-confirmed KPI alert delivery remains bounded evidence. The August 15 Notification fix changes visible KPI eligibility only when stored traffic is stale; it does not send email, mutate alert audit history, or claim a new delivery. Future deliveries are not claimed."
     },
     {
       "id": "browser_and_report_parity",
       "status": "pending",
-      "evidence": "PASSED on exact deployed SHA ee22f0e470826f1cb247115497c9a15229d0142d. The saved browser KPI PDF matched every selected KPI value, target, reporting-window label, and state. The controlled saved-report test-send ran the normal KPI/Benchmark preflight and returned provider-confirmed delivered with a provider response ID; configuration was restored, snapshots and scheduled send events were unchanged, and one audit row was added. Manual/direct/scheduled report behavior is carried only across unchanged shared builders and passing regressions; no new scheduled send is claimed."
+      "evidence": "On exact deployed SHA 1a93d8d88debba4baefd666aa063c59b10b00e95, every selected browser-PDF KPI row matched name, reporting window, current value, target, and state. Server snapshot/test-send/scheduled paths were intentionally not called because their KPI preflight persists recomputation; those mutation-backed paths remain outside this read-only release-candidate check."
     }
   ]
 }

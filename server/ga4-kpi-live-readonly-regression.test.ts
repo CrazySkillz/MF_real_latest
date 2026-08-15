@@ -38,6 +38,7 @@ describe("GA4 KPI deployed read-only validator", () => {
 
     expect(validator).toContain("resolveGA4KpiLiveValue");
     expect(validator).toContain("resolveGA4KpiConsumerState");
+    expect(validator).toContain('inputs.daily?.body?.refreshIsStale === true ? "stale" : "ready"');
     expect(validator).toContain("getGA4KpiReportingWindowLabel");
     expect(validator).toContain("Authenticated KPI API inventory does not match");
     expect(validator).toContain('page.locator(`#ga4-kpi-${expected.kpi.id}`)');
@@ -56,6 +57,32 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(validator).toContain("await pdfText(await downloadBuffer(download))");
     expect(validator).toContain("downloaded browser KPI PDF does not match the exact page inputs and states");
     expect(validator).not.toContain("/api/report-snapshots/${");
+  });
+
+  it("loads the Reports inventory only after the read-only page activates Reports", () => {
+    const validator = read("scripts", "ga4-kpi-live-readonly.ts");
+    const initialInputs = validator.indexOf("Object.entries(initialPaths)");
+    const reportsWait = validator.indexOf("const reportsResponsePromise = expectedResponse(page, reportsPath)");
+    const reportsClick = validator.indexOf('getByRole("tab", { name: "Reports", exact: true }).click()');
+    const reportsResult = validator.indexOf("inputs.reports = await reportsResponsePromise");
+
+    expect(validator).toContain("const { reports: reportsPath, ...initialPaths } = corePaths(propertyId);");
+    expect(initialInputs).toBeGreaterThan(-1);
+    expect(reportsWait).toBeGreaterThan(initialInputs);
+    expect(reportsClick).toBeGreaterThan(reportsWait);
+    expect(reportsResult).toBeGreaterThan(reportsClick);
+  });
+
+  it("waits for Insights to finish loading before reading KPI-derived findings", () => {
+    const validator = read("scripts", "ga4-kpi-live-readonly.ts");
+    const insightsClick = validator.indexOf('getByRole("tab", { name: "Insights", exact: true }).click()');
+    const insightsReady = validator.indexOf('getByTestId("insights-trackers").waitFor');
+    const findingsRead = validator.indexOf('getByTestId("insights-finding").evaluateAll');
+
+    expect(insightsClick).toBeGreaterThan(-1);
+    expect(insightsReady).toBeGreaterThan(insightsClick);
+    expect(findingsRead).toBeGreaterThan(insightsReady);
+    expect(validator).toContain('getAttribute("data-findings")');
   });
 
   it("isolates the no-refresh validation contract from default Notifications behavior", () => {

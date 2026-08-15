@@ -39,6 +39,8 @@ Shopify Revenue current status (2026-08-10): **clean-certified and production-re
 
 The tracked May 2026 GA4 report-template blockers are complete. GA4 Overview is clean-certified and production-ready for deployed runtime `8ba694060411a2a05663a4915652767e4e3ba713` and the exact campaign/property/configuration/source/data boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. That Overview decision does not certify later Reports changes, scheduled delivery, other tabs, other campaigns, or future configurations.
 
+GA4 KPIs are **RELEASE_CANDIDATE_READY** for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95` and the boundary in `GA4/KPIS_PRODUCTION_READINESS.md`. The exact-SHA read-only production check passed for cards, Tracker, Notifications, KPI-derived Insights, browser PDF, and stored values with unchanged semantic persistence. This is not `PRODUCTION_READY` and not the final combined GA4 certification; the machine record remains `UNVERIFIED` because it has no release-candidate state.
+
 This status does not close the newer findings below. Later shared report/source infrastructure changes can affect GA4 even when the visible GA4 page is not directly edited.
 
 ## Completed Newer Fixes

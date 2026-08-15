@@ -78,7 +78,7 @@ describe('GA4 Benchmark safety regression guard', () => {
     expect(script).toContain('/ga4-metrics?tab=benchmarks&readOnly=1');
     expect(script).toContain('/api/notifications?readOnly=1');
     expect(script).toContain('resolveGA4InsightTargetPeriodCompatibility(row)');
-    expect(script).toContain('compatibility.comparable &&');
+    expect(script).toMatch(/expectedConsumerStateById\.get\(String\(row\.id\)\) === "verified"\s*&& compatibility\.comparable/);
     expect(metricsPage).toMatch(/const insightsValidationReadOnly = new URLSearchParams\(search\)\.get\(.readOnly.\) === .1.;/);
     expect(metricsPage).toContain('enabled: !!campaignId && (!insightsValidationReadOnly || activeTab === "reports"),');
     expect(metricsPage).not.toMatch(/const insightsValidationReadOnly = activeTab === .insights. &&/);

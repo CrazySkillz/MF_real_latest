@@ -28373,7 +28373,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportCampaignId = String((okReport as any).campaignId || "").trim();
       const snapshotPlatform = String((row as any).platformType || (row as any).platform_type || "").trim().toLowerCase();
       const reportPlatform = String((okReport as any).platformType || "").trim().toLowerCase();
-      if (snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform) {
+      const snapshotReportType = String((row as any).reportType || (row as any).report_type || "").trim().toLowerCase();
+      const reportReportType = String((okReport as any).reportType || "").trim().toLowerCase();
+      if (snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform || snapshotReportType !== reportReportType) {
         return res.status(404).json({ success: false, error: "Snapshot not found" });
       }
 

@@ -224,6 +224,18 @@ describe("scheduled report email regression guard", () => {
     expect(snapshotPdfRoute).not.toContain("This PDF is generated from an immutable snapshot.");
   });
 
+  it("fails closed before rebuilding a snapshot PDF after its report type changes", () => {
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const snapshotPdfRoute = routesSource.slice(
+      routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
+      routesSource.indexOf("// Get single benchmark")
+    );
+
+    expect(snapshotPdfRoute).toContain("snapshotReportType !== reportReportType");
+    expect(snapshotPdfRoute.indexOf("snapshotReportType !== reportReportType"))
+      .toBeLessThan(snapshotPdfRoute.indexOf("preflightGA4ReportKPIConsumers"));
+  });
+
   it("proves source-backed manual report snapshots have PDF output before insertion", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const manualSnapshotRoute = routesSource.slice(

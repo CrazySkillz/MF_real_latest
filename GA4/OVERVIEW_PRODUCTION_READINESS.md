@@ -17,9 +17,9 @@ Only evidence from the same deployed commit, production-data state, and document
 ## Current Decision — Stable Cross-Session Answer
 
 <!-- ga4-overview-current-status -->
-<!-- ga4-overview-certification-status: UNVERIFIED -->
+<!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-**Current section status: RELEASE_CANDIDATE_READY.** Exact implementation boundary `c6487555c55726427afed8342312b8393498303b` was user-confirmed deployed. Authenticated UI/API/source parity and the read-only production-data inventory passed for the recorded campaign, live property `542352127`, USD source set, and persisted records. Campaign Breakdown reconciled all three visible rows exactly. A natural timer-fired run on scheduler-fix runtime `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` persisted the exact target data without later app repair. Reviewed later changes through `c6487555` are KPI/Benchmark-only and leave Overview values and the GA4 daily-data producer unchanged; later Overview documentation-only commits do not change that implementation boundary. Machine status remains `UNVERIFIED` because this session intentionally does not perform the final combined GA4 certification.
+**Current section status: PRODUCTION_READY.** The certified deployed runtime is `892ff3396ec9c9332008128897e5703cc6bb3817` for the recorded campaign, live property `542352127`, USD source set, and persisted-data boundary. Authenticated UI/API/source parity, the zero-finding inventory, all three Campaign Breakdown rows, and controlled scheduled Overview delivery passed. A natural timer-fired run on `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` persisted the exact target data without later app repair; the relevant scheduler/producer files are byte-identical through `892ff339`, so that evidence is carried forward without claiming an exact-`892ff339` timer firing. The process-wide run's 17 excluded obsolete campaigns prevent a global scheduler-health claim.
 
 The prior clean certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remains historical evidence for its exact campaign/property/configuration/data boundary only.
 
@@ -107,7 +107,7 @@ The previous documented initial-30-day-import scope was clean-certified because,
 
 ## Source Authority
 
-For the previous exact-SHA Overview boundary, the three enabled HubSpot Revenue sources were **clean-certified inside that exact boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; broader future HubSpot configurations are not inferred.
+The three enabled HubSpot Revenue sources are **clean-certified inside this exact Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; broader future HubSpot configurations are not inferred.
 
 For the previous exact-SHA Overview boundary, the enabled Shopify Revenue source was **clean-certified inside that exact boundary** under `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`. A zero-match preview remains authoritative only for the provider order set and mapping fingerprint shown at preview time.
 

@@ -355,7 +355,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4MetricsFile).toContain('chips: ["Targets", "Historical", "Goals"],');
   });
 
-  it("keeps the historical certification bounded and the current release candidate unverified", () => {
+  it("keeps the historical certification bounded and locks the current production certification", () => {
     const record = JSON.parse(readFileSync(
       join(process.cwd(), "GA4", "certifications", "ga4-benchmarks.json"),
       "utf-8",
@@ -368,46 +368,44 @@ describe("GA4 Benchmark regression guard", () => {
     expect(record).toMatchObject({
       sectionId: "ga4-benchmarks",
       betaReadinessStatus: "BETA_READY",
-      productionCertificationStatus: "UNVERIFIED",
-      reviewedBaseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
-      reviewedImplementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
-      certifiedGitSha: null,
+      productionCertificationStatus: "PRODUCTION_READY",
+      reviewedBaseGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+      reviewedImplementationGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+      certifiedGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
       candidateRevision: {
-        baseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
-        runtimeGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
-        deployedEvidenceGitSha: "d6656e11d603283f89542876465db4dba8e54814",
-        currentDeployedGitSha: "c6487555c55726427afed8342312b8393498303b",
-        currentDeploymentChangeClass: "validation_only_no_runtime_boundary_change",
-        status: "RELEASE_CANDIDATE_READY",
+        baseGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+        runtimeGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+        deployedEvidenceGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+        currentDeployedGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+        currentDeploymentChangeClass: "final_combined_certified_runtime",
+        status: "PRODUCTION_READY",
       },
       previousCertification: {
         status: "PRODUCTION_READY",
         certifiedGitSha: "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
       },
     });
-    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
+    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: PRODUCTION_READY -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
-    expect(record.productionOnlyEvidenceOutstanding).toEqual([
-      "Perform the final combined GA4 certification only in a separately authorized session.",
-    ]);
+    expect(record.productionOnlyEvidenceOutstanding).toEqual([]);
     expect(record.dependencyBoundary).toEqual(expect.arrayContaining([
       "server/analytics.ts",
       "server/utils/ga4-alert-current-value.ts",
     ]));
     expect(record.currentLocalReleaseCandidateGate).toMatchObject({
-      status: "complete_for_exact_implementation_commit",
-      implementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
+      status: "complete_for_final_combined_certification",
+      implementationGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
       focusedFilesPassed: 16,
       focusedTestsPassed: 185,
       typescriptCheck: "passed",
       productionBuild: "passed",
     });
     expect(record.currentDeployedReleaseCandidateGate).toMatchObject({
-      status: "complete",
-      implementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
-      deployedEvidenceGitSha: "d6656e11d603283f89542876465db4dba8e54814",
-      currentDeployedGitSha: "c6487555c55726427afed8342312b8393498303b",
-      currentDeploymentChangeClass: "validation_only_no_runtime_boundary_change",
+      status: "complete_for_final_combined_certification",
+      implementationGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+      deployedEvidenceGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+      currentDeployedGitSha: "892ff3396ec9c9332008128897e5703cc6bb3817",
+      currentDeploymentChangeClass: "final_combined_certified_runtime",
       mode: "read_only_application_data",
       campaignCount: 2,
       benchmarkCount: 4,

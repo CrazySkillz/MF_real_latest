@@ -16,11 +16,11 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### August 15, 2026 release-candidate decision (controlling)
+### August 15, 2026 final combined certification decision (controlling)
 
-**Result: RELEASE_CANDIDATE_READY for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95`.** At verification time, local `main`, `origin/main`, and the production health endpoint all resolved to that SHA. This is a KPI-only release-candidate decision, not a `PRODUCTION_READY` certification and not the final combined GA4 certification.
+**Result: PRODUCTION_READY for the recorded KPI boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`.** Production health returned that exact SHA; the local and `origin/main` runtime diff is empty because later commits are certification documentation only.
 
 Changes after the previous certified boundary are classified as follows:
 
@@ -31,7 +31,7 @@ Changes after the previous certified boundary are classified as follows:
 
 Release-candidate evidence:
 
-- `npm run test:current-version` executed 1,536 tests: 1,489 passed, 47 explicitly deferred failures remained visible and nonblocking, and zero blocking current-version failures remained
+- `npm run test:current-version` executed 1,539 tests: 1,494 passed, 45 explicitly deferred future-platform failures remained visible and nonblocking, and zero blocking current-version failures remained
 - the focused Notification/adjacent KPI packet passed 5 files / 51 tests; the real-path parity file passed 34/34; `npm run check` and the certification-integrity checker passed
 - the exact-SHA authenticated read-only validator returned `candidate_evidence_passed` with exactly 12 campaign-scoped GA4 KPIs
 - all 12 KPI cards were exact, including visible value, target, reporting window, state, and alert pulse; the Tracker was exact at 12 total, 4 scored, 4 above, 0 near, 0 below, and 100 average
@@ -40,7 +40,7 @@ Release-candidate evidence:
 - no unsafe GET or application mutation was attempted, and the before/after database comparison recorded `persistenceSemanticStateUnchanged: true`
 - the natural timer fired on deployed SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` at `2026-08-14T20:35:00.001Z`; the target recompute updated all 12 KPIs with zero KPI skips and zero KPI failures. The process-wide run failed because of 17 excluded obsolete campaigns, so it is not described as globally successful. Later commits `950307b6` and `1a93d8d8` did not change the scheduler or KPI recompute pipeline; an exact-`1a93d8d8` natural timer run is not claimed.
 
-The release-candidate gate is closed. The machine record remains `UNVERIFIED` because its schema supports only `UNVERIFIED` or `PRODUCTION_READY`; it has no release-candidate state. Exact-current natural-timer execution, future provider/token behavior, future alert delivery, mutation-backed server report paths, and final combined GA4 certification remain separate and are not implied by this decision.
+The final gate is closed. A controlled recompute-backed manual KPI snapshot and PDF matched all 12 persisted KPI rows exactly on `892ff339`; failed email attempts created no false snapshot or `lastSentAt`, and the successful controlled Overview report created one truthful sent event/snapshot with provider-confirmed delivery and user-confirmed inbox/PDF receipt. Natural KPI scheduler evidence carries from `85f5233e` because `server/ga4-daily-scheduler.ts` and `server/ga4-kpi-benchmark-jobs.ts` are byte-identical through `892ff339`; no exact-`892ff339` natural timer firing, future provider availability, or global all-campaign scheduler health is claimed.
 
 ## Historical Status And Evidence (non-authoritative)
 

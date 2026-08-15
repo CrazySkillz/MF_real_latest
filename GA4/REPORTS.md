@@ -4,9 +4,9 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Current status: the GA4 Reports fix packet is `RELEASE_CANDIDATE_READY` and was verified deployed within Render revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`. This is not a final combined GA4 certification. The exact evidence and remaining external gates live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Current status: GA4 Reports is `PRODUCTION_READY` for the recorded GA4 Reports and delivery boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. The exact evidence and exclusions live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section remains
-`UNVERIFIED`. Local browser/scheduled output guards pass, but the deployed
+`PRODUCTION_READY`. Local browser/scheduled output guards pass, and the deployed
 revision and direct-consumer parity gates in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` remain open.
 

@@ -6,13 +6,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-As of August 15, 2026, the GA4 KPIs tab is **RELEASE_CANDIDATE_READY** for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95` and the recorded campaign/property/source boundary. This is not a `PRODUCTION_READY` certification and is not the final combined GA4 certification.
+As of August 15, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`.
 
 The final KPI-only production check passed on that exact SHA: all 12 cards, Tracker, Notifications, all 12 KPI-derived Insights findings, every selected browser-PDF KPI row, and stored values matched; the validator recorded no unsafe GET, no application mutation, and unchanged semantic persistence. Commit `950307b6e1863fb2580a885679655044dec0ca23` separated KPI/PDF traffic freshness from the Insights Trends freshness state, and commit `1a93d8d88debba4baefd666aa063c59b10b00e95` made visible KPI Notifications fail closed when the same stored traffic input is stale. Benchmark notification behavior was not changed.
 
-The machine record remains `UNVERIFIED` because its schema has no release-candidate state and the final combined GA4 certification was intentionally not performed. The exact release-candidate evidence and remaining certification limitations are in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The final evidence includes exact 12-row cards/Tracker/Notifications/Insights/browser-PDF parity, unchanged semantic persistence, and a recompute-backed manual KPI snapshot/PDF with all 12 rows exact. Natural scheduler evidence carries from `85f5233e` across byte-identical scheduler/job files; no exact-`892ff339` timer firing or future provider-availability claim is made. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
 
@@ -287,6 +287,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPI tab is release-candidate ready on exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95`. Historical Commit 14A/14B evidence does not override this controlling decision, and the machine `UNVERIFIED` marker must not be misread as denying the release-candidate state.
+The GA4 KPI tab is production-ready for the recorded boundary on deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
 
 The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

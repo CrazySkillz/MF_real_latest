@@ -16,18 +16,18 @@ Use this file when asked whether GA4 Reports is robust, accurate, logical, produ
 This file defines whether that implementation is production-ready, what has been proven, what remains not locally verifiable, and how to replicate the Reports pattern for future platforms.
 
 <!-- ga4-reports-current-status -->
-<!-- ga4-reports-certification-status: UNVERIFIED -->
+<!-- ga4-reports-certification-status: PRODUCTION_READY -->
 ## Current Controlling Answer
 
-August 14, 2026 candidate decision: the GA4 Reports fix packet is **RELEASE_CANDIDATE_READY**. Implementation commit `79179cf2208289f7491ac8f8b765827ab21c3eab` was verified deployed within Render revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`. Campaign DeepDive remains outside the boundary.
+August 15, 2026 final decision: GA4 Reports is **PRODUCTION_READY** for the recorded GA4 Reports and delivery boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Campaign DeepDive remains outside the boundary.
 
 Two later Reports regressions were proven and corrected: browser/server PDFs now fail closed when an active imported-revenue source lacks a finite exact materialized row, and Campaign Breakdown PDFs disclose that GA4 metrics use the completed-day window while exact matched imported revenue is source-to-date. The certification gate now also rejects a reusable readiness claim outside the controlling status block.
 
-Evidence for this release candidate: the six-file Reports/regression packet passed 117 tests; `npm run check` passed; `npm run build` passed after transforming 3,466 modules and completing the server bundle; Render health returned HTTP 200 at exact revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`; the app entry and deployed GA4 bundle returned HTTP 200; the deployed bundle contained the mixed-window disclosure; the unauthenticated Reports-list route failed closed with HTTP 401; scheduler health returned HTTP 200; and the user confirmed the Campaign Breakdown note in generated deployed PDFs.
+Final evidence includes the protected/full current-version suites, TypeScript, production build, exact `892ff339` health, exact 12-row recompute-backed KPI snapshot/PDF parity, direct snapshot type-mismatch HTTP 404, a controlled scheduled Overview send with one truthful sent event/snapshot and advanced `lastSentAt`, Mailgun provider-confirmed delivery, user-confirmed inbox receipt and readable PDF, and exact restoration of the original schedule.
 
-The unavailable-materialized-revenue branch was not intentionally induced against production data; its proof is deterministic regression coverage. No report send, snapshot creation, production database audit, or complete browser/server numerical parity packet was performed for this revision. Previous certification evidence remains historical and does not fill those current gaps.
+The production database audit found no active orphan report, tenant mismatch, or invalid active schedule. Historical orphan/mismatched artifacts remain preserved rather than rewritten and are fail-closed by current access/type guards. The unavailable-materialized-revenue negative branch remains proven by deterministic regression coverage rather than production-data mutation.
 
-No final combined GA4 certification was performed, exactly as requested. The machine-readable status remains `UNVERIFIED` because its schema has no release-candidate state and the final certification gates remain incomplete; that does not negate the release-candidate-ready decision above.
+The final combined GA4 certification is complete for the recorded boundary. Future provider availability, future recipient behavior, Campaign DeepDive, non-GA4 reports, and unbounded historical-data cleanup remain excluded.
 
 <!-- /ga4-reports-current-status -->
 
@@ -948,7 +948,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that the GA4 Reports fix packet is **RELEASE_CANDIDATE_READY** and was verified deployed within revision `e0d0e87565081ef06254c81973ba5a8f05eec23c`. Do not describe it as a final combined GA4 certification; the remaining external gates are recorded above and in the machine record.
+Answer that GA4 Reports is **PRODUCTION_READY** for the recorded GA4 Reports and delivery boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Campaign DeepDive and future provider/recipient behavior remain excluded.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

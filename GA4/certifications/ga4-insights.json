@@ -1,11 +1,11 @@
 {
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
-    "status":  "UNVERIFIED",
-    "lastReviewedSha":  "7374e824ee625032cd6967f81edb22fb1001a15e",
-    "certifiedSha":  null,
-    "deployedSha":  null,
-    "invalidationReason":  "Insights is RELEASE_CANDIDATE_READY at exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581. Authenticated read-only parity passed on deployed revision e8a83b2a095700b715b08c80fca9f0c714026d93 and carries to current deployed revision 7374e824ee625032cd6967f81edb22fb1001a15e because the intervening commit changes only Insights documentation and non-runtime certification tooling. Machine status remains UNVERIFIED because this schema has no release-candidate state and this session intentionally excludes final production certification and the final combined GA4 certification. Natural scheduler evidence from 85f5233ebfc298afc35f4c24e0930c1a66fbd07c carries forward across the reviewed non-producer changes.",
+    "status":  "PRODUCTION_READY",
+    "lastReviewedSha":  "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "certifiedSha":  "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "deployedSha":  "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "invalidationReason":  null,
     "previousCertification":  {
                                      "status":  "PRODUCTION_READY",
                                      "certifiedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d",
@@ -51,27 +51,27 @@
                          {
                              "path":  "GA4/INSIGHTS.md",
                              "role":  "functional contract",
-                             "sha256":  "87f1e5bb7f489a6bbe332d8838141fa57996484f0af722be29482f745266f0d3"
+                             "sha256":  "6abe42b96bf83e5cf2563feb32471ceae5babcf10f75075265209b9b59d54796"
                          },
                          {
                              "path":  "GA4/INSIGHTS_PRODUCTION_READINESS.md",
                              "role":  "controlling status",
-                             "sha256":  "c32250726b18d9908ffe410309a6ea02b5cdf41d1506d3963aa93bbf7bf5c9a2"
+                             "sha256":  "ea05f8f993c6895b6fd15c1a4aa84a937aac373b687bc62e6a5fe66feef06307"
                          },
                          {
                              "path":  "GA4/README.md",
                              "role":  "GA4 status index",
-                             "sha256":  "c306ad3dbe31a8b930908b0b571c05d8a124d27b763c70946f6f1848010f4be7"
+                             "sha256":  "a59e6c4942dc55416bddde467ff3be1f261b7e984e573821f1435c40833b3dff"
                          },
                          {
                              "path":  "GA4/FINANCIAL_SOURCES.md",
                              "role":  "financial provenance contract",
-                             "sha256":  "4a2d8b4bc6f2c32adb2565ebe0e204c40fb5aeca11ad66dbb7e89769588f6cdf"
+                             "sha256":  "0dc6b0cfb0b85e571a5e3c95aa87078a5a4693d0df859e24c09a157433bdb54c"
                          },
                          {
                              "path":  "GA4/REFRESH_AND_PROCESSING.md",
                              "role":  "refresh contract",
-                             "sha256":  "718578c16ade93bab29877b16b3f21d1dd1ff0833d5c7135bd5f4ce089b636c3"
+                             "sha256":  "92f17eda44aedc49cf2aa161e04a8bb7b09627915113355d8144e0911cca820d"
                          },
                          {
                              "path":  "client/src/pages/ga4-metrics.tsx",
@@ -131,7 +131,7 @@
                          {
                              "path":  "server/routes-oauth.ts",
                              "role":  "API auth, scope, and window boundary",
-                             "sha256":  "4162a5834ec89a2653035c3cae05ff7b49e27410f0eda52abd6eb90035ffb15a"
+                             "sha256":  "42b0b423a4b81c56e2f7f4fe0cffb908129715959501d95698173c997854319d"
                          },
                          {
                              "path":  "server/index.ts",
@@ -488,34 +488,34 @@
                           {
                               "id":  "typescript",
                               "status":  "passed",
-                              "evidence":  "npm run check passed on the current release-candidate working tree."
+                              "evidence":  "npm run check passed on the final combined certification working tree; no runtime source differs from deployed 892ff339."
                           },
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "Current documentation/tooling wrapper revision 7374e824ee625032cd6967f81edb22fb1001a15e is built and serving in production. Its exact diff from parity-validated e8a83b2a095700b715b08c80fca9f0c714026d93 contains no application-runtime change."
+                              "evidence":  "npm run build passed on the final combined certification working tree; no runtime source differs from deployed 892ff339."
                           },
                           {
                               "id":  "machine_gate",
                               "status":  "passed",
-                              "evidence":  "The fail-closed machine checker passes for the machine-UNVERIFIED release-candidate record and rejects contradictory current status mirrors."
+                              "evidence":  "The fail-closed machine checker passes for the final PRODUCTION_READY record and rejects contradictory status mirrors or changed dependency hashes."
                           }
                       ],
     "externalGates":  [
                           {
                               "id":  "exact_sha_deployment",
                               "status":  "passed",
-                              "evidence":  "Render /api/health returned exact current deployed revision 7374e824ee625032cd6967f81edb22fb1001a15e on 2026-08-15."
+                              "evidence":  "Render /api/health returned HTTP 200 with exact deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817 on 2026-08-15."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
                               "status":  "passed",
-                              "evidence":  "Authenticated read-only owner validation passed on deployed e8a83b2a095700b715b08c80fca9f0c714026d93 for property 542352127, Europe/Amsterdam, USD, three saved filters, exact daily/breakdown windows, source totals, expected-stale state, and unchanged campaign-scoped persistence. The result carries to deployed 7374e824ee625032cd6967f81edb22fb1001a15e because the exact intervening diff contains only Insights documentation, its machine record, and the non-runtime certification checker/test."
+                              "evidence":  "Authenticated read-only owner validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, exact daily/breakdown windows, source totals, expected-stale state, and unchanged campaign-scoped persistence. Reviewed later runtime changes through 892ff339 are outside Insights value production; the protected Insights packet passed."
                           },
                           {
                               "id":  "live_surface_value_parity",
                               "status":  "passed",
-                              "evidence":  "On deployed e8a83b2a095700b715b08c80fca9f0c714026d93, all five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and five visible findings matched the page-consumed scoped production inputs. That value-parity result carries unchanged to deployed documentation/tooling wrapper 7374e824ee625032cd6967f81edb22fb1001a15e."
+                              "evidence":  "All five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and five visible findings matched the page-consumed scoped production inputs. Current KPI/Benchmark downstream parity and protected Insights regressions passed through deployed 892ff339."
                           },
                           {
                               "id":  "tenant_isolation",
@@ -525,12 +525,12 @@
                           {
                               "id":  "deterministic_scheduler",
                               "status":  "passed",
-                              "evidence":  "On deployed scheduler-fix SHA 85f5233ebfc298afc35f4c24e0930c1a66fbd07c, the natural timer fired at 2026-08-14T20:35:00.001Z and finished at 20:35:40.499Z after its temporary 20:35 UTC target. All 22 daily rows carried scheduler-run timestamps; all 12 KPIs and both Benchmarks updated with zero skips or failures and no later application repair. The process-wide run still failed for 17 excluded obsolete campaigns, so no global scheduler-health claim is made. Reviewed later changes through deployed 7374e824 do not alter the timer, daily producer, storage contract, reporting-timezone helper, or scheduler configuration parsing. Current scheduler health on 7374e824 confirms UTC 22:00 with startup refresh disabled."
+                              "evidence":  "On 85f5233e, the natural timer fired at 2026-08-14T20:35:00.001Z: all 22 daily rows carried scheduler timestamps and all 12 KPIs plus both Benchmarks updated with zero target skips/failures and no later app repair. The relevant scheduler, job, reporting-timezone, and persistence files are byte-identical through deployed 892ff339, so this path evidence carries forward without claiming an exact-current timer firing. The 17 excluded obsolete campaigns prevent a global scheduler-health claim."
                           },
                           {
                               "id":  "dependency_hashes",
                               "status":  "passed",
-                              "evidence":  "All 84 dependency hashes match deployed release-candidate commit 7374e824ee625032cd6967f81edb22fb1001a15e. Exact deployed configuration validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, GA4/Sheets signed OAuth state, configured Google credentials, inactive/excluded Google Ads, UTC 22:00 GA4 scheduler timing, and disabled GA4 startup refresh."
+                              "evidence":  "All 84 dependency hashes match the final working-tree boundary tied to deployed runtime 892ff339. Exact configuration validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, GA4/Sheets signed OAuth state, configured Google credentials, inactive/excluded Google Ads, UTC 22:00 scheduler timing, and disabled GA4 startup refresh."
                           }
                       ],
     "configurationFingerprint":  {

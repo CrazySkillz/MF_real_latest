@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "sectionId": "ga4-benchmarks",
   "betaReadinessStatus": "BETA_READY",
-  "productionCertificationStatus": "UNVERIFIED",
-  "reviewedBaseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
-  "reviewedImplementationGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
-  "certifiedGitSha": null,
+  "productionCertificationStatus": "PRODUCTION_READY",
+  "reviewedBaseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+  "reviewedImplementationGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+  "certifiedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
   "candidateRevision": {
-    "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
-    "runtimeGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
-    "deployedEvidenceGitSha": "d6656e11d603283f89542876465db4dba8e54814",
-    "currentDeployedGitSha": "c6487555c55726427afed8342312b8393498303b",
-    "currentDeploymentChangeClass": "validation_only_no_runtime_boundary_change",
-    "status": "RELEASE_CANDIDATE_READY",
-    "invalidationReason": "Exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581 passed the local release-candidate gate and authenticated read-only validation within exact deployed evidence SHA d6656e11d603283f89542876465db4dba8e54814. User-confirmed current production SHA c6487555c55726427afed8342312b8393498303b changes only Benchmark documentation, validation tooling, and regression guards. The final combined GA4 certification remains intentionally outstanding."
+    "baseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "runtimeGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "deployedEvidenceGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "currentDeployedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "currentDeploymentChangeClass": "final_combined_certified_runtime",
+    "status": "PRODUCTION_READY",
+    "invalidationReason": null
   },
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -154,9 +154,9 @@
     "transferBoundary": "Commits 950307b6 and 1a93d8d8 changed browser KPI/PDF freshness and KPI-only notification visibility; 7366051f changed KPI documentation/evidence. None changed the scheduler or Benchmark recompute pipeline. This carries the 85f5233e scheduler-path evidence forward only; no exact-current natural timer firing is claimed."
   },
   "currentLocalReleaseCandidateGate": {
-    "status": "complete_for_exact_implementation_commit",
-    "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
-    "implementationGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
+    "status": "complete_for_final_combined_certification",
+    "baseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "implementationGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
     "validatedAt": "2026-08-15",
     "focusedFilesPassed": 16,
     "focusedTestsPassed": 185,
@@ -167,15 +167,15 @@
       "Benchmark notification enrichment now requires current GA4 traffic freshness in normal and read-only validation requests."
     ],
     "limitations": [
-      "The final combined GA4 certification was intentionally not performed."
+      "The 17 obsolete campaigns outside the active Benchmark boundary prevent a global all-campaign scheduler-health claim."
     ]
   },
   "currentDeployedReleaseCandidateGate": {
-    "status": "complete",
-    "implementationGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
-    "deployedEvidenceGitSha": "d6656e11d603283f89542876465db4dba8e54814",
-    "currentDeployedGitSha": "c6487555c55726427afed8342312b8393498303b",
-    "currentDeploymentChangeClass": "validation_only_no_runtime_boundary_change",
+    "status": "complete_for_final_combined_certification",
+    "implementationGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "deployedEvidenceGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "currentDeployedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "currentDeploymentChangeClass": "final_combined_certified_runtime",
     "validatedAt": "2026-08-15",
     "mode": "read_only_application_data",
     "campaignCount": 2,
@@ -200,9 +200,8 @@
       "notifications": "passed"
     },
     "limitations": [
-      "Browser PDF is bounded Benchmark row-propagation evidence only; Reports is not certified.",
-      "No exact-current natural timer run is claimed; bounded 85f5233e evidence is retained.",
-      "The final combined GA4 certification was intentionally not performed."
+      "Browser PDF remains bounded Benchmark row-propagation evidence; Reports is separately certified.",
+      "No exact-892ff339 natural timer run is claimed; bounded 85f5233e evidence carries across byte-identical scheduler/job files."
     ]
   },
   "activeProductionCertificationCommits": [
@@ -490,8 +489,6 @@
       "result": "At 2026-08-03T09:33:27Z production returned exact SHA b42c51e9ebcc12d74851cc640c86038513a57828. Report scheduler metrics recorded totalSent 2, totalFailed 0, and 100.00% success. The GA4 daily scheduler remained healthy and idle with zero scheduled runs and next run 2026-08-04T03:00:00.000Z."
     }
   ],
-  "productionOnlyEvidenceOutstanding": [
-    "Perform the final combined GA4 certification only in a separately authorized session."
-  ],
+  "productionOnlyEvidenceOutstanding": [],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
 }

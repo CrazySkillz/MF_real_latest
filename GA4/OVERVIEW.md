@@ -5,9 +5,9 @@
 This file defines the GA4 `Overview` tab and the GA4-specific scope rules that feed the rest of the GA4 experience.
 
 <!-- ga4-overview-current-status -->
-<!-- ga4-overview-certification-status: UNVERIFIED -->
+<!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **RELEASE_CANDIDATE_READY** at user-confirmed deployed implementation boundary `c6487555c55726427afed8342312b8393498303b` for the recorded campaign/property/source boundary. Authenticated UI/API/source parity, the read-only production-data inventory, exact Campaign Breakdown reconciliation, and a natural timer-fired target-persistence check passed. Later Overview documentation-only commits do not change the implementation boundary. The scheduler is restored to `22:00 UTC` with startup refresh disabled. Machine status remains `UNVERIFIED` because this session does not perform the final combined GA4 certification; the prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Authenticated UI/API/source parity, production-data integrity, Campaign Breakdown reconciliation, and scheduled Overview artifact delivery passed. Natural target-persistence evidence carries from `85f5233e` because the relevant scheduler/producer files are byte-identical; no exact-`892ff339` natural timer firing or global all-campaign scheduler-health claim is made.
 
 <!-- /ga4-overview-current-status -->
 
@@ -409,7 +409,7 @@ This failure-state contract does not close the later GA4 spend-context/cache, so
 
 ## Overview Tables Deployed Validation Checklist
 
-The prior exact-SHA Overview boundary was clean-certified. The current implementation boundary is **RELEASE_CANDIDATE_READY**; its section gates are closed, while machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. The following checklist is retained for future campaigns, source configurations, and scope expansions.
+The current recorded Overview boundary is **PRODUCTION_READY** at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. The following checklist is retained for future campaigns, source configurations, and scope expansions.
 
 Connection and scope:
 

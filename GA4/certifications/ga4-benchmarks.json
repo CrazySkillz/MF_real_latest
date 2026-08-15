@@ -4,13 +4,13 @@
   "betaReadinessStatus": "BETA_READY",
   "productionCertificationStatus": "UNVERIFIED",
   "reviewedBaseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
-  "reviewedImplementationGitSha": null,
+  "reviewedImplementationGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
   "certifiedGitSha": null,
   "candidateRevision": {
     "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
-    "runtimeGitSha": null,
-    "status": "LOCAL_RELEASE_CANDIDATE_READY",
-    "invalidationReason": "The current fix packet is validated in an uncommitted dirty worktree based on 7366051f36e64141b8403bd882c6d8040f559f47. It has no exact implementation SHA and has not been deployed or revalidated against an exact deployed candidate. The final combined GA4 certification was intentionally not performed."
+    "runtimeGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
+    "status": "RELEASE_CANDIDATE_READY",
+    "invalidationReason": "Exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581 passed the local release-candidate gate. Exact deployed-candidate read-only validation and the final combined GA4 certification remain intentionally outstanding."
   },
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -151,8 +151,9 @@
     "transferBoundary": "Commits 950307b6 and 1a93d8d8 changed browser KPI/PDF freshness and KPI-only notification visibility; 7366051f changed KPI documentation/evidence. None changed the scheduler or Benchmark recompute pipeline. This carries the 85f5233e scheduler-path evidence forward only; no exact-current natural timer firing is claimed."
   },
   "currentLocalReleaseCandidateGate": {
-    "status": "complete_for_uncommitted_local_patch",
+    "status": "complete_for_exact_implementation_commit",
     "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
+    "implementationGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
     "validatedAt": "2026-08-15",
     "focusedFilesPassed": 16,
     "focusedTestsPassed": 185,
@@ -163,7 +164,6 @@
       "Benchmark notification enrichment now requires current GA4 traffic freshness in normal and read-only validation requests."
     ],
     "limitations": [
-      "The candidate remains an uncommitted dirty-worktree patch and therefore has no exact implementation SHA.",
       "The candidate has not been deployed or validated against an exact deployed SHA.",
       "The final combined GA4 certification was intentionally not performed."
     ]
@@ -454,7 +454,6 @@
     }
   ],
   "productionOnlyEvidenceOutstanding": [
-    "Create an exact candidate implementation SHA and re-run the clean revision/dependency boundary inventory.",
     "Deploy that exact candidate and run the authenticated read-only Benchmark parity checks against the exact deployed SHA.",
     "Perform the final combined GA4 certification only in a separately authorized session."
   ],

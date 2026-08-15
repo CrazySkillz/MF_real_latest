@@ -370,12 +370,12 @@ describe("GA4 Benchmark regression guard", () => {
       betaReadinessStatus: "BETA_READY",
       productionCertificationStatus: "UNVERIFIED",
       reviewedBaseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
-      reviewedImplementationGitSha: null,
+      reviewedImplementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
       certifiedGitSha: null,
       candidateRevision: {
         baseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
-        runtimeGitSha: null,
-        status: "LOCAL_RELEASE_CANDIDATE_READY",
+        runtimeGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
+        status: "RELEASE_CANDIDATE_READY",
       },
       previousCertification: {
         status: "PRODUCTION_READY",
@@ -384,13 +384,14 @@ describe("GA4 Benchmark regression guard", () => {
     });
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
-    expect(record.productionOnlyEvidenceOutstanding).toHaveLength(3);
+    expect(record.productionOnlyEvidenceOutstanding).toHaveLength(2);
     expect(record.dependencyBoundary).toEqual(expect.arrayContaining([
       "server/analytics.ts",
       "server/utils/ga4-alert-current-value.ts",
     ]));
     expect(record.currentLocalReleaseCandidateGate).toMatchObject({
-      status: "complete_for_uncommitted_local_patch",
+      status: "complete_for_exact_implementation_commit",
+      implementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
       focusedFilesPassed: 16,
       focusedTestsPassed: 185,
       typescriptCheck: "passed",

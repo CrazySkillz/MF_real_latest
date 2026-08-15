@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "82fc3a7887d14e370e29a27ae4349333bacc2f58",
+  "lastReviewedSha": "c6487555c55726427afed8342312b8393498303b",
   "certifiedSha": null,
-  "deployedSha": "82fc3a7887d14e370e29a27ae4349333bacc2f58",
-  "invalidationReason": "Exact current runtime 82fc3a7887d14e370e29a27ae4349333bacc2f58 is user-confirmed deployed. Authenticated UI/API/source parity, exact Campaign Breakdown reconciliation, and the read-only production-data inventory passed. One natural 22:00 UTC target persistence observation remains pending.",
+  "deployedSha": "c6487555c55726427afed8342312b8393498303b",
+  "invalidationReason": "Overview is RELEASE_CANDIDATE_READY for exact deployed runtime c6487555c55726427afed8342312b8393498303b and the recorded boundary. Machine status remains UNVERIFIED because this session intentionally does not perform the final combined GA4 certification. Exact natural-run evidence from scheduler-fix runtime 85f5233ebfc298afc35f4c24e0930c1a66fbd07c carries forward because reviewed later changes are KPI/Benchmark-only and leave Overview values and the daily-data producer unchanged.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",
@@ -138,38 +138,38 @@
       "id": "certification_integrity",
       "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
       "status": "passed",
-      "evidence": "1 file / 8 gate tests passed and the repository checker passed for the fail-closed UNVERIFIED record."
+      "evidence": "1 file / 8 gate tests passed and the repository checker passed for the fail-closed UNVERIFIED machine record with release-candidate evidence recorded separately."
     },
     {
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "The exact current Overview packet passed 28 files / 288 tests after the copy-only Campaign Breakdown disclosure change; its regression-first guard failed before the runtime edit and server/ga4-ui-regression.test.ts passed 40/40 afterward."
+      "evidence": "The Overview packet passed 28 files / 288 tests after the copy-only Campaign Breakdown disclosure change. Scheduler-fix runtime 85f5233e additionally passed server/ga4-filter.test.ts 30/30 and the focused scheduler/UI packet 7 files / 93 tests. Reviewed later c648 changes are KPI/Benchmark-only and do not change Overview values or its daily-data producer."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "10 files / 93 tests passed on the exact current candidate after the documentation update."
+      "evidence": "The recorded affected-dependency packet passed 10 files / 93 tests before the scheduler correction; the scheduler/UI packet passed 7 files / 93 tests at 85f5233e. Later changes through c648 were reviewed as legitimate KPI/Benchmark-only downstream work."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed on the exact current documentation candidate."
+      "evidence": "TypeScript passed for scheduler-fix runtime 85f5233e. Later deployed changes were reviewed separately and did not alter the Overview producer or value paths."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed on the exact current documentation candidate."
+      "evidence": "The production Vite and server esbuild completed for scheduler-fix runtime 85f5233e; current runtime c648 is user-confirmed deployed."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "The user confirmed Render deployed exact runtime 82fc3a7887d14e370e29a27ae4349333bacc2f58 after it was pushed to origin/main."
+      "evidence": "The user confirmed Render deployed exact current runtime c6487555c55726427afed8342312b8393498303b."
     },
     {
       "id": "authenticated_ui_api_source_parity",
@@ -178,8 +178,8 @@
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
-      "status": "pending",
-      "evidence": "The current 22:00 UTC scheduler configuration was healthy and scheduled, but no natural target run had occurred since the observed process restart."
+      "status": "passed",
+      "evidence": "A natural timer fired on scheduler-fix runtime 85f5233e at 2026-08-14T20:35:00.001Z and finished at 20:35:40.499Z. The target retained 22 unique rows, all with scheduler-run timestamps, and no later app repair occurred. The 11-row Overview display boundary matched authenticated Summary values. Reviewed later changes through c648 are KPI/Benchmark-only and leave Overview values and the daily-data producer unchanged; the live schedule is restored to 22:00 UTC with startup refresh disabled."
     },
     {
       "id": "production_data_integrity",

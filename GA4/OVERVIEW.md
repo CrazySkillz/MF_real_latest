@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current production-certification status is **UNVERIFIED** at user-confirmed deployed runtime `82fc3a7887d14e370e29a27ae4349333bacc2f58`. Authenticated current-runtime UI/API/source parity and the read-only production-data inventory passed for the recorded campaign/property/source boundary. Campaign Breakdown reconciled exactly and its deployed subtitle now discloses the mixed revenue window. Only the natural `22:00 UTC` target-persistence observation remains open. The prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **RELEASE_CANDIDATE_READY** at user-confirmed deployed runtime `c6487555c55726427afed8342312b8393498303b` for the recorded campaign/property/source boundary. Authenticated UI/API/source parity, the read-only production-data inventory, exact Campaign Breakdown reconciliation, and a natural timer-fired target-persistence check passed. The scheduler is restored to `22:00 UTC` with startup refresh disabled. Machine status remains `UNVERIFIED` because this session does not perform the final combined GA4 certification; the prior `ee22f0e470826f1cb247115497c9a15229d0142d` certification is historical only.
 
 <!-- /ga4-overview-current-status -->
 

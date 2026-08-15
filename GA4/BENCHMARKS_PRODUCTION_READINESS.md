@@ -16,13 +16,13 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-August 15, 2026 controlling assessment: the GA4 Benchmarks fix packet is **release-candidate ready** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`. Authenticated read-only validation passed for that implementation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`. Machine certification remains `UNVERIFIED` only because the separately authorized final combined GA4 certification was intentionally not performed.
+August 15, 2026 controlling assessment: the GA4 Benchmarks fix packet is **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`. Authenticated read-only validation passed for that implementation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`. User-confirmed production SHA `c6487555c55726427afed8342312b8393498303b` adds only Benchmark documentation, validation tooling, and regression guards, so the runtime implementation boundary remains `3d762260`. Machine certification remains `UNVERIFIED` only because the separately authorized final combined GA4 certification was intentionally not performed.
 
 The prior clean certification remains historical evidence for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` only. Later dependency-boundary changes invalidated carrying that active status forward. This review found and fixed two current runtime defects: direct Benchmark browser consumers did not fail stale persisted traffic closed unless the Insights-only trends request exposed staleness, and Benchmark notification enrichment did not require current traffic freshness. The failing guards were added before runtime edits; the post-fix focused gate passed `16` files and `185` tests, followed by successful TypeScript and production builds.
 
 Bounded scheduler evidence is reused from exact deployed SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`: the natural timer fired at `2026-08-14T20:35:00.001Z`, both Benchmarks updated with zero skipped or failed, and all `22` underlying daily rows were scheduler-written with no later application repair. The process-wide run failed for 17 excluded obsolete campaigns, so no global scheduler-health claim is made. Later commits `950307b6`, `1a93d8d8`, and `7366051f` did not change the scheduler or Benchmark recompute path; this is bounded path evidence, not an exact-current natural-run claim.
 
-Exact deployed release-candidate evidence: the corrected authenticated read-only validator passed against `d6656e11d603283f89542876465db4dba8e54814` with `2` campaign inventories, `4` active Benchmarks, zero failures, and zero application mutation attempts. Live provider, persisted, scheduler-candidate, and UI values reconciled exactly. The Revenue Benchmark was current and scored; the Conversions Benchmark was correctly treated as stale because the authoritative daily response reported `refreshIsStale = true`, `dataThroughDate = 2026-08-14`, `latestStoredDailyDate = 2026-08-10`, and `oldestDueMissingDailyDate = 2026-08-11`. Cards/Tracker, notifications, and bounded browser-PDF Benchmark rows all failed that stale value closed. Browser-PDF evidence certifies only Benchmark row propagation; it does not certify Reports.
+Exact deployed release-candidate evidence: the corrected authenticated read-only validator passed against `d6656e11d603283f89542876465db4dba8e54814` with `2` campaign inventories, `4` active Benchmarks, zero failures, and zero application mutation attempts. Live provider, persisted, scheduler-candidate, and UI values reconciled exactly. The Revenue Benchmark was current and scored; the Conversions Benchmark was correctly treated as stale because the authoritative daily response reported `refreshIsStale = true`, `dataThroughDate = 2026-08-14`, `latestStoredDailyDate = 2026-08-10`, and `oldestDueMissingDailyDate = 2026-08-11`. Cards/Tracker, notifications, and bounded browser-PDF Benchmark rows all failed that stale value closed. Browser-PDF evidence certifies only Benchmark row propagation; it does not certify Reports. Production deployment of validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b` was user-confirmed after this evidence was recorded.
 
 <!-- ga4-benchmark-production-certification-status: UNVERIFIED -->
 <!-- ga4-benchmark-beta-readiness-status: BETA_READY -->
@@ -74,7 +74,7 @@ Current dependency queue:
 - Final authenticated read-only evidence on exact SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` confirmed 2 campaign inventories, 4 active Benchmarks, live-provider/persisted/scheduler/UI value parity, cards, Tracker, period-compatible Insights behavior, alerts/notifications, no-property fail-closed behavior, and zero application mutation attempts. The validator separately retained a browser-PDF target mismatch and a stale scheduled artifact; both belong to the Reports boundary and do not gate or certify Benchmarks.
 - Final local validation passed the 10-file focused protected packet (`138/138`), exact Insights/Overview packet (`112/112`), protected certification gates (`29/29`), all current-version blocking tests (zero blockers; 46 declared deferred future-platform failures remained visible), TypeScript, and the production build.
 
-The historical `650ce59c` boundary has no retroactive evidence gap. Exact deployed-candidate read-only validation is complete for implementation `3d762260` within deployed evidence revision `d6656e11`. The separately authorized final combined GA4 certification remains intentionally outstanding. Reports-owned PDF/artifact findings remain recorded for the separate Reports audit and are not part of this Benchmark release-candidate decision.
+The historical `650ce59c` boundary has no retroactive evidence gap. Exact deployed-candidate read-only validation is complete for implementation `3d762260` within deployed evidence revision `d6656e11`, and validation-only wrapper `c6487555` is user-confirmed in production. The separately authorized final combined GA4 certification remains intentionally outstanding. Reports-owned PDF/artifact findings remain recorded for the separate Reports audit and are not part of this Benchmark release-candidate decision.
 
 ### Active Production-Certification Commit Queue
 
@@ -258,21 +258,21 @@ This stop condition was satisfied at exact runtime SHA `650ce59c4b0d14a21a198e8a
 
 ### Historical July 2026 Status And Evidence
 
-Current-code override on July 31, 2026: Commit 18 changes the shared campaign Benchmark current-value failure contract. Failed financial reads, disconnected/missing GA4, and missing selected source IDs now return unavailable so existing refresh loops preserve last-known values instead of writing misleading zero. The bounded local implementation is proven by focused tests, TypeScript, and a production build, but it is not yet committed, deployed, or externally validated. The affected current-value/recompute/alert path is therefore **unproven**, and the historical certification below must not be repeated as a current whole-path claim until Commit 18 deployed validation passes. Timer-fired scheduler execution remains outside this Commit 18 proof.
+Historical July 31, 2026 record: Commit 18 changed the shared campaign Benchmark current-value failure contract. Failed financial reads, disconnected/missing GA4, and missing selected source IDs returned unavailable so existing refresh loops preserved last-known values instead of writing misleading zero. At that checkpoint the bounded implementation had passed focused tests, TypeScript, and a production build but had not yet been committed, deployed, or externally validated. That former gap is closed by the controlling August 15 release-candidate evidence above; this paragraph is not a current status statement.
 
-As of July 1, 2026, after a strict current-code re-trace, focused Benchmark validation, and controlled deployed provider/UI/email/scheduler/token-failure evidence, GA4 Benchmarks are **clean-certified for the current GA4 Benchmarks section under the documented scope in this file**.
+At the July 1, 2026 historical checkpoint, after a strict then-current-code re-trace, focused Benchmark validation, and controlled deployed provider/UI/email/scheduler/token-failure evidence, GA4 Benchmarks were **clean-certified for that recorded GA4 Benchmarks section boundary**.
 
-No Current Commit blockers remain open for the current GA4 Benchmarks certification scope. Do not extend this claim to future code changes, future GA4 properties/windows, future alert emails, a real unsimulated Google token revocation event, future timer-fired executions beyond the exact recorded run, or future platforms without fresh evidence.
+No blockers remained open for that historical GA4 Benchmarks certification boundary. Do not extend that claim to later code changes, future GA4 properties/windows, future alert emails, a real unsimulated Google token revocation event, timer-fired executions beyond the exact recorded run, or future platforms without fresh evidence.
 
 Status split:
 
-- current GA4 Benchmark section certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by this document, the focused Benchmark tests, and the controlled deployed validations recorded here
+- historical July GA4 Benchmark section certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by that recorded boundary, the focused Benchmark tests, and the controlled deployed validations recorded here
 - historical July Current Commit blockers: none for that recorded packet; the later Benchmark Current Commits 8-14 are now complete, and former Commit 15 remains Reports-only history
 - future platform readiness: unproven; GA4 Benchmark evidence is only a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
 
 Future-reference boundary rule:
 
-- GA4 Benchmarks have passed validation for production-ready clean certification for the current GA4 Benchmarks section under the documented scope in this file.
+- At that historical checkpoint, GA4 Benchmarks passed validation for the recorded production-ready clean-certification boundary documented in this section.
 - The future-boundary items are not current blockers and must not be reopened as blockers unless the future scope is actually being claimed or changed.
 - Do not claim timer-fired executions beyond the exact `2026-08-12` recorded run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, or future platform readiness without fresh evidence for that exact claim.
 
@@ -300,7 +300,7 @@ Certification result:
 
 The historical July safe answer was:
 
-`GA4 Benchmarks are clean-certified for the current GA4 Benchmarks section under the documented scope, with controlled deployed UI/email/provider/manual-scheduler/token-failure validation recorded. Do not extend this to future code, future GA4 properties/windows, future sends, real unsimulated token revocation, daily timer-fired evidence, or future platforms without fresh evidence.`
+`At the July 2026 checkpoint, GA4 Benchmarks were clean-certified for that recorded section boundary, with controlled deployed UI/email/provider/manual-scheduler/token-failure validation recorded. Do not extend this to later code, future GA4 properties/windows, future sends, real unsimulated token revocation, daily timer-fired evidence, or future platforms without fresh evidence.`
 
 This status should change only after:
 
@@ -311,13 +311,13 @@ This status should change only after:
 
 Certification rule:
 
-- completed fixes and controlled deployed evidence make GA4 Benchmarks clean-certified for the documented current GA4 Benchmarks scope
-- the clean-certified answer can remain valid only while the complete value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, cleanup boundary, and test/deployed evidence remain covered by current evidence
+- completed fixes and controlled deployed evidence supported the historical July clean-certified GA4 Benchmarks decision for its exact documented boundary
+- any clean-certified answer remains valid only while the complete value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, cleanup boundary, and test/deployed evidence remain covered by current evidence
 - if any later bug, code change, provider change, source change, or new value path appears, lower the affected path to unproven and add a new Current Commit before repeating the clean-certified answer for that changed path
 
 ## Current Future-Chat Answer
 
-Answer that exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` is release-candidate ready and passed authenticated read-only validation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`, but remains machine-`UNVERIFIED` because the final combined GA4 certification was intentionally not performed. The prior `PRODUCTION_READY` statement is historical and applies only to exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. State that the bounded `85f5233e` natural run updated both Benchmarks and all 22 underlying scheduler-written daily rows without later app repair, while the process-wide run failed for 17 excluded obsolete campaigns. Reports generation/delivery and final combined GA4 certification are outside this session.
+Answer that exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` is **RELEASE_CANDIDATE_READY**, passed authenticated read-only validation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`, and is currently deployed within validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b`. It remains machine-`UNVERIFIED` because the final combined GA4 certification was intentionally not performed. The prior `PRODUCTION_READY` statement is historical and applies only to exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. State that the bounded `85f5233e` natural run updated both Benchmarks and all 22 underlying scheduler-written daily rows without later app repair, while the process-wide run failed for 17 excluded obsolete campaigns. Reports generation/delivery and final combined GA4 certification are outside this session.
 
 Do not reopen closed current-scope GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified Benchmark scope.
 
@@ -341,7 +341,7 @@ Read in this order:
 10. `Not Locally Verifiable / External Caveats`
 11. `Future Platform Template`
 
-Answer from `Current Status`: exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` is release-candidate ready and passed authenticated read-only validation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`. It remains machine-`UNVERIFIED` only because the final combined GA4 certification was intentionally not performed. Treat the clean `PRODUCTION_READY` statement for `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` as historical revision-specific evidence only. KPI fixes and Reports evidence are dependencies/supporting context, not independent Benchmark proof.
+Answer from `Current Status`: exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` is **RELEASE_CANDIDATE_READY**, passed authenticated read-only validation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`, and is currently deployed within validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b`. It remains machine-`UNVERIFIED` only because the final combined GA4 certification was intentionally not performed. Treat the clean `PRODUCTION_READY` statement for `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` as historical revision-specific evidence only. KPI fixes and Reports evidence are dependencies/supporting context, not independent Benchmark proof.
 
 ## Future Source Reading Order
 
@@ -634,7 +634,7 @@ Coverage rule:
 
 Known doc caveat:
 
-- Historical passages below record earlier closed-beta checkpoints. They do not override the controlling current status: exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` is release-candidate ready and passed authenticated read-only validation within deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`; it remains machine-`UNVERIFIED` because the final combined GA4 certification was intentionally not performed. `PRODUCTION_READY` applies historically only to exact runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. Future-platform readiness remains unverified.
+- Historical passages below record earlier closed-beta checkpoints. They do not override the controlling current status: exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` is **RELEASE_CANDIDATE_READY**, passed authenticated read-only validation within deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`, and is currently deployed within validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b`. It remains machine-`UNVERIFIED` because the final combined GA4 certification was intentionally not performed. `PRODUCTION_READY` applies historically only to exact runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. Future-platform readiness remains unverified.
 
 ## Historical Current Commit Queue (Commits 0-7)
 

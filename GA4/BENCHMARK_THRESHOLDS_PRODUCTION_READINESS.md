@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `Benchmarks` tab is production-ready.
 > Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 Benchmarks are clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` and the boundary in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports behavior is outside this Benchmark certification.
+> Current durable whole-tab answer: GA4 Benchmarks are **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`, validated within deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814` and currently deployed within validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b`. Machine status remains `UNVERIFIED`; the final combined GA4 certification was not performed. The `650ce59c` `PRODUCTION_READY` record is historical only. Reports behavior is outside this Benchmark decision.
 
 ## Purpose
 

@@ -376,6 +376,8 @@ describe("GA4 Benchmark regression guard", () => {
         baseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
         runtimeGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
         deployedEvidenceGitSha: "d6656e11d603283f89542876465db4dba8e54814",
+        currentDeployedGitSha: "c6487555c55726427afed8342312b8393498303b",
+        currentDeploymentChangeClass: "validation_only_no_runtime_boundary_change",
         status: "RELEASE_CANDIDATE_READY",
       },
       previousCertification: {
@@ -404,6 +406,8 @@ describe("GA4 Benchmark regression guard", () => {
       status: "complete",
       implementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
       deployedEvidenceGitSha: "d6656e11d603283f89542876465db4dba8e54814",
+      currentDeployedGitSha: "c6487555c55726427afed8342312b8393498303b",
+      currentDeploymentChangeClass: "validation_only_no_runtime_boundary_change",
       mode: "read_only_application_data",
       campaignCount: 2,
       benchmarkCount: 4,

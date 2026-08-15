@@ -6,7 +6,7 @@ This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress ru
 
 ## Production Readiness Status
 
-As of August 15, 2026, the GA4 `Benchmarks` fix packet is release-candidate ready at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`. Authenticated read-only validation passed for that implementation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`. Machine status remains `UNVERIFIED` only because the separately authorized final combined GA4 certification was intentionally not performed. Exact runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` remains historical certification evidence only.
+As of August 15, 2026, the GA4 `Benchmarks` fix packet is **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`. Authenticated read-only validation passed for that implementation within exact deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814`. User-confirmed production SHA `c6487555c55726427afed8342312b8393498303b` adds only Benchmark documentation, validation tooling, and regression guards; it does not change the runtime implementation boundary. Machine status remains `UNVERIFIED` only because the separately authorized final combined GA4 certification was intentionally not performed. Exact runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` remains historical certification evidence only.
 
 The controlling source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit and do not gate this Benchmark certification.
 
@@ -257,6 +257,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `Benchmarks` tab is clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. The natural timer fired on the reviewed runtime; the active Benchmark campaign recomputed with both Benchmark rows updated and zero Benchmark failures. The process-wide scheduler still reported 17 excluded obsolete-campaign failures, so no global all-campaign scheduler-health claim is made.
+The GA4 `Benchmarks` tab is **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`, validated within deployed evidence SHA `d6656e11d603283f89542876465db4dba8e54814` and currently deployed within validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b`. It is not currently certified `PRODUCTION_READY`; that label applies historically only to exact runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd`. The final combined GA4 certification was not performed.
 
 Future boundaries are not current blockers, but they are not certified claims: timer-fired executions beyond the exact `2026-08-12` certified run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.

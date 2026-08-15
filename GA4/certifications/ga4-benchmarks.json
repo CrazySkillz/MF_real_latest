@@ -9,8 +9,9 @@
   "candidateRevision": {
     "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
     "runtimeGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
+    "deployedEvidenceGitSha": "d6656e11d603283f89542876465db4dba8e54814",
     "status": "RELEASE_CANDIDATE_READY",
-    "invalidationReason": "Exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581 passed the local release-candidate gate. Exact deployed-candidate read-only validation and the final combined GA4 certification remain intentionally outstanding."
+    "invalidationReason": "Exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581 passed the local release-candidate gate and authenticated read-only validation within exact deployed evidence SHA d6656e11d603283f89542876465db4dba8e54814. The final combined GA4 certification remains intentionally outstanding."
   },
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -164,7 +165,39 @@
       "Benchmark notification enrichment now requires current GA4 traffic freshness in normal and read-only validation requests."
     ],
     "limitations": [
-      "The candidate has not been deployed or validated against an exact deployed SHA.",
+      "The final combined GA4 certification was intentionally not performed."
+    ]
+  },
+  "currentDeployedReleaseCandidateGate": {
+    "status": "complete",
+    "implementationGitSha": "3d76226014395f2b04b3b1a52730488a6d5ba581",
+    "deployedEvidenceGitSha": "d6656e11d603283f89542876465db4dba8e54814",
+    "validatedAt": "2026-08-15",
+    "mode": "read_only_application_data",
+    "campaignCount": 2,
+    "benchmarkCount": 4,
+    "failureCount": 0,
+    "applicationMutationAttempts": 0,
+    "authenticatedInventoryParity": "passed",
+    "cardsTrackerParity": "passed",
+    "insightsBenchmarkPropagationParity": "passed",
+    "browserPdfBenchmarkRowParity": "passed_bounded_supporting_evidence",
+    "alertNotificationParity": "passed",
+    "noPropertyFailClosedParity": "passed",
+    "providerPersistedSchedulerUiParity": "passed",
+    "staleFailClosedEvidence": {
+      "refreshIsStale": true,
+      "validationReadOnly": true,
+      "dataThroughDate": "2026-08-14",
+      "latestStoredDailyDate": "2026-08-10",
+      "oldestDueMissingDailyDate": "2026-08-11",
+      "cardsTracker": "passed",
+      "browserPdfBenchmarkRows": "passed",
+      "notifications": "passed"
+    },
+    "limitations": [
+      "Browser PDF is bounded Benchmark row-propagation evidence only; Reports is not certified.",
+      "No exact-current natural timer run is claimed; bounded 85f5233e evidence is retained.",
       "The final combined GA4 certification was intentionally not performed."
     ]
   },
@@ -454,7 +487,6 @@
     }
   ],
   "productionOnlyEvidenceOutstanding": [
-    "Deploy that exact candidate and run the authenticated read-only Benchmark parity checks against the exact deployed SHA.",
     "Perform the final combined GA4 certification only in a separately authorized session."
   ],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."

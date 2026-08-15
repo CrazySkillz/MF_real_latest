@@ -375,6 +375,7 @@ describe("GA4 Benchmark regression guard", () => {
       candidateRevision: {
         baseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
         runtimeGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
+        deployedEvidenceGitSha: "d6656e11d603283f89542876465db4dba8e54814",
         status: "RELEASE_CANDIDATE_READY",
       },
       previousCertification: {
@@ -384,7 +385,9 @@ describe("GA4 Benchmark regression guard", () => {
     });
     expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
-    expect(record.productionOnlyEvidenceOutstanding).toHaveLength(2);
+    expect(record.productionOnlyEvidenceOutstanding).toEqual([
+      "Perform the final combined GA4 certification only in a separately authorized session.",
+    ]);
     expect(record.dependencyBoundary).toEqual(expect.arrayContaining([
       "server/analytics.ts",
       "server/utils/ga4-alert-current-value.ts",
@@ -396,6 +399,23 @@ describe("GA4 Benchmark regression guard", () => {
       focusedTestsPassed: 185,
       typescriptCheck: "passed",
       productionBuild: "passed",
+    });
+    expect(record.currentDeployedReleaseCandidateGate).toMatchObject({
+      status: "complete",
+      implementationGitSha: "3d76226014395f2b04b3b1a52730488a6d5ba581",
+      deployedEvidenceGitSha: "d6656e11d603283f89542876465db4dba8e54814",
+      mode: "read_only_application_data",
+      campaignCount: 2,
+      benchmarkCount: 4,
+      failureCount: 0,
+      applicationMutationAttempts: 0,
+      staleFailClosedEvidence: {
+        refreshIsStale: true,
+        validationReadOnly: true,
+        dataThroughDate: "2026-08-14",
+        latestStoredDailyDate: "2026-08-10",
+        oldestDueMissingDailyDate: "2026-08-11",
+      },
     });
     expect(record.laterNaturalSchedulerEvidence).toMatchObject({
       deployedGitSha: "85f5233ebfc298afc35f4c24e0930c1a66fbd07c",
@@ -428,6 +448,10 @@ describe("GA4 Benchmark regression guard", () => {
     expect(validator).toContain('if (route.request().method() !== "GET")');
     expect(validator).toContain('await api(page, "/api/notifications?readOnly=1")');
     expect(validator).toContain('/ga4-metrics?tab=benchmarks&readOnly=1');
+    expect(validator).toContain('url.searchParams.get("days") !== "30"');
+    expect(validator).toContain("dailyFreshness?.refreshIsStale === true");
+    expect(validator).toContain("expectedConsumerStateById");
+    expect(validator).toContain("staleFailClosed");
     expect(validator).toContain('getByRole("tab", { name: "Insights", exact: true }).click()');
     expect(validator).toContain("await pdfText(await downloadBuffer(download))");
     expect(validator).toContain("/send-events");

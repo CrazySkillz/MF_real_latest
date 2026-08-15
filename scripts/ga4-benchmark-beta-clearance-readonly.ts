@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { chromium, type Browser, type BrowserContext, type Download, type Page } from "playwright";
 import { PDFParse } from "pdf-parse";
 import { pool } from "../server/db";
-import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
+import { resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState } from "../shared/ga4-kpi-consumer-state";
 import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
 
 const BASE_URL = process.env.GA4_BENCHMARK_BETA_BASE_URL || "https://marketforensics.onrender.com";
@@ -223,6 +223,17 @@ try {
     const first = rows[0];
     const { context, page } = await authenticatedContext(first.owner_id);
     const blockedApplicationMutations: string[] = [];
+    let resolveDailyFreshness: (value: any) => void = () => undefined;
+    const dailyFreshnessPromise = new Promise<any>((resolve) => { resolveDailyFreshness = resolve; });
+    page.on("response", async (response) => {
+      const url = new URL(response.url());
+      if (url.pathname !== `/api/campaigns/${first.campaign_id}/ga4-daily`
+        || url.searchParams.get("days") !== "30"
+        || url.searchParams.get("propertyId") !== String(first.property_id || "")
+        || url.searchParams.get("readOnly") !== "1") return;
+      const body = response.ok() ? await response.json().catch(() => null) : null;
+      resolveDailyFreshness(body && String(body?.propertyId || "") === String(first.property_id || "") ? body : null);
+    });
     await page.route(`${BASE_URL}/**`, async (route) => {
       if (route.request().method() !== "GET") {
         blockedApplicationMutations.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
@@ -315,6 +326,25 @@ try {
             && /on track|needs attention|behind|unavailable|last-good|insufficient data|blocked|failed/i.test(text);
         }), rows.map((row) => row.id), { timeout: 60000 }).catch(() => null);
       }
+      const dailyFreshness = first.property_id
+        ? await Promise.race([
+            dailyFreshnessPromise,
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+          ])
+        : null;
+      if (first.property_id && !dailyFreshness) {
+        failures.push(`${sha(first.campaign_id)}: authoritative read-only GA4 daily freshness response was unavailable`);
+      }
+      const dailyRefreshIsStale = dailyFreshness?.refreshIsStale === true;
+      const expectedConsumerStateById = new Map(rows.map((row) => [String(row.id), resolveGA4KpiConsumerState({
+        metric: row.metric,
+        name: row.name,
+        listState: "ready",
+        trafficState: dailyRefreshIsStale ? "stale" : dailyFreshness ? "ready" : "unavailable",
+        revenueState: "ready",
+        spendState: "ready",
+        entityLabel: "Benchmark",
+      }).code]));
       const bodyText = await page.locator("body").innerText();
       const benchmarkSectionVisible = await page.locator("#ga4-benchmarks-section").isVisible().catch(() => false);
       const missingCardNames = benchmarkSectionVisible ? rows.filter((row) => !bodyText.includes(row.name)) : rows;
@@ -324,12 +354,13 @@ try {
       const cardEvidence: any[] = [];
       let trackerParity: boolean | string = first.property_id ? false : "not_applicable_no_property";
       if (first.property_id) {
+        const scoredRows = rows.filter((row) => expectedConsumerStateById.get(String(row.id)) === "verified");
         const expectedTracker = {
           total: rows.length,
-          onTrack: rows.filter((row) => thresholdFor(row).status === "on_track").length,
-          needsAttention: rows.filter((row) => thresholdFor(row).status === "needs_attention").length,
-          behind: rows.filter((row) => thresholdFor(row).status === "behind").length,
-          avgPct: rows.length > 0 ? rows.reduce((sum, row) => sum + thresholdFor(row).pct, 0) / rows.length : 0,
+          onTrack: scoredRows.filter((row) => thresholdFor(row).status === "on_track").length,
+          needsAttention: scoredRows.filter((row) => thresholdFor(row).status === "needs_attention").length,
+          behind: scoredRows.filter((row) => thresholdFor(row).status === "behind").length,
+          avgPct: scoredRows.length > 0 ? scoredRows.reduce((sum, row) => sum + thresholdFor(row).pct, 0) / scoredRows.length : 0,
         };
         const trackerDom = await page.evaluate(() => {
           const labels = ["Total Benchmarks", "On Track", "Needs Attention", "Behind", "Avg. Progress"];
@@ -360,25 +391,33 @@ try {
             target: hasNumericEvidence(text, row.benchmark_value),
             status: text.includes(statusLabel),
           };
-          const exact = visible && Object.values(checks).every(Boolean);
-          if (!exact) failures.push(`${sha(row.id)}: deployed Benchmark card value/target/status parity failed`);
+          const statusLabelsPresent = ["on track", "needs attention", "behind"].filter((label) => text.includes(label));
+          const displayedState = text.includes("last-good")
+            ? "stale_last_good"
+            : text.includes("not available") || text.includes("unavailable")
+              ? "unavailable"
+              : text.includes("needs more data")
+                ? "insufficient_data"
+                : text.includes("paused until inputs are restored")
+                  ? "blocked"
+                  : "scored";
+          const expectedState = expectedConsumerStateById.get(String(row.id));
+          const staleFailClosed = expectedState === "stale"
+            ? checks.name && checks.current && checks.target && displayedState === "stale_last_good" && statusLabelsPresent.length === 0
+            : null;
+          const exact = visible && (expectedState === "stale" ? staleFailClosed === true : Object.values(checks).every(Boolean));
+          if (!exact) failures.push(`${sha(row.id)}: deployed Benchmark card value/target/state parity failed`);
           cardEvidence.push({
             benchmarkHash: sha(row.id),
             visible,
             exact,
+            expectedState,
             status: threshold.status,
             checks,
             numericTokens: text.match(/-?\d+(?:\.\d+)?/g) || [],
-            statusLabelsPresent: ["on track", "needs attention", "behind"].filter((label) => text.includes(label)),
-            displayedState: text.includes("last-good")
-              ? "stale_last_good"
-              : text.includes("not available") || text.includes("unavailable")
-                ? "unavailable"
-                : text.includes("needs more data")
-                  ? "insufficient_data"
-                  : text.includes("paused until inputs are restored")
-                    ? "blocked"
-                    : "scored",
+            statusLabelsPresent,
+            displayedState,
+            staleFailClosed,
           });
         }
         if (missingCardNames.length > 0 || !trackerVisible || !trackerParity) {
@@ -395,7 +434,9 @@ try {
         await page.getByText("What to investigate next", { exact: true }).waitFor({ state: "visible", timeout: 60000 });
         const expectedInsightTitles = rows
           .map((row) => ({ row, threshold: thresholdFor(row), compatibility: resolveGA4InsightTargetPeriodCompatibility(row) }))
-          .filter(({ threshold, compatibility }) => compatibility.comparable && (threshold.status === "behind" || threshold.status === "needs_attention"))
+          .filter(({ row, threshold, compatibility }) => expectedConsumerStateById.get(String(row.id)) === "verified"
+            && compatibility.comparable
+            && (threshold.status === "behind" || threshold.status === "needs_attention"))
           .map(({ row, threshold }) => `${row.name} ${threshold.status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`);
         await page.waitForFunction((titles) => {
           const text = String(document.body?.innerText || "");
@@ -406,7 +447,9 @@ try {
         for (const row of rows) {
           const threshold = thresholdFor(row);
           const compatibility = resolveGA4InsightTargetPeriodCompatibility(row);
-          const actionable = compatibility.comparable && (threshold.status === "behind" || threshold.status === "needs_attention");
+          const actionable = expectedConsumerStateById.get(String(row.id)) === "verified"
+            && compatibility.comparable
+            && (threshold.status === "behind" || threshold.status === "needs_attention");
           const title = `${row.name} ${threshold.status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`;
           const titlePresent = insightsText.includes(normalizedEvidenceText(title));
           const negativeTitlePresent = insightsText.includes(normalizedEvidenceText(`${row.name} Behind Benchmark`))
@@ -445,7 +488,8 @@ try {
           return String(metadata?.benchmarkId || "") === String(row.id);
         });
         const comparison = comparisonById.get(String(row.id)) as any;
-        const eligible = Boolean(first.property_id && liveProvider && comparison?.computable);
+        const expectedState = expectedConsumerStateById.get(String(row.id));
+        const eligible = Boolean(first.property_id && liveProvider && comparison?.computable && expectedState === "verified");
         const expectedBreach = alertBreached(row, eligible);
         let exact = expectedBreach ? visible.length === 1 : visible.length === 0;
         if (visible.length === 1) {
@@ -460,6 +504,7 @@ try {
         notificationEvidence.push({
           benchmarkHash: sha(row.id),
           eligible,
+          expectedState,
           alertsEnabled: row.alerts_enabled,
           expectedBreach,
           visibleCount: visible.length,
@@ -488,7 +533,8 @@ try {
         const selectedRows = selectedReportBenchmarks(report, rows);
         const actionableRows = selectedRows.filter((row) => {
           const status = thresholdFor(row).status;
-          return status === "behind" || status === "needs_attention";
+          return expectedConsumerStateById.get(String(row.id)) === "verified"
+            && (status === "behind" || status === "needs_attention");
         });
         let browserPdfParity = false;
         let browserPdfError: string | null = null;
@@ -508,13 +554,25 @@ try {
             const text = normalizedEvidenceText(await pdfText(await downloadBuffer(download)));
             browserPdfNumericTokens = (text.match(/-?\d+(?:\.\d+)?/g) || []).slice(0, 100);
             const expectedRows = type === "insights" ? actionableRows : selectedRows;
-            browserPdfRowEvidence = expectedRows.map((row) => ({
-              benchmarkHash: sha(row.id),
-              name: text.includes(normalizedEvidenceText(row.name)),
-              current: hasNumericEvidence(text, row.current_value),
-              target: hasNumericEvidence(text, row.benchmark_value),
-            }));
-            browserPdfParity = browserPdfRowEvidence.every((item) => item.name && item.current && item.target);
+            browserPdfRowEvidence = expectedRows.map((row) => {
+              const expectedState = expectedConsumerStateById.get(String(row.id));
+              const name = text.includes(normalizedEvidenceText(row.name));
+              const current = hasNumericEvidence(text, row.current_value);
+              const target = hasNumericEvidence(text, row.benchmark_value);
+              const staleFailClosed = expectedState === "stale"
+                ? name && current && !target && text.includes("last-good value (not verified)")
+                : null;
+              return {
+                benchmarkHash: sha(row.id),
+                expectedState,
+                name,
+                current,
+                target,
+                staleFailClosed,
+                exact: expectedState === "stale" ? staleFailClosed === true : name && current && target,
+              };
+            });
+            browserPdfParity = browserPdfRowEvidence.every((item) => item.exact);
             if (!browserPdfParity) failures.push(`${sha(report?.id)}: deployed browser PDF Benchmark parity failed`);
           } catch (error: any) {
             browserPdfError = error?.message || "Browser PDF validation failed";
@@ -630,6 +688,13 @@ try {
         },
         cardEvidence,
         insightEvidence,
+        dailyFreshness: first.property_id ? {
+          refreshIsStale: dailyRefreshIsStale,
+          validationReadOnly: dailyFreshness?.validationReadOnly === true,
+          dataThroughDate: dailyFreshness?.dataThroughDate || null,
+          latestStoredDailyDate: dailyFreshness?.latestStoredDailyDate || null,
+          oldestDueMissingDailyDate: dailyFreshness?.oldestDueMissingDailyDate || null,
+        } : null,
         provider,
         activeReportCount: Number(first.report_count || 0),
         relevantReportCount: relevantReports.length,

@@ -11,7 +11,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-GA4 Insights is **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`, validated within current deployed revision `e8a83b2a095700b715b08c80fca9f0c714026d93`. Exact-current read-only UI/API parity and expected-stale handling passed. Natural scheduler evidence from `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` carries forward because every later dependency change was reviewed and none changes the timer, daily producer, storage contract, or scheduler configuration logic. Machine status remains `UNVERIFIED` because this is not final production certification or the final combined GA4 certification.
+GA4 Insights is **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581`. Authenticated read-only UI/API parity and expected-stale handling passed on deployed revision `e8a83b2a095700b715b08c80fca9f0c714026d93` and safely carry to current deployed revision `7374e824ee625032cd6967f81edb22fb1001a15e`: the exact intervening diff contains only Insights documentation, its machine record, and the fail-closed certification checker/test, with no application-runtime change. Natural scheduler evidence from `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` also carries forward because no later change alters the timer, daily producer, storage contract, or scheduler configuration logic. Machine status remains `UNVERIFIED` because this is not final production certification or the final combined GA4 certification.
 
 <!-- /ga4-insights-current-status -->
 

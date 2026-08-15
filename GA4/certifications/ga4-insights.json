@@ -2,10 +2,10 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "UNVERIFIED",
-    "lastReviewedSha":  "e8a83b2a095700b715b08c80fca9f0c714026d93",
+    "lastReviewedSha":  "7374e824ee625032cd6967f81edb22fb1001a15e",
     "certifiedSha":  null,
     "deployedSha":  null,
-    "invalidationReason":  "Insights is RELEASE_CANDIDATE_READY at exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581, validated within current deployed revision e8a83b2a095700b715b08c80fca9f0c714026d93. Machine status remains UNVERIFIED because this schema has no release-candidate state and this session intentionally excludes final production certification and the final combined GA4 certification. Natural scheduler evidence from 85f5233ebfc298afc35f4c24e0930c1a66fbd07c carries forward across the reviewed non-producer changes.",
+    "invalidationReason":  "Insights is RELEASE_CANDIDATE_READY at exact implementation SHA 3d76226014395f2b04b3b1a52730488a6d5ba581. Authenticated read-only parity passed on deployed revision e8a83b2a095700b715b08c80fca9f0c714026d93 and carries to current deployed revision 7374e824ee625032cd6967f81edb22fb1001a15e because the intervening commit changes only Insights documentation and non-runtime certification tooling. Machine status remains UNVERIFIED because this schema has no release-candidate state and this session intentionally excludes final production certification and the final combined GA4 certification. Natural scheduler evidence from 85f5233ebfc298afc35f4c24e0930c1a66fbd07c carries forward across the reviewed non-producer changes.",
     "previousCertification":  {
                                      "status":  "PRODUCTION_READY",
                                      "certifiedSha":  "ee22f0e470826f1cb247115497c9a15229d0142d",
@@ -493,7 +493,7 @@
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "Current revision e8a83b2a095700b715b08c80fca9f0c714026d93 is built and serving in production. The prior local production build passed; no new local build was required for the documentation/evidence lock."
+                              "evidence":  "Current documentation/tooling wrapper revision 7374e824ee625032cd6967f81edb22fb1001a15e is built and serving in production. Its exact diff from parity-validated e8a83b2a095700b715b08c80fca9f0c714026d93 contains no application-runtime change."
                           },
                           {
                               "id":  "machine_gate",
@@ -505,32 +505,32 @@
                           {
                               "id":  "exact_sha_deployment",
                               "status":  "passed",
-                              "evidence":  "Render /api/health returned exact current deployed revision e8a83b2a095700b715b08c80fca9f0c714026d93."
+                              "evidence":  "Render /api/health returned exact current deployed revision 7374e824ee625032cd6967f81edb22fb1001a15e on 2026-08-15."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
                               "status":  "passed",
-                              "evidence":  "Authenticated read-only owner validation passed on deployed e8a83b2a095700b715b08c80fca9f0c714026d93 for property 542352127, Europe/Amsterdam, USD, three saved filters, exact daily/breakdown windows, source totals, expected-stale state, and unchanged campaign-scoped persistence."
+                              "evidence":  "Authenticated read-only owner validation passed on deployed e8a83b2a095700b715b08c80fca9f0c714026d93 for property 542352127, Europe/Amsterdam, USD, three saved filters, exact daily/breakdown windows, source totals, expected-stale state, and unchanged campaign-scoped persistence. The result carries to deployed 7374e824ee625032cd6967f81edb22fb1001a15e because the exact intervening diff contains only Insights documentation, its machine record, and the non-runtime certification checker/test."
                           },
                           {
                               "id":  "live_surface_value_parity",
                               "status":  "passed",
-                              "evidence":  "On deployed e8a83b2a095700b715b08c80fca9f0c714026d93, all five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and five visible findings matched the page-consumed scoped production inputs."
+                              "evidence":  "On deployed e8a83b2a095700b715b08c80fca9f0c714026d93, all five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and five visible findings matched the page-consumed scoped production inputs. That value-parity result carries unchanged to deployed documentation/tooling wrapper 7374e824ee625032cd6967f81edb22fb1001a15e."
                           },
                           {
                               "id":  "tenant_isolation",
                               "status":  "passed",
-                              "evidence":  "Exact tenant-isolation validation passed on defce1982c8c56854aa21c543612ab782811026e. Campaign-access guards were unchanged through scheduler runtime 85f5233e; later routes-oauth changes through e8a83b2a are confined to KPI/Benchmark Notification freshness, and the current 16-test Insights auth/scope regression file passes. No exact-e8 temporary identity was created in this read-only session."
+                              "evidence":  "Exact tenant-isolation validation passed on defce1982c8c56854aa21c543612ab782811026e. Campaign-access guards were unchanged through scheduler runtime 85f5233e; later routes-oauth changes through e8a83b2a are confined to KPI/Benchmark Notification freshness, the current 16-test Insights auth/scope regression file passes, and e8a83b2a..7374e824 contains no application-runtime file. No temporary production identity was created in this read-only session."
                           },
                           {
                               "id":  "deterministic_scheduler",
                               "status":  "passed",
-                              "evidence":  "On deployed scheduler-fix SHA 85f5233ebfc298afc35f4c24e0930c1a66fbd07c, the natural timer fired at 2026-08-14T20:35:00.001Z and finished at 20:35:40.499Z after its temporary 20:35 UTC target. All 22 daily rows carried scheduler-run timestamps; all 12 KPIs and both Benchmarks updated with zero skips or failures and no later application repair. The process-wide run still failed for 17 excluded obsolete campaigns, so no global scheduler-health claim is made. Reviewed later changes through e8a83b2a do not alter the timer, daily producer, storage contract, reporting-timezone helper, or scheduler configuration parsing. Current health confirms UTC 22:00 with startup refresh disabled."
+                              "evidence":  "On deployed scheduler-fix SHA 85f5233ebfc298afc35f4c24e0930c1a66fbd07c, the natural timer fired at 2026-08-14T20:35:00.001Z and finished at 20:35:40.499Z after its temporary 20:35 UTC target. All 22 daily rows carried scheduler-run timestamps; all 12 KPIs and both Benchmarks updated with zero skips or failures and no later application repair. The process-wide run still failed for 17 excluded obsolete campaigns, so no global scheduler-health claim is made. Reviewed later changes through deployed 7374e824 do not alter the timer, daily producer, storage contract, reporting-timezone helper, or scheduler configuration parsing. Current scheduler health on 7374e824 confirms UTC 22:00 with startup refresh disabled."
                           },
                           {
                               "id":  "dependency_hashes",
                               "status":  "passed",
-                              "evidence":  "All 84 dependency hashes are locked to the final release-candidate commit boundary. Exact deployed configuration validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, GA4/Sheets signed OAuth state, configured Google credentials, inactive/excluded Google Ads, UTC 22:00 GA4 scheduler timing, and disabled GA4 startup refresh."
+                              "evidence":  "All 84 dependency hashes match deployed release-candidate commit 7374e824ee625032cd6967f81edb22fb1001a15e. Exact deployed configuration validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, GA4/Sheets signed OAuth state, configured Google credentials, inactive/excluded Google Ads, UTC 22:00 GA4 scheduler timing, and disabled GA4 startup refresh."
                           }
                       ],
     "configurationFingerprint":  {

@@ -41,6 +41,8 @@ The tracked May 2026 GA4 report-template blockers are complete. GA4 Overview is 
 
 GA4 KPIs are **RELEASE_CANDIDATE_READY** for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95` and the boundary in `GA4/KPIS_PRODUCTION_READINESS.md`. The exact-SHA read-only production check passed for cards, Tracker, Notifications, KPI-derived Insights, browser PDF, and stored values with unchanged semantic persistence. This is not `PRODUCTION_READY` and not the final combined GA4 certification; the machine record remains `UNVERIFIED` because it has no release-candidate state.
 
+GA4 Insights is **RELEASE_CANDIDATE_READY** at exact implementation SHA `3d76226014395f2b04b3b1a52730488a6d5ba581` and the boundary in `GA4/INSIGHTS_PRODUCTION_READINESS.md`. Authenticated read-only parity passed on deployed revision `e8a83b2a095700b715b08c80fca9f0c714026d93` and carries to current deployed revision `7374e824ee625032cd6967f81edb22fb1001a15e`, whose intervening changes are Insights documentation and non-runtime certification tooling only. Natural scheduler evidence remains bounded to `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`. This is not `PRODUCTION_READY` and not the final combined GA4 certification; the machine record remains `UNVERIFIED`.
+
 This status does not close the newer findings below. Later shared report/source infrastructure changes can affect GA4 even when the visible GA4 page is not directly edited.
 
 ## Completed Newer Fixes

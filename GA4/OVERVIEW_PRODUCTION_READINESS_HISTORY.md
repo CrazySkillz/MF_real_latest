@@ -377,6 +377,17 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 - Validation: the new guard failed before the runtime edit; `server/ga4-ui-regression.test.ts` passed 40/40 afterward. The exact current focused Overview packet passed 28 files / 288 tests, and the affected shared-dependency packet passed 10 files / 93 tests. Commit `82fc3a78` contains only the subtitle and guard.
 - Remaining gate: observe one natural `22:00 UTC` run and prove exact target persistence read-only. No manual scheduler trigger or final combined GA4 certification is part of this packet.
 
+### Current Commit 24 — Scheduler correction and Overview release-candidate closeout — passed
+
+- Earlier scheduler-fix candidates `363b3f59` and `b35b1538` still failed natural production runs and were not accepted as closure evidence.
+- Root cause: the broad primary campaign-attribution query stopped at `2026-07-12`, while the exact 30-day page-location UTM fallback recovered the seeded `2026-08-08` through `2026-08-10` rows. An open Overview page could later repair those rows through its separate query, so app-tab evidence alone could not prove scheduler persistence.
+- Final bounded fix `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` chunks the page-location UTM fallback into completed-day windows aligned backward from the cutoff, merges only missing dates with primary rows winning, and fails closed if any chunk errors. No storage contract, Overview formula, source lifecycle, or unrelated tab behavior changed.
+- Regression-first validation passed: `server/ga4-filter.test.ts` 30/30, the focused scheduler/UI packet 7 files / 93 tests, TypeScript, production build, and diff checks.
+- Natural timer evidence: the timer fired at `2026-08-14T20:35:00.001Z` and finished at `20:35:40.499Z`. The target retained 22 unique scheduler-written rows with no later app repair. Its 11-row Overview display boundary through `2026-08-13` matched authenticated Summary values: 1,183 Sessions, 1,184 Users, 152 Conversions, 809 engaged sessions, and `$34,273.00` native revenue.
+- Process-wide limitation: 17 excluded obsolete campaigns still failed, so no global scheduler-health claim is made.
+- Later reviewed changes through implementation boundary `c6487555c55726427afed8342312b8393498303b` are KPI/Benchmark-only and do not alter Overview values or the GA4 daily-data producer. The permanent scheduler was restored to `22:00 UTC`, with GA4 daily and automatic-refresh startup runs disabled.
+- Result: **RELEASE_CANDIDATE_READY** for the exact recorded campaign/property/configuration/source/data boundary. Machine status remains `UNVERIFIED`; final combined GA4 certification was not performed.
+
 ## UI Validation Requirement
 
 Current Commit 1 does **not** require a separate UI validation pass. Commit `56bfdced` changed only static regression tests and this readiness document; it did not change the client bundle, server runtime, API behavior, calculations, persistence, schedulers, or rendered UI. Its proportionate validation is the green source-family packets, the 15-file focused packet, TypeScript, and staged/committed file-boundary review recorded above. A Render deployment of this commit has no new user-visible behavior to validate.

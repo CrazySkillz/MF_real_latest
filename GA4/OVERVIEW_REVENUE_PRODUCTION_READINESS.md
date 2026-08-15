@@ -8,7 +8,7 @@ A previous production-ready statement is not evidence. A passing test suite is n
 
 This file accepts only evidence independently traced for Google Sheets Revenue or Upload CSV Revenue. Spend, Shopify, HubSpot, Salesforce, GA4-native revenue, Meta, LinkedIn, Google Ads, Manual revenue, KPI, Benchmark, Reports, and every other source family are not substitute proof. A downstream consumer is evidence only when the value path from the named Google Sheets or CSV revenue source is explicitly traced to that consumer.
 
-Current controlling decision (2026-08-10): **GA4 Overview is clean-certified for the exact current campaign/property boundary, and the enabled Upload CSV Revenue source is clean-certified inside that boundary.** The currency fix is deployed at runtime `8ba694060411a2a05663a4915652767e4e3ba713`; source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` is materialized, USD, and `$600`. Google Sheets Revenue is available in setup but is not configured in the certified target, so its independent future provider lifecycle remains excluded rather than silently certified.
+Current controlling whole-tab decision: **GA4 Overview is RELEASE_CANDIDATE_READY for implementation boundary `c6487555c55726427afed8342312b8393498303b`; the enabled Upload CSV Revenue source retains its exact-source certification inside the historically certified boundary.** Source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` remains materialized, USD, and `$600`. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. Google Sheets Revenue is available in setup but is not configured in the release-candidate target, so its independent future provider lifecycle remains excluded rather than silently certified.
 
 ## Purpose
 
@@ -78,7 +78,7 @@ The enabled CSV source is closed inside the exact Overview boundary. The remaini
 | Imported revenue-to-date | `getRevenueTotalForRange` over active `ga4` sources and records | `/revenue-to-date`, GA4 Overview imported revenue | Exact current CSV contribution is $600 USD; the five-source imported total is $16,799.99 USD. |
 | Revenue breakdown | `getRevenueBreakdownBySource` over active sources/records | `/revenue-breakdown`, source amounts, Total Revenue composition | Exact CSV source amount/list/to-date parity passed; no Google Sheets Revenue source is configured in the target. |
 | Revenue source list | Active sources enriched with lifetime materialized breakdown amounts | `/revenue-sources`, Revenue Sources modal | Exact CSV source appears once at $600; missing materialization is unavailable and a materialized zero remains $0. |
-| Total Revenue | Selected scoped GA4-native financial revenue plus imported GA4-context revenue | Overview Total Revenue | Exact CSV contribution is included once in certified Total Revenue $69,332.69 USD; native revenue and other source families are independently evidenced by the whole-Overview record. |
+| Total Revenue | Selected scoped GA4-native financial revenue plus imported GA4-context revenue | Overview Total Revenue | Exact CSV contribution is included once in current release-candidate Total Revenue `$72,766.69 USD`; native revenue and other source families are independently evidenced by the whole-Overview record. |
 | Profit | `Total Revenue - Total Spend` | Overview financial card | The certified exact CSV contribution flows through the shared Total Revenue input; Spend proof remains owned by the whole-Overview boundary. |
 | ROAS | `Total Revenue / Total Spend` | Overview financial card | Same exact-source/whole-Overview boundary as Profit. |
 | ROI | `(Total Revenue - Total Spend) / Total Spend` | Overview financial card | Same exact-source/whole-Overview boundary as Profit. |
@@ -131,11 +131,11 @@ Historical bounded CSV evidence, supplemented by the current exact-source/USD re
 | `/revenue-to-date` | Equals active source lifetime records in scope | Exact CSV source is $600 and included once in imported total $16,799.99 | Passed for current CSV |
 | `/revenue-breakdown` | Target source amount and total reconcile with revenue-to-date | Exact CSV amount, source ID, source list, and imported total reconcile | Passed for current CSV |
 | `/revenue-sources` | Stable active source identity, type, metadata, and amount | Exact current CSV source appears once at $600 USD | Passed for current CSV |
-| Open Overview Total Revenue | Imported contribution appears once and combines with independently selected native revenue | Exact CSV contribution is included in $69,332.69 Total Revenue; foreground mutation invalidates immediately | Passed for current CSV |
-| Profit / ROAS / ROI | Recompute from the same Total Revenue after source mutation | Shared certified Overview formulas consume the reconciled total and preserve valid-zero semantics | Passed inside exact Overview boundary |
+| Open Overview Total Revenue | Imported contribution appears once and combines with independently selected native revenue | Exact CSV contribution is included in `$72,766.69` Total Revenue; foreground mutation invalidates immediately | Passed for current CSV |
+| Profit / ROAS / ROI | Recompute from the same Total Revenue after source mutation | Shared release-candidate Overview formulas consume the reconciled total and preserve valid-zero semantics | Passed inside exact Overview boundary |
 | CPA | Must not change from revenue-only mutation except through unrelated inputs | Revenue does not supply conversions; CPA uses conversions paired with native financial revenue | Structurally guarded inside exact Overview boundary |
 | Revenue Sources modal/list | Shows the target source once with exact amount and removes it after delete | Exact CSV source appears once at $600; bounded add/edit/delete packets preserve unrelated sources | Passed for current CSV |
-| Scheduler refresh | Same Google Sheets source ID atomically replaces records and converges to endpoints/UI | Scheduler fetches and validates before exact-source transaction; no Google Sheets Revenue source is configured in the certified target | Future Google Sheets gate |
+| Scheduler refresh | Same Google Sheets source ID atomically replaces records and converges to endpoints/UI | Scheduler fetches and validates before exact-source transaction; no Google Sheets Revenue source is configured in the release-candidate target | Future Google Sheets gate |
 | KPI / Benchmark / notifications | Exact imported-revenue contribution enters shared current-value inputs once | Whole-Overview deterministic propagation uses the same imported total; separate tab/notification certifications are not implied | Passed as Overview input propagation |
 | Reports / PDF / email | Browser Overview output uses the exact source-backed value; scheduled delivery is separate | Browser Overview report parity passed; scheduled PDF/email delivery is excluded | Browser passed; scheduled excluded |
 | Campaign DeepDive / aggregate consumers | Source-backed imported revenue remains scoped and reconciled | Exact current imported total feeds the guarded aggregate packet without cross-context substitution | Passed as Overview input propagation |
@@ -344,7 +344,7 @@ Current Commit 12 read-only rescan at `2026-07-12T11:40:50.064Z`:
 
 ## Future Google Sheets Provider/Deployed Validation Gates
 
-Whole-Overview Current Commit 5 (`5da5f41c`) historically hid new GA4 Google Sheets Revenue setup. Current Commit 21 superseded that temporary policy and deployed the restored chooser/API path without changing saved production data. Because no Google Sheets Revenue source is configured in the certified target, the gates below apply to a future source and do not block the exact current Overview certification.
+Whole-Overview Current Commit 5 (`5da5f41c`) historically hid new GA4 Google Sheets Revenue setup. Current Commit 21 superseded that temporary policy and deployed the restored chooser/API path without changing saved production data. Because no Google Sheets Revenue source is configured in the release-candidate target, the gates below apply to a future source and do not block the current Overview release-candidate decision.
 
 For a future source-family certification:
 

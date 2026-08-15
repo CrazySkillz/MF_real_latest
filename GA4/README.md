@@ -17,9 +17,9 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- Overview is **RELEASE_CANDIDATE_READY** at user-confirmed deployed runtime `c6487555c55726427afed8342312b8393498303b` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, live property `542352127`, and the recorded source set. Authenticated UI/API/source parity, the zero-finding read-only inventory, exact Campaign Breakdown reconciliation, and a natural timer-fired target-persistence check passed. The validated scheduler fix was deployed at `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`; reviewed later changes through `c6487555` are KPI/Benchmark-only and do not change Overview values or its daily-data producer. The scheduler is restored to `22:00 UTC` with startup refresh disabled. Machine status remains `UNVERIFIED` because the final combined GA4 certification is intentionally separate.
+- Overview is **RELEASE_CANDIDATE_READY** at user-confirmed deployed implementation boundary `c6487555c55726427afed8342312b8393498303b` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, live property `542352127`, and the recorded source set. Authenticated UI/API/source parity, the zero-finding read-only inventory, exact Campaign Breakdown reconciliation, and a natural timer-fired target-persistence check passed. The validated scheduler fix was deployed at `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`; reviewed later changes through `c6487555` are KPI/Benchmark-only and do not change Overview values or its daily-data producer. Later Overview documentation-only commits do not change that implementation boundary. The scheduler is restored to `22:00 UTC` with startup refresh disabled. Machine status remains `UNVERIFIED` because the final combined GA4 certification is intentionally separate.
 
-- The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–23 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
+- The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
@@ -48,7 +48,7 @@ Use these files in this order:
 4. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
 5. the specific tab doc you are changing
 6. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
-7. `GA4/OVERVIEW_PRODUCTION_READINESS.md` for the current Overview decision, supported release scope, active gates, and next action
+7. `GA4/OVERVIEW_PRODUCTION_READINESS.md` for the current Overview decision, supported release scope, completed section gates, and exact boundary
 8. `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md` for detailed inventories, traces, blockers, production-data findings, and validation packets
 9. `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md` for the chronological Current Commit 0–21 and UI-validation record
 10. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
@@ -79,11 +79,11 @@ Important meaning:
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current status: **UNVERIFIED** pending the documented exact-current external gates; prior exact-SHA certification is historical evidence only.
+  Concise canonical current-status index. Current section status: **RELEASE_CANDIDATE_READY** for implementation boundary `c6487555c55726427afed8342312b8393498303b`; machine status remains `UNVERIFIED` because final combined GA4 certification is separate.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`
-  Chronological Overview Current Commit 0–22 and UI-validation ledger preserved from the pre-split canonical file.
+  Chronological Overview Current Commit 0–24 and UI-validation ledger preserved from the pre-split canonical file.
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`

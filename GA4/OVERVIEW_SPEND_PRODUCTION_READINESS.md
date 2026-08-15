@@ -19,7 +19,7 @@ Google Ads spend is on hold and is excluded from this file. Do not use Google Ad
 
 ## Current Status
 
-Whole-Overview status: **CLEAN-CERTIFIED AND PRODUCTION-READY** for the exact current campaign/property/deployed-SHA boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. That decision includes the four reviewed configured Spend sources totaling `$2,698.75` and their contribution to visible Overview financial formulas. It does not convert the broader future Google Sheets provider/scheduler lifecycle into an independent blanket certification.
+Whole-Overview status: **RELEASE_CANDIDATE_READY** for the exact current campaign/property/source boundary and implementation SHA `c6487555c55726427afed8342312b8393498303b` in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. That decision includes the four reviewed configured Spend sources totaling `$2,699.75` and their contribution to visible Overview financial formulas. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. This does not convert the broader future Google Sheets provider/scheduler lifecycle into an independent blanket certification.
 
 Current clean-certification status:
 

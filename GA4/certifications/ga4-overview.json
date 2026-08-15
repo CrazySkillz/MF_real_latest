@@ -5,7 +5,7 @@
   "lastReviewedSha": "c6487555c55726427afed8342312b8393498303b",
   "certifiedSha": null,
   "deployedSha": "c6487555c55726427afed8342312b8393498303b",
-  "invalidationReason": "Overview is RELEASE_CANDIDATE_READY for exact deployed runtime c6487555c55726427afed8342312b8393498303b and the recorded boundary. Machine status remains UNVERIFIED because this session intentionally does not perform the final combined GA4 certification. Exact natural-run evidence from scheduler-fix runtime 85f5233ebfc298afc35f4c24e0930c1a66fbd07c carries forward because reviewed later changes are KPI/Benchmark-only and leave Overview values and the daily-data producer unchanged.",
+  "invalidationReason": "Overview is RELEASE_CANDIDATE_READY for exact implementation boundary c6487555c55726427afed8342312b8393498303b and the recorded configuration/data boundary. That implementation was user-confirmed deployed; later Overview documentation-only commits do not change it. Machine status remains UNVERIFIED because this session intentionally does not perform the final combined GA4 certification. Exact natural-run evidence from scheduler-fix runtime 85f5233ebfc298afc35f4c24e0930c1a66fbd07c carries forward because reviewed later changes are KPI/Benchmark-only and leave Overview values and the daily-data producer unchanged.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "ee22f0e470826f1cb247115497c9a15229d0142d",

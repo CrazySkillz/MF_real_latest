@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: **GA4 Overview is clean-certified and production-ready for the exact campaign/property/deployed-SHA boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.** At runtime `8ba694060411a2a05663a4915652767e4e3ba713`, native GA4 revenue was `$52,532.70 USD`, five enabled imported sources totaled `$16,799.99 USD`, and Total Revenue was `$69,332.69 USD`. The timer-fired target refresh, currency checks, exact source IDs, and zero-duplicate persisted result passed on `2026-08-10`. Google Ads, obsolete campaigns, future source configurations, and scheduled report delivery are excluded. No cleanup was performed.
+Production-readiness note: **GA4 Overview is RELEASE_CANDIDATE_READY for the exact campaign/property/source boundary and implementation SHA `c6487555c55726427afed8342312b8393498303b` recorded in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.** Current authenticated financial cards and source lists reconciled at native GA4 revenue `$55,966.70 USD`, five imported sources totaling `$16,799.99 USD`, and Total Revenue `$72,766.69 USD`. The exact source inventory, currency boundary, and natural scheduler target-persistence check passed; no global scheduler-health claim is made because 17 excluded obsolete campaigns still fail. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. Google Ads, future source configurations, and scheduled report delivery are excluded. No cleanup was performed.
 
 Campaign DeepDive financial provenance rule:
 
@@ -230,7 +230,7 @@ Revenue source options:
 
 Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Upload CSV Revenue is clean-certified for its validated documented scope. Google Sheets Revenue is re-enabled by Current Commit 21 but is not independently clean-certified until its remaining source-family gates are proven.
 
-Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility is proven at runtime `8ba694060411a2a05663a4915652767e4e3ba713`, while a newly configured future Google Sheets Revenue lifecycle remains outside the certification.
+Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility is proven at historical runtime `8ba694060411a2a05663a4915652767e4e3ba713`, while a newly configured future Google Sheets Revenue lifecycle remains outside the current release-candidate boundary.
 
 Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
 
@@ -282,7 +282,7 @@ Executive-UX note:
 
 ## Revenue Source 1: Shopify Journey
 
-Current status (2026-08-10): the enabled GA4 Shopify source is **clean-certified inside the exact current Overview boundary**. It retained source ID `3a68fcce-fffd-4dbf-ab03-7a63e46c5372`, verified USD provenance, and `$99.99` after provider and scheduler validation. Dormant OAuth, non-GA4 Shopify sources, and future store configurations remain excluded.
+Exact-source status: the enabled GA4 Shopify source is **clean-certified inside the historically certified Overview boundary** and supports the current whole-tab release candidate without broadening it. It retained source ID `3a68fcce-fffd-4dbf-ab03-7a63e46c5372`, verified USD provenance, and `$99.99` after provider and scheduler validation. Dormant OAuth, non-GA4 Shopify sources, and future store configurations remain excluded.
 
 The user journey is:
 
@@ -724,7 +724,7 @@ Important current-state note:
 - deployed Google Sheets spend refresh code does not by itself prove durable OAuth credentials; recurring disconnects were traced to the Google OAuth app being `External + Testing`
 - Publishing status is now `In production`; the post-publish GA4 reconnect and immediate UI validation passed on `2026-07-30`. The post-publish Google Sheets reconnect and one deployed no-click automatic mapped-value update were user-confirmed on `2026-08-01`. Automatic token renewal and more-than-seven-day durability proof remain open; broader Google branding/data-access verification remains outside the whole-Overview non-scheduler decision
 - Google Sheets spend must not be described as durably connected until the more-than-seven-day gate passes; exact broader source-family exclusions are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` and do not block the whole-Overview non-scheduler decision
-- Google Sheets Revenue/Spend setup is deployed through Current Commit 21; existing Google Sheets Spend automatic update was observed once after post-publish reconnect. The current Overview certification includes that configured Spend source and bounded observation, but does not certify an unconfigured future Google Sheets Revenue source or generalized provider behavior
+- Google Sheets Revenue/Spend setup is deployed through Current Commit 21; existing Google Sheets Spend automatic update was observed once after post-publish reconnect. The current Overview release-candidate decision includes that configured Spend source and bounded observation, but does not certify an unconfigured future Google Sheets Revenue source or generalized provider behavior
 - Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
 ## Spend Source 3: CSV Journey

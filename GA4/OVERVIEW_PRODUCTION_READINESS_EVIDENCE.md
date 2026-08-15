@@ -30,7 +30,7 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**RELEASE_CANDIDATE_READY at user-confirmed deployed runtime `c6487555c55726427afed8342312b8393498303b`; machine status remains `UNVERIFIED` because final combined GA4 certification is outside this session.**
+**RELEASE_CANDIDATE_READY at user-confirmed deployed implementation boundary `c6487555c55726427afed8342312b8393498303b`; machine status remains `UNVERIFIED` because final combined GA4 certification is outside this session.**
 
 Current candidate evidence captured on `2026-08-13` through `2026-08-15` proves:
 
@@ -106,22 +106,22 @@ This inventory was derived from current render code, query code, API routes, sto
 
 | Visible value or state | Current source and transform | Window/scope | Current status |
 | --- | --- | --- | --- |
-| Sessions | Sum of persisted GA4 daily rows for the exact selected property and saved campaign filter | fixed initial 30 completed days plus later completed-day accumulation | Deployed UI/API parity and the exact timer-fired persistence check passed; 21 unique dates were retained through `2026-08-09` with zero duplicates. Future 60/90-day setup is excluded. |
-| Users | Sum of persisted daily `totalUsers` rows for the exact selected property/filter | same fixed initial boundary plus accumulation | Explicitly a sum of daily users, not a cross-day deduplicated user count; UI/API parity and the timer-backed persisted boundary passed. |
-| Conversions | Same coherent persisted Summary source object | same fixed initial boundary plus accumulation | Missing data remains unavailable rather than zero; valid zero is preserved. The deterministic and deployed parity packets passed for the certified boundary. |
-| Engagement Rate | engaged sessions divided by sessions from the selected Summary source | same persisted Summary boundary | Valid zero is preserved and no campaign-to-date/latest-day cross-source fallback remains; formula/source parity passed. |
-| Conversion Rate | Summary conversions divided by Summary sessions | same persisted Summary boundary | Uses one coherent source; zero sessions remains unavailable instead of inventing a ratio. |
-| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, persisted daily where available to the caller, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date with explicitly ordered continuity fallbacks | Campaign-to-date provider returned `$52,532.70 USD`; requested/observed currency matched. Zero/negative are authoritative, provider-empty falls through, and unverified currency fails closed. |
-| Financial conversions | Taken from the same object selected for native financial revenue | same ordered financial candidate | Source pairing, selection order, valid-zero behavior, and downstream financial use passed for the certified boundary. |
+| Sessions | Sum of persisted GA4 daily rows for the exact selected property and saved campaign filter | fixed initial 30 completed days plus later completed-day accumulation | Deployed UI/API parity and the exact timer-fired persistence check passed; the rolling store retained 22 unique scheduler-written dates with no later app repair. The 11-row display boundary through `2026-08-13` totaled 1,183 Sessions. Future 60/90-day setup is excluded. |
+| Users | Sum of persisted daily `totalUsers` rows for the exact selected property/filter | same fixed initial boundary plus accumulation | Current authenticated result was 1,184. This is explicitly a sum of daily users, not a cross-day deduplicated user count; UI/API parity and the timer-backed persisted boundary passed. |
+| Conversions | Same coherent persisted Summary source object | same fixed initial boundary plus accumulation | Current authenticated result was 152. Missing data remains unavailable rather than zero; valid zero is preserved. The deterministic and deployed parity packets passed for the release-candidate boundary. |
+| Engagement Rate | engaged sessions divided by sessions from the selected Summary source | same persisted Summary boundary | Current exact result was `809 / 1,183 = 68.39%` (rendered `68.4%`). Valid zero is preserved and no campaign-to-date/latest-day cross-source fallback remains. |
+| Conversion Rate | Summary conversions divided by Summary sessions | same persisted Summary boundary | Current exact result was `152 / 1,183 = 12.85%` (rendered `12.8%`). Zero sessions remains unavailable instead of inventing a ratio. |
+| GA4 native financial revenue | ordered complete-source selection: campaign-to-date provider, persisted daily where available to the caller, then configured-lookback breakdown only when earlier candidates are absent | campaign-to-date with explicitly ordered continuity fallbacks | Current authenticated value was `$55,966.70 USD`; requested/observed currency matched. Zero/negative are authoritative, provider-empty falls through, and unverified currency fails closed. |
+| Financial conversions | Taken from the same object selected for native financial revenue | same ordered financial candidate | Source pairing, selection order, valid-zero behavior, and downstream financial use passed for the release-candidate boundary. |
 | Imported revenue | Active GA4/null-context `revenue_records` joined to active sources and aggregated to date | `1900-01-01` through today | Five exact materialized sources were present and USD, totaling `$16,799.99`; missing materialization remains unavailable and source/record currency mismatch fails closed. |
-| Total Revenue | selected campaign-to-date GA4 native revenue + source-backed imported revenue to date | campaign lifetime/to date | Exact current result `$69,332.69 USD`; additive source list, source identities, currency, valid-zero, unavailable, and downstream parity passed. |
-| Revenue source count | five active imported source rows plus configured GA4 native revenue | current loaded values | The certified modal contains six contributions. Configured native and imported authoritative zero remain sources; a missing materialized source is unavailable. |
-| Pipeline Proxy | Same-scope active HubSpot/Salesforce source plus successful endpoint value or same-scope saved fallback | current-stage cached/on-demand provider data | Correctly excluded from confirmed revenue. GA4 requests `platformContext=ga4`; both CRM selectors fail closed when no exact campaign/source scope matches. |
-| Total Spend | scoped materialized spend breakdown; scoped source-backed lifetime total only when breakdown is absent | active `ga4` plus reviewed legacy null-context spend sources for the selected campaign | The four configured sources were reconciled to the Spend Sources modal and explicitly retained; valid zero does not fall through to cached campaign spend. Foreign contexts are excluded. |
-| Profit | Total Revenue - Total Spend | same available financial inputs | Uses the certified totals; valid zero revenue produces the negative-spend loss, while missing input remains unavailable. |
-| ROAS | Total Revenue / Total Spend | same available financial inputs | Valid zero revenue with positive spend renders `0.00x`; missing or zero spend blocks the ratio. |
-| ROI | (Total Revenue - Total Spend) / Total Spend | same available financial inputs | Valid zero revenue with positive spend renders `-100%`; missing or zero spend blocks the ratio. |
-| CPA | Total Spend / financial conversions | spend plus conversions from the selected native financial candidate | Uses paired financial conversions and scoped spend; missing or non-positive conversions remain unavailable. |
+| Total Revenue | selected campaign-to-date GA4 native revenue + source-backed imported revenue to date | campaign lifetime/to date | Exact current result `$72,766.69 USD`; additive source list, source identities, currency, valid-zero, unavailable, and downstream parity passed. |
+| Revenue source count | five active imported source rows plus configured GA4 native revenue | current loaded values | The release-candidate modal contains six contributions. Configured native and imported authoritative zero remain sources; a missing materialized source is unavailable. |
+| Pipeline Proxy | Same-scope active HubSpot/Salesforce source plus successful endpoint value or same-scope saved fallback | current-stage cached/on-demand provider data | Current UI rendered `Unavailable`. It remains excluded from confirmed revenue; GA4 requests `platformContext=ga4`, and both CRM selectors fail closed when no exact campaign/source scope matches. |
+| Total Spend | scoped materialized spend breakdown; scoped source-backed lifetime total only when breakdown is absent | active `ga4` plus reviewed legacy null-context spend sources for the selected campaign | The four configured sources reconciled to the current `$2,699.75` Spend Sources modal and were explicitly retained; valid zero does not fall through to cached campaign spend. Foreign contexts are excluded. |
+| Profit | Total Revenue - Total Spend | same available financial inputs | Current authenticated result was `$70,066.94`; valid zero revenue produces the negative-spend loss, while missing input remains unavailable. |
+| ROAS | Total Revenue / Total Spend | same available financial inputs | Current authenticated result was `26.95x`. Valid zero revenue with positive spend renders `0.00x`; missing or zero spend blocks the ratio. |
+| ROI | (Total Revenue - Total Spend) / Total Spend | same available financial inputs | Current authenticated result was `2595.3%`. Valid zero revenue with positive spend renders `-100%`; missing or zero spend blocks the ratio. |
+| CPA | Total Spend / financial conversions | spend plus conversions from the selected native financial candidate | Current authenticated result was `$10.76`; missing or non-positive conversions remain unavailable. |
 | Revenue Sources modal | configured GA4-native contribution plus active source definitions joined to materialized breakdown totals | active GA4/null-context revenue sources | Six contributions reconcile to Total Revenue; valid `$0` remains visible and only a missing materialized record renders `Unavailable`. Shopify freshness/test labels are omitted from the compact row. |
 | Spend Sources modal | merged GA4-scoped active source definitions and materialized spend breakdown rows | active `ga4` plus reviewed legacy null-context sources | Four reviewed sources reconcile to Total Spend; source-list failure remains distinct from an empty set. |
 | Pipeline Proxy modal | positive same-scope HubSpot/Salesforce provider entries | selected source configs | Cross-context fallback is blocked and unavailable remains explicit; Pipeline Proxy never enters Total Revenue. |
@@ -131,7 +131,7 @@ This inventory was derived from current render code, query code, API routes, sto
 | Overview request warning | combined error state for visible connection, GA4, table, revenue, spend, source-list, and configured Pipeline Proxy queries | affected request set | Last-successful cached content is distinguished from inputs with no usable data; hidden/duplicate requests do not create a false page-wide warning. |
 | Freshness | daily endpoint returns `refreshIsStale`, provider coverage, latest activity, warning, and expected refresh | persisted daily path | Normal detail is stable in Connection Details; the Overview header does not insert late success text, while actual stale/provider failures retain an explicit warning. |
 | Browser GA4 report output | client-side report builder reads loaded Overview values | loaded browser state | Included browser Overview report parity passed and required inputs fail closed. Scheduled/server delivery remains the separate excluded row below. |
-| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Scheduled report/PDF/email delivery is explicitly outside the Overview certification and remains governed by the Reports readiness record; it is not represented as an Overview pass. |
+| Scheduled/server GA4 report output | server rebuilds Summary/financial/source sections | server route/storage/provider inputs | Scheduled report/PDF/email delivery is explicitly outside the Overview release-candidate boundary and remains governed by the Reports readiness record; it is not represented as an Overview pass. |
 | Direct Overview comparisons/deltas | none rendered in Overview | not applicable | No direct comparison value exists to certify. Trends/deltas appear only in downstream Insights/Campaign DeepDive and are audited there. |
 
 ## Dynamic Source-Family Inventory
@@ -142,7 +142,7 @@ This inventory was derived from current render code, query code, API routes, sto
 | --- | --- | --- |
 | Shopify Revenue | visible | Exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` is clean-certified inside the recorded Overview boundary; future stores and dormant OAuth are excluded. |
 | HubSpot Revenue | visible | Exact enabled source IDs `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` are clean-certified inside the recorded Overview boundary; future mappings are excluded. |
-| Google Sheets Revenue | visible and deployed | Current Commit 21 restored the chooser and scoped process API through the existing atomic source/record path. No Google Sheets Revenue source is configured in the certified target; a future source requires its own provider/lifecycle evidence. |
+| Google Sheets Revenue | visible and deployed | Current Commit 21 restored the chooser and scoped process API through the existing atomic source/record path. No Google Sheets Revenue source is configured in the release-candidate target; a future source requires its own provider/lifecycle evidence. |
 | CSV Revenue | visible | Exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` is clean-certified inside the recorded Overview boundary; unlisted CSV variants are excluded. |
 | Salesforce Revenue | hidden for new v1 setup | Existing active rows remain readable and can feed totals/proxy; production inventory contains one active null-context source. |
 | Manual Revenue | blocked for create/edit; exact delete retained | Not a supported GA4 source. The owner-scoped inventory found none; any future retained row requires exact reviewed deletion. |
@@ -386,7 +386,7 @@ No cleanup was run. The forward producer is deployed and immediate no-growth val
 | Incompatible windows | reject, normalize, or clearly label | Commit 2 fixed completed-day Summary/tables and labeled campaign-to-date financials; Commit 19 now rejects unsupported missing/60/90-day writes and fails closed on retained non-30 rows. The deployed 30-day smoke passed. |
 | Source with no materialized records | render that source and the combined total unavailable; do not substitute `$0` | Deployed source/total logic distinguishes aggregate record presence from amount, so an authoritative materialized `$0` remains valid while a missing materialized record is unavailable. |
 | Inactive source | exclude from total | Proven by active joins. |
-| Orphan record | exclude and inventory | Inner joins exclude orphan rows. The certified target inventory found no included revenue damage; obsolete-campaign orphan history remains outside the boundary and was not cleaned by certification. |
+| Orphan record | exclude and inventory | Inner joins exclude orphan rows. The release-candidate target inventory found no included revenue damage; obsolete-campaign orphan history remains outside the boundary and was not cleaned by validation. |
 | Foreign spend context | exclude from GA4 | Explicit non-GA4 contexts are excluded from GA4 reads; only the reviewed GA4/legacy-null target source set is included. |
 | Hidden legacy source | either explicitly retain, delete by exact scope, or fail closed | GA4 Manual create/edit is blocked, exact deletion is retained, and every current target contributor has an explicit keep/support disposition. |
 | Table request failure | explicit error, not empty truth | Tables render explicit unavailable errors and retain last-successful rows on background failure; failure is not converted to a successful empty set. |
@@ -606,7 +606,7 @@ Completed read-only run on `2026-08-01`:
 
 Any unavailable production fixture must be covered by deterministic regression evidence and a proven fail-closed deployed contract; it cannot be described as an observed production failure.
 
-Current classification: **passed for the certified boundary**. The deterministic/read-only pack, bounded Google Sheets automatic-update observation, exact timer-fired target run, and observed OAuth durability passed; no cleanup was authorized or performed.
+Current classification: **passed for the release-candidate boundary**. The deterministic/read-only pack, bounded Google Sheets automatic-update observation, exact timer-fired target run, and observed OAuth durability passed; no cleanup was authorized or performed. Final combined GA4 certification remains separate.
 
 ## Scheduler Certification Boundary
 
@@ -623,7 +623,7 @@ The decision excludes:
 
 These exclusions are not implied passes and are not required for this bounded Overview-tab release.
 
-The scheduler-backed daily values rendered by Overview and the required current-release timer-fired run are inside the 30-day certification scope.
+The scheduler-backed daily values rendered by Overview and the required current-release timer-fired run are inside the 30-day release-candidate scope.
 
 ## Current Production-Data Boundary
 
@@ -636,7 +636,7 @@ Detailed source IDs, counts, amounts, and findings remain in the [evidence ledge
 
 ## Source-Family Authority Note
 
-HubSpot Revenue is **clean-certified and production-ready for the three exact enabled source IDs inside the certified GA4 Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. Shopify and the current CSV source have the same exact-boundary treatment in their canonical source-family records. These bounded decisions support, but do not broaden, the whole-tab certification to future sources or configurations.
+HubSpot Revenue is **clean-certified and production-ready for the three exact enabled source IDs inside the historically certified GA4 Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. Shopify and the current CSV source have the same exact-boundary treatment in their canonical source-family records. These bounded source-family decisions support the current whole-tab release candidate but do not broaden it to future sources or configurations.
 
 Historical-ledger note: packets preserved in the evidence/history ledgers remain bounded evidence only. They do not override the current whole-tab decision or the latest canonical source-family decision.
 

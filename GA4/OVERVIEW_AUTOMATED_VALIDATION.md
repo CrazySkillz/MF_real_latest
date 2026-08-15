@@ -4,11 +4,11 @@
 
 This file defines the accelerated validation path for GA4 Overview. It replaces repeated one-off browser-console snippets with reusable automation while preserving the no-overclaim production-readiness standard.
 
-## Current Certification Boundary
+## Current Readiness Boundary
 
-GA4 Overview is clean-certified and production-ready only for the exact revision/configuration/campaign/property/source/data boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. This runner remains a bounded evidence tool and does not by itself create or extend certification.
+GA4 Overview is **RELEASE_CANDIDATE_READY** only for the exact implementation/configuration/campaign/property/source/data boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. This runner remains a bounded evidence tool and does not by itself create or extend readiness.
 
-Historical runner record: the Current Commit 11–18 queue used Commit 16 runner `2026-07-31.13`, deployed in `747192ff`; the authenticated existing connection response returned its saved `lookbackDays: 30`, closing the bounded saved-window correction. That packet did not produce a live 60/90-day fixture, independent provider-value comparison, observed expiry advancement, or external seven-day durability evidence. The later exact-boundary production packet—not this runner alone—closed the current Overview certification.
+Historical runner record: the Current Commit 11–18 queue used Commit 16 runner `2026-07-31.13`, deployed in `747192ff`; the authenticated existing connection response returned its saved `lookbackDays: 30`, closing the bounded saved-window correction. That packet did not produce a live 60/90-day fixture, independent provider-value comparison, observed expiry advancement, or external seven-day durability evidence. Later exact-boundary production evidence—not this runner alone—closed the historical certification; current release-candidate evidence is controlled by the canonical readiness document.
 
 ## What Is Automated
 

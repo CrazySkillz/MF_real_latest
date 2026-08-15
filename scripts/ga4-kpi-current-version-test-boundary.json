@@ -43,12 +43,12 @@
     {
       "group": "external-certifications",
       "file": "server/hubspot-h10d-certification-doc.test.ts",
-      "fullName": "HubSpot current certification invalidation documentation records one controlling UNVERIFIED status while retaining H10d as history"
+      "fullName": "HubSpot current certification documentation records one controlling clean certification while retaining H10d as history"
     },
     {
       "group": "external-certifications",
       "file": "server/hubspot-h10d-certification-doc.test.ts",
-      "fullName": "HubSpot current certification invalidation documentation keeps GA4 entry points aligned to the current invalidated status"
+      "fullName": "HubSpot current certification documentation keeps GA4 entry points aligned to the current bounded certification"
     },
     {
       "group": "google-ads",

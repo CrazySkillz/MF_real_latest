@@ -41,6 +41,13 @@ describe("GA4 KPI current-version test boundary", () => {
     expect(
       new Set(manifest.tests.map((test) => `${test.file}\u0000${test.fullName}`)).size,
     ).toBe(50);
+    for (const test of manifest.tests.filter((item) => item.group === "external-certifications")) {
+      const source = readFileSync(resolve(root, test.file), "utf8");
+      const suiteName = source.match(/\bdescribe\("([^"]+)"/)?.[1];
+      const sourceTestNames = [...source.matchAll(/\bit\("([^"]+)"/g)]
+        .map((match) => `${suiteName} ${match[1]}`);
+      expect(sourceTestNames).toContain(test.fullName);
+    }
   });
 
   it("wires the blocking current-version gate and non-blocking deferred evidence into CI", () => {

@@ -6665,10 +6665,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   const resolveNotificationAlertRow = async (row: any): Promise<any> =>
     resolveAlertCurrentValueForDecision(row);
+  const resolveNotificationKPIAlertRow = async (row: any): Promise<any> =>
+    resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true });
   const resolveNotificationAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
     validationReadOnly
       ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false })
       : resolveNotificationAlertRow(row);
+  const resolveNotificationKPIAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
+    validationReadOnly
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true })
+      : resolveNotificationKPIAlertRow(row);
   const isResolvedAlertRowBreached = (resolved: any): boolean =>
     isAlertDecisionBreached(resolved);
   const isLatestGA4NotificationKPI = async (kpi: any): Promise<boolean> => {
@@ -6777,7 +6783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
               if (!isPerformanceAlert) return n;
               if (!(await isLatestGA4NotificationKPI(kpi))) return null;
-              const resolvedKpi = await resolveNotificationAlertRowForRequest(kpi, validationReadOnly);
+              const resolvedKpi = await resolveNotificationKPIAlertRowForRequest(kpi, validationReadOnly);
               if (!isResolvedAlertRowBreached(resolvedKpi)) return null;
               return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");
             }
@@ -6820,7 +6826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
           if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
           if (!(await isLatestGA4NotificationKPI(kpi))) return null;
-          const resolvedKpi = await resolveNotificationAlertRowForRequest(kpi, validationReadOnly);
+          const resolvedKpi = await resolveNotificationKPIAlertRowForRequest(kpi, validationReadOnly);
           return isResolvedAlertRowBreached(resolvedKpi)
             ? enrichPerformanceAlertNotification(n, resolvedKpi, "kpi")
             : null;

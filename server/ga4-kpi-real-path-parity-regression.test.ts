@@ -568,7 +568,6 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       metadata: JSON.stringify({ alertType: "performance-alert", kpiId: engagementKpi.id }),
     }]);
 
-    vi.useRealTimers();
     const response = await fetch(baseUrl + "/api/notifications");
     const body = await response.json();
     expect(response.status).toBe(200);

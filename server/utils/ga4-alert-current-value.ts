@@ -22,6 +22,7 @@ import {
 import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
+import { getExpectedDailyRefreshAt, resolveGA4DailyFreshness } from "./reporting-timezone";
 
 const isGA4Platform = (value: unknown) => {
   const platform = String(value || "").trim().toLowerCase();
@@ -45,6 +46,69 @@ const toInputs = (totals: ReturnType<typeof summarizeGA4TrafficRows>) => ({
   engagementRate: Number(totals.engagementRate || 0) || 0,
 });
 
+type StoredGA4TrafficFreshnessInput = {
+  rows: any[];
+  startDate: string;
+  dataThroughDate: string;
+  now?: Date;
+  schedulerConfig?: { reportingTimeZone: string; hour: number; minute: number };
+};
+
+const addDateOnlyDays = (value: string, days: number): string | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+const boundedSchedulerValue = (value: unknown, fallback: number, max: number) => {
+  const parsed = parseInt(String(value ?? ""), 10);
+  return Math.min(Math.max(Number.isFinite(parsed) ? parsed : fallback, 0), max);
+};
+
+export function resolveStoredGA4TrafficFreshness(input: StoredGA4TrafficFreshnessInput) {
+  const rows = Array.isArray(input.rows) ? input.rows : [];
+  const now = input.now || new Date();
+  const schedulerConfig = input.schedulerConfig || {
+    reportingTimeZone: process.env.GA4_DAILY_REFRESH_TIME_ZONE || "UTC",
+    hour: boundedSchedulerValue(process.env.GA4_DAILY_REFRESH_HOUR, 3, 23),
+    minute: boundedSchedulerValue(process.env.GA4_DAILY_REFRESH_MINUTE, 0, 59),
+  };
+  const dates = rows
+    .map((row: any) => String(row?.date || "").slice(0, 10))
+    .filter((date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort();
+  const latestStoredDailyDate = dates.length > 0 ? dates[dates.length - 1] : null;
+  const oldestMissingDailyDate = latestStoredDailyDate
+    ? (latestStoredDailyDate < input.dataThroughDate ? addDateOnlyDays(latestStoredDailyDate, 1) : null)
+    : input.startDate;
+  const missingExpectedRefreshAt = oldestMissingDailyDate
+    ? getExpectedDailyRefreshAt(oldestMissingDailyDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute)
+    : null;
+  const oldestDueMissingDailyDate = oldestMissingDailyDate
+    && oldestMissingDailyDate <= input.dataThroughDate
+    && missingExpectedRefreshAt
+    && missingExpectedRefreshAt.getTime() <= now.getTime()
+      ? oldestMissingDailyDate
+      : null;
+  const lastCompletedRefreshAt = rows.reduce((latest: string | null, row: any) => {
+    const time = row?.updatedAt ? new Date(row.updatedAt).getTime() : NaN;
+    if (!Number.isFinite(time)) return latest;
+    const timestamp = new Date(time).toISOString();
+    return !latest || timestamp > latest ? timestamp : latest;
+  }, null);
+
+  return resolveGA4DailyFreshness({
+    dataThroughDate: input.dataThroughDate,
+    expectedRefreshAt: getExpectedDailyRefreshAt(input.dataThroughDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute),
+    lastCompletedRefreshAt,
+    oldestDueMissingDailyDate,
+    providerCoverageThroughDate: null,
+    now,
+  });
+}
+
 export async function resolveAlertCurrentValueForDecision<T extends {
   campaignId?: string | null;
   calculationConfig?: unknown;
@@ -55,7 +119,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
 }>(
   row: T,
   cache?: Map<string, Promise<any>>,
-  options: { allowCredentialRefresh?: boolean } = {},
+  options: { allowCredentialRefresh?: boolean; requireCurrentTrafficFreshness?: boolean } = {},
 ): Promise<T & Record<string, any>> {
   const resolved = await resolveCampaignCurrentValueForAlert(row, cache);
   if (!isGA4Platform((resolved as any)?.platformType)) return resolved as T & Record<string, any>;
@@ -89,6 +153,14 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     let hasGA4SourceInput = trafficRows.length > 0;
     let hasAuthoritativeEngagementInput = trafficRows.length > 0;
     const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
+    const usesTrafficSource = metric === "cpa" || !usesFinancialSource;
+    if (options.requireCurrentTrafficFreshness && usesTrafficSource && resolveStoredGA4TrafficFreshness({
+      rows: trafficRows,
+      startDate,
+      dataThroughDate: endDate,
+    }).refreshIsStale) {
+      return blockAlertDecision(resolved, "stale");
+    }
     const storedFinancialCandidate = sourceRows.length > 0 ? {
       ...toInputs(financialTotals),
       revenue: Number((financialTotals.revenue || 0).toFixed(2)),

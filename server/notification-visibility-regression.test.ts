@@ -1,8 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { resolveStoredGA4TrafficFreshness } from "./utils/ga4-alert-current-value";
 
 describe("notification visibility regression guard", () => {
+  it("fails closed when Notifications re-evaluate a KPI from stale stored GA4 traffic", () => {
+    const freshness = resolveStoredGA4TrafficFreshness({
+      rows: [{ date: "2026-08-12", updatedAt: "2026-08-15T07:18:25.626Z" }],
+      startDate: "2026-07-16",
+      dataThroughDate: "2026-08-14",
+      now: new Date("2026-08-15T08:00:00.000Z"),
+      schedulerConfig: { reportingTimeZone: "UTC", hour: 20, minute: 35 },
+    });
+
+    expect(freshness.refreshIsStale).toBe(true);
+    expect(resolveStoredGA4TrafficFreshness({
+      rows: [{ date: "2026-08-13", updatedAt: "2026-08-15T07:18:25.626Z" }],
+      startDate: "2026-07-16",
+      dataThroughDate: "2026-08-14",
+      now: new Date("2026-08-15T08:00:00.000Z"),
+      schedulerConfig: { reportingTimeZone: "UTC", hour: 20, minute: 35 },
+    }).refreshIsStale).toBe(false);
+
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true })");
+    expect(routesFile).toContain("{ allowCredentialRefresh: false, requireCurrentTrafficFreshness: true }");
+    expect(routesFile).toContain("const resolvedBenchmark = await resolveNotificationAlertRowForRequest(benchmark, validationReadOnly);");
+  });
+
   it("hides resolved alert notifications from visible notification lists", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

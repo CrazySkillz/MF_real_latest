@@ -2,19 +2,25 @@
   "schemaVersion": 1,
   "sectionId": "ga4-benchmarks",
   "betaReadinessStatus": "BETA_READY",
-  "productionCertificationStatus": "PRODUCTION_READY",
-  "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
-  "reviewedImplementationGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
-  "certifiedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+  "productionCertificationStatus": "UNVERIFIED",
+  "reviewedBaseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
+  "reviewedImplementationGitSha": null,
+  "certifiedGitSha": null,
   "candidateRevision": {
-    "runtimeGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
-    "status": "PRODUCTION_READY",
-    "invalidationReason": null
+    "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
+    "runtimeGitSha": null,
+    "status": "LOCAL_RELEASE_CANDIDATE_READY",
+    "invalidationReason": "The current fix packet is validated in an uncommitted dirty worktree based on 7366051f36e64141b8403bd882c6d8040f559f47. It has no exact implementation SHA and has not been deployed or revalidated against an exact deployed candidate. The final combined GA4 certification was intentionally not performed."
   },
-  "reviewedAt": "2026-08-13",
+  "previousCertification": {
+    "status": "PRODUCTION_READY",
+    "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
+    "certifiedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd"
+  },
+  "reviewedAt": "2026-08-15",
   "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are outside this Benchmark certification and are not certified by it.",
   "revisionBoundary": {
-    "status": "LOCKED_PRODUCTION_READY",
+    "status": "HISTORICAL_LOCKED_PRODUCTION_READY",
     "runtimeGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
     "deployedEvidenceGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
     "capturedAt": "2026-08-12T23:00:39.934Z",
@@ -127,6 +133,41 @@
       "benchmarkHashesFailed": []
     }
   },
+  "laterNaturalSchedulerEvidence": {
+    "status": "complete_for_bounded_benchmark_scheduler_path",
+    "deployedGitSha": "85f5233ebfc298afc35f4c24e0930c1a66fbd07c",
+    "startedAt": "2026-08-14T20:35:00.001Z",
+    "trigger": "scheduled",
+    "processWideStatus": "failed",
+    "processWideFailure": "GA4 daily refresh failed for 17 excluded obsolete campaigns",
+    "globalAllCampaignSchedulerHealthClaimed": false,
+    "benchmarkBoundaryResult": {
+      "benchmarksUpdated": 2,
+      "benchmarksSkipped": 0,
+      "benchmarksFailed": 0,
+      "underlyingDailyRowsSchedulerWritten": 22,
+      "laterApplicationRepairDetected": false
+    },
+    "transferBoundary": "Commits 950307b6 and 1a93d8d8 changed browser KPI/PDF freshness and KPI-only notification visibility; 7366051f changed KPI documentation/evidence. None changed the scheduler or Benchmark recompute pipeline. This carries the 85f5233e scheduler-path evidence forward only; no exact-current natural timer firing is claimed."
+  },
+  "currentLocalReleaseCandidateGate": {
+    "status": "complete_for_uncommitted_local_patch",
+    "baseGitSha": "7366051f36e64141b8403bd882c6d8040f559f47",
+    "validatedAt": "2026-08-15",
+    "focusedFilesPassed": 16,
+    "focusedTestsPassed": 185,
+    "typescriptCheck": "passed",
+    "productionBuild": "passed",
+    "runtimeFindingsFixed": [
+      "Benchmark browser consumers now fail stale persisted GA4 traffic closed from the direct daily response instead of the Insights-only trends response.",
+      "Benchmark notification enrichment now requires current GA4 traffic freshness in normal and read-only validation requests."
+    ],
+    "limitations": [
+      "The candidate remains an uncommitted dirty-worktree patch and therefore has no exact implementation SHA.",
+      "The candidate has not been deployed or validated against an exact deployed SHA.",
+      "The final combined GA4 certification was intentionally not performed."
+    ]
+  },
   "activeProductionCertificationCommits": [
     {
       "id": 11,
@@ -170,6 +211,7 @@
     "shared/ga4-kpi-metric-identity.ts",
     "shared/kpi-math.ts",
     "shared/metric-math.ts",
+    "server/analytics.ts",
     "server/ga4-kpi-benchmark-jobs.ts",
     "server/ga4-daily-scheduler.ts",
     "server/auto-refresh-scheduler.ts",
@@ -177,6 +219,7 @@
     "server/ga4-scheduled-report-pdf.ts",
     "server/report-scheduler.ts",
     "server/routes-oauth.ts",
+    "server/utils/ga4-alert-current-value.ts",
     "scripts/ga4-benchmark-beta-clearance-readonly.ts",
     "scripts/ga4-benchmark-commit13-authorized-validation.ts",
     "scripts/ga4-benchmark-commit13-delivery-readonly.ts",
@@ -410,6 +453,10 @@
       "result": "At 2026-08-03T09:33:27Z production returned exact SHA b42c51e9ebcc12d74851cc640c86038513a57828. Report scheduler metrics recorded totalSent 2, totalFailed 0, and 100.00% success. The GA4 daily scheduler remained healthy and idle with zero scheduled runs and next run 2026-08-04T03:00:00.000Z."
     }
   ],
-  "productionOnlyEvidenceOutstanding": [],
+  "productionOnlyEvidenceOutstanding": [
+    "Create an exact candidate implementation SHA and re-run the clean revision/dependency boundary inventory.",
+    "Deploy that exact candidate and run the authenticated read-only Benchmark parity checks against the exact deployed SHA.",
+    "Perform the final combined GA4 certification only in a separately authorized session."
+  ],
   "invalidationRule": "Any change inside the dependency boundary, newly found consumer, contradictory deployed result, failed guard, source/config change, or production incident invalidates this revision-specific assessment."
 }

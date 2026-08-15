@@ -6,11 +6,13 @@ This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress ru
 
 ## Production Readiness Status
 
-As of August 13, 2026, the GA4 `Benchmarks` tab is clean-certified and `PRODUCTION_READY` for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` and the boundary recorded in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+As of August 15, 2026, the GA4 `Benchmarks` fix packet is locally release-candidate ready in the uncommitted dirty worktree based on `main` SHA `7366051f36e64141b8403bd882c6d8040f559f47`. Machine status remains `UNVERIFIED` because the patch has no exact implementation SHA, is not deployed, and has not received the separately authorized final combined GA4 certification. Exact runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` remains historical certification evidence only.
 
 The controlling source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit and do not gate this Benchmark certification.
 
-Future-reference boundary rule: timer-fired executions beyond the exact `2026-08-12` certified run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness are not current blockers. They are also not certified claims; each requires fresh evidence before it can be claimed.
+Current bounded scheduler evidence comes from exact deployed SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`: the `2026-08-14T20:35:00.001Z` natural run updated both Benchmarks with zero skipped or failed, and all 22 underlying daily rows were scheduler-written without later application repair. The process-wide run failed for 17 excluded obsolete campaigns, and no exact-current or global scheduler-health claim is made.
+
+Future-reference boundary rule: timer-fired executions beyond the recorded exact-revision runs, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness are not current blockers. They are also not certified claims; each requires fresh evidence before it can be claimed.
 
 For future platforms, use this file only as the functional Benchmark tab contract. Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 

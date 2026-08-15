@@ -28,7 +28,7 @@ describe("notification visibility regression guard", () => {
     );
     expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true })");
     expect(routesFile).toContain("{ allowCredentialRefresh: false, requireCurrentTrafficFreshness: true }");
-    expect(routesFile).toContain("const resolvedBenchmark = await resolveNotificationAlertRowForRequest(benchmark, validationReadOnly);");
+    expect(routesFile).toContain("const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);");
   });
 
   it("hides resolved alert notifications from visible notification lists", () => {

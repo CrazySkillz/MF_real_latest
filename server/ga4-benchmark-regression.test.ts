@@ -95,11 +95,16 @@ describe("GA4 Benchmark regression guard", () => {
     const insightsStart = ga4MetricsFile.indexOf("const blockedBenchmarks =");
     const insightsEnd = ga4MetricsFile.indexOf("// 2b) Scheduler dependency", insightsStart);
     const insightsSection = ga4MetricsFile.slice(insightsStart, insightsEnd);
+    const trafficStateStart = ga4MetricsFile.indexOf("const trafficKpiInputState");
+    const kpiTrafficStateStart = ga4MetricsFile.indexOf("const kpiTrafficInputState", trafficStateStart);
+    const benchmarkTrafficStateSection = ga4MetricsFile.slice(trafficStateStart, kpiTrafficStateStart);
 
     expect(ga4MetricsFile).toContain("isError: benchmarksError");
     expect(ga4MetricsFile).toContain("const benchmarkListState");
     expect(ga4MetricsFile).toContain("const getBenchmarkConsumerState = (benchmark: any) =>");
     expect(ga4MetricsFile).toContain("resolveGA4KpiLiveValue({");
+    expect(benchmarkTrafficStateSection).toContain('(ga4DailyResp as any)?.refreshIsStale === true');
+    expect(benchmarkTrafficStateSection).not.toContain("trendsRefreshIsStale");
     expect(trackerSection).toContain("if (!consumerState.eligible) continue;");
     expect(reportSection).toContain("const consumerState = getBenchmarkConsumerState(b);");
     expect(reportSection).toContain("Last-good value (not verified)");
@@ -115,6 +120,17 @@ describe("GA4 Benchmark regression guard", () => {
 
     expect(benchmarkNotificationsFile).toContain('if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=benchmarks&highlight=${id}`;');
     expect(benchmarkNotificationsFile).toContain("export async function checkBenchmarkPerformanceAlerts(): Promise<number> {");
+  });
+
+  it("fails stale GA4 Benchmark notifications closed before returning them", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain("const resolveNotificationBenchmarkAlertRowForRequest");
+    expect(routesFile).toMatch(/resolveNotificationBenchmarkAlertRowForRequest[\s\S]*requireCurrentTrafficFreshness: true/);
+    expect((routesFile.match(/resolveNotificationBenchmarkAlertRowForRequest\(benchmark, validationReadOnly\)/g) || []).length).toBe(2);
   });
 
   it("runs benchmark alert checks in the immediate post-refresh path and keeps stored benchmark currentValue fresh on rerun", () => {
@@ -339,7 +355,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4MetricsFile).toContain('chips: ["Targets", "Historical", "Goals"],');
   });
 
-  it("locks production certification to the exact deployed Benchmark boundary", () => {
+  it("keeps the historical certification bounded and the current release candidate unverified", () => {
     const record = JSON.parse(readFileSync(
       join(process.cwd(), "GA4", "certifications", "ga4-benchmarks.json"),
       "utf-8",
@@ -352,20 +368,52 @@ describe("GA4 Benchmark regression guard", () => {
     expect(record).toMatchObject({
       sectionId: "ga4-benchmarks",
       betaReadinessStatus: "BETA_READY",
-      productionCertificationStatus: "PRODUCTION_READY",
-      reviewedBaseGitSha: "466dc2494b16b38a116b49a786039da251520520",
-      reviewedImplementationGitSha: "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
-      certifiedGitSha: "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+      productionCertificationStatus: "UNVERIFIED",
+      reviewedBaseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
+      reviewedImplementationGitSha: null,
+      certifiedGitSha: null,
+      candidateRevision: {
+        baseGitSha: "7366051f36e64141b8403bd882c6d8040f559f47",
+        runtimeGitSha: null,
+        status: "LOCAL_RELEASE_CANDIDATE_READY",
+      },
+      previousCertification: {
+        status: "PRODUCTION_READY",
+        certifiedGitSha: "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd",
+      },
     });
-    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: PRODUCTION_READY -->");
+    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
-    expect(record.productionOnlyEvidenceOutstanding).toEqual([]);
+    expect(record.productionOnlyEvidenceOutstanding).toHaveLength(3);
+    expect(record.dependencyBoundary).toEqual(expect.arrayContaining([
+      "server/analytics.ts",
+      "server/utils/ga4-alert-current-value.ts",
+    ]));
+    expect(record.currentLocalReleaseCandidateGate).toMatchObject({
+      status: "complete_for_uncommitted_local_patch",
+      focusedFilesPassed: 16,
+      focusedTestsPassed: 185,
+      typescriptCheck: "passed",
+      productionBuild: "passed",
+    });
+    expect(record.laterNaturalSchedulerEvidence).toMatchObject({
+      deployedGitSha: "85f5233ebfc298afc35f4c24e0930c1a66fbd07c",
+      globalAllCampaignSchedulerHealthClaimed: false,
+      benchmarkBoundaryResult: {
+        benchmarksUpdated: 2,
+        benchmarksSkipped: 0,
+        benchmarksFailed: 0,
+        underlyingDailyRowsSchedulerWritten: 22,
+        laterApplicationRepairDetected: false,
+      },
+    });
     expect(record.activeProductionCertificationCommits).toContainEqual(expect.objectContaining({
       id: 14,
       status: "complete",
     }));
     expect(record.scope).toContain("Reports generation, scheduling, delivery, attachments, and inbox receipt are outside this Benchmark certification");
     expect(readiness).toContain("lastRunTrigger = scheduled");
+    expect(readiness).toContain("2026-08-14T20:35:00.001Z");
     expect(readiness).toContain("17 excluded obsolete campaigns");
   });
 

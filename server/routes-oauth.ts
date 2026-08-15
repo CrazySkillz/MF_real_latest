@@ -6675,6 +6675,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     validationReadOnly
       ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true })
       : resolveNotificationKPIAlertRow(row);
+  const resolveNotificationBenchmarkAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
+    validationReadOnly
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true })
+      : resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true });
   const isResolvedAlertRowBreached = (resolved: any): boolean =>
     isAlertDecisionBreached(resolved);
   const isLatestGA4NotificationKPI = async (kpi: any): Promise<boolean> => {
@@ -6792,7 +6796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
               if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
               if (!isPerformanceAlert) return n;
-              const resolvedBenchmark = await resolveNotificationAlertRowForRequest(benchmark, validationReadOnly);
+              const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);
               if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;
               return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");
             }
@@ -6834,7 +6838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (meta?.benchmarkId) {
           const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
           if (!benchmark || String((benchmark as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
-          const resolvedBenchmark = await resolveNotificationAlertRowForRequest(benchmark, validationReadOnly);
+          const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);
           return isResolvedAlertRowBreached(resolvedBenchmark)
             ? enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark")
             : null;

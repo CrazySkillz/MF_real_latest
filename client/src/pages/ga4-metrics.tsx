@@ -2769,7 +2769,7 @@ export default function GA4Metrics() {
     if (!ga4ConnectionUsable) return "unavailable";
     if (ga4DailyPlaceholder) return "loading";
     if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
-    if (trendsRefreshIsStale) return "stale";
+    if ((ga4DailyResp as any)?.refreshIsStale === true) return "stale";
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
     return "ready";
   })();

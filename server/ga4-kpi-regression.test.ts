@@ -244,4 +244,25 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain('formatKpiCardValue(getLiveKpiValue(kpi) || "0", kpi.unit)');
     expect(ga4MetricsFile).toContain('formatKpiCardValue(String(t.effectiveTarget), kpi.unit)');
   });
+
+  it("keeps KPI card and PDF traffic freshness independent from an Insights tab visit", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const trafficStateStart = ga4MetricsFile.indexOf("const trafficKpiInputState");
+    const trafficStateEnd = ga4MetricsFile.indexOf("const nativeRevenueKpiInputState", trafficStateStart);
+    const trafficStateSection = ga4MetricsFile.slice(trafficStateStart, trafficStateEnd);
+    const kpiConsumerStart = ga4MetricsFile.indexOf("const getKpiConsumerState");
+    const benchmarkConsumerStart = ga4MetricsFile.indexOf("const getBenchmarkConsumerState");
+    const pdfKpiStart = ga4MetricsFile.indexOf("// ========== KPIs ==========");
+    const pdfKpiEnd = ga4MetricsFile.indexOf("renderAdsSection();", pdfKpiStart);
+
+    expect(trafficStateSection).toContain("const kpiTrafficInputState");
+    expect(trafficStateSection).toContain("(ga4DailyResp as any)?.refreshIsStale");
+    expect(trafficStateSection.slice(trafficStateSection.indexOf("const kpiTrafficInputState"))).not.toContain("trendsRefreshIsStale");
+    expect(ga4MetricsFile.slice(kpiConsumerStart, benchmarkConsumerStart)).toContain("trafficState: kpiTrafficInputState");
+    expect(ga4MetricsFile.slice(benchmarkConsumerStart, pdfKpiStart)).toContain("trafficState: trafficKpiInputState");
+    expect(ga4MetricsFile.slice(pdfKpiStart, pdfKpiEnd)).toContain("const consumerState = getKpiConsumerState(k);");
+  });
 });

@@ -2773,6 +2773,16 @@ export default function GA4Metrics() {
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
     return "ready";
   })();
+  const kpiTrafficInputState: GA4KpiInputState = (() => {
+    if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
+    if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
+    if (!ga4ConnectionUsable) return "unavailable";
+    if (ga4DailyPlaceholder) return "loading";
+    if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
+    if ((ga4DailyResp as any)?.refreshIsStale === true) return "stale";
+    if (ga4Loading || ga4DailyResp === undefined) return "loading";
+    return "ready";
+  })();
   const nativeRevenueKpiInputState: GA4KpiInputState = (() => {
     if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
     if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
@@ -2849,7 +2859,7 @@ export default function GA4Metrics() {
       metric: kpi?.metric,
       name: kpi?.name,
       listState: kpiListState,
-      trafficState: trafficKpiInputState,
+      trafficState: kpiTrafficInputState,
       revenueState: revenueKpiInputState,
       spendState: spendKpiInputState,
       missingDependencies: deps.missing,
@@ -4465,7 +4475,7 @@ export default function GA4Metrics() {
       : "No scored KPI tolerance available";
     return { total: items.length, scored, above, near, below, blocked, insufficient, unavailable, stale, pending, avgPct, toleranceSummary, toleranceTitle };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, ga4NoCompletedWindow, ga4RevenueWindowState.sufficiencyReason, kpiListState, trafficKpiInputState, revenueKpiInputState, spendKpiInputState]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, ga4NoCompletedWindow, ga4RevenueWindowState.sufficiencyReason, kpiListState, kpiTrafficInputState, revenueKpiInputState, spendKpiInputState]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];
@@ -5521,6 +5531,7 @@ export default function GA4Metrics() {
     insightsRollups,
     recommendationChannelAnalysis,
     kpiListState,
+    kpiTrafficInputState,
     trafficKpiInputState,
     revenueKpiInputState,
     spendKpiInputState,

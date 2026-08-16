@@ -44,16 +44,26 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
-  // Fetch KPIs
+  // Fetch campaign-scoped GA4 KPIs
   const { data: kpis = [] } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/kpis`],
+    queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
     enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`);
+      if (!response.ok) throw new Error("Failed to fetch GA4 KPIs");
+      return response.json();
+    },
   });
 
-  // Fetch Benchmarks
+  // Fetch campaign-scoped GA4 Benchmarks
   const { data: benchmarks = [] } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
+    queryKey: [`/api/platforms/google_analytics/benchmarks`, campaignId],
     enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`);
+      if (!response.ok) throw new Error("Failed to fetch GA4 Benchmarks");
+      return response.json();
+    },
   });
 
   // Fetch LinkedIn metrics
@@ -299,11 +309,7 @@ export default function CampaignPerformanceSummary() {
     return lowerBetter ? ((target - current) / target) * 100 : ((current - target) / target) * 100;
   };
   const getKpiCurrentValue = (kpi: any) => {
-    const metricKey = String(kpi?.metric || '').toLowerCase();
-    const aggregateMetric = performanceSummary?.totals?.[metricKey];
-    return aggregateMetric?.available && aggregateMetric?.value !== null
-      ? parseNum(aggregateMetric.value)
-      : parseNum(kpi.currentValue);
+    return parseNum(kpi.currentValue);
   };
 
   const getBenchmarkProgressPct = (benchmark: any) => {
@@ -327,14 +333,10 @@ export default function CampaignPerformanceSummary() {
     return metric;
   };
   const getBenchmarkCurrentValue = (benchmark: any) => {
-    const metricKey = getBenchmarkMetricKey(benchmark);
-    const aggregateMetric = performanceSummary?.totals?.[metricKey];
-    return aggregateMetric?.available && aggregateMetric?.value !== null
-      ? parseNum(aggregateMetric.value)
-      : parseNum(benchmark.currentValue);
+    return parseNum(benchmark.currentValue);
   };
 
-  // Calculate campaign health score using the same campaign-level status bands as the KPI/Benchmark tabs.
+  // Calculate campaign health score from the configured GA4 KPI and Benchmark records.
   const kpisOnTrackOrAbove = effectiveKpis.filter((kpi: any) => getKpiDeltaPct(kpi) >= -5).length;
   const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;
 
@@ -476,7 +478,7 @@ export default function CampaignPerformanceSummary() {
         priority: 3,
         category: 'conversion-efficiency',
         title: 'Cost Per Acquisition',
-        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions. Track this against your campaign KPI or benchmark before scaling spend.`
+        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions. Track this against your GA4 KPI or Benchmark before scaling spend.`
       });
     }
 
@@ -541,7 +543,7 @@ export default function CampaignPerformanceSummary() {
         priority: 1,
         category: 'campaign-health',
         title: 'Campaign Requires Attention',
-        message: `${healthScore}% health score - only ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Focus on underperforming KPIs to improve results.`
+        message: `${healthScore}% health score - only ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Focus on underperforming GA4 KPIs to improve results.`
       });
     }
 
@@ -579,7 +581,7 @@ export default function CampaignPerformanceSummary() {
     if (totalMetrics === 0) {
       return {
         type: 'info',
-        message: 'No KPI or Benchmark targets configured. Add campaign KPIs or Benchmarks to generate a priority action.'
+        message: 'No GA4 KPI or Benchmark targets configured. Add them in View Detailed Analytics to generate a priority action.'
       };
     }
 
@@ -975,9 +977,9 @@ export default function CampaignPerformanceSummary() {
                   {totalMetrics === 0 ? (
                     <div className="text-center py-6">
                       <AlertTriangle className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
-                      <p className="text-muted-foreground/70 font-medium">No KPIs or Benchmarks configured</p>
+                      <p className="text-muted-foreground/70 font-medium">No GA4 KPIs or Benchmarks configured</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Set up KPIs and Benchmarks on the campaign page to see health tracking here.
+                        Set them up in View Detailed Analytics to see health tracking here.
                       </p>
                     </div>
                   ) : (
@@ -1031,7 +1033,7 @@ export default function CampaignPerformanceSummary() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Key Performance Indicators (KPIs)</CardTitle>
-                    <CardDescription>All campaign KPIs and their targets</CardDescription>
+                    <CardDescription>GA4 KPIs and their targets</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -1085,7 +1087,7 @@ export default function CampaignPerformanceSummary() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Benchmarks</CardTitle>
-                    <CardDescription>Performance vs industry averages</CardDescription>
+                    <CardDescription>GA4 performance vs configured benchmarks</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">

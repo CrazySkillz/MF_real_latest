@@ -3,6 +3,21 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("campaign Performance Summary Overview regression guard", () => {
+  it("reads KPI and Benchmark target rows directly from the campaign's GA4 configuration", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const kpiValueResolver = page.slice(page.indexOf("const getKpiCurrentValue"), page.indexOf("const getBenchmarkProgressPct"));
+    const benchmarkValueResolver = page.slice(page.indexOf("const getBenchmarkCurrentValue"), page.indexOf("// Calculate campaign health score"));
+
+    expect(page).toContain('fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`)');
+    expect(page).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)');
+    expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
+    expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/benchmarks`]');
+    expect(kpiValueResolver).toContain("return parseNum(kpi.currentValue);");
+    expect(benchmarkValueResolver).toContain("return parseNum(benchmark.currentValue);");
+    expect(kpiValueResolver).not.toContain("performanceSummary?.totals");
+    expect(benchmarkValueResolver).not.toContain("performanceSummary?.totals");
+  });
+
   it("wires Overview cards to the performanceSummary aggregate contract", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const overviewStart = page.indexOf("{/* Overview Tab */}");
@@ -45,14 +60,14 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")} - Impressions not available` : reason;');
   });
 
-  it("selects top priority from lagging campaign KPIs before Benchmark fallback", () => {
+  it("selects top priority from lagging GA4 KPIs before Benchmark fallback", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("const hasPriorityActionMetrics = performanceSummary");
     expect(page).toContain("Object.values(performanceSummary?.totals || {}).some((metric: any) => metric?.available === true && metric?.value !== null)");
     expect(page).toContain("No connected-source metrics available. Connect a source to generate a priority action.");
     expect(page).toContain("if (totalMetrics === 0) {");
-    expect(page).toContain("No KPI or Benchmark targets configured. Add campaign KPIs or Benchmarks to generate a priority action.");
+    expect(page).toContain("No GA4 KPI or Benchmark targets configured. Add them in View Detailed Analytics to generate a priority action.");
     expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
     expect(page).toContain("const laggingKPIs = effectiveKpis.map((kpi: any) => {");
     expect(page).toContain("}).filter((entry: any) => entry.deltaPct < -5);");
@@ -76,12 +91,12 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).not.toContain("return `${value}${unit}`;");
   });
 
-  it("counts campaign health from on-track KPI and Benchmark status bands", () => {
+  it("counts campaign health from on-track GA4 KPI and Benchmark status bands", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("const getKpiDeltaPct = (kpi: any) => {");
     expect(page).toContain("const getKpiCurrentValue = (kpi: any) => {");
-    expect(page).toContain("const aggregateMetric = performanceSummary?.totals?.[metricKey];");
+    expect(page).toContain("return parseNum(kpi.currentValue);");
     expect(page).toContain("const kpisOnTrackOrAbove = effectiveKpis.filter((kpi: any) => getKpiDeltaPct(kpi) >= -5).length;");
     expect(page).toContain("const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;");
     expect(page).toContain("const getBenchmarkCurrentValue = (benchmark: any) => {");

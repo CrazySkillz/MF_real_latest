@@ -3,6 +3,19 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("campaign Benchmark UI regression guard", () => {
+  it("keeps available GA4 campaign-lifetime totals authoritative, including zero", () => {
+    const campaignDetail = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),
+      "utf-8"
+    );
+    const campaignBenchmarkSection = campaignDetail.slice(campaignDetail.indexOf("function CampaignBenchmarks"));
+
+    expect(campaignBenchmarkSection).toContain("const hasBenchGA4ToDateTotals = Boolean(benchGA4ToDate?.totals");
+    expect(campaignBenchmarkSection).toContain("sessions: hasBenchGA4ToDateTotals ? Number(totals?.sessions || 0) : daily.sessions");
+    expect(campaignBenchmarkSection).toContain("return hasBenchGA4ToDateTotals ? ga4Revenue : ga4Revenue || parseNumSafe(ot?.ga4?.revenue);");
+    expect(campaignBenchmarkSection).not.toContain("sessions: Math.max(Number(totals?.sessions || 0), daily.sessions)");
+  });
+
   it("formats count benchmark edit values without persisted decimal suffixes", () => {
     const campaignDetail = readFileSync(
       join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),

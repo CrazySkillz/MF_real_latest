@@ -158,6 +158,27 @@ const parseFormattedNumber = (value: string): number => {
   return parseFloat(cleaned) || 0;
 };
 
+const getCampaignGA4MetricIdentity = (value: unknown): string | null => {
+  const key = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  if (key === 'revenue' || key === 'totalrevenue' || key === 'ga4revenue') return 'revenue';
+  if (key === 'conversions' || key === 'totalconversions' || key === 'ga4conversions') return 'conversions';
+  if (key === 'users' || key === 'totalusers' || key === 'ga4users') return 'users';
+  if (key === 'sessions' || key === 'totalsessions' || key === 'ga4sessions') return 'sessions';
+  if (key === 'conversionrate' || key === 'conversionratewebsite' || key === 'ga4conversionrate') return 'conversion_rate';
+  if (key === 'roas' || key === 'roi' || key === 'cpa') return key;
+  return null;
+};
+
+const isNewerCampaignGA4KPI = (candidate: any, current: any): boolean => {
+  const candidateCreatedAt = new Date(candidate?.createdAt || 0).getTime() || 0;
+  const currentCreatedAt = new Date(current?.createdAt || 0).getTime() || 0;
+  if (candidateCreatedAt !== currentCreatedAt) return candidateCreatedAt > currentCreatedAt;
+  const candidateUpdatedAt = new Date(candidate?.updatedAt || 0).getTime() || 0;
+  const currentUpdatedAt = new Date(current?.updatedAt || 0).getTime() || 0;
+  if (candidateUpdatedAt !== currentUpdatedAt) return candidateUpdatedAt > currentUpdatedAt;
+  return String(candidate?.id || '') > String(current?.id || '');
+};
+
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const { toast } = useToast();
@@ -178,6 +199,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     return () => window.cancelAnimationFrame(frame);
   }, [highlightedKpiId, kpis]);
 
+  const { data: kpiGA4Rows = [] } = useQuery<any[]>({
+    queryKey: [`/api/platforms/google_analytics/kpis`, campaign.id],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaign.id))}`);
+      if (!resp.ok) throw new Error('Failed to fetch GA4 KPIs');
+      return resp.json();
+    },
+  });
+
   // Outcome-centric campaign totals (dynamic: GA4 outcomes + unified spend + all connected platform inputs)
   const { data: outcomeTotals } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaign.id}/outcome-totals`, "30days"],
@@ -196,38 +227,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       if (!resp.ok) return [];
       const data = await resp.json().catch(() => null);
       return Array.isArray(data?.sources) ? data.sources : [];
-    },
-  });
-  const { data: kpiGA4Connections = [] } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaign.id}/ga4-connections`],
-    enabled: !!campaign.id,
-    queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-connections`);
-      if (!resp.ok) return [];
-      const data = await resp.json().catch(() => null);
-      return Array.isArray(data?.connections) ? data.connections : [];
-    },
-  });
-  const kpiGA4Connection = (kpiGA4Connections || []).find((conn: any) => conn?.isPrimary) || (kpiGA4Connections || [])[0];
-  const kpiGA4PropertyId = String(kpiGA4Connection?.propertyId || "").trim();
-  const kpiGA4LookbackDays = Number((kpiGA4Connection as any)?.lookbackDays) || 90;
-  const kpiGA4DateRange = `${kpiGA4LookbackDays}days`;
-  const { data: kpiGA4ToDate } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaign.id}/ga4-to-date`, kpiGA4PropertyId, kpiGA4DateRange],
-    enabled: !!campaign.id && !!kpiGA4PropertyId,
-    queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-to-date?propertyId=${encodeURIComponent(kpiGA4PropertyId)}&dateRange=${encodeURIComponent(kpiGA4DateRange)}`);
-      if (!resp.ok) return null;
-      return resp.json().catch(() => null);
-    },
-  });
-  const { data: kpiGA4DailyResp } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaign.id}/ga4-daily`, kpiGA4PropertyId, kpiGA4LookbackDays],
-    enabled: !!campaign.id && !!kpiGA4PropertyId,
-    queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(kpiGA4LookbackDays))}&propertyId=${encodeURIComponent(kpiGA4PropertyId)}`);
-      if (!resp.ok) return null;
-      return resp.json().catch(() => null);
     },
   });
   const { data: kpiImportedRevenueToDateResp } = useQuery<any>({
@@ -257,22 +256,29 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return resp.json().catch(() => ({ success: false, spendToDate: 0, sourceIds: [] }));
     },
   });
-  const kpiGA4MetricTotals = useMemo(() => {
-    const rows = Array.isArray(kpiGA4DailyResp?.data) ? kpiGA4DailyResp.data : Array.isArray(kpiGA4DailyResp) ? kpiGA4DailyResp : [];
-    const daily = rows.reduce((acc: any, row: any) => ({
-      sessions: acc.sessions + (Number(row?.sessions || 0) || 0),
-      conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
-      users: acc.users + (Number(row?.users || 0) || 0),
-      revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
-    }), { sessions: 0, conversions: 0, users: 0, revenue: 0 });
-    const totals = (kpiGA4ToDate as any)?.totals || {};
-    return {
-      sessions: Math.max(Number(totals?.sessions || 0), daily.sessions),
-      conversions: Math.max(Number(totals?.conversions || 0), daily.conversions),
-      users: Number(totals?.users || 0) || daily.users,
-      revenue: Math.max(Number(totals?.revenue || 0), Number(daily.revenue.toFixed(2))),
-    };
-  }, [kpiGA4DailyResp, kpiGA4ToDate]);
+  const kpiGA4RowsByMetric = useMemo(() => {
+    const rowsByMetric = new Map<string, any>();
+    for (const row of Array.isArray(kpiGA4Rows) ? kpiGA4Rows : []) {
+      const metric = getCampaignGA4MetricIdentity(row?.metric) || getCampaignGA4MetricIdentity(row?.name);
+      if (!metric) continue;
+      const current = rowsByMetric.get(metric);
+      if (!current || isNewerCampaignGA4KPI(row, current)) rowsByMetric.set(metric, row);
+    }
+    return rowsByMetric;
+  }, [kpiGA4Rows]);
+  const getKpiGA4CurrentNumber = (metric: unknown): number | null => {
+    const identity = getCampaignGA4MetricIdentity(metric);
+    const raw = identity ? kpiGA4RowsByMetric.get(identity)?.currentValue : null;
+    if (raw === null || raw === undefined || raw === '') return null;
+    const value = typeof raw === 'string' ? Number(raw.replace(/,/g, '')) : Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+  const kpiGA4MetricTotals = {
+    sessions: getKpiGA4CurrentNumber('sessions') ?? 0,
+    conversions: getKpiGA4CurrentNumber('conversions') ?? 0,
+    users: getKpiGA4CurrentNumber('users') ?? 0,
+    revenue: getKpiGA4CurrentNumber('revenue') ?? 0,
+  };
   const kpiConnectedPlatformTotals = useMemo(() => ({
     revenue: Number((outcomeTotals as any)?.financials?.totalRevenue ?? (Number((kpiGA4MetricTotals as any)?.revenue || 0) + Number((kpiImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
     spend: Number((outcomeTotals as any)?.financials?.spend ?? (kpiSpendBreakdownResp as any)?.totalSpend ?? (kpiSpendToDateResp as any)?.spendToDate ?? 0),
@@ -404,14 +410,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return parseNumSafe(cfg?.lastTotalRevenue);
     }
     if (sourceId === 'ga4') {
-      const ga4Source = (kpiRevenueSources || []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'ga4');
-      const directTotal = parseNumSafe(ga4Source?.lastTotalRevenue);
-      const cfg = parseJsonSafe(ga4Source?.mappingConfig);
-      const cfgTotal = parseNumSafe(cfg?.lastTotalRevenue);
-      const toDateTotal = parseNumSafe(kpiGA4ToDate?.totals?.revenue);
-      const dailyTotal = parseNumSafe((kpiGA4MetricTotals as any)?.revenue);
-      const outcomeTotal = parseNumSafe(ot?.revenue?.onsiteRevenue ?? ot?.webAnalytics?.revenue ?? ot?.ga4?.revenue);
-      return Math.max(directTotal, cfgTotal, toDateTotal, dailyTotal, outcomeTotal);
+      return getKpiGA4CurrentNumber('revenue') ?? 0;
     }
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
@@ -481,6 +480,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (!cfg || !cfg.metric) return { value: null, unit: '' };
 
     const metric = String(cfg.metric);
+    const ga4KpiValue = getKpiGA4CurrentNumber(metric);
+    if (ga4KpiValue !== null) return { value: ga4KpiValue, unit: getMetricDisplayUnit(metric) };
 
     if (metric === 'revenue') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
@@ -1092,6 +1093,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       if (typeof computed.value === 'number' && Number.isFinite(computed.value)) return computed.value;
     }
     const m = String(kpi?.metric || '');
+    const ga4KpiValue = getKpiGA4CurrentNumber(m);
+    if (ga4KpiValue !== null) return ga4KpiValue;
     const live = getLiveCampaignMetricNumber(m);
     if (typeof live === 'number' && Number.isFinite(live)) return live;
     return parseNumSafe(kpi?.currentValue);
@@ -1567,10 +1570,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const metricKey = String(kpi?.metric || '');
               const displayUnit = isTileMetric(metricKey) ? getMetricDisplayUnit(metricKey) : String(kpi?.unit || '');
               const lowerBetter = isLowerBetterMetric(metricKey);
-              const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
-              const progressPercentRaw = Math.max(0, Math.min(ratio * 100, 100));
+              const kpiSnapshot = getCampaignKpiSnapshot(kpi);
+              const progressPercentRaw = kpiSnapshot?.progressPct ?? 0;
               const progressPercentLabel = progressPercentRaw.toFixed(1);
-              const progressBand = getCampaignKpiSnapshot(kpi)?.band || 'below';
+              const progressBand = kpiSnapshot?.band || 'below';
               const liveDisplay = formatValueWithUnit(current, displayUnit);
               const targetDisplay = formatValueWithUnit(target, displayUnit);
               const isHighlightedKpi = String(highlightedKpiId || "") === String(kpi.id || "");
@@ -2603,6 +2606,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       return resp.json().catch(() => ({ success: false, spendToDate: 0, sourceIds: [] }));
     },
   });
+  const hasBenchGA4ToDateTotals = Boolean(benchGA4ToDate?.totals && typeof benchGA4ToDate.totals === 'object');
   const benchGA4MetricTotals = useMemo(() => {
     const rows = Array.isArray(benchGA4DailyResp?.data) ? benchGA4DailyResp.data : Array.isArray(benchGA4DailyResp) ? benchGA4DailyResp : [];
     const daily = rows.reduce((acc: any, row: any) => ({
@@ -2614,16 +2618,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       engagementRateRows: acc.engagementRateRows + (Number(row?.engagementRate || 0) > 0 ? 1 : 0),
     }), { sessions: 0, conversions: 0, users: 0, revenue: 0, engagementRateSum: 0, engagementRateRows: 0 });
     const totals = (benchGA4ToDate as any)?.totals || {};
-    const rawEngagementRate = Number(totals?.engagementRate || 0) || (daily.engagementRateRows > 0 ? daily.engagementRateSum / daily.engagementRateRows : 0);
+    const rawEngagementRate = hasBenchGA4ToDateTotals ? Number(totals?.engagementRate || 0) : (daily.engagementRateRows > 0 ? daily.engagementRateSum / daily.engagementRateRows : 0);
     const engagementRate = rawEngagementRate > 0 && rawEngagementRate <= 1 ? rawEngagementRate * 100 : rawEngagementRate;
     return {
-      sessions: Math.max(Number(totals?.sessions || 0), daily.sessions),
-      conversions: Math.max(Number(totals?.conversions || 0), daily.conversions),
-      users: Number(totals?.users || 0) || daily.users,
-      revenue: Math.max(Number(totals?.revenue || 0), Number(daily.revenue.toFixed(2))),
+      sessions: hasBenchGA4ToDateTotals ? Number(totals?.sessions || 0) : daily.sessions,
+      conversions: hasBenchGA4ToDateTotals ? Number(totals?.conversions || 0) : daily.conversions,
+      users: hasBenchGA4ToDateTotals ? Number(totals?.users || 0) : daily.users,
+      revenue: hasBenchGA4ToDateTotals ? Number(totals?.revenue || 0) : Number(daily.revenue.toFixed(2)),
       engagementRate,
     };
-  }, [benchGA4DailyResp, benchGA4ToDate]);
+  }, [benchGA4DailyResp, benchGA4ToDate, hasBenchGA4ToDateTotals]);
   const benchConnectedPlatformTotals = useMemo(() => ({
     revenue: Number((outcomeTotals as any)?.financials?.totalRevenue ?? (Number((benchGA4MetricTotals as any)?.revenue || 0) + Number((benchImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
     spend: Number((outcomeTotals as any)?.financials?.spend ?? (benchSpendBreakdownResp as any)?.totalSpend ?? (benchSpendToDateResp as any)?.spendToDate ?? 0),
@@ -2698,7 +2702,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const ot = outcomeTotals || {};
     const platforms = ot?.platforms || {};
     const revenueSources = ot?.revenueSources || [];
-    if (sourceId === 'ga4') return parseNumSafe((benchGA4MetricTotals as any)?.revenue) || parseNumSafe(ot?.ga4?.revenue);
+    if (sourceId === 'ga4') {
+      const ga4Revenue = parseNumSafe((benchGA4MetricTotals as any)?.revenue);
+      return hasBenchGA4ToDateTotals ? ga4Revenue : ga4Revenue || parseNumSafe(ot?.ga4?.revenue);
+    }
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
     const found = (revenueSources || []).find((s: any) => String(s?.type || '') === sourceId);

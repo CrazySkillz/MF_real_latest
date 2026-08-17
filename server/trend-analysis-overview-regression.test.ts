@@ -3,6 +3,16 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Trend Analysis Overview regression guard", () => {
+  it("reads KPI targets from GA4 and preserves GA4 ROAS ratio semantics", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+
+    expect(page).toContain('queryKey: [`/api/platforms/google_analytics/kpis`, campaignId]');
+    expect(page).toContain('fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`)');
+    expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
+    expect(page).toContain('y={kpiTargets.roas}');
+    expect(page).not.toContain('y={kpiTargets.roas / 100}');
+  });
+
   it("wires the Overview tab to the source-aware trend aggregate contract", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     const overviewStart = page.indexOf('<TabsContent value="overview"');

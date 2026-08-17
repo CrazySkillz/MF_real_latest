@@ -107,8 +107,13 @@ export default function TrendAnalysis() {
   });
 
   const { data: kpis = [] } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/kpis`],
+    queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
     enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`);
+      if (!response.ok) throw new Error("Failed to fetch GA4 KPIs");
+      return response.json();
+    },
   });
 
   const { data: ga4Daily, isPlaceholderData: isRefreshing } = useQuery({
@@ -1154,7 +1159,7 @@ export default function TrendAnalysis() {
                               <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'ROAS' ? `${Number(v).toFixed(2)}x` : `${Number(v).toFixed(1)}%`, name]} />
                               {efficiencyTrendData.current.roas !== null && <Line yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />}
                               {efficiencyTrendData.current.roi !== null && <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI %" />}
-                              {kpiTargets.roas && efficiencyTrendData.current.roas !== null && <ReferenceLine yAxisId="left" y={kpiTargets.roas / 100} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'ROAS Target', fill: '#10b981', fontSize: 10 }} />}
+                              {kpiTargets.roas && efficiencyTrendData.current.roas !== null && <ReferenceLine yAxisId="left" y={kpiTargets.roas} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'ROAS Target', fill: '#10b981', fontSize: 10 }} />}
                             </ComposedChart>
                           </ResponsiveContainer>
                         </div>

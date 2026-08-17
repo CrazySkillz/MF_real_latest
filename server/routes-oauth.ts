@@ -30949,7 +30949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let kpiProgress: any[] = [];
       const recommendationTargetMetrics = new Set<string>();
       try {
-        const kpis = await storage.getCampaignKPIs(id);
+        const kpis = await storage.getPlatformKPIs("google_analytics", id);
         for (const kpi of kpis) {
           const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
           if (!aggregateKpiMetric) continue;
@@ -30988,7 +30988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch benchmark comparison
       let benchmarkComparison: any[] = [];
       try {
-        const benchmarks = await storage.getCampaignBenchmarks(id);
+        const benchmarks = await storage.getPlatformBenchmarks("google_analytics", id);
         for (const bm of benchmarks) {
           const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
           if (!aggregateBenchmarkMetric) continue;

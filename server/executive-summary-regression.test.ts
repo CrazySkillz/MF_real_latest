@@ -125,13 +125,15 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('totalrevenue: "revenue"');
     expect(route).toContain('totalconversions: "conversions"');
     expect(route).toContain('roas: "roas"');
-    expect(route).toContain("const kpis = await storage.getCampaignKPIs(id);");
+    expect(route).toContain('const kpis = await storage.getPlatformKPIs("google_analytics", id);');
+    expect(route).not.toContain("const kpis = await storage.getCampaignKPIs(id);");
     expect(route).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
     expect(route).toContain("if (!aggregateKpiMetric) continue;");
     expect(route).toContain("const currentValue = aggregateMetricValue(aggregateKpiMetric);");
     expect(route).not.toContain("await storage.getKPIProgress(kpi.id)");
     expect(route).not.toContain("parseNum(kpi.currentValue)");
-    expect(route).toContain("const benchmarks = await storage.getCampaignBenchmarks(id);");
+    expect(route).toContain('const benchmarks = await storage.getPlatformBenchmarks("google_analytics", id);');
+    expect(route).not.toContain("const benchmarks = await storage.getCampaignBenchmarks(id);");
     expect(route).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
     expect(route).toContain("if (!aggregateBenchmarkMetric) continue;");
     expect(route).toContain("const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);");

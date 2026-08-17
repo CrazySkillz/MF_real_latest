@@ -51,7 +51,7 @@ import {
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
+import { computeBenchmarkThresholdResult, isLowerIsBetterKpi } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
@@ -30940,7 +30940,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return null;
       };
-      const lowerIsBetterKpiMetrics = new Set(["cpa", "cpc", "cpm"]);
+      const resolveExecutiveKpiMetric = (kpi: any): string => {
+        const identity = resolveGA4KpiMetricIdentity(kpi?.metricKey, kpi?.metric, kpi?.name);
+        if (identity === "conversion_rate") return "cvr";
+        return identity || String(kpi?.metricKey || kpi?.metric || "__custom__");
+      };
       const mainAggregateSources = Array.isArray((performanceSummary as any)?.sources)
         ? (performanceSummary as any).sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
         : [];
@@ -30951,14 +30955,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const kpis = await storage.getPlatformKPIs("google_analytics", id);
         for (const kpi of kpis) {
-          const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-          if (!aggregateKpiMetric) continue;
+          const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
           const currentValue = parseNum(kpi.currentValue);
           const targetValue = parseNum(kpi.targetValue);
-          if (targetValue > 0 && ["cvr", "revenue", "conversions"].includes(aggregateKpiMetric)) {
-            recommendationTargetMetrics.add(aggregateKpiMetric);
+          if (targetValue > 0 && ["cvr", "revenue", "conversions"].includes(executiveKpiMetric)) {
+            recommendationTargetMetrics.add(executiveKpiMetric);
           }
-          const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
+          const lowerIsBetter = isLowerIsBetterKpi({ metric: executiveKpiMetric, name: kpi?.name || kpi?.metric });
           const progressRatio = targetValue > 0
             ? lowerIsBetter
               ? (currentValue > 0 ? targetValue / currentValue : 0)
@@ -30973,7 +30976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           kpiProgress.push({
             kpiId: kpi.id,
             name: kpi.name,
-            metricKey: aggregateKpiMetric,
+            metricKey: executiveKpiMetric,
             target: targetValue,
             current: currentValue,
             unit: kpi.unit || '',

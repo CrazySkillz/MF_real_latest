@@ -228,7 +228,7 @@ export default function ExecutiveSummary() {
     const targetComparisons: string[] = [];
     let hasBelowTarget = false;
     executiveKpiProgress.forEach((kpi: any) => {
-      const metric = resolveKpiAggregateMetric(kpi);
+      const metric = resolveExecutiveKpiMetric(kpi);
       if (!metric || !targetMetrics.has(metric)) return;
       const target = Number(kpi.target) || 0;
       if (target <= 0) return;
@@ -321,15 +321,15 @@ export default function ExecutiveSummary() {
     }
     return null;
   };
-  const lowerIsBetterKpiMetrics = new Set(["cpa", "cpc", "cpm"]);
+  const resolveExecutiveKpiMetric = (kpi: any): string =>
+    String(kpi?.metricKey || kpi?.metric || "__custom__");
   const resolveExecutiveKpiTargetState = (kpi: any) => {
-    const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-    if (!aggregateKpiMetric) return null;
+    const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
     const current = Number(kpi.current ?? kpi.currentValue) || 0;
     const target = Number(kpi.target ?? kpi.targetValue) || 0;
-    const lowerIsBetter = isLowerIsBetterKpi({ metric: aggregateKpiMetric, name: kpi?.name || kpi?.metric });
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: executiveKpiMetric, name: kpi?.name || kpi?.metric });
     const policy = resolveKpiThresholdPolicy({
-      metric: aggregateKpiMetric,
+      metric: executiveKpiMetric,
       name: kpi?.name || kpi?.metric,
       unit: kpi?.unit,
       current,
@@ -341,7 +341,7 @@ export default function ExecutiveSummary() {
       : "near";
     const attainmentPct = computeAttainmentPct({ current, target, lowerIsBetter }) ?? 0;
     return {
-      aggregateKpiMetric,
+      executiveKpiMetric,
       current,
       target,
       band,
@@ -349,7 +349,7 @@ export default function ExecutiveSummary() {
     };
   };
   const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)
-    ? (executiveSummary as any).kpiProgress.filter((kpi: any) => resolveKpiAggregateMetric(kpi))
+    ? (executiveSummary as any).kpiProgress
     : [];
   const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)
     ? (executiveSummary as any).benchmarkComparison
@@ -377,11 +377,10 @@ export default function ExecutiveSummary() {
       .filter(Boolean)
     : [];
   const kpiProgressPct = (kpi: any): number => {
-    const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-    if (!aggregateKpiMetric) return 0;
+    const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
     const current = Number(kpi.current ?? kpi.currentValue) || 0;
     const target = Number(kpi.target) || 0;
-    const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: executiveKpiMetric, name: kpi?.name || kpi?.metric });
     const progressRatio = target > 0
       ? lowerIsBetter
         ? (current > 0 ? target / current : 1)
@@ -437,7 +436,7 @@ export default function ExecutiveSummary() {
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
     if (metricName === "roas") return `${value.toFixed(1)}x`;
     if (metricName && ["users", "sessions", "conversions", "clicks", "impressions"].includes(metricName)) return Math.round(value).toLocaleString();
-    if (unit === "$") return formatCurrency(value);
+    if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value);
     if (unit === "%") return `${value.toFixed(1)}%`;
     if (unit === "ratio") return `${value.toFixed(1)}x`;
     if (unit === "count") return Math.round(value).toLocaleString();
@@ -794,8 +793,7 @@ export default function ExecutiveSummary() {
                     <div className="space-y-4">
                       {executiveKpiProgress.map((kpi: any, index: number) => {
                         const targetState = resolveExecutiveKpiTargetState(kpi);
-                        if (!targetState) return null;
-                        const { aggregateKpiMetric, current, target, band, fillPct } = targetState;
+                        const { executiveKpiMetric, current, target, band, fillPct } = targetState;
                         const statusLabel = band === "above" ? 'Above Target' :
                           band === "near" ? 'On Track' : 'Below Target';
                         const statusColor = band === "above" ? 'text-green-600 dark:text-green-400' :
@@ -810,9 +808,9 @@ export default function ExecutiveSummary() {
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className="text-sm text-muted-foreground/70">
-                                  {formatKpiValue(aggregateKpiMetric, current, kpi.unit)}
+                                  {formatKpiValue(executiveKpiMetric, current, kpi.unit)}
                                   {' / '}
-                                  {formatKpiValue(aggregateKpiMetric, target, kpi.unit)}
+                                  {formatKpiValue(executiveKpiMetric, target, kpi.unit)}
                                 </span>
                                 <span className={`text-xs font-medium ${statusColor}`}>
                                   {statusLabel}

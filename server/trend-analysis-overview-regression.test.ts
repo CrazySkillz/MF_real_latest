@@ -12,6 +12,9 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain('y={kpiTargets.roas}');
     expect(page).toContain('y={kpiTargets.roas} ifOverflow="extendDomain"');
     expect(page).not.toContain('y={kpiTargets.roas / 100}');
+    expect(page).toContain("const candidates: Record<'revenue' | 'conversions' | 'roas', number[]>");
+    expect(page).toContain("if (candidates[metric].length === 1) targets[metric] = candidates[metric][0];");
+    expect(page).not.toContain("targets.revenue = parseFloat(k.targetValue)");
   });
 
   it("wires the Overview tab to the source-aware trend aggregate contract", () => {

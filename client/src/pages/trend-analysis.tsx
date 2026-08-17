@@ -838,12 +838,18 @@ export default function TrendAnalysis() {
 
   // KPI targets for reference lines
   const kpiTargets = useMemo(() => {
+    const candidates: Record<'revenue' | 'conversions' | 'roas', number[]> = { revenue: [], conversions: [], roas: [] };
     const targets: Record<string, number> = {};
     (kpis || []).forEach((k: any) => {
       const name = (k.metric || k.name || '').toLowerCase();
-      if (name.includes('revenue') && k.targetValue) targets.revenue = parseFloat(k.targetValue);
-      if (name.includes('conversion') && k.targetValue) targets.conversions = parseFloat(k.targetValue);
-      if (name.includes('roas') && k.targetValue) targets.roas = parseFloat(k.targetValue);
+      const target = parseFloat(k.targetValue);
+      if (!Number.isFinite(target) || target <= 0) return;
+      if (name.includes('revenue')) candidates.revenue.push(target);
+      if (name.includes('conversion')) candidates.conversions.push(target);
+      if (name.includes('roas')) candidates.roas.push(target);
+    });
+    (Object.keys(candidates) as Array<keyof typeof candidates>).forEach((metric) => {
+      if (candidates[metric].length === 1) targets[metric] = candidates[metric][0];
     });
     return targets;
   }, [kpis]);

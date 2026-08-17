@@ -239,10 +239,10 @@ export default function CampaignPerformanceSummary() {
     const normalizedUnit = String(unit || '').toLowerCase();
     if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (unit === '%') {
-      const rounded = Math.round(parseNum(value) * 10) / 10;
+      const rounded = Math.round(parseNum(value) * 100) / 100;
       return `${rounded.toLocaleString('en-US', {
-        minimumFractionDigits: rounded === Math.floor(rounded) ? 0 : 1,
-        maximumFractionDigits: 1,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
       })}%`;
     }
     if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });

@@ -84,7 +84,9 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })");
-    expect(page).toContain("rounded.toLocaleString('en-US', {");
+    expect(page).toContain("const rounded = Math.round(parseNum(value) * 100) / 100;");
+    expect(page).toContain("maximumFractionDigits: 2,");
+    expect(page).not.toContain("const rounded = Math.round(parseNum(value) * 10) / 10;");
     expect(page).toContain("if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });");
     expect(page).toContain("if (normalizedUnit === 'ratio') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 });");
     expect(page).not.toContain("parseNum(value).toFixed(2)");

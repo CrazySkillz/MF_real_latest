@@ -1052,7 +1052,7 @@ export default function TrendAnalysis() {
                             {overviewVisibleSeries.has('sessions') && <Line yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
                             {/* KPI target lines */}
                             {kpiTargets.revenue && overviewVisibleSeries.has('revenue') && (
-                              <ReferenceLine yAxisId="right" y={kpiTargets.revenue} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'Revenue Target', fill: '#10b981', fontSize: 10 }} />
+                              <ReferenceLine yAxisId="right" y={kpiTargets.revenue} ifOverflow="extendDomain" stroke="#10b981" strokeDasharray="5 5" label={{ value: 'Revenue Target', fill: '#10b981', fontSize: 10 }} />
                             )}
                             {/* Anomaly dots */}
                             {overviewTrendData.anomalies.filter((a: any) => overviewVisibleSeries.has(a.metric)).slice(0, 8).map((a: any, i: number) => (

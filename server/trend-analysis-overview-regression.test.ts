@@ -11,6 +11,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).toContain('y={kpiTargets.roas}');
     expect(page).toContain('y={kpiTargets.roas} ifOverflow="extendDomain"');
+    expect(page).toContain('y={kpiTargets.revenue} ifOverflow="extendDomain"');
     expect(page).not.toContain('y={kpiTargets.roas / 100}');
     expect(page).toContain("const candidates: Record<'revenue' | 'conversions' | 'roas', number[]>");
     expect(page).toContain("if (candidates[metric].length === 1) targets[metric] = candidates[metric][0];");

@@ -325,7 +325,7 @@ export default function ExecutiveSummary() {
   const resolveExecutiveKpiTargetState = (kpi: any) => {
     const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
     if (!aggregateKpiMetric) return null;
-    const current = aggregateMetricValue(aggregateKpiMetric);
+    const current = Number(kpi.current ?? kpi.currentValue) || 0;
     const target = Number(kpi.target ?? kpi.targetValue) || 0;
     const lowerIsBetter = isLowerIsBetterKpi({ metric: aggregateKpiMetric, name: kpi?.name || kpi?.metric });
     const policy = resolveKpiThresholdPolicy({
@@ -356,7 +356,7 @@ export default function ExecutiveSummary() {
       .map((bm: any) => {
         const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
         if (!aggregateBenchmarkMetric) return null;
-        const yours = aggregateMetricValue(aggregateBenchmarkMetric);
+        const yours = Number(bm.yours ?? bm.currentValue) || 0;
         const benchmark = Number(bm.benchmark) || 0;
         const threshold = computeBenchmarkThresholdResult({
           metric: aggregateBenchmarkMetric,
@@ -379,7 +379,7 @@ export default function ExecutiveSummary() {
   const kpiProgressPct = (kpi: any): number => {
     const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
     if (!aggregateKpiMetric) return 0;
-    const current = aggregateMetricValue(aggregateKpiMetric);
+    const current = Number(kpi.current ?? kpi.currentValue) || 0;
     const target = Number(kpi.target) || 0;
     const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
     const progressRatio = target > 0

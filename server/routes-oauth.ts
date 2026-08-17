@@ -30953,7 +30953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const kpi of kpis) {
           const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
           if (!aggregateKpiMetric) continue;
-          const currentValue = aggregateMetricValue(aggregateKpiMetric);
+          const currentValue = parseNum(kpi.currentValue);
           const targetValue = parseNum(kpi.targetValue);
           if (targetValue > 0 && ["cvr", "revenue", "conversions"].includes(aggregateKpiMetric)) {
             recommendationTargetMetrics.add(aggregateKpiMetric);
@@ -30973,6 +30973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           kpiProgress.push({
             kpiId: kpi.id,
             name: kpi.name,
+            metricKey: aggregateKpiMetric,
             target: targetValue,
             current: currentValue,
             unit: kpi.unit || '',
@@ -30992,7 +30993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const bm of benchmarks) {
           const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
           if (!aggregateBenchmarkMetric) continue;
-          const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);
+          const currentVal = parseNum(bm.currentValue);
           const targetVal = parseNum(bm.benchmarkValue);
           if (targetVal > 0 && ["cvr", "revenue", "conversions"].includes(aggregateBenchmarkMetric)) {
             recommendationTargetMetrics.add(aggregateBenchmarkMetric);
@@ -31008,6 +31009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           benchmarkComparison.push({
             metric: bm.name,
+            metricKey: aggregateBenchmarkMetric,
             yours: currentVal,
             benchmark: targetVal,
             unit: bm.unit || '',

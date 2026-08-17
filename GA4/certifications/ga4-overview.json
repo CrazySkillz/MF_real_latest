@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-  "certifiedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-  "deployedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+  "lastReviewedSha": "5beea162279c95efe735623d9ea482df9746bd22",
+  "certifiedSha": "5beea162279c95efe735623d9ea482df9746bd22",
+  "deployedSha": "5beea162279c95efe735623d9ea482df9746bd22",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -64,7 +64,7 @@
     { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify source input boundary", "sha256": "3bcebff7db14d62dddac2b84e6db00b92bd76a044f2fc26890914c5fc85493ab" },
     { "path": "shared/schema.ts", "role": "shared persistence contracts", "sha256": "72aaf81f747c2dd4766435125bc62e2fa83228d1ca30f53b61a7a08e3c196e9b" },
     { "path": "shared/ga4-financial-source.ts", "role": "financial-source semantics", "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3" },
-    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": "42b0b423a4b81c56e2f7f4fe0cffb908129715959501d95698173c997854319d" },
+    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": "1a1cd9ef8ef8e6a94d23d38df39801b6d8c114fa27f2ad2861b02c82130761bf" },
     { "path": "server/storage.ts", "role": "Overview storage and lifecycle paths", "sha256": "a6e4d056c0a091a35681c6ae0b7cbccdfff8ad1aa7322d71552c66831d0c8789" },
     { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1" },
     { "path": "server/ga4-daily-scheduler.ts", "role": "GA4 daily refresh path", "sha256": "49fa6b8892b94bd6edf97adc065cca632555ea2af7983e57ddc8f6909e19dd59" },
@@ -99,7 +99,7 @@
     { "path": "server/campaign-current-value-financial-source-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "6b18a037e2b8f998465f8a093370231e4d2362c472f0c646b02968f9fb2d5887" },
     { "path": "server/outcome-totals-ga4-fallback-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "f9c35f3260f0f453586ed6defd36e42d0271b0361cb96d6304ab5dbc13641926" },
     { "path": "server/performance-summary-scheduler-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "1e9170468682fe0ab0a578c8110dfe94d19b424267d4215b90589a4e8fa36b82" },
-    { "path": "server/trend-analysis-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "645a7110b33d5a6300f4168fb519c0548c033bff0c867c96391b707bb17d1411" },
+    { "path": "server/trend-analysis-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "6c6c1dee0d210668954a73765849d8041ad796770a7fa6c4744e0f2eafddd12a" },
     { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "ec1cc8ab3ab1b55f4f911e1218b068e6148dec69d50cfff0c1ea130ce65a3ad7" },
     { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "47aa589aaf782f170d39bdbca3f37d1a6f408e070b594e85d8bd5c5543fdb3b5" },
     { "path": "server/shopify-revenue-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "6938c1b4f165fc1b966332e6cca22b89ea6bbcfcbd5dff7114c6b8a9dc9d4c99" },
@@ -157,20 +157,20 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed for the final combined certification working tree; no runtime source changed after deployed 892ff339."
+      "evidence": "npm run check passed on exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed for the final combined certification working tree; no runtime source changed after deployed 892ff339."
+      "evidence": "The production Vite and server esbuild completed on exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817 on 2026-08-15."
+      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22 on 2026-08-17."
     },
     {
       "id": "authenticated_ui_api_source_parity",

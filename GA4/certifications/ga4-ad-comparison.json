@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-  "certifiedSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+  "lastReviewedSha": "5beea162279c95efe735623d9ea482df9746bd22",
+  "certifiedSha": "5beea162279c95efe735623d9ea482df9746bd22",
   "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -126,7 +126,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "42b0b423a4b81c56e2f7f4fe0cffb908129715959501d95698173c997854319d"
+      "sha256": "1a1cd9ef8ef8e6a94d23d38df39801b6d8c114fa27f2ad2861b02c82130761bf"
     },
     {
       "path": "server/storage.ts",
@@ -209,13 +209,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed for deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817; this certification rebind changes documentation/evidence only."
+      "evidence": "TypeScript passed for exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Production Vite and server esbuild completed successfully for deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817; this certification rebind changes documentation/evidence only."
+      "evidence": "Production Vite and server esbuild completed successfully for exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
     },
     {
       "id": "authenticated_production_parity",
@@ -228,7 +228,7 @@
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact deployed SHA 892ff3396ec9c9332008128897e5703cc6bb3817."
+      "evidence": "Production /api/health returned exact deployed SHA 5beea162279c95efe735623d9ea482df9746bd22 on 2026-08-17."
     },
     {
       "id": "live_ga4_provider",
@@ -248,7 +248,7 @@
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 892ff339. The only listed dependency changed after the prior 7374e824 boundary is routes-oauth.ts; its exact diff adds a Reports-only direct snapshot PDF fail-closed guard. It does not change the cumulative Ad Comparison endpoint or live renderer. Protected Ad behavior/source-safety regressions and exact-SHA live parity passed."
+      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 5beea162. Later routes-oauth.ts changes through 5beea162 are confined to Campaign DeepDive consumers and do not change the cumulative Ad Comparison endpoint or live renderer. The exact-5beea162 current-version functional boundary, TypeScript, and production build passed."
     }
   ]
 }

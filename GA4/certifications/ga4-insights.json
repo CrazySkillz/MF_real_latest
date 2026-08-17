@@ -2,9 +2,9 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "PRODUCTION_READY",
-    "lastReviewedSha":  "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "certifiedSha":  "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "deployedSha":  "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "lastReviewedSha":  "5beea162279c95efe735623d9ea482df9746bd22",
+    "certifiedSha":  "5beea162279c95efe735623d9ea482df9746bd22",
+    "deployedSha":  "5beea162279c95efe735623d9ea482df9746bd22",
     "invalidationReason":  null,
     "previousCertification":  {
                                      "status":  "PRODUCTION_READY",
@@ -131,7 +131,7 @@
                          {
                              "path":  "server/routes-oauth.ts",
                              "role":  "API auth, scope, and window boundary",
-                             "sha256":  "42b0b423a4b81c56e2f7f4fe0cffb908129715959501d95698173c997854319d"
+                             "sha256":  "1a1cd9ef8ef8e6a94d23d38df39801b6d8c114fa27f2ad2861b02c82130761bf"
                          },
                          {
                              "path":  "server/index.ts",
@@ -488,12 +488,12 @@
                           {
                               "id":  "typescript",
                               "status":  "passed",
-                              "evidence":  "npm run check passed on the final combined certification working tree; no runtime source differs from deployed 892ff339."
+                              "evidence":  "npm run check passed on exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
                           },
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "npm run build passed on the final combined certification working tree; no runtime source differs from deployed 892ff339."
+                              "evidence":  "npm run build passed on exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
                           },
                           {
                               "id":  "machine_gate",
@@ -505,7 +505,7 @@
                           {
                               "id":  "exact_sha_deployment",
                               "status":  "passed",
-                              "evidence":  "Render /api/health returned HTTP 200 with exact deployed runtime 892ff3396ec9c9332008128897e5703cc6bb3817 on 2026-08-15."
+                              "evidence":  "Render /api/health returned HTTP 200 with exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22 on 2026-08-17."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
@@ -530,7 +530,7 @@
                           {
                               "id":  "dependency_hashes",
                               "status":  "passed",
-                              "evidence":  "All 84 dependency hashes match the final working-tree boundary tied to deployed runtime 892ff339. Exact configuration validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, GA4/Sheets signed OAuth state, configured Google credentials, inactive/excluded Google Ads, UTC 22:00 scheduler timing, and disabled GA4 startup refresh."
+                              "evidence":  "All 84 dependency hashes match the working-tree boundary tied to deployed runtime 5beea162. The changed shared-route diff is confined to Campaign DeepDive consumers; the exact-5beea162 current-version functional boundary, TypeScript, and production build passed. The recorded configuration validation remains unchanged."
                           }
                       ],
     "configurationFingerprint":  {

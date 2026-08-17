@@ -10,6 +10,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain('fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).toContain('y={kpiTargets.roas}');
+    expect(page).toContain('y={kpiTargets.roas} ifOverflow="extendDomain"');
     expect(page).not.toContain('y={kpiTargets.roas / 100}');
   });
 

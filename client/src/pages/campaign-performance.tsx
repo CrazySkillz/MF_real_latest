@@ -7,9 +7,7 @@ import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SiLinkedin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -137,7 +135,7 @@ export default function CampaignPerformanceSummary() {
     refetchOnWindowFocus: true,
   });
 
-  // Fetch trend snapshots for time-series analysis
+  // Retain the existing compatible trend data for the non-rendered legacy chart path.
   const { data: trendSnapshots = [] } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignId}/snapshots?period=${trendPeriod}`],
     enabled: !!campaignId,
@@ -146,7 +144,6 @@ export default function CampaignPerformanceSummary() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
-
 
   if (campaignLoading) {
     return (
@@ -353,13 +350,6 @@ export default function CampaignPerformanceSummary() {
 
   const healthStatus = getHealthStatus();
   const HealthIcon = healthStatus.icon;
-  const getTrackSummaryStatus = (onTrack: number, total: number) => {
-    if (onTrack * 2 > total) return { label: "Majority On Track", color: "#22c55e", badgeClass: "bg-green-500 text-white hover:bg-green-500" };
-    if (onTrack * 2 === total) return { label: "Half On Track", color: "#f97316", badgeClass: "bg-orange-500 text-white hover:bg-orange-500" };
-    return { label: "Needs Attention", color: "#ef4444", badgeClass: "bg-red-500 text-white hover:bg-red-500" };
-  };
-  const kpiTrackStatus = getTrackSummaryStatus(kpisOnTrackOrAbove, effectiveKpis.length);
-  const benchmarkTrackStatus = getTrackSummaryStatus(benchmarksOnTrack, effectiveBenchmarks.length);
   const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => {
     const metric = aggregateMetric(metricName);
@@ -698,18 +688,6 @@ export default function CampaignPerformanceSummary() {
 
   const changeData = getChanges();
 
-  const connectedPlatformSources = performanceSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
-  const dataSources = connectedPlatformSources.length > 0
-    ? connectedPlatformSources.map((source: any) => ({
-        name: source?.label || source?.id || "Connected source",
-        connected: source?.connected === true,
-        icon: source?.id === "linkedin" ? SiLinkedin : Activity,
-      }))
-    : !performanceSummary ? [
-        { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
-        { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
-      ].filter((source) => source.connected)
-      : [];
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
     if (performanceSummaryPending) {
@@ -794,114 +772,16 @@ export default function CampaignPerformanceSummary() {
             </div>
           )}
 
-          {/* Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="health">Campaign Health</TabsTrigger>
-              <TabsTrigger value="changes">What's Changed</TabsTrigger>
-              <TabsTrigger value="insights">Insights</TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            {!performanceSummaryPending && (
+              <>
+              <section className="space-y-4" data-testid="performance-key-outcomes">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Key Outcomes</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Current outcomes from the campaign's connected sources</p>
+                </div>
 
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-6">
-              {!performanceSummaryPending && (
-                <>
-              {/* Campaign Health Status */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <HealthIcon className="w-5 h-5" />
-                    <span>Campaign Health</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {totalMetrics === 0 ? (
-                    <div className="text-center py-4">
-                      <p className="text-muted-foreground/70">Set up KPIs and Benchmarks to see your campaign health score.</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-16 h-16 rounded-full ${healthStatus.color} flex items-center justify-center text-white text-2xl font-bold`}>
-                        {healthScore}%
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-foreground">{healthStatus.label}</div>
-                        <div className="text-sm text-muted-foreground/70">
-                          {totalOnTrackMetrics} of {totalMetrics} metrics on track
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs • {benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Top Priority Action */}
-              <Card className="border-l-4 border-l-blue-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Target className="w-5 h-5" />
-                    <span>Top Priority Action</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const priority = getPriorityAction();
-                    
-                    if (priority.type === 'kpi') {
-                      return (
-                        <div className="space-y-3">
-                          <div>
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                                KPI Below Target
-                              </Badge>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              {priority.name}
-                            </div>
-                            <div className="text-sm text-muted-foreground/70 mt-1">
-                              KPI: {priority.metric}
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-6">
-                            <div>
-                              <div className="text-xs text-muted-foreground/70 uppercase tracking-wide mb-1">Current</div>
-                              <div className="text-xl font-bold text-red-600 dark:text-red-400">{priority.currentValue}</div>
-                            </div>
-                            <div className="text-2xl text-muted-foreground/60">→</div>
-                            <div>
-                              <div className="text-xs text-muted-foreground/70 uppercase tracking-wide mb-1">Target</div>
-                              <div className="text-xl font-bold text-green-600 dark:text-green-400">{priority.targetValue}</div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    } else if (priority.type === 'benchmark') {
-                      return (
-                        <div className="flex items-center space-x-3">
-                          <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                            Benchmark
-                          </Badge>
-                          <p className="text-foreground font-medium">
-                            {priority.action} "{priority.name}" - {priority.message}
-                          </p>
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <p className={`${priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'} font-medium`}>{priority.message}</p>
-                      );
-                    }
-                  })()}
-                </CardContent>
-              </Card>
-
-              {/* Aggregated Metrics Snapshot */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
@@ -961,223 +841,125 @@ export default function CampaignPerformanceSummary() {
                     </p>
                   </CardContent>
                 </Card>
-              </div>
-                </>
-              )}
-            </TabsContent>
+                </div>
+              </section>
 
-            {/* Campaign Health Tab */}
-            <TabsContent value="health" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Overall Health Summary</CardTitle>
-                  <CardDescription>Campaign health overview</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {totalMetrics === 0 ? (
-                    <div className="text-center py-6">
-                      <AlertTriangle className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
-                      <p className="text-muted-foreground/70 font-medium">No GA4 KPIs or Benchmarks configured</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Set them up in View Detailed Analytics to see health tracking here.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="border-l-4 pl-4 py-2" style={{ borderColor: healthScore >= 70 ? '#22c55e' : healthScore >= 50 ? '#eab308' : '#ef4444' }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-3">
-                            <span className="font-semibold text-foreground">Overall Health Score</span>
-                            <Badge variant={healthScore >= 70 ? "default" : "destructive"}>
-                              {healthStatus.label}
-                            </Badge>
+                <div className="grid gap-6 lg:grid-cols-2">
+                {/* Campaign Health */}
+                <Card data-testid="performance-campaign-health">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <HealthIcon className="w-5 h-5" />
+                      <span>Campaign Health</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {totalMetrics === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-muted-foreground/70">Set up KPIs and Benchmarks to see your campaign health score.</p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-16 h-16 rounded-full ${healthStatus.color} flex items-center justify-center text-white text-2xl font-bold`}>
+                          {healthScore}%
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-foreground">{healthStatus.label}</div>
+                          <div className="text-sm text-muted-foreground/70">
+                            {totalOnTrackMetrics} of {totalMetrics} metrics on track
                           </div>
-                          <span className="text-2xl font-bold text-foreground">{healthScore}%</span>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs • {benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks
+                          </div>
                         </div>
                       </div>
-
-                      {effectiveKpis.length > 0 && (
-                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpiTrackStatus.color }}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center space-x-3">
-                              <span className="font-semibold text-foreground">KPIs On Track or Above</span>
-                              <Badge variant="default" className={kpiTrackStatus.badgeClass}>
-                                {kpiTrackStatus.label}
-                              </Badge>
-                            </div>
-                            <span className="text-sm text-muted-foreground/70">{kpisOnTrackOrAbove} of {effectiveKpis.length}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {effectiveBenchmarks.length > 0 && (
-                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarkTrackStatus.color }}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center space-x-3">
-                              <span className="font-semibold text-foreground">Benchmarks On Track</span>
-                              <Badge variant="default" className={benchmarkTrackStatus.badgeClass}>
-                                {benchmarkTrackStatus.label}
-                              </Badge>
-                            </div>
-                            <span className="text-sm text-muted-foreground/70">{benchmarksOnTrack} of {effectiveBenchmarks.length}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* All KPIs */}
-              {effectiveKpis.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Key Performance Indicators (KPIs)</CardTitle>
-                    <CardDescription>GA4 KPIs and their targets</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {effectiveKpis.map((kpi: any, idx: number) => {
-                        const current = getKpiCurrentValue(kpi);
-                        const target = parseNum(kpi.targetValue);
-                        const deltaPct = getKpiDeltaPct(kpi);
-                        const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
-                        const percentage = target > 0 ? Math.round((lowerBetter ? (current > 0 ? target / current : 0) : current / target) * 100) : 0;
-                        const status = deltaPct > 5
-                          ? { label: "Above Target", color: "#22c55e", badgeClass: "bg-green-500 text-white hover:bg-green-500" }
-                          : deltaPct >= -5
-                            ? { label: "On Track", color: "#2563eb", badgeClass: "bg-blue-500 text-white hover:bg-blue-500" }
-                            : { label: "Below Target", color: "#ef4444", badgeClass: "bg-red-500 text-white hover:bg-red-500" };
-                        
-                        return (
-                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: status.color }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-foreground">{kpi.name}</span>
-                                <Badge variant="default" className={status.badgeClass}>
-                                  {status.label}
-                                </Badge>
-                              </div>
-                              <span className="text-sm text-muted-foreground/70">{percentage}% of target</span>
-                            </div>
-                            <div className="flex items-center space-x-6 text-sm">
-                              <div>
-                                <span className="text-muted-foreground/70">Current: </span>
-                                <span className="font-semibold text-foreground">
-                                  {formatMetricValue(current, kpi.unit)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground/70">Target: </span>
-                                <span className="font-semibold text-foreground">
-                                  {formatMetricValue(target, kpi.unit)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* All Benchmarks */}
-              {effectiveBenchmarks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Benchmarks</CardTitle>
-                    <CardDescription>GA4 performance vs configured benchmarks</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {effectiveBenchmarks.map((benchmark: any, idx: number) => {
-                        const current = getBenchmarkCurrentValue(benchmark);
-                        const target = parseNum(benchmark.benchmarkValue);
-                        const progressPct = getBenchmarkProgressPct(benchmark);
-                        const status = progressPct >= 90
-                          ? { label: "On Track", color: "#22c55e", badgeClass: "bg-green-500 text-white hover:bg-green-500" }
-                          : progressPct >= 70
-                            ? { label: "Needs Attention", color: "#f97316", badgeClass: "bg-orange-500 text-white hover:bg-orange-500" }
-                            : { label: "Below Target", color: "#ef4444", badgeClass: "bg-red-500 text-white hover:bg-red-500" };
-                        
-                        return (
-                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: status.color }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-foreground">{benchmark.name}</span>
-                                <Badge variant="default" className={status.badgeClass}>
-                                  {status.label}
-                                </Badge>
-                              </div>
-                              <span className="text-sm text-muted-foreground/70">{Math.round(progressPct)}% of benchmark</span>
-                            </div>
-                            <div className="flex items-center space-x-6 text-sm">
-                              <div>
-                                <span className="text-muted-foreground/70">Current: </span>
-                                <span className="font-semibold text-foreground">
-                                  {formatMetricValue(current, benchmark.unit)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground/70">Target: </span>
-                                <span className="font-semibold text-foreground">
-                                  {formatMetricValue(target, benchmark.unit)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Data Source Status */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Data Sources</CardTitle>
-                  <CardDescription>Connected platforms feeding this summary</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    {dataSources.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No connected data sources</p>
                     )}
-                    {dataSources.map((source: any) => {
-                      const Icon = source.icon;
-                      return (
-                        <div key={source.name} className="flex items-center space-x-3">
-                          <Icon className="w-5 h-5 text-muted-foreground/70" />
-                          <span className="text-sm text-foreground/80/60">{source.name}</span>
-                          <Badge variant={source.connected ? "default" : "secondary"}>
-                            {source.connected ? "Connected" : "Not Connected"}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
 
-            {/* What's Changed Tab */}
-            <TabsContent value="changes" className="space-y-6">
-              {/* Delta Cards */}
-              <Card>
+                {/* Top Priority Action */}
+                <Card className="border-l-4 border-l-blue-500" data-testid="performance-top-priority">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Target className="w-5 h-5" />
+                      <span>Top Priority Action</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const priority = getPriorityAction();
+
+                      if (priority.type === 'kpi') {
+                        return (
+                          <div className="space-y-3">
+                            <div>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                  KPI Below Target
+                                </Badge>
+                              </div>
+                              <div className="text-xl font-bold text-foreground">
+                                {priority.name}
+                              </div>
+                              <div className="text-sm text-muted-foreground/70 mt-1">
+                                KPI: {priority.metric}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-6">
+                              <div>
+                                <div className="text-xs text-muted-foreground/70 uppercase tracking-wide mb-1">Current</div>
+                                <div className="text-xl font-bold text-red-600 dark:text-red-400">{priority.currentValue}</div>
+                              </div>
+                              <div className="text-2xl text-muted-foreground/60">→</div>
+                              <div>
+                                <div className="text-xs text-muted-foreground/70 uppercase tracking-wide mb-1">Target</div>
+                                <div className="text-xl font-bold text-green-600 dark:text-green-400">{priority.targetValue}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      } else if (priority.type === 'benchmark') {
+                        return (
+                          <div className="flex items-center space-x-3">
+                            <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                              Benchmark
+                            </Badge>
+                            <p className="text-foreground font-medium">
+                              {priority.action} "{priority.name}" - {priority.message}
+                            </p>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <p className={`${priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'} font-medium`}>{priority.message}</p>
+                        );
+                      }
+                    })()}
+                  </CardContent>
+                </Card>
+                </div>
+
+              {/* Recent Movement */}
+              <Card data-testid="performance-recent-movement">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center space-x-2">
                       <Activity className="w-5 h-5" />
                       <div>
-                        <CardTitle>What's Changed</CardTitle>
+                        <CardTitle>Recent Movement</CardTitle>
                         <CardDescription className="mt-1.5">
-                          How your connected platform metrics have changed
+                          Meaningful changes in connected-source metrics
                         </CardDescription>
                       </div>
                     </div>
-                    <Select value={timeRange} onValueChange={(value: '24h' | '7d' | '30d') => setTimeRange(value)}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Link href={`/campaigns/${campaign.id}/trend-analysis`}>
+                        <Button variant="outline" size="sm">
+                          <TrendingUp className="w-4 h-4 mr-2" />
+                          View Trend Analysis
+                        </Button>
+                      </Link>
+                      <Select value={timeRange} onValueChange={(value: '24h' | '7d' | '30d') => setTimeRange(value)}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -1186,7 +968,8 @@ export default function CampaignPerformanceSummary() {
                         <SelectItem value="7d">Last 7 Days</SelectItem>
                         <SelectItem value="30d">Last 30 Days</SelectItem>
                       </SelectContent>
-                    </Select>
+                      </Select>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1208,8 +991,8 @@ export default function CampaignPerformanceSummary() {
                           Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}
                         </p>
                       )}
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {changeData.changes.map((item, idx) => {
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {changeData.changes.slice(0, 4).map((item, idx) => {
                           const isUp = item.direction === "up";
                           const isDown = item.direction === "down";
                           const isFlat = item.direction === "flat";
@@ -1259,7 +1042,7 @@ export default function CampaignPerformanceSummary() {
               </Card>
 
               {/* Trend Charts — only show compatible aggregate snapshots */}
-              {(() => {
+              {false && (() => {
                 const compatibleSnapshots = performanceSummary?.version
                   ? trendSnapshots.filter((snapshot: any) => snapshot?.metrics?.performanceSummary?.version === performanceSummary.version)
                   : [];
@@ -1326,51 +1109,23 @@ export default function CampaignPerformanceSummary() {
                 </Card>
                 );
               })()}
-            </TabsContent>
 
-            {/* Insights Tab */}
-            <TabsContent value="insights" className="space-y-6">
-              <Card>
+              {/* Insights Tab */}
+              <Card data-testid="performance-recommended-actions">
                 <CardHeader>
-                  <CardTitle>Data-Driven Insights & Recommendations</CardTitle>
-                  <CardDescription>Performance analysis based on {campaign.name} actual metrics</CardDescription>
+                  <CardTitle>Recommended Actions</CardTitle>
+                  <CardDescription>Prioritized actions based on {campaign.name} actual metrics</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Priority Action */}
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center">
-                        <AlertTriangle className="w-4 h-4 mr-2" />
-                        Top Priority Action
-                      </h4>
-                      {(() => {
-                        const priority = getPriorityAction();
-                        
-                        if (priority.type === 'kpi') {
-                          return (
-                            <p className="text-sm text-blue-800 dark:text-blue-200">
-                              {priority.action} {priority.name} (Metric: {priority.metric}) - currently {priority.currentValue}, target {priority.targetValue}
-                            </p>
-                          );
-                        } else if (priority.type === 'benchmark') {
-                          return (
-                            <p className="text-sm text-blue-800 dark:text-blue-200">
-                              {priority.action} "{priority.name}" - {priority.message}
-                            </p>
-                          );
-                        } else {
-                          return (
-                            <p className="text-sm text-blue-800 dark:text-blue-200">{priority.message}</p>
-                          );
-                        }
-                      })()}
-                    </div>
-                    
                     {/* Performance Analysis */}
                     {(() => {
                       const insights = buildPerformanceInsights();
+                      const recommendedInsights = insights
+                        .filter((insight) => insight.category !== 'campaign-health')
+                        .slice(0, 3);
                       
-                      return insights.map((insight, idx) => {
+                      return recommendedInsights.map((insight, idx) => {
                         const bgColors: Record<string, string> = {
                           success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
                           warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
@@ -1398,8 +1153,9 @@ export default function CampaignPerformanceSummary() {
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+              </>
+            )}
+          </div>
         </main>
       </div>
     </div>

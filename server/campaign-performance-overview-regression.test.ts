@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-describe("campaign Performance Summary Overview regression guard", () => {
+describe("campaign Performance Summary consolidated view regression guard", () => {
   it("reads KPI and Benchmark target rows directly from the campaign's GA4 configuration", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const kpiValueResolver = page.slice(page.indexOf("const getKpiCurrentValue"), page.indexOf("const getBenchmarkProgressPct"));
@@ -18,11 +18,11 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(benchmarkValueResolver).not.toContain("performanceSummary?.totals");
   });
 
-  it("wires Overview cards to the performanceSummary aggregate contract", () => {
+  it("wires Key Outcomes cards to the performanceSummary aggregate contract", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
-    const overviewStart = page.indexOf("{/* Overview Tab */}");
-    const overviewEnd = page.indexOf("{/* Campaign Health Tab */}", overviewStart);
-    const overview = page.slice(overviewStart, overviewEnd);
+    const keyOutcomesStart = page.indexOf('data-testid="performance-key-outcomes"');
+    const keyOutcomesEnd = page.indexOf('data-testid="performance-campaign-health"', keyOutcomesStart);
+    const keyOutcomes = page.slice(keyOutcomesStart, keyOutcomesEnd);
 
     expect(page).toContain('const performanceSummary = outcomeTotals?.performanceSummary;');
     expect(page).toContain("const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;");
@@ -36,20 +36,20 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("if (performanceSummaryPending) {");
     expect(page).toContain("return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };");
     expect(page).toContain('if (metric?.pending) return "";');
-    expect(overview).toContain("{!performanceSummaryPending && (");
-    expect(overview).not.toContain("Preparing Overview");
-    expect(overview).not.toContain("Preparing aggregate metrics");
+    expect(page).toContain("{!performanceSummaryPending && (");
+    expect(keyOutcomes).not.toContain("Preparing Overview");
+    expect(keyOutcomes).not.toContain("Preparing aggregate metrics");
     expect(page).toContain('const overviewImpressions = getOverviewMetric("impressions", totalImpressions);');
     expect(page).toContain('const overviewSessions = getOverviewMetric("sessions", webSessions);');
     expect(page).toContain('const overviewConversions = getOverviewMetric("conversions", totalConversions);');
     expect(page).toContain('const overviewSpend = getOverviewMetric("spend", totalSpend);');
-    expect(overview).toContain("formatOverviewValue(overviewImpressions");
-    expect(overview).toContain("formatOverviewValue(overviewSessions");
-    expect(overview).toContain("formatOverviewValue(overviewConversions");
-    expect(overview).toContain("formatOverviewValue(overviewSpend");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewImpressions");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewSessions");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewConversions");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewSpend");
     expect(page).toContain('if (metric === overviewImpressions) return "Unavailable from connected sources";');
-    expect(overview).toContain("overviewSourceLabel(overviewConversions");
-    expect(overview).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
+    expect(keyOutcomes).toContain("overviewSourceLabel(overviewConversions");
+    expect(keyOutcomes).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
   });
 
   it("shows connected non-financial sources for unavailable Overview metrics", () => {
@@ -105,40 +105,33 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("const getBenchmarkMetricKey = (benchmark: any) => {");
     expect(page).toContain("const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;");
     expect(page).toContain("{totalOnTrackMetrics} of {totalMetrics} metrics on track");
-    expect(page).toContain("const getTrackSummaryStatus = (onTrack: number, total: number) => {");
-    expect(page).toContain('if (onTrack * 2 > total) return { label: "Majority On Track", color: "#22c55e"');
-    expect(page).toContain('if (onTrack * 2 === total) return { label: "Half On Track", color: "#f97316"');
-    expect(page).toContain('return { label: "Needs Attention", color: "#ef4444"');
-    expect(page).toContain("style={{ borderColor: kpiTrackStatus.color }}");
-    expect(page).toContain("style={{ borderColor: benchmarkTrackStatus.color }}");
-    expect(page).toContain("KPIs On Track or Above");
-    expect(page).toContain("Benchmarks On Track");
-    expect(page).toContain("<CardTitle>Benchmarks</CardTitle>");
-    expect(page).not.toContain("<CardTitle>Industry Benchmarks</CardTitle>");
-    expect(page).toContain('label: "Above Target", color: "#22c55e"');
-    expect(page).toContain('label: "On Track", color: "#2563eb"');
-    expect(page).toContain('label: "Below Target", color: "#ef4444"');
-    expect(page).toContain('label: "Needs Attention", color: "#f97316"');
-    expect(page).toContain("Math.round(progressPct)}% of benchmark");
-    expect(page).toContain("formatMetricValue(current, kpi.unit)");
-    expect(page).toContain("formatMetricValue(current, benchmark.unit)");
+    expect(page).toContain('data-testid="performance-campaign-health"');
+    expect(page).toContain("{kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs");
+    expect(page).toContain("{benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks");
     expect(page).not.toContain("metrics above target");
     expect(page).not.toContain(">= effectiveKpis.length / 2 ? \"Majority On Track\"");
     expect(page).not.toContain("`${kpi.currentValue}${kpi.unit}`");
     expect(page).not.toContain("`${benchmark.currentValue}${benchmark.unit}`");
   });
 
-  it("wires Campaign Health data source status to the aggregate contract", () => {
+  it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
-    expect(page).toContain('const connectedPlatformSources = performanceSources.filter((source: any) => source?.connected === true && source?.category !== "financial");');
-    expect(page).toContain("const dataSources = connectedPlatformSources.length > 0");
-    expect(page).toContain("connectedPlatformSources.map((source: any) => ({");
-    expect(page).toContain("name: source?.label || source?.id || \"Connected source\"");
-    expect(page).toContain("connected: source?.connected === true");
-    expect(page).toContain("!performanceSummary ? [");
-    expect(page).toContain("].filter((source) => source.connected)");
-    expect(page).toContain("No connected data sources");
-    expect(page).toContain("{dataSources.map((source: any) => {");
+    expect(page).not.toContain("TabsTrigger");
+    expect(page).not.toContain("<Tabs");
+    expect(page).toContain('data-testid="performance-key-outcomes"');
+    expect(page).toContain('data-testid="performance-campaign-health"');
+    expect(page).toContain('data-testid="performance-top-priority"');
+    expect(page).toContain('data-testid="performance-recent-movement"');
+    expect(page).toContain('data-testid="performance-recommended-actions"');
+    expect(page).toContain('<Link href={`/campaigns/${campaign.id}/trend-analysis`}>');
+    expect(page).toContain("changeData.changes.slice(0, 4).map");
+    expect(page).toContain(".filter((insight) => insight.category !== 'campaign-health')");
+    expect(page).toContain(".slice(0, 3);");
+    expect(page).not.toContain("<CardTitle>Key Performance Indicators (KPIs)</CardTitle>");
+    expect(page).not.toContain("<CardTitle>Benchmarks</CardTitle>");
+    expect(page).not.toContain("<CardTitle>Data Sources</CardTitle>");
+    expect(page).toContain("{false && (() => {");
+    expect(page).toContain("snapshots?period=${trendPeriod}");
   });
 });

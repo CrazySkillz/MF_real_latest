@@ -2,9 +2,9 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "PRODUCTION_READY",
-    "lastReviewedSha":  "5beea162279c95efe735623d9ea482df9746bd22",
-    "certifiedSha":  "5beea162279c95efe735623d9ea482df9746bd22",
-    "deployedSha":  "5beea162279c95efe735623d9ea482df9746bd22",
+    "lastReviewedSha":  "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
+    "certifiedSha":  "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
+    "deployedSha":  "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
     "invalidationReason":  null,
     "previousCertification":  {
                                      "status":  "PRODUCTION_READY",
@@ -61,7 +61,7 @@
                          {
                              "path":  "GA4/README.md",
                              "role":  "GA4 status index",
-                             "sha256":  "a59e6c4942dc55416bddde467ff3be1f261b7e984e573821f1435c40833b3dff"
+                             "sha256":  "d675d4c8179f12b1fe5653c37d9b6f3f59821ce7d2e0f6d7ef89d9387cb98036"
                          },
                          {
                              "path":  "GA4/FINANCIAL_SOURCES.md",
@@ -488,12 +488,12 @@
                           {
                               "id":  "typescript",
                               "status":  "passed",
-                              "evidence":  "npm run check passed on exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
+                              "evidence":  "npm run check passed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
                           },
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "npm run build passed on exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
+                              "evidence":  "npm run build passed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
                           },
                           {
                               "id":  "machine_gate",
@@ -505,7 +505,7 @@
                           {
                               "id":  "exact_sha_deployment",
                               "status":  "passed",
-                              "evidence":  "Render /api/health returned HTTP 200 with exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22 on 2026-08-17."
+                              "evidence":  "Render /api/health returned HTTP 200 with exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02 on 2026-08-18."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
@@ -530,7 +530,7 @@
                           {
                               "id":  "dependency_hashes",
                               "status":  "passed",
-                              "evidence":  "All 84 dependency hashes match the working-tree boundary tied to deployed runtime 5beea162. The changed shared-route diff is confined to Campaign DeepDive consumers; the exact-5beea162 current-version functional boundary, TypeScript, and production build passed. The recorded configuration validation remains unchanged."
+                              "evidence":  "All 84 dependency hashes match the working-tree boundary tied to deployed runtime 09e3b64e. The only changed Insights dependency is canonical documentation; no Insights runtime, calculation, route, or storage behavior changed. The exact-09e3b64e current-version functional boundary, TypeScript, and production build passed. The recorded configuration validation remains unchanged."
                           }
                       ],
     "configurationFingerprint":  {

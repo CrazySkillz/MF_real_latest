@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "5beea162279c95efe735623d9ea482df9746bd22",
-  "certifiedSha": "5beea162279c95efe735623d9ea482df9746bd22",
+  "lastReviewedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
+  "certifiedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
   "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -51,7 +51,7 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "a59e6c4942dc55416bddde467ff3be1f261b7e984e573821f1435c40833b3dff"
+      "sha256": "d675d4c8179f12b1fe5653c37d9b6f3f59821ce7d2e0f6d7ef89d9387cb98036"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
@@ -209,13 +209,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed for exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
+      "evidence": "TypeScript passed for exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Production Vite and server esbuild completed successfully for exact deployed runtime 5beea162279c95efe735623d9ea482df9746bd22."
+      "evidence": "Production Vite and server esbuild completed successfully for exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
     },
     {
       "id": "authenticated_production_parity",
@@ -228,7 +228,7 @@
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact deployed SHA 5beea162279c95efe735623d9ea482df9746bd22 on 2026-08-17."
+      "evidence": "Production /api/health returned exact deployed SHA 09e3b64ed67fec70aa84f969a09aae1f368a4f02 on 2026-08-18."
     },
     {
       "id": "live_ga4_provider",
@@ -248,7 +248,7 @@
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 5beea162. Later routes-oauth.ts changes through 5beea162 are confined to Campaign DeepDive consumers and do not change the cumulative Ad Comparison endpoint or live renderer. The exact-5beea162 current-version functional boundary, TypeScript, and production build passed."
+      "evidence": "The localized AC-10 runtime commit defce198 is an ancestor of deployed 09e3b64e. Later changes through 09e3b64e are confined to Campaign DeepDive report consumers and canonical documentation; they do not change the cumulative Ad Comparison endpoint or live renderer. The exact-09e3b64e current-version functional boundary, TypeScript, and production build passed."
     }
   ]
 }

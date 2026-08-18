@@ -354,8 +354,12 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain('section === "executive-summary:overview"');
     expect(scheduler).toContain('section === "kpis"');
     expect(scheduler).toContain('section === "benchmarks"');
-    expect(scheduler).toContain("needsKpiRows ? storage.getCampaignKPIs(campaignId)");
-    expect(scheduler).toContain("needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId)");
+    expect(scheduler).toContain('needsKpiRows ? storage.getPlatformKPIs("google_analytics", campaignId)');
+    expect(scheduler).toContain('needsBenchmarkRows ? storage.getPlatformBenchmarks("google_analytics", campaignId)');
+    expect(scheduler).not.toContain("needsKpiRows ? storage.getCampaignKPIs(campaignId)");
+    expect(scheduler).not.toContain("needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId)");
+    expect(scheduler).toContain("formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.current)");
+    expect(scheduler).toContain("formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.yours)");
     expect(scheduler).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis, benchmarks } : null;");
     expect(scheduler).toContain("if (!executiveSummary?.performanceSummary)");
     expect(scheduler).toContain("Marketing Funnel Performance");
@@ -599,15 +603,21 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Trend Performance Insights");
   });
 
-  it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
+  it("maps Campaign DeepDive KPI and Benchmark report sections directly to GA4 records", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
-    expect(reports).toContain('queryKey: [`/api/campaigns/${campaignContextId}/kpis`],');
-    expect(reports).toContain('queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],');
+    expect(reports).toContain('queryKey: ["/api/platforms/google_analytics/kpis", campaignContextId],');
+    expect(reports).toContain('queryKey: ["/api/platforms/google_analytics/benchmarks", campaignContextId],');
+    expect(reports).toContain('fetchReportJson(`/api/platforms/google_analytics/kpis?campaignId=${encodedReportCampaignId}`)');
+    expect(reports).toContain('fetchReportJson(`/api/platforms/google_analytics/benchmarks?campaignId=${encodedReportCampaignId}`)');
+    expect(reports).not.toContain('queryKey: [`/api/campaigns/${campaignContextId}/kpis`],');
+    expect(reports).not.toContain('queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],');
     expect(reports).toContain("const resolveCustomReportAggregateMetric = (record: any): string | null => {");
-    expect(reports).toContain("customReportPerformanceSummary?.totals?.[metricName]?.available === true");
     expect(reports).toContain("const renderCustomReportKpiBenchmarkOutput = (report: StoredReport) => {");
-    expect(reports).toContain("Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : \"Unavailable\"}");
+    expect(reports).toContain("Current: {formatCustomReportRecordValue(record, record?.currentValue)}");
+    expect(reports).toContain("Target: {formatCustomReportRecordValue(record, record?.[targetField])}");
+    expect(reports).toContain("const current = reportRecordCurrentValue(kpi);");
+    expect(reports).toContain("const current = reportRecordCurrentValue(bm);");
     expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
     expect(reports).toContain("classifyKpiBandWithPolicy");
     expect(reports).toContain("const kpiBand = (kpi: any) => {");

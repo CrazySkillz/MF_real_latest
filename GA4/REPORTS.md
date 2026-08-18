@@ -146,7 +146,7 @@ Important meaning:
 - campaign-scoped Reports pages should show only reports whose saved `campaignId` matches the active campaign across Standard Reports, Scheduled Reports, All Reports, report type filters, and result counts; campaign-scoped pages should not seed global/demo reports
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
 - for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
-- KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
+- for the GA4-first version, Campaign DeepDive KPI and Benchmark report sections use the campaign-scoped GA4 platform records for row identity, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled
 - All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
 - All Reports cards should show only edit, `Download latest report`, and delete actions; Pause/Resume belongs only in Scheduled Reports
 - All Reports filters should include Search, Report Type, and Date Range; redundant Campaign and Status dropdowns should not render

@@ -189,6 +189,24 @@ const formatCustomReportMetricValue = (key: string, value: unknown): string => {
 const customReportNormalizeMetricKey = (value: unknown): string =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+const formatCustomReportRecordValue = (record: any, value: unknown): string => {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numericValue)) return "Unavailable";
+  const unit = String(record?.unit || "").trim();
+  if (unit === "%") return `${numericValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
+  if (unit === "ratio" || unit === "x") return `${numericValue.toFixed(2)}x`;
+  if (unit === "seconds") return `${numericValue.toFixed(1)}s`;
+  if (unit === "$" || /^[A-Z]{3}$/.test(unit)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: unit === "$" ? "USD" : unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericValue);
+  }
+  if (unit === "count") return numericValue.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
+    const metricKey = customReportMetricAliases[customReportNormalizeMetricKey(candidate)];
+    if (metricKey) return formatCustomReportMetricValue(metricKey, numericValue);
+  }
+  return numericValue.toLocaleString("en-US", { maximumFractionDigits: 2 });
+};
+
 const formatRecommendationText = (text: string): string =>
   text ? text.replace(/([+-]?)\$(\d+)(?!\.\d)/g, (_match, sign, number) => `${sign}$${parseInt(number).toLocaleString("en-US")}`) : text;
 
@@ -347,12 +365,22 @@ export default function Reports() {
   });
 
   const { data: liveCampaignKpis = [], refetch: refetchCampaignKpis } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignContextId}/kpis`],
+    queryKey: ["/api/platforms/google_analytics/kpis", campaignContextId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(campaignContextId)}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to load GA4 KPIs");
+      return response.json();
+    },
     enabled: !!campaignContextId,
   });
 
   const { data: liveCampaignBenchmarks = [], refetch: refetchCampaignBenchmarks } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],
+    queryKey: ["/api/platforms/google_analytics/benchmarks", campaignContextId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(campaignContextId)}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to load GA4 Benchmarks");
+      return response.json();
+    },
     enabled: !!campaignContextId,
   });
 
@@ -921,7 +949,7 @@ export default function Reports() {
   const resolveCustomReportAggregateMetric = (record: any): string | null => {
     for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
       const metricName = customReportMetricAliases[customReportNormalizeMetricKey(candidate)];
-      if (metricName && customReportPerformanceSummary?.totals?.[metricName]?.available === true) return metricName;
+      if (metricName) return metricName;
     }
     return null;
   };
@@ -964,22 +992,12 @@ export default function Reports() {
     const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
     if (!campaignContextId || report.campaignId !== campaignContextId || report.type !== "custom") return null;
     if (!selectedSections.includes("kpis") && !selectedSections.includes("benchmarks")) return null;
-    if (!customReportPerformanceSummary) {
-      return (
-        <div className="rounded-md border p-3 text-sm text-muted-foreground">
-          KPI and Benchmark report values are unavailable until the campaign aggregate loads.
-        </div>
-      );
-    }
-
     const renderRows = (records: any[], targetField: "targetValue" | "benchmarkValue") => records.map((record) => {
-      const metricKey = resolveCustomReportAggregateMetric(record);
-      const metric = metricKey ? customReportPerformanceSummary?.totals?.[metricKey] : null;
       return (
         <div key={record.id || record.name} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <span>{record.name || record.metric || "Untitled"}</span>
-          <span>Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : "Unavailable"}</span>
-          <span>Target: {formatCustomReportMetricValue(metricKey || "", record?.[targetField])}</span>
+          <span>Current: {formatCustomReportRecordValue(record, record?.currentValue)}</span>
+          <span>Target: {formatCustomReportRecordValue(record, record?.[targetField])}</span>
         </div>
       );
     });
@@ -1030,8 +1048,8 @@ export default function Reports() {
             fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/outcome-totals?dateRange=90days`).then((data) => ({ data })),
             fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/executive-summary`).then((data) => ({ data })),
             fetchReportJson(`/api/campaigns/${encodedReportCampaignId}`).then((data) => ({ data })),
-            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/kpis`).then((data) => ({ data })),
-            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/benchmarks`).then((data) => ({ data })),
+            fetchReportJson(`/api/platforms/google_analytics/kpis?campaignId=${encodedReportCampaignId}`).then((data) => ({ data })),
+            fetchReportJson(`/api/platforms/google_analytics/benchmarks?campaignId=${encodedReportCampaignId}`).then((data) => ({ data })),
           ])
       : [];
     const latestCampaignOutcomeTotals = latestOutcomeTotalsResult?.data ?? campaignOutcomeTotals;
@@ -1081,44 +1099,46 @@ export default function Reports() {
       const metric = customReportPerformanceSummary?.totals?.[key];
       return metric?.available === true ? Number(metric.value) || 0 : 0;
     };
-    const lowerIsBetterMetrics = new Set(["cpa", "cpc", "cpm"]);
-    const progressPct = (current: number, target: number, metricKey: string) => {
+    const progressPct = (current: number, target: number, metricKey: string, name?: string) => {
       if (target <= 0) return 0;
-      const ratio = lowerIsBetterMetrics.has(metricKey) ? (current > 0 ? target / current : 1) : current / target;
+      const lowerIsBetter = isLowerIsBetterKpi({ metric: metricKey, name });
+      const ratio = lowerIsBetter ? (current > 0 ? target / current : 1) : current / target;
       return ratio * 100;
     };
     const executiveKpiRows = Array.isArray(campaignExecutiveSummary?.kpiProgress)
       ? campaignExecutiveSummary.kpiProgress
         .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }))
-        .filter((kpi: any) => kpi.aggregateMetric)
       : [];
     const executiveBenchmarkRows = Array.isArray(campaignExecutiveSummary?.benchmarkComparison)
       ? campaignExecutiveSummary.benchmarkComparison
         .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
-        .filter((bm: any) => bm.aggregateMetric)
       : [];
     const performanceKpiRows = campaignKpis
-      .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }))
-      .filter((kpi: any) => kpi.aggregateMetric);
+      .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }));
     const performanceBenchmarkRows = campaignBenchmarks
-      .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
-      .filter((bm: any) => bm.aggregateMetric);
+      .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }));
+    const reportRecordMetric = (record: any) => String(record?.aggregateMetric || record?.metricKey || record?.metric || "");
+    const reportRecordCurrentValue = (record: any) => {
+      const value = Number(record?.currentValue ?? record?.current ?? record?.yours);
+      return Number.isFinite(value) ? value : 0;
+    };
     const kpiTargetValue = (kpi: any) => Number(kpi.targetValue ?? kpi.target) || 0;
     const benchmarkTargetValue = (benchmark: any) => Number(benchmark.benchmarkValue ?? benchmark.benchmark) || 0;
     const benchmarkThresholdResult = (benchmark: any) => computeBenchmarkThresholdResult({
-      metric: benchmark.aggregateMetric,
+      metric: reportRecordMetric(benchmark),
       name: benchmark?.name || benchmark?.metric,
       unit: benchmark?.unit,
-      current: metricNumber(benchmark.aggregateMetric),
+      current: reportRecordCurrentValue(benchmark),
       benchmarkValue: benchmarkTargetValue(benchmark),
     });
     const kpiBand = (kpi: any) => {
-      const current = metricNumber(kpi.aggregateMetric);
+      const current = reportRecordCurrentValue(kpi);
       const target = kpiTargetValue(kpi);
       if (target <= 0) return "near";
-      const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.aggregateMetric, name: kpi?.name || kpi?.metric });
+      const metric = reportRecordMetric(kpi);
+      const lowerIsBetter = isLowerIsBetterKpi({ metric, name: kpi?.name || kpi?.metric });
       const policy = resolveKpiThresholdPolicy({
-        metric: kpi.aggregateMetric,
+        metric,
         name: kpi?.name || kpi?.metric,
         unit: kpi?.unit,
         current,
@@ -1152,9 +1172,9 @@ export default function Reports() {
         const priorityKpi = performanceKpiRows.find((kpi: any) => kpiStatus(kpi) === "Below Target");
         const priorityBenchmark = performanceBenchmarkRows.find((bm: any) => benchmarkStatus(bm) !== "On Track");
         if (priorityKpi) {
-          addText(`KPI below target: ${priorityKpi.name} - Current ${metricValue(priorityKpi.aggregateMetric)}, Target ${formatCustomReportMetricValue(priorityKpi.aggregateMetric, kpiTargetValue(priorityKpi))}`, { indent: 8 });
+          addText(`KPI below target: ${priorityKpi.name} - Current ${formatCustomReportRecordValue(priorityKpi, reportRecordCurrentValue(priorityKpi))}, Target ${formatCustomReportRecordValue(priorityKpi, kpiTargetValue(priorityKpi))}`, { indent: 8 });
         } else if (priorityBenchmark) {
-          addText(`Benchmark needs attention: ${priorityBenchmark.name || priorityBenchmark.metric} - Current ${metricValue(priorityBenchmark.aggregateMetric)}, Benchmark ${formatCustomReportMetricValue(priorityBenchmark.aggregateMetric, benchmarkTargetValue(priorityBenchmark))}`, { indent: 8 });
+          addText(`Benchmark needs attention: ${priorityBenchmark.name || priorityBenchmark.metric} - Current ${formatCustomReportRecordValue(priorityBenchmark, reportRecordCurrentValue(priorityBenchmark))}, Benchmark ${formatCustomReportRecordValue(priorityBenchmark, benchmarkTargetValue(priorityBenchmark))}`, { indent: 8 });
         } else {
           addText("All mapped KPIs and Benchmarks are on track.", { indent: 8 });
         }
@@ -1169,10 +1189,10 @@ export default function Reports() {
         addText(`${performanceBenchmarkRows.filter((bm: any) => benchmarkStatus(bm) === "On Track").length} of ${performanceBenchmarkRows.length}`, { indent: 8 });
         addText("Key Performance Indicators (KPIs)", { bold: true, indent: 4 });
         if (performanceKpiRows.length === 0) addText("- No mapped KPI rows available.", { indent: 8 });
-        performanceKpiRows.forEach((kpi: any) => addText(`- ${kpi.name}: ${metricValue(kpi.aggregateMetric)} / ${formatCustomReportMetricValue(kpi.aggregateMetric, kpiTargetValue(kpi))} - ${kpiStatus(kpi)}`, { indent: 8 }));
+        performanceKpiRows.forEach((kpi: any) => addText(`- ${kpi.name}: ${formatCustomReportRecordValue(kpi, reportRecordCurrentValue(kpi))} / ${formatCustomReportRecordValue(kpi, kpiTargetValue(kpi))} - ${kpiStatus(kpi)}`, { indent: 8 }));
         addText("Benchmarks", { bold: true, indent: 4 });
         if (performanceBenchmarkRows.length === 0) addText("- No mapped Benchmark rows available.", { indent: 8 });
-        performanceBenchmarkRows.forEach((benchmark: any) => addText(`- ${benchmark.name || benchmark.metric}: ${metricValue(benchmark.aggregateMetric)} / ${formatCustomReportMetricValue(benchmark.aggregateMetric, benchmarkTargetValue(benchmark))} - ${benchmarkStatus(benchmark)}`, { indent: 8 }));
+        performanceBenchmarkRows.forEach((benchmark: any) => addText(`- ${benchmark.name || benchmark.metric}: ${formatCustomReportRecordValue(benchmark, reportRecordCurrentValue(benchmark))} / ${formatCustomReportRecordValue(benchmark, benchmarkTargetValue(benchmark))} - ${benchmarkStatus(benchmark)}`, { indent: 8 }));
         addText("Data Sources", { bold: true, indent: 4 });
         addSourceList();
       } else if (section === "performance-summary:changes") {
@@ -1186,7 +1206,7 @@ export default function Reports() {
         addText("Top Priority Action", { bold: true, indent: 8 });
         const priorityKpi = performanceKpiRows.find((kpi: any) => kpiStatus(kpi) === "Below Target");
         if (priorityKpi) {
-          addText(`- Improve ${priorityKpi.name}: current ${metricValue(priorityKpi.aggregateMetric)}, target ${formatCustomReportMetricValue(priorityKpi.aggregateMetric, kpiTargetValue(priorityKpi))}`, { indent: 12 });
+          addText(`- Improve ${priorityKpi.name}: current ${formatCustomReportRecordValue(priorityKpi, reportRecordCurrentValue(priorityKpi))}, target ${formatCustomReportRecordValue(priorityKpi, kpiTargetValue(priorityKpi))}`, { indent: 12 });
         } else {
           addText("- Continue monitoring mapped KPIs and Benchmarks.", { indent: 12 });
         }
@@ -1567,7 +1587,7 @@ export default function Reports() {
       const trajectory = campaignExecutiveSummary?.health?.trajectory;
       const trendPct = Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
       const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
-      const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(metricNumber(kpi.aggregateMetric), Number(kpi.target) || 0, kpi.aggregateMetric) < 70).length;
+      const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(reportRecordCurrentValue(kpi), Number(kpi.target) || 0, reportRecordMetric(kpi), kpi?.name) < 70).length;
       const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status === "behind").length;
       const aggregateSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
       const paidSources = aggregateSources.filter((source: any) =>
@@ -1606,16 +1626,16 @@ export default function Reports() {
       addText("KPI Progress", { bold: true, indent: 4 });
       if (executiveKpiRows.length === 0) addText("- No mapped campaign KPI rows available.", { indent: 8 });
       executiveKpiRows.forEach((kpi: any) => {
-        const current = metricNumber(kpi.aggregateMetric);
+        const current = reportRecordCurrentValue(kpi);
         const target = Number(kpi.target) || 0;
-        addText(`- ${kpi.name}: ${formatCustomReportMetricValue(kpi.aggregateMetric, current)} / ${formatCustomReportMetricValue(kpi.aggregateMetric, target)} (${progressPct(current, target, kpi.aggregateMetric).toFixed(1)}%)`, { indent: 8 });
+        addText(`- ${kpi.name}: ${formatCustomReportRecordValue(kpi, current)} / ${formatCustomReportRecordValue(kpi, target)} (${progressPct(current, target, reportRecordMetric(kpi), kpi?.name).toFixed(1)}%)`, { indent: 8 });
       });
       addText("Benchmark Comparison", { bold: true, indent: 4 });
       if (executiveBenchmarkRows.length === 0) addText("- No mapped campaign Benchmark rows available.", { indent: 8 });
       executiveBenchmarkRows.forEach((bm: any) => {
-        const current = metricNumber(bm.aggregateMetric);
+        const current = reportRecordCurrentValue(bm);
         const benchmark = Number(bm.benchmark) || 0;
-        addText(`- ${bm.metric || bm.name}: Yours ${formatCustomReportMetricValue(bm.aggregateMetric, current)}; Benchmark ${formatCustomReportMetricValue(bm.aggregateMetric, benchmark)} (${benchmarkProgressLabel(bm)}%)`, { indent: 8 });
+        addText(`- ${bm.metric || bm.name}: Yours ${formatCustomReportRecordValue(bm, current)}; Benchmark ${formatCustomReportRecordValue(bm, benchmark)} (${benchmarkProgressLabel(bm)}%)`, { indent: 8 });
       });
       addText("Risk Assessment", { bold: true, indent: 4 });
       riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
@@ -1874,10 +1894,7 @@ export default function Reports() {
         addText("No campaign KPI rows configured.", { indent: 4 });
       } else {
         campaignKpis.forEach((record) => {
-          const metricKey = resolveCustomReportAggregateMetric(record);
-          const metric = metricKey ? customReportPerformanceSummary?.totals?.[metricKey] : null;
-          const current = metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : "Unavailable";
-          addText(`- ${record.name || record.metric || "Untitled"}: Current ${current}; Target ${formatCustomReportMetricValue(metricKey || "", record?.targetValue)}`, { indent: 4 });
+          addText(`- ${record.name || record.metric || "Untitled"}: Current ${formatCustomReportRecordValue(record, record?.currentValue)}; Target ${formatCustomReportRecordValue(record, record?.targetValue)}`, { indent: 4 });
         });
       }
       yPosition += 4;
@@ -1889,10 +1906,7 @@ export default function Reports() {
         addText("No campaign Benchmark rows configured.", { indent: 4 });
       } else {
         campaignBenchmarks.forEach((record) => {
-          const metricKey = resolveCustomReportAggregateMetric(record);
-          const metric = metricKey ? customReportPerformanceSummary?.totals?.[metricKey] : null;
-          const current = metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : "Unavailable";
-          addText(`- ${record.name || record.metric || "Untitled"}: Current ${current}; Benchmark ${formatCustomReportMetricValue(metricKey || "", record?.benchmarkValue)}`, { indent: 4 });
+          addText(`- ${record.name || record.metric || "Untitled"}: Current ${formatCustomReportRecordValue(record, record?.currentValue)}; Benchmark ${formatCustomReportRecordValue(record, record?.benchmarkValue)}`, { indent: 4 });
         });
       }
     }

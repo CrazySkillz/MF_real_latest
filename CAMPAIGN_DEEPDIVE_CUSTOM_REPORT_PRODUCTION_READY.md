@@ -191,23 +191,22 @@ Goal:
 
 Tasks:
 
-- KPI and Benchmark report sections should use campaign records for rows/targets.
-- Current KPI/Benchmark values should come from aggregate-backed available metrics where mapped.
-- Unmapped or unavailable current values should not silently fall back to stale saved values.
+- For the GA4-first version, KPI and Benchmark report sections use campaign-scoped GA4 platform records for rows, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled.
+- Current KPI/Benchmark values should come directly from the campaign-scoped GA4 platform records returned by the certified GA4 endpoints.
+- The report consumer must not substitute Campaign KPI/Benchmark records or aggregate-derived current values for those GA4 record values.
 - Custom sections should remain section-composition based.
 
 Validation:
 
-- KPI/Benchmark rows update after campaign KPI/Benchmark changes and refetch.
-- Current values match the connected-source aggregate where available.
+- KPI/Benchmark rows update after GA4 KPI/Benchmark changes and refetch.
+- Current values and targets match the campaign-scoped GA4 KPI/Benchmark records.
 
 Status:
 
-- [x] Completed locally: Custom Report can save section composition for selected metrics, campaign KPI rows, and campaign Benchmark rows.
-- [x] Completed locally: campaign KPI rows are fetched from `/api/campaigns/:campaignId/kpis`.
-- [x] Completed locally: campaign Benchmark rows are fetched from `/api/campaigns/:campaignId/benchmarks`.
-- [x] Completed locally: KPI/Benchmark current values render from `performanceSummary.totals` when mapped and available.
-- [x] Completed locally: unmapped or unavailable KPI/Benchmark current values render as `Unavailable` instead of using saved `currentValue`.
+- [x] Implemented locally pending validation: Custom Report can save section composition for selected metrics, GA4 KPI rows, and GA4 Benchmark rows.
+- [x] Implemented locally pending validation: GA4 KPI rows are fetched from `/api/platforms/google_analytics/kpis?campaignId=:campaignId`.
+- [x] Implemented locally pending validation: GA4 Benchmark rows are fetched from `/api/platforms/google_analytics/benchmarks?campaignId=:campaignId`.
+- [x] Implemented locally pending validation: KPI/Benchmark report rows render the GA4 records' saved `currentValue`, `targetValue`, and `benchmarkValue` fields directly.
 - [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
 - [x] Completed locally: All Reports cards expose an edit icon that opens the report dialog with saved values prefilled.
 - [x] Completed locally: All Reports cards use `Download latest report` and do not expose Scheduled Reports-only Pause/Resume actions.
@@ -315,7 +314,7 @@ Custom Report is production-ready when:
 - metric selection is based on available connected-source metrics
 - report output renders only available metrics
 - unavailable metrics are omitted or clearly explained
-- KPI/Benchmark sections use live aggregate-backed current values
+- in the GA4-first version, KPI/Benchmark sections use campaign-scoped GA4 platform records for current values and targets
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
 - All Reports cards must show only the edit icon, `Download latest report`, and the delete icon; Pause/Resume belongs only in Scheduled Reports
@@ -336,11 +335,11 @@ Custom Report is production-ready when:
 - Downloaded PDFs render the selected tab bodies from `performanceSummary.totals` and `performanceSummary.sources` where those aggregate inputs are available
 - Downloaded Executive Summary `Executive Overview` PDFs include the same major executive sections shown in the web tab, using `/executive-summary` for trajectory/risk/KPI/Benchmark context and `/outcome-totals.performanceSummary` for current connected-source metric values
 - Downloaded Executive Summary `Strategic Recommendations` PDFs include the same major recommendation sections shown in the web tab, using `/executive-summary.recommendations`, metadata, freshness warnings, assumptions, scenarios, and recommendation disclaimers
-- Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for current connected-source values and campaign KPI/Benchmark records for health rows
+- Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for aggregate connected-source values and campaign-scoped GA4 KPI/Benchmark record values for health rows in the GA4-first version
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
 - Downloaded Platform Comparison PDFs include the same major sections shown in the selected Platform Comparison web tabs, using `/outcome-totals.performanceSummary.sources` for connected-source rows and source capability gating for paid-media-only comparison sections
 - Downloaded Trend Analysis PDFs include the same major sections shown in the selected Trend Analysis web tabs, using `/trend-analysis` source-aware daily aggregates for trend windows, efficiency, funnel, platform breakdown, and insights
-- `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, `/trend-analysis` when Trend Analysis tabs are selected, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
+- `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, `/trend-analysis` when Trend Analysis tabs are selected, campaign context, and campaign-scoped GA4 KPIs and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
 - Scheduled create mode uses `Schedule Automated Report`, defaults to `Daily`, and shows `Schedule Report` in the same filled primary button style as `Download Report`
 - Monthly schedule mode must show day-of-month choices: 1st day, 15th day, or last day of month
 - Quarterly schedule mode must show timing choices: start of quarter or end of quarter

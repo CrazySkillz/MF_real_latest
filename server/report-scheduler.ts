@@ -8,7 +8,7 @@ import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
-import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
+import { computeBenchmarkThresholdResult, isLowerIsBetterKpi } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 
@@ -1034,6 +1034,24 @@ function formatCampaignDeepDiveMetricValue(key: string, value: unknown): string 
 const normalizeCampaignDeepDiveMetricKey = (value: unknown): string =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+function formatCampaignDeepDiveRecordValue(record: any, value: unknown): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "Unavailable";
+  const unit = String(record?.unit || "").trim();
+  if (unit === "%") return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
+  if (unit === "ratio" || unit === "x") return `${n.toFixed(2)}x`;
+  if (unit === "seconds") return `${n.toFixed(1)}s`;
+  if (unit === "$" || /^[A-Z]{3}$/.test(unit)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: unit === "$" ? "USD" : unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  }
+  if (unit === "count") return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
+    const key = campaignDeepDiveMetricAliases[normalizeCampaignDeepDiveMetricKey(candidate)];
+    if (key) return formatCampaignDeepDiveMetricValue(key, n);
+  }
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 type CampaignDeepDiveReportContext = {
   campaign: any | null;
   performanceSummary: any | null;
@@ -1062,8 +1080,8 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
   const [campaignMetrics, campaign, kpis, benchmarks] = await Promise.all([
     aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis }).catch(() => null),
     storage.getCampaign(campaignId).catch(() => null),
-    needsKpiRows ? storage.getCampaignKPIs(campaignId).catch(() => []) : Promise.resolve([]),
-    needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId).catch(() => []) : Promise.resolve([]),
+    needsKpiRows ? storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []) : Promise.resolve([]),
+    needsBenchmarkRows ? storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []) : Promise.resolve([]),
   ]);
   const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary || null;
   const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;
@@ -1130,15 +1148,19 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     }
     return null;
   };
+  const reportRecordMetric = (row: any) => String(resolveAggregateMetric(row) || row?.metricKey || row?.metric || "");
+  const reportRecordCurrentValue = (row: any) => {
+    const value = Number(row?.currentValue ?? row?.current ?? row?.yours);
+    return Number.isFinite(value) ? value : 0;
+  };
   const benchmarkThresholdResult = (row: any) => {
-    const key = resolveAggregateMetric(row);
-    return key ? computeBenchmarkThresholdResult({
-      metric: key,
+    return computeBenchmarkThresholdResult({
+      metric: reportRecordMetric(row),
       name: row?.name || row?.metric,
       unit: row?.unit,
-      current: metricNumber(key),
+      current: reportRecordCurrentValue(row),
       benchmarkValue: Number(row?.benchmarkValue ?? row?.benchmark) || 0,
-    }) : null;
+    });
   };
   const addMetricRows = (keys: string[], indent = 8) => {
     if (!performanceSummary) {
@@ -1158,29 +1180,25 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     });
   };
   const addKpiRows = (indent = 8) => {
-    const mapped = (Array.isArray(kpis) ? kpis : [])
-      .map((row: any) => ({ row, key: resolveAggregateMetric(row) }))
-      .filter((item: any) => item.key);
-    if (mapped.length === 0) {
-      addText("- No mapped campaign KPI rows available.", { indent });
+    const rows = Array.isArray(kpis) ? kpis : [];
+    if (rows.length === 0) {
+      addText("- No GA4 KPI rows available.", { indent });
       return;
     }
-    mapped.forEach((item: any) => {
-      const target = Number(item.row?.targetValue ?? item.row?.target) || 0;
-      addText(`- ${item.row?.name || item.row?.metric || "KPI"}: Current ${metricValue(item.key)}; Target ${formatCampaignDeepDiveMetricValue(item.key, target)}`, { indent });
+    rows.forEach((row: any) => {
+      const target = row?.targetValue ?? row?.target;
+      addText(`- ${row?.name || row?.metric || "KPI"}: Current ${formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.current)}; Target ${formatCampaignDeepDiveRecordValue(row, target)}`, { indent });
     });
   };
   const addBenchmarkRows = (indent = 8) => {
-    const mapped = (Array.isArray(benchmarks) ? benchmarks : [])
-      .map((row: any) => ({ row, key: resolveAggregateMetric(row) }))
-      .filter((item: any) => item.key);
-    if (mapped.length === 0) {
-      addText("- No mapped campaign Benchmark rows available.", { indent });
+    const rows = Array.isArray(benchmarks) ? benchmarks : [];
+    if (rows.length === 0) {
+      addText("- No GA4 Benchmark rows available.", { indent });
       return;
     }
-    mapped.forEach((item: any) => {
-      const target = Number(item.row?.benchmarkValue ?? item.row?.benchmark) || 0;
-      addText(`- ${item.row?.name || item.row?.metric || "Benchmark"}: Yours ${metricValue(item.key)}; Benchmark ${formatCampaignDeepDiveMetricValue(item.key, target)}`, { indent });
+    rows.forEach((row: any) => {
+      const target = row?.benchmarkValue ?? row?.benchmark;
+      addText(`- ${row?.name || row?.metric || "Benchmark"}: Yours ${formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.yours)}; Benchmark ${formatCampaignDeepDiveRecordValue(row, target)}`, { indent });
     });
   };
   const addTrendRows = (keys: string[], indent = 8) => {
@@ -1240,9 +1258,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addBenchmarkRows();
       addText("Risk Assessment", { bold: true, indent: 4 });
       const kpiRisk = (Array.isArray(kpis) ? kpis : []).filter((row: any) => {
-        const key = resolveAggregateMetric(row);
+        const current = reportRecordCurrentValue(row);
         const target = Number(row?.targetValue ?? row?.target) || 0;
-        return key && target > 0 && metricNumber(key) / target < 0.7;
+        const lowerIsBetter = isLowerIsBetterKpi({ metric: reportRecordMetric(row), name: row?.name || row?.metric });
+        const progress = target > 0 ? (lowerIsBetter ? (current > 0 ? target / current : 0) : current / target) : 0;
+        return target > 0 && progress < 0.7;
       }).length;
       const benchmarkRisk = (Array.isArray(benchmarks) ? benchmarks : []).filter((row: any) => {
         return benchmarkThresholdResult(row)?.status === "behind";

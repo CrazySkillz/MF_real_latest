@@ -820,12 +820,17 @@ export default function CampaignPerformanceSummary() {
   // Calculate what's changed from compatible aggregate snapshots only.
   const getChanges = () => {
     const baseline = comparisonData?.previous;
-    const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [];
+    const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [];
     let ga4BaselineTimestamp: string | null = null;
     const addGA4Change = (config: any) => {
       if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) {
         const comparison = getGA4MovementComparison(config.key);
-        if (!comparison) return;
+        if (!comparison) {
+          const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);
+          if (!Number.isFinite(current)) return;
+          ga4Changes.push({ metric: config.label, current, previous: current, change: 0, pctChange: null, direction: "flat", comparisonUnavailable: true, sourceLabel: "Sources: Google Analytics" });
+          return;
+        }
         const change = comparison.current - comparison.previous;
         ga4Changes.push({
           metric: config.label,
@@ -851,7 +856,7 @@ export default function CampaignPerformanceSummary() {
       return { changes: [], baselineTimestamp: baseline.recordedAt, emptyReason: "incompatible_history" };
     }
 
-    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [...ga4Changes];
+    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [...ga4Changes];
     const addChange = (config: any) => {
       if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) return;
       if (!aggregateSnapshotMetricAvailable(performanceSummary, config.key) || !aggregateSnapshotMetricAvailable(baselineAggregate, config.key)) return;
@@ -1275,14 +1280,16 @@ export default function CampaignPerformanceSummary() {
                                   isNegative ? 'text-red-700 dark:text-red-400' :
                                   'text-muted-foreground/70'
                                 }`}>
-                                  {isFlat ? 'No change' :
+                                  {item.comparisonUnavailable ? 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
                                     `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
                                   }
                                 </span>
                               </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Previous: {item.isCurrency ? `$${item.previous.toLocaleString()}` : item.previous.toLocaleString()}
-                              </div>
+                              {!item.comparisonUnavailable && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Previous: {item.isCurrency ? `$${item.previous.toLocaleString()}` : item.previous.toLocaleString()}
+                                </div>
+                              )}
                               <div className="text-xs text-muted-foreground mt-1">
                                 {item.sourceLabel}
                               </div>

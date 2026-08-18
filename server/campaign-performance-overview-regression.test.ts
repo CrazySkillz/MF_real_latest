@@ -168,9 +168,13 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('const previous = current - recentTotal;');
     expect(movement).toContain('if (!Number.isFinite(previous) || previous < 0) return null;');
     expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key))');
+    expect(movement).toContain('const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);');
+    expect(movement).toContain('comparisonUnavailable: true');
     expect(movement).toContain('sourceLabel: "Sources: Google Analytics"');
     expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) return;');
     expect(movement).toContain('= [...ga4Changes];');
+    expect(page).toContain('Comparison unavailable — incomplete GA4 daily history');
+    expect(page).toContain('{!item.comparisonUnavailable && (');
   });
 
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {

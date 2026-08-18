@@ -3,8 +3,8 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "7446c4a5848d8a70ed5cdf00d815b4655fed21eaf8d6038996f76c9a8411e42e",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "75185dacf33de10d08dff75d1e7ddabb00b69f97",
-  "certifiedSha": "75185dacf33de10d08dff75d1e7ddabb00b69f97",
+  "lastReviewedSha": "9f474ce1fed9d2ffeb02392bbaa0a2176ea7ba06",
+  "certifiedSha": "9f474ce1fed9d2ffeb02392bbaa0a2176ea7ba06",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -88,7 +88,7 @@
     { "path": "client/src/components/layout/navigation.tsx", "role": "bell visibility and navigation consumer", "sha256": "81946878fafefeb278454d99aecbe5d967f7b26525189efbef3eefea13b902b0" },
     { "path": "client/src/pages/executive-summary.tsx", "role": "downstream KPI progress and risk consumer", "sha256": "40413c239f5accca99ff3b91a64c9a19ef445ee164988b7813386450337cdd86" },
     { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "ca1d152b820c5b836959e3f08695ee73d836120b8493a3d4dfc44c15f4b1b893" },
-    { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "a3875e6e65abbbe7a37275854a36a3d5604f5e6bc96d1f0025a9a163aaca19ff" },
+    { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "054072569a1502407c4b3cf74e356703e1decc8b23f978607d0d71e155fb1f2e" },
     { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": "3b0869a4c851a062f5175ed5e0cdb89a5479e5d25fa1a66d85bf8cde0671974e" },
     { "path": "server/storage.ts", "role": "KPI, progress, source, notification, and delete persistence", "sha256": "43def7bdfc3b3dfd1a4c39051e07ac1cbc17a3df116069866f3b9ccff8b98d28" },
     { "path": "server/real-ga4-client.ts", "role": "live GA4 provider query producer", "sha256": "469081cfb7c206594b96df6f37761154b4193ee24c953f56a397c7ec954cddbc" },
@@ -236,7 +236,7 @@
       "id": "ui_browser_consumer_states",
       "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
       "status": "passed",
-      "evidence": "August 18, 2026 on deployed 75185dacf33de10d08dff75d1e7ddabb00b69f97: the affected KPI UI, Custom Report, cross-tab, alert, notification, and real-path consumer packet passed 10 files / 265 tests. Deployed UI validation confirmed Platform Comparison is hidden from Campaign DeepDive and new report creation while legacy report rendering, editing, PDF, and scheduler paths remain retained. GA4 KPI calculations, routes, storage, and GA4 Ad Comparison were unchanged."
+      "evidence": "August 18, 2026 on deployed 9f474ce1fed9d2ffeb02392bbaa0a2176ea7ba06: the required KPI consumer packet passed within an expanded 12-file / 271-test run that included focused Campaign KPI and Benchmark UI guards. Deployed UI validation confirmed the Campaign KPIs and Campaign Benchmarks tab buttons are hidden while Campaign Overview, Freestyle Chat, Webhooks, legacy tab content, records, APIs, and direct hash access remain intact. GA4 KPI calculations, routes, storage, and shared dependencies were unchanged."
     },
     {
       "id": "recompute_report_proof",
@@ -284,13 +284,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on exact deployed runtime 75185dacf33de10d08dff75d1e7ddabb00b69f97."
+      "evidence": "npm run check passed on exact deployed runtime 9f474ce1fed9d2ffeb02392bbaa0a2176ea7ba06."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build completed successfully on exact deployed runtime 75185dacf33de10d08dff75d1e7ddabb00b69f97."
+      "evidence": "npm run build completed successfully on exact deployed runtime 9f474ce1fed9d2ffeb02392bbaa0a2176ea7ba06."
     }
   ],
   "externalGates": [

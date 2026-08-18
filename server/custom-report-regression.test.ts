@@ -119,6 +119,10 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports${backendReportId ? `/${encodeURIComponent(backendReportId)}` : ""}`');
     expect(reports).toContain('scheduleTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"');
     expect(reports).toContain('Scheduled reports are sent by email using the saved recipients and your time zone:');
+    for (const hour of ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]) {
+      expect(reports).toContain(`<SelectItem value="${hour}">`);
+    }
+    expect(reports).not.toContain('<SelectItem value="06:00">');
     expect(reports).not.toContain('Scheduled reports are saved in this browser only right now. Automated email delivery is not connected for Custom Reports yet.');
     expect(reports).not.toContain('Schedule Automated Reports');
     expect(reports).not.toContain('Schedule Automatic Generation');

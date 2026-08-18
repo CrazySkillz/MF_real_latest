@@ -2213,10 +2213,15 @@ export default function Reports() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="06:00">6:00 AM</SelectItem>
                                   <SelectItem value="09:00">9:00 AM</SelectItem>
+                                  <SelectItem value="10:00">10:00 AM</SelectItem>
+                                  <SelectItem value="11:00">11:00 AM</SelectItem>
                                   <SelectItem value="12:00">12:00 PM</SelectItem>
+                                  <SelectItem value="13:00">1:00 PM</SelectItem>
+                                  <SelectItem value="14:00">2:00 PM</SelectItem>
                                   <SelectItem value="15:00">3:00 PM</SelectItem>
+                                  <SelectItem value="16:00">4:00 PM</SelectItem>
+                                  <SelectItem value="17:00">5:00 PM</SelectItem>
                                   <SelectItem value="18:00">6:00 PM</SelectItem>
                                 </SelectContent>
                               </Select>

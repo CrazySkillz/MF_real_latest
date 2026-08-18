@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
-  "certifiedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
-  "deployedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
+  "lastReviewedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
+  "certifiedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
+  "deployedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -46,7 +46,7 @@
   },
   "dependencies": [
     { "path": "AGENTS.md", "role": "repository accuracy and anti-overclaim contract", "sha256": "3547f1141b24069a323aebc95478af5a832c62870e1cdcc9573b105f642b522e" },
-    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "b77b52b5f420ea505dde3635e9f77c6e1222033535c10a519205452f255e2c12" },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "5fcb01adfbc24afa7616af44c6fb365f16424071e1814d318920052f28408b70" },
     { "path": "PRODUCTION_READINESS.md", "role": "production-readiness contract", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 validation workflow", "sha256": "3c41bf02990f5d19109e2eaa5de4d36865426eb0ebc6826e2bcfc7c0e816fd50" },
     { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "d675d4c8179f12b1fe5653c37d9b6f3f59821ce7d2e0f6d7ef89d9387cb98036" },
@@ -157,20 +157,20 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
+      "evidence": "npm run check passed on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
+      "evidence": "The production Vite and server esbuild completed on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02 on 2026-08-18."
+      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c on 2026-08-18."
     },
     {
       "id": "authenticated_ui_api_source_parity",

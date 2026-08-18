@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-reports",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
-  "certifiedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
-  "deployedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
+  "lastReviewedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
+  "certifiedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
+  "deployedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -49,11 +49,11 @@
   },
   "dependencies": [
     { "path": "AGENTS.md", "role": "repository operating and anti-overclaim contract", "sha256": "3547f1141b24069a323aebc95478af5a832c62870e1cdcc9573b105f642b522e" },
-    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics-layer boundary", "sha256": "b77b52b5f420ea505dde3635e9f77c6e1222033535c10a519205452f255e2c12" },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics-layer boundary", "sha256": "5fcb01adfbc24afa7616af44c6fb365f16424071e1814d318920052f28408b70" },
     { "path": "PRODUCTION_READINESS.md", "role": "repository production-readiness standard", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
     { "path": "GA4/README.md", "role": "GA4 canonical reference index", "sha256": "d675d4c8179f12b1fe5653c37d9b6f3f59821ce7d2e0f6d7ef89d9387cb98036" },
-    { "path": "GA4/REPORTS.md", "role": "Reports product contract", "sha256": "73440d39c7c7d0a75e3740e1bc941beb1663edf8e78aa675aebb5a7bf9ef5b14" },
-    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "Reports controlling readiness status", "sha256": "37d2376568e231fc22def2bf460bc57640be85f5299b4afc1ee9c3a27e0f277f" },
+    { "path": "GA4/REPORTS.md", "role": "Reports product contract", "sha256": "236db838eeb894afd6af6eb9a1b731fb91a36737887b8b3a5578779069e763df" },
+    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "Reports controlling readiness status", "sha256": "5f95635b2a5dfd7e38aa5434186272831a1bf236fd3262a7edf43e5fed812633" },
     { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and processing contract", "sha256": "92f17eda44aedc49cf2aa161e04a8bb7b09627915113355d8144e0911cca820d" },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "GA4 Reports tab UI and browser artifact consumer", "sha256": "ea9b7928a7b4b9b0377ed08853b12d8dd76725be95ee3144b1d5e2d8fba57a1e" },
     { "path": "shared/schema.ts", "role": "shared report and persistence contracts", "sha256": "72aaf81f747c2dd4766435125bc62e2fa83228d1ca30f53b61a7a08e3c196e9b" },
@@ -91,22 +91,22 @@
     {
       "id": "focused_reports_regressions",
       "status": "passed",
-      "evidence": "Exact deployed runtime 09e3b64e passed the focused Custom Report, report email, and GA4 report-consumer packets: 3 files / 63 tests."
+      "evidence": "Exact deployed runtime 1cf9031d passed the focused Custom Report, report email, and GA4 report-consumer packets: 3 files / 65 tests."
     },
     {
       "id": "protected_overview_insights_regressions",
       "status": "passed",
-      "evidence": "The exact-09e3b64e current-version run executed 1,541 tests: 1,496 passed, 45 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained."
+      "evidence": "The exact-1cf9031d current-version run executed 1,543 tests: 1,498 passed, 45 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained."
     },
     {
       "id": "typescript",
       "status": "passed",
-      "evidence": "npm run check passed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
+      "evidence": "npm run check passed on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
     },
     {
       "id": "production_build",
       "status": "passed",
-      "evidence": "npm run build passed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
+      "evidence": "npm run build passed on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
     },
     {
       "id": "complete_numerical_failure_matrix",
@@ -115,7 +115,7 @@
     }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02 on 2026-08-18." },
+    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c on 2026-08-18." },
     { "id": "upstream_section_certifications", "status": "passed", "evidence": "Overview, KPI, Benchmark, Ad Comparison, and Insights records and fail-closed certification gates pass at the same deployed runtime boundary." },
     { "id": "browser_server_pdf_value_parity", "status": "passed", "evidence": "Browser KPI rows matched exact API values; the exact-892ff339 recompute-backed manual KPI snapshot/PDF matched all 12 persisted rows, and the scheduled Overview PDF passed validation and opened successfully for the recipient." },
     { "id": "report_crud_tenant_isolation", "status": "passed", "evidence": "Current ownership/destructive regressions pass. The report access and CRUD code blocks are byte-identical to prior exact authenticated mutation/isolation evidence (hashes f84b0bc36858 and d8b44dc74b73), so no production mutation was repeated." },
@@ -124,6 +124,6 @@
     { "id": "provider_confirmed_delivery", "status": "passed", "evidence": "Mailgun audit c0bf19e4ee47 recorded mailgun-api success=true, deliveryStatus=delivered, provider response, and deliveredAt 2026-08-15T15:47:22.173Z." },
     { "id": "recipient_inbox_receipt", "status": "passed", "evidence": "The user confirmed receipt at the configured Gmail inbox and confirmed that the attached PDF opens." },
     { "id": "production_database_integrity", "status": "passed", "evidence": "Read-only exact-current audit found 10 active GA4 reports, six scheduled, zero active orphan reports, zero tenant mismatches, and zero invalid active schedules. Historical orphan/mismatched artifacts remain preserved and fail closed; the direct report-type mismatch route returned HTTP 404." },
-    { "id": "dependency_hashes", "status": "passed", "evidence": "All 28 dependency hashes match the working-tree boundary tied to deployed runtime 09e3b64e. The changed shared scheduler code is confined to the Campaign DeepDive report branch; GA4 calculations, routes, storage, and GA4 PDF rendering are unchanged, and the exact-09e3b64e current-version functional boundary passed." }
+    { "id": "dependency_hashes", "status": "passed", "evidence": "All 28 dependency hashes match the working-tree boundary tied to deployed runtime 1cf9031d. The changed Reports documentation is Campaign DeepDive-only; GA4 calculations, routes, storage, scheduler logic, and GA4 PDF rendering are unchanged." }
   ]
 }

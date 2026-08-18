@@ -3,8 +3,8 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "7446c4a5848d8a70ed5cdf00d815b4655fed21eaf8d6038996f76c9a8411e42e",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
-  "certifiedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
+  "lastReviewedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
+  "certifiedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -45,7 +45,7 @@
   },
   "dependencies": [
     { "path": "AGENTS.md", "role": "repository accuracy and certification policy", "sha256": "33192322d9e7bf2b600dcba1e6c496854cad13046800471167735dcee86cb699" },
-    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "campaign and platform architecture contract", "sha256": "42acc1f23503abb8d1bf3f7f0635598a34c0ab8c5cd590866df9d1dc3ee3b674" },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "campaign and platform architecture contract", "sha256": "23de65722db9c81dbab91870a2537db222aa2569e2712a1464484efbc7231d43" },
     { "path": "PRODUCTION_READINESS.md", "role": "repository readiness gate contract", "sha256": "bbfc3717eb5bf75fb3d3d9f30670f6fafce4f880301f53f3e71cba8f8a5df9c6" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 invalidation and validation workflow", "sha256": "1061d69e05145ad8967970afbcb80028e41160cfac5d897119ac963ccdd7df53" },
     { "path": "GA4/README.md", "role": "GA4 status index and cross-tab contract", "sha256": "d675d4c8179f12b1fe5653c37d9b6f3f59821ce7d2e0f6d7ef89d9387cb98036" },
@@ -62,8 +62,8 @@
     { "path": "GA4/BENCHMARKS_PRODUCTION_READINESS.md", "role": "shared job Benchmark readiness dependency", "sha256": "c956ef8b4a012e94f8ec237fb57a93e6941a71083e86f41f2ec1be8361eac5a6" },
     { "path": "GA4/INSIGHTS.md", "role": "downstream Insights contract", "sha256": "a8e43eaa1573ea47aba24ef576beede816046629899892214728c9930eceec5d" },
     { "path": "GA4/INSIGHTS_PRODUCTION_READINESS.md", "role": "downstream Insights readiness dependency", "sha256": "88f078ba173b80f91e1c32cc05f3dd2500491e46b4700e8a04db1b642b4dee7a" },
-    { "path": "GA4/REPORTS.md", "role": "downstream Reports contract", "sha256": "257d6d1112b3d5ed9c2ccbbf7409f8d6284b10dcfefeae120d8f48c9439ee0e9" },
-    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "downstream Reports readiness dependency", "sha256": "48b0eeebccd604b473f4a2f26aa9c270f12c16d27f5c5b1a529596ff085903da" },
+    { "path": "GA4/REPORTS.md", "role": "downstream Reports contract", "sha256": "40ded6339d8ded90186a6b23f27945c10bc6331d40ae1d7f58192cea1d3431a9" },
+    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "downstream Reports readiness dependency", "sha256": "c80573043db6d25d853aa617675ed60170a19b01dfe12d555cdb41f983365a0e" },
     { "path": "package.json", "role": "checker and test command contract", "sha256": "384c09cf46a6d4f19cd01fba23a33ee73e717be3776e2508fe1594523ae50fde" },
     { "path": ".github/workflows/test.yml", "role": "blocking current-version and non-blocking deferred CI integration", "sha256": "f2ae90c1ae2f7bd45c782f26582d6cd8c0087a6287c3c05127cbcb4aef923d83" },
     { "path": "scripts/ga4-kpi-current-version-test-boundary.json", "role": "exact retained deferred test identity and release-scope manifest", "sha256": "b34ee0e4668eb232a31348a7fb8fc3542b160a9a453961a41a567a33ff05cb5c" },
@@ -87,7 +87,7 @@
     { "path": "client/src/pages/notifications.tsx", "role": "Notifications value and action consumer", "sha256": "ab9244e87c36ba2f80b73a669ef0adebc5028af9d6081643785bbd06e73e8085" },
     { "path": "client/src/components/layout/navigation.tsx", "role": "bell visibility and navigation consumer", "sha256": "81946878fafefeb278454d99aecbe5d967f7b26525189efbef3eefea13b902b0" },
     { "path": "client/src/pages/executive-summary.tsx", "role": "downstream KPI progress and risk consumer", "sha256": "40413c239f5accca99ff3b91a64c9a19ef445ee164988b7813386450337cdd86" },
-    { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "108ec36147bd89e956c09f689bb1e47692c10f78ab1e683b3ba043afff9761ef" },
+    { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "c5b826a2b3de8aba3798f1599aaa744d531a3c974f680c15e9c5bb5be835010c" },
     { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "7b69399ee0e655fe3a60825f7d60f400ce9d12dbfe85fed27b4df0a6fbfadd20" },
     { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": "3b0869a4c851a062f5175ed5e0cdb89a5479e5d25fa1a66d85bf8cde0671974e" },
     { "path": "server/storage.ts", "role": "KPI, progress, source, notification, and delete persistence", "sha256": "43def7bdfc3b3dfd1a4c39051e07ac1cbc17a3df116069866f3b9ccff8b98d28" },
@@ -157,7 +157,7 @@
     { "path": "server/shopify-revenue-regression.test.ts", "role": "configured revenue source downstream alert resolver regression", "sha256": "176f93d3565b1c298c850c7f1d6f99300170751a23bb3a0536f2e08b30b70558" },
     { "path": "server/ga4-insights-regression.test.ts", "role": "Insights KPI context regression", "sha256": "81a0823fca750fce09ef21c19925dbbd8592cbd5784290bffa7fdbc88be42652" },
     { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Insights report parity regression", "sha256": "76cc38ffe5b7215e7bcc945a3388a6f73ef9bedb6fd5d54c58ce36c69584f8f2" },
-    { "path": "server/custom-report-regression.test.ts", "role": "custom report KPI consumer regression", "sha256": "21cd9bb2ae7e59d9573334070ccb345f376402f644b2435f5b82fc5b2ba62687" },
+    { "path": "server/custom-report-regression.test.ts", "role": "custom report KPI consumer regression", "sha256": "d6e46637147872b06e6a80c5999d592e967bf3a21c16acb379363681ec5992b5" },
     { "path": "server/executive-summary-regression.test.ts", "role": "Executive Summary KPI consumer regression", "sha256": "ab79cf4c15a81bcded5aae5a5a2071cb1b2eb23a112c321340b42d6797467231" }
   ],
   "statusDocuments": [
@@ -266,7 +266,7 @@
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "The exact-09e3b64e current-version run executed 1,541 tests: 1,496 passed, 45 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained."
+      "evidence": "The exact-1cf9031d current-version run executed 1,543 tests: 1,498 passed, 45 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained."
     },
     {
       "id": "deferred_release_suites",
@@ -284,13 +284,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
+      "evidence": "npm run check passed on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build completed successfully on exact deployed runtime 09e3b64ed67fec70aa84f969a09aae1f368a4f02."
+      "evidence": "npm run build completed successfully on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
     }
   ],
   "externalGates": [

@@ -3,8 +3,8 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "7446c4a5848d8a70ed5cdf00d815b4655fed21eaf8d6038996f76c9a8411e42e",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
-  "certifiedSha": "1cf9031d50d321fb5cbd39deb26ecdf5ae60831c",
+  "lastReviewedSha": "75185dacf33de10d08dff75d1e7ddabb00b69f97",
+  "certifiedSha": "75185dacf33de10d08dff75d1e7ddabb00b69f97",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -87,8 +87,8 @@
     { "path": "client/src/pages/notifications.tsx", "role": "Notifications value and action consumer", "sha256": "ab9244e87c36ba2f80b73a669ef0adebc5028af9d6081643785bbd06e73e8085" },
     { "path": "client/src/components/layout/navigation.tsx", "role": "bell visibility and navigation consumer", "sha256": "81946878fafefeb278454d99aecbe5d967f7b26525189efbef3eefea13b902b0" },
     { "path": "client/src/pages/executive-summary.tsx", "role": "downstream KPI progress and risk consumer", "sha256": "40413c239f5accca99ff3b91a64c9a19ef445ee164988b7813386450337cdd86" },
-    { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "c5b826a2b3de8aba3798f1599aaa744d531a3c974f680c15e9c5bb5be835010c" },
-    { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "7b69399ee0e655fe3a60825f7d60f400ce9d12dbfe85fed27b4df0a6fbfadd20" },
+    { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "ca1d152b820c5b836959e3f08695ee73d836120b8493a3d4dfc44c15f4b1b893" },
+    { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "a3875e6e65abbbe7a37275854a36a3d5604f5e6bc96d1f0025a9a163aaca19ff" },
     { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": "3b0869a4c851a062f5175ed5e0cdb89a5479e5d25fa1a66d85bf8cde0671974e" },
     { "path": "server/storage.ts", "role": "KPI, progress, source, notification, and delete persistence", "sha256": "43def7bdfc3b3dfd1a4c39051e07ac1cbc17a3df116069866f3b9ccff8b98d28" },
     { "path": "server/real-ga4-client.ts", "role": "live GA4 provider query producer", "sha256": "469081cfb7c206594b96df6f37761154b4193ee24c953f56a397c7ec954cddbc" },
@@ -157,7 +157,7 @@
     { "path": "server/shopify-revenue-regression.test.ts", "role": "configured revenue source downstream alert resolver regression", "sha256": "176f93d3565b1c298c850c7f1d6f99300170751a23bb3a0536f2e08b30b70558" },
     { "path": "server/ga4-insights-regression.test.ts", "role": "Insights KPI context regression", "sha256": "81a0823fca750fce09ef21c19925dbbd8592cbd5784290bffa7fdbc88be42652" },
     { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Insights report parity regression", "sha256": "76cc38ffe5b7215e7bcc945a3388a6f73ef9bedb6fd5d54c58ce36c69584f8f2" },
-    { "path": "server/custom-report-regression.test.ts", "role": "custom report KPI consumer regression", "sha256": "d6e46637147872b06e6a80c5999d592e967bf3a21c16acb379363681ec5992b5" },
+    { "path": "server/custom-report-regression.test.ts", "role": "custom report KPI consumer regression", "sha256": "5d1ef00cca6cd6fb7c90089f03d0899dc36862a302e1f2e22095323371101130" },
     { "path": "server/executive-summary-regression.test.ts", "role": "Executive Summary KPI consumer regression", "sha256": "ab79cf4c15a81bcded5aae5a5a2071cb1b2eb23a112c321340b42d6797467231" }
   ],
   "statusDocuments": [
@@ -236,7 +236,7 @@
       "id": "ui_browser_consumer_states",
       "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
       "status": "passed",
-      "evidence": "Current Commit 13 exact-clean staged-patch validation on base b017d290: the focused Insights copy packet passed 3 files / 6 tests and the expanded affected KPI UI, Insights, browser-PDF, server-report, alert, notification, and parity packet passed 12 files / 237 tests. Tracing proved the live isolated Data Summary intentionally uses Exact completed-day window, reports intentionally use Current GA4 total, and Executive Financials source-aware copy already matches. Runtime behavior did not change."
+      "evidence": "August 18, 2026 on deployed 75185dacf33de10d08dff75d1e7ddabb00b69f97: the affected KPI UI, Custom Report, cross-tab, alert, notification, and real-path consumer packet passed 10 files / 265 tests. Deployed UI validation confirmed Platform Comparison is hidden from Campaign DeepDive and new report creation while legacy report rendering, editing, PDF, and scheduler paths remain retained. GA4 KPI calculations, routes, storage, and GA4 Ad Comparison were unchanged."
     },
     {
       "id": "recompute_report_proof",
@@ -284,13 +284,13 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
+      "evidence": "npm run check passed on exact deployed runtime 75185dacf33de10d08dff75d1e7ddabb00b69f97."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build completed successfully on exact deployed runtime 1cf9031d50d321fb5cbd39deb26ecdf5ae60831c."
+      "evidence": "npm run build completed successfully on exact deployed runtime 75185dacf33de10d08dff75d1e7ddabb00b69f97."
     }
   ],
   "externalGates": [

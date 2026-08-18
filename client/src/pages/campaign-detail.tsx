@@ -4,7 +4,7 @@ import { useRoute, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useClient } from "@/lib/clientContext";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, FileText, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, FileText, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -5608,19 +5608,6 @@ export default function CampaignDetail() {
                         <div className="text-left">
                           <div className="font-medium">Budget & Financial Analysis</div>
                           <div className="text-xs text-muted-foreground">ROI, ROAS, budget allocation & costs</div>
-                        </div>
-                      </Button>
-                    </Link>
-
-                    <Link href={`/campaigns/${campaign.id}/platform-comparison`}>
-                      <Button 
-                        variant="outline" 
-                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
-                      >
-                        <GitCompare className="w-5 h-5" />
-                        <div className="text-left">
-                          <div className="font-medium">Platform Comparison</div>
-                          <div className="text-xs text-muted-foreground">Compare platform performance & insights</div>
                         </div>
                       </Button>
                     </Link>

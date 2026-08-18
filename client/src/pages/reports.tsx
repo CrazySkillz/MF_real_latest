@@ -430,6 +430,9 @@ export default function Reports() {
   const customReportSelectableMetricKeys = customReportAvailableMetricKeys
     .filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);
   const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);
+  const campaignReportTypeOptions = editingReportId && reportType === "platform-comparison"
+    ? campaignDeepDiveReportTypes
+    : campaignDeepDiveReportTypes.filter((type) => type.key !== "platform-comparison");
   const campaignReportTabs = campaignContextId ? getCampaignReportTabs(reportType) : [];
 
   // Load reports from storage
@@ -2007,7 +2010,7 @@ export default function Reports() {
                           </SelectTrigger>
                           <SelectContent>
                             {campaignContextId ? (
-                              campaignDeepDiveReportTypes.map((type) => (
+                              campaignReportTypeOptions.map((type) => (
                                 <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>
                               ))
                             ) : (

@@ -7,6 +7,7 @@ describe("campaign Custom Report regression guard", () => {
     const campaignDetail = readFileSync(join(process.cwd(), "client/src/pages/campaign-detail.tsx"), "utf-8");
 
     expect(campaignDetail).toContain('<Link href={`/reports?campaignId=${encodeURIComponent(campaign.id)}`}>');
+    expect(campaignDetail).not.toContain('<Link href={`/campaigns/${campaign.id}/platform-comparison`}>');
   });
 
   it("initializes and persists campaign context without changing the global reports route", () => {
@@ -448,7 +449,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('label: "Platform Comparison"');
     expect(reports).toContain('label: "Trend Analysis"');
     expect(reports).toContain('label: "Executive Summary"');
-    expect(reports).toContain('campaignDeepDiveReportTypes.map((type) => (');
+    expect(reports).toContain('const campaignReportTypeOptions = editingReportId && reportType === "platform-comparison"');
+    expect(reports).toContain('campaignDeepDiveReportTypes.filter((type) => type.key !== "platform-comparison")');
+    expect(reports).toContain('campaignReportTypeOptions.map((type) => (');
     expect(reports.indexOf('label: "Performance Summary"')).toBeLessThan(reports.indexOf('label: "Budget & Financial Analysis"'));
     expect(reports.indexOf('label: "Budget & Financial Analysis"')).toBeLessThan(reports.indexOf('label: "Platform Comparison"'));
     expect(reports.indexOf('label: "Platform Comparison"')).toBeLessThan(reports.indexOf('label: "Trend Analysis"'));

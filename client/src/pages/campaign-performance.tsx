@@ -12,6 +12,17 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
+import {
+  classifyKpiBandWithPolicy,
+  computeBenchmarkThresholdResult,
+  computeEffectiveDeltaPct,
+  isLowerIsBetterKpi,
+  resolveBenchmarkDataSufficiency,
+  resolveKpiDataSufficiency,
+  resolveKpiThresholdPolicy,
+} from "@shared/kpi-math";
+import { getGA4KpiMetricDependencies } from "@shared/ga4-kpi-metric-identity";
+import { resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
 
 interface Campaign {
   id: string;
@@ -43,7 +54,7 @@ export default function CampaignPerformanceSummary() {
   });
 
   // Fetch campaign-scoped GA4 KPIs
-  const { data: kpis = [] } = useQuery<any[]>({
+  const { data: kpis = [], isLoading: kpisLoading, isError: kpisError } = useQuery<any[]>({
     queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -54,7 +65,7 @@ export default function CampaignPerformanceSummary() {
   });
 
   // Fetch campaign-scoped GA4 Benchmarks
-  const { data: benchmarks = [] } = useQuery<any[]>({
+  const { data: benchmarks = [], isLoading: benchmarksLoading, isError: benchmarksError } = useQuery<any[]>({
     queryKey: [`/api/platforms/google_analytics/benchmarks`, campaignId],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -98,7 +109,7 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
-  const { data: performanceGA4ConnectionsResponse, isLoading: performanceGA4ConnectionsLoading } = useQuery<any>({
+  const { data: performanceGA4ConnectionsResponse, isLoading: performanceGA4ConnectionsLoading, isError: performanceGA4ConnectionsError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-connections", "performance-summary-read-only"],
     enabled: !!campaignId && !demoMode,
     queryFn: async () => {
@@ -114,7 +125,7 @@ export default function CampaignPerformanceSummary() {
   const performanceGA4PropertyId = String(
     (performanceGA4Connections.find((connection: any) => connection?.isPrimary) || performanceGA4Connections[0])?.propertyId || "",
   );
-  const { data: performanceGA4SummaryResponse, isLoading: performanceGA4SummaryLoading } = useQuery<any>({
+  const { data: performanceGA4SummaryResponse, isLoading: performanceGA4SummaryLoading, isError: performanceGA4SummaryError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", 30, performanceGA4PropertyId, "performance-summary-read-only"],
     enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
     placeholderData: keepPreviousData,
@@ -127,7 +138,7 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
-  const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading } = useQuery<any>({
+  const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, "performance-summary-read-only"],
     enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
     placeholderData: keepPreviousData,
@@ -150,7 +161,7 @@ export default function CampaignPerformanceSummary() {
     },
   });
 
-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     queryFn: async () => {
       const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
@@ -345,51 +356,121 @@ export default function CampaignPerformanceSummary() {
   const totalLeads = linkedinLeads + ciLeads;
   const totalSpend = linkedinSpend + ciSpend + metaSpend;
 
-  const isLowerBetterMetric = (metricKey: string) => {
-    const m = String(metricKey || '').toLowerCase();
-    return m === 'cpa' || m === 'cpl';
-  };
-
-  const getKpiDeltaPct = (kpi: any) => {
-    const current = getKpiCurrentValue(kpi);
-    const target = parseNum(kpi.targetValue);
-    if (!(target > 0)) return -Infinity;
-    const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
-    return lowerBetter ? ((target - current) / target) * 100 : ((current - target) / target) * 100;
-  };
   const getKpiCurrentValue = (kpi: any) => {
     return parseNum(kpi.currentValue);
   };
-
-  const getBenchmarkProgressPct = (benchmark: any) => {
-    const current = getBenchmarkCurrentValue(benchmark);
-    const industry = parseNum(benchmark.benchmarkValue ?? benchmark.industryAverage);
-    if (!(industry > 0)) return 0;
-    const lowerBetter = isLowerBetterMetric(getBenchmarkMetricKey(benchmark));
-    if (lowerBetter) return current > 0 ? (industry / current) * 100 : 100;
-    return (current / industry) * 100;
+  const parseScoringNumber = (value: any): number | null => {
+    const raw = String(value ?? '').replace(/,/g, '').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
   };
-  const getBenchmarkMetricKey = (benchmark: any) => {
-    const metric = String(benchmark?.metric || benchmark?.metricName || benchmark?.name || '').toLowerCase();
-    if (metric.includes('session')) return 'sessions';
-    if (metric.includes('conversion')) return 'conversions';
-    if (metric.includes('revenue')) return 'revenue';
-    if (metric.includes('user')) return 'users';
-    if (metric.includes('roas')) return 'roas';
-    if (metric.includes('roi')) return 'roi';
-    if (metric.includes('cpa')) return 'cpa';
-    if (metric.includes('cpl')) return 'cpl';
-    return metric;
+  const kpiListState: GA4KpiListState = demoMode ? "ready" : kpisLoading ? "loading" : kpisError ? "failed" : "ready";
+  const benchmarkListState: GA4KpiListState = demoMode ? "ready" : benchmarksLoading ? "loading" : benchmarksError ? "failed" : "ready";
+  const trafficInputState: GA4KpiInputState = demoMode
+    ? "ready"
+    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && performanceGA4SummaryLoading)
+      ? "loading"
+      : performanceGA4ConnectionsError || performanceGA4SummaryError || !performanceGA4PropertyId || !performanceGA4SummaryResponse
+        ? "unavailable"
+        : "ready";
+  const nativeRevenue = Number(performanceGA4RevenueResponse?.native?.totals?.revenue);
+  const hasNativeRevenue = !!String(performanceGA4RevenueResponse?.native?.revenueMetric || '').trim() || nativeRevenue !== 0;
+  const hasImportedRevenue = Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0;
+  const revenueInputState: GA4KpiInputState = demoMode
+    ? "ready"
+    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && performanceGA4RevenueLoading)
+      ? "loading"
+      : performanceGA4ConnectionsError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || (!hasNativeRevenue && !hasImportedRevenue)
+        ? "unavailable"
+        : "ready";
+  const spendSummaryMetric = performanceSummary?.totals?.spend;
+  const spendInputState: GA4KpiInputState = demoMode
+    ? "ready"
+    : performanceSummaryPending
+      ? "loading"
+      : outcomeTotalsError || !spendSummaryMetric?.available || spendSummaryMetric?.value === null
+        ? "unavailable"
+        : "ready";
+  const scoringTrafficRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
+  const scoringSessions = demoMode
+    ? parseNum(effectiveGA4?.metrics?.sessions)
+    : scoringTrafficRows.reduce((sum: number, row: any) => sum + parseNum(row?.sessions), 0);
+  const scoringConversions = demoMode
+    ? parseNum(effectiveGA4?.metrics?.conversions)
+    : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
+  const scoringSpend = demoMode ? totalSpend : parseNum(spendSummaryMetric?.value);
+  const getScoringMissingDependencies = (item: any) => {
+    const dependencies = getGA4KpiMetricDependencies(item?.metric, item?.metricName, item?.name);
+    const missing: string[] = [];
+    if (dependencies.requiresRevenue && revenueInputState === "unavailable") missing.push("Revenue");
+    if (dependencies.requiresSpend && spendInputState === "unavailable") missing.push("Spend");
+    return missing;
   };
-  const getBenchmarkCurrentValue = (benchmark: any) => {
-    return parseNum(benchmark.currentValue);
+  const getKpiScore = (kpi: any) => {
+    const sufficiency = resolveKpiDataSufficiency({
+      metric: kpi?.metric,
+      name: kpi?.name,
+      sessions: scoringSessions,
+      conversions: scoringConversions,
+      spend: scoringSpend,
+    });
+    const consumerState = resolveGA4KpiConsumerState({
+      metric: kpi?.metric,
+      name: kpi?.name,
+      listState: kpiListState,
+      trafficState: trafficInputState,
+      revenueState: revenueInputState,
+      spendState: spendInputState,
+      missingDependencies: getScoringMissingDependencies(kpi),
+      sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
+    });
+    const current = parseScoringNumber(kpi?.currentValue);
+    const target = parseScoringNumber(kpi?.targetValue);
+    if (!consumerState.eligible || current === null || target === null || target <= 0) return null;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric, name: kpi?.name });
+    const policy = resolveKpiThresholdPolicy({ metric: kpi?.metric, name: kpi?.name, unit: kpi?.unit, current, target, lowerIsBetter });
+    const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });
+    const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
+    return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct } : null;
+  };
+  const getBenchmarkScore = (benchmark: any) => {
+    const metric = benchmark?.metric || benchmark?.metricName || benchmark?.name;
+    const name = benchmark?.name || benchmark?.metricName;
+    const sufficiency = resolveBenchmarkDataSufficiency({
+      metric,
+      name,
+      sessions: scoringSessions,
+      conversions: scoringConversions,
+      spend: scoringSpend,
+    });
+    const consumerState = resolveGA4KpiConsumerState({
+      metric,
+      name,
+      listState: benchmarkListState,
+      trafficState: trafficInputState,
+      revenueState: revenueInputState,
+      spendState: spendInputState,
+      missingDependencies: getScoringMissingDependencies(benchmark),
+      sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
+      entityLabel: "Benchmark",
+    });
+    const current = parseScoringNumber(benchmark?.currentValue);
+    const benchmarkValue = parseScoringNumber(benchmark?.benchmarkValue ?? benchmark?.industryAverage);
+    if (!consumerState.eligible || current === null || benchmarkValue === null || benchmarkValue <= 0) return null;
+    const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });
+    return result.status ? result : null;
   };
 
-  // Calculate campaign health score from the configured GA4 KPI and Benchmark records.
-  const kpisOnTrackOrAbove = effectiveKpis.filter((kpi: any) => getKpiDeltaPct(kpi) >= -5).length;
-  const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;
-
-  const totalMetrics = effectiveKpis.length + effectiveBenchmarks.length;
+  // Score only verified GA4 records using the same immutable policies as the GA4 trackers.
+  const scoredKpis = effectiveKpis.map((item: any) => ({ item, score: getKpiScore(item) })).filter((entry: any) => entry.score !== null);
+  const scoredBenchmarks = effectiveBenchmarks.map((item: any) => ({ item, score: getBenchmarkScore(item) })).filter((entry: any) => entry.score !== null);
+  const kpisOnTrackOrAbove = scoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length;
+  const benchmarksOnTrack = scoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length;
+  const configuredMetricCount = effectiveKpis.length + effectiveBenchmarks.length;
+  const totalMetrics = scoredKpis.length + scoredBenchmarks.length;
+  const excludedMetricCount = configuredMetricCount - totalMetrics;
+  const scoringListsUnavailable = !demoMode && (kpisLoading || benchmarksLoading || kpisError || benchmarksError);
   const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;
   const healthScore = totalMetrics > 0 ? Math.round((totalOnTrackMetrics / totalMetrics) * 100) : 0;
 
@@ -620,22 +701,27 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
-    if (totalMetrics === 0) {
+    if (!scoringListsUnavailable && configuredMetricCount === 0) {
       return {
         type: 'info',
         message: 'No GA4 KPI or Benchmark targets configured. Add them in View Detailed Analytics to generate a priority action.'
       };
     }
 
-    const laggingKPIs = effectiveKpis.map((kpi: any) => {
-      const deltaPct = getKpiDeltaPct(kpi);
-      return { type: 'kpi', item: kpi, severity: Math.abs(deltaPct), deltaPct };
-    }).filter((entry: any) => entry.deltaPct < -5);
+    if (scoringListsUnavailable || totalMetrics === 0) {
+      return {
+        type: 'info',
+        message: 'Configured GA4 KPI and Benchmark targets are currently unavailable or unscorable.'
+      };
+    }
 
-    const laggingBenchmarks = effectiveBenchmarks.map((benchmark: any) => {
-      const progressPct = getBenchmarkProgressPct(benchmark);
-      return { type: 'benchmark', item: benchmark, severity: 90 - progressPct, progressPct };
-    }).filter((entry: any) => entry.progressPct < 90);
+    const laggingKPIs = scoredKpis
+      .filter((entry: any) => entry.score.band === "below")
+      .map((entry: any) => ({ type: 'kpi', item: entry.item, severity: Math.abs(entry.score.effectiveDeltaPct) }));
+
+    const laggingBenchmarks = scoredBenchmarks
+      .filter((entry: any) => entry.score.status !== "on_track")
+      .map((entry: any) => ({ type: 'benchmark', item: entry.item, severity: Math.abs(entry.score.effectiveDeltaPct || 0), status: entry.score.status }));
 
     const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => b.severity - a.severity)[0];
 
@@ -659,7 +745,7 @@ export default function CampaignPerformanceSummary() {
         type: 'benchmark',
         name: topBenchmark.metricName || topBenchmark.name,
         action: 'Address',
-        message: topCandidate.progressPct < 70 ? 'behind benchmark' : 'needs attention'
+        message: topCandidate.status === 'behind' ? 'behind benchmark' : 'needs attention'
       };
     }
 
@@ -946,9 +1032,17 @@ export default function CampaignPerformanceSummary() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {totalMetrics === 0 ? (
+                    {scoringListsUnavailable ? (
+                      <div className="text-center py-4">
+                        <p className="text-muted-foreground/70">GA4 KPI and Benchmark status is currently unavailable.</p>
+                      </div>
+                    ) : configuredMetricCount === 0 ? (
                       <div className="text-center py-4">
                         <p className="text-muted-foreground/70">Set up KPIs and Benchmarks to see your campaign health score.</p>
+                      </div>
+                    ) : totalMetrics === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-muted-foreground/70">Configured KPIs and Benchmarks are currently unavailable or unscorable.</p>
                       </div>
                     ) : (
                       <div className="flex items-center space-x-4">
@@ -961,8 +1055,13 @@ export default function CampaignPerformanceSummary() {
                             {totalOnTrackMetrics} of {totalMetrics} metrics on track
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            {kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs • {benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks
+                            {kpisOnTrackOrAbove}/{scoredKpis.length} KPIs • {benchmarksOnTrack}/{scoredBenchmarks.length} Benchmarks
                           </div>
+                          {excludedMetricCount > 0 && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {excludedMetricCount} unavailable or unscorable metric{excludedMetricCount === 1 ? '' : 's'} excluded
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

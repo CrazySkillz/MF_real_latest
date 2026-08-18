@@ -100,6 +100,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const [reportType, setReportType] = useState("");');
     expect(reports).toContain('const [selectedReportSections, setSelectedReportSections] = useState<string[]>([]);');
     expect(reports).toContain('<SelectValue placeholder="Select report type" />');
+    expect(reports).toContain('<DialogTitle>{editingReportId ? "Edit Report" : "Create Report"}</DialogTitle>');
     expect(reports).toContain('Schedule Automated Report');
     expect(reports).toContain('const [scheduleFrequency, setScheduleFrequency] = useState("daily");');
     expect(reports).toContain('setScheduleFrequency("daily");');
@@ -129,6 +130,11 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain('variant={!editingReportId && scheduleEnabled ? "link" : "default"}');
     expect(reports).toContain("const downloadReportPdf = async (report: StoredReport) => {");
     expect(reports).toContain("const { jsPDF } = await import('jspdf');");
+    const campaignDownload = reports.indexOf("await downloadReportPdf({", reports.indexOf("} else if (scheduleEnabled)"));
+    const standaloneStorage = reports.indexOf("const savedReport = reportStorage.addReport", campaignDownload);
+    expect(campaignDownload).toBeGreaterThan(-1);
+    expect(standaloneStorage).toBeGreaterThan(campaignDownload);
+    expect(reports.slice(campaignDownload, standaloneStorage)).not.toContain("reportStorage.addReport");
     expect(reports).toContain('await downloadReportPdf(savedReport);');
     expect(reports).toContain('selectedSections.forEach((section) => addText(`- ${getReportTabLabel(report.type, section)}`, { indent: 4 }));');
     expect(reports).toContain('const addDeepDiveSectionContent = (section: string) => {');
@@ -157,14 +163,16 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const campaignBenchmarks: any[] = Array.isArray(latestBenchmarksResult?.data) ? latestBenchmarksResult.data : liveCampaignBenchmarks;");
   });
 
-  it("routes generated reports to Standard Reports and scheduled reports to Scheduled Reports", () => {
+  it("shows campaign schedules directly while preserving standalone report tabs", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
     expect(reports).toContain("const visibleStoredReports = campaignContextId");
     expect(reports).toContain("allStoredReports.filter(report => report.campaignId === campaignContextId)");
     expect(reports).toContain("const standardReports = visibleStoredReports.filter(report => report.status === 'Generated');");
     expect(reports).toContain("const storedScheduledReports = visibleStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);");
-    expect(reports).toContain('<Tabs defaultValue="standard" className="space-y-6">');
+    expect(reports).toContain('<Tabs defaultValue={campaignContextId ? "scheduled" : "standard"} className="space-y-6">');
+    expect(reports).toContain("{!campaignContextId && (");
+    expect(reports).toContain("<TabsList>");
     expect(reports).toContain('<TabsTrigger value="standard">Standard Reports</TabsTrigger>');
     expect(reports.indexOf('<TabsTrigger value="standard">Standard Reports</TabsTrigger>')).toBeLessThan(reports.indexOf('<TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>'));
     expect(reports.indexOf('<TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>')).toBeLessThan(reports.indexOf('<TabsTrigger value="all">All Reports</TabsTrigger>'));

@@ -802,11 +802,19 @@ export default function Reports() {
           generatedAt: new Date(),
         });
       } else {
-        const savedReport = reportStorage.addReport({
-          ...reportPayload,
-          generatedAt: new Date(),
-        });
-        await downloadReportPdf(savedReport);
+        if (campaignContextId) {
+          await downloadReportPdf({
+            ...reportPayload,
+            id: `download_${Date.now()}`,
+            generatedAt: new Date(),
+          });
+        } else {
+          const savedReport = reportStorage.addReport({
+            ...reportPayload,
+            generatedAt: new Date(),
+          });
+          await downloadReportPdf(savedReport);
+        }
       }
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to save report");
@@ -1953,7 +1961,7 @@ export default function Reports() {
                   }}
                 >
                   <DialogHeader>
-                    <DialogTitle>{editingReportId ? "Edit Report" : "Create Scheduled Report"}</DialogTitle>
+                    <DialogTitle>{editingReportId ? "Edit Report" : "Create Report"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-6">
                     {/* Basic Info */}
@@ -2276,12 +2284,14 @@ export default function Reports() {
                 </CardContent>
               </Card>
             )}
-            <Tabs defaultValue="standard" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="standard">Standard Reports</TabsTrigger>
-                <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
-                <TabsTrigger value="all">All Reports</TabsTrigger>
-              </TabsList>
+            <Tabs defaultValue={campaignContextId ? "scheduled" : "standard"} className="space-y-6">
+              {!campaignContextId && (
+                <TabsList>
+                  <TabsTrigger value="standard">Standard Reports</TabsTrigger>
+                  <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
+                  <TabsTrigger value="all">All Reports</TabsTrigger>
+                </TabsList>
+              )}
 
               <TabsContent value="scheduled" className="space-y-6">
                 <div className="grid gap-6">

@@ -185,7 +185,7 @@ This inventory is complete for the current Reports surfaces, but completion of t
 | Surface/value family | Source and transformation | Empty/error/failure meaning | Current evidence status |
 | --- | --- | --- | --- |
 | GA4 saved-report cards: name, description, type, schedule, last sent, created date, actions | Campaign/platform-scoped rows from linkedin_reports through the shared platform report API | A successful empty list renders the empty state; a failed request renders Reports unavailable | Proven by code/regression coverage, deployed UI, authenticated inventory, and the restored three-report baseline |
-| Campaign DeepDive Standard, Scheduled, and All Reports lists | Campaign-filtered browser rows plus backend campaign_deepdive scheduled rows | Failed backend list stays distinct from a legitimate empty result | Excluded from the GA4 Reports certification boundary |
+| Campaign DeepDive scheduled-report list and ad hoc download path | Backend `campaign_deepdive` scheduled rows render directly; unscheduled creation generates an in-memory PDF without a browser or backend library row | Failed backend list stays distinct from a legitimate empty result; an ad hoc download does not create a card | Excluded from the GA4 Reports certification boundary |
 | Report composition | Saved report type, selected sections, selected KPI IDs, selected Benchmark IDs, and Campaign DeepDive selected metrics | Empty Custom KPI/Benchmark selection stays empty and cannot expand to every row | Proven through the actual scheduled GA4 PDF path and focused negative regression |
 | Schedule metadata | Frequency, recurrence day, local time, IANA timezone, recipients, paused/active state | Unsupported frequency/timezone/time/day/quarter values fail before persistence | Proven by create/update guards, direct validator cases, deployed CRUD, and natural scheduler execution |
 | Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Proven on the exact deployed SHA by user-confirmed UI/PDF parity plus fail-closed guards |
@@ -482,8 +482,8 @@ Current logic:
 - paid-media metrics remain hidden until a paid-media source supplies them
 - scheduled create/update/delete writes backend platform report records through `/api/platforms/campaign_deepdive/reports`
 - backend scheduled Campaign DeepDive report rows are fetched for campaign-scoped Reports pages
-- backend scheduled rows are mapped into the existing visible Scheduled Reports card shape
-- local generated/downloaded rows remain separate
+- backend scheduled rows are mapped directly into the campaign-scoped Reports card list without report-library tabs
+- campaign-scoped unscheduled generation downloads immediately without creating a browser or backend report-library row; standalone `/reports` browser-library behavior remains separate
 - pause/resume/delete can operate on backend IDs from fetched rows
 - scheduled Campaign DeepDive PDF builder renders selected section body content from latest server-side context
 

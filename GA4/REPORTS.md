@@ -143,27 +143,27 @@ Important meaning:
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
 - Campaign DeepDive report output reads current financial values from `/outcome-totals.performanceSummary`; Campaign DeepDive aggregate parity is tracked separately from GA4 Overview browser/scheduled report output and should not be used to reopen the GA4 Overview tab unless a specific aggregate defect is traced
 - campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
-- campaign-scoped Reports pages should show only reports whose saved `campaignId` matches the active campaign across Standard Reports, Scheduled Reports, All Reports, report type filters, and result counts; campaign-scoped pages should not seed global/demo reports
+- campaign-scoped Reports pages should show the active campaign's backend scheduled report cards directly, without Standard Reports, Scheduled Reports, or All Reports tabs, report type filters, result counts, or global/demo reports
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
 - for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
 - for the GA4-first version, Campaign DeepDive KPI and Benchmark report sections use the campaign-scoped GA4 platform records for row identity, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled
-- All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
-- All Reports cards should show only edit, `Download latest report`, and delete actions; Pause/Resume belongs only in Scheduled Reports
-- All Reports filters should include Search, Report Type, and Date Range; redundant Campaign and Status dropdowns should not render
+- campaign-scoped scheduled report cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
+- campaign-scoped scheduled report cards should show edit, `Download latest report`, Pause/Resume, and delete actions
+- campaign-scoped Reports pages should not render report-library filters
 - report cards should show the saved description when one exists and should not show redundant `Format: PDF` metadata
-- All Reports card edit icons should reopen the report dialog with saved values prefilled, show `Update Report`, suppress edit-mode first-field autofocus, and keep update disabled until a value changes
+- campaign-scoped scheduled report card edit actions should reopen the report dialog with saved values prefilled, show `Update Report`, suppress edit-mode first-field autofocus, and keep update disabled until a value changes
 - report descriptions in create and edit mode should be capped at 160 characters
 - report delete icons should use the shared confirmation dialog before deleting a stored report
-- Scheduled Reports should render stored scheduled report records, not hard-coded demo cards, so delete operates on a real report ID
-- Scheduled Reports should show a clear empty state when there are no scheduled report records
-- Scheduled Reports cards should keep edit wired to the report dialog and should not show redundant `Scheduled` status pills or settings icons
-- Scheduled Reports card `Data Included` should list selected tab labels from the saved `selectedSections` report composition
-- Scheduled Reports card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible in Scheduled Reports without a separate visible Status field, and switch paused cards to `Resume` so users can re-enable the saved backend schedule
-- Pause/Resume belongs only in Scheduled Reports because it controls recurring email delivery without deleting the saved report setup
-- Scheduled Reports card `Download latest report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
+- the campaign-scoped Reports page should render stored scheduled report records directly, not hard-coded demo cards, so delete operates on a real report ID
+- the campaign-scoped Reports page should show a clear empty state when there are no scheduled report records
+- scheduled report cards should keep edit wired to the report dialog and should not show redundant `Scheduled` status pills or settings icons
+- scheduled report card `Data Included` should list selected tab labels from the saved `selectedSections` report composition
+- scheduled report card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible without a separate visible Status field, and switch paused cards to `Resume` so users can re-enable the saved backend schedule
+- Pause/Resume controls recurring email delivery without deleting the saved report setup
+- scheduled report card `Download latest report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
-- unscheduled create mode should show `Download Report` and download the selected report sections as a PDF
+- unscheduled create mode should show `Download Report`, download the selected report sections as a PDF, and create no browser or backend report-library row
 - downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from `performanceSummary.totals` and `performanceSummary.sources`, not just the selected tab names
 - downloaded Executive Summary `Executive Overview` PDFs should include 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment, matching the major web-tab sections
 - downloaded Executive Summary `Strategic Recommendations` PDFs should include the data accuracy notice, data freshness alert, enterprise disclaimer, recommendation cards, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimers where those inputs exist
@@ -171,9 +171,9 @@ Important meaning:
 - downloaded Budget & Financial Analysis PDFs should include the selected web-tab section structure down to the visible card and row level: Overview, ROI & ROAS, Cost Analysis, Budget Allocation, and Insights exports should each include the nested live-tab cards/rows instead of a generic metric list
 - downloaded Platform Comparison PDFs should include the selected web-tab section structure: Overview, Performance Metrics, Financial Comparison, and Insights exports should each include their major live-tab subsections instead of a generic metric list
 - downloaded Trend Analysis PDFs should include the selected web-tab section structure: Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights exports should use the source-aware `/trend-analysis` aggregate instead of generic fallback output
-- generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
-- the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
-- the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
+- one-off generated/downloaded Campaign DeepDive reports should not create a report card, while scheduled reports should appear directly on the campaign-scoped Reports page
+- the standalone `/reports` route retains its separate report-library tabs and browser storage behavior
+- the scheduled report card download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
 - scheduled Campaign DeepDive PDFs should build the same latest-value server context before rendering: campaign context, `performanceSummary`, Executive Summary context when an Executive Summary tab is selected, KPI rows when selected tabs need KPI context, Benchmark rows when selected tabs need Benchmark context, and Trend Analysis aggregate only when a Trend Analysis tab is selected
 - scheduled create mode should use `Schedule Automated Report`, default to `Daily`, and show `Schedule Report` in the same filled primary button style as `Download Report`
 - the Custom Report schedule form should create a backend scheduled report record with recipients, schedule time, browser time zone, and saved Campaign DeepDive report composition

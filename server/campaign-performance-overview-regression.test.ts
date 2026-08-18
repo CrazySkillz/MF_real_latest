@@ -18,7 +18,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(benchmarkValueResolver).not.toContain("performanceSummary?.totals");
   });
 
-  it("wires Key Outcomes cards to the performanceSummary aggregate contract", () => {
+  it("reads GA4 traffic outcomes from the read-only GA4 Summary response while retaining aggregate spend", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const keyOutcomesStart = page.indexOf('data-testid="performance-key-outcomes"');
     const keyOutcomesEnd = page.indexOf('data-testid="performance-campaign-health"', keyOutcomesStart);
@@ -39,25 +39,21 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("{!performanceSummaryPending && (");
     expect(keyOutcomes).not.toContain("Preparing Overview");
     expect(keyOutcomes).not.toContain("Preparing aggregate metrics");
-    expect(page).toContain('const overviewImpressions = getOverviewMetric("impressions", totalImpressions);');
-    expect(page).toContain('const overviewSessions = getOverviewMetric("sessions", webSessions);');
-    expect(page).toContain('const overviewConversions = getOverviewMetric("conversions", totalConversions);');
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/ga4-connections?readOnly=1`)');
+    expect(page).toContain('ga4-daily?days=30&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1');
+    expect(page).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
+    expect(page).toContain('const overviewSessions = getGA4SummaryMetric("sessions", webSessions);');
+    expect(page).toContain('const overviewUsers = getGA4SummaryMetric("users", parseNum(effectiveGA4?.metrics?.users));');
+    expect(page).toContain('const overviewConversions = getGA4SummaryMetric("conversions", totalConversions);');
     expect(page).toContain('const overviewSpend = getOverviewMetric("spend", totalSpend);');
-    expect(keyOutcomes).toContain("formatOverviewValue(overviewImpressions");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewUsers");
     expect(keyOutcomes).toContain("formatOverviewValue(overviewSessions");
     expect(keyOutcomes).toContain("formatOverviewValue(overviewConversions");
     expect(keyOutcomes).toContain("formatOverviewValue(overviewSpend");
-    expect(page).toContain('if (metric === overviewImpressions) return "Unavailable from connected sources";');
+    expect(keyOutcomes).toContain("Total Users");
+    expect(keyOutcomes).not.toContain("Total Impressions");
     expect(keyOutcomes).toContain("overviewSourceLabel(overviewConversions");
     expect(keyOutcomes).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
-  });
-
-  it("shows connected non-financial sources for unavailable Overview metrics", () => {
-    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
-
-    expect(page).toContain('filter((source: any) => source?.category !== "financial")');
-    expect(page).toContain('const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";');
-    expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")} - Impressions not available` : reason;');
   });
 
   it("selects top priority from lagging GA4 KPIs before Benchmark fallback", () => {

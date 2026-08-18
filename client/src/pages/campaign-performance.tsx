@@ -98,6 +98,36 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
+  const { data: performanceGA4ConnectionsResponse, isLoading: performanceGA4ConnectionsLoading } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-connections", "performance-summary-read-only"],
+    enabled: !!campaignId && !demoMode,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections?readOnly=1`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false) throw new Error(data?.error || "Failed to fetch GA4 connections");
+      return data;
+    },
+  });
+  const performanceGA4Connections = Array.isArray(performanceGA4ConnectionsResponse?.connections)
+    ? performanceGA4ConnectionsResponse.connections
+    : [];
+  const performanceGA4PropertyId = String(
+    (performanceGA4Connections.find((connection: any) => connection?.isPrimary) || performanceGA4Connections[0])?.propertyId || "",
+  );
+  const { data: performanceGA4SummaryResponse, isLoading: performanceGA4SummaryLoading } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", 30, performanceGA4PropertyId, "performance-summary-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=30&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false || String(data?.propertyId || "") !== performanceGA4PropertyId) {
+        throw new Error(data?.error || "Failed to fetch GA4 Summary metrics");
+      }
+      return data;
+    },
+  });
+
   const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     queryFn: async () => {
@@ -698,6 +728,17 @@ export default function CampaignPerformanceSummary() {
     }
     return metric;
   };
+  const getGA4SummaryMetric = (metricName: string, demoFallbackValue: number) => {
+    if (demoMode) return getOverviewMetric(metricName, demoFallbackValue);
+    if (performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && performanceGA4SummaryLoading)) {
+      return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
+    }
+    const value = Number(performanceGA4SummaryResponse?.overviewTotals?.[metricName]);
+    if (!Number.isFinite(value)) {
+      return { available: false, value: null, sources: [], unavailableReasons: ["GA4 Summary metric unavailable"] };
+    }
+    return { available: true, value, sources: ["Google Analytics"], unavailableReasons: [] };
+  };
   const formatOverviewValue = (metric: any, formatter: (value: number) => string) => {
     if (metric?.pending) return "";
     if (!metric?.available) return "Unavailable";
@@ -705,22 +746,16 @@ export default function CampaignPerformanceSummary() {
   };
   const overviewSourceLabel = (metric: any, fallbackLabel: string) => {
     if (metric?.pending) return "";
-    if (!performanceSummary) return fallbackLabel;
     if (!metric?.available) {
-      if (metric === overviewImpressions) return "Unavailable from connected sources";
-      const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";
-      const sourceLabels = performanceSources
-        .filter((source: any) => source?.category !== "financial")
-        .map((source: any) => source?.label)
-        .filter(Boolean);
-      return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")} - Impressions not available` : reason;
+      return metric?.unavailableReasons?.[0] || "No connected source provides this metric";
     }
+    if (!performanceSummary && (!Array.isArray(metric?.sources) || metric.sources.length === 0)) return fallbackLabel;
     const labels = (metric.sources || []).map((sourceId: string) => sourceLabelForId(sourceId));
     return labels.length > 0 ? `Sources: ${labels.join(", ")}` : "Sources unavailable";
   };
-  const overviewImpressions = getOverviewMetric("impressions", totalImpressions);
-  const overviewSessions = getOverviewMetric("sessions", webSessions);
-  const overviewConversions = getOverviewMetric("conversions", totalConversions);
+  const overviewSessions = getGA4SummaryMetric("sessions", webSessions);
+  const overviewUsers = getGA4SummaryMetric("users", parseNum(effectiveGA4?.metrics?.users));
+  const overviewConversions = getGA4SummaryMetric("conversions", totalConversions);
   const overviewSpend = getOverviewMetric("spend", totalSpend);
 
   return (
@@ -784,15 +819,15 @@ export default function CampaignPerformanceSummary() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Users</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {formatOverviewValue(overviewImpressions, (value) => value.toLocaleString())}
+                      {formatOverviewValue(overviewUsers, (value) => value.toLocaleString())}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {overviewSourceLabel(overviewImpressions, `Ad: ${advertisingImpressions.toLocaleString()} | Web: ${webPageviews.toLocaleString()}`)}
+                      {overviewSourceLabel(overviewUsers, "Sources unavailable")}
                     </p>
                   </CardContent>
                 </Card>

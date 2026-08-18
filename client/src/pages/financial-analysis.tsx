@@ -175,7 +175,7 @@ export default function FinancialAnalysis() {
     },
   });
 
-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -273,6 +273,7 @@ export default function FinancialAnalysis() {
   // Data loading state — prevent flash of stale/zero metrics on refresh
   const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading || outcomeTotalsLoading);
   const performanceSummary = outcomeTotals?.performanceSummary;
+  const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
@@ -454,7 +455,7 @@ export default function FinancialAnalysis() {
         unavailableReasons: aggregateMetricUnavailableReasons(metricName),
       };
     }
-    if (!demoMode && outcomeTotals !== undefined && !performanceSummary) {
+    if (aggregateUnavailable) {
       return {
         available: false,
         value: 0,
@@ -711,7 +712,7 @@ export default function FinancialAnalysis() {
                 </div>
               ) : <>
               {/* AOV Warning (only when we have no usable revenue source AND data has loaded) */}
-              {!overviewRevenueMetric.available && estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
+              {!aggregateUnavailable && !overviewRevenueMetric.available && estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
@@ -1308,7 +1309,7 @@ export default function FinancialAnalysis() {
                           </div>
                         </div>
                       ))}
-                      {!performanceSummary && (
+                      {demoMode && !performanceSummary && (
                       <>
                       {/* LinkedIn Ads */}
                       {platformMetrics.linkedIn.spend > 0 && (
@@ -1358,10 +1359,12 @@ export default function FinancialAnalysis() {
                       )}
 
                       {/* No data message */}
-                      {((performanceSummary && financialSourceBreakdowns.length === 0) || (!performanceSummary && totalSpend === 0)) && (
+                      {((performanceSummary && financialSourceBreakdowns.length === 0) || aggregateUnavailable || (demoMode && !performanceSummary && totalSpend === 0)) && (
                         <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
-                            No connected source has revenue, spend, or conversion data available yet.
+                            {aggregateUnavailable
+                              ? "Aggregate financial totals are unavailable."
+                              : "No connected source has revenue, spend, or conversion data available yet."}
                           </p>
                         </div>
                       )}
@@ -1388,7 +1391,7 @@ export default function FinancialAnalysis() {
                           </div>
                         );
                       })}
-                      {!performanceSummary && (
+                      {demoMode && !performanceSummary && (
                       <>
                       {/* LinkedIn Ads */}
                       {platformMetrics.linkedIn.spend > 0 && (() => {
@@ -1460,10 +1463,12 @@ export default function FinancialAnalysis() {
                       )}
 
                       {/* No data message */}
-                      {((performanceSummary && financialSourceBreakdowns.length === 0) || (!performanceSummary && totalSpend === 0)) && (
+                      {((performanceSummary && financialSourceBreakdowns.length === 0) || aggregateUnavailable || (demoMode && !performanceSummary && totalSpend === 0)) && (
                         <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
-                            No connected source has revenue, spend, or conversion data available yet.
+                            {aggregateUnavailable
+                              ? "Aggregate financial totals are unavailable."
+                              : "No connected source has revenue, spend, or conversion data available yet."}
                           </p>
                         </div>
                       )}

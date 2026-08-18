@@ -6,7 +6,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
   it("adds the shared performanceSummary aggregate contract for Budget & Financial tabs", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
 
-    expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({");
+    expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
@@ -23,6 +23,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`]');
     expect(page).not.toContain("snapshots?date=");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
+    expect(page).toContain("const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);");
     expect(page).toContain("const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];");
     expect(page).toContain("const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];");
     expect(page).toContain("const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;");
@@ -76,6 +77,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const overviewRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const overviewRoasMetric = getOverviewMetric("roas", roas);');
     expect(page).toContain('unavailableReasons: ["Aggregate financial totals are unavailable"]');
+    expect(page).toContain("if (aggregateUnavailable) {");
+    expect(page).toContain("{demoMode && !performanceSummary && (");
+    expect(page).toContain('aggregateUnavailable\n                              ? "Aggregate financial totals are unavailable."');
+    expect(page).not.toContain("{!performanceSummary && (");
     expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
     expect(page).toContain("const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));");
     expect(page).toContain("const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));");

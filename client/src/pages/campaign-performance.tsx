@@ -786,19 +786,74 @@ export default function CampaignPerformanceSummary() {
     return Array.from(new Set(aggregateMetricSourceIds(aggregate, metricName).map((sourceId) => sourceLabelForId(sourceId))));
   };
 
+  const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);
+  const getGA4MovementComparison = (metricName: string) => {
+    const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : 30;
+    const dataThroughDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
+    const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[metricName]);
+    const dailyRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
+    if (!Number.isFinite(current) || !/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return null;
+
+    const dateWithOffset = (offset: number) => {
+      const date = new Date(`${dataThroughDate}T00:00:00.000Z`);
+      date.setUTCDate(date.getUTCDate() + offset);
+      return date.toISOString().slice(0, 10);
+    };
+    const rowsByDate = new Map<string, any>();
+    for (const row of dailyRows) {
+      const date = String(row?.date || "").slice(0, 10);
+      if (rowsByDate.has(date)) return null;
+      rowsByDate.set(date, row);
+    }
+
+    let recentTotal = 0;
+    for (let offset = 0; offset < comparisonDays; offset += 1) {
+      const value = Number(rowsByDate.get(dateWithOffset(-offset))?.[metricName]);
+      if (!Number.isFinite(value)) return null;
+      recentTotal += value;
+    }
+    const previous = current - recentTotal;
+    if (!Number.isFinite(previous) || previous < 0) return null;
+    return { current, previous, baselineDate: dateWithOffset(-comparisonDays) };
+  };
+
   // Calculate what's changed from compatible aggregate snapshots only.
   const getChanges = () => {
     const baseline = comparisonData?.previous;
+    const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [];
+    let ga4BaselineTimestamp: string | null = null;
+    const addGA4Change = (config: any) => {
+      if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) {
+        const comparison = getGA4MovementComparison(config.key);
+        if (!comparison) return;
+        const change = comparison.current - comparison.previous;
+        ga4Changes.push({
+          metric: config.label,
+          current: comparison.current,
+          previous: comparison.previous,
+          change,
+          pctChange: comparison.previous > 0 ? (change / comparison.previous) * 100 : null,
+          direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
+          sourceLabel: "Sources: Google Analytics",
+        });
+        ga4BaselineTimestamp = `${comparison.baselineDate}T00:00:00.000Z`;
+      }
+    };
+    changeMetricConfigs.forEach(addGA4Change);
+
     if (!performanceSummary?.version || !baseline) {
+      if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: ga4BaselineTimestamp, emptyReason: null };
       return { changes: [], baselineTimestamp: null, emptyReason: "not_enough_history" };
     }
     const baselineAggregate = baseline?.metrics?.performanceSummary;
     if (baselineAggregate?.version !== performanceSummary.version) {
+      if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: ga4BaselineTimestamp, emptyReason: null };
       return { changes: [], baselineTimestamp: baseline.recordedAt, emptyReason: "incompatible_history" };
     }
 
-    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [];
+    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [...ga4Changes];
     const addChange = (config: any) => {
+      if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) return;
       if (!aggregateSnapshotMetricAvailable(performanceSummary, config.key) || !aggregateSnapshotMetricAvailable(baselineAggregate, config.key)) return;
       const currentSourceIds = aggregateMetricSourceIds(performanceSummary, config.key);
       const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);
@@ -827,7 +882,7 @@ export default function CampaignPerformanceSummary() {
 
     return {
       changes,
-      baselineTimestamp: baseline.recordedAt,
+      baselineTimestamp: ga4BaselineTimestamp || baseline.recordedAt,
       emptyReason: changes.length > 0 ? null : "no_metric_changes",
     };
   };

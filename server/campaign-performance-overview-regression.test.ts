@@ -153,6 +153,26 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("item.pctChange === null ? ''");
   });
 
+  it("derives GA4 traffic movement from the same Summary totals and complete daily history as Key Outcomes", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const start = page.indexOf('const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);');
+    const end = page.indexOf("const changeData = getChanges();", start);
+    const movement = page.slice(start, end);
+
+    expect(movement).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
+    expect(movement).toContain('performanceGA4SummaryResponse?.dataThroughDate');
+    expect(movement).toContain('performanceGA4SummaryResponse?.data');
+    expect(movement).toContain('const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : 30;');
+    expect(movement).toContain('if (rowsByDate.has(date)) return null;');
+    expect(movement).toContain('if (!Number.isFinite(value)) return null;');
+    expect(movement).toContain('const previous = current - recentTotal;');
+    expect(movement).toContain('if (!Number.isFinite(previous) || previous < 0) return null;');
+    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key))');
+    expect(movement).toContain('sourceLabel: "Sources: Google Analytics"');
+    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) return;');
+    expect(movement).toContain('= [...ga4Changes];');
+  });
+
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 

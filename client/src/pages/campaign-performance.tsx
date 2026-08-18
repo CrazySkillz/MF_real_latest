@@ -776,9 +776,14 @@ export default function CampaignPerformanceSummary() {
     return metric?.available === true && metric?.value !== null && typeof metric?.value !== "undefined";
   };
   const aggregateSnapshotMetricValue = (aggregate: any, metricName: string) => parseNum(aggregate?.totals?.[metricName]?.value);
-  const aggregateMetricSources = (aggregate: any, metricName: string) => {
+  const aggregateMetricSourceIds = (aggregate: any, metricName: string) => {
     const sources = aggregate?.totals?.[metricName]?.sources;
-    return Array.isArray(sources) ? sources.map((sourceId: string) => sourceLabelForId(sourceId)) : [];
+    return Array.isArray(sources)
+      ? sources.map((sourceId: any) => String(sourceId || "").trim()).filter(Boolean).sort()
+      : [];
+  };
+  const aggregateMetricSources = (aggregate: any, metricName: string) => {
+    return Array.from(new Set(aggregateMetricSourceIds(aggregate, metricName).map((sourceId) => sourceLabelForId(sourceId))));
   };
 
   // Calculate what's changed from compatible aggregate snapshots only.
@@ -792,13 +797,16 @@ export default function CampaignPerformanceSummary() {
       return { changes: [], baselineTimestamp: baseline.recordedAt, emptyReason: "incompatible_history" };
     }
 
-    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [];
+    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [];
     const addChange = (config: any) => {
       if (!aggregateSnapshotMetricAvailable(performanceSummary, config.key) || !aggregateSnapshotMetricAvailable(baselineAggregate, config.key)) return;
+      const currentSourceIds = aggregateMetricSourceIds(performanceSummary, config.key);
+      const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);
+      if (currentSourceIds.length === 0 || currentSourceIds.join("\u0000") !== baselineSourceIds.join("\u0000")) return;
       const currVal = aggregateSnapshotMetricValue(performanceSummary, config.key);
       const prevVal = aggregateSnapshotMetricValue(baselineAggregate, config.key);
       const change = currVal - prevVal;
-      const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : (currVal > 0 ? 100 : 0);
+      const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : null;
       if (Math.abs(change) > 0 || currVal > 0 || prevVal > 0) {
         const sourceLabels = aggregateMetricSources(performanceSummary, config.key);
         changes.push({
@@ -1151,13 +1159,13 @@ export default function CampaignPerformanceSummary() {
                         </Button>
                       </Link>
                       <Select value={timeRange} onValueChange={(value: '24h' | '7d' | '30d') => setTimeRange(value)}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-[230px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="24h">Last 24 Hours</SelectItem>
-                        <SelectItem value="7d">Last 7 Days</SelectItem>
-                        <SelectItem value="30d">Last 30 Days</SelectItem>
+                        <SelectItem value="24h">Compare with yesterday</SelectItem>
+                        <SelectItem value="7d">Compare with 7 days ago</SelectItem>
+                        <SelectItem value="30d">Compare with one month ago</SelectItem>
                       </SelectContent>
                       </Select>
                     </div>
@@ -1213,7 +1221,7 @@ export default function CampaignPerformanceSummary() {
                                   'text-muted-foreground/70'
                                 }`}>
                                   {isFlat ? 'No change' :
-                                    `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()} (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`
+                                    `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
                                   }
                                 </span>
                               </div>

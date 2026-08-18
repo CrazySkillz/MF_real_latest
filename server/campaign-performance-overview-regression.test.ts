@@ -136,6 +136,23 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain("`${benchmark.currentValue}${benchmark.unit}`");
   });
 
+  it("keeps Recent Movement comparisons source-compatible and labels snapshot timing accurately", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const start = page.indexOf("const getChanges = () => {");
+    const end = page.indexOf("const changeData = getChanges();", start);
+    const getChanges = page.slice(start, end);
+
+    expect(page).toContain("const aggregateMetricSourceIds = (aggregate: any, metricName: string) => {");
+    expect(page).toContain("sources.map((sourceId: any) => String(sourceId || \"\").trim()).filter(Boolean).sort()");
+    expect(page).toContain("Array.from(new Set(aggregateMetricSourceIds(aggregate, metricName).map((sourceId) => sourceLabelForId(sourceId))))");
+    expect(getChanges).toContain("const currentSourceIds = aggregateMetricSourceIds(performanceSummary, config.key);");
+    expect(getChanges).toContain("const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);");
+    expect(getChanges).toContain('currentSourceIds.join("\\u0000") !== baselineSourceIds.join("\\u0000")');
+    expect(getChanges).toContain("const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : null;");
+    expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
+    expect(page).toContain("item.pctChange === null ? ''");
+  });
+
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 

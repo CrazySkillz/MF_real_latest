@@ -5563,10 +5563,8 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','insights','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Campaign Overview</TabsTrigger>
-              <TabsTrigger value="kpis">Campaign KPIs</TabsTrigger>
-              <TabsTrigger value="benchmarks">Campaign Benchmarks</TabsTrigger>
               <TabsTrigger value="insights">Freestyle Chat</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>

@@ -56,6 +56,22 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(keyOutcomes).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
   });
 
+  it("adds Total Revenue from the same read-only native and imported GA4 financial inputs", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const keyOutcomesStart = page.indexOf('data-testid="performance-key-outcomes"');
+    const keyOutcomesEnd = page.indexOf('data-testid="performance-campaign-health"', keyOutcomesStart);
+    const keyOutcomes = page.slice(keyOutcomesStart, keyOutcomesEnd);
+
+    expect(page).toContain('ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1');
+    expect(page).toContain('revenue-to-date?platformContext=ga4');
+    expect(page).toContain("value: nativeRevenue + importedRevenue");
+    expect(page).toContain('const overviewRevenue = getGA4TotalRevenueMetric();');
+    expect(keyOutcomes).toContain("Total Revenue");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewRevenue");
+    expect(keyOutcomes).toContain("overviewSourceLabel(overviewRevenue");
+    expect(keyOutcomes).toContain("lg:grid-cols-5");
+  });
+
   it("selects top priority from lagging GA4 KPIs before Benchmark fallback", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 

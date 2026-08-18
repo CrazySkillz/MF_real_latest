@@ -127,6 +127,28 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
+  const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, "performance-summary-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const [nativeResponse, importedResponse] = await Promise.all([
+        fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1`),
+        fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4`),
+      ]);
+      const [native, imported] = await Promise.all([
+        nativeResponse.json().catch(() => null),
+        importedResponse.json().catch(() => null),
+      ]);
+      if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId) {
+        throw new Error(native?.error || "Failed to fetch GA4 revenue");
+      }
+      if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4") {
+        throw new Error(imported?.error || "Failed to fetch imported GA4 revenue");
+      }
+      return { native, imported };
+    },
+  });
 
   const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
@@ -739,6 +761,25 @@ export default function CampaignPerformanceSummary() {
     }
     return { available: true, value, sources: ["Google Analytics"], unavailableReasons: [] };
   };
+  const getGA4TotalRevenueMetric = () => {
+    if (demoMode) return getOverviewMetric("revenue", parseNum(effectiveGA4?.metrics?.revenue));
+    if (performanceGA4ConnectionsLoading || performanceGA4RevenueLoading) {
+      return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
+    }
+    const nativeRevenue = Number(performanceGA4RevenueResponse?.native?.totals?.revenue);
+    const importedRevenue = Number(performanceGA4RevenueResponse?.imported?.totalRevenue);
+    const hasNativeRevenue = !!String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim() || nativeRevenue !== 0;
+    const hasImportedRevenue = Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0;
+    if (!Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)) {
+      return { available: false, value: null, sources: [], unavailableReasons: ["GA4 revenue unavailable"] };
+    }
+    return {
+      available: true,
+      value: nativeRevenue + importedRevenue,
+      sources: [...(hasNativeRevenue ? ["GA4 native revenue"] : []), ...(hasImportedRevenue ? ["Imported revenue"] : [])],
+      unavailableReasons: [],
+    };
+  };
   const formatOverviewValue = (metric: any, formatter: (value: number) => string) => {
     if (metric?.pending) return "";
     if (!metric?.available) return "Unavailable";
@@ -756,6 +797,7 @@ export default function CampaignPerformanceSummary() {
   const overviewSessions = getGA4SummaryMetric("sessions", webSessions);
   const overviewUsers = getGA4SummaryMetric("users", parseNum(effectiveGA4?.metrics?.users));
   const overviewConversions = getGA4SummaryMetric("conversions", totalConversions);
+  const overviewRevenue = getGA4TotalRevenueMetric();
   const overviewSpend = getOverviewMetric("spend", totalSpend);
 
   return (
@@ -816,7 +858,7 @@ export default function CampaignPerformanceSummary() {
                   <p className="text-sm text-muted-foreground mt-1">Current outcomes from the campaign's connected sources</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -858,6 +900,21 @@ export default function CampaignPerformanceSummary() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewConversions, `LinkedIn: ${linkedinConversions.toLocaleString()} | CI: ${ciConversions.toLocaleString()}`)}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatOverviewValue(overviewRevenue, (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {overviewSourceLabel(overviewRevenue, "Sources unavailable")}
                     </p>
                   </CardContent>
                 </Card>

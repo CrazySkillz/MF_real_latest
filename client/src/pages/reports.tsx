@@ -283,6 +283,22 @@ const getDefaultScheduleDayForFrequency = (frequency: string) => {
   return "monday";
 };
 
+const formatReportSchedule = (schedule: StoredReport["schedule"]): string => {
+  if (!schedule) return "Not scheduled";
+  const frequency = String(schedule.frequency || "daily").toLowerCase();
+  const frequencyLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+  if (frequency === "weekly") {
+    const dayLabel = schedule.day.charAt(0).toUpperCase() + schedule.day.slice(1);
+    return `Weekly on ${dayLabel} at ${schedule.time}`;
+  }
+  if (frequency === "monthly") {
+    const dayLabel = schedule.day === "last" ? "the last day" : `day ${schedule.day}`;
+    return `Monthly on ${dayLabel} of the month at ${schedule.time}`;
+  }
+  if (frequency === "quarterly") return `Quarterly at the ${schedule.day} of the quarter at ${schedule.time}`;
+  return `${frequencyLabel} at ${schedule.time}`;
+};
+
 const getReportFormSignature = (values: {
   name: string;
   description: string;
@@ -2349,7 +2365,7 @@ export default function Reports() {
                             <div>
                               <span className="font-medium text-foreground">Schedule:</span>
                               <div className="text-muted-foreground/70">
-                                {report.schedule ? `${report.schedule.frequency} at ${report.schedule.time}` : 'Not scheduled'}
+                                {formatReportSchedule(report.schedule)}
                               </div>
                             </div>
                             <div>
@@ -2533,7 +2549,7 @@ export default function Reports() {
                                       <div className="text-sm">
                                         <span className="font-medium text-foreground">Schedule:</span>
                                         <span className="text-muted-foreground/70 ml-2">
-                                          {report.schedule.frequency} at {report.schedule.time}
+                                          {formatReportSchedule(report.schedule)}
                                           {report.schedule.recipients.length > 0 && 
                                             ` • ${report.schedule.recipients.length} recipient(s)`
                                           }

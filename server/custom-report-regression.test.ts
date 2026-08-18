@@ -218,6 +218,17 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain("Report Templates");
   });
 
+  it("renders complete weekly, monthly, and quarterly schedule descriptions", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const formatReportSchedule =");
+    expect(reports).toContain("return `Weekly on ${dayLabel} at ${schedule.time}`;");
+    expect(reports).toContain('schedule.day === "last" ? "the last day" : `day ${schedule.day}`');
+    expect(reports).toContain("return `Monthly on ${dayLabel} of the month at ${schedule.time}`;");
+    expect(reports).toContain("return `Quarterly at the ${schedule.day} of the quarter at ${schedule.time}`;");
+    expect(reports.match(/\{formatReportSchedule\(report\.schedule\)\}/g)).toHaveLength(2);
+  });
+
   it("confirms report deletion and lists connected sources without metric-key noise", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

@@ -956,6 +956,7 @@ export default function CampaignPerformanceSummary() {
 
   return (
     <div className="min-h-screen bg-background">
+      <style>{`body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }`}</style>
       <Navigation />
       
       <div className="flex">
@@ -1222,7 +1223,7 @@ export default function CampaignPerformanceSummary() {
                       <SelectTrigger className="w-[230px]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-performance-movement-select>
                         <SelectItem value="24h">Compare with yesterday</SelectItem>
                         <SelectItem value="7d">Compare with 7 days ago</SelectItem>
                         <SelectItem value="30d">Compare with one month ago</SelectItem>
@@ -1247,7 +1248,7 @@ export default function CampaignPerformanceSummary() {
                     <div className="space-y-4">
                       {changeData.baselineTimestamp && (
                         <p className="text-xs text-muted-foreground/70">
-                          Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}
+                          Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString()}
                         </p>
                       )}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

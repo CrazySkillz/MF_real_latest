@@ -1971,6 +1971,7 @@ export default function Reports() {
                   Create Report
                 </Button>
                 <DialogContent
+                  data-campaign-report-dialog
                   className="max-w-2xl max-h-[80vh] overflow-y-auto"
                   onOpenAutoFocus={(event) => {
                     if (editingReportId) event.preventDefault();

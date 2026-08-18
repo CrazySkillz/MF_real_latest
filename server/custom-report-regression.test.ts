@@ -69,6 +69,14 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain("alert(");
   });
 
+  it("keeps the Campaign Report modal from shifting the page scrollbar gutter", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const styles = readFileSync(join(process.cwd(), "client/src/index.css"), "utf-8");
+
+    expect(reports).toContain("data-campaign-report-dialog");
+    expect(styles).toContain("body[data-scroll-locked]:has([data-campaign-report-dialog])");
+  });
+
   it("supports editing stored report cards through the report dialog", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
     const storage = readFileSync(join(process.cwd(), "client/src/lib/reportStorage.ts"), "utf-8");

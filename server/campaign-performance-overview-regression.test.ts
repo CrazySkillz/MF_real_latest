@@ -211,7 +211,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('= [...ga4Changes];');
     expect(page).toContain('Comparison unavailable — incomplete GA4 daily history');
     expect(page).toContain('{!item.comparisonUnavailable && (');
-    expect(page).toContain('Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString(undefined, { timeZone: campaign?.reportingTimeZone || "UTC" })}');
+    expect(page).not.toContain('Available comparisons use data from');
     expect(page).not.toContain('Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}');
     expect(page).toContain('<SelectContent data-performance-movement-select>');
     expect(page).toContain('body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }');

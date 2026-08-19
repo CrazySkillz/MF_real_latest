@@ -1400,11 +1400,6 @@ export default function CampaignPerformanceSummary() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {changeData.baselineTimestamp && (
-                        <p className="text-xs text-muted-foreground/70">
-                          Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString(undefined, { timeZone: campaign?.reportingTimeZone || "UTC" })}
-                        </p>
-                      )}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         {recentMovementChanges.map((item, idx) => {
                           const isUp = item.direction === "up";

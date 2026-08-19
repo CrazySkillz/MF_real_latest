@@ -812,24 +812,17 @@ export default function CampaignPerformanceSummary() {
     };
     const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();
     const requiredStartDate = dateWithOffset(-(comparisonDays - 1));
-    const providerCoverageThroughDate = String(performanceGA4SummaryResponse?.providerCoverageThroughDate || "");
-    const lastCompletedRefreshAt = Date.parse(String(performanceGA4SummaryResponse?.lastCompletedRefreshAt || ""));
-    const expectedRefreshAt = Date.parse(String(performanceGA4SummaryResponse?.expectedRefreshAt || ""));
-    const coverageVerified = performanceGA4SummaryResponse?.providerRefreshOutcome === "simulated"
-      || (/^\d{4}-\d{2}-\d{2}$/.test(providerCoverageThroughDate) && providerCoverageThroughDate >= dataThroughDate)
-      || (Number.isFinite(lastCompletedRefreshAt) && Number.isFinite(expectedRefreshAt) && lastCompletedRefreshAt >= expectedRefreshAt);
     const responseStartDate = String(performanceGA4SummaryResponse?.startDate || "");
     const responseEndDate = String(performanceGA4SummaryResponse?.endDate || "");
     const responseWindowCoversComparison = /^\d{4}-\d{2}-\d{2}$/.test(responseStartDate)
       && /^\d{4}-\d{2}-\d{2}$/.test(responseEndDate)
       && responseStartDate <= requiredStartDate
       && responseEndDate >= dataThroughDate;
-    const missingRowsAreVerifiedZero = coverageVerified
-      && responseWindowCoversComparison
-      && !performanceGA4SummaryResponse?.providerRefreshWarning;
+    if (!responseWindowCoversComparison || performanceGA4SummaryResponse?.providerRefreshWarning) return null;
     const rowsByDate = new Map<string, any>();
     for (const row of dailyRows) {
       const date = String(row?.date || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < responseStartDate || date > responseEndDate) return null;
       if (rowsByDate.has(date)) return null;
       rowsByDate.set(date, row);
     }
@@ -838,7 +831,6 @@ export default function CampaignPerformanceSummary() {
     for (let offset = 0; offset < comparisonDays; offset += 1) {
       const row = rowsByDate.get(dateWithOffset(-offset));
       if (!row) {
-        if (!missingRowsAreVerifiedZero) return null;
         continue;
       }
       const value = Number(row?.[metricName]);

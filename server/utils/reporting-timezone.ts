@@ -90,6 +90,37 @@ export function getReportingDateWindow(days: number, reportingTimeZone: any, now
   };
 }
 
+export function getReportingComparisonBoundary(
+  comparisonType: "yesterday" | "last_week" | "last_month",
+  reportingTimeZone: any,
+  now = new Date(),
+) {
+  const normalizedTimeZone = normalizeReportingTimeZone(reportingTimeZone);
+  const currentDate = currentDateOnlyInTimeZone(now, normalizedTimeZone);
+  let comparisonDate: string;
+
+  if (comparisonType === "yesterday") comparisonDate = addDaysToDateOnly(currentDate, -1);
+  else if (comparisonType === "last_week") comparisonDate = addDaysToDateOnly(currentDate, -7);
+  else {
+    const current = new Date(`${currentDate}T00:00:00.000Z`);
+    const day = current.getUTCDate();
+    current.setUTCDate(1);
+    current.setUTCMonth(current.getUTCMonth() - 1);
+    const lastDay = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 0)).getUTCDate();
+    current.setUTCDate(Math.min(day, lastDay));
+    comparisonDate = formatDateOnlyUTC(current);
+  }
+
+  const nextDate = addDaysToDateOnly(comparisonDate, 1);
+  const [year, month, day] = nextDate.split("-").map(Number);
+  const nextDayStart = zonedDateTimeToUTC(normalizedTimeZone, year, month, day, 0, 0);
+  return {
+    reportingTimeZone: normalizedTimeZone,
+    comparisonDate,
+    endAt: new Date(nextDayStart.getTime() - 1),
+  };
+}
+
 export function resolveGA4ImportToDateWindow(
   importStartDate: any,
   reportingTimeZone: any,

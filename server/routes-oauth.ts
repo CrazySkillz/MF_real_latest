@@ -29968,7 +29968,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid comparison type. Use: yesterday, last_week, or last_month" });
       }
 
-      const comparisonData = await storage.getComparisonData(id, type as 'yesterday' | 'last_week' | 'last_month');
+      const comparisonData = await storage.getComparisonData(
+        id,
+        type as 'yesterday' | 'last_week' | 'last_month',
+        (req as any)._campaign?.reportingTimeZone,
+      );
       res.json(comparisonData);
     } catch (error) {
       console.error('Comparison data fetch error:', error);

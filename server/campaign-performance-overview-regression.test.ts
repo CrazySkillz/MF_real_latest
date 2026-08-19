@@ -1,8 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 
 describe("campaign Performance Summary consolidated view regression guard", () => {
+  it("selects comparison days using the campaign reporting timezone", () => {
+    const now = new Date("2026-08-19T12:00:00.000Z");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf-8");
+
+    expect(getReportingComparisonBoundary("yesterday", "Europe/Amsterdam", now)).toMatchObject({
+      comparisonDate: "2026-08-18",
+      endAt: new Date("2026-08-18T21:59:59.999Z"),
+    });
+    expect(getReportingComparisonBoundary("last_week", "Europe/Amsterdam", now)).toMatchObject({
+      comparisonDate: "2026-08-12",
+      endAt: new Date("2026-08-12T21:59:59.999Z"),
+    });
+    expect(getReportingComparisonBoundary("last_month", "Europe/Amsterdam", now)).toMatchObject({
+      comparisonDate: "2026-07-19",
+      endAt: new Date("2026-07-19T21:59:59.999Z"),
+    });
+    expect(getReportingComparisonBoundary("last_month", "Europe/Amsterdam", new Date("2026-03-31T12:00:00.000Z"))).toMatchObject({
+      comparisonDate: "2026-02-28",
+      endAt: new Date("2026-02-28T22:59:59.999Z"),
+    });
+    expect(routes).toContain("(req as any)._campaign?.reportingTimeZone");
+    expect(storage).toContain("getReportingComparisonBoundary(comparisonType, reportingTimeZone).endAt");
+  });
+
   it("reads KPI and Benchmark target rows directly from the campaign's GA4 configuration", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const kpiValueResolver = page.slice(page.indexOf("const getKpiCurrentValue"), page.indexOf("const parseScoringNumber"));
@@ -175,7 +201,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('= [...ga4Changes];');
     expect(page).toContain('Comparison unavailable — incomplete GA4 daily history');
     expect(page).toContain('{!item.comparisonUnavailable && (');
-    expect(page).toContain('Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString()}');
+    expect(page).toContain('Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString(undefined, { timeZone: campaign?.reportingTimeZone || "UTC" })}');
     expect(page).not.toContain('Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}');
     expect(page).toContain('<SelectContent data-performance-movement-select>');
     expect(page).toContain('body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }');

@@ -6,6 +6,7 @@ import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
+import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -424,7 +425,7 @@ export interface IStorage {
   getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]>;
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
-  getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month'): Promise<{
+  getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month', reportingTimeZone?: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
   }>;
@@ -4673,28 +4674,10 @@ export class DatabaseStorage implements IStorage {
 
   async getComparisonData(
     campaignId: string,
-    comparisonType: 'yesterday' | 'last_week' | 'last_month'
+    comparisonType: 'yesterday' | 'last_week' | 'last_month',
+    reportingTimeZone?: string,
   ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null }> {
-    const now = new Date();
-    let targetDate: Date;
-
-    switch (comparisonType) {
-      case 'yesterday':
-        targetDate = new Date(now);
-        targetDate.setDate(now.getDate() - 1);
-        targetDate.setHours(23, 59, 59, 999); // End of yesterday
-        break;
-      case 'last_week':
-        targetDate = new Date(now);
-        targetDate.setDate(now.getDate() - 7);
-        targetDate.setHours(23, 59, 59, 999); // End of that day
-        break;
-      case 'last_month':
-        targetDate = new Date(now);
-        targetDate.setMonth(now.getMonth() - 1);
-        targetDate.setHours(23, 59, 59, 999); // End of that day
-        break;
-    }
+    const targetDate = getReportingComparisonBoundary(comparisonType, reportingTimeZone).endAt;
 
     // Get the most recent snapshot (current)
     const [currentSnapshot] = await db.select().from(metricSnapshots)

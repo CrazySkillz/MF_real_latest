@@ -42,6 +42,22 @@ type PerformanceInsight = {
 
 const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;
 const PERFORMANCE_GA4_DAILY_DAYS = 31;
+const resolveSpendComparisonEndDate = (dataThroughDate: string, timeRange: '24h' | '7d' | '30d') => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return "";
+  const completedDate = new Date(`${dataThroughDate}T00:00:00.000Z`);
+  if (Number.isNaN(completedDate.getTime()) || completedDate.toISOString().slice(0, 10) !== dataThroughDate) return "";
+  if (timeRange !== '30d') {
+    completedDate.setUTCDate(completedDate.getUTCDate() - (timeRange === '24h' ? 1 : 7));
+    return completedDate.toISOString().slice(0, 10);
+  }
+  const comparisonDate = new Date(completedDate);
+  comparisonDate.setUTCDate(comparisonDate.getUTCDate() + 1);
+  const day = comparisonDate.getUTCDate();
+  comparisonDate.setUTCDate(1);
+  comparisonDate.setUTCMonth(comparisonDate.getUTCMonth() - 1);
+  comparisonDate.setUTCDate(Math.min(day, new Date(Date.UTC(comparisonDate.getUTCFullYear(), comparisonDate.getUTCMonth() + 1, 0)).getUTCDate()) - 1);
+  return comparisonDate.toISOString().slice(0, 10);
+};
 
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
@@ -186,6 +202,18 @@ export default function CampaignPerformanceSummary() {
   // Derive API params from unified time range
   const comparisonType = timeRange === '24h' ? 'yesterday' : timeRange === '7d' ? 'last_week' : 'last_month';
   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
+  const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
+  const { data: historicalSpendComparison } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "spend-to-date", "ga4", spendComparisonEndDate],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!spendComparisonEndDate && !demoMode,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}`, { credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success || data?.endDate !== spendComparisonEndDate) throw new Error(data?.error || "Failed to fetch historical Spend");
+      return data;
+    },
+  });
 
   // Fetch comparison data — keepPreviousData prevents UI flash when switching filters
   const { data: comparisonData } = useQuery<{
@@ -870,6 +898,24 @@ export default function CampaignPerformanceSummary() {
       }
     };
     changeMetricConfigs.forEach(addGA4Change);
+    if (!demoMode && performanceGA4PropertyId && spendComparisonEndDate
+      && historicalSpendComparison?.endDate === spendComparisonEndDate
+      && aggregateSnapshotMetricAvailable(performanceSummary, "spend")) {
+      const current = aggregateSnapshotMetricValue(performanceSummary, "spend");
+      const previous = Number(historicalSpendComparison?.spendToDate);
+      if (Number.isFinite(current) && Number.isFinite(previous) && current >= 0 && previous >= 0) {
+        const change = current - previous;
+        const sourceLabels = aggregateMetricSources(performanceSummary, "spend");
+        ga4Changes.push({
+          metric: "Spend", current, previous, change,
+          pctChange: previous > 0 ? (change / previous) * 100 : null,
+          direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
+          isCurrency: true, isCostMetric: true,
+          sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
+        });
+        ga4BaselineTimestamp ||= `${spendComparisonEndDate}T00:00:00.000Z`;
+      }
+    }
 
     if (!performanceSummary?.version || !baseline) {
       if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: ga4BaselineTimestamp, emptyReason: null };
@@ -883,7 +929,7 @@ export default function CampaignPerformanceSummary() {
 
     const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [...ga4Changes];
     const addChange = (config: any) => {
-      if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) return;
+      if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend")) return;
       if (!aggregateSnapshotMetricAvailable(performanceSummary, config.key) || !aggregateSnapshotMetricAvailable(baselineAggregate, config.key)) return;
       const currentSourceIds = aggregateMetricSourceIds(performanceSummary, config.key);
       const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);

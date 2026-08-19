@@ -2392,11 +2392,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
-      const sources = await storage.getSpendSources(campaignId, platformContext);
       const startDate = "1900-01-01";
-      const endDate = platformContext === "ga4"
+      const latestEndDate = platformContext === "ga4"
         ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
         : new Date().toISOString().slice(0, 10);
+      const requestedEndDate = String((req.query as any)?.endDate || "").trim();
+      const parsedEndDate = new Date(`${requestedEndDate}T00:00:00.000Z`);
+      if (requestedEndDate && (platformContext !== "ga4" || !/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate)
+        || Number.isNaN(parsedEndDate.getTime()) || parsedEndDate.toISOString().slice(0, 10) !== requestedEndDate
+        || requestedEndDate < startDate || requestedEndDate > latestEndDate)) {
+        return res.status(400).json({ success: false, error: "endDate must be a completed GA4 reporting date in YYYY-MM-DD format" });
+      }
+      const endDate = requestedEndDate || latestEndDate;
+      const sources = await storage.getSpendSources(campaignId, platformContext);
       const scopedTotals = platformContext
         ? await storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)
         : null;

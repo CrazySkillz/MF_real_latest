@@ -203,7 +203,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);');
     expect(movement).toContain('comparisonUnavailable: true');
     expect(movement).toContain('sourceLabel: "Sources: Google Analytics"');
-    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) return;');
+    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend")) return;');
     expect(movement).toContain('= [...ga4Changes];');
     expect(page).toContain('Comparison unavailable — incomplete GA4 daily history');
     expect(page).toContain('{!item.comparisonUnavailable && (');
@@ -211,6 +211,24 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain('Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}');
     expect(page).toContain('<SelectContent data-performance-movement-select>');
     expect(page).toContain('body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }');
+  });
+
+  it("compares Spend with the exact GA4-scoped total through the selected historical date", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/spend-to-date"');
+    const routeEnd = routes.indexOf("const toISODateUTC", routeStart);
+    const spendRoute = routes.slice(routeStart, routeEnd);
+
+    expect(spendRoute).toContain('const requestedEndDate = String((req.query as any)?.endDate || "").trim();');
+    expect(spendRoute).toContain('platformContext !== "ga4"');
+    expect(spendRoute).toContain('requestedEndDate > latestEndDate');
+    expect(spendRoute).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)');
+    expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange)');
+    expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
+    expect(page).toContain('historicalSpendComparison?.endDate === spendComparisonEndDate');
+    expect(page).toContain('const previous = Number(historicalSpendComparison?.spendToDate);');
+    expect(page).toContain('ga4MovementMetricKeys.has(config.key) || config.key === "spend"');
   });
 
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {

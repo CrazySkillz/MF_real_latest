@@ -207,7 +207,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);');
     expect(movement).toContain('comparisonUnavailable: true');
     expect(movement).toContain('sourceLabel: "Sources: Google Analytics"');
-    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend")) return;');
+    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend" || config.key === "revenue")) return;');
     expect(movement).toContain('= [...ga4Changes];');
     expect(page).toContain('Comparison unavailable — incomplete GA4 daily history');
     expect(page).toContain('{!item.comparisonUnavailable && (');
@@ -254,6 +254,34 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(selectStableExactDateSpendSnapshot([snapshot(2000), snapshot(2699.75)])).toBeUndefined();
   });
 
+  it("requires Recent Movement Total Revenue to use same-source exact-date totals", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const revenueRouteStart = routes.indexOf('app.get("/api/campaigns/:id/revenue-to-date"');
+    const revenueRouteEnd = routes.indexOf("// Revenue breakdown by source", revenueRouteStart);
+    const ga4RouteStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"');
+    const ga4RouteEnd = routes.indexOf("// Benchmark-read-only GA4 input validation", ga4RouteStart);
+    const movementStart = page.indexOf("const getChanges = () => {");
+    const movementEnd = page.indexOf("const changeData = getChanges();", movementStart);
+    const revenueRoute = routes.slice(revenueRouteStart, revenueRouteEnd);
+    const ga4Route = routes.slice(ga4RouteStart, ga4RouteEnd);
+    const movement = page.slice(movementStart, movementEnd);
+
+    expect(revenueRoute).toContain("req.query.endDate");
+    expect(revenueRoute).toContain("requestedEndDate > latestCompletedEndDate");
+    expect(ga4Route).toContain("req.query.endDate");
+    expect(ga4Route).toContain("requestedEndDate > latestCompletedEndDate");
+    expect(ga4Route).toContain("Exact-date simulated GA4 revenue is unavailable");
+    expect(page).toContain("const revenueComparisonEndDate = resolveSpendComparisonEndDate");
+    expect(page).toContain("ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(revenueComparisonEndDate)}");
+    expect(page).toContain("revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(revenueComparisonEndDate)}");
+    expect(page).toContain('const recentMovementMetricOrder = ["Sessions", "Conversions", "Spend", "Total Revenue"]');
+    expect(movement).toContain('metric: "Total Revenue"');
+    expect(movement).toContain("comparisonUnavailable: true");
+    expect(movement).toContain("currentRevenueSourceIds");
+    expect(movement).toContain("historicalRevenueSourceIds");
+  });
+
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
@@ -265,7 +293,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('data-testid="performance-recent-movement"');
     expect(page).toContain('data-testid="performance-recommended-actions"');
     expect(page).toContain('<Link href={`/campaigns/${campaign.id}/trend-analysis`}>');
-    expect(page).toContain("changeData.changes.slice(0, 4).map");
+    expect(page).toContain("recentMovementChanges.map");
+    expect(page).not.toContain("changeData.changes.slice(0, 4).map");
     expect(page).toContain(".filter((insight) => insight.category !== 'campaign-health')");
     expect(page).toContain(".slice(0, 3);");
     expect(page).not.toContain("<CardTitle>Key Performance Indicators (KPIs)</CardTitle>");

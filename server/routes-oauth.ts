@@ -3166,13 +3166,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = platformContext === "ga4"
         ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
         : new Date().toISOString().slice(0, 10);
+      const latestCompletedEndDate = endDate;
+      const requestedEndDate = String(req.query.endDate || "").trim();
+      const parsedEndDate = new Date(`${requestedEndDate}T00:00:00.000Z`);
+      if (requestedEndDate && (!/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate)
+        || Number.isNaN(parsedEndDate.getTime()) || parsedEndDate.toISOString().slice(0, 10) !== requestedEndDate
+        || requestedEndDate < startDate || requestedEndDate > latestCompletedEndDate)) {
+        return res.status(400).json({ success: false, error: "endDate must be a completed reporting date in YYYY-MM-DD format" });
+      }
+      const resolvedEndDate = requestedEndDate || latestCompletedEndDate;
 
       const [totals, sources] = await Promise.all([
-        storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext),
+        storage.getRevenueTotalForRange(campaignId, startDate, resolvedEndDate, platformContext),
         storage.getRevenueSources(campaignId, platformContext),
       ]);
       assertGA4InsightsFinancialCurrencyScope(campaign, sources, totals.currency, "Imported revenue");
-      res.json({ success: true, platformContext, startDate, endDate, ...totals });
+      res.json({ success: true, platformContext, startDate, endDate: resolvedEndDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
     }
@@ -8963,15 +8972,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Keep lifetime financial totals on the same completed campaign-reporting
       // day boundary used by daily facts, KPIs, Benchmarks, and Insights.
-      const endDateUsed = getReportingDateWindow(
+      const latestCompletedEndDate = getReportingDateWindow(
         1,
         (campaign as any)?.reportingTimeZone,
       ).dataThroughDate;
+      const requestedEndDate = String(req.query.endDate || "").trim();
+      const parsedEndDate = new Date(`${requestedEndDate}T00:00:00.000Z`);
+      if (requestedEndDate && (!/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate)
+        || Number.isNaN(parsedEndDate.getTime()) || parsedEndDate.toISOString().slice(0, 10) !== requestedEndDate
+        || requestedEndDate < "1900-01-01" || requestedEndDate > latestCompletedEndDate)) {
+        return res.status(400).json({ success: false, error: "endDate must be a completed campaign reporting date in YYYY-MM-DD format" });
+      }
+      const endDateUsed = requestedEndDate || latestCompletedEndDate;
 
       // Simulated mode: reuse mock generator when property is yesop/test.
       const debug = String(req.query.debug || "").trim() === "1";
       const mock = String(req.query.mock || "").trim() === "1";
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
+      if (requestedEndDate && (mock || isYesopMockProperty(pidNormalized))) {
+        return res.status(400).json({ success: false, error: "Exact-date simulated GA4 revenue is unavailable" });
+      }
       if (mock || isYesopMockProperty(pidNormalized)) {
         const pid = requestedPropertyId || "yesop";
 

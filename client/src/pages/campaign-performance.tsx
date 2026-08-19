@@ -202,6 +202,29 @@ export default function CampaignPerformanceSummary() {
   const comparisonType = timeRange === '24h' ? 'yesterday' : timeRange === '7d' ? 'last_week' : 'last_month';
   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
   const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
+  const revenueComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
+  const { data: historicalRevenueResponse } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue-comparison", performanceGA4PropertyId, revenueComparisonEndDate],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!revenueComparisonEndDate && !demoMode,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const [nativeResponse, importedResponse] = await Promise.all([
+        fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(revenueComparisonEndDate)}`),
+        fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(revenueComparisonEndDate)}`),
+      ]);
+      const [native, imported] = await Promise.all([
+        nativeResponse.json().catch(() => null),
+        importedResponse.json().catch(() => null),
+      ]);
+      if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId || native?.endDate !== revenueComparisonEndDate) {
+        throw new Error(native?.error || "Failed to fetch exact-date GA4 revenue");
+      }
+      if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4" || imported?.endDate !== revenueComparisonEndDate) {
+        throw new Error(imported?.error || "Failed to fetch exact-date imported GA4 revenue");
+      }
+      return { native, imported };
+    },
+  });
   const { data: historicalSpendComparison } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "snapshots", "spend-comparison", comparisonType, spendComparisonEndDate],
     enabled: !!campaignId && !!performanceGA4PropertyId && !!spendComparisonEndDate && !demoMode,
@@ -797,7 +820,7 @@ export default function CampaignPerformanceSummary() {
     { key: "users", label: "Users" },
     { key: "conversions", label: "Conversions" },
     { key: "leads", label: "Leads" },
-    { key: "revenue", label: "Revenue", isCurrency: true },
+    { key: "revenue", label: "Total Revenue", isCurrency: true },
     { key: "spend", label: "Spend", isCurrency: true, isCostMetric: true },
   ];
   const aggregateSnapshotMetricAvailable = (aggregate: any, metricName: string) => {
@@ -813,6 +836,23 @@ export default function CampaignPerformanceSummary() {
   };
   const aggregateMetricSources = (aggregate: any, metricName: string) => {
     return Array.from(new Set(aggregateMetricSourceIds(aggregate, metricName).map((sourceId) => sourceLabelForId(sourceId))));
+  };
+  const revenueResponseSourceIds = (response: any) => {
+    const nativeRevenue = Number(response?.native?.totals?.revenue);
+    const nativeRevenueMetric = String(response?.native?.revenueMetric || "").trim();
+    const nativeSource = nativeRevenueMetric || nativeRevenue !== 0
+      ? [`ga4:${String(response?.native?.propertyId || "")}:${nativeRevenueMetric}:${String(response?.native?.currencyCode || "")}`]
+      : [];
+    const importedSources = Array.isArray(response?.imported?.sourceIds)
+      ? response.imported.sourceIds.map((sourceId: any) => `imported:${String(sourceId || "").trim()}`).filter((sourceId: string) => sourceId !== "imported:")
+      : [];
+    return Array.from(new Set([...nativeSource, ...importedSources])).sort();
+  };
+  const revenueResponseTotal = (response: any): number | null => {
+    const nativeRevenue = Number(response?.native?.totals?.revenue);
+    const importedRevenue = Number(response?.imported?.totalRevenue);
+    if (!Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || revenueResponseSourceIds(response).length === 0) return null;
+    return Number((nativeRevenue + importedRevenue).toFixed(2));
   };
 
   const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);
@@ -868,7 +908,7 @@ export default function CampaignPerformanceSummary() {
   // Calculate what's changed from compatible aggregate snapshots only.
   const getChanges = () => {
     const baseline = comparisonData?.previous;
-    const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [];
+    const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; comparisonUnavailableLabel?: string; sourceLabel: string }[] = [];
     let ga4BaselineTimestamp: string | null = null;
     const addGA4Change = (config: any) => {
       if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) {
@@ -919,6 +959,42 @@ export default function CampaignPerformanceSummary() {
       }
     }
 
+    const currentRevenue = revenueResponseTotal(performanceGA4RevenueResponse);
+    const historicalRevenue = revenueResponseTotal(historicalRevenueResponse);
+    const currentRevenueSourceIds = revenueResponseSourceIds(performanceGA4RevenueResponse);
+    const historicalRevenueSourceIds = revenueResponseSourceIds(historicalRevenueResponse);
+    const currentRevenueDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
+    const currentRevenueDatesMatch = performanceGA4RevenueResponse?.native?.endDate === currentRevenueDate
+      && performanceGA4RevenueResponse?.imported?.endDate === currentRevenueDate;
+    const historicalRevenueDatesMatch = historicalRevenueResponse?.native?.endDate === revenueComparisonEndDate
+      && historicalRevenueResponse?.imported?.endDate === revenueComparisonEndDate;
+    const revenueSourcesCompatible = currentRevenueSourceIds.length > 0
+      && currentRevenueSourceIds.join("\u0000") === historicalRevenueSourceIds.join("\u0000");
+    if (!demoMode && performanceGA4PropertyId && currentRevenue !== null && currentRevenueDatesMatch) {
+      const sourceLabels = [
+        ...(String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim() || Number(performanceGA4RevenueResponse?.native?.totals?.revenue) !== 0 ? ["GA4 native revenue"] : []),
+        ...(Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0 ? ["Imported revenue"] : []),
+      ];
+      if (historicalRevenue !== null && historicalRevenueDatesMatch && revenueSourcesCompatible) {
+        const change = currentRevenue - historicalRevenue;
+        ga4Changes.push({
+          metric: "Total Revenue", current: currentRevenue, previous: historicalRevenue, change,
+          pctChange: historicalRevenue > 0 ? (change / historicalRevenue) * 100 : null,
+          direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
+          isCurrency: true,
+          sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
+        });
+      } else {
+        ga4Changes.push({
+          metric: "Total Revenue", current: currentRevenue, previous: currentRevenue, change: 0,
+          pctChange: null, direction: "flat", isCurrency: true, comparisonUnavailable: true,
+          comparisonUnavailableLabel: "Comparison unavailable — exact-date Revenue unavailable",
+          sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
+        });
+      }
+      ga4BaselineTimestamp ||= revenueComparisonEndDate ? `${revenueComparisonEndDate}T00:00:00.000Z` : null;
+    }
+
     if (!performanceSummary?.version || !baseline) {
       if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: ga4BaselineTimestamp, emptyReason: null };
       return { changes: [], baselineTimestamp: null, emptyReason: "not_enough_history" };
@@ -929,9 +1005,9 @@ export default function CampaignPerformanceSummary() {
       return { changes: [], baselineTimestamp: baseline.recordedAt, emptyReason: "incompatible_history" };
     }
 
-    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [...ga4Changes];
+    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; comparisonUnavailableLabel?: string; sourceLabel: string }[] = [...ga4Changes];
     const addChange = (config: any) => {
-      if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend")) return;
+      if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend" || config.key === "revenue")) return;
       if (!aggregateSnapshotMetricAvailable(performanceSummary, config.key) || !aggregateSnapshotMetricAvailable(baselineAggregate, config.key)) return;
       const currentSourceIds = aggregateMetricSourceIds(performanceSummary, config.key);
       const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);
@@ -966,6 +1042,11 @@ export default function CampaignPerformanceSummary() {
   };
 
   const changeData = getChanges();
+  const recentMovementMetricOrder = ["Sessions", "Conversions", "Spend", "Total Revenue"];
+  const recentMovementChanges = recentMovementMetricOrder.flatMap((metric) => {
+    const change = changeData.changes.find((item) => item.metric === metric);
+    return change ? [change] : [];
+  });
 
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
@@ -1306,7 +1387,7 @@ export default function CampaignPerformanceSummary() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {changeData.changes.length === 0 ? (
+                  {recentMovementChanges.length === 0 ? (
                     <div className="text-center py-8">
                       <Clock className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
                       <p className="text-muted-foreground/70 font-medium">
@@ -1325,7 +1406,7 @@ export default function CampaignPerformanceSummary() {
                         </p>
                       )}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {changeData.changes.slice(0, 4).map((item, idx) => {
+                        {recentMovementChanges.map((item, idx) => {
                           const isUp = item.direction === "up";
                           const isDown = item.direction === "down";
                           const isFlat = item.direction === "flat";
@@ -1354,7 +1435,7 @@ export default function CampaignPerformanceSummary() {
                                   isNegative ? 'text-red-700 dark:text-red-400' :
                                   'text-muted-foreground/70'
                                 }`}>
-                                  {item.comparisonUnavailable ? 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
+                                  {item.comparisonUnavailable ? item.comparisonUnavailableLabel || 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
                                     `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
                                   }
                                 </span>

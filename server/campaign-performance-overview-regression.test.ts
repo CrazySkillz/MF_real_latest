@@ -295,8 +295,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('<Link href={`/campaigns/${campaign.id}/trend-analysis`}>');
     expect(page).toContain("recentMovementChanges.map");
     expect(page).not.toContain("changeData.changes.slice(0, 4).map");
-    expect(page).toContain(".filter((insight) => insight.category !== 'campaign-health')");
-    expect(page).toContain(".slice(0, 3);");
+    expect(page).toContain("const recommendedInsights = recommendedActions;");
+    expect(page).toContain("buildPerformanceRecommendedActions({");
     expect(page).not.toContain("<CardTitle>Key Performance Indicators (KPIs)</CardTitle>");
     expect(page).not.toContain("<CardTitle>Benchmarks</CardTitle>");
     expect(page).not.toContain("<CardTitle>Data Sources</CardTitle>");

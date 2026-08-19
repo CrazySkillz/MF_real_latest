@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { buildPerformanceRecommendedActions } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -142,7 +143,7 @@ export default function CampaignPerformanceSummary() {
   const performanceGA4PropertyId = String(
     (performanceGA4Connections.find((connection: any) => connection?.isPrimary) || performanceGA4Connections[0])?.propertyId || "",
   );
-  const { data: performanceGA4SummaryResponse, isLoading: performanceGA4SummaryLoading, isError: performanceGA4SummaryError } = useQuery<any>({
+  const { data: performanceGA4SummaryResponse, isLoading: performanceGA4SummaryLoading, isError: performanceGA4SummaryError, isPlaceholderData: performanceGA4SummaryPlaceholder } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", PERFORMANCE_GA4_DAILY_DAYS, performanceGA4PropertyId, "performance-summary-read-only"],
     enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
     placeholderData: keepPreviousData,
@@ -155,7 +156,7 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
-  const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError } = useQuery<any>({
+  const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError, isPlaceholderData: performanceGA4RevenuePlaceholder } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, "performance-summary-read-only"],
     enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
     placeholderData: keepPreviousData,
@@ -417,31 +418,49 @@ export default function CampaignPerformanceSummary() {
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : null;
   };
-  const kpiListState: GA4KpiListState = demoMode ? "ready" : kpisLoading ? "loading" : kpisError ? "failed" : "ready";
-  const benchmarkListState: GA4KpiListState = demoMode ? "ready" : benchmarksLoading ? "loading" : benchmarksError ? "failed" : "ready";
+  const kpiListState: GA4KpiListState = demoMode ? "ready" : kpisLoading ? "loading" : kpisError ? (kpis.length > 0 ? "stale" : "failed") : "ready";
+  const benchmarkListState: GA4KpiListState = demoMode ? "ready" : benchmarksLoading ? "loading" : benchmarksError ? (benchmarks.length > 0 ? "stale" : "failed") : "ready";
   const trafficInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && performanceGA4SummaryLoading)
+    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder))
       ? "loading"
-      : performanceGA4ConnectionsError || performanceGA4SummaryError || !performanceGA4PropertyId || !performanceGA4SummaryResponse
+      : performanceGA4SummaryError && performanceGA4SummaryResponse
+        ? "stale"
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || !performanceGA4PropertyId || !performanceGA4SummaryResponse
         ? "unavailable"
-        : "ready";
+        : performanceGA4SummaryResponse?.refreshIsStale || performanceGA4SummaryResponse?.providerRefreshWarning
+          ? "stale"
+          : "ready";
   const nativeRevenue = Number(performanceGA4RevenueResponse?.native?.totals?.revenue);
-  const hasNativeRevenue = !!String(performanceGA4RevenueResponse?.native?.revenueMetric || '').trim() || nativeRevenue !== 0;
+  const importedRevenue = Number(performanceGA4RevenueResponse?.imported?.totalRevenue);
+  const hasNativeRevenue = !!String(performanceGA4RevenueResponse?.native?.revenueMetric || '').trim() || (Number.isFinite(nativeRevenue) && nativeRevenue !== 0);
   const hasImportedRevenue = Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0;
   const revenueInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && performanceGA4RevenueLoading)
+    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
-      : performanceGA4ConnectionsError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || (!hasNativeRevenue && !hasImportedRevenue)
+      : performanceGA4RevenueError && performanceGA4RevenueResponse
+        ? "stale"
+        : performanceGA4ConnectionsError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
         ? "unavailable"
         : "ready";
+  const financialConversionsInputState: GA4KpiInputState = demoMode
+    ? "ready"
+    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+      ? "loading"
+      : performanceGA4RevenueError && performanceGA4RevenueResponse
+        ? "stale"
+        : performanceGA4ConnectionsError || performanceGA4RevenueError || !performanceGA4PropertyId || !Number.isFinite(Number(performanceGA4RevenueResponse?.native?.totals?.conversions))
+          ? "unavailable"
+          : "ready";
   const spendSummaryMetric = performanceSummary?.totals?.spend;
   const spendInputState: GA4KpiInputState = demoMode
     ? "ready"
     : performanceSummaryPending
       ? "loading"
-      : outcomeTotalsError || !spendSummaryMetric?.available || spendSummaryMetric?.value === null
+      : outcomeTotalsError && spendSummaryMetric?.available && spendSummaryMetric?.value !== null
+        ? "stale"
+        : outcomeTotalsError || !spendSummaryMetric?.available || spendSummaryMetric?.value === null
         ? "unavailable"
         : "ready";
   const scoringTrafficRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
@@ -452,6 +471,21 @@ export default function CampaignPerformanceSummary() {
     ? parseNum(effectiveGA4?.metrics?.conversions)
     : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : parseNum(spendSummaryMetric?.value);
+  const recommendedActions = buildPerformanceRecommendedActions({
+    kpis: effectiveKpis,
+    benchmarks: effectiveBenchmarks,
+    kpiListState,
+    benchmarkListState,
+    trafficState: trafficInputState,
+    revenueState: revenueInputState,
+    spendState: spendInputState,
+    financialConversionsState: financialConversionsInputState,
+    trafficRows: scoringTrafficRows,
+    dataThroughDate: String(performanceGA4SummaryResponse?.dataThroughDate || ""),
+    financialRevenue: demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue,
+    financialSpend: scoringSpend,
+    financialConversions: scoringConversions,
+  });
   const getScoringMissingDependencies = (item: any) => {
     const dependencies = getGA4KpiMetricDependencies(item?.metric, item?.metricName, item?.name);
     const missing: string[] = [];
@@ -1582,10 +1616,7 @@ export default function CampaignPerformanceSummary() {
                   <div className="space-y-4">
                     {/* Performance Analysis */}
                     {(() => {
-                      const insights = buildPerformanceInsights();
-                      const recommendedInsights = insights
-                        .filter((insight) => insight.category !== 'campaign-health')
-                        .slice(0, 3);
+                      const recommendedInsights = recommendedActions;
                       
                       return recommendedInsights.map((insight, idx) => {
                         const bgColors: Record<string, string> = {

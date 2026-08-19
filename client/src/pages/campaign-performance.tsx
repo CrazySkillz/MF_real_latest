@@ -21,7 +21,7 @@ import {
   resolveKpiDataSufficiency,
   resolveKpiThresholdPolicy,
 } from "@shared/kpi-math";
-import { getGA4KpiMetricDependencies } from "@shared/ga4-kpi-metric-identity";
+import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
 
 interface Campaign {
@@ -550,6 +550,43 @@ export default function CampaignPerformanceSummary() {
   const formatCurrencyValue = (value: number) =>
     `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatNumberValue = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const exactDateWindowKey = (startValue: any, endValue: any) => {
+    const start = String(startValue || '').trim().slice(0, 10);
+    const end = String(endValue || '').trim().slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end)
+      ? `${start}:${end}`
+      : null;
+  };
+  const targetRecords = [
+    ...effectiveKpis.map((target: any) => ({
+      metric: resolveGA4KpiMetricIdentity(target?.metric, target?.name),
+      value: parseScoringNumber(target?.targetValue),
+      window: exactDateWindowKey(target?.periodStart ?? target?.windowStart, target?.periodEnd ?? target?.windowEnd),
+    })),
+    ...effectiveBenchmarks.map((target: any) => ({
+      metric: resolveGA4KpiMetricIdentity(target?.metric, target?.name),
+      value: parseScoringNumber(target?.benchmarkValue),
+      window: exactDateWindowKey(target?.periodStart ?? target?.windowStart, target?.periodEnd ?? target?.windowEnd),
+    })),
+  ].filter((target) => target.metric && target.value !== null && target.value > 0);
+  const resolveTargetComparison = (metricIdentity: string, aggregateMetricName: string, label: string) => {
+    if (!demoMode && (kpisLoading || benchmarksLoading || kpisError || benchmarksError)) {
+      return { comparable: false as const, reason: `target data for ${label} is not fully available.` };
+    }
+    const targets = targetRecords.filter((target) => target.metric === metricIdentity);
+    if (targets.length === 0) return { comparable: false as const, reason: `no target is configured for ${label}.` };
+    if (targets.length > 1) return { comparable: false as const, reason: `${targets.length} targets are configured for ${label}, so no single target can be applied.` };
+    const aggregate = aggregateMetric(aggregateMetricName);
+    const aggregateWindow = exactDateWindowKey(aggregate?.periodStart ?? aggregate?.windowStart, aggregate?.periodEnd ?? aggregate?.windowEnd);
+    const targetWindow = targets[0].window;
+    if (!aggregateWindow || !targetWindow) {
+      return { comparable: false as const, reason: `the current aggregate and target do not expose the same exact date window for ${label}.` };
+    }
+    if (aggregateWindow !== targetWindow) {
+      return { comparable: false as const, reason: `the ${label} target and current aggregate use different periods.` };
+    }
+    return { comparable: true as const, targetValue: targets[0].value! };
+  };
   const buildPerformanceInsights = () => {
     const insights: PerformanceInsight[] = [];
     const pushInsight = (insight: PerformanceInsight) => insights.push(insight);
@@ -639,14 +676,20 @@ export default function CampaignPerformanceSummary() {
     if (aggregateMetricAvailable('cvr')) {
       const cvr = aggregateMetricValue('cvr');
       const cvrSources = Array.isArray(aggregateMetric('cvr')?.sources) ? aggregateMetric('cvr').sources : [];
-      const cvrDenominator = cvrSources.includes('clicks') ? 'clicks' : cvrSources.includes('sessions') ? 'sessions' : null;
-      if (cvrDenominator) {
+      const usesSessions = cvrSources.includes('sessions') && !cvrSources.includes('clicks');
+      if (usesSessions) {
+        const targetComparison = resolveTargetComparison('conversion_rate', 'cvr', 'Key Events per Session');
+        const targetGuidance = targetComparison.comparable
+          ? cvr >= targetComparison.targetValue
+            ? `This meets the verified ${formatPct(targetComparison.targetValue)} target for the same period.`
+            : `This is below the verified ${formatPct(targetComparison.targetValue)} target for the same period; review the conversion path before changing spend.`
+          : `No action recommended: ${targetComparison.reason}`;
         pushInsight({
           type: 'info',
           priority: 3,
           category: 'conversion-efficiency',
-          title: 'Conversion Rate',
-          message: `Aggregate CVR is ${formatPct(cvr)} from ${formatNumberValue(aggregateMetricValue('conversions'))} conversions across ${formatNumberValue(aggregateMetricValue(cvrDenominator))} ${cvrDenominator}. Compare this result with a configured KPI or Benchmark before judging performance or changing spend.`
+          title: 'Key Events per Session',
+          message: `${formatPct(cvr)}: ${formatNumberValue(aggregateMetricValue('conversions'))} key events across ${formatNumberValue(aggregateMetricValue('sessions'))} sessions. ${targetGuidance}`
         });
       }
     }
@@ -663,14 +706,18 @@ export default function CampaignPerformanceSummary() {
 
     if (aggregateMetricAvailable('roas') || aggregateMetricAvailable('roi')) {
       const parts = [];
+      const targetComparisons = [];
       if (aggregateMetricAvailable('roas')) parts.push(`ROAS ${aggregateMetricValue('roas').toLocaleString('en-US', { maximumFractionDigits: 2 })}x`);
       if (aggregateMetricAvailable('roi')) parts.push(`ROI ${formatPct(aggregateMetricValue('roi'))}`);
+      if (aggregateMetricAvailable('roas')) targetComparisons.push(resolveTargetComparison('roas', 'roas', 'ROAS'));
+      if (aggregateMetricAvailable('roi')) targetComparisons.push(resolveTargetComparison('roi', 'roi', 'ROI'));
+      const blockedTarget = targetComparisons.find((comparison) => !comparison.comparable);
       pushInsight({
         type: 'info',
         priority: 2,
         category: 'revenue-efficiency',
         title: 'Revenue Efficiency',
-        message: `${parts.join(' and ')} based on available revenue and spend inputs. Use this to evaluate whether current spend is producing enough revenue return.`
+        message: `${parts.join(' and ')} based on available revenue and spend inputs. ${blockedTarget ? `No action recommended: ${blockedTarget.reason}` : 'The configured targets use the same verified period and can be evaluated safely.'}`
       });
     } else if (aggregateMetricAvailable('revenue')) {
       pushInsight({

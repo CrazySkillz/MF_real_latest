@@ -32,17 +32,19 @@ describe("campaign Performance Summary consolidated view regression guard", () =
 
   it("reads KPI and Benchmark target rows directly from the campaign's GA4 configuration", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
-    const kpiValueResolver = page.slice(page.indexOf("const getKpiCurrentValue"), page.indexOf("const parseScoringNumber"));
-    const benchmarkValueResolver = page.slice(page.indexOf("const getBenchmarkScore"), page.indexOf("// Score only verified GA4 records"));
+    const scoringBlock = page.slice(page.indexOf("const scoringTrafficWindow"), page.indexOf("// Score only verified GA4 records"));
 
     expect(page).toContain('fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/benchmarks`]');
-    expect(kpiValueResolver).toContain("return parseNum(kpi.currentValue);");
-    expect(benchmarkValueResolver).toContain("parseScoringNumber(benchmark?.currentValue)");
-    expect(kpiValueResolver).not.toContain("performanceSummary?.totals");
-    expect(benchmarkValueResolver).not.toContain("performanceSummary?.totals");
+    expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
+    expect(scoringBlock).toContain("const current = getLiveScoringValue(kpi);");
+    expect(scoringBlock).toContain("const current = getLiveScoringValue(benchmark);");
+    expect(scoringBlock).toContain("const getScoringTrafficInputState = (item: any): GA4KpiInputState => {");
+    expect(scoringBlock).toContain("const states = [scoringTrafficInputState, financialConversionsInputState];");
+    expect(scoringBlock).not.toContain("kpi?.currentValue");
+    expect(scoringBlock).not.toContain("benchmark?.currentValue");
   });
 
   it("reads GA4 traffic outcomes from the read-only GA4 Summary response while retaining aggregate spend", () => {
@@ -109,6 +111,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("if (!scoringListsUnavailable && configuredMetricCount === 0) {");
     expect(page).toContain("No GA4 KPI or Benchmark targets configured. Add them in View Detailed Analytics to generate a priority action.");
     expect(page).toContain("Configured GA4 KPI and Benchmark targets are currently unavailable or unscorable.");
+    expect(page).toContain("if (excludedMetricCount > 0) {");
+    expect(page).toContain("currently have verified inputs.");
+    expect(page).toContain("const targetSetupAction = recommendedActions.find");
     expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
     expect(page).toContain("const laggingKPIs = scoredKpis");
     expect(page).toContain('.filter((entry: any) => entry.score.band === "below")');
@@ -144,18 +149,19 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const sufficiency = resolveBenchmarkDataSufficiency({");
     expect(page).toContain("const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });");
     expect(page).toContain("const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });");
-    expect(page).toContain("const getKpiCurrentValue = (kpi: any) => {");
-    expect(page).toContain("return parseNum(kpi.currentValue);");
+    expect(page).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
+    expect(page).not.toContain("return parseNum(kpi.currentValue);");
     expect(page).toContain('const kpisOnTrackOrAbove = scoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length;');
     expect(page).toContain('const benchmarksOnTrack = scoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length;');
-    expect(page).toContain("const excludedMetricCount = configuredMetricCount - totalMetrics;");
+    expect(page).toContain("const healthCoverage = resolvePerformanceHealthCoverage({");
+    expect(page).toContain("const excludedMetricCount = healthCoverage.excludedMetricCount;");
     expect(page).toContain("const scoringListsUnavailable = !demoMode && (kpisLoading || benchmarksLoading || kpisError || benchmarksError);");
-    expect(page).toContain("const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;");
-    expect(page).toContain("{totalOnTrackMetrics} of {totalMetrics} metrics on track");
+    expect(page).toContain("const totalOnTrackMetrics = healthCoverage.totalOnTrackMetrics;");
+    expect(page).toContain("`${totalMetrics} of ${configuredMetricCount} configured metrics verified`");
     expect(page).toContain('data-testid="performance-campaign-health"');
-    expect(page).toContain("{kpisOnTrackOrAbove}/{scoredKpis.length} KPIs");
-    expect(page).toContain("{benchmarksOnTrack}/{scoredBenchmarks.length} Benchmarks");
-    expect(page).toContain("unavailable or unscorable metric");
+    expect(page).toContain("{kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs on track");
+    expect(page).toContain("{benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks on track");
+    expect(page).toContain("configured metric{excludedMetricCount === 1 ? '' : 's'} awaiting verification");
     expect(page).not.toContain("const isLowerBetterMetric");
     expect(page).not.toContain("const getBenchmarkProgressPct");
     expect(page).not.toContain("metrics above target");

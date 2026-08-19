@@ -3,6 +3,8 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   buildPerformanceRecommendedActions,
+  resolvePerformanceHealthCoverage,
+  resolvePerformanceLiveMetricValue,
   summarizePerformanceTrafficWindow,
   type PerformanceRecommendedActionsInput,
 } from "../client/src/lib/performance-recommended-actions";
@@ -12,10 +14,10 @@ const dailyRows = Array.from({ length: 31 }, (_, index) => {
   return {
     date,
     sessions: index === 0 ? 1_644 : index === 1 ? 317 : 0,
-    users: index === 0 ? 1_300 : index === 1 ? 280 : 0,
+    users: index === 0 ? 1_300 : index === 1 ? 317 : 0,
     conversions: index === 0 ? 209 : index === 1 ? 42 : 0,
     pageviews: index === 0 ? 2_000 : index === 1 ? 500 : 0,
-    engagedSessions: index === 0 ? 1_000 : index === 1 ? 200 : 0,
+    engagedSessions: index === 0 ? 1_000 : index === 1 ? 217 : 0,
   };
 });
 
@@ -37,11 +39,62 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
 });
 
 describe("Performance Summary Recommended Actions decision engine", () => {
+  it("never reports 100% health from only a scored subset of configured metrics", () => {
+    const coverage = resolvePerformanceHealthCoverage({
+      configuredKpiCount: 11,
+      configuredBenchmarkCount: 2,
+      scoredKpiCount: 3,
+      scoredBenchmarkCount: 1,
+      kpisOnTrack: 3,
+      benchmarksOnTrack: 1,
+    });
+
+    expect(coverage).toEqual({
+      configuredMetricCount: 13,
+      verifiedMetricCount: 4,
+      excludedMetricCount: 9,
+      totalOnTrackMetrics: 4,
+      healthScore: null,
+    });
+  });
+
+  it("scores against all configured metrics when every input is verified", () => {
+    expect(resolvePerformanceHealthCoverage({
+      configuredKpiCount: 11,
+      configuredBenchmarkCount: 2,
+      scoredKpiCount: 11,
+      scoredBenchmarkCount: 2,
+      kpisOnTrack: 3,
+      benchmarksOnTrack: 1,
+    }).healthScore).toBe(31);
+  });
+
   it("uses exactly the 30 completed dates ending at dataThroughDate", () => {
     const window = summarizePerformanceTrafficWindow(dailyRows, "2026-08-18");
 
     expect(window).toMatchObject({ valid: true, startDate: "2026-07-20", endDate: "2026-08-18" });
-    expect(window.totals).toMatchObject({ sessions: 317, conversions: 42, users: 280, pageviews: 500, engagedSessions: 200 });
+    expect(window.totals).toMatchObject({ sessions: 317, conversions: 42, users: 317, pageviews: 500, engagedSessions: 217 });
+  });
+
+  it("derives every standard health metric from exact live inputs instead of stored currentValue", () => {
+    const trafficTotals = summarizePerformanceTrafficWindow(dailyRows, "2026-08-18").totals;
+    const value = (metric: string) => resolvePerformanceLiveMetricValue({
+      item: { metric, currentValue: 999_999 },
+      trafficTotals,
+      financialRevenue: 72_766.69,
+      financialSpend: 2_699.75,
+      financialConversions: 251,
+    });
+
+    expect(value("Total Users")).toBe(317);
+    expect(value("Total Sessions")).toBe(317);
+    expect(value("Conversions")).toBe(42);
+    expect(value("Conversion Rate")).toBe(13.25);
+    expect(value("Engagement Rate")).toBe(68.45);
+    expect(value("Revenue")).toBe(72_766.69);
+    expect(value("ROAS")).toBe(26.95);
+    expect(value("ROI")).toBe(2_595.31);
+    expect(value("CPA")).toBe(10.76);
   });
 
   it("fails closed for duplicate targets and incompatible target periods", () => {
@@ -135,7 +188,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const insights = page.slice(page.indexOf("{/* Insights Tab */}"));
 
-    expect(page).toContain('import { buildPerformanceRecommendedActions } from "@/lib/performance-recommended-actions";');
+    expect(page).toContain('import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";');
     expect(page).toContain("const recommendedActions = buildPerformanceRecommendedActions({");
     expect(insights).toContain("const recommendedInsights = recommendedActions;");
     expect(insights).not.toContain("buildPerformanceInsights()");

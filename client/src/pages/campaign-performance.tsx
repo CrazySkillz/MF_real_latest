@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -409,9 +409,6 @@ export default function CampaignPerformanceSummary() {
   const totalLeads = linkedinLeads + ciLeads;
   const totalSpend = linkedinSpend + ciSpend + metaSpend;
 
-  const getKpiCurrentValue = (kpi: any) => {
-    return parseNum(kpi.currentValue);
-  };
   const parseScoringNumber = (value: any): number | null => {
     const raw = String(value ?? '').replace(/,/g, '').trim();
     if (!raw) return null;
@@ -464,13 +461,42 @@ export default function CampaignPerformanceSummary() {
         ? "unavailable"
         : "ready";
   const scoringTrafficRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
+  const scoringTrafficWindow = summarizePerformanceTrafficWindow(scoringTrafficRows, String(performanceGA4SummaryResponse?.dataThroughDate || ""));
+  const scoringTrafficTotals = demoMode
+    ? {
+        sessions: parseNum(effectiveGA4?.metrics?.sessions),
+        users: parseNum(effectiveGA4?.metrics?.users),
+        conversions: parseNum(effectiveGA4?.metrics?.conversions),
+        pageviews: parseNum(effectiveGA4?.metrics?.pageviews),
+        engagedSessions: 0,
+      }
+    : scoringTrafficWindow.totals;
+  const scoringTrafficInputState: GA4KpiInputState = !demoMode && trafficInputState === "ready" && !scoringTrafficWindow.valid
+    ? "unavailable"
+    : trafficInputState;
   const scoringSessions = demoMode
     ? parseNum(effectiveGA4?.metrics?.sessions)
-    : scoringTrafficRows.reduce((sum: number, row: any) => sum + parseNum(row?.sessions), 0);
+    : scoringTrafficTotals.sessions;
   const scoringConversions = demoMode
     ? parseNum(effectiveGA4?.metrics?.conversions)
     : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : parseNum(spendSummaryMetric?.value);
+  const scoringRevenue = demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue;
+  const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({
+    item,
+    trafficTotals: scoringTrafficTotals,
+    financialRevenue: scoringRevenue,
+    financialSpend: scoringSpend,
+    financialConversions: scoringConversions,
+  });
+  const getScoringTrafficInputState = (item: any): GA4KpiInputState => {
+    if (resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name) !== "cpa") return scoringTrafficInputState;
+    const states = [scoringTrafficInputState, financialConversionsInputState];
+    if (states.includes("unavailable")) return "unavailable";
+    if (states.includes("stale")) return "stale";
+    if (states.includes("loading")) return "loading";
+    return "ready";
+  };
   const recommendedActions = buildPerformanceRecommendedActions({
     kpis: effectiveKpis,
     benchmarks: effectiveBenchmarks,
@@ -482,7 +508,7 @@ export default function CampaignPerformanceSummary() {
     financialConversionsState: financialConversionsInputState,
     trafficRows: scoringTrafficRows,
     dataThroughDate: String(performanceGA4SummaryResponse?.dataThroughDate || ""),
-    financialRevenue: demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue,
+    financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
     financialConversions: scoringConversions,
   });
@@ -505,20 +531,20 @@ export default function CampaignPerformanceSummary() {
       metric: kpi?.metric,
       name: kpi?.name,
       listState: kpiListState,
-      trafficState: trafficInputState,
+      trafficState: getScoringTrafficInputState(kpi),
       revenueState: revenueInputState,
       spendState: spendInputState,
       missingDependencies: getScoringMissingDependencies(kpi),
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
-    const current = parseScoringNumber(kpi?.currentValue);
+    const current = getLiveScoringValue(kpi);
     const target = parseScoringNumber(kpi?.targetValue);
     if (!consumerState.eligible || current === null || target === null || target <= 0) return null;
     const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric, name: kpi?.name });
     const policy = resolveKpiThresholdPolicy({ metric: kpi?.metric, name: kpi?.name, unit: kpi?.unit, current, target, lowerIsBetter });
     const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });
     const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
-    return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct } : null;
+    return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct, current, target } : null;
   };
   const getBenchmarkScore = (benchmark: any) => {
     const metric = benchmark?.metric || benchmark?.metricName || benchmark?.name;
@@ -534,18 +560,18 @@ export default function CampaignPerformanceSummary() {
       metric,
       name,
       listState: benchmarkListState,
-      trafficState: trafficInputState,
+      trafficState: getScoringTrafficInputState(benchmark),
       revenueState: revenueInputState,
       spendState: spendInputState,
       missingDependencies: getScoringMissingDependencies(benchmark),
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",
     });
-    const current = parseScoringNumber(benchmark?.currentValue);
+    const current = getLiveScoringValue(benchmark);
     const benchmarkValue = parseScoringNumber(benchmark?.benchmarkValue ?? benchmark?.industryAverage);
     if (!consumerState.eligible || current === null || benchmarkValue === null || benchmarkValue <= 0) return null;
     const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });
-    return result.status ? result : null;
+    return result.status ? { ...result, current, target: benchmarkValue } : null;
   };
 
   // Score only verified GA4 records using the same immutable policies as the GA4 trackers.
@@ -553,14 +579,23 @@ export default function CampaignPerformanceSummary() {
   const scoredBenchmarks = effectiveBenchmarks.map((item: any) => ({ item, score: getBenchmarkScore(item) })).filter((entry: any) => entry.score !== null);
   const kpisOnTrackOrAbove = scoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length;
   const benchmarksOnTrack = scoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length;
-  const configuredMetricCount = effectiveKpis.length + effectiveBenchmarks.length;
-  const totalMetrics = scoredKpis.length + scoredBenchmarks.length;
-  const excludedMetricCount = configuredMetricCount - totalMetrics;
+  const healthCoverage = resolvePerformanceHealthCoverage({
+    configuredKpiCount: effectiveKpis.length,
+    configuredBenchmarkCount: effectiveBenchmarks.length,
+    scoredKpiCount: scoredKpis.length,
+    scoredBenchmarkCount: scoredBenchmarks.length,
+    kpisOnTrack: kpisOnTrackOrAbove,
+    benchmarksOnTrack,
+  });
+  const configuredMetricCount = healthCoverage.configuredMetricCount;
+  const totalMetrics = healthCoverage.verifiedMetricCount;
+  const excludedMetricCount = healthCoverage.excludedMetricCount;
   const scoringListsUnavailable = !demoMode && (kpisLoading || benchmarksLoading || kpisError || benchmarksError);
-  const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;
-  const healthScore = totalMetrics > 0 ? Math.round((totalOnTrackMetrics / totalMetrics) * 100) : 0;
+  const totalOnTrackMetrics = healthCoverage.totalOnTrackMetrics;
+  const healthScore = healthCoverage.healthScore ?? 0;
 
   const getHealthStatus = () => {
+    if (excludedMetricCount > 0) return { label: "Verification Needed", color: "bg-amber-500", icon: AlertTriangle };
     if (healthScore >= 80) return { label: "Excellent", color: "bg-green-500", icon: CheckCircle2 };
     if (healthScore >= 60) return { label: "Good", color: "bg-blue-500", icon: Activity };
     if (healthScore >= 40) return { label: "Needs Attention", color: "bg-yellow-500", icon: AlertTriangle };
@@ -852,9 +887,26 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
+    if (excludedMetricCount > 0) {
+      return {
+        type: 'info',
+        message: `Verify ${excludedMetricCount} configured metric${excludedMetricCount === 1 ? '' : 's'} before acting - only ${totalMetrics} of ${configuredMetricCount} currently have verified inputs.`
+      };
+    }
+
+    const targetSetupAction = recommendedActions.find((action) =>
+      action.category === "duplicate-targets" || action.category === "target-periods" || action.category === "invalid-targets"
+    );
+    if (targetSetupAction) {
+      return {
+        type: 'info',
+        message: `${targetSetupAction.title}: ${targetSetupAction.message}`
+      };
+    }
+
     const laggingKPIs = scoredKpis
       .filter((entry: any) => entry.score.band === "below")
-      .map((entry: any) => ({ type: 'kpi', item: entry.item, severity: Math.abs(entry.score.effectiveDeltaPct) }));
+      .map((entry: any) => ({ type: 'kpi', item: entry.item, score: entry.score, severity: Math.abs(entry.score.effectiveDeltaPct) }));
 
     const laggingBenchmarks = scoredBenchmarks
       .filter((entry: any) => entry.score.status !== "on_track")
@@ -869,8 +921,8 @@ export default function CampaignPerformanceSummary() {
         type: 'kpi',
         name: topKPI.name,
         metric: topKPI.metric || topKPI.name,
-        currentValue: formatMetricValue(getKpiCurrentValue(topKPI), topKPI.unit),
-        targetValue: formatMetricValue(topKPI.targetValue, topKPI.unit),
+        currentValue: formatMetricValue(topLaggingKPI.score.current, topKPI.unit),
+        targetValue: formatMetricValue(topLaggingKPI.score.target, topKPI.unit),
         action: 'Improve'
       };
     }
@@ -1355,19 +1407,21 @@ export default function CampaignPerformanceSummary() {
                     ) : (
                       <div className="flex items-center space-x-4">
                         <div className={`w-16 h-16 rounded-full ${healthStatus.color} flex items-center justify-center text-white text-2xl font-bold`}>
-                          {healthScore}%
+                          {excludedMetricCount > 0 ? "—" : `${healthScore}%`}
                         </div>
                         <div>
                           <div className="text-2xl font-bold text-foreground">{healthStatus.label}</div>
                           <div className="text-sm text-muted-foreground/70">
-                            {totalOnTrackMetrics} of {totalMetrics} metrics on track
+                            {excludedMetricCount > 0
+                              ? `${totalMetrics} of ${configuredMetricCount} configured metrics verified`
+                              : `${totalOnTrackMetrics} of ${configuredMetricCount} configured metrics on track`}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            {kpisOnTrackOrAbove}/{scoredKpis.length} KPIs • {benchmarksOnTrack}/{scoredBenchmarks.length} Benchmarks
+                            {kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs on track • {benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks on track
                           </div>
                           {excludedMetricCount > 0 && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              {excludedMetricCount} unavailable or unscorable metric{excludedMetricCount === 1 ? '' : 's'} excluded
+                              {excludedMetricCount} configured metric{excludedMetricCount === 1 ? '' : 's'} awaiting verification
                             </div>
                           )}
                         </div>

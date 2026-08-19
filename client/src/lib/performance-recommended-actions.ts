@@ -41,6 +41,29 @@ export type PerformanceRecommendedActionsInput = {
   financialConversions: number;
 };
 
+export const resolvePerformanceHealthCoverage = (input: {
+  configuredKpiCount: number;
+  configuredBenchmarkCount: number;
+  scoredKpiCount: number;
+  scoredBenchmarkCount: number;
+  kpisOnTrack: number;
+  benchmarksOnTrack: number;
+}) => {
+  const configuredMetricCount = input.configuredKpiCount + input.configuredBenchmarkCount;
+  const verifiedMetricCount = input.scoredKpiCount + input.scoredBenchmarkCount;
+  const excludedMetricCount = Math.max(0, configuredMetricCount - verifiedMetricCount);
+  const totalOnTrackMetrics = input.kpisOnTrack + input.benchmarksOnTrack;
+  return {
+    configuredMetricCount,
+    verifiedMetricCount,
+    excludedMetricCount,
+    totalOnTrackMetrics,
+    healthScore: excludedMetricCount === 0 && verifiedMetricCount > 0
+      ? Math.round((totalOnTrackMetrics / verifiedMetricCount) * 100)
+      : null,
+  };
+};
+
 const metricLabels: Record<GA4KpiMetricIdentity, string> = {
   revenue: "Revenue",
   conversions: "Conversions",
@@ -107,6 +130,29 @@ export const summarizePerformanceTrafficWindow = (rows: any[], dataThroughDate: 
   return { valid: true as const, startDate, endDate: dataThroughDate, totals };
 };
 
+export const resolvePerformanceLiveMetricValue = (input: {
+  item: any;
+  trafficTotals: { sessions: number; users: number; conversions: number; pageviews: number; engagedSessions: number };
+  financialRevenue: number;
+  financialSpend: number;
+  financialConversions: number;
+}): number | null => {
+  const identity = resolveGA4KpiMetricIdentity(input.item?.metric, input.item?.metricName, input.item?.name);
+  if (!identity) return null;
+  const overviewEngagementRate = input.trafficTotals.sessions > 0
+    ? input.trafficTotals.engagedSessions / input.trafficTotals.sessions
+    : 0;
+  return parseNumber(resolveGA4KpiLiveValue({
+    kpi: { ...input.item, metric: identity },
+    breakdownTotals: input.trafficTotals,
+    overviewEngagementRate,
+    financialRevenue: input.financialRevenue,
+    financialSpend: input.financialSpend,
+    financialROI: computeRoiPercent(input.financialRevenue, input.financialSpend),
+    financialCPA: computeCpa(input.financialSpend, input.financialConversions),
+  }));
+};
+
 const joinLabels = (labels: string[]): string => {
   if (labels.length <= 1) return labels[0] || "";
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
@@ -148,20 +194,13 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
 
   const trafficWindow = summarizePerformanceTrafficWindow(input.trafficRows, input.dataThroughDate);
   const trafficState = input.trafficState === "ready" && !trafficWindow.valid ? "unavailable" : input.trafficState;
-  const financialROI = computeRoiPercent(input.financialRevenue, input.financialSpend);
-  const financialCPA = computeCpa(input.financialSpend, input.financialConversions);
-  const overviewEngagementRate = trafficWindow.totals.sessions > 0
-    ? trafficWindow.totals.engagedSessions / trafficWindow.totals.sessions
-    : 0;
-  const liveValue = (row: any, identity: GA4KpiMetricIdentity) => parseNumber(resolveGA4KpiLiveValue({
-    kpi: { ...row, metric: identity },
-    breakdownTotals: trafficWindow.totals,
-    overviewEngagementRate,
+  const liveValue = (row: any) => resolvePerformanceLiveMetricValue({
+    item: row,
+    trafficTotals: trafficWindow.totals,
     financialRevenue: input.financialRevenue,
     financialSpend: input.financialSpend,
-    financialROI,
-    financialCPA,
-  }));
+    financialConversions: input.financialConversions,
+  });
 
   const duplicateLabels: string[] = [];
   const periodLabels: string[] = [];
@@ -216,7 +255,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
         entityLabel: entity,
       });
-      const current = liveValue(row, identity);
+      const current = liveValue(row);
       if (!consumerState.eligible || current === null) {
         blockedLabels.push(`${entity} ${label}`);
         continue;

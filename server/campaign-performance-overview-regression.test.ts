@@ -66,7 +66,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(keyOutcomes).not.toContain("Preparing Overview");
     expect(keyOutcomes).not.toContain("Preparing aggregate metrics");
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/ga4-connections?readOnly=1`)');
-    expect(page).toContain('ga4-daily?days=30&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1');
+    expect(page).toContain('const PERFORMANCE_GA4_DAILY_DAYS = 31;');
+    expect(page).toContain('ga4-daily?days=${PERFORMANCE_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1');
     expect(page).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
     expect(page).toContain('const overviewSessions = getGA4SummaryMetric("sessions", webSessions);');
     expect(page).toContain('const overviewUsers = getGA4SummaryMetric("users", parseNum(effectiveGA4?.metrics?.users));');
@@ -179,7 +180,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("item.pctChange === null ? ''");
   });
 
-  it("derives GA4 traffic movement from the same Summary totals and complete daily history as Key Outcomes", () => {
+  it("derives GA4 traffic movement from Summary totals and verified GA4 daily coverage", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const start = page.indexOf('const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);');
     const end = page.indexOf("const changeData = getChanges();", start);
@@ -188,8 +189,15 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
     expect(movement).toContain('performanceGA4SummaryResponse?.dataThroughDate');
     expect(movement).toContain('performanceGA4SummaryResponse?.data');
-    expect(movement).toContain('const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : 30;');
+    expect(movement).toContain('const getCalendarMonthComparisonDays = () => {');
+    expect(movement).toContain('const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();');
+    expect(movement).toContain('const missingRowsAreVerifiedZero = coverageVerified');
+    expect(movement).toContain('performanceGA4SummaryResponse?.providerRefreshOutcome === "simulated"');
+    expect(movement).toContain('lastCompletedRefreshAt >= expectedRefreshAt');
+    expect(movement).toContain('responseWindowCoversComparison');
     expect(movement).toContain('if (rowsByDate.has(date)) return null;');
+    expect(movement).toContain('if (!missingRowsAreVerifiedZero) return null;');
+    expect(movement).toContain('continue;');
     expect(movement).toContain('if (!Number.isFinite(value)) return null;');
     expect(movement).toContain('const previous = current - recentTotal;');
     expect(movement).toContain('if (!Number.isFinite(previous) || previous < 0) return null;');

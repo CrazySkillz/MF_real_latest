@@ -41,6 +41,7 @@ type PerformanceInsight = {
 };
 
 const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;
+const PERFORMANCE_GA4_DAILY_DAYS = 31;
 
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
@@ -127,11 +128,11 @@ export default function CampaignPerformanceSummary() {
     (performanceGA4Connections.find((connection: any) => connection?.isPrimary) || performanceGA4Connections[0])?.propertyId || "",
   );
   const { data: performanceGA4SummaryResponse, isLoading: performanceGA4SummaryLoading, isError: performanceGA4SummaryError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", 30, performanceGA4PropertyId, "performance-summary-read-only"],
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", PERFORMANCE_GA4_DAILY_DAYS, performanceGA4PropertyId, "performance-summary-read-only"],
     enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=30&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1`);
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${PERFORMANCE_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1`);
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false || String(data?.propertyId || "") !== performanceGA4PropertyId) {
         throw new Error(data?.error || "Failed to fetch GA4 Summary metrics");
@@ -789,7 +790,6 @@ export default function CampaignPerformanceSummary() {
 
   const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);
   const getGA4MovementComparison = (metricName: string) => {
-    const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : 30;
     const dataThroughDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
     const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[metricName]);
     const dailyRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
@@ -800,6 +800,33 @@ export default function CampaignPerformanceSummary() {
       date.setUTCDate(date.getUTCDate() + offset);
       return date.toISOString().slice(0, 10);
     };
+    const getCalendarMonthComparisonDays = () => {
+      const currentReportingDate = new Date(`${dateWithOffset(1)}T00:00:00.000Z`);
+      const comparisonDate = new Date(currentReportingDate);
+      const day = comparisonDate.getUTCDate();
+      comparisonDate.setUTCDate(1);
+      comparisonDate.setUTCMonth(comparisonDate.getUTCMonth() - 1);
+      const lastDay = new Date(Date.UTC(comparisonDate.getUTCFullYear(), comparisonDate.getUTCMonth() + 1, 0)).getUTCDate();
+      comparisonDate.setUTCDate(Math.min(day, lastDay));
+      return Math.round((currentReportingDate.getTime() - comparisonDate.getTime()) / 86_400_000);
+    };
+    const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();
+    const requiredStartDate = dateWithOffset(-(comparisonDays - 1));
+    const providerCoverageThroughDate = String(performanceGA4SummaryResponse?.providerCoverageThroughDate || "");
+    const lastCompletedRefreshAt = Date.parse(String(performanceGA4SummaryResponse?.lastCompletedRefreshAt || ""));
+    const expectedRefreshAt = Date.parse(String(performanceGA4SummaryResponse?.expectedRefreshAt || ""));
+    const coverageVerified = performanceGA4SummaryResponse?.providerRefreshOutcome === "simulated"
+      || (/^\d{4}-\d{2}-\d{2}$/.test(providerCoverageThroughDate) && providerCoverageThroughDate >= dataThroughDate)
+      || (Number.isFinite(lastCompletedRefreshAt) && Number.isFinite(expectedRefreshAt) && lastCompletedRefreshAt >= expectedRefreshAt);
+    const responseStartDate = String(performanceGA4SummaryResponse?.startDate || "");
+    const responseEndDate = String(performanceGA4SummaryResponse?.endDate || "");
+    const responseWindowCoversComparison = /^\d{4}-\d{2}-\d{2}$/.test(responseStartDate)
+      && /^\d{4}-\d{2}-\d{2}$/.test(responseEndDate)
+      && responseStartDate <= requiredStartDate
+      && responseEndDate >= dataThroughDate;
+    const missingRowsAreVerifiedZero = coverageVerified
+      && responseWindowCoversComparison
+      && !performanceGA4SummaryResponse?.providerRefreshWarning;
     const rowsByDate = new Map<string, any>();
     for (const row of dailyRows) {
       const date = String(row?.date || "").slice(0, 10);
@@ -809,7 +836,12 @@ export default function CampaignPerformanceSummary() {
 
     let recentTotal = 0;
     for (let offset = 0; offset < comparisonDays; offset += 1) {
-      const value = Number(rowsByDate.get(dateWithOffset(-offset))?.[metricName]);
+      const row = rowsByDate.get(dateWithOffset(-offset));
+      if (!row) {
+        if (!missingRowsAreVerifiedZero) return null;
+        continue;
+      }
+      const value = Number(row?.[metricName]);
       if (!Number.isFinite(value)) return null;
       recentTotal += value;
     }

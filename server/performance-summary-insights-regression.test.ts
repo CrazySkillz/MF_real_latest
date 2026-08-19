@@ -8,6 +8,9 @@ describe("Performance Summary Insights aggregate contract regression guard", () 
     const helperStart = page.indexOf("const buildPerformanceInsights = () => {");
     const helperEnd = page.indexOf("  // Get top priority action", helperStart);
     const helper = page.slice(helperStart, helperEnd);
+    const cvrStart = helper.indexOf("if (aggregateMetricAvailable('cvr'))");
+    const cvrEnd = helper.indexOf("if (aggregateMetricAvailable('cpa'))", cvrStart);
+    const cvrInsight = helper.slice(cvrStart, cvrEnd);
     const insightsStart = page.indexOf('{/* Insights Tab */}');
     const insights = page.slice(insightsStart);
 
@@ -26,7 +29,14 @@ describe("Performance Summary Insights aggregate contract regression guard", () 
     expect(helper).toContain("Revenue Efficiency");
     expect(helper).toContain("ROAS and ROI are not shown unless both revenue and spend are available");
     expect(helper).toContain("Review creative, targeting, and offer clarity first.");
-    expect(helper).toContain("Prioritize landing-page and funnel review before increasing spend.");
+    expect(helper).toContain("const cvrDenominator = cvrSources.includes('clicks') ? 'clicks' : cvrSources.includes('sessions') ? 'sessions' : null;");
+    expect(helper).toContain("if (cvrDenominator) {");
+    expect(helper).toContain("aggregateMetricValue('conversions')");
+    expect(helper).toContain("aggregateMetricValue(cvrDenominator)");
+    expect(helper).toContain("Compare this result with a configured KPI or Benchmark before judging performance or changing spend.");
+    expect(cvrInsight).not.toContain("Excellent Conversion Rate");
+    expect(cvrInsight).not.toContain("Conversion Rate Opportunity");
+    expect(cvrInsight).not.toContain("aggregateMetricValue('clicks'))} clicks and");
     expect(insights).toContain("const insights = buildPerformanceInsights();");
     expect(helper).not.toContain("LinkedIn Outperforming");
     expect(helper).not.toContain("Custom Integration Outperforming");

@@ -638,13 +638,17 @@ export default function CampaignPerformanceSummary() {
 
     if (aggregateMetricAvailable('cvr')) {
       const cvr = aggregateMetricValue('cvr');
-      pushInsight({
-        type: cvr >= 5 ? 'success' : cvr < 2 ? 'warning' : 'info',
-        priority: cvr < 2 ? 1 : cvr >= 5 ? 3 : 2,
-        category: 'conversion-efficiency',
-        title: cvr >= 5 ? 'Excellent Conversion Rate' : cvr < 2 ? 'Conversion Rate Opportunity' : 'Conversion Rate',
-        message: `Aggregate CVR is ${formatPct(cvr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions. ${cvr < 2 ? 'Prioritize landing-page and funnel review before increasing spend.' : 'Use this to judge traffic quality from connected sources.'}`
-      });
+      const cvrSources = Array.isArray(aggregateMetric('cvr')?.sources) ? aggregateMetric('cvr').sources : [];
+      const cvrDenominator = cvrSources.includes('clicks') ? 'clicks' : cvrSources.includes('sessions') ? 'sessions' : null;
+      if (cvrDenominator) {
+        pushInsight({
+          type: 'info',
+          priority: 3,
+          category: 'conversion-efficiency',
+          title: 'Conversion Rate',
+          message: `Aggregate CVR is ${formatPct(cvr)} from ${formatNumberValue(aggregateMetricValue('conversions'))} conversions across ${formatNumberValue(aggregateMetricValue(cvrDenominator))} ${cvrDenominator}. Compare this result with a configured KPI or Benchmark before judging performance or changing spend.`
+        });
+      }
     }
 
     if (aggregateMetricAvailable('cpa')) {

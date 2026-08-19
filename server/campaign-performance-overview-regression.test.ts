@@ -176,59 +176,63 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(getChanges).toContain("const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);");
     expect(getChanges).toContain('currentSourceIds.join("\\u0000") !== baselineSourceIds.join("\\u0000")');
     expect(getChanges).toContain("const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : null;");
-    expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
+    expect(page).toContain('<SelectItem value="7d">Last 7 days vs previous 7 days</SelectItem>');
     expect(page).toContain("item.pctChange === null ? ''");
   });
 
-  it("derives GA4 traffic movement from Summary totals and a valid GA4 daily window", () => {
+  it("compares exact current and previous GA4 periods without deriving cumulative values", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
-    const start = page.indexOf('const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);');
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/performance-summary/period-comparison"');
+    const routeEnd = routes.indexOf("// Benchmark-read-only GA4 input validation", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+    const start = page.indexOf('const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions", "spend"]);');
     const end = page.indexOf("const changeData = getChanges();", start);
     const movement = page.slice(start, end);
 
-    expect(movement).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
-    expect(movement).toContain('performanceGA4SummaryResponse?.dataThroughDate');
-    expect(movement).toContain('performanceGA4SummaryResponse?.data');
-    expect(movement).toContain('const getCalendarMonthComparisonDays = () => {');
-    expect(movement).toContain('const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();');
-    expect(movement).toContain('responseWindowCoversComparison');
-    expect(movement).toContain('if (!responseWindowCoversComparison || performanceGA4SummaryResponse?.providerRefreshWarning) return null;');
-    expect(movement).toContain('date < responseStartDate || date > responseEndDate');
-    expect(movement).toContain('if (rowsByDate.has(date)) return null;');
-    expect(movement).toContain('continue;');
-    expect(movement).toContain('if (!Number.isFinite(value)) return null;');
-    expect(movement).toContain('const previous = current - recentTotal;');
-    expect(movement).toContain('if (!Number.isFinite(previous) || previous < 0) return null;');
-    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key))');
-    expect(movement).toContain('const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);');
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(route).toContain("ensureCampaignAccess(req as any, res as any, campaignId)");
+    expect(route).toContain("if (![1, 7, 30].includes(periodDays))");
+    expect(route).toContain("getReportingDateWindow(periodDays, (campaign as any)?.reportingTimeZone)");
+    expect(route).toContain("const previousEndDate = shiftDateOnly(currentWindow.startDate, -1);");
+    expect(route).toContain("startDate: shiftDateOnly(previousEndDate, -(periodDays - 1))");
+    expect(route).toContain("resolveGA4ImportToDateWindow(");
+    expect(route).toContain("importWindow!.startDate <= previousWindow.startDate");
+    expect(route).toContain("ga4Service.getTotalsWithRevenue(");
+    expect(route).toContain('storage.getSpendTotalForRange(campaignId, window.startDate, window.endDate, "ga4")');
+    expect(route).toContain("const current = await loadPeriod({ startDate: currentWindow.startDate, endDate: currentWindow.endDate });");
+    expect(route).toContain("const previous = comparisonAvailable ? await loadPeriod(previousWindow) : null;");
+    expect(route).toContain("readOnly: true");
+    expect(route).not.toContain("refreshAccessToken");
+    expect(route).not.toContain("updateGA4ConnectionTokens");
+
+    expect(page).toContain("const movementPeriodDays = timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : 30;");
+    expect(page).toContain('performance-summary/period-comparison?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&periodDays=${movementPeriodDays}');
+    expect(movement).toContain("exactPeriodComparison?.current?.metrics?.[config.key]");
+    expect(movement).toContain("exactPeriodComparison?.previous?.metrics?.[config.key]");
+    expect(movement).toContain("exactPeriodComparison?.comparisonAvailable === true");
+    expect(movement).not.toContain("current - recentTotal");
+    expect(movement).not.toContain("performanceGA4SummaryResponse?.data");
     expect(movement).toContain('comparisonUnavailable: true');
-    expect(movement).toContain('sourceLabel: "Sources: Google Analytics"');
-    expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && (ga4MovementMetricKeys.has(config.key) || config.key === "spend")) return;');
+    expect(movement).toContain('config.key === "spend" ? "Sources: Campaign spend sources" : "Sources: Google Analytics"');
     expect(movement).toContain('= [...ga4Changes];');
-    expect(page).toContain('Comparison unavailable — incomplete GA4 daily history');
+    expect(page).toContain('Comparison unavailable — selected GA4 history does not cover both periods');
     expect(page).toContain('{!item.comparisonUnavailable && (');
-    expect(page).toContain('Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString(undefined, { timeZone: campaign?.reportingTimeZone || "UTC" })}');
-    expect(page).not.toContain('Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}');
+    expect(page).toContain('Current period {formatMovementDate(changeData.currentWindow.startDate)}–{formatMovementDate(changeData.currentWindow.endDate)} compared with {formatMovementDate(changeData.previousWindow.startDate)}–{formatMovementDate(changeData.previousWindow.endDate)}');
+    expect(page).toContain('<SelectItem value="24h">Latest day vs previous day</SelectItem>');
+    expect(page).toContain('<SelectItem value="30d">Last 30 days vs previous 30 days</SelectItem>');
     expect(page).toContain('<SelectContent data-performance-movement-select>');
     expect(page).toContain('body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }');
   });
 
-  it("compares Spend with the exact GA4-scoped total through the selected historical date", () => {
+  it("does not reuse cumulative Spend or cumulative GA4 traffic in Recent Movement", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
-    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
-    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/spend-to-date"');
-    const routeEnd = routes.indexOf("const toISODateUTC", routeStart);
-    const spendRoute = routes.slice(routeStart, routeEnd);
 
-    expect(spendRoute).toContain('const requestedEndDate = String((req.query as any)?.endDate || "").trim();');
-    expect(spendRoute).toContain('platformContext !== "ga4"');
-    expect(spendRoute).toContain('requestedEndDate > latestEndDate');
-    expect(spendRoute).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)');
-    expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange)');
-    expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
-    expect(page).toContain('historicalSpendComparison?.endDate === spendComparisonEndDate');
-    expect(page).toContain('const previous = Number(historicalSpendComparison?.spendToDate);');
-    expect(page).toContain('ga4MovementMetricKeys.has(config.key) || config.key === "spend"');
+    expect(page).not.toContain('spend-to-date?platformContext=ga4&endDate=');
+    expect(page).not.toContain("resolveSpendComparisonEndDate");
+    expect(page).not.toContain("historicalSpendComparison");
+    expect(page).not.toContain("const previous = current - recentTotal;");
+    expect(page).toContain('const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions", "spend"]);');
   });
 
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {

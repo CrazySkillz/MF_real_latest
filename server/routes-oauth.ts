@@ -9144,6 +9144,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Campaign Performance Summary period comparison. This is read-only and keeps
+  // the existing GA4 to-date and daily endpoint contracts unchanged.
+  app.get("/api/campaigns/:id/performance-summary/period-comparison", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
+      const propertyId = String(req.query.propertyId || "").trim();
+      const periodDays = Number(req.query.periodDays);
+      if (!propertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
+      if (![1, 7, 30].includes(periodDays)) {
+        return res.status(400).json({ success: false, error: "periodDays must be 1, 7, or 30" });
+      }
+
+      const connection = await storage.getGA4Connection(campaignId, propertyId);
+      if (!connection) return res.status(404).json({ success: false, error: "No active GA4 connection found for this property/campaign." });
+
+      const shiftDateOnly = (value: string, days: number) => {
+        const date = new Date(`${value}T00:00:00.000Z`);
+        date.setUTCDate(date.getUTCDate() + days);
+        return formatISODateUTC(date);
+      };
+      const currentWindow = getReportingDateWindow(periodDays, (campaign as any)?.reportingTimeZone);
+      const previousEndDate = shiftDateOnly(currentWindow.startDate, -1);
+      const previousWindow = {
+        startDate: shiftDateOnly(previousEndDate, -(periodDays - 1)),
+        endDate: previousEndDate,
+      };
+      const importWindow = resolveGA4ImportToDateWindow(
+        (connection as any)?.importStartDate,
+        (campaign as any)?.reportingTimeZone,
+      );
+      const currentAvailable = !!importWindow && importWindow.startDate <= currentWindow.startDate;
+      const comparisonAvailable = currentAvailable && importWindow!.startDate <= previousWindow.startDate;
+
+      if (!currentAvailable) {
+        return res.json({
+          success: true,
+          propertyId: String((connection as any).propertyId),
+          periodDays,
+          reportingTimeZone: currentWindow.reportingTimeZone,
+          comparisonAvailable: false,
+          unavailableReason: "selected_ga4_history_does_not_cover_current_period",
+          current: null,
+          previous: null,
+          expectedCurrentWindow: { startDate: currentWindow.startDate, endDate: currentWindow.endDate },
+          expectedPreviousWindow: previousWindow,
+          readOnly: true,
+        });
+      }
+
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const simulated = isYesopMockProperty(String((connection as any).propertyId));
+      let mockRows: any[] = [];
+      if (simulated) {
+        const sim = simulateGA4({
+          campaignId,
+          propertyId: String((connection as any).propertyId),
+          dateRange: "90days",
+          noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
+          ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+        });
+        const storedRows = await storage.getGA4DailyMetrics(
+          campaignId,
+          String((connection as any).propertyId),
+          previousWindow.startDate,
+          currentWindow.endDate,
+        );
+        const storedByDate = new Map((storedRows || []).map((row: any) => [String(row?.date || ""), row]));
+        const simulatedRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+        const simulatedDates = new Set(simulatedRows.map((row: any) => String(row?.date || "")));
+        mockRows = simulatedRows.map((row: any) => {
+          const stored = storedByDate.get(String(row?.date || "")) as any;
+          return stored ? {
+            ...row,
+            sessions: parseNum(row?.sessions) + parseNum(stored?.sessions),
+            users: parseNum(row?.users) + parseNum(stored?.users),
+            conversions: parseNum(row?.conversions) + parseNum(stored?.conversions),
+          } : row;
+        });
+        for (const row of storedRows || []) {
+          if (!simulatedDates.has(String(row?.date || ""))) mockRows.push(row);
+        }
+      } else if ((connection as any).method !== "access_token" || !(connection as any).accessToken) {
+        return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
+      }
+
+      const spendSources = await storage.getSpendSources(campaignId, "ga4");
+      const loadPeriod = async (window: { startDate: string; endDate: string }) => {
+        const [traffic, spend] = await Promise.all([
+          simulated
+            ? Promise.resolve(summarizeGA4TrafficRows(mockRows.filter((row: any) => {
+              const date = String(row?.date || "").slice(0, 10);
+              return date >= window.startDate && date <= window.endDate;
+            })))
+            : ga4Service.getTotalsWithRevenue(
+              String((connection as any).propertyId),
+              String((connection as any).accessToken),
+              window.startDate,
+              window.endDate,
+              campaignFilter,
+              campaignCurrency,
+            ).then((result: any) => {
+              assertGA4InsightsFinancialCurrencyScope(campaign, [], result?.currencyCode, "GA4 period totals", true);
+              return result.totals;
+            }),
+          storage.getSpendTotalForRange(campaignId, window.startDate, window.endDate, "ga4"),
+        ]);
+        assertGA4InsightsFinancialCurrencyScope(campaign, spendSources, spend?.currency, "Spend");
+        return {
+          startDate: window.startDate,
+          endDate: window.endDate,
+          metrics: {
+            sessions: Number(traffic?.sessions || 0),
+            users: Number(traffic?.users || 0),
+            conversions: Number(traffic?.conversions || 0),
+            spend: Number(spend?.totalSpend || 0),
+          },
+          spendSourceIds: Array.isArray(spend?.sourceIds) ? spend.sourceIds : [],
+        };
+      };
+
+      const current = await loadPeriod({ startDate: currentWindow.startDate, endDate: currentWindow.endDate });
+      const previous = comparisonAvailable ? await loadPeriod(previousWindow) : null;
+      return res.json({
+        success: true,
+        propertyId: String((connection as any).propertyId),
+        periodDays,
+        reportingTimeZone: currentWindow.reportingTimeZone,
+        comparisonAvailable,
+        unavailableReason: comparisonAvailable ? null : "selected_ga4_history_does_not_cover_previous_period",
+        current,
+        previous,
+        expectedCurrentWindow: { startDate: currentWindow.startDate, endDate: currentWindow.endDate },
+        expectedPreviousWindow: previousWindow,
+        isSimulated: simulated,
+        readOnly: true,
+      });
+    } catch (error: any) {
+      const message = String(error?.message || "");
+      const authenticationFailure = message.includes("401") || message.toLowerCase().includes("unauthenticated") || message.toLowerCase().includes("invalid_grant");
+      if (authenticationFailure) {
+        return res.status(401).json({ success: false, error: "TOKEN_EXPIRED", requiresReauthorization: true, message: "GA4 token refresh is disabled for this read-only comparison." });
+      }
+      return res.status(500).json({ success: false, error: message || "Failed to fetch Performance Summary period comparison" });
+    }
+  });
+
   // Benchmark-read-only GA4 input validation. This exposes provider, persisted, and
   // Benchmark-current-value inputs side by side without recomputing or mutating Benchmark rows.
   app.get("/api/campaigns/:id/ga4-benchmark-provider-validation", async (req, res) => {

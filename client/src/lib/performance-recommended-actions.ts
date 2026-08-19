@@ -36,6 +36,7 @@ export type PerformanceRecommendedActionsInput = {
   financialConversionsState: GA4KpiInputState;
   trafficRows: any[];
   dataThroughDate: string;
+  expectedRefreshAt: string;
   financialRevenue: number;
   financialSpend: number;
   financialConversions: number;
@@ -78,8 +79,19 @@ const metricLabels: Record<GA4KpiMetricIdentity, string> = {
 };
 
 const parseNumber = (value: unknown): number | null => {
-  const parsed = Number(String(value ?? "").replace(/,/g, "").trim());
+  const normalized = String(value ?? "").replace(/,/g, "").trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+export const resolvePerformanceFreshPersistedMetricValue = (item: any, expectedRefreshAt: string): number | null => {
+  const current = parseNumber(item?.currentValue);
+  const refreshedAt = Date.parse(String(item?.updatedAt || item?.lastUpdated || ""));
+  const expectedAt = Date.parse(String(expectedRefreshAt || ""));
+  return current !== null && Number.isFinite(refreshedAt) && Number.isFinite(expectedAt) && refreshedAt >= expectedAt
+    ? current
+    : null;
 };
 
 const formatMetricValue = (identity: GA4KpiMetricIdentity, value: number): string => {
@@ -194,7 +206,10 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
 
   const trafficWindow = summarizePerformanceTrafficWindow(input.trafficRows, input.dataThroughDate);
   const trafficState = input.trafficState === "ready" && !trafficWindow.valid ? "unavailable" : input.trafficState;
-  const liveValue = (row: any) => resolvePerformanceLiveMetricValue({
+  // The certified recompute updates currentValue and updatedAt together. A row
+  // updated after this reporting day's refresh boundary is already verified.
+  const persistedValue = (row: any) => resolvePerformanceFreshPersistedMetricValue(row, input.expectedRefreshAt);
+  const liveValue = (row: any) => persistedValue(row) ?? resolvePerformanceLiveMetricValue({
     item: row,
     trafficTotals: trafficWindow.totals,
     financialRevenue: input.financialRevenue,
@@ -249,7 +264,9 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         metric: identity,
         name: row?.name ?? row?.metricName,
         listState: entity === "KPI" ? input.kpiListState : input.benchmarkListState,
-        trafficState: identity === "cpa" ? combineInputStates(trafficState, input.financialConversionsState) : trafficState,
+        trafficState: persistedValue(row) !== null
+          ? "ready"
+          : identity === "cpa" ? combineInputStates(trafficState, input.financialConversionsState) : trafficState,
         revenueState: input.revenueState,
         spendState: input.spendState,
         sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",

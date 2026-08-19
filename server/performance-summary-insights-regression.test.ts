@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   buildPerformanceRecommendedActions,
+  resolvePerformanceFreshPersistedMetricValue,
   resolvePerformanceHealthCoverage,
   resolvePerformanceLiveMetricValue,
   summarizePerformanceTrafficWindow,
@@ -32,6 +33,7 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
   financialConversionsState: "ready",
   trafficRows: dailyRows,
   dataThroughDate: "2026-08-18",
+  expectedRefreshAt: "2026-08-19T03:00:00.000Z",
   financialRevenue: 72_766.69,
   financialSpend: 2_699.75,
   financialConversions: 251,
@@ -95,6 +97,33 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(value("ROAS")).toBe(26.95);
     expect(value("ROI")).toBe(2_595.31);
     expect(value("CPA")).toBe(10.76);
+  });
+
+  it("accepts all 13 freshly recomputed target rows and rejects pre-refresh snapshots", () => {
+    const freshRows = Array.from({ length: 13 }, (_, index) => ({
+      currentValue: String(index + 1),
+      updatedAt: "2026-08-19T16:24:00.000Z",
+    }));
+
+    expect(freshRows.filter((row) => resolvePerformanceFreshPersistedMetricValue(row, "2026-08-19T03:00:00.000Z") !== null)).toHaveLength(13);
+    expect(resolvePerformanceFreshPersistedMetricValue({ currentValue: "317", updatedAt: "2026-08-19T02:59:59.999Z" }, "2026-08-19T03:00:00.000Z")).toBeNull();
+  });
+
+  it("uses a freshly recomputed persisted target value when the parallel traffic read is stale", () => {
+    const [action] = buildPerformanceRecommendedActions(baseInput({
+      trafficState: "stale",
+      kpis: [{
+        metric: "Total Users",
+        name: "Total Users",
+        currentValue: "317.00",
+        targetValue: "820.00",
+        trackingPeriod: 30,
+        updatedAt: "2026-08-19T16:24:13.097Z",
+      }],
+    }));
+
+    expect(action).toMatchObject({ type: "warning", title: "Review Users" });
+    expect(action.message).toContain("Verified 317 versus the 820 KPI target");
   });
 
   it("fails closed for duplicate targets and incompatible target periods", () => {
@@ -188,7 +217,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const insights = page.slice(page.indexOf("{/* Insights Tab */}"));
 
-    expect(page).toContain('import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";');
+    expect(page).toContain('import { buildPerformanceRecommendedActions, resolvePerformanceFreshPersistedMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";');
     expect(page).toContain("const recommendedActions = buildPerformanceRecommendedActions({");
     expect(insights).toContain("const recommendedInsights = recommendedActions;");
     expect(insights).not.toContain("buildPerformanceInsights()");

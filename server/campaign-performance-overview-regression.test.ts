@@ -38,10 +38,13 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/benchmarks`]');
-    expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
+    expect(scoringBlock).toContain("const scoringExpectedRefreshAt = String(performanceGA4SummaryResponse?.expectedRefreshAt || \"\");");
+    expect(scoringBlock).toContain("const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringExpectedRefreshAt);");
+    expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => getFreshPersistedScoringValue(item) ?? resolvePerformanceLiveMetricValue({");
     expect(scoringBlock).toContain("const current = getLiveScoringValue(kpi);");
     expect(scoringBlock).toContain("const current = getLiveScoringValue(benchmark);");
     expect(scoringBlock).toContain("const getScoringTrafficInputState = (item: any): GA4KpiInputState => {");
+    expect(scoringBlock).toContain('if (getFreshPersistedScoringValue(item) !== null) return "ready";');
     expect(scoringBlock).toContain("const states = [scoringTrafficInputState, financialConversionsInputState];");
     expect(scoringBlock).not.toContain("kpi?.currentValue");
     expect(scoringBlock).not.toContain("benchmark?.currentValue");
@@ -149,7 +152,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const sufficiency = resolveBenchmarkDataSufficiency({");
     expect(page).toContain("const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });");
     expect(page).toContain("const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });");
-    expect(page).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
+    expect(page).toContain("const getLiveScoringValue = (item: any) => getFreshPersistedScoringValue(item) ?? resolvePerformanceLiveMetricValue({");
     expect(page).not.toContain("return parseNum(kpi.currentValue);");
     expect(page).toContain('const kpisOnTrackOrAbove = scoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length;');
     expect(page).toContain('const benchmarksOnTrack = scoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length;');

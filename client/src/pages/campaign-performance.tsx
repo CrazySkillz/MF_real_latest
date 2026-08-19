@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, resolvePerformanceFreshPersistedMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -482,7 +482,9 @@ export default function CampaignPerformanceSummary() {
     : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : parseNum(spendSummaryMetric?.value);
   const scoringRevenue = demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue;
-  const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({
+  const scoringExpectedRefreshAt = String(performanceGA4SummaryResponse?.expectedRefreshAt || "");
+  const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringExpectedRefreshAt);
+  const getLiveScoringValue = (item: any) => getFreshPersistedScoringValue(item) ?? resolvePerformanceLiveMetricValue({
     item,
     trafficTotals: scoringTrafficTotals,
     financialRevenue: scoringRevenue,
@@ -490,6 +492,7 @@ export default function CampaignPerformanceSummary() {
     financialConversions: scoringConversions,
   });
   const getScoringTrafficInputState = (item: any): GA4KpiInputState => {
+    if (getFreshPersistedScoringValue(item) !== null) return "ready";
     if (resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name) !== "cpa") return scoringTrafficInputState;
     const states = [scoringTrafficInputState, financialConversionsInputState];
     if (states.includes("unavailable")) return "unavailable";
@@ -508,6 +511,7 @@ export default function CampaignPerformanceSummary() {
     financialConversionsState: financialConversionsInputState,
     trafficRows: scoringTrafficRows,
     dataThroughDate: String(performanceGA4SummaryResponse?.dataThroughDate || ""),
+    expectedRefreshAt: scoringExpectedRefreshAt,
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
     financialConversions: scoringConversions,

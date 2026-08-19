@@ -189,8 +189,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
     expect(movement).toContain('performanceGA4SummaryResponse?.dataThroughDate');
     expect(movement).toContain('performanceGA4SummaryResponse?.data');
-    expect(movement).toContain('const getCalendarMonthComparisonDays = () => {');
-    expect(movement).toContain('const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();');
+    expect(movement).toContain('const baselineDate = resolveSpendComparisonEndDate(dataThroughDate, timeRange);');
+    expect(movement).toContain('new Date(`${baselineDate}T00:00:00.000Z`).getTime()');
+    expect(movement).toContain('if (!Number.isInteger(comparisonDays) || comparisonDays < 1) return null;');
     expect(movement).toContain('responseWindowCoversComparison');
     expect(movement).toContain('if (!responseWindowCoversComparison || performanceGA4SummaryResponse?.providerRefreshWarning) return null;');
     expect(movement).toContain('date < responseStartDate || date > responseEndDate');
@@ -199,6 +200,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('if (!Number.isFinite(value)) return null;');
     expect(movement).toContain('const previous = current - recentTotal;');
     expect(movement).toContain('if (!Number.isFinite(previous) || previous < 0) return null;');
+    expect(movement).toContain('return { current, previous, baselineDate };');
+    expect(movement).not.toContain('getCalendarMonthComparisonDays');
     expect(movement).toContain('if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key))');
     expect(movement).toContain('const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);');
     expect(movement).toContain('comparisonUnavailable: true');

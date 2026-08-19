@@ -50,13 +50,12 @@ const resolveSpendComparisonEndDate = (dataThroughDate: string, timeRange: '24h'
     completedDate.setUTCDate(completedDate.getUTCDate() - (timeRange === '24h' ? 1 : 7));
     return completedDate.toISOString().slice(0, 10);
   }
-  const comparisonDate = new Date(completedDate);
-  comparisonDate.setUTCDate(comparisonDate.getUTCDate() + 1);
-  const day = comparisonDate.getUTCDate();
-  comparisonDate.setUTCDate(1);
-  comparisonDate.setUTCMonth(comparisonDate.getUTCMonth() - 1);
-  comparisonDate.setUTCDate(Math.min(day, new Date(Date.UTC(comparisonDate.getUTCFullYear(), comparisonDate.getUTCMonth() + 1, 0)).getUTCDate()) - 1);
-  return comparisonDate.toISOString().slice(0, 10);
+  const day = completedDate.getUTCDate();
+  completedDate.setUTCDate(1);
+  completedDate.setUTCMonth(completedDate.getUTCMonth() - 1);
+  const lastDay = new Date(Date.UTC(completedDate.getUTCFullYear(), completedDate.getUTCMonth() + 1, 0)).getUTCDate();
+  completedDate.setUTCDate(Math.min(day, lastDay));
+  return completedDate.toISOString().slice(0, 10);
 };
 
 export default function CampaignPerformanceSummary() {
@@ -828,17 +827,13 @@ export default function CampaignPerformanceSummary() {
       date.setUTCDate(date.getUTCDate() + offset);
       return date.toISOString().slice(0, 10);
     };
-    const getCalendarMonthComparisonDays = () => {
-      const currentReportingDate = new Date(`${dateWithOffset(1)}T00:00:00.000Z`);
-      const comparisonDate = new Date(currentReportingDate);
-      const day = comparisonDate.getUTCDate();
-      comparisonDate.setUTCDate(1);
-      comparisonDate.setUTCMonth(comparisonDate.getUTCMonth() - 1);
-      const lastDay = new Date(Date.UTC(comparisonDate.getUTCFullYear(), comparisonDate.getUTCMonth() + 1, 0)).getUTCDate();
-      comparisonDate.setUTCDate(Math.min(day, lastDay));
-      return Math.round((currentReportingDate.getTime() - comparisonDate.getTime()) / 86_400_000);
-    };
-    const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();
+    const baselineDate = resolveSpendComparisonEndDate(dataThroughDate, timeRange);
+    if (!baselineDate) return null;
+    const comparisonDays = Math.round((
+      new Date(`${dataThroughDate}T00:00:00.000Z`).getTime()
+      - new Date(`${baselineDate}T00:00:00.000Z`).getTime()
+    ) / 86_400_000);
+    if (!Number.isInteger(comparisonDays) || comparisonDays < 1) return null;
     const requiredStartDate = dateWithOffset(-(comparisonDays - 1));
     const responseStartDate = String(performanceGA4SummaryResponse?.startDate || "");
     const responseEndDate = String(performanceGA4SummaryResponse?.endDate || "");
@@ -867,7 +862,7 @@ export default function CampaignPerformanceSummary() {
     }
     const previous = current - recentTotal;
     if (!Number.isFinite(previous) || previous < 0) return null;
-    return { current, previous, baselineDate: dateWithOffset(-comparisonDays) };
+    return { current, previous, baselineDate };
   };
 
   // Calculate what's changed from compatible aggregate snapshots only.

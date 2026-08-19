@@ -42,6 +42,22 @@ type PerformanceInsight = {
 
 const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;
 const PERFORMANCE_GA4_DAILY_DAYS = 31;
+const resolveSpendComparisonEndDate = (dataThroughDate: string, timeRange: '24h' | '7d' | '30d') => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return "";
+  const completedDate = new Date(`${dataThroughDate}T00:00:00.000Z`);
+  if (Number.isNaN(completedDate.getTime()) || completedDate.toISOString().slice(0, 10) !== dataThroughDate) return "";
+  if (timeRange !== '30d') {
+    completedDate.setUTCDate(completedDate.getUTCDate() - (timeRange === '24h' ? 1 : 7));
+    return completedDate.toISOString().slice(0, 10);
+  }
+  const comparisonDate = new Date(completedDate);
+  comparisonDate.setUTCDate(comparisonDate.getUTCDate() + 1);
+  const day = comparisonDate.getUTCDate();
+  comparisonDate.setUTCDate(1);
+  comparisonDate.setUTCMonth(comparisonDate.getUTCMonth() - 1);
+  comparisonDate.setUTCDate(Math.min(day, new Date(Date.UTC(comparisonDate.getUTCFullYear(), comparisonDate.getUTCMonth() + 1, 0)).getUTCDate()) - 1);
+  return comparisonDate.toISOString().slice(0, 10);
+};
 
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
@@ -186,16 +202,15 @@ export default function CampaignPerformanceSummary() {
   // Derive API params from unified time range
   const comparisonType = timeRange === '24h' ? 'yesterday' : timeRange === '7d' ? 'last_week' : 'last_month';
   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
-  const movementPeriodDays = timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : 30;
-  const { data: performancePeriodComparison } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "performance-summary", "period-comparison", performanceGA4PropertyId, movementPeriodDays],
-    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+  const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
+  const { data: historicalSpendComparison } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "spend-to-date", "ga4", spendComparisonEndDate],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!spendComparisonEndDate && !demoMode,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/performance-summary/period-comparison?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&periodDays=${movementPeriodDays}`, { credentials: "include" });
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}`, { credentials: "include" });
       const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.success || String(data?.propertyId || "") !== performanceGA4PropertyId || Number(data?.periodDays) !== movementPeriodDays) {
-        throw new Error(data?.error || "Failed to fetch Performance Summary period comparison");
-      }
+      if (!response.ok || !data?.success || data?.endDate !== spendComparisonEndDate) throw new Error(data?.error || "Failed to fetch historical Spend");
       return data;
     },
   });
@@ -801,55 +816,115 @@ export default function CampaignPerformanceSummary() {
     return Array.from(new Set(aggregateMetricSourceIds(aggregate, metricName).map((sourceId) => sourceLabelForId(sourceId))));
   };
 
-  const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions", "spend"]);
-  const exactPeriodComparison = Number(performancePeriodComparison?.periodDays) === movementPeriodDays
-    && String(performancePeriodComparison?.propertyId || "") === performanceGA4PropertyId
-    ? performancePeriodComparison
-    : null;
+  const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);
+  const getGA4MovementComparison = (metricName: string) => {
+    const dataThroughDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
+    const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[metricName]);
+    const dailyRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
+    if (!Number.isFinite(current) || !/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return null;
+
+    const dateWithOffset = (offset: number) => {
+      const date = new Date(`${dataThroughDate}T00:00:00.000Z`);
+      date.setUTCDate(date.getUTCDate() + offset);
+      return date.toISOString().slice(0, 10);
+    };
+    const getCalendarMonthComparisonDays = () => {
+      const currentReportingDate = new Date(`${dateWithOffset(1)}T00:00:00.000Z`);
+      const comparisonDate = new Date(currentReportingDate);
+      const day = comparisonDate.getUTCDate();
+      comparisonDate.setUTCDate(1);
+      comparisonDate.setUTCMonth(comparisonDate.getUTCMonth() - 1);
+      const lastDay = new Date(Date.UTC(comparisonDate.getUTCFullYear(), comparisonDate.getUTCMonth() + 1, 0)).getUTCDate();
+      comparisonDate.setUTCDate(Math.min(day, lastDay));
+      return Math.round((currentReportingDate.getTime() - comparisonDate.getTime()) / 86_400_000);
+    };
+    const comparisonDays = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : getCalendarMonthComparisonDays();
+    const requiredStartDate = dateWithOffset(-(comparisonDays - 1));
+    const responseStartDate = String(performanceGA4SummaryResponse?.startDate || "");
+    const responseEndDate = String(performanceGA4SummaryResponse?.endDate || "");
+    const responseWindowCoversComparison = /^\d{4}-\d{2}-\d{2}$/.test(responseStartDate)
+      && /^\d{4}-\d{2}-\d{2}$/.test(responseEndDate)
+      && responseStartDate <= requiredStartDate
+      && responseEndDate >= dataThroughDate;
+    if (!responseWindowCoversComparison || performanceGA4SummaryResponse?.providerRefreshWarning) return null;
+    const rowsByDate = new Map<string, any>();
+    for (const row of dailyRows) {
+      const date = String(row?.date || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < responseStartDate || date > responseEndDate) return null;
+      if (rowsByDate.has(date)) return null;
+      rowsByDate.set(date, row);
+    }
+
+    let recentTotal = 0;
+    for (let offset = 0; offset < comparisonDays; offset += 1) {
+      const row = rowsByDate.get(dateWithOffset(-offset));
+      if (!row) {
+        continue;
+      }
+      const value = Number(row?.[metricName]);
+      if (!Number.isFinite(value)) return null;
+      recentTotal += value;
+    }
+    const previous = current - recentTotal;
+    if (!Number.isFinite(previous) || previous < 0) return null;
+    return { current, previous, baselineDate: dateWithOffset(-comparisonDays) };
+  };
 
   // Calculate what's changed from compatible aggregate snapshots only.
   const getChanges = () => {
     const baseline = comparisonData?.previous;
     const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [];
+    let ga4BaselineTimestamp: string | null = null;
     const addGA4Change = (config: any) => {
       if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) {
-        const current = Number(exactPeriodComparison?.current?.metrics?.[config.key]);
-        if (!Number.isFinite(current)) return;
-        const previous = Number(exactPeriodComparison?.previous?.metrics?.[config.key]);
-        const comparisonAvailable = exactPeriodComparison?.comparisonAvailable === true && Number.isFinite(previous);
-        const sourceLabel = config.key === "spend" ? "Sources: Campaign spend sources" : "Sources: Google Analytics";
-        if (!comparisonAvailable) {
-          ga4Changes.push({ metric: config.label, current, previous: current, change: 0, pctChange: null, direction: "flat", comparisonUnavailable: true, sourceLabel });
+        const comparison = getGA4MovementComparison(config.key);
+        if (!comparison) {
+          const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);
+          if (!Number.isFinite(current)) return;
+          ga4Changes.push({ metric: config.label, current, previous: current, change: 0, pctChange: null, direction: "flat", comparisonUnavailable: true, sourceLabel: "Sources: Google Analytics" });
           return;
         }
-        const change = current - previous;
+        const change = comparison.current - comparison.previous;
         ga4Changes.push({
           metric: config.label,
-          current,
-          previous,
+          current: comparison.current,
+          previous: comparison.previous,
           change,
-          pctChange: previous > 0 ? (change / previous) * 100 : null,
+          pctChange: comparison.previous > 0 ? (change / comparison.previous) * 100 : null,
           direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
-          isCurrency: config.isCurrency === true,
-          isCostMetric: config.isCostMetric === true,
-          sourceLabel,
+          sourceLabel: "Sources: Google Analytics",
         });
+        ga4BaselineTimestamp = `${comparison.baselineDate}T00:00:00.000Z`;
       }
     };
     changeMetricConfigs.forEach(addGA4Change);
-
-    if (!demoMode && performanceGA4PropertyId && !exactPeriodComparison) {
-      return { changes: [], baselineTimestamp: null, currentWindow: null, previousWindow: null, emptyReason: "comparison_unavailable" };
+    if (!demoMode && performanceGA4PropertyId && spendComparisonEndDate
+      && historicalSpendComparison?.endDate === spendComparisonEndDate
+      && aggregateSnapshotMetricAvailable(performanceSummary, "spend")) {
+      const current = aggregateSnapshotMetricValue(performanceSummary, "spend");
+      const previous = Number(historicalSpendComparison?.spendToDate);
+      if (Number.isFinite(current) && Number.isFinite(previous) && current >= 0 && previous >= 0) {
+        const change = current - previous;
+        const sourceLabels = aggregateMetricSources(performanceSummary, "spend");
+        ga4Changes.push({
+          metric: "Spend", current, previous, change,
+          pctChange: previous > 0 ? (change / previous) * 100 : null,
+          direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
+          isCurrency: true, isCostMetric: true,
+          sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
+        });
+        ga4BaselineTimestamp ||= `${spendComparisonEndDate}T00:00:00.000Z`;
+      }
     }
 
     if (!performanceSummary?.version || !baseline) {
-      if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: null, currentWindow: exactPeriodComparison?.current || exactPeriodComparison?.expectedCurrentWindow || null, previousWindow: exactPeriodComparison?.previous || exactPeriodComparison?.expectedPreviousWindow || null, emptyReason: null };
-      return { changes: [], baselineTimestamp: null, currentWindow: null, previousWindow: null, emptyReason: "not_enough_history" };
+      if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: ga4BaselineTimestamp, emptyReason: null };
+      return { changes: [], baselineTimestamp: null, emptyReason: "not_enough_history" };
     }
     const baselineAggregate = baseline?.metrics?.performanceSummary;
     if (baselineAggregate?.version !== performanceSummary.version) {
-      if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: null, currentWindow: exactPeriodComparison?.current || exactPeriodComparison?.expectedCurrentWindow || null, previousWindow: exactPeriodComparison?.previous || exactPeriodComparison?.expectedPreviousWindow || null, emptyReason: null };
-      return { changes: [], baselineTimestamp: baseline.recordedAt, currentWindow: null, previousWindow: null, emptyReason: "incompatible_history" };
+      if (ga4Changes.length > 0) return { changes: ga4Changes, baselineTimestamp: ga4BaselineTimestamp, emptyReason: null };
+      return { changes: [], baselineTimestamp: baseline.recordedAt, emptyReason: "incompatible_history" };
     }
 
     const changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; sourceLabel: string }[] = [...ga4Changes];
@@ -883,15 +958,12 @@ export default function CampaignPerformanceSummary() {
 
     return {
       changes,
-      baselineTimestamp: baseline.recordedAt,
-      currentWindow: exactPeriodComparison?.current || exactPeriodComparison?.expectedCurrentWindow || null,
-      previousWindow: exactPeriodComparison?.previous || exactPeriodComparison?.expectedPreviousWindow || null,
+      baselineTimestamp: ga4BaselineTimestamp || baseline.recordedAt,
       emptyReason: changes.length > 0 ? null : "no_metric_changes",
     };
   };
 
   const changeData = getChanges();
-  const formatMovementDate = (value: string) => new Date(`${value}T00:00:00.000Z`).toLocaleDateString(undefined, { timeZone: "UTC" });
 
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
@@ -1223,9 +1295,9 @@ export default function CampaignPerformanceSummary() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent data-performance-movement-select>
-                        <SelectItem value="24h">Latest day vs previous day</SelectItem>
-                        <SelectItem value="7d">Last 7 days vs previous 7 days</SelectItem>
-                        <SelectItem value="30d">Last 30 days vs previous 30 days</SelectItem>
+                        <SelectItem value="24h">Compare with yesterday</SelectItem>
+                        <SelectItem value="7d">Compare with 7 days ago</SelectItem>
+                        <SelectItem value="30d">Compare with one month ago</SelectItem>
                       </SelectContent>
                       </Select>
                     </div>
@@ -1236,7 +1308,7 @@ export default function CampaignPerformanceSummary() {
                     <div className="text-center py-8">
                       <Clock className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
                       <p className="text-muted-foreground/70 font-medium">
-                        {changeData.emptyReason === "comparison_unavailable" ? "Comparison data is temporarily unavailable" : changeData.emptyReason === "incompatible_history" ? "No compatible historical data yet" : "Not enough historical data yet"}
+                        {changeData.emptyReason === "incompatible_history" ? "No compatible historical data yet" : "Not enough historical data yet"}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         Compatible aggregate snapshots are recorded as your connected platforms sync.
@@ -1245,15 +1317,11 @@ export default function CampaignPerformanceSummary() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {changeData.currentWindow?.startDate && changeData.previousWindow?.startDate ? (
-                        <p className="text-xs text-muted-foreground/70">
-                          Current period {formatMovementDate(changeData.currentWindow.startDate)}–{formatMovementDate(changeData.currentWindow.endDate)} compared with {formatMovementDate(changeData.previousWindow.startDate)}–{formatMovementDate(changeData.previousWindow.endDate)}
-                        </p>
-                      ) : changeData.baselineTimestamp ? (
+                      {changeData.baselineTimestamp && (
                         <p className="text-xs text-muted-foreground/70">
                           Available comparisons use data from {new Date(changeData.baselineTimestamp).toLocaleDateString(undefined, { timeZone: campaign?.reportingTimeZone || "UTC" })}
                         </p>
-                      ) : null}
+                      )}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         {changeData.changes.slice(0, 4).map((item, idx) => {
                           const isUp = item.direction === "up";
@@ -1284,7 +1352,7 @@ export default function CampaignPerformanceSummary() {
                                   isNegative ? 'text-red-700 dark:text-red-400' :
                                   'text-muted-foreground/70'
                                 }`}>
-                                  {item.comparisonUnavailable ? 'Comparison unavailable — selected GA4 history does not cover both periods' : isFlat ? 'No change' :
+                                  {item.comparisonUnavailable ? 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
                                     `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
                                   }
                                 </span>

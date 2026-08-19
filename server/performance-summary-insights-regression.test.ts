@@ -33,7 +33,7 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
   financialConversionsState: "ready",
   trafficRows: dailyRows,
   dataThroughDate: "2026-08-18",
-  expectedRefreshAt: "2026-08-19T03:00:00.000Z",
+  lastCompletedRefreshAt: "2026-08-19T11:38:57.164Z",
   financialRevenue: 72_766.69,
   financialSpend: 2_699.75,
   financialConversions: 251,
@@ -105,8 +105,8 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       updatedAt: "2026-08-19T16:24:00.000Z",
     }));
 
-    expect(freshRows.filter((row) => resolvePerformanceFreshPersistedMetricValue(row, "2026-08-19T03:00:00.000Z") !== null)).toHaveLength(13);
-    expect(resolvePerformanceFreshPersistedMetricValue({ currentValue: "317", updatedAt: "2026-08-19T02:59:59.999Z" }, "2026-08-19T03:00:00.000Z")).toBeNull();
+    expect(freshRows.filter((row) => resolvePerformanceFreshPersistedMetricValue(row, "2026-08-19T11:38:57.164Z") !== null)).toHaveLength(13);
+    expect(resolvePerformanceFreshPersistedMetricValue({ currentValue: "317", updatedAt: "2026-08-19T11:38:57.163Z" }, "2026-08-19T11:38:57.164Z")).toBeNull();
   });
 
   it("uses a freshly recomputed persisted target value when the parallel traffic read is stale", () => {

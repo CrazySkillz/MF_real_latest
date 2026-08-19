@@ -36,7 +36,7 @@ export type PerformanceRecommendedActionsInput = {
   financialConversionsState: GA4KpiInputState;
   trafficRows: any[];
   dataThroughDate: string;
-  expectedRefreshAt: string;
+  lastCompletedRefreshAt: string;
   financialRevenue: number;
   financialSpend: number;
   financialConversions: number;
@@ -85,11 +85,11 @@ const parseNumber = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-export const resolvePerformanceFreshPersistedMetricValue = (item: any, expectedRefreshAt: string): number | null => {
+export const resolvePerformanceFreshPersistedMetricValue = (item: any, lastCompletedRefreshAt: string): number | null => {
   const current = parseNumber(item?.currentValue);
   const refreshedAt = Date.parse(String(item?.updatedAt || item?.lastUpdated || ""));
-  const expectedAt = Date.parse(String(expectedRefreshAt || ""));
-  return current !== null && Number.isFinite(refreshedAt) && Number.isFinite(expectedAt) && refreshedAt >= expectedAt
+  const completedAt = Date.parse(String(lastCompletedRefreshAt || ""));
+  return current !== null && Number.isFinite(refreshedAt) && Number.isFinite(completedAt) && refreshedAt >= completedAt
     ? current
     : null;
 };
@@ -207,8 +207,8 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
   const trafficWindow = summarizePerformanceTrafficWindow(input.trafficRows, input.dataThroughDate);
   const trafficState = input.trafficState === "ready" && !trafficWindow.valid ? "unavailable" : input.trafficState;
   // The certified recompute updates currentValue and updatedAt together. A row
-  // updated after this reporting day's refresh boundary is already verified.
-  const persistedValue = (row: any) => resolvePerformanceFreshPersistedMetricValue(row, input.expectedRefreshAt);
+  // updated after the last completed source refresh is already verified.
+  const persistedValue = (row: any) => resolvePerformanceFreshPersistedMetricValue(row, input.lastCompletedRefreshAt);
   const liveValue = (row: any) => persistedValue(row) ?? resolvePerformanceLiveMetricValue({
     item: row,
     trafficTotals: trafficWindow.totals,

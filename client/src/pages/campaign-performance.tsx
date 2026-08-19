@@ -482,8 +482,8 @@ export default function CampaignPerformanceSummary() {
     : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : parseNum(spendSummaryMetric?.value);
   const scoringRevenue = demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue;
-  const scoringExpectedRefreshAt = String(performanceGA4SummaryResponse?.expectedRefreshAt || "");
-  const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringExpectedRefreshAt);
+  const scoringLastCompletedRefreshAt = String(performanceGA4SummaryResponse?.lastCompletedRefreshAt || "");
+  const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringLastCompletedRefreshAt);
   const getLiveScoringValue = (item: any) => getFreshPersistedScoringValue(item) ?? resolvePerformanceLiveMetricValue({
     item,
     trafficTotals: scoringTrafficTotals,
@@ -511,7 +511,7 @@ export default function CampaignPerformanceSummary() {
     financialConversionsState: financialConversionsInputState,
     trafficRows: scoringTrafficRows,
     dataThroughDate: String(performanceGA4SummaryResponse?.dataThroughDate || ""),
-    expectedRefreshAt: scoringExpectedRefreshAt,
+    lastCompletedRefreshAt: scoringLastCompletedRefreshAt,
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
     financialConversions: scoringConversions,

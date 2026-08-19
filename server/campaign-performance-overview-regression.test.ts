@@ -38,8 +38,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/benchmarks`]');
-    expect(scoringBlock).toContain("const scoringExpectedRefreshAt = String(performanceGA4SummaryResponse?.expectedRefreshAt || \"\");");
-    expect(scoringBlock).toContain("const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringExpectedRefreshAt);");
+    expect(scoringBlock).toContain("const scoringLastCompletedRefreshAt = String(performanceGA4SummaryResponse?.lastCompletedRefreshAt || \"\");");
+    expect(scoringBlock).toContain("const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringLastCompletedRefreshAt);");
     expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => getFreshPersistedScoringValue(item) ?? resolvePerformanceLiveMetricValue({");
     expect(scoringBlock).toContain("const current = getLiveScoringValue(kpi);");
     expect(scoringBlock).toContain("const current = getLiveScoringValue(benchmark);");

@@ -22,6 +22,24 @@ export type KPINotificationHide = { id: string; campaignId: string; metadata: st
 export const selectMaterializedRevenueTotal = (aggregate: number, subCampaign: number, hasAggregate: boolean) =>
   hasAggregate ? aggregate : subCampaign;
 
+export const selectStableExactDateSpendSnapshot = <T extends { totalSpend?: any; metrics?: any }>(snapshots: T[]): T | undefined => {
+  const snapshotKey = (snapshot: T): string | null => {
+    const metric = snapshot?.metrics?.performanceSummary?.totals?.spend;
+    const value = Number(metric?.value);
+    const totalSpend = Number(snapshot?.totalSpend);
+    const sources = Array.isArray(metric?.sources) ? metric.sources.map(String).sort() : [];
+    if (metric?.available !== true || !Number.isFinite(value) || value < 0 || sources.length === 0
+      || !Number.isFinite(totalSpend) || Math.abs(totalSpend - value) >= 0.005) return null;
+    return `${value.toFixed(2)}::${sources.join("|")}`;
+  };
+  const keyed = snapshots.map((snapshot) => ({ snapshot, key: snapshotKey(snapshot) }));
+  if (keyed.length === 0 || keyed.some(({ key }) => key === null)) return undefined;
+  const counts = new Map<string, number>();
+  for (const { key } of keyed) counts.set(key!, (counts.get(key!) || 0) + 1);
+  const stableKey = Array.from(counts).find(([, count]) => count > keyed.length / 2)?.[0];
+  return stableKey ? keyed.find(({ key }) => key === stableKey)?.snapshot : undefined;
+};
+
 const spendPlatformContextPredicate = (platformContext?: SpendPlatformContext) => {
   if (!platformContext) return undefined;
   return platformContext === "ga4"
@@ -4692,13 +4710,15 @@ export class DatabaseStorage implements IStorage {
     const previousSnapshotDateFilter = exactComparisonDate
       ? sql`to_char(timezone(${comparisonBoundary.reportingTimeZone}, timezone('UTC', ${metricSnapshots.recordedAt})), 'YYYY-MM-DD') = ${exactComparisonDate}`
       : sql`${metricSnapshots.recordedAt} <= ${targetDate}`;
-    const [previousSnapshot] = await db.select().from(metricSnapshots)
-      .where(and(
-        eq(metricSnapshots.campaignId, campaignId),
-        previousSnapshotDateFilter,
-      ))
-      .orderBy(desc(metricSnapshots.recordedAt))
-      .limit(1);
+    const previousSnapshotsQuery = db.select().from(metricSnapshots)
+      .where(and(eq(metricSnapshots.campaignId, campaignId), previousSnapshotDateFilter))
+      .orderBy(desc(metricSnapshots.recordedAt));
+    const previousSnapshots = exactComparisonDate
+      ? await previousSnapshotsQuery
+      : await previousSnapshotsQuery.limit(1);
+    const previousSnapshot = exactComparisonDate
+      ? selectStableExactDateSpendSnapshot(previousSnapshots)
+      : previousSnapshots[0];
 
     return {
       current: currentSnapshot || null,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
+import { selectStableExactDateSpendSnapshot } from "./storage";
 
 describe("campaign Performance Summary consolidated view regression guard", () => {
   it("selects comparison days using the campaign reporting timezone", () => {
@@ -238,7 +239,19 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(comparisonRoute).toContain('comparisonDate || undefined');
     expect(comparisonStorage).toContain("to_char(timezone(${comparisonBoundary.reportingTimeZone}, timezone('UTC', ${metricSnapshots.recordedAt})), 'YYYY-MM-DD') = ${exactComparisonDate}");
     expect(comparisonStorage).toContain('sql`${metricSnapshots.recordedAt} <= ${targetDate}`');
+    expect(comparisonStorage).toContain("selectStableExactDateSpendSnapshot(previousSnapshots)");
     expect(page).toContain('ga4MovementMetricKeys.has(config.key) || config.key === "spend"');
+  });
+
+  it("uses the stable exact-day Spend value instead of one incomplete outlier", () => {
+    const snapshot = (value: number) => ({
+      totalSpend: value,
+      metrics: { performanceSummary: { totals: { spend: { available: true, value, sources: ["canonical_spend_sources"] } } } },
+    });
+
+    expect(selectStableExactDateSpendSnapshot([snapshot(2000), snapshot(2699.75), snapshot(2699.75)])?.totalSpend).toBe(2699.75);
+    expect(selectStableExactDateSpendSnapshot([snapshot(2300)])?.totalSpend).toBe(2300);
+    expect(selectStableExactDateSpendSnapshot([snapshot(2000), snapshot(2699.75)])).toBeUndefined();
   });
 
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {

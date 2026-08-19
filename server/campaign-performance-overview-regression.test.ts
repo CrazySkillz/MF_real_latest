@@ -26,7 +26,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
       endAt: new Date("2026-02-28T22:59:59.999Z"),
     });
     expect(routes).toContain("(req as any)._campaign?.reportingTimeZone");
-    expect(storage).toContain("getReportingComparisonBoundary(comparisonType, reportingTimeZone).endAt");
+    expect(storage).toContain("const comparisonBoundary = getReportingComparisonBoundary(comparisonType, reportingTimeZone);");
   });
 
   it("reads KPI and Benchmark target rows directly from the campaign's GA4 configuration", () => {
@@ -216,21 +216,28 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }');
   });
 
-  it("compares Spend with the exact GA4-scoped total through the selected historical date", () => {
+  it("compares Spend with the compatible Performance Summary snapshot recorded on the exact historical date", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
-    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/spend-to-date"');
-    const routeEnd = routes.indexOf("const toISODateUTC", routeStart);
-    const spendRoute = routes.slice(routeStart, routeEnd);
+    const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/snapshots/comparison"');
+    const routeEnd = routes.indexOf("// Get campaign snapshots by time period", routeStart);
+    const comparisonRoute = routes.slice(routeStart, routeEnd);
+    const storageStart = storage.indexOf("async getComparisonData(");
+    const storageEnd = storage.indexOf("async getBenchmarkAnalytics", storageStart);
+    const comparisonStorage = storage.slice(storageStart, storageEnd);
 
-    expect(spendRoute).toContain('const requestedEndDate = String((req.query as any)?.endDate || "").trim();');
-    expect(spendRoute).toContain('platformContext !== "ga4"');
-    expect(spendRoute).toContain('requestedEndDate > latestEndDate');
-    expect(spendRoute).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)');
     expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange)');
-    expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
-    expect(page).toContain('historicalSpendComparison?.endDate === spendComparisonEndDate');
-    expect(page).toContain('const previous = Number(historicalSpendComparison?.spendToDate);');
+    expect(page).toContain('snapshots/comparison?type=${comparisonType}&comparisonDate=${encodeURIComponent(spendComparisonEndDate)}');
+    expect(page).not.toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
+    expect(page).toContain('historicalSpendComparison?.comparisonDate === spendComparisonEndDate');
+    expect(page).toContain('aggregateSnapshotMetricAvailable(historicalSpendSummary, "spend")');
+    expect(page).toContain('JSON.stringify(currentSpendSourceIds) === JSON.stringify(historicalSpendSourceIds)');
+    expect(page).toContain('const previous = aggregateSnapshotMetricValue(historicalSpendSummary, "spend");');
+    expect(comparisonRoute).toContain('comparisonDate > latestComparisonDate');
+    expect(comparisonRoute).toContain('comparisonDate || undefined');
+    expect(comparisonStorage).toContain("to_char(timezone(${comparisonBoundary.reportingTimeZone}, timezone('UTC', ${metricSnapshots.recordedAt})), 'YYYY-MM-DD') = ${exactComparisonDate}");
+    expect(comparisonStorage).toContain('sql`${metricSnapshots.recordedAt} <= ${targetDate}`');
     expect(page).toContain('ga4MovementMetricKeys.has(config.key) || config.key === "spend"');
   });
 

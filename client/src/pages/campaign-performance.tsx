@@ -203,13 +203,13 @@ export default function CampaignPerformanceSummary() {
   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
   const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
   const { data: historicalSpendComparison } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "spend-to-date", "ga4", spendComparisonEndDate],
+    queryKey: ["/api/campaigns", campaignId, "snapshots", "spend-comparison", comparisonType, spendComparisonEndDate],
     enabled: !!campaignId && !!performanceGA4PropertyId && !!spendComparisonEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}`, { credentials: "include" });
+      const response = await fetch(`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}&comparisonDate=${encodeURIComponent(spendComparisonEndDate)}`, { credentials: "include" });
       const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.success || data?.endDate !== spendComparisonEndDate) throw new Error(data?.error || "Failed to fetch historical Spend");
+      if (!response.ok || data?.comparisonDate !== spendComparisonEndDate) throw new Error(data?.message || "Failed to fetch historical Spend");
       return data;
     },
   });
@@ -893,11 +893,18 @@ export default function CampaignPerformanceSummary() {
       }
     };
     changeMetricConfigs.forEach(addGA4Change);
+    const historicalSpendSummary = historicalSpendComparison?.previous?.metrics?.performanceSummary;
+    const currentSpendSourceIds = aggregateMetricSourceIds(performanceSummary, "spend");
+    const historicalSpendSourceIds = aggregateMetricSourceIds(historicalSpendSummary, "spend");
+    const spendSourcesCompatible = currentSpendSourceIds.length > 0
+      && JSON.stringify(currentSpendSourceIds) === JSON.stringify(historicalSpendSourceIds);
     if (!demoMode && performanceGA4PropertyId && spendComparisonEndDate
-      && historicalSpendComparison?.endDate === spendComparisonEndDate
-      && aggregateSnapshotMetricAvailable(performanceSummary, "spend")) {
+      && historicalSpendComparison?.comparisonDate === spendComparisonEndDate
+      && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
+      && aggregateSnapshotMetricAvailable(historicalSpendSummary, "spend")
+      && spendSourcesCompatible) {
       const current = aggregateSnapshotMetricValue(performanceSummary, "spend");
-      const previous = Number(historicalSpendComparison?.spendToDate);
+      const previous = aggregateSnapshotMetricValue(historicalSpendSummary, "spend");
       if (Number.isFinite(current) && Number.isFinite(previous) && current >= 0 && previous >= 0) {
         const change = current - previous;
         const sourceLabels = aggregateMetricSources(performanceSummary, "spend");

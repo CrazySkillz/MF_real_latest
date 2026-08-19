@@ -425,7 +425,7 @@ export interface IStorage {
   getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]>;
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
-  getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month', reportingTimeZone?: string): Promise<{
+  getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month', reportingTimeZone?: string, comparisonDate?: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
   }>;
@@ -4676,8 +4676,11 @@ export class DatabaseStorage implements IStorage {
     campaignId: string,
     comparisonType: 'yesterday' | 'last_week' | 'last_month',
     reportingTimeZone?: string,
+    comparisonDate?: string,
   ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null }> {
-    const targetDate = getReportingComparisonBoundary(comparisonType, reportingTimeZone).endAt;
+    const comparisonBoundary = getReportingComparisonBoundary(comparisonType, reportingTimeZone);
+    const targetDate = comparisonBoundary.endAt;
+    const exactComparisonDate = String(comparisonDate || "").trim();
 
     // Get the most recent snapshot (current)
     const [currentSnapshot] = await db.select().from(metricSnapshots)
@@ -4685,12 +4688,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(metricSnapshots.recordedAt))
       .limit(1);
 
-    // Get the most recent snapshot on or before the target date (previous)
-    // Uses SQL to efficiently find the closest snapshot without loading all records
+    // Exact-date consumers must not silently fall back to a different reporting day.
+    const previousSnapshotDateFilter = exactComparisonDate
+      ? sql`to_char(timezone(${comparisonBoundary.reportingTimeZone}, timezone('UTC', ${metricSnapshots.recordedAt})), 'YYYY-MM-DD') = ${exactComparisonDate}`
+      : sql`${metricSnapshots.recordedAt} <= ${targetDate}`;
     const [previousSnapshot] = await db.select().from(metricSnapshots)
       .where(and(
         eq(metricSnapshots.campaignId, campaignId),
-        sql`${metricSnapshots.recordedAt} <= ${targetDate}`
+        previousSnapshotDateFilter,
       ))
       .orderBy(desc(metricSnapshots.recordedAt))
       .limit(1);

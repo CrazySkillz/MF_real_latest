@@ -29976,12 +29976,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid comparison type. Use: yesterday, last_week, or last_month" });
       }
 
+      const comparisonDate = String((req.query as any)?.comparisonDate || "").trim();
+      const parsedComparisonDate = new Date(`${comparisonDate}T00:00:00.000Z`);
+      const latestComparisonDate = getReportingDateWindow(1, (req as any)._campaign?.reportingTimeZone).endDate;
+      if (comparisonDate && (!/^\d{4}-\d{2}-\d{2}$/.test(comparisonDate)
+        || Number.isNaN(parsedComparisonDate.getTime()) || parsedComparisonDate.toISOString().slice(0, 10) !== comparisonDate
+        || comparisonDate < "1900-01-01" || comparisonDate > latestComparisonDate)) {
+        return res.status(400).json({ message: "comparisonDate must be a completed campaign reporting date in YYYY-MM-DD format" });
+      }
+
       const comparisonData = await storage.getComparisonData(
         id,
         type as 'yesterday' | 'last_week' | 'last_month',
         (req as any)._campaign?.reportingTimeZone,
+        comparisonDate || undefined,
       );
-      res.json(comparisonData);
+      res.json(comparisonDate ? { ...comparisonData, comparisonDate } : comparisonData);
     } catch (error) {
       console.error('Comparison data fetch error:', error);
       res.status(500).json({ message: "Failed to fetch comparison data" });

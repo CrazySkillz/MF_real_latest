@@ -37,6 +37,7 @@ const connection = {
   method: "stored",
   isPrimary: true,
   lookbackDays: 30,
+  importStartDate: "2026-07-01",
 };
 const sourceRow = {
   date: "2026-07-31",
@@ -160,6 +161,47 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(sessions).toMatchObject({ currentValue: "100", __alertDecisionEligible: true });
     expect(conversionRate).toMatchObject({ currentValue: "20", __alertDecisionEligible: true });
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("uses the full cumulative traffic boundary and financial conversions for CPA alerts", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      ...campaign,
+      startDate: "2026-07-20T00:00:00.000Z",
+    });
+    const oauthConnection = {
+      ...connection,
+      method: "access_token",
+      accessToken: "access-token",
+    };
+    storageMock.getGA4Connections.mockResolvedValue([oauthConnection]);
+    storageMock.getGA4Connection.mockResolvedValue(oauthConnection);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{
+      ...sourceRow,
+      sessions: 100,
+      conversions: 20,
+    }]);
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, sourceIds: ["spend-source"] });
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      totals: { users: 90, sessions: 120, pageviews: 140, conversions: 25, revenue: 2 },
+    });
+
+    const cpa = await resolveAlertCurrentValueForDecision(row("cpa"));
+
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith(
+      campaign.id,
+      connection.propertyId,
+      "2026-07-01",
+      "2026-07-31",
+    );
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      connection.propertyId,
+      "access-token",
+      "2026-07-20",
+      "2026-07-31",
+      "scoped_campaign",
+      "USD",
+    );
+    expect(cpa).toMatchObject({ currentValue: "4", __alertDecisionEligible: true });
   });
 
   it("preserves normal credential refresh but forbids it in notification validation read-only mode", async () => {

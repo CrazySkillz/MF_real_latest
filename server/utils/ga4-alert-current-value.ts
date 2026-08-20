@@ -146,7 +146,8 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const startDate = reportingWindow.startDate;
     const endDate = reportingWindow.endDate;
     const financialStartDate = campaignStartDate(campaign);
-    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, endDate).catch(() => null as any);
+    const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
+    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate).catch(() => null as any);
     const sourceRows = Array.isArray(rows) ? rows : [];
     const trafficRows = sourceRows.filter((sourceRow: any) => {
       const date = String(sourceRow?.date || "");
@@ -277,7 +278,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? ga4Inputs.users),
       sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? ga4Inputs.sessions),
       pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? ga4Inputs.pageviews),
-      conversions: ga4Inputs.conversions,
+      conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
       ga4Revenue: Number((parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0).toFixed(2)),
       engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
     } : null;

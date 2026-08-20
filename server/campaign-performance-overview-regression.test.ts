@@ -151,7 +151,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
       { name: "Total Users", metric: "Total Users", currentValue: 1_184, targetValue: 820, unit: "count", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
       { name: "Engagement Rate", metric: "Engagement Rate", currentValue: 68.39, targetValue: 89, unit: "%", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
       { name: "Conversion Rate", metric: "Conversion Rate", currentValue: 12.85, targetValue: 15, unit: "%", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
-      { name: "CPA", metric: "CPA", currentValue: 17.76, targetValue: 9, unit: "USD", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
+      { name: "CPA", metric: "CPA", currentValue: 10.76, targetValue: 9, unit: "USD", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
     ];
     const ranked = rows.map((item) => {
       const current = Number(resolvePerformanceConfiguredMetricValue(item));
@@ -163,13 +163,13 @@ describe("campaign Performance Summary consolidated view regression guard", () =
       const comparable = resolveGA4InsightTargetPeriodCompatibility(item).comparable;
       return { item, current, band, comparable, severity: Math.abs(effectiveDeltaPct), priorityRank: resolvePerformancePriorityRank(item.priority) };
     });
-    expect(ranked.find((entry) => entry.item.name === "CPA")).toMatchObject({ current: 17.76, comparable: true, band: "below" });
+    expect(ranked.find((entry) => entry.item.name === "CPA")).toMatchObject({ current: 10.76, comparable: true, band: "below" });
     const comparableLagging = ranked.filter((entry) => entry.comparable && entry.band === "below")
       .sort((a, b) => a.priorityRank - b.priorityRank || b.severity - a.severity);
 
     expect(comparableLagging.map((entry) => [entry.item.name, entry.current, Number(entry.severity.toFixed(2))])).toEqual([
-      ["CPA", 17.76, 97.33],
       ["Engagement Rate", 68.39, 23.16],
+      ["CPA", 10.76, 19.56],
       ["Conversion Rate", 12.85, 14.33],
     ]);
   });

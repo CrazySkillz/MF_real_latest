@@ -517,7 +517,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? inputs.users),
         sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? inputs.sessions),
         pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? inputs.pageviews),
-        conversions: inputs.conversions,
+        conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
         ga4Revenue: round2(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0),
         importedRevenue: round2(importedRevenueValue ?? 0),
         spend: round2(spendValue ?? 0),

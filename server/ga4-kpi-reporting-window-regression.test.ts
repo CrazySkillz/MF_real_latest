@@ -151,7 +151,7 @@ describe("GA4 KPI authoritative reporting window", () => {
     });
   });
 
-  it("persists traffic, rate, and CPA values from the cumulative import-to-date conversions", async () => {
+  it("persists cumulative traffic values while CPA uses campaign-to-date financial conversions", async () => {
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", suppressAlerts: true });
 
     expect(result.date).toBe("2026-07-30");
@@ -162,7 +162,7 @@ describe("GA4 KPI authoritative reporting window", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("conversions", { currentValue: "40" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("conversion-rate", { currentValue: "10" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("engagement-rate", { currentValue: "65" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "25" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "10" });
     expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({
       recordedAt: new Date("2026-07-30T23:59:59.000Z"),
       notes: "auto:ga4_daily:2026-07-30;ga4_scope_v1:123:America%2FLos_Angeles:USD:%5B%5D",

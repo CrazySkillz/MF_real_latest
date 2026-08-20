@@ -86,7 +86,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getGA4Connection.mockResolvedValue({ id: "connection-1", method: "access_token", accessToken: "token" });
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
       currencyCode: "USD",
-      totals: { users: 50, sessions: 100, pageviews: 200, conversions: 10, revenue: 1000 },
+      totals: { users: 50, sessions: 100, pageviews: 200, conversions: 20, revenue: 1000 },
     });
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: "USD", sourceIds: ["revenue-current-day"] });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 200, currency: "USD", sourceIds: ["spend-current-day"] });
@@ -130,7 +130,7 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "6.5" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roi", { currentValue: "550" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "20" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "10" });
     expect(checkPerformanceAlertsMock).toHaveBeenCalledTimes(1);
   });
 

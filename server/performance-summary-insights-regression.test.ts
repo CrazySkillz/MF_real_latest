@@ -73,7 +73,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       trafficTotals,
       financialRevenue: 72_766.69,
       financialSpend: 2_699.75,
-      financialConversions: 152,
+      financialConversions: 251,
     });
 
     expect(value("Total Users")).toBe(1_184);
@@ -84,7 +84,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(value("Revenue")).toBe(72_766.69);
     expect(value("ROAS")).toBe(26.95);
     expect(value("ROI")).toBe(2_595.31);
-    expect(value("CPA")).toBe(17.76);
+    expect(value("CPA")).toBe(10.76);
   });
 
   it("uses the Performance Summary aggregate for Top Priority metrics when available", () => {
@@ -202,7 +202,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
   it("scores every standard target against cumulative Overview values", () => {
     const productionKpis = [
       { metric: "conversion_rate", name: "Conversion Rate", currentValue: 12.85, targetValue: 15, trackingPeriod: 30 },
-      { metric: "cpa", name: "Cost Per Acquisition", currentValue: 17.76, targetValue: 9, timeframe: "monthly", trackingPeriod: 30 },
+      { metric: "cpa", name: "Cost Per Acquisition", currentValue: 10.76, targetValue: 9, timeframe: "monthly", trackingPeriod: 30 },
       { metric: "engagement_rate", name: "Engagement Rate", currentValue: 68.39, targetValue: 89, trackingPeriod: 30 },
       { metric: "revenue", name: "Revenue", currentValue: 72_766.69, targetValue: 25_000, timeframe: "monthly" },
       { metric: "roas", name: "ROAS", currentValue: 26.95, targetValue: 25, timeframe: "monthly" },
@@ -252,9 +252,9 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       totalOnTrackMetrics: 6,
       healthScore: 60,
     });
-    expect(actions.map((action) => action.title)).toEqual(["Review Cost Per Acquisition", "Review Engagement Rate", "Review Key Events per Session"]);
-    expect(actions[0].message).toContain("Verified $17.76");
-    expect(actions[1].message).toContain("Verified 68.39%");
+    expect(actions.map((action) => action.title)).toEqual(["Review Engagement Rate", "Review Cost Per Acquisition", "Review Key Events per Session"]);
+    expect(actions[0].message).toContain("Verified 68.39%");
+    expect(actions[1].message).toContain("Verified $10.76");
     expect(actions[2].message).toContain("Verified 12.85%");
   });
 
@@ -285,23 +285,23 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
   it("uses campaign-to-date financial inputs and lower-is-better CPA direction", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
-      kpis: [{ metric: "cpa", name: "Cost Per Acquisition", currentValue: 17.76, targetValue: 9, timeframe: "lifetime", priority: "high" }],
+      kpis: [{ metric: "cpa", name: "Cost Per Acquisition", currentValue: 10.76, targetValue: 9, timeframe: "lifetime", priority: "high" }],
     }));
 
     expect(action.type).toBe("warning");
     expect(action.title).toBe("Review Cost Per Acquisition");
-    expect(action.message).toContain("Verified $17.76 from campaign-to-date financial inputs versus the $9.00 KPI target");
+    expect(action.message).toContain("Verified $10.76 from campaign-to-date financial inputs versus the $9.00 KPI target");
     expect(action.message).toContain("campaign-to-date financial inputs");
   });
 
   it("uses the refreshed CPA current value when its independent conversion freshness flag is stale", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       financialConversionsState: "stale",
-      kpis: [{ metric: "cpa", name: "Cost Per Acquisition", currentValue: 17.76, targetValue: 9, timeframe: "lifetime" }],
+      kpis: [{ metric: "cpa", name: "Cost Per Acquisition", currentValue: 10.76, targetValue: 9, timeframe: "lifetime" }],
     }));
 
     expect(action).toMatchObject({ type: "warning", title: "Review Cost Per Acquisition" });
-    expect(action.message).toContain("Verified $17.76");
+    expect(action.message).toContain("Verified $10.76");
   });
 
   it("does not recommend corrective action when verified ROAS beats a compatible target", () => {

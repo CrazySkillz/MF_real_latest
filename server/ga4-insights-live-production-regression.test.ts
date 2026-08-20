@@ -246,6 +246,16 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('actual.searchParams.get("days") === "30"');
     expect(validator).toContain('actual.searchParams.get("days") === "60"');
     expect(validator).toContain("overviewDailyWindow:");
+    expect(validator).toContain("g.import_start_date");
+    expect(validator).toContain("uiOverviewDailyBody?.overviewStartDate !== cumulativeStartDate");
+    expect(validator).toContain('Object.prototype.hasOwnProperty.call(uiOverviewDailyBody || {}, "overviewTotals")');
+    expect(validator).toContain("summarizeGA4TrafficRows(persistedOverviewRows.rows)");
+    expect(validator).toContain("input does not match persisted import-to-date rows");
+    expect(validator).toContain("breakdownTotals: uiOverviewDailyBody.overviewTotals");
+    expect(validator).toContain("computeAttainmentPct({ current, target, lowerIsBetter })");
+    expect(validator).toContain("computeBenchmarkThresholdResult({ metric: benchmark?.metric");
+    expect(validator).toContain("contradicts the cumulative value, target, or metric direction");
+    expect(validator).toContain("cumulativeTargetInputs:");
     expect(validator).toContain("const pageInputEntries = await Promise.all(pageInputPromises)");
     expect(validator).toContain("responses[name] = { ok: true, status: response.status(), body: await response.json() }");
     expect(validator).toContain('response.body?.error || response.body?.message || "no API reason returned"');

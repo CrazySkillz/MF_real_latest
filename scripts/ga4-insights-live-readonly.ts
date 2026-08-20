@@ -2,6 +2,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { chromium, type Page } from "playwright";
 import { pool } from "../server/db";
 import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsCalendarRollup, buildGA4InsightsHistoryScopeMarker, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
+import { getGA4KpiReportingWindowLabel } from "../shared/ga4-kpi-consumer-state";
+import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
+import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { computeAttainmentPct, computeBenchmarkThresholdResult, computeEffectiveDeltaPct, isLowerIsBetterKpi } from "../shared/kpi-math";
+import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { getReportingDateWindow } from "../server/utils/reporting-timezone";
 
 const BASE_URL = process.env.GA4_INSIGHTS_BASE_URL || "https://marketforensics.onrender.com";
@@ -36,6 +41,25 @@ const formatMoney = (value: unknown, currency: string) => new Intl.NumberFormat(
 const formatPct = (value: unknown) => {
   const rounded = Math.round(Number(value || 0) * 10) / 10;
   return (rounded === Math.floor(rounded) ? String(Math.round(rounded)) : rounded.toFixed(1)) + "%";
+};
+const formatKpiValue = (value: unknown, unit: unknown) => {
+  const number = Number(value);
+  const normalizedUnit = String(unit || "").trim();
+  const formatted = normalizedUnit === "count"
+    ? number.toLocaleString("en-US", { maximumFractionDigits: 0 })
+    : normalizedUnit === "%" || normalizedUnit === "ratio"
+      ? (Math.round(number * 10) / 10).toLocaleString("en-US", { maximumFractionDigits: 1 })
+      : number.toLocaleString("en-US", { minimumFractionDigits: normalizedUnit ? 2 : 0, maximumFractionDigits: 2 });
+  return `${normalizedUnit === "$" ? "$" : ""}${formatted}${normalizedUnit === "%" ? "%" : ""}`;
+};
+const formatBenchmarkValue = (value: unknown, unit: unknown, currency: string) => {
+  const number = Number(value);
+  const normalizedUnit = String(unit || "").trim();
+  if (normalizedUnit === "%") return formatPct(number);
+  if (normalizedUnit === "$" || /^[A-Z]{3}$/.test(normalizedUnit)) return formatMoney(number, normalizedUnit === "$" ? currency : normalizedUnit);
+  if (normalizedUnit === "ratio") return number.toFixed(2) + "x";
+  if (normalizedUnit === "seconds") return number.toFixed(1) + "s";
+  return number.toLocaleString("en-US");
 };
 const formatDelta = (current: number, previous: number) => {
   const delta = calculateGA4InsightsDeltaPct(current, previous);
@@ -110,7 +134,7 @@ try {
   const inventory = await client.query(`
     SELECT c.owner_id, c.client_id, cl.owner_id AS client_owner_id,
            c.reporting_time_zone, c.ga4_campaign_filter, c.currency,
-           g.property_id, g.display_name, g.property_name
+           g.property_id, g.display_name, g.property_name, g.import_start_date
     FROM campaigns c
     LEFT JOIN clients cl ON cl.id = c.client_id
     JOIN ga4_connections g ON g.campaign_id = c.id AND g.is_active = true
@@ -281,6 +305,26 @@ try {
   if (normalizeProperty(uiOverviewDailyBody?.propertyId) !== normalizeProperty(propertyId)) throw new Error("Live-page 30-day property parity failed");
   if (uiOverviewDailyBody?.providerRefreshAttempted !== false) throw new Error("Live-page 30-day read-only parity triggered a provider refresh");
   if (uiOverviewDailyBody?.startDate !== expected30.startDate || uiOverviewDailyBody?.endDate !== expected30.endDate) throw new Error("Live-page 30-day window parity failed");
+  const cumulativeStartDate = String(row.import_start_date || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cumulativeStartDate) || uiOverviewDailyBody?.overviewStartDate !== cumulativeStartDate) {
+    throw new Error("Live-page cumulative KPI/Benchmark start-date parity failed");
+  }
+  if (!Object.prototype.hasOwnProperty.call(uiOverviewDailyBody || {}, "overviewTotals")) {
+    throw new Error("Live-page cumulative KPI/Benchmark totals are unavailable");
+  }
+  const persistedOverviewRows = await client.query(`
+    SELECT users, sessions, pageviews, conversions, revenue,
+           engaged_sessions AS "engagedSessions", engagement_rate AS "engagementRate"
+    FROM ga4_daily_metrics
+    WHERE campaign_id = $1 AND property_id = $2 AND date >= $3 AND date <= $4
+    ORDER BY date
+  `, [CAMPAIGN_ID, propertyId, cumulativeStartDate, expected30.endDate]);
+  const cumulativeOverviewTotals = summarizeGA4TrafficRows(persistedOverviewRows.rows);
+  for (const metric of ["users", "sessions", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"] as const) {
+    if (Math.abs(Number(uiOverviewDailyBody.overviewTotals?.[metric] || 0) - Number(cumulativeOverviewTotals[metric] || 0)) > 0.005) {
+      throw new Error(`Live-page cumulative ${metric} input does not match persisted import-to-date rows`);
+    }
+  }
   const uiRollups = buildGA4InsightsRollups(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
   await owner.page.getByRole("heading", { name: "Insights", exact: true }).waitFor({ timeout: 120000 });
   await owner.page.getByText("Executive Financials", { exact: true }).waitFor({ timeout: 120000 });
@@ -373,6 +417,15 @@ try {
   const financialRoas = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialRoi = financialSpend > 0 ? ((financialRevenue - financialSpend) / financialSpend) * 100 : 0;
   const financialCpa = financialSpend > 0 && financialConversions > 0 ? financialSpend / financialConversions : 0;
+  const overviewRate = Number(uiOverviewDailyBody.overviewTotals?.engagementRate || 0);
+  const cumulativeValueInput = {
+    breakdownTotals: uiOverviewDailyBody.overviewTotals,
+    overviewEngagementRate: overviewRate > 1 ? overviewRate / 100 : overviewRate,
+    financialRevenue,
+    financialSpend,
+    financialROI: financialRoi,
+    financialCPA: financialCpa,
+  };
   const financialRevenueAvailable = revenueMetricAvailable;
   const financialSpendAvailable = spendMetricAvailable;
   const expectedFinancialValues: Record<string, string> = {
@@ -826,6 +879,9 @@ try {
   }
   const kpiIds = new Set((Array.isArray(responses.kpis.body) ? responses.kpis.body : []).map((item: any) => String(item?.id || "")));
   const benchmarkIds = new Set((Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body : []).map((item: any) => String(item?.id || "")));
+  const kpisById = new Map((Array.isArray(responses.kpis.body) ? responses.kpis.body : []).map((item: any) => [String(item?.id || ""), item]));
+  const benchmarksById = new Map((Array.isArray(responses.benchmarks.body) ? responses.benchmarks.body : []).map((item: any) => [String(item?.id || ""), item]));
+  let cumulativeTargetFindingsValidated = 0;
   for (const finding of allFindings) {
     const id = String(finding?.id || "");
     if ((id.startsWith("kpi:") || id.startsWith("positive:kpi:")) && !kpiIds.has(id.slice(id.lastIndexOf(":") + 1))) {
@@ -839,6 +895,37 @@ try {
     }
     if (id.startsWith("integrity:bench") && !benchmarkIds.has(id.slice(id.lastIndexOf(":") + 1))) {
       throw new Error("A Benchmark integrity finding does not map to the scoped Benchmark response");
+    }
+    if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) {
+      const kpi = kpisById.get(id.slice(id.lastIndexOf(":") + 1)) as any;
+      const identity = resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name);
+      const current = Number(resolveGA4KpiLiveValue({ kpi, ...cumulativeValueInput }));
+      const target = Number(kpi?.targetValue);
+      const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric, name: kpi?.name });
+      const attainment = computeAttainmentPct({ current, target, lowerIsBetter });
+      const improvement = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
+      if (!identity || !Number.isFinite(target) || target <= 0 || attainment === null || improvement === null) {
+        throw new Error("A KPI target finding was generated from an invalid cumulative comparison");
+      }
+      if (id.startsWith("positive:") ? improvement < 10 : attainment >= 100) {
+        throw new Error("A KPI target finding contradicts the cumulative value, target, or metric direction");
+      }
+      const expected = `${getGA4KpiReportingWindowLabel(kpi?.metric, kpi?.name)}: Current ${formatKpiValue(current, kpi?.unit)} vs target ${formatKpiValue(target, kpi?.unit)}`;
+      assertIncludes(finding.description, expected, `cumulative KPI finding ${id}`);
+      cumulativeTargetFindingsValidated += 1;
+    }
+    if (id.startsWith("bench:")) {
+      const benchmark = benchmarksById.get(id.slice(id.lastIndexOf(":") + 1)) as any;
+      const identity = resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name);
+      const current = Number(resolveGA4KpiLiveValue({ kpi: benchmark, ...cumulativeValueInput }));
+      const target = Number(benchmark?.benchmarkValue);
+      const result = computeBenchmarkThresholdResult({ metric: benchmark?.metric, name: benchmark?.name, unit: benchmark?.unit, current, benchmarkValue: target });
+      if (!identity || !Number.isFinite(target) || target <= 0 || (result.status !== "behind" && result.status !== "needs_attention")) {
+        throw new Error("A Benchmark finding contradicts the cumulative value, target, or metric direction");
+      }
+      const expected = `${getGA4KpiReportingWindowLabel(benchmark?.metric, benchmark?.name)}: Current ${formatBenchmarkValue(current, benchmark?.unit, currency)} vs benchmark ${formatBenchmarkValue(target, benchmark?.unit, currency)}`;
+      assertIncludes(finding.description, expected, `cumulative Benchmark finding ${id}`);
+      cumulativeTargetFindingsValidated += 1;
     }
   }
   const hiddenCount = Math.max(0, trackerCounts.total - findings.length);
@@ -912,6 +999,7 @@ try {
       lastCompletedRefreshAt: uiDailyBody?.lastCompletedRefreshAt || null,
     },
     overviewDailyWindow: { startDate: expected30.startDate, endDate: expected30.endDate, rows: Array.isArray(uiOverviewDailyBody?.data) ? uiOverviewDailyBody.data.length : 0 },
+    cumulativeTargetInputs: { startDate: cumulativeStartDate, endDate: expected30.endDate, rows: persistedOverviewRows.rowCount, findingsValidated: cumulativeTargetFindingsValidated },
     breakdownWindow: { startDate: expected30.startDate, endDate: expected30.endDate, rows: responses.breakdown.body?.rows?.length || 0 },
     last30: { complete: rollups.last30.complete, sessions: rollups.last30.sessions, conversions: rollups.last30.conversions, revenue: Number(rollups.last30.revenue.toFixed(2)) },
     financialReconciliation: {

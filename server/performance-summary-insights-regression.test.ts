@@ -3,12 +3,13 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   buildPerformanceRecommendedActions,
-  resolvePerformanceFreshPersistedMetricValue,
+  hasOneCompatiblePerformanceScoringTarget,
   resolvePerformanceHealthCoverage,
   resolvePerformanceLiveMetricValue,
   summarizePerformanceTrafficWindow,
   type PerformanceRecommendedActionsInput,
 } from "../client/src/lib/performance-recommended-actions";
+import { resolveGA4KpiConsumerState } from "../shared/ga4-kpi-consumer-state";
 
 const dailyRows = Array.from({ length: 31 }, (_, index) => {
   const date = new Date(Date.UTC(2026, 6, 19 + index)).toISOString().slice(0, 10);
@@ -33,7 +34,6 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
   financialConversionsState: "ready",
   trafficRows: dailyRows,
   dataThroughDate: "2026-08-18",
-  lastCompletedRefreshAt: "2026-08-19T11:38:57.164Z",
   financialRevenue: 72_766.69,
   financialSpend: 2_699.75,
   financialConversions: 251,
@@ -99,17 +99,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(value("CPA")).toBe(10.76);
   });
 
-  it("accepts all 13 freshly recomputed target rows and rejects pre-refresh snapshots", () => {
-    const freshRows = Array.from({ length: 13 }, (_, index) => ({
-      currentValue: String(index + 1),
-      updatedAt: "2026-08-19T16:24:00.000Z",
-    }));
-
-    expect(freshRows.filter((row) => resolvePerformanceFreshPersistedMetricValue(row, "2026-08-19T11:38:57.164Z") !== null)).toHaveLength(13);
-    expect(resolvePerformanceFreshPersistedMetricValue({ currentValue: "317", updatedAt: "2026-08-19T11:38:57.163Z" }, "2026-08-19T11:38:57.164Z")).toBeNull();
-  });
-
-  it("uses a freshly recomputed persisted target value when the parallel traffic read is stale", () => {
+  it("does not let a recently updated target row bypass stale source data", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       trafficState: "stale",
       kpis: [{
@@ -122,8 +112,75 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       }],
     }));
 
-    expect(action).toMatchObject({ type: "warning", title: "Review Users" });
-    expect(action.message).toContain("Verified 317 versus the 820 KPI target");
+    expect(action).toMatchObject({ type: "info", title: "Recommendation inputs unavailable" });
+    expect(action.message).not.toContain("Verified 317 versus the 820 KPI target");
+  });
+
+  it("fails closed for the exact production stale-row and newer-target-timestamp failure", () => {
+    const staleRows = [
+      { date: "2026-08-08", sessions: 100, users: 90, conversions: 10, pageviews: 150, engagedSessions: 70 },
+      { date: "2026-08-09", sessions: 100, users: 90, conversions: 10, pageviews: 150, engagedSessions: 70 },
+      { date: "2026-08-10", sessions: 117, users: 100, conversions: 22, pageviews: 200, engagedSessions: 77 },
+    ];
+    const sessionsTarget = {
+      metric: "sessions",
+      name: "Sessions",
+      currentValue: "317",
+      targetValue: "950",
+      trackingPeriod: 30,
+      updatedAt: "2026-08-19T18:06:30.000Z",
+    };
+    const actions = buildPerformanceRecommendedActions(baseInput({
+      trafficRows: staleRows,
+      dataThroughDate: "2026-08-18",
+      trafficState: "stale",
+      kpis: [sessionsTarget],
+    }));
+    const sessionsState = resolveGA4KpiConsumerState({
+      metric: sessionsTarget.metric,
+      name: sessionsTarget.name,
+      listState: "ready",
+      trafficState: "stale",
+      revenueState: "ready",
+      spendState: "ready",
+    });
+    const health = resolvePerformanceHealthCoverage({
+      configuredKpiCount: 1,
+      configuredBenchmarkCount: 0,
+      scoredKpiCount: sessionsState.eligible ? 1 : 0,
+      scoredBenchmarkCount: 0,
+      kpisOnTrack: 0,
+      benchmarksOnTrack: 0,
+    });
+
+    expect(sessionsState).toMatchObject({ eligible: false, code: "stale" });
+    expect(health).toMatchObject({ verifiedMetricCount: 0, excludedMetricCount: 1, healthScore: null });
+    expect(actions).toEqual([expect.objectContaining({ type: "info", title: "Recommendation inputs unavailable" })]);
+    expect(actions.some((action) => action.title === "Review Sessions" || action.message.includes("Verified 317"))).toBe(false);
+  });
+
+  it("excludes duplicate and period-incompatible targets from health scoring", () => {
+    const duplicateTargets = [
+      { metric: "sessions", targetValue: 950, trackingPeriod: 30 },
+      { metric: "sessions", targetValue: 1_000, trackingPeriod: 30 },
+    ];
+    expect(hasOneCompatiblePerformanceScoringTarget(duplicateTargets[0], duplicateTargets)).toBe(false);
+    expect(hasOneCompatiblePerformanceScoringTarget(
+      { metric: "roas", targetValue: 25, timeframe: "monthly" },
+      [{ metric: "roas", targetValue: 25, timeframe: "monthly" }],
+    )).toBe(false);
+  });
+
+  it("does not mix setup warnings with an otherwise evaluable recommendation", () => {
+    const actions = buildPerformanceRecommendedActions(baseInput({
+      kpis: [
+        { metric: "sessions", name: "Sessions", targetValue: 950, trackingPeriod: 30 },
+        { metric: "roas", name: "ROAS", targetValue: 25, timeframe: "monthly" },
+      ],
+    }));
+
+    expect(actions.map((action) => action.title)).toEqual(["Align target periods"]);
+    expect(actions.some((action) => action.message.includes("Verified"))).toBe(false);
   });
 
   it("fails closed for duplicate targets and incompatible target periods", () => {
@@ -217,7 +274,8 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const insights = page.slice(page.indexOf("{/* Insights Tab */}"));
 
-    expect(page).toContain('import { buildPerformanceRecommendedActions, resolvePerformanceFreshPersistedMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";');
+    expect(page).toContain("hasOneCompatiblePerformanceScoringTarget");
+    expect(page).not.toContain("resolvePerformanceFreshPersistedMetricValue");
     expect(page).toContain("const recommendedActions = buildPerformanceRecommendedActions({");
     expect(insights).toContain("const recommendedInsights = recommendedActions;");
     expect(insights).not.toContain("buildPerformanceInsights()");

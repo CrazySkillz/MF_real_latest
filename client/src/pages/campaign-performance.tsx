@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions, resolvePerformanceFreshPersistedMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, hasOneCompatiblePerformanceScoringTarget, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -156,23 +156,24 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
+  const performanceGA4FinancialEndDate = performanceGA4SummaryPlaceholder ? "" : String(performanceGA4SummaryResponse?.dataThroughDate || "");
   const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError, isPlaceholderData: performanceGA4RevenuePlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, "performance-summary-read-only"],
-    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, "performance-summary-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const [nativeResponse, importedResponse] = await Promise.all([
-        fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1`),
-        fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4`),
+        fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(performanceGA4FinancialEndDate)}`),
+        fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(performanceGA4FinancialEndDate)}`),
       ]);
       const [native, imported] = await Promise.all([
         nativeResponse.json().catch(() => null),
         importedResponse.json().catch(() => null),
       ]);
-      if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId) {
+      if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId || native?.endDate !== performanceGA4FinancialEndDate) {
         throw new Error(native?.error || "Failed to fetch GA4 revenue");
       }
-      if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4") {
+      if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4" || imported?.endDate !== performanceGA4FinancialEndDate) {
         throw new Error(imported?.error || "Failed to fetch imported GA4 revenue");
       }
       return { native, imported };
@@ -224,6 +225,17 @@ export default function CampaignPerformanceSummary() {
         throw new Error(imported?.error || "Failed to fetch exact-date imported GA4 revenue");
       }
       return { native, imported };
+    },
+  });
+  const { data: performanceGA4SpendResponse, isLoading: performanceGA4SpendLoading, isError: performanceGA4SpendError, isPlaceholderData: performanceGA4SpendPlaceholder } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-spend-to-date", performanceGA4FinancialEndDate, "performance-summary-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(performanceGA4FinancialEndDate)}`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false || data?.endDate !== performanceGA4FinancialEndDate) throw new Error(data?.error || "Failed to fetch exact-date GA4 spend");
+      return data;
     },
   });
   const { data: historicalSpendComparison } = useQuery<any>({
@@ -434,30 +446,31 @@ export default function CampaignPerformanceSummary() {
   const hasImportedRevenue = Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0;
   const revenueInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
       : performanceGA4RevenueError && performanceGA4RevenueResponse
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
+      : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
         ? "unavailable"
         : "ready";
   const financialConversionsInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
       : performanceGA4RevenueError && performanceGA4RevenueResponse
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4RevenueError || !performanceGA4PropertyId || !Number.isFinite(Number(performanceGA4RevenueResponse?.native?.totals?.conversions))
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(Number(performanceGA4RevenueResponse?.native?.totals?.conversions))
           ? "unavailable"
           : "ready";
   const spendSummaryMetric = performanceSummary?.totals?.spend;
+  const scoringSpendToDate = Number(performanceGA4SpendResponse?.spendToDate);
   const spendInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceSummaryPending
+    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || performanceGA4SpendLoading || performanceGA4SpendPlaceholder
       ? "loading"
-      : outcomeTotalsError && spendSummaryMetric?.available && spendSummaryMetric?.value !== null
+      : performanceGA4SpendError && performanceGA4SpendResponse
         ? "stale"
-        : outcomeTotalsError || !spendSummaryMetric?.available || spendSummaryMetric?.value === null
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4SpendError || !performanceGA4PropertyId || !performanceGA4SpendResponse || performanceGA4SpendResponse?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(scoringSpendToDate) || !Array.isArray(performanceGA4SpendResponse?.sourceIds) || performanceGA4SpendResponse.sourceIds.length === 0
         ? "unavailable"
         : "ready";
   const scoringTrafficRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
@@ -480,11 +493,9 @@ export default function CampaignPerformanceSummary() {
   const scoringConversions = demoMode
     ? parseNum(effectiveGA4?.metrics?.conversions)
     : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
-  const scoringSpend = demoMode ? totalSpend : parseNum(spendSummaryMetric?.value);
+  const scoringSpend = demoMode ? totalSpend : scoringSpendToDate;
   const scoringRevenue = demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue;
-  const scoringLastCompletedRefreshAt = String(performanceGA4SummaryResponse?.lastCompletedRefreshAt || "");
-  const getFreshPersistedScoringValue = (item: any) => resolvePerformanceFreshPersistedMetricValue(item, scoringLastCompletedRefreshAt);
-  const getLiveScoringValue = (item: any) => getFreshPersistedScoringValue(item) ?? resolvePerformanceLiveMetricValue({
+  const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({
     item,
     trafficTotals: scoringTrafficTotals,
     financialRevenue: scoringRevenue,
@@ -492,7 +503,6 @@ export default function CampaignPerformanceSummary() {
     financialConversions: scoringConversions,
   });
   const getScoringTrafficInputState = (item: any): GA4KpiInputState => {
-    if (getFreshPersistedScoringValue(item) !== null) return "ready";
     if (resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name) !== "cpa") return scoringTrafficInputState;
     const states = [scoringTrafficInputState, financialConversionsInputState];
     if (states.includes("unavailable")) return "unavailable";
@@ -511,7 +521,6 @@ export default function CampaignPerformanceSummary() {
     financialConversionsState: financialConversionsInputState,
     trafficRows: scoringTrafficRows,
     dataThroughDate: String(performanceGA4SummaryResponse?.dataThroughDate || ""),
-    lastCompletedRefreshAt: scoringLastCompletedRefreshAt,
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
     financialConversions: scoringConversions,
@@ -524,6 +533,7 @@ export default function CampaignPerformanceSummary() {
     return missing;
   };
   const getKpiScore = (kpi: any) => {
+    if (!hasOneCompatiblePerformanceScoringTarget(kpi, effectiveKpis)) return null;
     const sufficiency = resolveKpiDataSufficiency({
       metric: kpi?.metric,
       name: kpi?.name,
@@ -551,6 +561,7 @@ export default function CampaignPerformanceSummary() {
     return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct, current, target } : null;
   };
   const getBenchmarkScore = (benchmark: any) => {
+    if (!hasOneCompatiblePerformanceScoringTarget(benchmark, effectiveBenchmarks)) return null;
     const metric = benchmark?.metric || benchmark?.metricName || benchmark?.name;
     const name = benchmark?.name || benchmark?.metricName;
     const sufficiency = resolveBenchmarkDataSufficiency({

@@ -36,7 +36,6 @@ export type PerformanceRecommendedActionsInput = {
   financialConversionsState: GA4KpiInputState;
   trafficRows: any[];
   dataThroughDate: string;
-  lastCompletedRefreshAt: string;
   financialRevenue: number;
   financialSpend: number;
   financialConversions: number;
@@ -65,6 +64,18 @@ export const resolvePerformanceHealthCoverage = (input: {
   };
 };
 
+export const hasOneCompatiblePerformanceScoringTarget = (item: any, rows: any[]): boolean => {
+  const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
+  if (!identity || rows.filter((row: any) => resolveGA4KpiMetricIdentity(row?.metric, row?.metricName, row?.name) === identity).length !== 1) return false;
+  return resolveGA4InsightTargetPeriodCompatibility({
+    metric: item?.metric ?? item?.metricName,
+    name: item?.name ?? item?.metricName,
+    timeframe: item?.timeframe,
+    trackingPeriod: item?.trackingPeriod,
+    period: item?.period,
+  }).comparable;
+};
+
 const metricLabels: Record<GA4KpiMetricIdentity, string> = {
   revenue: "Revenue",
   conversions: "Conversions",
@@ -83,15 +94,6 @@ const parseNumber = (value: unknown): number | null => {
   if (!normalized) return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
-};
-
-export const resolvePerformanceFreshPersistedMetricValue = (item: any, lastCompletedRefreshAt: string): number | null => {
-  const current = parseNumber(item?.currentValue);
-  const refreshedAt = Date.parse(String(item?.updatedAt || item?.lastUpdated || ""));
-  const completedAt = Date.parse(String(lastCompletedRefreshAt || ""));
-  return current !== null && Number.isFinite(refreshedAt) && Number.isFinite(completedAt) && refreshedAt >= completedAt
-    ? current
-    : null;
 };
 
 const formatMetricValue = (identity: GA4KpiMetricIdentity, value: number): string => {
@@ -206,10 +208,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
 
   const trafficWindow = summarizePerformanceTrafficWindow(input.trafficRows, input.dataThroughDate);
   const trafficState = input.trafficState === "ready" && !trafficWindow.valid ? "unavailable" : input.trafficState;
-  // The certified recompute updates currentValue and updatedAt together. A row
-  // updated after the last completed source refresh is already verified.
-  const persistedValue = (row: any) => resolvePerformanceFreshPersistedMetricValue(row, input.lastCompletedRefreshAt);
-  const liveValue = (row: any) => persistedValue(row) ?? resolvePerformanceLiveMetricValue({
+  const liveValue = (row: any) => resolvePerformanceLiveMetricValue({
     item: row,
     trafficTotals: trafficWindow.totals,
     financialRevenue: input.financialRevenue,
@@ -264,9 +263,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         metric: identity,
         name: row?.name ?? row?.metricName,
         listState: entity === "KPI" ? input.kpiListState : input.benchmarkListState,
-        trafficState: persistedValue(row) !== null
-          ? "ready"
-          : identity === "cpa" ? combineInputStates(trafficState, input.financialConversionsState) : trafficState,
+        trafficState: identity === "cpa" ? combineInputStates(trafficState, input.financialConversionsState) : trafficState,
         revenueState: input.revenueState,
         spendState: input.spendState,
         sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
@@ -331,7 +328,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
     setup.push({ type: "info", priority: 0, category: "blocked-targets", title: "Recommendation inputs unavailable", message: `${joinLabels(blockedLabels)} cannot be evaluated from fresh, sufficient source data. No action is recommended for those metrics.` });
   }
 
-  const recommendations = [...setup, ...evaluated].sort((a, b) => a.priority - b.priority).slice(0, 3);
+  const recommendations = (setup.length > 0 ? setup : evaluated).sort((a, b) => a.priority - b.priority).slice(0, 3);
   if (recommendations.length > 0) return recommendations;
   return [{
     type: "info",

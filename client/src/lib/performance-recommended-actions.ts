@@ -85,6 +85,9 @@ const parseNumber = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+export const resolvePerformanceConfiguredMetricValue = (item: any): number | null =>
+  parseNumber(item?.currentValue);
+
 const aggregateMetricKeys: Partial<Record<GA4KpiMetricIdentity, string>> = {
   revenue: "revenue",
   conversions: "conversions",
@@ -206,7 +209,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
     return [{ type: "info", priority: 0, category: "verification", title: "Recommended Actions withheld", message: "The complete target inventory could not be freshly verified. No action is recommended from retained or incomplete target data." }];
   }
 
-  const liveValue = (row: any) => resolvePerformanceLiveMetricValue({
+  const liveValue = (row: any) => resolvePerformanceConfiguredMetricValue(row) ?? resolvePerformanceLiveMetricValue({
     item: row,
     trafficTotals: input.trafficTotals,
     financialRevenue: input.financialRevenue,
@@ -246,8 +249,9 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
         entityLabel: entity,
       });
+      const configuredCurrent = resolvePerformanceConfiguredMetricValue(row);
       const current = liveValue(row);
-      if (!consumerState.eligible || current === null) {
+      if ((configuredCurrent === null && !consumerState.eligible) || current === null) {
         blockedLabels.push(`${entity} ${label}`);
         continue;
       }

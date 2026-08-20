@@ -2693,7 +2693,7 @@ export default function GA4Metrics() {
     }
     return windows.length > 0 ? `${windows.join("; ")}.` : "";
   }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
-  const financialConversions = Number(breakdownTotals.conversions || 0);
+  const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4HasRevenueMetric ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;

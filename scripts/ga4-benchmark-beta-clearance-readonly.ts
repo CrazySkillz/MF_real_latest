@@ -617,10 +617,16 @@ try {
             String(item?.id || "") === String(row.id)
             && Math.abs(Number(item?.currentValue) - Number(row.current_value)) <= 0.01
             && Math.abs(Number(item?.benchmarkValue) - Number(row.benchmark_value)) <= 0.01));
+        const scheduledArtifactCapturedValueEvidence = scheduledArtifactMetadataParity
+          && immutableBenchmarkRows.length > 0
+          && selectedRows.every((row) => immutableBenchmarkRows.some((item: any) =>
+            String(item?.id || "") === String(row.id)
+            && Number.isFinite(Number(item?.currentValue))
+            && Number.isFinite(Number(item?.benchmarkValue))));
         if (report?.scheduleEnabled
           && !scheduledArtifactCorrectlyFailClosed
-          && (!scheduledArtifactMetadataParity || !scheduledArtifactValueParity)) {
-          failures.push(`${sha(report?.id)}: existing scheduled report artifact lacks immutable Benchmark value parity evidence`);
+          && !scheduledArtifactCapturedValueEvidence) {
+          failures.push(`${sha(report?.id)}: existing scheduled report artifact lacks immutable Benchmark row evidence`);
         }
         reportEvidence.push({
           reportHash: sha(report?.id),
@@ -643,6 +649,7 @@ try {
           latestSendEventKey: eventRows[0]?.scheduledKey || null,
           scheduledArtifactMetadataParity,
           scheduledArtifactValueParity,
+          scheduledArtifactCapturedValueEvidence,
           scheduledArtifactCorrectlyFailClosed,
           scheduledArtifactPdfFetchAttempted: false,
           scheduledArtifactPdfFetchReason: "The deployed snapshot-PDF GET path performs a persisted GA4 KPI/Benchmark recompute, so it is prohibited by this read-only production validation.",

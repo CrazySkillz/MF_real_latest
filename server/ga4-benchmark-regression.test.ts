@@ -459,6 +459,8 @@ describe("GA4 Benchmark regression guard", () => {
     expect(validator).toContain("/send-events");
     expect(validator).toContain("/snapshots");
     expect(validator).toContain("scheduledArtifactValueParity");
+    expect(validator).toContain("scheduledArtifactCapturedValueEvidence");
+    expect(validator).not.toContain("(!scheduledArtifactMetadataParity || !scheduledArtifactValueParity)");
     expect(validator).toContain("scheduledArtifactCorrectlyFailClosed");
     expect(validator).toContain('latestEvent?.status === "pending_delivery"');
     expect(validator).toContain("scheduledArtifactPdfFetchAttempted: false");

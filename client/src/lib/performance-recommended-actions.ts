@@ -85,6 +85,24 @@ const parseNumber = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const aggregateMetricKeys: Partial<Record<GA4KpiMetricIdentity, string>> = {
+  revenue: "revenue",
+  conversions: "conversions",
+  sessions: "sessions",
+  users: "users",
+  conversion_rate: "cvr",
+  roas: "roas",
+  roi: "roi",
+  cpa: "cpa",
+};
+
+export const resolvePerformanceAggregateMetricValue = (item: any, totals: any): number | null => {
+  const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
+  const metricKey = identity ? aggregateMetricKeys[identity] : null;
+  const metric = metricKey ? totals?.[metricKey] : null;
+  return metric?.available === true ? parseNumber(metric?.value) : null;
+};
+
 const formatMetricValue = (identity: GA4KpiMetricIdentity, value: number): string => {
   if (identity === "revenue" || identity === "cpa") {
     return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -161,7 +179,7 @@ const joinLabels = (labels: string[]): string => {
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 };
 
-const priorityRank = (value: unknown): number => {
+export const resolvePerformancePriorityRank = (value: unknown): number => {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "critical") return 1;
   if (normalized === "high") return 2;
@@ -248,7 +266,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         const needsAction = band === "below";
         evaluated.push({
           type: needsAction ? "warning" : "success",
-          priority: needsAction ? priorityRank(row?.priority) : 8,
+          priority: needsAction ? resolvePerformancePriorityRank(row?.priority) : 8,
           severity: Math.abs(gap),
           category: `kpi-${identity}`,
           title: needsAction ? `Review ${label}` : `${label} on target`,

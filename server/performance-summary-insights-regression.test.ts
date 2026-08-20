@@ -3,8 +3,10 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   buildPerformanceRecommendedActions,
+  resolvePerformanceAggregateMetricValue,
   resolvePerformanceHealthCoverage,
   resolvePerformanceLiveMetricValue,
+  resolvePerformancePriorityRank,
   summarizePerformanceTrafficWindow,
   type PerformanceRecommendedActionsInput,
 } from "../client/src/lib/performance-recommended-actions";
@@ -102,6 +104,73 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(value("ROAS")).toBe(26.95);
     expect(value("ROI")).toBe(2_595.31);
     expect(value("CPA")).toBe(10.76);
+  });
+
+  it("uses the Performance Summary aggregate for Top Priority metrics when available", () => {
+    const totals = {
+      sessions: { available: true, value: 1_961 },
+      users: { available: true, value: 1_963 },
+      conversions: { available: true, value: 251 },
+      cvr: { available: true, value: 12.8 },
+      cpa: { available: true, value: 10.76 },
+    };
+
+    expect(resolvePerformanceAggregateMetricValue({ metric: "Total Sessions" }, totals)).toBe(1_961);
+    expect(resolvePerformanceAggregateMetricValue({ metric: "Total Users" }, totals)).toBe(1_963);
+    expect(resolvePerformanceAggregateMetricValue({ metric: "Conversion Rate" }, totals)).toBe(12.8);
+    expect(resolvePerformanceAggregateMetricValue({ metric: "CPA" }, totals)).toBe(10.76);
+    expect(resolvePerformanceAggregateMetricValue({ metric: "Engagement Rate" }, totals)).toBeNull();
+  });
+
+  it("selects Conversion Rate instead of Sessions from the exact production aggregate", () => {
+    const totals = {
+      sessions: { available: true, value: 1_961 },
+      users: { available: true, value: 1_963 },
+      conversions: { available: true, value: 251 },
+      cvr: { available: true, value: 12.8 },
+      revenue: { available: true, value: 72_766.69 },
+      roas: { available: true, value: 26.95 },
+      roi: { available: true, value: 2_595.31 },
+      cpa: { available: true, value: 10.76 },
+    };
+    const targets = [
+      { metric: "Total Sessions", targetValue: 950 },
+      { metric: "Total Users", targetValue: 820 },
+      { metric: "Conversion Rate", targetValue: 50 },
+      { metric: "CPA", targetValue: 9 },
+    ];
+    const scored = targets.map((item) => {
+      const current = resolvePerformanceAggregateMetricValue(item, totals)!;
+      const target = Number(item.targetValue);
+      const lowerIsBetter = isLowerIsBetterKpi(item);
+      const policy = resolveKpiThresholdPolicy({ ...item, current, target, lowerIsBetter });
+      return {
+        item,
+        current,
+        target,
+        band: classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy }),
+        severity: Math.abs((current - target) / target),
+      };
+    });
+    const top = scored.filter((row) => row.band === "below").sort((a, b) => b.severity - a.severity)[0];
+
+    expect(scored.find((row) => row.item.metric === "Total Sessions")).toMatchObject({ current: 1_961, target: 950, band: "above" });
+    expect(top).toMatchObject({ item: { metric: "Conversion Rate" }, current: 12.8, target: 50, band: "below" });
+  });
+
+  it("orders Top Priority by configured priority before target-gap severity", () => {
+    const candidates = [
+      { priority: "medium", severity: 80, metric: "Sessions" },
+      { priority: "critical", severity: 10, metric: "CPA" },
+      { priority: "high", severity: 90, metric: "Users" },
+    ];
+    const sorted = candidates.sort((a, b) =>
+      resolvePerformancePriorityRank(a.priority) - resolvePerformancePriorityRank(b.priority)
+      || b.severity - a.severity,
+    );
+
+    expect(sorted.map((candidate) => candidate.metric)).toEqual(["CPA", "Users", "Sessions"]);
+    expect(["critical", "high", "medium", "low"].map(resolvePerformancePriorityRank)).toEqual([1, 2, 3, 4]);
   });
 
   it("does not let a recently updated target row bypass stale source data", () => {

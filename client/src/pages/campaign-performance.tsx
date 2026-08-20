@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, resolvePerformanceAggregateMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -552,7 +552,7 @@ export default function CampaignPerformanceSummary() {
     if (dependencies.requiresSpend && spendInputState === "unavailable") missing.push("Spend");
     return missing;
   };
-  const getKpiScore = (kpi: any) => {
+  const getKpiScore = (kpi: any, currentOverride?: number | null) => {
     const identity = resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.metricName, kpi?.name);
     const sufficiency = resolveKpiDataSufficiency({
       metric: kpi?.metric,
@@ -571,7 +571,7 @@ export default function CampaignPerformanceSummary() {
       missingDependencies: getScoringMissingDependencies(kpi),
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
-    const current = getLiveScoringValue(kpi);
+    const current = currentOverride === undefined ? getLiveScoringValue(kpi) : currentOverride;
     const target = parseScoringNumber(kpi?.targetValue);
     if (!consumerState.eligible || current === null || target === null || target <= 0) return null;
     const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric, name: kpi?.name });
@@ -580,7 +580,7 @@ export default function CampaignPerformanceSummary() {
     const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
     return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct, current, target } : null;
   };
-  const getBenchmarkScore = (benchmark: any) => {
+  const getBenchmarkScore = (benchmark: any, currentOverride?: number | null) => {
     const metric = benchmark?.metric || benchmark?.metricName || benchmark?.name;
     const name = benchmark?.name || benchmark?.metricName;
     const identity = resolveGA4KpiMetricIdentity(metric, name);
@@ -602,7 +602,7 @@ export default function CampaignPerformanceSummary() {
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",
     });
-    const current = getLiveScoringValue(benchmark);
+    const current = currentOverride === undefined ? getLiveScoringValue(benchmark) : currentOverride;
     const benchmarkValue = parseScoringNumber(benchmark?.benchmarkValue ?? benchmark?.industryAverage);
     if (!consumerState.eligible || current === null || benchmarkValue === null || benchmarkValue <= 0) return null;
     const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });
@@ -937,15 +937,27 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
-    const laggingKPIs = scoredKpis
+    const priorityScoredKpis = effectiveKpis
+      .map((item: any) => ({
+        item,
+        score: getKpiScore(item, resolvePerformanceAggregateMetricValue(item, performanceSummary?.totals) ?? getLiveScoringValue(item)),
+      }))
+      .filter((entry: any) => entry.score !== null);
+    const priorityScoredBenchmarks = effectiveBenchmarks
+      .map((item: any) => ({
+        item,
+        score: getBenchmarkScore(item, resolvePerformanceAggregateMetricValue(item, performanceSummary?.totals) ?? getLiveScoringValue(item)),
+      }))
+      .filter((entry: any) => entry.score !== null);
+    const laggingKPIs = priorityScoredKpis
       .filter((entry: any) => entry.score.band === "below")
-      .map((entry: any) => ({ type: 'kpi', item: entry.item, score: entry.score, severity: Math.abs(entry.score.effectiveDeltaPct) }));
+      .map((entry: any) => ({ type: 'kpi', item: entry.item, score: entry.score, priorityRank: resolvePerformancePriorityRank(entry.item?.priority), severity: Math.abs(entry.score.effectiveDeltaPct) }));
 
-    const laggingBenchmarks = scoredBenchmarks
+    const laggingBenchmarks = priorityScoredBenchmarks
       .filter((entry: any) => entry.score.status !== "on_track")
       .map((entry: any) => ({ type: 'benchmark', item: entry.item, severity: Math.abs(entry.score.effectiveDeltaPct || 0), status: entry.score.status }));
 
-    const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => b.severity - a.severity)[0];
+    const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => a.priorityRank - b.priorityRank || b.severity - a.severity)[0];
 
     if (topLaggingKPI) {
       const topKPI = topLaggingKPI.item;

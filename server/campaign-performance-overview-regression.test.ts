@@ -39,8 +39,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/benchmarks`]');
     expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
-    expect(scoringBlock).toContain("const current = getLiveScoringValue(kpi);");
-    expect(scoringBlock).toContain("const current = getLiveScoringValue(benchmark);");
+    expect(scoringBlock).toContain("const current = currentOverride === undefined ? getLiveScoringValue(kpi) : currentOverride;");
+    expect(scoringBlock).toContain("const current = currentOverride === undefined ? getLiveScoringValue(benchmark) : currentOverride;");
     expect(scoringBlock).toContain("const getScoringTrafficInputState = (item: any): GA4KpiInputState => {");
     expect(scoringBlock).not.toContain("getFreshPersistedScoringValue");
     expect(page).toContain("ga4-breakdown?dateRange=30days");
@@ -122,11 +122,14 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("currently have verified inputs.");
     expect(page).toContain("const targetSetupAction = recommendedActions.find");
     expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
-    expect(page).toContain("const laggingKPIs = scoredKpis");
+    expect(page).toContain("const priorityScoredKpis = effectiveKpis");
+    expect(page).toContain("resolvePerformanceAggregateMetricValue(item, performanceSummary?.totals) ?? getLiveScoringValue(item)");
+    expect(page).toContain("const laggingKPIs = priorityScoredKpis");
     expect(page).toContain('.filter((entry: any) => entry.score.band === "below")');
-    expect(page).toContain("const laggingBenchmarks = scoredBenchmarks");
+    expect(page).toContain("const laggingBenchmarks = priorityScoredBenchmarks");
     expect(page).toContain('.filter((entry: any) => entry.score.status !== "on_track")');
-    expect(page).toContain("const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => b.severity - a.severity)[0];");
+    expect(page).toContain("priorityRank: resolvePerformancePriorityRank(entry.item?.priority)");
+    expect(page).toContain("const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => a.priorityRank - b.priorityRank || b.severity - a.severity)[0];");
     expect(page).toContain("if (topLaggingKPI) {");
     expect(page).toContain("const topCandidate: any = laggingBenchmarks.sort((a: any, b: any) => b.severity - a.severity)[0];");
     expect(page).not.toContain("const priorityCandidate = [...laggingKPIs, ...laggingBenchmarks]");

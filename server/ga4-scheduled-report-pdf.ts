@@ -454,10 +454,20 @@ async function buildGA4ReportPayload(report: any) {
   const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
   const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
+  const configuredImportStartDate = String((connection as any)?.importStartDate || "").trim();
+  if (!configuredImportStartDate && lookbackDays !== 30) {
+    throw new Error("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
+  }
+  const reportImportStartDate = configuredImportStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
+  const reportCumulativeWindow = resolveGA4ImportToDateWindow(
+    reportImportStartDate,
+    (campaign as any)?.reportingTimeZone,
+  );
+  if (!reportCumulativeWindow) throw new Error("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
   const reportLookbackRange = `${lookbackDays}daysAgo`;
   const adComparisonRequirements = getAdComparisonReportRequirements(report);
   const adComparisonWindow = adComparisonRequirements.included
-    ? resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
+    ? reportCumulativeWindow
     : null;
   if (adComparisonRequirements.included && !adComparisonWindow) {
     throw new Error('GA4_AD_COMPARISON_IMPORT_WINDOW_UNAVAILABLE');
@@ -472,12 +482,7 @@ async function buildGA4ReportPayload(report: any) {
   const importedRevenueEndDate = new Date().toISOString().slice(0, 10);
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
-  const configuredOverviewStartDate = String((connection as any)?.importStartDate || '').trim();
-  const overviewStartCandidate = configuredOverviewStartDate
-    || (lookbackDays === 30 ? GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : dailyStart);
-  const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(overviewStartCandidate) && overviewStartCandidate <= dailyEnd
-    ? overviewStartCandidate
-    : dailyStart;
+  const overviewStartDate = reportCumulativeWindow.startDate;
   const failedParts = new Set<string>();
   const logPartFailure = (label: string, error: any) => {
     failedParts.add(label);
@@ -897,6 +902,7 @@ async function buildGA4ReportPayload(report: any) {
       reportingTimeZone: reportingWindow.reportingTimeZone,
       lastRefreshedAt: lastDailyRefreshAt,
     },
+    reportCumulativeWindow,
     formatMoney,
     formatNumber,
   };
@@ -913,7 +919,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   windowEnd: string;
   campaignName: string | null;
 }): Promise<Buffer | null> {
-  const { report, reportName, windowStart, windowEnd, campaignName } = _args;
+  const { report, reportName, campaignName } = _args;
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
   const payload = await buildGA4ReportPayload(report);
@@ -1112,7 +1118,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   } else {
     doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, MX + CW / 2, y + 7);
     doc.text(`Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`, MX + 6, y + 15);
-    doc.text(`Window: ${windowStart} to ${windowEnd} (UTC)`, MX + CW / 2, y + 15);
+    doc.text(`Completed data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`, MX + CW / 2, y + 15);
   }
   y += 30;
 

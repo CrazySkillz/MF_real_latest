@@ -1,5 +1,10 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { afterEach, vi } from "vitest";
+import { preflightGA4ReportKPIConsumers } from "./report-scheduler";
+import { storage } from "./storage";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("GA4 KPI report consumer regression guards", () => {
   it("fails scheduled GA4 report sends closed when KPI recompute does not process the target campaign", () => {
@@ -12,7 +17,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     const sendGuard = source.slice(sendStart, sendEnd);
 
     expect(preflight).toContain('toLowerCase() !== "google_analytics"');
-    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
+    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
     expect(preflight).toContain("campaignsProcessed");
     expect(preflight).toContain("reportIncludesGA4KPISection(report)");
     expect(preflight).toContain('storage.getPlatformKPIs("google_analytics", campaignId)');
@@ -30,6 +35,53 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(sendGuard).toContain('status: "failed"');
     expect(sendGuard).toContain("skipped scheduled report");
     expect(sendGuard).toContain("continue;");
+  });
+
+  it("fails every server GA4 Report closed before recompute when its cumulative boundary is unprovable", () => {
+    const source = readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
+    const preflightStart = source.indexOf("export async function preflightGA4ReportKPIConsumers");
+    const preflightEnd = source.indexOf("const CUSTOM_INTEGRATION_REPORT_METRICS", preflightStart);
+    const preflight = source.slice(preflightStart, preflightEnd);
+
+    expect(preflight).toContain("storage.getGA4Connections(campaignId)");
+    expect(preflight).toContain("GA4 report cumulative import boundary is unavailable");
+    expect(preflight).toContain("resolveGA4ImportToDateWindow(");
+    expect(preflight.indexOf("GA4 report cumulative import boundary is unavailable"))
+      .toBeLessThan(preflight.indexOf("runGA4DailyKPIAndBenchmarkJobs"));
+    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
+    expect(preflight).not.toContain("...(date ? { date } : {})");
+  });
+
+  it("rejects an unprovable legacy 90-day Report boundary without reading KPI rows", async () => {
+    vi.spyOn(storage, "getCampaign").mockResolvedValue({ id: "campaign-1", reportingTimeZone: "UTC" } as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([
+      { propertyId: "property-1", isPrimary: true, lookbackDays: 90, importStartDate: null },
+    ] as any);
+    const kpiRead = vi.spyOn(storage, "getPlatformKPIs").mockResolvedValue([] as any);
+
+    const result = await preflightGA4ReportKPIConsumers({
+      platformType: "google_analytics",
+      campaignId: "campaign-1",
+      reportType: "overview",
+    });
+
+    expect(result).toEqual({ ok: false, error: "GA4 report cumulative import boundary is unavailable" });
+    expect(kpiRead).not.toHaveBeenCalled();
+  });
+
+  it("accepts the certified legacy 30-day cumulative Report boundary", async () => {
+    vi.spyOn(storage, "getCampaign").mockResolvedValue({ id: "campaign-1", reportingTimeZone: "UTC" } as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([
+      { propertyId: "property-1", isPrimary: true, lookbackDays: 30, importStartDate: null },
+    ] as any);
+
+    const result = await preflightGA4ReportKPIConsumers({
+      platformType: "google_analytics",
+      campaignId: "campaign-1",
+      reportType: "overview",
+    });
+
+    expect(result).toEqual({ ok: true });
   });
 
   it("requires GA4 report PDF output for scheduled and test-send report paths", () => {

@@ -11,6 +11,7 @@ import { aggregateCampaignMetrics } from "./scheduler";
 import { computeBenchmarkThresholdResult, isLowerIsBetterKpi } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
+import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -298,14 +299,26 @@ type GA4ReportBenchmarkSnapshot = {
 
 export async function preflightGA4ReportKPIConsumers(
   report: any,
-  date?: string,
+  _date?: string,
   opts?: { suppressAlerts?: boolean },
 ): Promise<{ ok: boolean; error?: string; benchmarks?: GA4ReportBenchmarkSnapshot[] }> {
   if (String((report as any)?.platformType || "").trim().toLowerCase() !== "google_analytics") return { ok: true };
   const campaignId = String((report as any)?.campaignId || "").trim();
   if (!campaignId) return { ok: false, error: "GA4 report campaign is missing" };
-  if (!reportIncludesGA4KPISection(report) && !reportIncludesGA4BenchmarkSection(report)) return { ok: true };
   try {
+    const [campaign, connections] = await Promise.all([
+      storage.getCampaign(campaignId),
+      storage.getGA4Connections(campaignId),
+    ]);
+    const connection = (connections || []).find((row: any) => row?.isPrimary) || (connections || [])[0];
+    const lookbackDays = Number((connection as any)?.lookbackDays);
+    const importStartDate = String((connection as any)?.importStartDate || "").trim();
+    const cumulativeWindow = campaign && connection && (importStartDate || lookbackDays === 30)
+      ? resolveGA4ImportToDateWindow(importStartDate, (campaign as any)?.reportingTimeZone)
+      : null;
+    if (!cumulativeWindow) return { ok: false, error: "GA4 report cumulative import boundary is unavailable" };
+    if (!reportIncludesGA4KPISection(report) && !reportIncludesGA4BenchmarkSection(report)) return { ok: true };
+
     let requiredKpiIds = new Set<string>();
     if (reportIncludesGA4KPISection(report)) {
       const selectedKpiIds = getGA4ReportSelectedKPIIds(report);
@@ -340,7 +353,7 @@ export async function preflightGA4ReportKPIConsumers(
         .filter(Boolean));
     }
 
-    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
     if (Number((result as any)?.campaignsProcessed || 0) <= 0) {
       return { ok: false, error: "GA4 KPI/Benchmark recompute skipped target campaign" };
     }

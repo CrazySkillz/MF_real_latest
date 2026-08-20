@@ -86,6 +86,19 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain('failedParts.has("conversion events")');
   });
 
+  it("keeps browser and server GA4 Reports on the authoritative cumulative Summary boundary", () => {
+    const browserSource = readFileSync(join(__dirname, "../client/src/pages/ga4-metrics.tsx"), "utf-8");
+    const serverSource = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+
+    expect(browserSource).toContain("const sess = Number(overviewSummaryTotals?.sessions || 0);");
+    expect(browserSource).not.toContain("const sess = Number(dailySummedTotals?.sessions || 0);");
+    expect(serverSource).toContain("const reportCumulativeWindow = resolveGA4ImportToDateWindow(");
+    expect(serverSource).toContain("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
+    expect(serverSource).toContain("const overviewStartDate = reportCumulativeWindow.startDate;");
+    expect(serverSource).not.toContain("lookbackDays === 30 ? GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : dailyStart");
+    expect(serverSource).not.toContain("Window: ${windowStart} to ${windowEnd} (UTC)");
+  });
+
   it("labels GA4 scheduled Campaign Breakdown revenue by the actual mixed-source value", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
     const campaignBreakdownBlock = source.slice(

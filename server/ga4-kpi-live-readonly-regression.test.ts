@@ -71,6 +71,9 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(validator).toContain('getByRole("button", { name: "Download" })');
     expect(validator).toContain("await pdfText(await downloadBuffer(download))");
     expect(validator).toContain("downloaded browser KPI PDF does not match the exact page inputs and states");
+    expect(validator).toContain('normalizedUnit === "%" || normalizedUnit === "ratio"');
+    expect(validator).toContain("hasNumericEvidence(text, row.liveValue, row.kpi.unit)");
+    expect(validator).toContain("hasNumericEvidence(text, row.kpi.targetValue, row.kpi.unit)");
     expect(validator).not.toContain("/api/report-snapshots/${");
   });
 

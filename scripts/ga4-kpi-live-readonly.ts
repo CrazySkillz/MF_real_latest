@@ -68,11 +68,15 @@ const parseJson = (value: unknown): any => {
 const responseReason = (response: PageInput) =>
   String(response.body?.error || response.body?.message || "no API reason returned").slice(0, 300);
 
-const hasNumericEvidence = (text: string, value: unknown) => {
+const hasNumericEvidence = (text: string, value: unknown, unit?: unknown) => {
   const number = Number(value);
   if (!Number.isFinite(number)) return false;
   const normalized = normalizeText(text);
-  return [String(number), number.toFixed(2), number.toFixed(1), String(Math.round(number))]
+  const normalizedUnit = String(unit || "").trim();
+  const pdfValue = normalizedUnit === "%" || normalizedUnit === "ratio"
+    ? String(Math.round(number * 10) / 10)
+    : normalizedUnit === "count" ? String(Math.round(number)) : number.toFixed(2);
+  return [pdfValue, String(number), number.toFixed(2), number.toFixed(1), String(Math.round(number))]
     .some((candidate) => normalized.includes(candidate.replace(/,/g, "").toLowerCase()));
 };
 
@@ -694,8 +698,8 @@ try {
         const checks = {
           name: text.includes(normalizeText(row.kpi.name)),
           window: text.includes(normalizeText(getGA4KpiReportingWindowLabel(row.kpi.metric, row.kpi.name))),
-          current: row.state.eligible || row.state.code === "stale" ? hasNumericEvidence(text, row.liveValue) : true,
-          target: row.state.eligible ? hasNumericEvidence(text, row.kpi.targetValue) : true,
+          current: row.state.eligible || row.state.code === "stale" ? hasNumericEvidence(text, row.liveValue, row.kpi.unit) : true,
+          target: row.state.eligible ? hasNumericEvidence(text, row.kpi.targetValue, row.kpi.unit) : true,
           state: text.includes(status),
         };
         return { kpiHash: hash(row.kpi.id), checks, exact: Object.values(checks).every(Boolean) };

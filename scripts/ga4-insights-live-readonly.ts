@@ -7,7 +7,7 @@ import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { computeAttainmentPct, computeBenchmarkThresholdResult, computeEffectiveDeltaPct, isLowerIsBetterKpi } from "../shared/kpi-math";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
-import { getReportingDateWindow } from "../server/utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow } from "../server/utils/reporting-timezone";
 
 const BASE_URL = process.env.GA4_INSIGHTS_BASE_URL || "https://marketforensics.onrender.com";
 const EXPECTED_SHA = String(process.env.GA4_INSIGHTS_EXPECTED_SHA || "").trim();
@@ -305,7 +305,7 @@ try {
   if (normalizeProperty(uiOverviewDailyBody?.propertyId) !== normalizeProperty(propertyId)) throw new Error("Live-page 30-day property parity failed");
   if (uiOverviewDailyBody?.providerRefreshAttempted !== false) throw new Error("Live-page 30-day read-only parity triggered a provider refresh");
   if (uiOverviewDailyBody?.startDate !== expected30.startDate || uiOverviewDailyBody?.endDate !== expected30.endDate) throw new Error("Live-page 30-day window parity failed");
-  const cumulativeStartDate = String(row.import_start_date || "").slice(0, 10);
+  const cumulativeStartDate = String(row.import_start_date || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE).slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(cumulativeStartDate) || uiOverviewDailyBody?.overviewStartDate !== cumulativeStartDate) {
     throw new Error("Live-page cumulative KPI/Benchmark start-date parity failed");
   }

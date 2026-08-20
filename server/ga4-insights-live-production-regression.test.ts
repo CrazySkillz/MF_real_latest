@@ -247,6 +247,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain('actual.searchParams.get("days") === "60"');
     expect(validator).toContain("overviewDailyWindow:");
     expect(validator).toContain("g.import_start_date");
+    expect(validator).toContain("row.import_start_date || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE");
     expect(validator).toContain("uiOverviewDailyBody?.overviewStartDate !== cumulativeStartDate");
     expect(validator).toContain('Object.prototype.hasOwnProperty.call(uiOverviewDailyBody || {}, "overviewTotals")');
     expect(validator).toContain("summarizeGA4TrafficRows(persistedOverviewRows.rows)");

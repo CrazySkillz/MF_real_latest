@@ -32,7 +32,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
 
   it("reads KPI and Benchmark target rows directly from the campaign's GA4 configuration", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
-    const scoringBlock = page.slice(page.indexOf("const scoringTrafficWindow"), page.indexOf("// Score only verified GA4 records"));
+    const scoringBlock = page.slice(page.indexOf("const liveScoringTrafficTotals"), page.indexOf("// Score only verified GA4 records"));
 
     expect(page).toContain('fetch(`/api/platforms/google_analytics/kpis?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)');
@@ -43,7 +43,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(scoringBlock).toContain("const current = getLiveScoringValue(benchmark);");
     expect(scoringBlock).toContain("const getScoringTrafficInputState = (item: any): GA4KpiInputState => {");
     expect(scoringBlock).not.toContain("getFreshPersistedScoringValue");
-    expect(scoringBlock).toContain("const states = [scoringTrafficInputState, financialConversionsInputState];");
+    expect(page).toContain("ga4-breakdown?dateRange=30days");
+    expect(page).toContain("performance-summary-scoring-read-only");
+    expect(page).toContain("performanceGA4ScoringTrafficResponse?.totals");
     expect(scoringBlock).not.toContain("kpi?.currentValue");
     expect(scoringBlock).not.toContain("benchmark?.currentValue");
   });
@@ -155,8 +157,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });");
     expect(page).toContain("const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });");
     expect(page).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
-    expect(page).toContain("if (!hasOneCompatiblePerformanceScoringTarget(kpi, effectiveKpis)) return null;");
-    expect(page).toContain("if (!hasOneCompatiblePerformanceScoringTarget(benchmark, effectiveBenchmarks)) return null;");
+    expect(page).not.toContain("hasOneCompatiblePerformanceScoringTarget");
     expect(page).not.toContain("return parseNum(kpi.currentValue);");
     expect(page).toContain('const kpisOnTrackOrAbove = scoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length;');
     expect(page).toContain('const benchmarksOnTrack = scoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length;');

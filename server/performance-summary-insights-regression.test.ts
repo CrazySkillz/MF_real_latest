@@ -3,13 +3,18 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   buildPerformanceRecommendedActions,
-  hasOneCompatiblePerformanceScoringTarget,
   resolvePerformanceHealthCoverage,
   resolvePerformanceLiveMetricValue,
   summarizePerformanceTrafficWindow,
   type PerformanceRecommendedActionsInput,
 } from "../client/src/lib/performance-recommended-actions";
 import { resolveGA4KpiConsumerState } from "../shared/ga4-kpi-consumer-state";
+import {
+  classifyKpiBandWithPolicy,
+  computeBenchmarkThresholdResult,
+  isLowerIsBetterKpi,
+  resolveKpiThresholdPolicy,
+} from "../shared/kpi-math";
 
 const dailyRows = Array.from({ length: 31 }, (_, index) => {
   const date = new Date(Date.UTC(2026, 6, 19 + index)).toISOString().slice(0, 10);
@@ -32,8 +37,8 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
   revenueState: "ready",
   spendState: "ready",
   financialConversionsState: "ready",
-  trafficRows: dailyRows,
-  dataThroughDate: "2026-08-18",
+  trafficTotals: { sessions: 317, users: 317, conversions: 42, pageviews: 500, engagedSessions: 217 },
+  trafficMetricAvailability: { sessions: true, users: true, conversions: true, pageviews: true, conversion_rate: true, engagement_rate: true },
   financialRevenue: 72_766.69,
   financialSpend: 2_699.75,
   financialConversions: 251,
@@ -117,11 +122,6 @@ describe("Performance Summary Recommended Actions decision engine", () => {
   });
 
   it("fails closed for the exact production stale-row and newer-target-timestamp failure", () => {
-    const staleRows = [
-      { date: "2026-08-08", sessions: 100, users: 90, conversions: 10, pageviews: 150, engagedSessions: 70 },
-      { date: "2026-08-09", sessions: 100, users: 90, conversions: 10, pageviews: 150, engagedSessions: 70 },
-      { date: "2026-08-10", sessions: 117, users: 100, conversions: 22, pageviews: 200, engagedSessions: 77 },
-    ];
     const sessionsTarget = {
       metric: "sessions",
       name: "Sessions",
@@ -131,8 +131,6 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       updatedAt: "2026-08-19T18:06:30.000Z",
     };
     const actions = buildPerformanceRecommendedActions(baseInput({
-      trafficRows: staleRows,
-      dataThroughDate: "2026-08-18",
       trafficState: "stale",
       kpis: [sessionsTarget],
     }));
@@ -159,51 +157,89 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(actions.some((action) => action.title === "Review Sessions" || action.message.includes("Verified 317"))).toBe(false);
   });
 
-  it("excludes duplicate and period-incompatible targets from health scoring", () => {
-    const duplicateTargets = [
-      { metric: "sessions", targetValue: 950, trackingPeriod: 30 },
-      { metric: "sessions", targetValue: 1_000, trackingPeriod: 30 },
+  it("scores all 13 production target rows from fresh live values", () => {
+    const productionKpis = [
+      { metric: "conversion_rate", name: "Conversion Rate", targetValue: 15, trackingPeriod: 30 },
+      { metric: "conversion_rate", name: "Conversion Rate", targetValue: 50, trackingPeriod: 30 },
+      { metric: "cpa", name: "Cost Per Acquisition", targetValue: 9, timeframe: "lifetime" },
+      { metric: "cpa", name: "Cost Per Acquisition", targetValue: 9, timeframe: "lifetime" },
+      { metric: "engagement_rate", name: "Engagement Rate", targetValue: 89 },
+      { metric: "revenue", name: "Revenue", targetValue: 25_000, timeframe: "monthly" },
+      { metric: "roas", name: "ROAS", targetValue: 25, timeframe: "monthly" },
+      { metric: "roi", name: "ROI", targetValue: 2_000, timeframe: "monthly" },
+      { metric: "sessions", name: "Sessions", targetValue: 950, trackingPeriod: 30 },
+      { metric: "users", name: "Users", targetValue: 820, trackingPeriod: 30 },
+      { metric: "users", name: "Users", targetValue: 550, trackingPeriod: 30 },
     ];
-    expect(hasOneCompatiblePerformanceScoringTarget(duplicateTargets[0], duplicateTargets)).toBe(false);
-    expect(hasOneCompatiblePerformanceScoringTarget(
-      { metric: "roas", targetValue: 25, timeframe: "monthly" },
-      [{ metric: "roas", targetValue: 25, timeframe: "monthly" }],
-    )).toBe(false);
+    const productionBenchmarks = [
+      { metric: "conversions", name: "Conversions", benchmarkValue: 299, period: "monthly" },
+      { metric: "revenue", name: "Revenue", benchmarkValue: 20_000, period: "monthly" },
+    ];
+    const liveInput = baseInput({
+      kpis: productionKpis,
+      benchmarks: productionBenchmarks,
+      trafficTotals: { sessions: 42, users: 42, conversions: 42, pageviews: Number.NaN, engagedSessions: 42 },
+      trafficMetricAvailability: { sessions: true, users: true, conversions: true, pageviews: false, conversion_rate: true, engagement_rate: true },
+    });
+    const current = (item: any) => resolvePerformanceLiveMetricValue({
+      item,
+      trafficTotals: liveInput.trafficTotals,
+      financialRevenue: liveInput.financialRevenue,
+      financialSpend: liveInput.financialSpend,
+      financialConversions: liveInput.financialConversions,
+    });
+    const scoredKpis = productionKpis.map((item) => {
+      const value = current(item)!;
+      const target = Number(item.targetValue);
+      const lowerIsBetter = isLowerIsBetterKpi(item);
+      const policy = resolveKpiThresholdPolicy({ ...item, current: value, target, lowerIsBetter });
+      return classifyKpiBandWithPolicy({ current: value, target, lowerIsBetter, policy });
+    });
+    const scoredBenchmarks = productionBenchmarks.map((item) => computeBenchmarkThresholdResult({
+      ...item,
+      current: current(item)!,
+      benchmarkValue: item.benchmarkValue,
+    }).status);
+    const coverage = resolvePerformanceHealthCoverage({
+      configuredKpiCount: productionKpis.length,
+      configuredBenchmarkCount: productionBenchmarks.length,
+      scoredKpiCount: scoredKpis.length,
+      scoredBenchmarkCount: scoredBenchmarks.length,
+      kpisOnTrack: scoredKpis.filter((band) => band === "above" || band === "near").length,
+      benchmarksOnTrack: scoredBenchmarks.filter((status) => status === "on_track").length,
+    });
+    const actions = buildPerformanceRecommendedActions(liveInput);
+
+    expect(scoredKpis).toHaveLength(11);
+    expect(scoredKpis.filter((band) => band === "above" || band === "near")).toHaveLength(6);
+    expect(scoredBenchmarks).toHaveLength(2);
+    expect(scoredBenchmarks.filter((status) => status === "on_track")).toHaveLength(1);
+    expect(coverage).toEqual({
+      configuredMetricCount: 13,
+      verifiedMetricCount: 13,
+      excludedMetricCount: 0,
+      totalOnTrackMetrics: 7,
+      healthScore: 54,
+    });
+    expect(actions.map((action) => action.title)).toEqual(["Review Sessions", "Review Users", "Review Cost Per Acquisition"]);
+    expect(actions[0].message).toContain("Verified 42");
+    expect(actions[0].message).toContain("950 KPI target");
+    expect(actions[1].message).toContain("820 KPI target");
+    expect(actions[2].message).toContain("Verified $10.76");
   });
 
-  it("does not mix setup warnings with an otherwise evaluable recommendation", () => {
+  it("evaluates repeated saved target rows and deduplicates only their action cards", () => {
     const actions = buildPerformanceRecommendedActions(baseInput({
       kpis: [
         { metric: "sessions", name: "Sessions", targetValue: 950, trackingPeriod: 30 },
-        { metric: "roas", name: "ROAS", targetValue: 25, timeframe: "monthly" },
+        { metric: "sessions", name: "Sessions", targetValue: 1_000, trackingPeriod: 30 },
       ],
     }));
 
-    expect(actions.map((action) => action.title)).toEqual(["Align target periods"]);
-    expect(actions.some((action) => action.message.includes("Verified"))).toBe(false);
-  });
-
-  it("fails closed for duplicate targets and incompatible target periods", () => {
-    const actions = buildPerformanceRecommendedActions(baseInput({
-      kpis: [
-        { metric: "conversion_rate", name: "Conversion Rate", targetValue: 15, trackingPeriod: 30 },
-        { metric: "conversion_rate", name: "Conversion Rate", targetValue: 50, trackingPeriod: 30 },
-        { metric: "cpa", name: "Cost Per Acquisition", targetValue: 9, timeframe: "lifetime" },
-        { metric: "cpa", name: "Cost Per Acquisition", targetValue: 9, timeframe: "lifetime" },
-        { metric: "roas", name: "ROAS", targetValue: 25, timeframe: "monthly" },
-        { metric: "roi", name: "ROI", targetValue: 2_000, timeframe: "monthly" },
-      ],
-      benchmarks: [
-        { metric: "conversions", name: "Conversions", benchmarkValue: 299, period: "monthly" },
-        { metric: "revenue", name: "Revenue", benchmarkValue: 20_000, period: "monthly" },
-      ],
-    }));
-
-    expect(actions.map((action) => action.title)).toEqual(["Resolve duplicate targets", "Align target periods"]);
-    expect(actions[0].message).toContain("KPI Key Events per Session");
-    expect(actions[0].message).toContain("KPI Cost Per Acquisition");
-    expect(actions[1].message).toContain("Financial metrics require campaign-to-date");
-    expect(actions.some((action) => action.message.includes("Verified"))).toBe(false);
+    expect(actions).toHaveLength(1);
+    expect(actions[0].title).toBe("Review Sessions");
+    expect(actions[0].message).toContain("1,000 KPI target");
+    expect(actions[0].message).toContain("Verified 317");
   });
 
   it("computes Key Events per Session from the exact traffic window, not the outcome aggregate", () => {
@@ -213,7 +249,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
     expect(action.type).toBe("warning");
     expect(action.title).toBe("Review Key Events per Session");
-    expect(action.message).toContain("Verified 13.25% versus the 15% KPI target");
+    expect(action.message).toContain("Verified 13.25% from 30 completed reporting days (campaign reporting timezone) versus the 15% KPI target");
     expect(action.message).not.toContain("12.8%");
   });
 
@@ -224,7 +260,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
     expect(action.type).toBe("warning");
     expect(action.title).toBe("Review Cost Per Acquisition");
-    expect(action.message).toContain("Verified $10.76 versus the $9.00 KPI target");
+    expect(action.message).toContain("Verified $10.76 from campaign-to-date financial inputs versus the $9.00 KPI target");
     expect(action.message).toContain("campaign-to-date financial inputs");
   });
 
@@ -245,7 +281,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
     expect(action.type).toBe("success");
     expect(action.title).toBe("ROAS on target");
-    expect(action.message).toContain("Verified 26.95x versus the 25x KPI target");
+    expect(action.message).toContain("Verified 26.95x from campaign-to-date financial inputs versus the 25x KPI target");
     expect(action.message).toContain("No corrective action");
   });
 
@@ -274,8 +310,12 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const insights = page.slice(page.indexOf("{/* Insights Tab */}"));
 
-    expect(page).toContain("hasOneCompatiblePerformanceScoringTarget");
+    expect(page).not.toContain("hasOneCompatiblePerformanceScoringTarget");
     expect(page).not.toContain("resolvePerformanceFreshPersistedMetricValue");
+    expect(page).not.toContain('action.category === "duplicate-targets"');
+    expect(page).not.toContain('action.category === "target-periods"');
+    expect(page).toContain("ga4-breakdown?dateRange=30days");
+    expect(page).toContain("performance-summary-scoring-read-only");
     expect(page).toContain("const recommendedActions = buildPerformanceRecommendedActions({");
     expect(insights).toContain("const recommendedInsights = recommendedActions;");
     expect(insights).not.toContain("buildPerformanceInsights()");

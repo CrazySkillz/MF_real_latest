@@ -11,7 +11,7 @@ import {
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { resolveGA4KpiMetricIdentity, type GA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import {
-  resolveGA4InsightTargetPeriodCompatibility,
+  getGA4KpiReportingWindowLabel,
   resolveGA4KpiConsumerState,
   type GA4KpiInputState,
   type GA4KpiListState,
@@ -23,6 +23,7 @@ export type PerformanceRecommendedAction = {
   category: string;
   title: string;
   message: string;
+  severity?: number;
 };
 
 export type PerformanceRecommendedActionsInput = {
@@ -34,8 +35,8 @@ export type PerformanceRecommendedActionsInput = {
   revenueState: GA4KpiInputState;
   spendState: GA4KpiInputState;
   financialConversionsState: GA4KpiInputState;
-  trafficRows: any[];
-  dataThroughDate: string;
+  trafficTotals: { sessions: number; users: number; conversions: number; pageviews: number; engagedSessions: number };
+  trafficMetricAvailability?: Partial<Record<GA4KpiMetricIdentity, boolean>>;
   financialRevenue: number;
   financialSpend: number;
   financialConversions: number;
@@ -62,18 +63,6 @@ export const resolvePerformanceHealthCoverage = (input: {
       ? Math.round((totalOnTrackMetrics / verifiedMetricCount) * 100)
       : null,
   };
-};
-
-export const hasOneCompatiblePerformanceScoringTarget = (item: any, rows: any[]): boolean => {
-  const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
-  if (!identity || rows.filter((row: any) => resolveGA4KpiMetricIdentity(row?.metric, row?.metricName, row?.name) === identity).length !== 1) return false;
-  return resolveGA4InsightTargetPeriodCompatibility({
-    metric: item?.metric ?? item?.metricName,
-    name: item?.name ?? item?.metricName,
-    timeframe: item?.timeframe,
-    trackingPeriod: item?.trackingPeriod,
-    period: item?.period,
-  }).comparable;
 };
 
 const metricLabels: Record<GA4KpiMetricIdentity, string> = {
@@ -190,13 +179,6 @@ const recommendationFor = (identity: GA4KpiMetricIdentity): string => {
   return "Review acquisition volume and source mix.";
 };
 
-const combineInputStates = (...states: GA4KpiInputState[]): GA4KpiInputState => {
-  if (states.includes("unavailable")) return "unavailable";
-  if (states.includes("stale")) return "stale";
-  if (states.includes("loading")) return "loading";
-  return "ready";
-};
-
 export function buildPerformanceRecommendedActions(input: PerformanceRecommendedActionsInput): PerformanceRecommendedAction[] {
   const listStates = [input.kpiListState, input.benchmarkListState];
   if (listStates.includes("loading")) {
@@ -206,64 +188,41 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
     return [{ type: "info", priority: 0, category: "verification", title: "Recommended Actions withheld", message: "The complete target inventory could not be freshly verified. No action is recommended from retained or incomplete target data." }];
   }
 
-  const trafficWindow = summarizePerformanceTrafficWindow(input.trafficRows, input.dataThroughDate);
-  const trafficState = input.trafficState === "ready" && !trafficWindow.valid ? "unavailable" : input.trafficState;
   const liveValue = (row: any) => resolvePerformanceLiveMetricValue({
     item: row,
-    trafficTotals: trafficWindow.totals,
+    trafficTotals: input.trafficTotals,
     financialRevenue: input.financialRevenue,
     financialSpend: input.financialSpend,
     financialConversions: input.financialConversions,
   });
 
-  const duplicateLabels: string[] = [];
-  const periodLabels: string[] = [];
   const invalidLabels: string[] = [];
   const blockedLabels: string[] = [];
   const evaluated: PerformanceRecommendedAction[] = [];
 
   const evaluate = (rows: any[], entity: "KPI" | "Benchmark") => {
-    const grouped = new Map<GA4KpiMetricIdentity, any[]>();
     for (const row of rows) {
       const identity = resolveGA4KpiMetricIdentity(row?.metric, row?.metricName, row?.name);
       if (!identity) {
         invalidLabels.push(`${entity} ${String(row?.name || row?.metricName || row?.metric || "custom value")}`);
         continue;
       }
-      grouped.set(identity, [...(grouped.get(identity) || []), row]);
-    }
-
-    for (const [identity, matches] of Array.from(grouped.entries())) {
       const label = metricLabels[identity];
-      if (matches.length !== 1) {
-        duplicateLabels.push(`${entity} ${label}`);
-        continue;
-      }
-      const row = matches[0];
       const target = parseNumber(entity === "KPI" ? row?.targetValue : row?.benchmarkValue ?? row?.industryAverage);
       if (target === null || target <= 0) {
         invalidLabels.push(`${entity} ${label}`);
         continue;
       }
-      const compatibility = resolveGA4InsightTargetPeriodCompatibility({
-        metric: row?.metric ?? row?.metricName,
-        name: row?.name ?? row?.metricName,
-        timeframe: row?.timeframe,
-        trackingPeriod: row?.trackingPeriod,
-        period: row?.period,
-      });
-      if (!compatibility.comparable) {
-        periodLabels.push(`${entity} ${label}`);
-        continue;
-      }
+      const trafficConversions = identity === "cpa" ? input.financialConversions : input.trafficTotals.conversions;
       const sufficiency = entity === "KPI"
-        ? resolveKpiDataSufficiency({ metric: identity, name: row?.name, sessions: trafficWindow.totals.sessions, conversions: input.financialConversions, spend: input.financialSpend })
-        : resolveBenchmarkDataSufficiency({ metric: identity, name: row?.name ?? row?.metricName, sessions: trafficWindow.totals.sessions, conversions: input.financialConversions, spend: input.financialSpend });
+        ? resolveKpiDataSufficiency({ metric: identity, name: row?.name, sessions: input.trafficTotals.sessions, conversions: trafficConversions, spend: input.financialSpend })
+        : resolveBenchmarkDataSufficiency({ metric: identity, name: row?.name ?? row?.metricName, sessions: input.trafficTotals.sessions, conversions: trafficConversions, spend: input.financialSpend });
+      const metricTrafficState = input.trafficMetricAvailability?.[identity] === false ? "unavailable" : input.trafficState;
       const consumerState = resolveGA4KpiConsumerState({
         metric: identity,
         name: row?.name ?? row?.metricName,
         listState: entity === "KPI" ? input.kpiListState : input.benchmarkListState,
-        trafficState: identity === "cpa" ? combineInputStates(trafficState, input.financialConversionsState) : trafficState,
+        trafficState: identity === "cpa" ? input.financialConversionsState : metricTrafficState,
         revenueState: input.revenueState,
         spendState: input.spendState,
         sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
@@ -276,6 +235,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
       }
       const currentText = formatMetricValue(identity, current);
       const targetText = formatMetricValue(identity, target);
+      const currentWindow = getGA4KpiReportingWindowLabel(identity, row?.name).toLowerCase();
       if (entity === "KPI") {
         const lowerIsBetter = isLowerIsBetterKpi({ metric: identity, name: row?.name });
         const policy = resolveKpiThresholdPolicy({ metric: identity, name: row?.name, unit: row?.unit, current, target, lowerIsBetter });
@@ -289,9 +249,10 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         evaluated.push({
           type: needsAction ? "warning" : "success",
           priority: needsAction ? priorityRank(row?.priority) : 8,
+          severity: Math.abs(gap),
           category: `kpi-${identity}`,
           title: needsAction ? `Review ${label}` : `${label} on target`,
-          message: `Verified ${currentText} versus the ${targetText} KPI target over ${compatibility.currentWindow.toLowerCase()}. ${needsAction ? recommendationFor(identity) : "No corrective action is indicated by this target; continue monitoring."}`,
+          message: `Verified ${currentText} from ${currentWindow} versus the ${targetText} KPI target. ${needsAction ? recommendationFor(identity) : "No corrective action is indicated by this target; continue monitoring."}`,
         });
       } else {
         const result = computeBenchmarkThresholdResult({ metric: identity, name: row?.name ?? row?.metricName, unit: row?.unit, current, benchmarkValue: target });
@@ -303,9 +264,10 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         evaluated.push({
           type: needsAction ? "warning" : "success",
           priority: needsAction ? 5 : 9,
+          severity: Math.abs(result.effectiveDeltaPct || 0),
           category: `benchmark-${identity}`,
           title: needsAction ? `Review ${label}` : `${label} benchmark met`,
-          message: `Verified ${currentText} versus the ${targetText} Benchmark over ${compatibility.currentWindow.toLowerCase()}. ${needsAction ? recommendationFor(identity) : "No corrective action is indicated by this Benchmark; continue monitoring."}`,
+          message: `Verified ${currentText} from ${currentWindow} versus the ${targetText} Benchmark. ${needsAction ? recommendationFor(identity) : "No corrective action is indicated by this Benchmark; continue monitoring."}`,
         });
       }
     }
@@ -315,26 +277,29 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
   evaluate(Array.isArray(input.benchmarks) ? input.benchmarks : [], "Benchmark");
 
   const setup: PerformanceRecommendedAction[] = [];
-  if (duplicateLabels.length > 0) {
-    setup.push({ type: "info", priority: 0, category: "duplicate-targets", title: "Resolve duplicate targets", message: `Choose one active target for ${joinLabels(duplicateLabels)}. No comparison is made while more than one target applies.` });
-  }
-  if (periodLabels.length > 0) {
-    setup.push({ type: "info", priority: 0, category: "target-periods", title: "Align target periods", message: `The saved periods for ${joinLabels(periodLabels)} do not match their verified current windows. Financial metrics require campaign-to-date; traffic metrics require 30 completed reporting days.` });
-  }
   if (invalidLabels.length > 0) {
-    setup.push({ type: "info", priority: 0, category: "invalid-targets", title: "Complete target setup", message: `${joinLabels(invalidLabels)} cannot be evaluated because a standard metric or positive target value is not verified.` });
+    setup.push({ type: "info", priority: 0, category: "invalid-targets", title: "Complete target setup", message: `${joinLabels(Array.from(new Set(invalidLabels)))} cannot be evaluated because a standard metric or positive target value is not verified.` });
   }
   if (blockedLabels.length > 0) {
-    setup.push({ type: "info", priority: 0, category: "blocked-targets", title: "Recommendation inputs unavailable", message: `${joinLabels(blockedLabels)} cannot be evaluated from fresh, sufficient source data. No action is recommended for those metrics.` });
+    setup.push({ type: "info", priority: 0, category: "blocked-targets", title: "Recommendation inputs unavailable", message: `${joinLabels(Array.from(new Set(blockedLabels)))} cannot be evaluated from fresh, sufficient source data. No action is recommended for those metrics.` });
   }
 
-  const recommendations = (setup.length > 0 ? setup : evaluated).sort((a, b) => a.priority - b.priority).slice(0, 3);
+  const evaluatedByMetric = new Map<string, PerformanceRecommendedAction>();
+  for (const action of evaluated) {
+    const existing = evaluatedByMetric.get(action.category);
+    if (!existing || action.priority < existing.priority || (action.priority === existing.priority && (action.severity || 0) > (existing.severity || 0))) {
+      evaluatedByMetric.set(action.category, action);
+    }
+  }
+  const recommendations = (setup.length > 0 ? setup : Array.from(evaluatedByMetric.values()))
+    .sort((a, b) => a.priority - b.priority || (b.severity || 0) - (a.severity || 0))
+    .slice(0, 3);
   if (recommendations.length > 0) return recommendations;
   return [{
     type: "info",
     priority: 10,
     category: "no-targets",
     title: "No target-backed action available",
-    message: "Configure one GA4 KPI or Benchmark with a matching reporting period before using this section for a decision.",
+    message: "Configure at least one supported GA4 KPI or Benchmark before using this section for a decision.",
   }];
 }

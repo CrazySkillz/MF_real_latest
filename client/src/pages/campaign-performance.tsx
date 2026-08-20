@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions, hasOneCompatiblePerformanceScoringTarget, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -156,7 +156,20 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
-  const performanceGA4FinancialEndDate = performanceGA4SummaryPlaceholder ? "" : String(performanceGA4SummaryResponse?.dataThroughDate || "");
+  const { data: performanceGA4ScoringTrafficResponse, isLoading: performanceGA4ScoringTrafficLoading, isError: performanceGA4ScoringTrafficError, isPlaceholderData: performanceGA4ScoringTrafficPlaceholder } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", "30days", performanceGA4PropertyId, "performance-summary-scoring-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=30days&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false || String(data?.propertyId || "") !== performanceGA4PropertyId || data?.endDate !== data?.dataThroughDate) {
+        throw new Error(data?.error || "Failed to fetch live GA4 scoring metrics");
+      }
+      return data;
+    },
+  });
+  const performanceGA4FinancialEndDate = performanceGA4ScoringTrafficPlaceholder ? "" : String(performanceGA4ScoringTrafficResponse?.dataThroughDate || "");
   const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError, isPlaceholderData: performanceGA4RevenuePlaceholder } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, "performance-summary-read-only"],
     enabled: !!campaignId && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
@@ -431,50 +444,47 @@ export default function CampaignPerformanceSummary() {
   const benchmarkListState: GA4KpiListState = demoMode ? "ready" : benchmarksLoading ? "loading" : benchmarksError ? (benchmarks.length > 0 ? "stale" : "failed") : "ready";
   const trafficInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder))
+    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4ScoringTrafficLoading || performanceGA4ScoringTrafficPlaceholder))
       ? "loading"
-      : performanceGA4SummaryError && performanceGA4SummaryResponse
+      : performanceGA4ScoringTrafficError && performanceGA4ScoringTrafficResponse
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || !performanceGA4PropertyId || !performanceGA4SummaryResponse
+        : performanceGA4ConnectionsError || performanceGA4ScoringTrafficError || !performanceGA4PropertyId || !performanceGA4ScoringTrafficResponse
         ? "unavailable"
-        : performanceGA4SummaryResponse?.refreshIsStale || performanceGA4SummaryResponse?.providerRefreshWarning
-          ? "stale"
-          : "ready";
+        : "ready";
   const nativeRevenue = Number(performanceGA4RevenueResponse?.native?.totals?.revenue);
   const importedRevenue = Number(performanceGA4RevenueResponse?.imported?.totalRevenue);
   const hasNativeRevenue = !!String(performanceGA4RevenueResponse?.native?.revenueMetric || '').trim() || (Number.isFinite(nativeRevenue) && nativeRevenue !== 0);
   const hasImportedRevenue = Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0;
   const revenueInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+    : performanceGA4ConnectionsLoading || performanceGA4ScoringTrafficLoading || performanceGA4ScoringTrafficPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
       : performanceGA4RevenueError && performanceGA4RevenueResponse
         ? "stale"
-      : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
+      : performanceGA4ConnectionsError || performanceGA4ScoringTrafficError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
         ? "unavailable"
         : "ready";
   const financialConversionsInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+    : performanceGA4ConnectionsLoading || performanceGA4ScoringTrafficLoading || performanceGA4ScoringTrafficPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
       : performanceGA4RevenueError && performanceGA4RevenueResponse
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(Number(performanceGA4RevenueResponse?.native?.totals?.conversions))
+        : performanceGA4ConnectionsError || performanceGA4ScoringTrafficError || performanceGA4RevenueError || !performanceGA4PropertyId || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(Number(performanceGA4RevenueResponse?.native?.totals?.conversions))
           ? "unavailable"
           : "ready";
   const spendSummaryMetric = performanceSummary?.totals?.spend;
   const scoringSpendToDate = Number(performanceGA4SpendResponse?.spendToDate);
   const spendInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || performanceGA4SpendLoading || performanceGA4SpendPlaceholder
+    : performanceGA4ConnectionsLoading || performanceGA4ScoringTrafficLoading || performanceGA4ScoringTrafficPlaceholder || performanceGA4SpendLoading || performanceGA4SpendPlaceholder
       ? "loading"
       : performanceGA4SpendError && performanceGA4SpendResponse
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4SpendError || !performanceGA4PropertyId || !performanceGA4SpendResponse || performanceGA4SpendResponse?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(scoringSpendToDate) || !Array.isArray(performanceGA4SpendResponse?.sourceIds) || performanceGA4SpendResponse.sourceIds.length === 0
+        : performanceGA4ConnectionsError || performanceGA4ScoringTrafficError || performanceGA4SpendError || !performanceGA4PropertyId || !performanceGA4SpendResponse || performanceGA4SpendResponse?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(scoringSpendToDate) || !Array.isArray(performanceGA4SpendResponse?.sourceIds) || performanceGA4SpendResponse.sourceIds.length === 0
         ? "unavailable"
         : "ready";
-  const scoringTrafficRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
-  const scoringTrafficWindow = summarizePerformanceTrafficWindow(scoringTrafficRows, String(performanceGA4SummaryResponse?.dataThroughDate || ""));
+  const liveScoringTrafficTotals = performanceGA4ScoringTrafficResponse?.totals || {};
   const scoringTrafficTotals = demoMode
     ? {
         sessions: parseNum(effectiveGA4?.metrics?.sessions),
@@ -483,14 +493,27 @@ export default function CampaignPerformanceSummary() {
         pageviews: parseNum(effectiveGA4?.metrics?.pageviews),
         engagedSessions: 0,
       }
-    : scoringTrafficWindow.totals;
-  const scoringTrafficInputState: GA4KpiInputState = !demoMode && trafficInputState === "ready" && !scoringTrafficWindow.valid
-    ? "unavailable"
-    : trafficInputState;
+    : {
+        sessions: Number(liveScoringTrafficTotals.sessions),
+        users: Number(liveScoringTrafficTotals.users),
+        conversions: Number(liveScoringTrafficTotals.conversions),
+        pageviews: Number(liveScoringTrafficTotals.pageviews),
+        engagedSessions: Number(liveScoringTrafficTotals.engagedSessions),
+      };
+  const scoringTrafficMetricAvailability: Record<string, boolean> = demoMode
+    ? { sessions: true, users: true, conversions: true, pageviews: true, conversion_rate: true, engagement_rate: true }
+    : {
+        sessions: Number.isFinite(scoringTrafficTotals.sessions),
+        users: Number.isFinite(scoringTrafficTotals.users),
+        conversions: Number.isFinite(scoringTrafficTotals.conversions),
+        pageviews: Number.isFinite(scoringTrafficTotals.pageviews),
+        conversion_rate: Number.isFinite(scoringTrafficTotals.sessions) && Number.isFinite(scoringTrafficTotals.conversions),
+        engagement_rate: Number.isFinite(scoringTrafficTotals.sessions) && Number.isFinite(scoringTrafficTotals.engagedSessions),
+      };
   const scoringSessions = demoMode
     ? parseNum(effectiveGA4?.metrics?.sessions)
     : scoringTrafficTotals.sessions;
-  const scoringConversions = demoMode
+  const scoringFinancialConversions = demoMode
     ? parseNum(effectiveGA4?.metrics?.conversions)
     : parseNum(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : scoringSpendToDate;
@@ -500,15 +523,12 @@ export default function CampaignPerformanceSummary() {
     trafficTotals: scoringTrafficTotals,
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
-    financialConversions: scoringConversions,
+    financialConversions: scoringFinancialConversions,
   });
   const getScoringTrafficInputState = (item: any): GA4KpiInputState => {
-    if (resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name) !== "cpa") return scoringTrafficInputState;
-    const states = [scoringTrafficInputState, financialConversionsInputState];
-    if (states.includes("unavailable")) return "unavailable";
-    if (states.includes("stale")) return "stale";
-    if (states.includes("loading")) return "loading";
-    return "ready";
+    const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
+    if (identity === "cpa") return financialConversionsInputState;
+    return identity && scoringTrafficMetricAvailability[identity] === false ? "unavailable" : trafficInputState;
   };
   const recommendedActions = buildPerformanceRecommendedActions({
     kpis: effectiveKpis,
@@ -519,11 +539,11 @@ export default function CampaignPerformanceSummary() {
     revenueState: revenueInputState,
     spendState: spendInputState,
     financialConversionsState: financialConversionsInputState,
-    trafficRows: scoringTrafficRows,
-    dataThroughDate: String(performanceGA4SummaryResponse?.dataThroughDate || ""),
+    trafficTotals: scoringTrafficTotals,
+    trafficMetricAvailability: scoringTrafficMetricAvailability,
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
-    financialConversions: scoringConversions,
+    financialConversions: scoringFinancialConversions,
   });
   const getScoringMissingDependencies = (item: any) => {
     const dependencies = getGA4KpiMetricDependencies(item?.metric, item?.metricName, item?.name);
@@ -533,12 +553,12 @@ export default function CampaignPerformanceSummary() {
     return missing;
   };
   const getKpiScore = (kpi: any) => {
-    if (!hasOneCompatiblePerformanceScoringTarget(kpi, effectiveKpis)) return null;
+    const identity = resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.metricName, kpi?.name);
     const sufficiency = resolveKpiDataSufficiency({
       metric: kpi?.metric,
       name: kpi?.name,
       sessions: scoringSessions,
-      conversions: scoringConversions,
+      conversions: identity === "cpa" ? scoringFinancialConversions : scoringTrafficTotals.conversions,
       spend: scoringSpend,
     });
     const consumerState = resolveGA4KpiConsumerState({
@@ -561,14 +581,14 @@ export default function CampaignPerformanceSummary() {
     return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct, current, target } : null;
   };
   const getBenchmarkScore = (benchmark: any) => {
-    if (!hasOneCompatiblePerformanceScoringTarget(benchmark, effectiveBenchmarks)) return null;
     const metric = benchmark?.metric || benchmark?.metricName || benchmark?.name;
     const name = benchmark?.name || benchmark?.metricName;
+    const identity = resolveGA4KpiMetricIdentity(metric, name);
     const sufficiency = resolveBenchmarkDataSufficiency({
       metric,
       name,
       sessions: scoringSessions,
-      conversions: scoringConversions,
+      conversions: identity === "cpa" ? scoringFinancialConversions : scoringTrafficTotals.conversions,
       spend: scoringSpend,
     });
     const consumerState = resolveGA4KpiConsumerState({
@@ -909,9 +929,7 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
-    const targetSetupAction = recommendedActions.find((action) =>
-      action.category === "duplicate-targets" || action.category === "target-periods" || action.category === "invalid-targets"
-    );
+    const targetSetupAction = recommendedActions.find((action) => action.category === "invalid-targets");
     if (targetSetupAction) {
       return {
         type: 'info',

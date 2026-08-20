@@ -25,7 +25,9 @@ describe("GA4 Benchmark provider validation guard", () => {
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate)");
     expect(route).toContain("ga4Service.getTotalsWithRevenue(propertyId, token, fromDate, toDate, campaignFilter, String((campaign as any)?.currency || \"USD\").trim().toUpperCase())");
     expect(route).toContain('storage.getPlatformBenchmarks("google_analytics", campaignId)');
-    expect(route).toContain("const currentValueWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);");
+    expect(route).toContain("const currentValueWindow = resolveGA4ImportToDateWindow((selectedConnection as any)?.importStartDate, (campaign as any)?.reportingTimeZone);");
+    expect(route).toContain('error: "INVALID_GA4_IMPORT_WINDOW"');
+    expect(route).not.toContain("const currentValueWindow = getReportingDateWindow(30");
     expect(route).toContain("const currentValueStartDate = currentValueWindow.startDate;");
     expect(route).toContain("const currentValueEndDate = currentValueWindow.endDate;");
     expect(route).toContain("currentValue: { startDate: currentValueStartDate, endDate: currentValueEndDate }");

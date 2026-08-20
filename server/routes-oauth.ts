@@ -9192,9 +9192,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isISODate(startDate) || !isISODate(endDate) || startDate > endDate) {
         return res.status(400).json({ success: false, error: "startDate/endDate must be YYYY-MM-DD and startDate must be <= endDate" });
       }
-      const currentValueWindow = getReportingDateWindow(30, (campaign as any)?.reportingTimeZone);
-      const currentValueStartDate = currentValueWindow.startDate;
-      const currentValueEndDate = currentValueWindow.endDate;
       const simulateRefreshFailure = ["1", "true", "yes"].includes(String((req.query as any)?.simulateRefreshFailure || "").trim().toLowerCase());
       const disableTokenRefresh = ["1", "true", "yes"].includes(String((req.query as any)?.disableTokenRefresh || "").trim().toLowerCase());
 
@@ -9223,6 +9220,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!selectedConnection || !propertyId) {
         return res.status(404).json({ success: false, error: "NO_GA4_CONNECTION", message: "No GA4 connection found for this campaign/property." });
       }
+      const currentValueWindow = resolveGA4ImportToDateWindow((selectedConnection as any)?.importStartDate, (campaign as any)?.reportingTimeZone);
+      if (!currentValueWindow) {
+        return res.status(409).json({ success: false, error: "INVALID_GA4_IMPORT_WINDOW", message: "The GA4 import-to-date window is unavailable." });
+      }
+      const currentValueStartDate = currentValueWindow.startDate;
+      const currentValueEndDate = currentValueWindow.endDate;
 
       const round2Local = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);

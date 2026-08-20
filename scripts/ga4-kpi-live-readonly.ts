@@ -390,6 +390,13 @@ try {
   }), { sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0 });
   dailyTotals.revenue = Number(dailyTotals.revenue.toFixed(2));
   dailyTotals.engagementRate = dailyTotals.sessions > 0 ? dailyTotals.engagedSessions / dailyTotals.sessions : 0;
+  const overviewTotals = Object.prototype.hasOwnProperty.call(inputs.daily?.body || {}, "overviewTotals")
+    ? inputs.daily.body.overviewTotals
+    : dailyTotals;
+  const rawOverviewEngagementRate = Number(overviewTotals?.engagementRate ?? 0);
+  const overviewEngagementRate = Number.isFinite(rawOverviewEngagementRate)
+    ? Math.max(0, rawOverviewEngagementRate > 1 ? rawOverviewEngagementRate / 100 : rawOverviewEngagementRate)
+    : 0;
 
   const revenueDefinitions = Array.isArray(inputs.revenueSources?.body?.sources)
     ? inputs.revenueSources.body.sources
@@ -430,8 +437,8 @@ try {
   const expectedRows = apiKpis.map((kpi: any) => {
     const liveValue = Number(resolveGA4KpiLiveValue({
       kpi,
-      breakdownTotals: dailyTotals,
-      overviewEngagementRate: dailyTotals.engagementRate,
+      breakdownTotals: overviewTotals,
+      overviewEngagementRate,
       financialRevenue,
       financialSpend,
       financialROI,
@@ -450,7 +457,7 @@ try {
     const sufficiency = noWindowReason ? { sufficient: false, reason: noWindowReason } : resolveKpiDataSufficiency({
       metric: kpi?.metric,
       name: kpi?.name,
-      sessions: dailyTotals.sessions,
+      sessions: Number(overviewTotals?.sessions || 0),
       conversions: financialConversions,
       spend: financialSpend,
     });

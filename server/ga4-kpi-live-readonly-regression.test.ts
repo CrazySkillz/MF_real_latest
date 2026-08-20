@@ -48,6 +48,11 @@ describe("GA4 KPI deployed read-only validator", () => {
 
     expect(validator).toContain("resolveGA4KpiLiveValue");
     expect(validator).toContain("resolveGA4KpiConsumerState");
+    expect(validator).toContain('Object.prototype.hasOwnProperty.call(inputs.daily?.body || {}, "overviewTotals")');
+    expect(validator).toContain("breakdownTotals: overviewTotals");
+    expect(validator).toContain("sessions: Number(overviewTotals?.sessions || 0)");
+    expect(validator).not.toContain("breakdownTotals: dailyTotals");
+    expect(validator).not.toContain("overviewEngagementRate: dailyTotals.engagementRate");
     expect(validator).toContain('inputs.daily?.body?.refreshIsStale === true ? "stale" : "ready"');
     expect(validator).toContain("getGA4KpiReportingWindowLabel");
     expect(validator).toContain("Authenticated KPI API inventory does not match");

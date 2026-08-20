@@ -137,7 +137,12 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const propertyId = String(primary?.propertyId || "").trim();
     if (!campaign || !propertyId) return blockAlertDecision(resolved, "unavailable");
 
-    const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone);
+    const reportingWindow = getGA4KPIReportingWindow(
+      (campaign as any)?.reportingTimeZone,
+      undefined,
+      new Date(),
+      primary.importStartDate,
+    );
     const startDate = reportingWindow.startDate;
     const endDate = reportingWindow.endDate;
     const financialStartDate = campaignStartDate(campaign);
@@ -272,7 +277,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? ga4Inputs.users),
       sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? ga4Inputs.sessions),
       pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? ga4Inputs.pageviews),
-      conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
+      conversions: ga4Inputs.conversions,
       ga4Revenue: Number((parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0).toFixed(2)),
       engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
     } : null;

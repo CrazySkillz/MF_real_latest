@@ -2122,10 +2122,10 @@ export default function GA4Metrics() {
     (Array.isArray((ga4Breakdown as any)?.rows) && (ga4Breakdown as any).rows.length > 0);
   const hasBreakdownOverviewResponse = ga4Breakdown !== undefined;
   const hasDailyOverviewResponse = ga4DailyResp !== undefined;
-  const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;
   const overviewSummarySource = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, 'overviewTotals')
     ? (ga4DailyResp as any).overviewTotals
     : null;
+  const overviewTotalsSource = overviewSummarySource ?? (hasDailyOverviewResponse ? dailySummedTotals : null);
   const overviewSummaryAvailable = overviewSummarySource !== null;
   const overviewEngagementRate = (() => {
     const rate = Number(overviewTotalsSource?.engagementRate ?? 0);
@@ -2133,8 +2133,8 @@ export default function GA4Metrics() {
     return Math.max(0, rate > 1 ? rate / 100 : rate);
   })();
 
-  // Keep Summary on the configured completed-day lookback. Campaign-to-date
-  // totals belong only to the explicitly labeled financial section.
+  // KPI and Benchmark current values use the same fixed import-to-date traffic
+  // boundary as Summary; the initial historical window must never roll forward.
   const breakdownTotals = {
     date: ga4ReportDate,
     sessions: Number(overviewTotalsSource?.sessions || 0),
@@ -2693,7 +2693,7 @@ export default function GA4Metrics() {
     }
     return windows.length > 0 ? `${windows.join("; ")}.` : "";
   }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
-  const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
+  const financialConversions = Number(breakdownTotals.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4HasRevenueMetric ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
@@ -6906,7 +6906,7 @@ export default function GA4Metrics() {
                       <div>
                         <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
                         <p className="text-sm text-muted-foreground/70 mt-1">
-                          Traffic and rate KPIs use 30 completed reporting days in the campaign reporting timezone; financial KPIs use campaign-to-date inputs. Unverified items are excluded from scoring.
+                          KPI current values use the initial import boundary through the latest completed reporting day. Unverified items are excluded from scoring.
                         </p>
                       </div>
                       <Button size="sm" onClick={openCreateKPI}>

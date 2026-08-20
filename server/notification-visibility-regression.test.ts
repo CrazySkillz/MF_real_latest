@@ -90,7 +90,7 @@ describe("notification visibility regression guard", () => {
 
     expect(routesFile).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(routesFile).toContain('import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";');
-    expect(resolverFile).toContain("const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone);");
+    expect(resolverFile).toContain("primary.importStartDate,");
     expect(resolverFile).toContain("let trafficTotals = summarizeGA4TrafficRows(trafficRows);");
     expect(resolverFile).toContain("getYesopMockBaselineTotals");
     expect(resolverFile).toContain("const earlierCandidate = selectGA4FinancialTotalsSource(");

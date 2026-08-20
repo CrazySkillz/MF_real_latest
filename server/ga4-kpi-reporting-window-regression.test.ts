@@ -69,7 +69,7 @@ describe("GA4 KPI authoritative reporting window", () => {
       currency: "USD",
     });
     storageMock.getGA4Connections.mockResolvedValue([
-      { propertyId: "properties/123", isPrimary: true, method: "access_token", accessToken: "token" },
+      { propertyId: "properties/123", isPrimary: true, method: "access_token", accessToken: "token", importStartDate: "2026-07-01" },
     ]);
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-07-30" && endDate === "2026-07-30") return [trafficRows[1]];
@@ -101,21 +101,30 @@ describe("GA4 KPI authoritative reporting window", () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it("resolves 30 completed dates per campaign timezone and clamps explicit incomplete dates", () => {
+  it("keeps the fixed import boundary and clamps explicit incomplete dates", () => {
     const now = new Date("2026-08-01T00:30:00.000Z");
-    expect(getGA4KPIReportingWindow("America/Los_Angeles", undefined, now)).toMatchObject({
+    expect(getGA4KPIReportingWindow("America/Los_Angeles", undefined, now, "2026-07-01")).toMatchObject({
       reportingTimeZone: "America/Los_Angeles",
       startDate: "2026-07-01",
       endDate: "2026-07-30",
     });
-    expect(getGA4KPIReportingWindow("Europe/Amsterdam", undefined, now)).toMatchObject({
+    expect(getGA4KPIReportingWindow("Europe/Amsterdam", undefined, now, "2026-07-02")).toMatchObject({
       startDate: "2026-07-02",
       endDate: "2026-07-31",
     });
-    expect(getGA4KPIReportingWindow("America/Los_Angeles", "2026-08-01", now).endDate).toBe("2026-07-30");
-    expect(getGA4KPIReportingWindow("America/Los_Angeles", "2026-07-15", now)).toMatchObject({
-      startDate: "2026-06-16",
+    expect(getGA4KPIReportingWindow("America/Los_Angeles", "2026-08-01", now, "2026-07-01").endDate).toBe("2026-07-30");
+    expect(getGA4KPIReportingWindow("America/Los_Angeles", "2026-07-15", now, "2026-07-01")).toMatchObject({
+      startDate: "2026-07-01",
       endDate: "2026-07-15",
+      days: 15,
+    });
+    expect(() => getGA4KPIReportingWindow("America/Los_Angeles", "2026-06-30", now, "2026-07-01")).toThrow(
+      "GA4 KPI reporting date precedes the import boundary",
+    );
+    expect(getGA4KPIReportingWindow("Europe/Amsterdam", undefined, new Date("2026-08-20T12:00:00.000Z"), "2026-07-02")).toMatchObject({
+      startDate: "2026-07-02",
+      endDate: "2026-08-19",
+      days: 49,
     });
   });
 
@@ -127,7 +136,22 @@ describe("GA4 KPI authoritative reporting window", () => {
     });
   });
 
-  it("persists traffic and rate KPIs from that window while preserving lifetime financial conversions", async () => {
+  it("reproduces the campaign's exact cumulative Overview totals from the persisted rows", () => {
+    expect(summarizeGA4TrafficRows([
+      { date: "2026-07-12", users: 867, sessions: 866, conversions: 110, engagedSessions: 592 },
+      { date: "2026-08-08", users: 108, sessions: 108, conversions: 14, engagedSessions: 74 },
+      { date: "2026-08-09", users: 106, sessions: 106, conversions: 14, engagedSessions: 72 },
+      { date: "2026-08-10", users: 103, sessions: 103, conversions: 14, engagedSessions: 71 },
+    ])).toMatchObject({
+      users: 1_184,
+      sessions: 1_183,
+      conversions: 152,
+      engagedSessions: 809,
+      engagementRate: 809 / 1_183,
+    });
+  });
+
+  it("persists traffic, rate, and CPA values from the cumulative import-to-date conversions", async () => {
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", suppressAlerts: true });
 
     expect(result.date).toBe("2026-07-30");
@@ -138,7 +162,7 @@ describe("GA4 KPI authoritative reporting window", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("conversions", { currentValue: "40" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("conversion-rate", { currentValue: "10" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("engagement-rate", { currentValue: "65" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "10" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "25" });
     expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({
       recordedAt: new Date("2026-07-30T23:59:59.000Z"),
       notes: "auto:ga4_daily:2026-07-30;ga4_scope_v1:123:America%2FLos_Angeles:USD:%5B%5D",

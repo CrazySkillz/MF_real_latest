@@ -678,7 +678,7 @@ async function buildGA4ReportPayload(report: any) {
   const importedRevenueForFinancials = Number(revenueBreakdown.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));
-  const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
+  const financialConversions = Number(breakdownTotals.conversions || 0);
   const financialSpend = Number(spendBreakdown.reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0).toFixed(2));
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);

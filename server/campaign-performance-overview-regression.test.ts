@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 import { selectStableExactDateSpendSnapshot } from "./storage";
-import { resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank, summarizePerformanceTrafficWindow } from "../client/src/lib/performance-recommended-actions";
+import { resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
 import { classifyKpiBandWithPolicy, computeEffectiveDeltaPct, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
 import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 
@@ -46,9 +46,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(scoringBlock).toContain("const current = currentOverride === undefined ? getLiveScoringValue(benchmark) : currentOverride;");
     expect(scoringBlock).toContain("const getScoringTrafficInputState = (item: any): GA4KpiInputState => {");
     expect(scoringBlock).not.toContain("getFreshPersistedScoringValue");
-    expect(page).toContain("ga4-breakdown?dateRange=30days");
-    expect(page).toContain("performance-summary-scoring-read-only");
-    expect(page).toContain("performanceGA4ScoringTrafficResponse?.totals");
+    expect(page).not.toContain("performance-summary-scoring-read-only");
+    expect(page).toContain("performanceGA4SummaryResponse?.overviewTotals");
     expect(scoringBlock).not.toContain("kpi?.currentValue");
     expect(scoringBlock).not.toContain("benchmark?.currentValue");
   });
@@ -125,10 +124,10 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("currently have verified inputs.");
     expect(page).toContain("const targetSetupAction = recommendedActions.find");
     expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
-    expect(page).toContain("const priorityTrafficWindow = summarizePerformanceTrafficWindow(");
-    expect(page).toContain("!performanceGA4SummaryResponse?.providerRefreshWarning");
+    expect(page).not.toContain("const priorityTrafficWindow");
+    expect(page).toContain('trafficInputState !== "ready"');
     expect(page).toContain("const getPriorityScoringValue = (item: any) => {");
-    expect(page).toContain("trafficTotals: demoMode ? scoringTrafficTotals : priorityTrafficWindow.totals");
+    expect(page).toContain("return getLiveScoringValue(item);");
     expect(page).toContain("const isPriorityPeriodComparable = (item: any) => demoMode || resolveGA4InsightTargetPeriodCompatibility({");
     expect(page).toContain("const priorityScoredKpis = effectiveKpis");
     expect(page).toContain(".filter(isPriorityPeriodComparable)");
@@ -146,14 +145,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain("const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);");
   });
 
-  it("ranks Total Sessions first and excludes monthly CPA from campaign-to-date scoring", () => {
-    const trafficWindow = summarizePerformanceTrafficWindow([
-      { date: "2026-08-08", users: 108, sessions: 108, conversions: 14, pageviews: 182, engagedSessions: 74 },
-      { date: "2026-08-09", users: 106, sessions: 106, conversions: 14, pageviews: 178, engagedSessions: 72 },
-      { date: "2026-08-10", users: 103, sessions: 103, conversions: 14, pageviews: 174, engagedSessions: 71 },
-    ], "2026-08-19");
-    expect(trafficWindow.valid).toBe(true);
-
+  it("ranks every standard target against the cumulative Overview values", () => {
+    const trafficTotals = { users: 1_184, sessions: 1_183, conversions: 152, pageviews: 1_500, engagedSessions: 809 };
     const rows = [
       { name: "Total Sessions", metric: "Total Sessions", targetValue: 950, unit: "count", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
       { name: "Total Users", metric: "Total Users", targetValue: 820, unit: "count", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
@@ -164,10 +157,10 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     const ranked = rows.map((item) => {
       const current = Number(resolvePerformanceLiveMetricValue({
         item,
-        trafficTotals: trafficWindow.totals,
+        trafficTotals,
         financialRevenue: 72766.69,
         financialSpend: 2699.75,
-        financialConversions: 251,
+        financialConversions: 152,
       }));
       const target = Number(item.targetValue);
       const lowerIsBetter = isLowerIsBetterKpi(item);
@@ -177,15 +170,14 @@ describe("campaign Performance Summary consolidated view regression guard", () =
       const comparable = resolveGA4InsightTargetPeriodCompatibility(item).comparable;
       return { item, current, band, comparable, severity: Math.abs(effectiveDeltaPct), priorityRank: resolvePerformancePriorityRank(item.priority) };
     });
-    expect(ranked.find((entry) => entry.item.name === "CPA")).toMatchObject({ current: 10.76, comparable: false });
+    expect(ranked.find((entry) => entry.item.name === "CPA")).toMatchObject({ current: 17.76, comparable: true, band: "below" });
     const comparableLagging = ranked.filter((entry) => entry.comparable && entry.band === "below")
       .sort((a, b) => a.priorityRank - b.priorityRank || b.severity - a.severity);
 
     expect(comparableLagging.map((entry) => [entry.item.name, entry.current, Number(entry.severity.toFixed(2))])).toEqual([
-      ["Total Sessions", 317, 66.63],
-      ["Total Users", 317, 61.34],
-      ["Engagement Rate", 68.45, 23.09],
-      ["Conversion Rate", 13.25, 11.67],
+      ["CPA", 17.76, 97.33],
+      ["Engagement Rate", 68.39, 23.16],
+      ["Conversion Rate", 12.85, 14.33],
     ]);
   });
 

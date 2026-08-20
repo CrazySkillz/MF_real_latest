@@ -43,29 +43,29 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
   });
 
   it("states the exact standard reporting windows, including legacy aliases", () => {
-    expect(getGA4KpiReportingWindowLabel("totalSessions")).toBe("30 completed reporting days (campaign reporting timezone)");
-    expect(getGA4KpiReportingWindowLabel("Engagement Rate")).toBe("30 completed reporting days (campaign reporting timezone)");
+    expect(getGA4KpiReportingWindowLabel("totalSessions")).toBe("Initial import through latest completed reporting day");
+    expect(getGA4KpiReportingWindowLabel("Engagement Rate")).toBe("Initial import through latest completed reporting day");
     expect(getGA4KpiReportingWindowLabel("totalRevenue")).toBe("Campaign-to-date financial inputs");
     expect(getGA4KpiReportingWindowLabel("ROAS")).toBe("Campaign-to-date financial inputs");
     expect(getGA4KpiReportingWindowLabel("__custom__")).toBe("Saved custom value (no standard GA4 reporting window)");
   });
 
-  it("fails Insights target guidance closed when saved and live reporting periods differ", () => {
+  it("treats standard KPI and Benchmark goals as absolute targets against their authoritative current values", () => {
     expect(resolveGA4InsightTargetPeriodCompatibility({
       metric: "sessions", timeframe: "monthly", trackingPeriod: 30,
     }).comparable).toBe(true);
     expect(resolveGA4InsightTargetPeriodCompatibility({
       metric: "sessions", timeframe: "quarterly", trackingPeriod: 90,
-    }).comparable).toBe(false);
+    }).comparable).toBe(true);
     expect(resolveGA4InsightTargetPeriodCompatibility({
       metric: "revenue", timeframe: "monthly",
-    }).comparable).toBe(false);
+    }).comparable).toBe(true);
     expect(resolveGA4InsightTargetPeriodCompatibility({
       metric: "revenue", timeframe: "campaign-to-date",
     }).comparable).toBe(true);
     expect(resolveGA4InsightTargetPeriodCompatibility({
       metric: "sessions", period: "monthly",
-    }).comparable).toBe(false);
+    }).comparable).toBe(true);
     expect(resolveGA4InsightTargetPeriodCompatibility({
       metric: "sessions", period: "rolling-30-days",
     }).comparable).toBe(true);
@@ -82,6 +82,7 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     const pdf = page.slice(page.indexOf("// ========== KPIs =========="), page.indexOf("// ========== BENCHMARKS =========="));
     const cards = page.slice(page.indexOf('<TabsContent value="kpis"'), page.indexOf('<TabsContent value="benchmarks"'));
 
+    expect(page).toContain("const overviewTotalsSource = overviewSummarySource ?? (hasDailyOverviewResponse ? dailySummedTotals : null);");
     expect(page).toContain("isError: kpisError");
     expect(page).toContain('kpiListState === "failed"');
     expect(page).toContain("This is not being presented as a verified empty state.");

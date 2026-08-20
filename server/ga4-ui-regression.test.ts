@@ -223,7 +223,7 @@ describe("GA4 UI regression guard", () => {
 
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
     expect(ga4Metrics).toContain("const hasDailyOverviewResponse = ga4DailyResp !== undefined;");
-    expect(ga4Metrics).toContain("const overviewTotalsSource = hasDailyOverviewResponse ? dailySummedTotals : null;");
+    expect(ga4Metrics).toContain("const overviewTotalsSource = overviewSummarySource ?? (hasDailyOverviewResponse ? dailySummedTotals : null);");
     expect(ga4Metrics).toContain("const overviewSummarySource = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, 'overviewTotals')");
     expect(ga4Metrics).toContain("const overviewSummaryTotals = {");
     expect(ga4Metrics).not.toContain("const overviewTotalsSource = hasBreakdownOverviewTotals");
@@ -264,10 +264,10 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toMatch(/spendSourceDefinitionsKnownEmpty\) &&\r?\n\s+spendMetricAvailable;/);
     expect(ga4Metrics).not.toContain("const financialRevenueAvailable = ga4FinancialNativeAvailable && importedRevenueAvailable;");
     expect(ga4Metrics).not.toContain("      spendSourceDefinitionsKnownEmpty);");
-    expect(ga4Metrics).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
+    expect(ga4Metrics).toContain("const financialConversions = Number(breakdownTotals.conversions || 0);");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Number(breakdownTotals.revenue || 0);");
     expect(ga4Metrics).not.toContain("return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || breakdownTotals.revenue > 0;");
-    expect(ga4Metrics).not.toContain("const financialConversions = Number(breakdownTotals.conversions || 0);");
+    expect(ga4Metrics).not.toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
   });
 
   it("waits for GA4 daily totals before rendering Overview Summary numbers", () => {

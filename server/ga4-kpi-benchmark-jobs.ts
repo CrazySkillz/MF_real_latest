@@ -11,7 +11,7 @@ import {
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
-import { getReportingDateWindow } from "./utils/reporting-timezone";
+import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
@@ -22,15 +22,22 @@ export const getGA4KPIFinancialSourceWindow = (reportingTimeZone: unknown = "UTC
   endDate: getReportingDateWindow(1, reportingTimeZone, now).endDate,
 });
 
-export const getGA4KPIReportingWindow = (reportingTimeZone: unknown, requestedDate?: string, now: Date = new Date()) => {
-  const currentWindow = getReportingDateWindow(30, reportingTimeZone, now);
+export const getGA4KPIReportingWindow = (reportingTimeZone: unknown, requestedDate?: string, now: Date = new Date(), importStartDate?: unknown) => {
+  const currentWindow = resolveGA4ImportToDateWindow(importStartDate, reportingTimeZone, now);
+  if (!currentWindow) throw new Error("Invalid GA4 KPI import-to-date reporting window");
   const requested = String(requestedDate || "").trim();
   const endDate = /^\d{4}-\d{2}-\d{2}$/.test(requested) && requested < currentWindow.endDate
     ? requested
     : currentWindow.endDate;
-  const start = new Date(`${endDate}T00:00:00.000Z`);
-  start.setUTCDate(start.getUTCDate() - 29);
-  return { ...currentWindow, startDate: isoDateUTC(start), endDate, dataThroughDate: endDate };
+  if (endDate < currentWindow.startDate) throw new Error("GA4 KPI reporting date precedes the import boundary");
+  const start = new Date(`${currentWindow.startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  return {
+    ...currentWindow,
+    endDate,
+    dataThroughDate: endDate,
+    days: Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1,
+  };
 };
 
 export const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
@@ -288,7 +295,12 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         (campaign as any)?.reportingTimeZone,
         (campaign as any)?.currency,
       );
-      const reportingWindow = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone, requestedDate);
+      const reportingWindow = getGA4KPIReportingWindow(
+        (campaign as any)?.reportingTimeZone,
+        requestedDate,
+        new Date(),
+        primary.importStartDate,
+      );
       const date = reportingWindow.endDate;
       const recordedAt = toRecordedAtUtc(date);
       if (opts?.campaignId) reportedDate = date;
@@ -505,7 +517,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? inputs.users),
         sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? inputs.sessions),
         pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? inputs.pageviews),
-        conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
+        conversions: inputs.conversions,
         ga4Revenue: round2(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0),
         importedRevenue: round2(importedRevenueValue ?? 0),
         spend: round2(spendValue ?? 0),

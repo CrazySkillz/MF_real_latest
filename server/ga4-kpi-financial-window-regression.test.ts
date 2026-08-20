@@ -76,7 +76,7 @@ describe("GA4 KPI persisted financial source window", () => {
       currency: "USD",
       reportingTimeZone: "Europe/Amsterdam",
     });
-    storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "service_account" }]);
+    storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "service_account", importStartDate: "2026-06-01" }]);
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-06-27" && endDate === "2026-06-27") return [dailyRow];
       if (startDate === "2026-06-01" && endDate === "2026-06-27") return [dailyRow];

@@ -29,7 +29,7 @@ export function getGA4KpiReportingWindowLabel(metric: unknown, name?: unknown): 
   if (identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa") {
     return "Campaign-to-date financial inputs";
   }
-  if (identity) return "30 completed reporting days (campaign reporting timezone)";
+  if (identity) return "Initial import through latest completed reporting day";
   return "Saved custom value (no standard GA4 reporting window)";
 }
 
@@ -50,7 +50,6 @@ export function resolveGA4InsightTargetPeriodCompatibility(input: {
   const identity = resolveGA4KpiMetricIdentity(input.metric, input.name);
   const currentWindow = getGA4KpiReportingWindowLabel(input.metric, input.name);
   const configuredPeriod = String(input.period ?? input.timeframe ?? "").trim().toLowerCase();
-  const normalizedPeriod = configuredPeriod.replace(/[^a-z0-9]+/g, "");
   if (!identity) {
     return {
       comparable: false,
@@ -60,27 +59,13 @@ export function resolveGA4InsightTargetPeriodCompatibility(input: {
     };
   }
 
-  const financial = identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa";
-  if (financial) {
-    const comparable = ["campaigntodate", "todate", "lifetime"].includes(normalizedPeriod);
-    return {
-      comparable,
-      currentWindow,
-      configuredPeriod: configuredPeriod || "not specified",
-      reason: comparable ? null : "The current value is campaign-to-date, but the saved target period is not campaign-to-date.",
-    };
-  }
-
-  const trackingPeriod = Number(input.trackingPeriod);
-  const hasExplicitTrackingPeriod = Number.isFinite(trackingPeriod) && trackingPeriod > 0;
-  const comparable = hasExplicitTrackingPeriod
-    ? trackingPeriod === 30
-    : ["30day", "30days", "rolling30day", "rolling30days"].includes(normalizedPeriod);
+  // Standard GA4 KPI/Benchmark targets are absolute goals. Legacy period fields
+  // are metadata and must not replace the authoritative cumulative current value.
   return {
-    comparable,
+    comparable: true,
     currentWindow,
-    configuredPeriod: configuredPeriod || "not specified",
-    reason: comparable ? null : "The current value covers 30 completed reporting days, but the saved target period does not.",
+    configuredPeriod: configuredPeriod || "absolute target",
+    reason: null,
   };
 }
 

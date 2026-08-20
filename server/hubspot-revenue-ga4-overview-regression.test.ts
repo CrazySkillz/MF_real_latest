@@ -765,7 +765,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(financialBlock).toContain("const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);");
     expect(financialBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
-    expect(financialBlock).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
+    expect(financialBlock).toContain("const financialConversions = Number(breakdownTotals.conversions || 0);");
     expect(financialBlock).toContain("const financialSpend = Number(totalSpendForFinancials || 0);");
     expect(financialBlock).toContain("const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;");
     expect(financialBlock).toContain("const financialROI = computeRoiPercent(financialRevenue, financialSpend);");

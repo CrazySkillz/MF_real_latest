@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions, resolvePerformanceAggregateMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank, summarizePerformanceTrafficWindow } from "@/lib/performance-recommended-actions";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -23,7 +23,7 @@ import {
   resolveKpiThresholdPolicy,
 } from "@shared/kpi-math";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
-import { resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
+import { resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
 
 interface Campaign {
   id: string;
@@ -525,6 +525,36 @@ export default function CampaignPerformanceSummary() {
     financialSpend: scoringSpend,
     financialConversions: scoringFinancialConversions,
   });
+  const priorityTrafficWindow = summarizePerformanceTrafficWindow(
+    Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [],
+    String(performanceGA4SummaryResponse?.dataThroughDate || ""),
+  );
+  const priorityTrafficReady = demoMode || (
+    !performanceGA4SummaryLoading &&
+    !performanceGA4SummaryError &&
+    !performanceGA4SummaryPlaceholder &&
+    !performanceGA4SummaryResponse?.providerRefreshWarning &&
+    priorityTrafficWindow.valid
+  );
+  const getPriorityScoringValue = (item: any) => {
+    const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
+    const isFinancial = identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa";
+    if (!identity || (!isFinancial && !priorityTrafficReady)) return null;
+    return resolvePerformanceLiveMetricValue({
+      item,
+      trafficTotals: demoMode ? scoringTrafficTotals : priorityTrafficWindow.totals,
+      financialRevenue: scoringRevenue,
+      financialSpend: scoringSpend,
+      financialConversions: scoringFinancialConversions,
+    });
+  };
+  const isPriorityPeriodComparable = (item: any) => demoMode || resolveGA4InsightTargetPeriodCompatibility({
+    metric: item?.metric || item?.metricName,
+    name: item?.name || item?.metricName,
+    timeframe: item?.timeframe,
+    trackingPeriod: item?.trackingPeriod,
+    period: item?.period,
+  }).comparable;
   const getScoringTrafficInputState = (item: any): GA4KpiInputState => {
     const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
     if (identity === "cpa") return financialConversionsInputState;
@@ -938,15 +968,17 @@ export default function CampaignPerformanceSummary() {
     }
 
     const priorityScoredKpis = effectiveKpis
+      .filter(isPriorityPeriodComparable)
       .map((item: any) => ({
         item,
-        score: getKpiScore(item, resolvePerformanceAggregateMetricValue(item, performanceSummary?.totals) ?? getLiveScoringValue(item)),
+        score: getKpiScore(item, getPriorityScoringValue(item)),
       }))
       .filter((entry: any) => entry.score !== null);
     const priorityScoredBenchmarks = effectiveBenchmarks
+      .filter(isPriorityPeriodComparable)
       .map((item: any) => ({
         item,
-        score: getBenchmarkScore(item, resolvePerformanceAggregateMetricValue(item, performanceSummary?.totals) ?? getLiveScoringValue(item)),
+        score: getBenchmarkScore(item, getPriorityScoringValue(item)),
       }))
       .filter((entry: any) => entry.score !== null);
     const laggingKPIs = priorityScoredKpis

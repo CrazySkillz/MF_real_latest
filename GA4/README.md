@@ -32,7 +32,7 @@ Current GA4 tab production-readiness status:
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
 - GA4 KPIs are **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Exact production evidence covers 12 cards, Tracker, Notifications, KPI-derived Insights, browser PDF, persisted values, and a recompute-backed manual KPI snapshot/PDF with all 12 rows exact.
 - GA4 Benchmarks are **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Authenticated consumer parity and stale fail-closed behavior passed; bounded natural-run evidence updated both Benchmarks and all 22 scheduler-written daily rows with zero target skips/failures. The 17 excluded obsolete campaigns prevent a global scheduler-health claim.
-- GA4 Ad Comparison remains **PRODUCTION_READY** at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817` for its recorded property/filter/source boundary.
+- GA4 Ad Comparison remains **PRODUCTION_READY** at deployed runtime `7c40833e52aa9011abf6e06e3c2a56853fef1d12` for its recorded property/filter/source boundary.
 - GA4 Reports is **PRODUCTION_READY** at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817` for the recorded GA4 Reports and delivery boundary. Current controlled evidence includes truthful recompute-backed artifacts, provider-confirmed delivery, inbox receipt, PDF opening, schedule restoration, fail-closed snapshot mismatch handling, and the production-data integrity audit. Campaign DeepDive remains excluded.
 - The final combined GA4 release-certification audit is complete for these six recorded section boundaries. It does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or the 17 obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
@@ -108,7 +108,7 @@ Important meaning:
   Canonical whole-tab Benchmarks production-readiness source of truth. Current status: **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Reports generation/delivery remains separately certified by the Reports record.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `PRODUCTION_READY` for exact deployed revision `892ff339`
+  Current status: `PRODUCTION_READY` for exact deployed revision `7c40833e`
   and the recorded dependency/configuration boundary. The live tab uses the
   saved initial-import boundary through the latest completed day. Reports-owned
   PDFs and all other Reports behavior are separate.
@@ -211,7 +211,7 @@ These are now part of the GA4 template contract:
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
   blocks previous-property placeholders, and retains valid source zero. Its
   current machine status is `PRODUCTION_READY` for exact deployed revision
-  `892ff339` and the recorded dependency/configuration boundary. All PDF,
+  `7c40833e` and the recorded dependency/configuration boundary. All PDF,
   saved-report, snapshot, scheduler, delivery, and report-library behavior
   belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.

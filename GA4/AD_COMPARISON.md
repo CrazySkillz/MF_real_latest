@@ -9,17 +9,14 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 Current status:
 
 `PRODUCTION_READY` for exact deployed revision
-`892ff3396ec9c9332008128897e5703cc6bb3817` and the recorded dependency and
-configuration boundary. The unavailable imported-source rendering defect is
-fixed; focused regressions, TypeScript, production build, exact-SHA provider,
-source-inventory, and live UI validation pass. The unavailable branch is proven
-by its deployed-code regression and was not created by mutating production data.
-The localized AC-10 implementation commit `defce198` is an ancestor of the
-deployed revision. The only newly changed listed dependency adds a Reports-only
-snapshot PDF fail-closed guard and does not alter the live Ad Comparison path;
-the current protected regression/source-safety and exact-SHA live packets pass.
-The prior certifications for `defce198` and `83d12427` are historical only. The root
-cause, fix, and evidence are recorded in
+`7c40833e52aa9011abf6e06e3c2a56853fef1d12` and the recorded dependency and
+configuration boundary. Current revalidation proved that later changes in the
+four drifted dependencies do not alter the isolated Ad Comparison query, fixed
+import-to-date window, property/filter scope, aggregation, ranking, or revenue
+provenance. The focused and shared regressions, source-safety subset,
+TypeScript, production build, exact-SHA provider/source inventory, and live UI
+parity all pass. The prior certifications are historical only. The root cause,
+fix, and current evidence are recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
 boundary.

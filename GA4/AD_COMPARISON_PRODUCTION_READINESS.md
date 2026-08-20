@@ -5,32 +5,27 @@
 ## Controlling Current Status
 
 **Status: PRODUCTION_READY for exact deployed revision
-`892ff3396ec9c9332008128897e5703cc6bb3817` and the recorded
+`7c40833e52aa9011abf6e06e3c2a56853fef1d12` and the recorded
 dependency/configuration boundary. The defined live-tab section is
 release-candidate ready; this is not a final combined GA4 certification.**
 
-Finding AC-10 proved that an active imported source without an exact materialized
-amount was hidden as an empty source list. The localized renderer fix now shows
-that source as `Unavailable`, preserves valid zero and other exact source amounts,
-and suppresses stale configuration-backed subsection values. The focused packet
-passes 51/51 tests; the affected Ad-only packet passes 236/236, and the
-Ad-relevant source-safety subset passes 15/15. TypeScript and the production
-build pass. Exact-SHA
-provider, five-source inventory, and rendered campaign/source parity also pass.
-No unavailable source currently exists in the production fixture, so that
-negative branch is covered by the deployed-code regression rather than a live
-production mutation.
+The current revalidation audited every dependency changed since the prior
+machine record. `ga4-metrics.tsx` changes only the separate Overview/KPI/
+Benchmark cumulative consumer, `routes-oauth.ts` changes Campaign DeepDive
+exact-date financial comparisons and the Benchmark validator,
+`storage.ts` changes Campaign DeepDive snapshot selection, and
+`reporting-timezone.ts` adds a Campaign DeepDive comparison helper. None changes
+the isolated Ad Comparison query, `ga4-breakdown?window=import-to-date` route,
+saved import boundary, exact property/filter scope, native aggregation/ranking,
+or imported-source provenance renderer.
 
-The localized AC-10 implementation commit `defce198` is an ancestor of the
-current deployed revision. Between `defce198` and `7374e824`, reviewed changes in
-`ga4-metrics.tsx`, `analytics.ts`, and `routes-oauth.ts` are confined to
-KPI/Reports inputs, GA4 daily time-series handling, and KPI/Benchmark
-notification freshness. They do not alter the cumulative Ad Comparison endpoint
-or live renderer. The only listed dependency changed after `7374e824` is
-`routes-oauth.ts`; its exact diff adds a Reports-only direct snapshot PDF
-fail-closed guard. The current protected regression/source-safety packet and
-exact-SHA live packet re-establish the positive boundary. Prior `PRODUCTION_READY` records for `defce198` and
-`83d12427` are historical only.
+The focused and shared packet passes 236/236 tests, the Ad-relevant
+source-safety subset passes 15/15, and TypeScript and the production build pass.
+Authenticated exact-SHA validation proves property `542352127`, the saved
+three-campaign filter, the `2026-07-02` through `2026-08-19` completed-day
+window, all reviewed provider aggregates, all five materialized revenue sources,
+and rendered UI parity. The validation database transaction was read-only and
+rolled back. Prior `PRODUCTION_READY` records are historical only.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
@@ -316,12 +311,12 @@ Broader repository run:
 These gates certify only historical revision `83d12427`; they do not certify the
 current candidate.
 
-### Current exact-SHA gates for `892ff339`
+### Current exact-SHA gates for `7c40833e`
 
 - deployed revision: passed; `/api/health` returned exact SHA
-  `892ff3396ec9c9332008128897e5703cc6bb3817`
+  `7c40833e52aa9011abf6e06e3c2a56853fef1d12`
 - provider/window: passed for property `542352127`, `Europe/Amsterdam`, saved
-  start `2026-07-02`, completed end `2026-08-14`, 44 inclusive days, exact
+  start `2026-07-02`, completed end `2026-08-19`, 49 inclusive days, exact
   three-value filter, and 33 provider rows
 - reviewed native aggregates: `yesop_retargeting` 60 sessions / 60 users / 60
   conversions / USD 13,674; `yesop_paid_social` 45 / 45 / 45 / USD 10,691.80;
@@ -338,16 +333,16 @@ current candidate.
 - Ad-relevant source lifecycle safety: 15/15 selected tests passed; 72 unrelated
   tests were skipped by name filter, including the explicitly deferred platform
   paths
-- later shared-file changes: reviewed and classified as legitimate newer
-  KPI/Reports, GA4 daily time-series, and notification work; the only newly
-  changed listed dependency adds a Reports-only snapshot PDF fail-closed guard,
-  and none changes the cumulative Ad Comparison endpoint or live renderer
+- changed dependencies since the prior machine record: all four were audited;
+  their diffs are confined to separate Campaign DeepDive exact-date comparison
+  and Overview/KPI/Benchmark cumulative-validation paths, and none changes the
+  cumulative Ad Comparison endpoint or live renderer
 - persistence safety: passed; read-only transaction rolled back; temporary
   authentication-session cleanup was requested in the validator's `finally`
 
 All required local and exact-SHA production gates pass for the defined live-tab
 boundary. The machine record is `PRODUCTION_READY` for exact deployed revision
-`892ff3396ec9c9332008128897e5703cc6bb3817` and the recorded normalized
+`7c40833e52aa9011abf6e06e3c2a56853fef1d12` and the recorded normalized
 dependency hashes. This section-only result does not perform or imply the final
 combined GA4 certification.
 

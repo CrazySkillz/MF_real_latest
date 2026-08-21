@@ -653,6 +653,87 @@ export default function FinancialAnalysis() {
     roi: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "roi"),
   } : null;
 
+  const financialProfitAvailable = financialRevenueMetric.available && financialSpendMetric.available;
+  const financialProfit = financialProfitAvailable
+    ? financialRevenueMetric.value - financialSpendMetric.value
+    : 0;
+  const allocationSpendTotal = budgetAllocationSources.reduce((sum, source) => sum + source.spend, 0);
+  const executiveFinancialActions: Array<{ title: string; body: string; tone: InsightTone }> = [];
+
+  if (financialRoasMetric.available && financialRoiMetric.available) {
+    executiveFinancialActions.push(financialRoasMetric.value < 1 || financialRoiMetric.value < 0
+      ? {
+          title: "Return below break-even",
+          body: `ROAS is ${financialRoasMetric.value.toFixed(2)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. Review revenue attribution, conversion efficiency, and spend before adding budget.`,
+          tone: "warning",
+        }
+      : {
+          title: "Positive financial return",
+          body: `ROAS is ${financialRoasMetric.value.toFixed(2)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. Protect current returns while monitoring pacing and source capacity.`,
+          tone: "success",
+        });
+  } else {
+    executiveFinancialActions.push({
+      title: "Return cannot be assessed",
+      body: overviewMetricUnavailableText(financialRoasMetric.available ? financialRoiMetric : financialRoasMetric, "Compatible revenue and spend are required to assess return."),
+      tone: "info",
+    });
+  }
+
+  if (!hasCampaignBudget || !overviewSpendMetric.available) {
+    executiveFinancialActions.push({
+      title: "Budget pacing unavailable",
+      body: !hasCampaignBudget
+        ? "Set the campaign budget and dates to assess utilization and pacing."
+        : overviewMetricUnavailableText(overviewSpendMetric, "A compatible spend source is required to assess budget pacing."),
+      tone: "info",
+    });
+  } else if (overviewBudgetUtilization > 100) {
+    executiveFinancialActions.push({
+      title: "Campaign is over budget",
+      body: `Spend exceeds the configured budget by ${formatCurrency(Math.abs(overviewRemainingBudget))}. Review further commitments before adding spend.`,
+      tone: "warning",
+    });
+  } else if (overviewBudgetUtilization < 50) {
+    executiveFinancialActions.push({
+      title: "Budget is underutilized",
+      body: `Only ${formatPercentage(overviewBudgetUtilization)} of the configured budget has been used. Check campaign timing and delivery before changing allocation.`,
+      tone: "warning",
+    });
+  } else {
+    executiveFinancialActions.push({
+      title: "Budget remains available",
+      body: `${formatCurrency(overviewRemainingBudget)} remains from the configured campaign budget. Use pacing and source evidence before committing it.`,
+      tone: "success",
+    });
+  }
+
+  if (budgetAllocationSources.length === 0) {
+    executiveFinancialActions.push({
+      title: "Allocation is not available",
+      body: "Connect a spend-capable main paid-media platform before making source-allocation decisions.",
+      tone: "info",
+    });
+  } else if (budgetAllocationSources.length === 1) {
+    executiveFinancialActions.push({
+      title: "No reallocation decision yet",
+      body: `${budgetAllocationSources[0].label} is the only spend-capable main source. Reallocation requires at least two comparable sources.`,
+      tone: "info",
+    });
+  } else {
+    executiveFinancialActions.push({
+      title: "Review source allocation",
+      body: "Multiple spend-capable sources are available. Compare spend share and compatible ROAS before reallocating budget.",
+      tone: "info",
+    });
+  }
+
+  const executiveActionClass: Record<InsightTone, string> = {
+    success: "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20",
+    warning: "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20",
+    info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20",
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -683,6 +764,411 @@ export default function FinancialAnalysis() {
             </div>
           </div>
 
+          {dataLoading ? (
+            <div className="space-y-6" data-testid="executive-financial-analysis-loading">
+              <div className="h-36 rounded-lg bg-muted animate-pulse" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-56 rounded-lg bg-muted animate-pulse" />
+                <div className="h-56 rounded-lg bg-muted animate-pulse" />
+              </div>
+              <div className="h-48 rounded-lg bg-muted animate-pulse" />
+            </div>
+          ) : (
+            <div className="space-y-8" data-testid="executive-financial-analysis">
+              <section aria-labelledby="financial-position-heading" className="space-y-4">
+                <div>
+                  <h2 id="financial-position-heading" className="text-xl font-semibold">Financial Position</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Campaign-wide financial totals from the connected-source aggregate. Unavailable inputs are never displayed as zero.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {[
+                    {
+                      label: "Total Spend",
+                      value: formatOverviewCurrency(financialSpendMetric),
+                      available: financialSpendMetric.available,
+                      helper: overviewMetricUnavailableText(financialSpendMetric, "No compatible spend source is available"),
+                    },
+                    {
+                      label: "Total Revenue",
+                      value: formatOverviewCurrency(financialRevenueMetric),
+                      available: financialRevenueMetric.available,
+                      helper: overviewMetricUnavailableText(financialRevenueMetric, "No compatible revenue source is available"),
+                    },
+                    {
+                      label: "Profit",
+                      value: financialProfitAvailable ? formatCurrency(financialProfit) : "Unavailable",
+                      available: financialProfitAvailable,
+                      helper: "Profit requires compatible revenue and spend",
+                    },
+                    {
+                      label: "ROAS",
+                      value: financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : "Unavailable",
+                      available: financialRoasMetric.available,
+                      helper: overviewMetricUnavailableText(financialRoasMetric, "ROAS requires compatible revenue and spend"),
+                    },
+                    {
+                      label: "ROI",
+                      value: formatOverviewPercentage(financialRoiMetric),
+                      available: financialRoiMetric.available,
+                      helper: overviewMetricUnavailableText(financialRoiMetric, "ROI requires compatible revenue and spend"),
+                    },
+                    {
+                      label: "CPA",
+                      value: formatOverviewCurrency(overviewCpaMetric),
+                      available: overviewCpaMetric.available,
+                      helper: overviewMetricUnavailableText(overviewCpaMetric, "CPA requires compatible spend and conversions"),
+                    },
+                  ].map((item) => (
+                    <Card key={item.label}>
+                      <CardContent className="p-6">
+                        <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+                        <p className="mt-1 text-2xl font-bold">{item.value}</p>
+                        {!item.available && <p className="mt-2 text-xs text-muted-foreground">{item.helper}</p>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
+              <section aria-labelledby="budget-pacing-heading" className="space-y-4">
+                <div>
+                  <h2 id="budget-pacing-heading" className="text-xl font-semibold">Budget & Pacing</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Budget metadata affects pacing only; it never filters or changes connected-source spend or revenue.
+                  </p>
+                </div>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Target className="h-5 w-5" />
+                        Budget Position
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Campaign Budget</p>
+                          <p className="text-lg font-semibold">{hasCampaignBudget ? formatCurrency(campaignBudget) : "Unavailable"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Remaining Budget</p>
+                          <p className="text-lg font-semibold">
+                            {hasCampaignBudget && overviewSpendMetric.available ? formatCurrency(overviewRemainingBudget) : "Unavailable"}
+                          </p>
+                        </div>
+                      </div>
+                      {hasCampaignBudget && overviewSpendMetric.available ? (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <span>{formatPercentage(overviewBudgetUtilization)} used</span>
+                            <span className="text-muted-foreground">{formatCurrency(overviewSpend)} spent</span>
+                          </div>
+                          <Progress value={Math.min(Math.max(overviewBudgetUtilization, 0), 100)} className="h-2" />
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {!hasCampaignBudget ? "Set a campaign budget to calculate utilization and remaining budget." : overviewMetricUnavailableText(overviewSpendMetric, "Spend is unavailable")}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="h-5 w-5" />
+                        Budget Pacing & Burn Rate
+                      </CardTitle>
+                      <CardDescription>Daily spend rate and budget projection</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {(() => {
+                        const today = new Date();
+                        const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
+                        const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
+                        const daysRemaining = !isOverBudget && dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0;
+                        const projectedEndDate = !isOverBudget && dailyBurnRate > 0
+                          ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000)
+                          : null;
+                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
+                        const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
+                        const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
+                        const pacingStatus = !hasPacingInputs ? "unavailable" : pacingPercentage > 115 ? "ahead" : pacingPercentage < 85 ? "behind" : "on-track";
+                        const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-sm font-medium">Daily Burn Rate</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend and start date</p>
+                                {overviewSpendMetric.available && campaignElapsedDays > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}
+                                  </p>
+                                )}
+                              </div>
+                              <p className="font-semibold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</p>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-sm font-medium">Target Daily Spend</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign budget, start date, and end date</p>
+                              </div>
+                              <p className="font-semibold">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</p>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-sm font-medium">Pacing Status</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, start date, and end date</p>
+                              </div>
+                              <Badge className={
+                                pacingStatus === "unavailable" ? "bg-gray-100 text-gray-700" :
+                                pacingStatus === "ahead" ? "bg-red-100 text-red-700" :
+                                pacingStatus === "behind" ? "bg-yellow-100 text-yellow-700" :
+                                "bg-green-100 text-green-700"
+                              }>
+                                {pacingStatus === "unavailable" ? "Unavailable" :
+                                  pacingStatus === "ahead" ? `${formatPercentage(pacingPercentage - 100)} Over` :
+                                  pacingStatus === "behind" ? `${formatPercentage(100 - pacingPercentage)} Under` : "On Track"}
+                              </Badge>
+                            </div>
+                            {isOverBudget && (
+                              <p className="border-t pt-3 text-xs font-medium text-red-600 dark:text-red-400">
+                                Budget exceeded by {formatCurrency(Math.abs(overviewRemainingBudget))}
+                              </p>
+                            )}
+                            {shouldShowPacingInputForm ? (
+                              <div className="space-y-3 border-t pt-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="text-xs text-muted-foreground">Edit campaign pacing inputs here or in campaign settings.</p>
+                                  {isEditingPacingInputs && (
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={handleCancelPacingInputs}
+                                      disabled={updatePacingInputsMutation.isPending}
+                                      aria-label="Cancel editing pacing inputs"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-3">
+                                  <label className="space-y-1 text-xs font-medium">
+                                    Campaign Budget
+                                    <Input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={pacingBudgetInput}
+                                      onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}
+                                      onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}
+                                      placeholder="Budget"
+                                      data-testid="input-pacing-budget"
+                                    />
+                                  </label>
+                                  <label className="space-y-1 text-xs font-medium">
+                                    Start Date
+                                    <Input
+                                      type="date"
+                                      value={pacingStartDateInput}
+                                      onChange={(event) => setPacingStartDateInput(event.target.value)}
+                                      data-testid="input-pacing-start-date"
+                                    />
+                                  </label>
+                                  <label className="space-y-1 text-xs font-medium">
+                                    End Date
+                                    <Input
+                                      type="date"
+                                      value={pacingEndDateInput}
+                                      onChange={(event) => setPacingEndDateInput(event.target.value)}
+                                      data-testid="input-pacing-end-date"
+                                    />
+                                  </label>
+                                </div>
+                                {pacingInputError && <p className="text-xs text-red-600 dark:text-red-400">{pacingInputError}</p>}
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleSavePacingInputs}
+                                    disabled={!hasPacingInputDraft || updatePacingInputsMutation.isPending}
+                                  >
+                                    {updatePacingInputsMutation.isPending ? "Saving..." : "Save"}
+                                  </Button>
+                                  {hasSavedPacingMetadata && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleDeletePacingInputs}
+                                      disabled={updatePacingInputsMutation.isPending}
+                                    >
+                                      Delete inputs
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="border-t pt-3">
+                                <Button type="button" size="sm" variant="outline" onClick={() => setIsEditingPacingInputs(true)}>
+                                  Edit inputs
+                                </Button>
+                              </div>
+                            )}
+                            {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (
+                              <p className="border-t pt-3 text-xs text-muted-foreground">
+                                At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
+                                {campaignEndDate && <span> ({projectedEndDate > campaignEndDate ? "after" : "before"} campaign end date)</span>}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                </div>
+              </section>
+
+              <section aria-labelledby="cost-efficiency-heading" className="space-y-4">
+                <div>
+                  <h2 id="cost-efficiency-heading" className="text-xl font-semibold">Cost Efficiency</h2>
+                  <p className="text-sm text-muted-foreground">Metrics appear only when the connected-source aggregate supplies their required inputs.</p>
+                </div>
+                <Card>
+                  <CardContent className="space-y-5 p-6">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        { label: "CPC", metric: overviewCpcMetric, value: formatOverviewCurrency(overviewCpcMetric), fallback: "CPC requires compatible spend and clicks" },
+                        { label: "CPM", metric: overviewCpmMetric, value: formatOverviewCurrency(overviewCpmMetric), fallback: "CPM requires compatible spend and impressions" },
+                        { label: "CTR", metric: overviewCtrMetric, value: formatOverviewPercentage(overviewCtrMetric), fallback: "CTR requires compatible clicks and impressions" },
+                        { label: "CVR", metric: overviewCvrMetric, value: formatOverviewPercentage(overviewCvrMetric), fallback: "CVR requires compatible conversions and clicks or sessions" },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-lg border p-4">
+                          <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+                          <p className="mt-1 text-xl font-bold">{item.value}</p>
+                          {!item.metric.available && (
+                            <p className="mt-2 text-xs text-muted-foreground">{overviewMetricUnavailableText(item.metric, item.fallback)}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-semibold">Sources</p>
+                      {costAnalysisSourceLabels.length > 0 ? (
+                        <p className="mt-1 text-sm text-muted-foreground">{costAnalysisSourceLabels.join(", ")}</p>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">No connected source provides cost-efficiency inputs yet.</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              <section aria-labelledby="allocation-sources-heading" className="space-y-4">
+                <div>
+                  <h2 id="allocation-sources-heading" className="text-xl font-semibold">Allocation & Sources</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Allocation uses spend-capable main Connected Platforms. Financial child inputs remain provenance and are never treated as standalone platforms.
+                  </p>
+                </div>
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Budget Allocation</CardTitle>
+                      <CardDescription>Spend share and compatible return evidence by main source</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {budgetAllocationSources.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No spend-capable connected source is available for budget allocation yet.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {budgetAllocationSources.map((source) => {
+                            const share = allocationSpendTotal > 0 ? (source.spend / allocationSpendTotal) * 100 : 0;
+                            return (
+                              <div key={source.id} className="space-y-2 rounded-lg border p-4">
+                                <div className="flex items-center justify-between gap-4">
+                                  <p className="font-medium">{source.label}</p>
+                                  <Badge variant="outline">{source.roas === null ? "ROAS unavailable" : `${source.roas.toFixed(2)}x ROAS`}</Badge>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                  <div><p className="text-xs text-muted-foreground">Spend</p><p className="font-medium">{formatCurrency(source.spend)}</p></div>
+                                  <div><p className="text-xs text-muted-foreground">Share</p><p className="font-medium">{formatPercentage(share)}</p></div>
+                                  <div><p className="text-xs text-muted-foreground">Revenue</p><p className="font-medium">{source.revenue > 0 ? formatCurrency(source.revenue) : "Unavailable"}</p></div>
+                                </div>
+                                <Progress value={Math.min(Math.max(share, 0), 100)} className="h-2" />
+                              </div>
+                            );
+                          })}
+                          <p className="text-xs text-muted-foreground">
+                            {budgetAllocationSources.length > 1
+                              ? "Compare compatible spend share and ROAS before reallocating budget."
+                              : "Budget reallocation recommendations require at least two spend-capable sources."}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Sources Used</CardTitle>
+                      <CardDescription>Detailed revenue and spend provenance from the campaign financial path</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 md:grid-cols-2">
+                      <div>
+                        <p className="text-sm font-semibold">Revenue</p>
+                        <div className="mt-3 space-y-2">
+                          {financialChildSourceBreakdowns.length > 0 ? financialChildSourceBreakdowns.map((source) => (
+                            <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
+                              <span className="text-muted-foreground">{source.label}</span>
+                              <span className="font-medium">{formatCurrency(source.revenue)}</span>
+                            </div>
+                          )) : <p className="text-sm text-muted-foreground">No detailed revenue inputs are available.</p>}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Spend</p>
+                        <div className="mt-3 space-y-2">
+                          {financialSpendInputBreakdowns.length > 0 ? financialSpendInputBreakdowns.map((source) => (
+                            <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
+                              <span className="text-muted-foreground">{source.label}</span>
+                              <span className="font-medium">{formatCurrency(source.spend)}</span>
+                            </div>
+                          )) : <p className="text-sm text-muted-foreground">No detailed spend inputs are available.</p>}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </section>
+
+              <section aria-labelledby="executive-action-heading" className="space-y-4">
+                <div>
+                  <h2 id="executive-action-heading" className="text-xl font-semibold">Executive Action</h2>
+                  <p className="text-sm text-muted-foreground">Prioritized financial risks and actions from the same displayed aggregate values.</p>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {executiveFinancialActions.map((action) => (
+                    <Card key={action.title} className={executiveActionClass[action.tone]}>
+                      <CardContent className="p-5">
+                        <p className="font-semibold">{action.title}</p>
+                        <p className="mt-2 text-sm text-muted-foreground">{action.body}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Legacy tab renderer retained as a non-rendering rollback reference. */}
+          {((): boolean => false)() && (
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -2102,6 +2588,7 @@ export default function FinancialAnalysis() {
               </Card>}
             </TabsContent>
           </Tabs>
+          )}
         </main>
       </div>
     </div>

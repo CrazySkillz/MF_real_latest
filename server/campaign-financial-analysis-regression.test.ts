@@ -44,6 +44,37 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).not.toContain("Showing demo data");
   });
 
+  it("renders one executive financial view without duplicate tabs or unverified trends", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const executiveStart = page.indexOf('<div className="space-y-8" data-testid="executive-financial-analysis">');
+    const legacyStart = page.indexOf("{/* Legacy tab renderer retained as a non-rendering rollback reference. */}", executiveStart);
+    const executiveView = page.slice(executiveStart, legacyStart);
+
+    expect(executiveStart).toBeGreaterThan(-1);
+    expect(legacyStart).toBeGreaterThan(executiveStart);
+    expect(executiveView).toContain('aria-labelledby="financial-position-heading"');
+    expect(executiveView).toContain('aria-labelledby="budget-pacing-heading"');
+    expect(executiveView).toContain('aria-labelledby="cost-efficiency-heading"');
+    expect(executiveView).toContain('aria-labelledby="allocation-sources-heading"');
+    expect(executiveView).toContain('aria-labelledby="executive-action-heading"');
+    expect(executiveView).toContain('label: "Total Spend"');
+    expect(executiveView).toContain('label: "Total Revenue"');
+    expect(executiveView).toContain('label: "Profit"');
+    expect(executiveView).toContain('label: "ROAS"');
+    expect(executiveView).toContain('label: "ROI"');
+    expect(executiveView).toContain('label: "CPA"');
+    expect(executiveView).toContain("budgetAllocationSources.map");
+    expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
+    expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
+    expect(executiveView).toContain("executiveFinancialActions.map");
+    expect(executiveView).not.toContain("<TabsList>");
+    expect(executiveView).not.toContain("<TabsTrigger");
+    expect(executiveView).not.toContain("Campaign Health Score");
+    expect(executiveView).not.toContain("historicalMetrics");
+    expect(executiveView).not.toContain("renderTrendIndicator");
+    expect(page).toContain("{((): boolean => false)() && (");
+  });
+
   it("feeds first-class Connected Platform sources into the shared aggregate contract", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');

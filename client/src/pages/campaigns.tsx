@@ -471,7 +471,19 @@ export default function Campaigns() {
     setCampaignData(data);
 
     if (draftCampaignId) {
-      setWizardStep(2);
+      try {
+        await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
+          budget: data.budget ? data.budget.replace(/,/g, '') : null,
+          currency: data.currency || "USD",
+        });
+        setWizardStep(2);
+      } catch (error: any) {
+        toast({
+          title: "Unable to update campaign budget",
+          description: error?.message || "Please try again.",
+          variant: "destructive",
+        });
+      }
       return;
     }
 

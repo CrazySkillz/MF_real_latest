@@ -4,6 +4,23 @@ import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("persists a valid Budget when Step 1 is resubmitted for an existing campaign draft", () => {
+    const campaignsPage = readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf-8");
+    const submitStart = campaignsPage.indexOf("const handleSubmit = async");
+    const submitEnd = campaignsPage.indexOf("const handleConnectorsComplete = async", submitStart);
+    const submitHandler = campaignsPage.slice(submitStart, submitEnd);
+    const existingDraftStart = submitHandler.indexOf("if (draftCampaignId)");
+    const existingDraftEnd = submitHandler.indexOf("// Create a real campaign first", existingDraftStart);
+    const existingDraftBranch = submitHandler.slice(existingDraftStart, existingDraftEnd);
+
+    expect(existingDraftBranch).toContain('apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`');
+    expect(existingDraftBranch).toContain("budget: data.budget ? data.budget.replace(/,/g, '') : null");
+    expect(existingDraftBranch).toContain('currency: data.currency || "USD"');
+    expect(existingDraftBranch.indexOf('apiRequest("PATCH"')).toBeLessThan(existingDraftBranch.indexOf("setWizardStep(2)"));
+    expect(existingDraftBranch).not.toContain("pacingStartDate");
+    expect(existingDraftBranch).not.toContain("pacingEndDate");
+  });
+
   it("keeps pacing dates separate from campaign financial dates", () => {
     const schema = readFileSync(join(process.cwd(), "shared", "schema.ts"), "utf-8");
     const migration = readFileSync(join(process.cwd(), "migrations", "0013_add_campaign_pacing_dates.sql"), "utf-8");

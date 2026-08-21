@@ -5,6 +5,9 @@ import { join } from "path";
 describe("Instagram Create Campaign flow regression guard", () => {
   it("connects Instagram only through the test source-contract route", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf-8");
+    const finalizeStart = page.indexOf("const handleConnectorsComplete = async");
+    const finalizeEnd = page.indexOf("const handleBackToForm", finalizeStart);
+    const finalizeHandler = page.slice(finalizeStart, finalizeEnd);
 
     expect(page).toContain('id: "instagram"');
     expect(page).toContain('name: "Instagram Ads"');
@@ -23,7 +26,7 @@ describe("Instagram Create Campaign flow regression guard", () => {
     expect(page).toContain("selectedPlatforms.includes('instagram')");
     expect(page).toContain("`/api/instagram/${draftCampaignId}/connection`");
     expect(page).toContain("!connection.connected || !Array.isArray(connection.selectedCampaignIds) || connection.selectedCampaignIds.length === 0");
-    expect(page.indexOf("`/api/instagram/${draftCampaignId}/connection`")).toBeLessThan(page.indexOf("`/api/campaigns/${draftCampaignId}`"));
+    expect(finalizeHandler.indexOf("`/api/instagram/${draftCampaignId}/connection`")).toBeLessThan(finalizeHandler.indexOf("`/api/campaigns/${draftCampaignId}`"));
     expect(page).toContain('queryKey: ["/api/campaigns", draftCampaignId, "connected-platforms"]');
     expect(page).toContain("`/api/campaigns/${draftCampaignId}/outcome-totals`");
     expect(page).toContain("`/api/campaigns/${draftCampaignId}/executive-summary`");

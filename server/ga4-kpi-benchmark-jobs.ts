@@ -358,18 +358,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       // Build GA4 to-date totals (campaign lifetime) for accurate financial KPIs (ROAS/ROI/CPA).
       // Production path: GA4 API totals (with automatic token refresh).
       // Stored daily totals are retained only for the explicit mock/demo property.
-      const startDateUsed = (() => {
-        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
-        if (!raw) return "2000-01-01";
-        const d = new Date(raw);
-        if (Number.isNaN(d.getTime())) return "2000-01-01";
-        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-      })();
-
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const [reportingRows, toDateRows] = await Promise.all([
         storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => null as any),
-        storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => null as any),
+        storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => null as any),
       ]);
       const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
       let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
@@ -400,10 +392,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         ga4RevenueToDate += Number((r as any)?.revenue || 0) || 0;
       }
 
-      const financialSourceWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
+      const financialSourceWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };
+      const spendSourceWindow = { startDate: "1900-01-01", endDate: financialSourceWindow.endDate };
       const financialInputsPromise = Promise.allSettled([
         storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
-        storage.getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4"),
+        storage.getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4"),
         storage.getRevenueSources(campaignId, "ga4"),
         storage.getSpendSources(campaignId, "ga4"),
       ]);
@@ -420,7 +413,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
           if (conn && conn.method === "access_token" && conn.accessToken) {
             const attempt = async (token: string) => {
-              return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
+              return await ga4Service.getTotalsWithRevenue(propertyId, token, reportingWindow.startDate, reportingWindow.endDate, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
             };
             try {
               const res = await attempt(String(conn.accessToken));

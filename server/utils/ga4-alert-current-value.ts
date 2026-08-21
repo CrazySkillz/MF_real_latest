@@ -2,7 +2,6 @@ import { storage } from "../storage";
 import { ga4Service } from "../analytics";
 import {
   computeKpiValue,
-  getGA4KPIFinancialSourceWindow,
   getGA4KPIReportingWindow,
   getYesopMockBaselineTotals,
   isNoRevenueFilter,
@@ -27,14 +26,6 @@ import { getExpectedDailyRefreshAt, resolveGA4DailyFreshness } from "./reporting
 const isGA4Platform = (value: unknown) => {
   const platform = String(value || "").trim().toLowerCase();
   return platform === "google_analytics" || platform === "ga4";
-};
-
-const campaignStartDate = (campaign: any) => {
-  const raw = campaign?.startDate || campaign?.createdAt || null;
-  if (!raw) return "2000-01-01";
-  const date = new Date(raw);
-  if (!Number.isFinite(date.getTime())) return "2000-01-01";
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 };
 
 const toInputs = (totals: ReturnType<typeof summarizeGA4TrafficRows>) => ({
@@ -145,9 +136,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     );
     const startDate = reportingWindow.startDate;
     const endDate = reportingWindow.endDate;
-    const financialStartDate = campaignStartDate(campaign);
-    const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
-    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate).catch(() => null as any);
+    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
     const sourceRows = Array.isArray(rows) ? rows : [];
     const trafficRows = sourceRows.filter((sourceRow: any) => {
       const date = String(sourceRow?.date || "");
@@ -172,7 +161,6 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       revenue: Number((financialTotals.revenue || 0).toFixed(2)),
     } : null;
     let providerFinancialCandidate: any = null;
-    let breakdownFinancialCandidate: any = null;
     let mockFinancialCandidate: any = null;
 
     if (isYesopMockProperty(propertyId)) {
@@ -213,7 +201,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             String((campaign as any)?.currency || "USD").trim().toUpperCase(),
           );
         const assignProviderInputs = async (token: string) => {
-          const candidate = (await attempt(token, financialStartDate))?.totals;
+          const candidate = (await attempt(token, startDate))?.totals;
           providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
         };
         try {
@@ -242,35 +230,10 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         }
       }
 
-      const earlierCandidate = selectGA4FinancialTotalsSource(
-        [providerFinancialCandidate, storedFinancialCandidate],
-        {} as any,
-      );
-      if (usesFinancialSource && !isGA4FinancialTotalsCandidate(earlierCandidate)) {
-        try {
-          const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
-            ? Number((primary as any).lookbackDays)
-            : 90;
-          const breakdown = await ga4Service.getAcquisitionBreakdown(
-            campaignId,
-            storage,
-            `${lookbackDays}daysAgo`,
-            propertyId,
-            2000,
-            parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
-            undefined,
-            options.allowCredentialRefresh === false,
-          );
-          const candidate = (breakdown as any)?.totals;
-          breakdownFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
-        } catch {
-          // A required financial source remains unavailable when no earlier candidate exists.
-        }
-      }
     }
 
     const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
-      [mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate, breakdownFinancialCandidate],
+      [mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate],
       {} as any,
     );
     const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
@@ -283,10 +246,11 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
     } : null;
 
-    const financialWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
+    const financialWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };
+    const spendSourceStartDate = "1900-01-01";
     const [importedRevenueResult, spendResult] = await Promise.allSettled([
       storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
-      storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
+      storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
     ]);
     const importedRevenueValue = importedRevenueResult.status === "fulfilled"
       ? parseGA4FinancialNumber((importedRevenueResult.value as any)?.totalRevenue)

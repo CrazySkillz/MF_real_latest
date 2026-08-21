@@ -9017,8 +9017,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
 
-      // Use explicit campaign startDate if set; otherwise default to campaign creation date (MetricMind campaign lifetime).
-      const startDateUsed = (() => {
+      // Preserve the legacy simulated-property boundary; the real provider path
+      // replaces this with the selected connection's saved import boundary.
+      let startDateUsed = (() => {
         const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
         if (!raw) return "2000-01-01";
         const d = new Date(raw);
@@ -9123,6 +9124,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection || connection.method !== "access_token" || !connection.accessToken) {
         return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
       }
+      const currentValueWindow = resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone);
+      if (!currentValueWindow) {
+        return res.status(409).json({ success: false, error: "INVALID_GA4_IMPORT_WINDOW", message: "The GA4 import-to-date window is unavailable." });
+      }
+      startDateUsed = currentValueWindow.startDate;
 
       if (startDateUsed > endDateUsed) {
         return res.json({
@@ -9421,12 +9427,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const providerTotals = formatProviderTotalsForValidation(providerResult);
       const currentValueProviderTotals = formatProviderTotalsForValidation(currentValueProviderResult);
 
-      const financialWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
+      const financialWindow = { startDate: "1900-01-01", endDate: currentValueEndDate };
+      const spendSourceWindow = { startDate: "1900-01-01", endDate: currentValueEndDate };
       const [importedRevenueTotals, schedulerSpendTotals, spendSources, spendBreakdown] = await Promise.all([
         storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] })),
-        storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] })),
+        storage.getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] })),
         storage.getSpendSources(campaignId, "ga4").catch(() => [] as any[]),
-        storage.getSpendBreakdownBySource(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => [] as any[]),
+        storage.getSpendBreakdownBySource(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4").catch(() => [] as any[]),
       ]);
       const importedRevenue = round2Local(Number((importedRevenueTotals as any)?.totalRevenue || 0) || 0);
       const schedulerSpend = round2Local(Number((schedulerSpendTotals as any)?.totalSpend || 0) || 0);
@@ -9464,21 +9471,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       const providerInput = buildProviderInput(providerTotals);
       const currentValueProviderInput = buildProviderInput(currentValueProviderTotals);
-      const requestedWindowInputs = providerInput || dailyInput;
       const currentValueWindowInputs = currentValueDateDimensionProviderInput || currentValueDailyInput;
       const schedulerInputs = currentValueWindowInputs;
       const uiBaseInputs = (currentValueDailyInput.sessions > 0 || currentValueDailyInput.users > 0 || currentValueDailyInput.conversions > 0 || currentValueDailyInput.pageviews > 0 || currentValueDailyInput.ga4Revenue > 0)
         ? currentValueDailyInput
         : (currentValueProviderInput || currentValueDailyInput);
-      const uiFinancialProviderCandidate = providerInput ? {
-        revenue: providerInput.ga4Revenue,
-        conversions: providerInput.conversions,
-        value: providerInput,
+      const uiFinancialProviderCandidate = currentValueProviderInput ? {
+        revenue: currentValueProviderInput.ga4Revenue,
+        conversions: currentValueProviderInput.conversions,
+        value: currentValueProviderInput,
       } : null;
       const uiFinancialDailyCandidate = {
-        revenue: dailyInput.ga4Revenue,
-        conversions: dailyInput.conversions,
-        value: dailyInput,
+        revenue: currentValueDailyInput.ga4Revenue,
+        conversions: currentValueDailyInput.conversions,
+        value: currentValueDailyInput,
       };
       const uiFinancialBase = selectGA4FinancialTotalsSource(
         [uiFinancialProviderCandidate, uiFinancialDailyCandidate],
@@ -9499,9 +9505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metricKey = String(benchmark?.metric || "").trim();
         const computable = !!metricKey && metricKey !== "__custom__" && isComputableGA4KpiMetric(metricKey);
         const storedCurrent = Number(String(benchmark?.currentValue ?? "").replace(/,/g, ""));
-        const schedulerInputsForMetric = isGA4FinancialKpiMetricIdentity(metricKey)
-          ? requestedWindowInputs
-          : currentValueWindowInputs;
+        const schedulerInputsForMetric = currentValueWindowInputs;
         const schedulerCurrent = computable ? round2Local(computeKpiValue(metricKey, schedulerInputsForMetric)) : null;
         const uiCurrent = computable ? round2Local(computeUIValue(metricKey)) : null;
         return {
@@ -9538,6 +9542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           provider: { startDate, endDate },
           currentValue: { startDate: currentValueStartDate, endDate: currentValueEndDate },
           financial: financialWindow,
+          spend: spendSourceWindow,
         },
         provider: {
           status: providerStatus,
@@ -14219,7 +14224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && (spendTotals as any).sourceIds.length > 0;
       let financialSpendInputs: any[] = [];
       try {
-        const spendStartDate = currentValueWindow?.startDate || "1900-01-01";
+        // Imported spend is source-to-date; the GA4 import boundary applies only to native GA4 metrics.
+        const spendStartDate = "1900-01-01";
         const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
         const [spendToDateTotals, spendBreakdown] = await Promise.all([
           storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4"),

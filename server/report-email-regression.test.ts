@@ -95,6 +95,12 @@ describe("scheduled report email regression guard", () => {
     expect(serverSource).toContain("const reportCumulativeWindow = resolveGA4ImportToDateWindow(");
     expect(serverSource).toContain("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
     expect(serverSource).toContain("const overviewStartDate = reportCumulativeWindow.startDate;");
+    expect(serverSource).toContain("const financialStartDate = reportCumulativeWindow.startDate;");
+    expect(serverSource).toContain("const financialEndDate = reportCumulativeWindow.endDate;");
+    expect(serverSource).toContain('const spendSourceStartDate = "1900-01-01";');
+    expect(serverSource).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4")');
+    expect(serverSource).toContain('const importedRevenueStartDate = "1900-01-01";');
+    expect(serverSource).toContain("const importedRevenueEndDate = new Date().toISOString().slice(0, 10);");
     expect(serverSource).not.toContain("lookbackDays === 30 ? GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : dailyStart");
     expect(serverSource).not.toContain("Window: ${windowStart} to ${windowEnd} (UTC)");
   });
@@ -173,7 +179,7 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("resolveGA4ImportToDateWindow");
     expect(source).toContain("const adComparisonWindow = adComparisonRequirements.included");
     expect(source).toContain("adComparisonWindow.startDate");
-    expect(source).toContain("const importedRevenueStartDate = '1900-01-01';");
+    expect(source).toContain('const importedRevenueStartDate = "1900-01-01";');
     expect(source).toContain("'GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: '");
     expect(adsSection).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(adsSection).toContain("payload.adComparisonBreakdownAgg");

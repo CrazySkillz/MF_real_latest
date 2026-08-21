@@ -803,7 +803,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const jobInputBlock = sliceBetween(
       jobs,
-      "const financialSourceWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);",
+      'const financialSourceWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };',
       "      // 1) KPI progress points"
     );
     const campaignTotalsBlock = sliceBetween(
@@ -823,6 +823,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(computeBlock).toContain('if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));');
     expect(computeBlock).toContain('if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));');
     expect(jobInputBlock).toContain('getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
+    expect(jobInputBlock).toContain('getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4")');
     expect(jobInputBlock).toContain("const financialInputsPromise = Promise.allSettled([");
     expect(jobInputBlock).toContain("const [importedRevenueResult, spendTotalResult, revenueSourcesResult, spendSourcesResult] = await financialInputsPromise;");
     expect(jobInputBlock).toContain("let importedRevenueValue = importedRevenueResult.status === \"fulfilled\" && revenueSourcesResult.status === \"fulfilled\"");
@@ -844,6 +845,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(campaignTotalsBlock).toContain("await Promise.allSettled([");
     expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
     expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4")');
+    expect(campaignTotalsBlock).toContain('storage.getSpendTotalForRange(campaignId, spendSourceStartDate, endDate, "ga4")');
     expect(campaignTotalsBlock).toContain("revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),");
     expect(campaignTotalsBlock).toContain("selectGA4FinancialTotalsSource([");
     expect(campaignTotalsBlock).toContain('revenueAvailable: revenueTotalsResult.status === "fulfilled" && (!primary?.propertyId || ga4RevenueAvailable),');

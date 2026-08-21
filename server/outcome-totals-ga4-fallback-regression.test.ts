@@ -19,7 +19,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";');
   });
 
-  it("keeps outcome-totals aligned with the fixed GA4 import boundary and exact completed-day financial inputs", () => {
+  it("keeps native GA4 metrics on the fixed import boundary without clipping source-to-date spend", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
@@ -34,7 +34,9 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('ga4Totals.mergedSource = "ga4_daily_metrics";');
     expect(route).toContain("resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate");
     expect(route).toContain('mode: "initial_import_to_latest_completed_day" as const');
-    expect(route).toContain('const spendStartDate = currentValueWindow?.startDate || "1900-01-01";');
+    expect(route).toContain('const spendStartDate = "1900-01-01";');
+    expect(route).toContain('const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);');
+    expect(route).toContain("Imported spend is source-to-date; the GA4 import boundary applies only to native GA4 metrics.");
     expect(route).toContain('storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4")');
     expect(route).toContain('storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4")');
     expect(route).toContain("let financialSpendInputs: any[] = [];");

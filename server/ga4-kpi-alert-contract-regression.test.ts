@@ -163,10 +163,10 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
-  it("uses the full cumulative traffic boundary and financial conversions for CPA alerts", async () => {
+  it("uses the initial import boundary and financial conversions for CPA alerts", async () => {
     storageMock.getCampaign.mockResolvedValue({
       ...campaign,
-      startDate: "2026-07-20T00:00:00.000Z",
+      startDate: "2026-06-20T00:00:00.000Z",
     });
     const oauthConnection = {
       ...connection,
@@ -196,11 +196,13 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       connection.propertyId,
       "access-token",
-      "2026-07-20",
+      "2026-07-01",
       "2026-07-31",
       "scoped_campaign",
       "USD",
     );
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-31", "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-31", "ga4");
     expect(cpa).toMatchObject({ currentValue: "4", __alertDecisionEligible: true });
   });
 
@@ -241,11 +243,8 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
-  it("disables credential refresh in the read-only financial fallback", async () => {
+  it("fails closed instead of using a rolling financial fallback", async () => {
     storageMock.getGA4DailyMetrics.mockResolvedValue([]);
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
-      totals: { users: 1, sessions: 2, pageviews: 3, conversions: 1, revenue: 10 },
-    });
 
     const revenue = await resolveAlertCurrentValueForDecision(
       row("revenue"),
@@ -253,11 +252,8 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
       { allowCredentialRefresh: false },
     );
 
-    expect(revenue).toMatchObject({ currentValue: "10", __alertDecisionEligible: true });
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledTimes(1);
-    const breakdownArgs = ga4ServiceMock.getAcquisitionBreakdown.mock.calls[0];
-    expect(breakdownArgs[6]).toBeUndefined();
-    expect(breakdownArgs[7]).toBe(true);
+    expect(revenue).toMatchObject({ currentValue: "99", __alertDecisionEligible: false, __alertDecisionReason: "unavailable" });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
     expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });

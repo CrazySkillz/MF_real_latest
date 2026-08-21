@@ -7,13 +7,13 @@ import { storage } from "./storage";
 import { campaigns, emailAlertEvents, kpiAlerts, kpiPeriods, kpiProgress, kpis, notifications } from "@shared/schema";
 import {
   computeKpiValue,
-  getGA4KPIFinancialSourceWindow,
   isComputableGA4KpiMetric,
 } from "./ga4-kpi-benchmark-jobs";
 import {
   getLatestGA4KPIIdsByDuplicateKey,
   isLatestGA4KPIForDuplicateKey,
 } from "./utils/ga4-kpi-alert-dedupe";
+import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 
 type CleanupMode = "dry-run" | "apply" | "apply-orphan-kpi-parents";
 type CandidateKind = "financial_source_window_drift" | "duplicate_notification_state" | "orphan_kpi_parent";
@@ -141,10 +141,16 @@ async function getCampaigns(options: CleanupOptions): Promise<any[]> {
   return await storage.getCampaigns().catch(() => []);
 }
 
-async function buildFinancialInputs(campaign: any, propertyId: string, date: string, financialStartDate: string, financialEndDate: string) {
+async function buildFinancialInputs(
+  campaign: any,
+  propertyId: string,
+  nativeStartDate: string,
+  nativeEndDate: string,
+  financialStartDate: string,
+  financialEndDate: string,
+) {
   const campaignId = String(campaign?.id || "");
-  const startDate = campaignStartDate(campaign);
-  const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, date).catch(() => [] as any[]);
+  const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, nativeStartDate, nativeEndDate).catch(() => [] as any[]);
   const nativeTotals = (Array.isArray(rows) ? rows : []).reduce((acc, row: any) => {
     acc.users += parseNumber(row?.users);
     acc.sessions += parseNumber(row?.sessions);
@@ -156,7 +162,7 @@ async function buildFinancialInputs(campaign: any, propertyId: string, date: str
   }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0, engagementRate: 0 });
 
   const revenue = await storage.getRevenueTotalForRange(campaignId, financialStartDate, financialEndDate, "ga4").catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] }));
-  const spend = await storage.getSpendTotalForRange(campaignId, financialStartDate, financialEndDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] }));
+  const spend = await storage.getSpendTotalForRange(campaignId, "1900-01-01", financialEndDate, "ga4").catch(() => ({ totalSpend: 0, sourceIds: [] as string[] }));
 
   return {
     inputs: {
@@ -180,7 +186,6 @@ async function inspectFinancialSourceWindowDrift(result: CleanupResult, options:
   for (const campaign of campaigns) {
     const campaignId = String(campaign?.id || "");
     if (!campaignId) continue;
-    const newWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);
     const rows = (await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]))
       .filter(isFinancialSourceWindowKpi);
     if (rows.length === 0) continue;
@@ -233,9 +238,25 @@ async function inspectFinancialSourceWindowDrift(result: CleanupResult, options:
       continue;
     }
 
+    const newWindow = resolveGA4ImportToDateWindow(primary?.importStartDate, (campaign as any)?.reportingTimeZone);
+    if (!newWindow || latestDate !== newWindow.endDate) {
+      for (const row of rows) {
+        result.skipped.push({
+          kind: "financial_source_window_drift",
+          id: String(row?.id || ""),
+          campaignId,
+          metric: String(row?.metric || row?.name || ""),
+          sourceWindow: { propertyId, latestGa4Date: latestDate },
+          reasonCode: "financial_current_window_unproven",
+          reason: "The persisted GA4 boundary does not match the current completed reporting window.",
+        });
+      }
+      continue;
+    }
+
     const oldWindow = { startDate: OLD_FINANCIAL_SOURCE_START_DATE, endDate: latestDate };
-    const oldData = await buildFinancialInputs(campaign, propertyId, latestDate, oldWindow.startDate, oldWindow.endDate);
-    const newData = await buildFinancialInputs(campaign, propertyId, latestDate, newWindow.startDate, newWindow.endDate);
+    const oldData = await buildFinancialInputs(campaign, propertyId, campaignStartDate(campaign), latestDate, oldWindow.startDate, oldWindow.endDate);
+    const newData = await buildFinancialInputs(campaign, propertyId, newWindow.startDate, newWindow.endDate, "1900-01-01", newWindow.endDate);
 
     for (const row of rows) {
       const id = String(row?.id || "");

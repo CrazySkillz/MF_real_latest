@@ -93,9 +93,9 @@ describe("notification visibility regression guard", () => {
     expect(resolverFile).toContain("primary.importStartDate,");
     expect(resolverFile).toContain("let trafficTotals = summarizeGA4TrafficRows(trafficRows);");
     expect(resolverFile).toContain("getYesopMockBaselineTotals");
-    expect(resolverFile).toContain("const earlierCandidate = selectGA4FinancialTotalsSource(");
-    expect(resolverFile).toContain("[mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate, breakdownFinancialCandidate]");
-    expect(resolverFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow((campaign as any)?.reportingTimeZone);");
+    expect(resolverFile).toContain("[mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate]");
+    expect(resolverFile).not.toContain("getAcquisitionBreakdown(");
+    expect(resolverFile).toContain('const financialWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };');
     expect(resolverFile).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
     expect(resolverFile).toContain("const refresh = await ga4Service.refreshAccessToken(");
     expect(resolverFile).toContain("await storage.updateGA4ConnectionTokens(connection.id, {");

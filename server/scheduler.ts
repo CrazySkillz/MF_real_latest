@@ -6,6 +6,7 @@ import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state';
 import { getCampaignMetricTotals } from './utils/campaign-current-values';
+import { getReportingDateWindow } from './utils/reporting-timezone';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -80,6 +81,9 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   const startDate = startDateObj.toISOString().slice(0, 10);
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
   const financialSourceStartDate = "1900-01-01";
+  const financialSourceEndDate = campaign
+    ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+    : endDate;
 
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
@@ -341,7 +345,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let persistedSpend = 0;
   let spendSourceIds: string[] = [];
   try {
-    const spendTotals = await storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4");
+    const spendTotals = await storage.getSpendTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4");
     persistedSpend = parseNum((spendTotals as any)?.totalSpend);
     spendSourceIds = Array.isArray((spendTotals as any)?.sourceIds) ? (spendTotals as any).sourceIds : [];
   } catch {

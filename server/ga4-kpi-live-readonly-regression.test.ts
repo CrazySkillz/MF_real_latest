@@ -115,7 +115,7 @@ describe("GA4 KPI deployed read-only validator", () => {
     expect(routes).toContain('res.setHeader("X-GA4-Validation-Read-Only", "1")');
     expect(routes).toContain('res.setHeader("X-GA4-Credential-Refresh-Allowed", "0")');
     expect(resolver).toContain("options.allowCredentialRefresh !== false");
-    expect(resolver).toContain("options.allowCredentialRefresh === false");
+    expect(resolver).not.toContain("getAcquisitionBreakdown(");
     expect(validator).not.toContain("UPDATE ");
     expect(validator).not.toContain("INSERT INTO ");
     expect(validator).not.toContain("DELETE FROM ");

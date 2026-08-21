@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
@@ -28,7 +28,7 @@ describe("campaign current-value financial source contract", () => {
   beforeEach(() => {
     for (const value of Object.values(storageMock)) value.mockReset();
     for (const value of Object.values(ga4ServiceMock)) value.mockReset();
-    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-07-01T00:00:00.000Z" });
+    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-05-20T00:00:00.000Z", currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
     storageMock.getGA4Connections.mockResolvedValue([{
       id: "connection-1",
       propertyId: "properties/123",
@@ -36,6 +36,7 @@ describe("campaign current-value financial source contract", () => {
       accessToken: "token",
       isPrimary: true,
       lookbackDays: 30,
+      importStartDate: "2026-07-01",
     }]);
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0 });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100 });
@@ -49,6 +50,25 @@ describe("campaign current-value financial source contract", () => {
       calculationConfig: JSON.stringify({ metric: "revenue", inputs: { revenue: ["total_revenue"] } }),
     }]);
     storageMock.getCampaignBenchmarks.mockResolvedValue([]);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it("keeps native and imported revenue on the import boundary while retaining source-to-date spend", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-21T12:00:00.000Z"));
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 500, conversions: 25 }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 1000, conversions: 40 } });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, sourceIds: ["revenue-1"] });
+
+    await refreshCampaignCurrentValuesForCampaign("campaign-1");
+
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-01", "2026-08-20");
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
+    expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-08-20", [], "USD");
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "1300" });
   });
 
   it("preserves last-good campaign values when every native candidate is unavailable", async () => {

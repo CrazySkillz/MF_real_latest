@@ -42,6 +42,7 @@ vi.mock("./benchmark-notifications.js", () => ({ checkBenchmarkPerformanceAlerts
 
 import {
   getGA4KPIFinancialSourceWindow,
+  getGA4KPIReportingWindow,
   runGA4DailyKPIAndBenchmarkJobs,
 } from "./ga4-kpi-benchmark-jobs";
 
@@ -72,7 +73,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       ownerId: "owner-1",
-      startDate: "2026-06-01T00:00:00.000Z",
+      startDate: "2026-05-20T00:00:00.000Z",
       currency: "USD",
       reportingTimeZone: "Europe/Amsterdam",
     });
@@ -112,7 +113,11 @@ describe("GA4 KPI persisted financial source window", () => {
     vi.useRealTimers();
   });
 
-  it("uses the campaign-timezone latest completed day for source-backed financial totals", () => {
+  it("uses the saved initial import boundary through the campaign-timezone latest completed day", () => {
+    expect(getGA4KPIReportingWindow("Europe/Amsterdam", undefined, new Date("2026-06-28T12:00:00.000Z"), "2026-06-01")).toMatchObject({
+      startDate: "2026-06-01",
+      endDate: "2026-06-27",
+    });
     expect(getGA4KPIFinancialSourceWindow("Europe/Amsterdam", new Date("2026-06-28T12:00:00.000Z"))).toEqual({
       startDate: "1900-01-01",
       endDate: "2026-06-27",
@@ -126,6 +131,14 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-06-01", "2026-06-27");
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-27", "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-27", "ga4");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "2026-06-27",
+      undefined,
+      "USD",
+    );
 
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "6.5" });

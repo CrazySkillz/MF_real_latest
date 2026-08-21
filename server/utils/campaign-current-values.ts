@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
+import { resolveGA4ImportToDateWindow } from "./reporting-timezone";
 
 type CalcConfig = {
   metric?: string;
@@ -43,13 +44,6 @@ const toISODateUTC = (value: unknown): string | null => {
 };
 
 const todayUTC = () => new Date().toISOString().slice(0, 10);
-const financialSourceStartDate = "1900-01-01";
-const previousCompleteUTC = () => {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() - 1);
-  return date.toISOString().slice(0, 10);
-};
-
 const parseConfig = (raw: unknown): CalcConfig | null => {
   if (!raw) return null;
   if (typeof raw === "string") {
@@ -132,8 +126,6 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
   if (!campaign) return null;
 
-  const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
-  const endDate = todayUTC();
   let ga4Revenue = 0;
   let conversions = 0;
   let financialConversions: number | null = null;
@@ -144,6 +136,14 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   const connections = await storage.getGA4Connections(campaignId).catch(() => null as any);
   if (!connections) return null;
   const primary = (connections || []).find((conn: any) => conn?.isPrimary) || (connections || [])[0];
+  const ga4Window = primary?.propertyId
+    ? resolveGA4ImportToDateWindow((primary as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
+    : null;
+  if (primary?.propertyId && !ga4Window) return null;
+  const startDate = ga4Window?.startDate || toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+  const endDate = ga4Window?.endDate || todayUTC();
+  const financialSourceStartDate = "1900-01-01";
+  const spendSourceStartDate = "1900-01-01";
   let ga4Available = false;
   let ga4RevenueAvailable = false;
   let verifiedToDateFinancialCandidateAvailable = false;
@@ -176,7 +176,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       engagementRate = engagementRate > 0 ? engagementRate : baseline.engagementRate;
       financialConversions = conversions;
     } else if (useFullFinancialCandidate) {
-      const financialEndDate = previousCompleteUTC();
+      const financialEndDate = endDate;
       const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, financialEndDate).catch(() => null as any);
       const dailyCandidate = (financialRows || []).reduce((totals: any, row: any) => ({
         revenue: totals.revenue + parseNum(row?.revenue),
@@ -239,9 +239,9 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
 
   const [revenueTotalsResult, spendTotalsResult, revenueBreakdownResult, spendBreakdownResult] = await Promise.allSettled([
     storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4"),
-    storage.getSpendTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4"),
+    storage.getSpendTotalForRange(campaignId, spendSourceStartDate, endDate, "ga4"),
     storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4"),
-    storage.getSpendBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4"),
+    storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, endDate, "ga4"),
   ]);
   const revenueTotals: any = revenueTotalsResult.status === "fulfilled" ? revenueTotalsResult.value : { totalRevenue: 0 };
   const spendTotals: any = spendTotalsResult.status === "fulfilled" ? spendTotalsResult.value : { totalSpend: 0 };

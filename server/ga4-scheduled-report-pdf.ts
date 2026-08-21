@@ -67,20 +67,6 @@ const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabel
   return "No spend or revenue source is connected.";
 };
 
-const toISODateUTC = (value: any) => {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-};
-
-const yesterdayUTC = () => {
-  const now = new Date();
-  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const endD = new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000);
-  return `${endD.getUTCFullYear()}-${String(endD.getUTCMonth() + 1).padStart(2, "0")}-${String(endD.getUTCDate()).padStart(2, "0")}`;
-};
-
 const parseGA4CampaignFilter = (raw: any): CampaignFilter => {
   if (raw === null || raw === undefined) return undefined;
   const s = String(raw || "").trim();
@@ -476,9 +462,10 @@ async function buildGA4ReportPayload(report: any) {
     ? '30daysAgo'
     : reportLookbackRange;
   const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);
-  const financialStartDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
-  const financialEndDate = yesterdayUTC();
-  const importedRevenueStartDate = '1900-01-01';
+  const financialStartDate = reportCumulativeWindow.startDate;
+  const financialEndDate = reportCumulativeWindow.endDate;
+  const spendSourceStartDate = "1900-01-01";
+  const importedRevenueStartDate = "1900-01-01";
   const importedRevenueEndDate = new Date().toISOString().slice(0, 10);
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
@@ -515,7 +502,7 @@ async function buildGA4ReportPayload(report: any) {
       ? storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, adComparisonWindow.endDate, "ga4")
           .catch((e) => { logPartFailure("ad comparison revenue breakdown", e); return [] as any[]; })
       : Promise.resolve([] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, financialStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
+    storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),
     loadPlatformKPIs,
     loadPlatformBenchmarks,
   ]);

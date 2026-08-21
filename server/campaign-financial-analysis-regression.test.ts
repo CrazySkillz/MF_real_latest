@@ -27,6 +27,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("refetchOnWindowFocus: true");
     expect(page).toContain('queryKey: ["/api/campaigns", campaignId]');
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`]');
+    expect(page).toContain("enabled: false, // Withhold comparisons until the protected exact-date snapshot path is certified.");
     expect(page).not.toContain("snapshots?date=");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
     expect(page).toContain("const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);");
@@ -63,10 +64,15 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveView).toContain('label: "ROAS"');
     expect(executiveView).toContain('label: "ROI"');
     expect(executiveView).toContain('label: "CPA"');
-    expect(executiveView).toContain("budgetAllocationSources.map");
+    expect(executiveView).toContain("campaignToDateAllocationSources.map");
     expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
     expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
     expect(executiveView).toContain("executiveFinancialActions.map");
+    expect(page).toContain("const costEfficiencyCpcMetric = campaignToDateCostMetric(overviewCpcMetric, \"CPC\");");
+    expect(page).toContain("const costEfficiencyCpmMetric = campaignToDateCostMetric(overviewCpmMetric, \"CPM\");");
+    expect(page).toContain("const costEfficiencyCtrMetric = campaignToDateCostMetric(overviewCtrMetric, \"CTR\");");
+    expect(page).toContain("const costEfficiencyCvrMetric = campaignToDateCostMetric(overviewCvrMetric, \"CVR\");");
+    expect(page).toContain("const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode ? budgetAllocationSources : [];");
     expect(executiveView).not.toContain("<TabsList>");
     expect(executiveView).not.toContain("<TabsTrigger");
     expect(executiveView).not.toContain("Campaign Health Score");

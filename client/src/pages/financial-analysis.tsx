@@ -123,7 +123,7 @@ export default function FinancialAnalysis() {
   // Get compatible historical snapshots for comparison
   const { data: comparisonData } = useQuery<{ current: any | null; previous: any | null }>({
     queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
-    enabled: !!campaignId,
+    enabled: false, // Withhold comparisons until the protected exact-date snapshot path is certified.
     placeholderData: (previousData: any) => previousData,
     refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
     refetchIntervalInBackground: false,
@@ -621,6 +621,19 @@ export default function FinancialAnalysis() {
       .map((source: any) => String(source?.label || source?.id || "").trim())
       .filter(Boolean)
   ));
+  const campaignToDateCostMetric = (
+    metric: { available: boolean; value: number; unavailableReasons: string[] },
+    metricName: string,
+  ) => demoMode ? metric : {
+    available: false,
+    value: 0,
+    unavailableReasons: [`${metricName} is withheld until every input has a certified campaign-to-date window`],
+  };
+  const costEfficiencyCpcMetric = campaignToDateCostMetric(overviewCpcMetric, "CPC");
+  const costEfficiencyCpmMetric = campaignToDateCostMetric(overviewCpmMetric, "CPM");
+  const costEfficiencyCtrMetric = campaignToDateCostMetric(overviewCtrMetric, "CTR");
+  const costEfficiencyCvrMetric = campaignToDateCostMetric(overviewCvrMetric, "CVR");
+  const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode ? budgetAllocationSources : [];
 
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {
@@ -657,7 +670,7 @@ export default function FinancialAnalysis() {
   const financialProfit = financialProfitAvailable
     ? financialRevenueMetric.value - financialSpendMetric.value
     : 0;
-  const allocationSpendTotal = budgetAllocationSources.reduce((sum, source) => sum + source.spend, 0);
+  const allocationSpendTotal = campaignToDateAllocationSources.reduce((sum, source) => sum + source.spend, 0);
   const executiveFinancialActions: Array<{ title: string; body: string; tone: InsightTone }> = [];
 
   if (financialRoasMetric.available && financialRoiMetric.available) {
@@ -708,16 +721,16 @@ export default function FinancialAnalysis() {
     });
   }
 
-  if (budgetAllocationSources.length === 0) {
+  if (campaignToDateAllocationSources.length === 0) {
     executiveFinancialActions.push({
       title: "Allocation is not available",
-      body: "Connect a spend-capable main paid-media platform before making source-allocation decisions.",
+      body: "Campaign-to-date allocation is withheld until every source exposes compatible cumulative spend and revenue windows.",
       tone: "info",
     });
-  } else if (budgetAllocationSources.length === 1) {
+  } else if (campaignToDateAllocationSources.length === 1) {
     executiveFinancialActions.push({
       title: "No reallocation decision yet",
-      body: `${budgetAllocationSources[0].label} is the only spend-capable main source. Reallocation requires at least two comparable sources.`,
+      body: `${campaignToDateAllocationSources[0].label} is the only spend-capable main source. Reallocation requires at least two comparable sources.`,
       tone: "info",
     });
   } else {
@@ -1038,16 +1051,16 @@ export default function FinancialAnalysis() {
               <section aria-labelledby="cost-efficiency-heading" className="space-y-4">
                 <div>
                   <h2 id="cost-efficiency-heading" className="text-xl font-semibold">Cost Efficiency</h2>
-                  <p className="text-sm text-muted-foreground">Metrics appear only when the connected-source aggregate supplies their required inputs.</p>
+                  <p className="text-sm text-muted-foreground">Metrics appear only when every required input has a compatible campaign-to-date window.</p>
                 </div>
                 <Card>
                   <CardContent className="space-y-5 p-6">
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                       {[
-                        { label: "CPC", metric: overviewCpcMetric, value: formatOverviewCurrency(overviewCpcMetric), fallback: "CPC requires compatible spend and clicks" },
-                        { label: "CPM", metric: overviewCpmMetric, value: formatOverviewCurrency(overviewCpmMetric), fallback: "CPM requires compatible spend and impressions" },
-                        { label: "CTR", metric: overviewCtrMetric, value: formatOverviewPercentage(overviewCtrMetric), fallback: "CTR requires compatible clicks and impressions" },
-                        { label: "CVR", metric: overviewCvrMetric, value: formatOverviewPercentage(overviewCvrMetric), fallback: "CVR requires compatible conversions and clicks or sessions" },
+                        { label: "CPC", metric: costEfficiencyCpcMetric, value: formatOverviewCurrency(costEfficiencyCpcMetric), fallback: "CPC requires compatible spend and clicks" },
+                        { label: "CPM", metric: costEfficiencyCpmMetric, value: formatOverviewCurrency(costEfficiencyCpmMetric), fallback: "CPM requires compatible spend and impressions" },
+                        { label: "CTR", metric: costEfficiencyCtrMetric, value: formatOverviewPercentage(costEfficiencyCtrMetric), fallback: "CTR requires compatible clicks and impressions" },
+                        { label: "CVR", metric: costEfficiencyCvrMetric, value: formatOverviewPercentage(costEfficiencyCvrMetric), fallback: "CVR requires compatible conversions and clicks or sessions" },
                       ].map((item) => (
                         <div key={item.label} className="rounded-lg border p-4">
                           <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
@@ -1084,11 +1097,11 @@ export default function FinancialAnalysis() {
                       <CardDescription>Spend share and compatible return evidence by main source</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {budgetAllocationSources.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No spend-capable connected source is available for budget allocation yet.</p>
+                      {campaignToDateAllocationSources.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Campaign-to-date allocation is unavailable until each source provides compatible cumulative spend and revenue.</p>
                       ) : (
                         <div className="space-y-4">
-                          {budgetAllocationSources.map((source) => {
+                          {campaignToDateAllocationSources.map((source) => {
                             const share = allocationSpendTotal > 0 ? (source.spend / allocationSpendTotal) * 100 : 0;
                             return (
                               <div key={source.id} className="space-y-2 rounded-lg border p-4">
@@ -1106,7 +1119,7 @@ export default function FinancialAnalysis() {
                             );
                           })}
                           <p className="text-xs text-muted-foreground">
-                            {budgetAllocationSources.length > 1
+                            {campaignToDateAllocationSources.length > 1
                               ? "Compare compatible spend share and ROAS before reallocating budget."
                               : "Budget reallocation recommendations require at least two spend-capable sources."}
                           </p>

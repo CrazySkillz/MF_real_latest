@@ -174,7 +174,7 @@ function setCommonShopifyFinancialMocks() {
   storageMock.getCampaign.mockResolvedValue(campaign);
   storageMock.getCampaigns.mockResolvedValue([campaign]);
   storageMock.getGA4Connections.mockResolvedValue([
-    { id: "ga4-1", campaignId: campaign.id, propertyId: "properties/123", method: "access_token", accessToken: "ga4-token", isPrimary: true },
+    { id: "ga4-1", campaignId: campaign.id, propertyId: "properties/123", method: "access_token", accessToken: "ga4-token", isPrimary: true, lookbackDays: 30, importStartDate: "2026-07-02" },
   ]);
   storageMock.getGA4Connection.mockResolvedValue({
     id: "ga4-1",
@@ -183,6 +183,8 @@ function setCommonShopifyFinancialMocks() {
     method: "access_token",
     accessToken: "ga4-token",
     isPrimary: true,
+    lookbackDays: 30,
+    importStartDate: "2026-07-02",
   });
   storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
   storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);

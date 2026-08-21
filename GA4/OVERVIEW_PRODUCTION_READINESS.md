@@ -14,14 +14,14 @@ This is the concise canonical index for the current GA4 Overview readiness decis
 
 Only evidence from the same deployed commit, production-data state, and documented scope can support certification. Every status must remain **proven**, **unproven**, or **requires external validation**.
 
-2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `1cf9031d50d321fb5cbd39deb26ecdf5ae60831c`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+2026-08-21 reconciliation: the authoritative machine record certifies exact deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Current Decision — Stable Cross-Session Answer
 
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-**Current section status: PRODUCTION_READY.** The certified deployed runtime is `892ff3396ec9c9332008128897e5703cc6bb3817` for the recorded campaign, live property `542352127`, USD source set, and persisted-data boundary. Authenticated UI/API/source parity, the zero-finding inventory, all three Campaign Breakdown rows, and controlled scheduled Overview delivery passed. A natural timer-fired run on `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` persisted the exact target data without later app repair; the relevant scheduler/producer files are byte-identical through `892ff339`, so that evidence is carried forward without claiming an exact-`892ff339` timer firing. The process-wide run's 17 excluded obsolete campaigns prevent a global scheduler-health claim.
+**Current section status: PRODUCTION_READY.** The certified deployed runtime is `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` for the recorded campaign, live property `542352127`, USD source set, and persisted-data boundary. Authenticated read-only validation reconciled cumulative Summary values, native plus imported revenue, spend, exact source inventories, and Campaign Breakdown consumers with unchanged semantic persistence. Reports and post-scheduler evidence carries from byte-identical runtime `3c45aae7`; `12789c1e` changes documentation only. The process-wide run's 17 excluded obsolete campaigns prevent a global scheduler-health claim.
 
 The prior clean certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remains historical evidence for its exact campaign/property/configuration/data boundary only.
 

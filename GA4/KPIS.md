@@ -8,11 +8,11 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-As of August 15, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`.
+As of August 21, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.
 
-The final KPI-only production check passed on that exact SHA: all 12 cards, Tracker, Notifications, all 12 KPI-derived Insights findings, every selected browser-PDF KPI row, and stored values matched; the validator recorded no unsafe GET, no application mutation, and unchanged semantic persistence. Commit `950307b6e1863fb2580a885679655044dec0ca23` separated KPI/PDF traffic freshness from the Insights Trends freshness state, and commit `1a93d8d88debba4baefd666aa063c59b10b00e95` made visible KPI Notifications fail closed when the same stored traffic input is stale. Benchmark notification behavior was not changed.
+The exact-SHA KPI production check passed for all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, every selected browser-PDF KPI row, and stored values. The validator recorded no unsafe GET, no application mutation, and unchanged semantic persistence; stale traffic-dependent KPI inputs failed closed.
 
-The final evidence includes exact 12-row cards/Tracker/Notifications/Insights/browser-PDF parity, unchanged semantic persistence, and a recompute-backed manual KPI snapshot/PDF with all 12 rows exact. Natural scheduler evidence carries from `85f5233e` across byte-identical scheduler/job files; no exact-`892ff339` timer firing or future provider-availability claim is made. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The final evidence includes exact eight-row cards/Tracker/Notifications/Insights/browser-PDF parity and unchanged semantic persistence. Reports and post-scheduler evidence carries from byte-identical runtime `3c45aae7`; future provider availability and global all-campaign scheduler health remain excluded. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
 

@@ -5,7 +5,7 @@
 ## Controlling Current Status
 
 **Status: PRODUCTION_READY for exact deployed revision
-`7c40833e52aa9011abf6e06e3c2a56853fef1d12` and the recorded
+`12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded
 dependency/configuration boundary. The defined live-tab section is
 release-candidate ready; this is not a final combined GA4 certification.**
 
@@ -19,13 +19,12 @@ the isolated Ad Comparison query, `ga4-breakdown?window=import-to-date` route,
 saved import boundary, exact property/filter scope, native aggregation/ranking,
 or imported-source provenance renderer.
 
-The focused and shared packet passes 236/236 tests, the Ad-relevant
-source-safety subset passes 15/15, and TypeScript and the production build pass.
+The current-version boundary, TypeScript, and production build pass.
 Authenticated exact-SHA validation proves property `542352127`, the saved
-three-campaign filter, the `2026-07-02` through `2026-08-19` completed-day
+three-campaign filter, the `2026-07-02` through `2026-08-20` completed-day
 window, all reviewed provider aggregates, all five materialized revenue sources,
 and rendered UI parity. The validation database transaction was read-only and
-rolled back. Prior `PRODUCTION_READY` records are historical only.
+rolled back with zero application mutations. Prior `PRODUCTION_READY` records are historical only.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git

@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Authenticated UI/API/source parity, production-data integrity, Campaign Breakdown reconciliation, and scheduled Overview artifact delivery passed. Natural target-persistence evidence carries from `85f5233e` because the relevant scheduler/producer files are byte-identical; no exact-`892ff339` natural timer firing or global all-campaign scheduler-health claim is made.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Authenticated read-only Summary, financial, source, Campaign Breakdown, and downstream parity passed. The process-wide scheduler's 17 excluded obsolete campaigns remain outside this boundary; no global all-campaign scheduler-health claim is made.
 
 <!-- /ga4-overview-current-status -->
 

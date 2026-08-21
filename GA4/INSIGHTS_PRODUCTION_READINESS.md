@@ -1,15 +1,17 @@
 # GA4 Insights Production Readiness
 
-2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `09e3b64ed67fec70aa84f969a09aae1f368a4f02`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+2026-08-21 reconciliation: the authoritative machine record certifies exact deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Section status: **PRODUCTION_READY** for the recorded live GA4 Insights boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`.
+Section status: **PRODUCTION_READY** for the recorded live GA4 Insights boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.
 
-Authenticated read-only value parity, expected-stale handling, tenant isolation, protected regressions, TypeScript, and the production build passed. The final combined GA4 audit is complete for this recorded boundary.
+Authenticated read-only value parity, expected-stale handling, tenant isolation, protected regressions, TypeScript, and the production build passed. The controlled rerun matched five Executive Financial values, three summary values, three channel rows, four trend modes, three tracker values, six visible findings, exact cumulative KPI/Benchmark target inputs, and unchanged semantic persistence. The temporary Clerk-only non-owner was deleted during cleanup.
+
+<!-- /ga4-insights-current-status -->
 
 Previous certified SHA: `ee22f0e470826f1cb247115497c9a15229d0142d`. Its evidence is preserved in the machine record and below as historical revision-specific evidence; it does not certify the current candidate.
 
@@ -26,8 +28,6 @@ Later-change classification through deployed `7374e824`: `950307b6`, `1a93d8d8`,
 Decision: the live GA4 Insights section is production-ready at the exact boundary above. Natural scheduler evidence is explicitly carried from `85f5233e` across byte-identical scheduler/producer/job files; no exact-`892ff339` natural timer firing or global all-campaign scheduler-health claim is made. Reports-owned behavior remains separately certified.
 
 August 12, 2026 exact-SHA re-verification: the KPI same-date history correction intentionally affects the history consumed by Insights, so this connection was not assumed unchanged. The authenticated production validator passed on deployed `ee22f0e470826f1cb247115497c9a15229d0142d`: all Executive Financials, Data Summary, channel, Daily/7d/30d/Monthly Trends, tracker, and visible finding values matched the scoped APIs; Daily rendered 111, 108, 106, and 103 on the exact imported dates with gaps elsewhere; tenant isolation failed closed; and campaign persistence remained unchanged. The campaign-scoped manual scheduler run succeeded with all 12 KPIs and both Benchmarks updated and none skipped/failed. The complete protected boundary passed 44 files / 496 tests; TypeScript and the production build passed. A natural timer firing on this SHA is not claimed.
-
-<!-- /ga4-insights-current-status -->
 
 ## Certification Boundary
 

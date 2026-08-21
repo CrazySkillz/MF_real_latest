@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `9f474ce1fed9d2ffeb02392bbaa0a2176ea7ba06`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+2026-08-21 reconciliation: the authoritative machine record certifies exact deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Purpose
 
@@ -20,11 +20,13 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### August 15, 2026 final combined certification decision (controlling)
+### August 21, 2026 exact-SHA revalidation decision (controlling)
 
-**Result: PRODUCTION_READY for the recorded KPI boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`.** Production health returned that exact SHA; the local and `origin/main` runtime diff is empty because later commits are certification documentation only.
+**Result: PRODUCTION_READY for the recorded KPI boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** Production health returned that exact SHA. Authenticated read-only validation matched all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Stale traffic-dependent inputs failed closed. The complete current-version boundary is clean after the focused legacy report-fixture correction; 46 declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports UI/PDF and post-scheduler evidence carries from byte-identical runtime `3c45aae7`, because `12789c1e` changes documentation only.
 
-Changes after the previous certified boundary are classified as follows:
+## Historical Status And Evidence (non-authoritative)
+
+The following August 15 record is retained as revision-specific history:
 
 - legitimate newer shared work: ownerless-campaign fail-closed KPI/Benchmark jobs and alert suppression, exact-owner notification visibility, read-only validation routing, and successful-campaign isolation in the GA4 daily scheduler
 - unaffected KPI behavior: later Overview certification/copy changes and unrelated certification documentation do not change KPI values, formulas, CRUD, source precedence, alerts, or report payloads
@@ -43,8 +45,6 @@ Release-candidate evidence:
 - the natural timer fired on deployed SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c` at `2026-08-14T20:35:00.001Z`; the target recompute updated all 12 KPIs with zero KPI skips and zero KPI failures. The process-wide run failed because of 17 excluded obsolete campaigns, so it is not described as globally successful. Later commits `950307b6` and `1a93d8d8` did not change the scheduler or KPI recompute pipeline; an exact-`1a93d8d8` natural timer run is not claimed.
 
 The final gate is closed. A controlled recompute-backed manual KPI snapshot and PDF matched all 12 persisted KPI rows exactly on `892ff339`; failed email attempts created no false snapshot or `lastSentAt`, and the successful controlled Overview report created one truthful sent event/snapshot with provider-confirmed delivery and user-confirmed inbox/PDF receipt. Natural KPI scheduler evidence carries from `85f5233e` because `server/ga4-daily-scheduler.ts` and `server/ga4-kpi-benchmark-jobs.ts` are byte-identical through `892ff339`; no exact-`892ff339` natural timer firing, future provider availability, or global all-campaign scheduler health is claimed.
-
-## Historical Status And Evidence (non-authoritative)
 
 ### Current Commit 14B final-validation attempt - August 5, 2026 (historical)
 

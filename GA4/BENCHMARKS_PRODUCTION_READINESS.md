@@ -16,7 +16,7 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-August 15, 2026 controlling assessment: GA4 Benchmarks is **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Authenticated read-only consumer parity, stale fail-closed behavior, lifecycle guards, and exact target scheduler persistence passed.
+August 21, 2026 controlling assessment: GA4 Benchmarks is **PRODUCTION_READY** for the recorded boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Authenticated read-only validation covered two campaign inventories and four Benchmarks with exact provider, persisted, scheduler-candidate, UI, card, Tracker, Insights, notification, and browser-PDF parity; stale traffic values and the no-property campaign failed closed, with zero application mutation attempts.
 
 The prior clean certification remains historical evidence for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` only. Later dependency-boundary changes invalidated carrying that active status forward. This review found and fixed two current runtime defects: direct Benchmark browser consumers did not fail stale persisted traffic closed unless the Insights-only trends request exposed staleness, and Benchmark notification enrichment did not require current traffic freshness. The failing guards were added before runtime edits; the post-fix focused gate passed `16` files and `185` tests, followed by successful TypeScript and production builds.
 

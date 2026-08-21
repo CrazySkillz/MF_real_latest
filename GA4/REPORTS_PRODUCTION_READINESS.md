@@ -5,7 +5,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `1cf9031d50d321fb5cbd39deb26ecdf5ae60831c`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+2026-08-21 reconciliation: the authoritative machine record certifies exact deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Purpose
 
@@ -21,11 +21,11 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: PRODUCTION_READY -->
 ## Current Controlling Answer
 
-August 15, 2026 final decision: GA4 Reports is **PRODUCTION_READY** for the recorded GA4 Reports and delivery boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Campaign DeepDive remains outside the boundary.
+August 21, 2026 final decision: GA4 Reports is **PRODUCTION_READY** for the recorded GA4 Reports and delivery boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Campaign DeepDive remains outside the boundary.
 
-Two later Reports regressions were proven and corrected: browser/server PDFs now fail closed when an active imported-revenue source lacks a finite exact materialized row, and Campaign Breakdown PDFs disclose that GA4 metrics use the completed-day window while exact matched imported revenue is source-to-date. The certification gate now also rejects a reusable readiness claim outside the controlling status block.
+The current Reports consumers resolve one authoritative cumulative initial-import boundary and fail closed when that boundary cannot be proven. The complete current-version boundary exposed one stale legacy Shopify test fixture; adding its exact 30-day/import-start boundary restored all seven focused report-consumer tests without changing runtime code.
 
-Final evidence includes the protected/full current-version suites, TypeScript, production build, exact `892ff339` health, exact 12-row recompute-backed KPI snapshot/PDF parity, direct snapshot type-mismatch HTTP 404, a controlled scheduled Overview send with one truthful sent event/snapshot and advanced `lastSentAt`, Mailgun provider-confirmed delivery, user-confirmed inbox receipt and readable PDF, and exact restoration of the original schedule.
+Final evidence includes the current-version suite, TypeScript, production build, exact `12789c1e` health, current browser KPI/Benchmark PDF parity, deterministic cumulative/fail-closed report tests, and the authenticated Reports UI/PDF plus post-scheduler evidence from byte-identical runtime `3c45aae7`. Earlier provider delivery, inbox receipt, truthful snapshot, and schedule-restoration evidence remains revision-bounded historical support rather than a new delivery claim.
 
 The production database audit found no active orphan report, tenant mismatch, or invalid active schedule. Historical orphan/mismatched artifacts remain preserved rather than rewritten and are fail-closed by current access/type guards. The unavailable-materialized-revenue negative branch remains proven by deterministic regression coverage rather than production-data mutation.
 

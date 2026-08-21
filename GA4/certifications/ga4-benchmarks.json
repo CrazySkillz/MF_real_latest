@@ -3,24 +3,24 @@
   "sectionId": "ga4-benchmarks",
   "betaReadinessStatus": "BETA_READY",
   "productionCertificationStatus": "PRODUCTION_READY",
-  "reviewedBaseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-  "reviewedImplementationGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-  "certifiedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+  "reviewedBaseGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+  "reviewedImplementationGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+  "certifiedGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
   "candidateRevision": {
-    "baseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "runtimeGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "deployedEvidenceGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "currentDeployedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "currentDeploymentChangeClass": "final_combined_certified_runtime",
+    "baseGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "runtimeGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "deployedEvidenceGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "currentDeployedGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "currentDeploymentChangeClass": "exact_sha_documentation_reconciliation_on_revalidated_runtime",
     "status": "PRODUCTION_READY",
     "invalidationReason": null
   },
   "previousCertification": {
     "status": "PRODUCTION_READY",
-    "reviewedBaseGitSha": "466dc2494b16b38a116b49a786039da251520520",
-    "certifiedGitSha": "650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd"
+    "reviewedBaseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
+    "certifiedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817"
   },
-  "reviewedAt": "2026-08-15",
+  "reviewedAt": "2026-08-21",
   "scope": "GA4 Benchmarks section only: cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, GA4 daily scheduler behavior, persistence, destructive operations, authentication, authorization, scoping, and tenant isolation. Insights/Reports value propagation is bounded supporting evidence; full consumer-section behavior and Reports generation, scheduling, delivery, attachments, and inbox receipt are outside this Benchmark certification and are not certified by it.",
   "revisionBoundary": {
     "status": "HISTORICAL_LOCKED_PRODUCTION_READY",
@@ -154,10 +154,14 @@
     "transferBoundary": "Commits 950307b6 and 1a93d8d8 changed browser KPI/PDF freshness and KPI-only notification visibility; 7366051f changed KPI documentation/evidence. None changed the scheduler or Benchmark recompute pipeline. This carries the 85f5233e scheduler-path evidence forward only; no exact-current natural timer firing is claimed."
   },
   "currentLocalReleaseCandidateGate": {
-    "status": "complete_for_final_combined_certification",
-    "baseGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "implementationGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "validatedAt": "2026-08-15",
+    "status": "complete_for_exact_sha_revalidation",
+    "baseGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "implementationGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "validatedAt": "2026-08-21",
+    "currentVersionTestsTotal": 1573,
+    "currentVersionTestsPassed": 1528,
+    "currentVersionBlockingFailures": 0,
+    "declaredDeferredFuturePlatformFailures": 45,
     "focusedFilesPassed": 16,
     "focusedTestsPassed": 185,
     "typescriptCheck": "passed",
@@ -167,21 +171,24 @@
       "Benchmark notification enrichment now requires current GA4 traffic freshness in normal and read-only validation requests."
     ],
     "limitations": [
-      "The 17 obsolete campaigns outside the active Benchmark boundary prevent a global all-campaign scheduler-health claim."
+      "The 17 obsolete campaigns outside the active Benchmark boundary prevent a global all-campaign scheduler-health claim.",
+      "The current exact-SHA run is read-only; prior natural-scheduler evidence carries forward across byte-identical scheduler and recompute files."
     ]
   },
   "currentDeployedReleaseCandidateGate": {
-    "status": "complete_for_final_combined_certification",
-    "implementationGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "deployedEvidenceGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "currentDeployedGitSha": "892ff3396ec9c9332008128897e5703cc6bb3817",
-    "currentDeploymentChangeClass": "final_combined_certified_runtime",
-    "validatedAt": "2026-08-15",
+    "status": "complete_for_exact_sha_revalidation",
+    "implementationGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "deployedEvidenceGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "currentDeployedGitSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "currentDeploymentChangeClass": "exact_sha_documentation_reconciliation_on_revalidated_runtime",
+    "validatedAt": "2026-08-21",
     "mode": "read_only_application_data",
     "campaignCount": 2,
     "benchmarkCount": 4,
     "failureCount": 0,
     "applicationMutationAttempts": 0,
+    "exactCumulativeStartDate": "2026-07-02",
+    "exactCumulativeEndDate": "2026-08-20",
     "authenticatedInventoryParity": "passed",
     "cardsTrackerParity": "passed",
     "insightsBenchmarkPropagationParity": "passed",
@@ -192,7 +199,7 @@
     "staleFailClosedEvidence": {
       "refreshIsStale": true,
       "validationReadOnly": true,
-      "dataThroughDate": "2026-08-14",
+      "dataThroughDate": "2026-08-20",
       "latestStoredDailyDate": "2026-08-10",
       "oldestDueMissingDailyDate": "2026-08-11",
       "cardsTracker": "passed",
@@ -201,7 +208,7 @@
     },
     "limitations": [
       "Browser PDF remains bounded Benchmark row-propagation evidence; Reports is separately certified.",
-      "No exact-892ff339 natural timer run is claimed; bounded 85f5233e evidence carries across byte-identical scheduler/job files."
+      "No exact-12789c1e natural timer run is claimed; bounded post-scheduler evidence carries from byte-identical runtime 3c45aae7 and the earlier natural-timer proof remains historical support."
     ]
   },
   "activeProductionCertificationCommits": [

@@ -19,7 +19,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";');
   });
 
-  it("keeps native GA4 metrics on the fixed import boundary without clipping source-to-date spend", () => {
+  it("keeps native GA4 metrics on the fixed import boundary without clipping source-to-date financial inputs", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
@@ -44,7 +44,9 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("performanceSummarySpendTotals");
     expect(route).toContain("const financialSpendForOutcome = currentValueWindow");
     expect(route).toContain("unifiedSpend: financialSpendForOutcome");
-    expect(route).toContain('const revenueStartDate = currentValueWindow?.startDate || "1900-01-01";');
+    expect(route).toContain('const revenueStartDate = "1900-01-01";');
+    expect(route).toContain("Imported revenue is source-to-date; the GA4 import boundary applies only to native GA4 metrics.");
+    expect(route).not.toContain('const revenueStartDate = currentValueWindow?.startDate');
     expect(route).toContain('storage.getRevenueTotalForRange(campaignId, revenueStartDate, revenueEndDate, "ga4")');
     expect(route).toContain('storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4")');
     expect(route).toContain("let financialRevenueInputs: any[] = [];");
@@ -134,7 +136,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("let ga4TotalsAvailable = !activeGA4;");
     expect(route).toContain("let importedRevenueAvailable = false;");
     expect(route).toContain("let hasImportedRevenueSource = false;");
-    expect(route).toContain('await storage.getRevenueTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), "ga4");');
+    expect(route).toContain('const revenueStartDate = "1900-01-01";');
     expect(route).not.toContain("Campaign-to-date revenue source is not fully materialized");
     expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };");
     expect(route).toContain('const startDateUsed = currentValueWindow.startDate;');

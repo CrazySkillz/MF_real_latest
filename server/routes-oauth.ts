@@ -14270,11 +14270,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let hasImportedRevenueSource = false;
       const materializedRevenueSourceTypes = new Set<string>();
       try {
-        const revenueStartDate = currentValueWindow?.startDate || "1900-01-01";
+        // Imported revenue is source-to-date; the GA4 import boundary applies only to native GA4 metrics.
+        const revenueStartDate = "1900-01-01";
         const revenueEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
-        if (currentValueWindow) {
-          await storage.getRevenueTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), "ga4");
-        }
         const [revenueTotals, revenueBreakdown, revenueSourceDefinitions] = await Promise.all([
           storage.getRevenueTotalForRange(campaignId, revenueStartDate, revenueEndDate, "ga4"),
           storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4"),

@@ -2,9 +2,9 @@
     "schemaVersion":  1,
     "sectionId":  "ga4-insights-live",
     "status":  "PRODUCTION_READY",
-    "lastReviewedSha":  "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
-    "certifiedSha":  "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
-    "deployedSha":  "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+    "lastReviewedSha":  "b8c7362121593502955d41e522d32396a963fdcc",
+    "certifiedSha":  "b8c7362121593502955d41e522d32396a963fdcc",
+    "deployedSha":  "b8c7362121593502955d41e522d32396a963fdcc",
     "invalidationReason":  null,
     "previousCertification":  {
                                      "status":  "PRODUCTION_READY",
@@ -51,17 +51,17 @@
                          {
                              "path":  "GA4/INSIGHTS.md",
                              "role":  "functional contract",
-                             "sha256":  "2c47348194af7b06fc863f1c14974bb638836c1c2a90bc3eb1d8ca452259ad48"
+                             "sha256":  "a3d500369c3f6dfcb7278a977bd84c779c4a0e2f8db830ca78fba22ec5434657"
                          },
                          {
                              "path":  "GA4/INSIGHTS_PRODUCTION_READINESS.md",
                              "role":  "controlling status",
-                             "sha256":  "e81056b96cccf6bd5525d91969f4e6575be61037e05f8e5296a1a038ca1ebbca"
+                             "sha256":  "a00ebdf579ca090bab9852c42f474f2817b529c3792dbf558c83c8ec96a5a882"
                          },
                          {
                              "path":  "GA4/README.md",
                              "role":  "GA4 status index",
-                             "sha256":  "8bd89afda1decac10cdbb6d9bfb7ec4c2da915a40eb178b62159b0ef1a993b73"
+                             "sha256":  "e777d1ad761efdd3973ec982a5e0c89cdb8bcd74a61ae67e78d0fb949a5f4b5f"
                          },
                          {
                              "path":  "GA4/FINANCIAL_SOURCES.md",
@@ -131,7 +131,7 @@
                          {
                              "path":  "server/routes-oauth.ts",
                              "role":  "API auth, scope, and window boundary",
-                             "sha256":  "9caec4a0e2e04fa1ce12500fb154c84845282a2934e79712e04ee6dfc06029e4"
+                             "sha256":  "8924798dc702eee952767fcd44248685987f330f909c8cb674fdf375635963ad"
                          },
                          {
                              "path":  "server/index.ts",
@@ -483,17 +483,17 @@
                           {
                               "id":  "affected_shared_auth_scope",
                               "status":  "passed",
-                              "evidence":  "The exact-12789c1e complete current-version run passed the Insights/shared dependency boundary within 1,528 passing tests and zero blocking failures."
+                              "evidence":  "The exact-b8c73621 complete current-version run passed the Insights/shared dependency boundary within 1,529 passing tests and zero blocking failures."
                           },
                           {
                               "id":  "typescript",
                               "status":  "passed",
-                              "evidence":  "npm run check passed for certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
+                              "evidence":  "npm run check passed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
                           },
                           {
                               "id":  "build",
                               "status":  "passed",
-                              "evidence":  "npm run build passed for certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
+                              "evidence":  "npm run build passed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
                           },
                           {
                               "id":  "machine_gate",
@@ -505,32 +505,32 @@
                           {
                               "id":  "exact_sha_deployment",
                               "status":  "passed",
-                              "evidence":  "Render /api/health returned HTTP 200 with exact certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627 on 2026-08-21. Evidence-only commit e175ac5c was subsequently deployed and user-confirmed; its diff contains no production runtime code changes."
+                              "evidence":  "Render /api/health returned HTTP 200 with exact certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc on 2026-08-21. The only runtime change from 12789c1e is the established campaign-access guard on /api/campaigns/:id/outcome-totals."
                           },
                           {
                               "id":  "authenticated_owner_api_ui_parity",
                               "status":  "passed",
-                              "evidence":  "Authenticated exact-12789c1e read-only owner validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, exact cumulative and breakdown boundaries, source totals, expected-stale state, and unchanged campaign-scoped persistence."
+                              "evidence":  "Authenticated exact-b8c73621 read-only owner validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, exact cumulative and breakdown boundaries, source totals, expected-stale state, and unchanged campaign-scoped persistence."
                           },
                           {
                               "id":  "live_surface_value_parity",
                               "status":  "passed",
-                              "evidence":  "All five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and six visible findings matched the exact page-consumed scoped production inputs on deployed 12789c1e."
+                              "evidence":  "All five Executive Financial values, three summary values, three channel rows, four Trends modes, three tracker values, and six visible findings matched the exact page-consumed scoped production inputs on deployed b8c73621."
                           },
                           {
                               "id":  "tenant_isolation",
                               "status":  "passed",
-                              "evidence":  "Exact-12789c1e tenant isolation failed closed with HTTP 404. The authorized temporary Clerk-only test user was deleted and its sessions revoked after validation; no analytics data was changed."
+                              "evidence":  "Exact-b8c73621 tenant isolation failed closed with HTTP 404. The authorized temporary Clerk-only test user was deleted and its sessions revoked after validation; no analytics data was changed."
                           },
                           {
                               "id":  "deterministic_scheduler",
                               "status":  "passed",
-                              "evidence":  "The post-scheduler target audit on runtime 3c45aae7 carries to documentation-only deployed revision 12789c1e across byte-identical scheduler and recompute files. No exact-12789c1e timer firing or global all-campaign scheduler-health claim is made; 17 obsolete campaigns remain excluded."
+                              "evidence":  "The post-scheduler target audit on runtime 3c45aae7 carries to deployed revision b8c73621 across byte-identical scheduler and recompute files. No exact-b8c73621 timer firing or global all-campaign scheduler-health claim is made; 17 obsolete campaigns remain excluded."
                           },
                           {
                               "id":  "dependency_hashes",
                               "status":  "passed",
-                              "evidence":  "All protected dependency hashes match the exact revalidated working-tree boundary. The exact-12789c1e machine gate, authenticated functional validator, current-version suite, TypeScript check, and production build passed."
+                              "evidence":  "All protected dependency hashes match the exact revalidated working-tree boundary. The exact-b8c73621 machine gate, authenticated functional validator, current-version suite, TypeScript check, and production build passed."
                           }
                       ],
     "configurationFingerprint":  {

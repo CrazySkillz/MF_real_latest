@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-21 reconciliation: the authoritative machine record certifies runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was subsequently deployed and confirmed; it changes only documentation, certification records, and focused tests, so production runtime code remains byte-identical to the certified boundary. Older narrative SHA references below are revision-specific history where they differ.
+2026-08-21 revalidation: the authoritative machine record certifies deployed runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`. Relative to `12789c1e`, it changes only the established campaign-access middleware on outcome totals. Focused, current-version, TypeScript, build, exact-health, authenticated-owner, unauthenticated-denial, and deployed read-only KPI checks passed. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ This file defines whether the current implementation is production-ready, what h
 
 ### August 21, 2026 exact-SHA revalidation decision (controlling)
 
-**Result: PRODUCTION_READY for certified KPI runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** Production health returned that exact SHA during certification; evidence-only commit `e175ac5c` was later deployed without changing runtime code. Authenticated read-only validation matched all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Stale traffic-dependent inputs failed closed. The complete current-version boundary is clean after the focused legacy report-fixture correction; 45 declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports UI/PDF and post-scheduler evidence carries from byte-identical runtime `3c45aae7`.
+**Result: PRODUCTION_READY for certified KPI runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`.** Production health returned that exact SHA during certification. Authenticated read-only validation matched all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Stale traffic-dependent inputs failed closed. The complete current-version boundary has zero blocking failures; declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports UI/PDF and post-scheduler evidence remains separately bounded.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -860,7 +860,7 @@ Read in this order:
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only deployment `e175ac5c` does not change runtime code.
+Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -1876,7 +1876,7 @@ The following remain external caveats after current certification:
 - future Mailgun/provider outages, provider event telemetry gaps, or recipient spam filtering
 - future source mixes, platform extensions, or code changes that have not gone through a new readiness pass
 
-These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `12789c1e`; its supporting GA4 KPI UI, scheduler, report, immediate alert email, provider-acceptance, and inbox-receipt evidence passed within the bounded environments documented above. Evidence-only commit `e175ac5c` does not change that runtime boundary.
+These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `b8c73621`; its supporting GA4 KPI UI, scheduler, report, immediate alert email, provider-acceptance, and inbox-receipt evidence passed within the bounded environments documented above. The access-guard-only runtime change does not broaden those historical evidence claims.
 
 ## Future Platform Template
 

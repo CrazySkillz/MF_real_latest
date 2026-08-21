@@ -5,9 +5,9 @@
 ## Controlling Current Status
 
 **Status: PRODUCTION_READY for certified runtime boundary
-`12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded
-dependency/configuration boundary. Evidence-only commit `e175ac5c` was
-subsequently deployed and confirmed without changing production runtime code.
+`b8c7362121593502955d41e522d32396a963fdcc` and the recorded
+dependency/configuration boundary. Relative to `12789c1e`, the runtime changes
+only the established campaign-access guard on outcome totals.
 The defined live-tab section is included in the final combined GA4
 certification.**
 
@@ -183,7 +183,7 @@ production-configuration change invalidates the certification.
 | AC-07 | Major | React Query previous-property placeholder rows could appear under a newly selected property. | Fixed: placeholder rows are excluded until current-property data is verified |
 | AC-08 | Major | Imported display state followed the revenue-total query instead of the source-breakdown query rendered by Ad Comparison. | Fixed: state derives from exact source definitions plus rendered breakdown response |
 | AC-09 | Critical | Ad Comparison conflated the 30-day initial import depth with a permanent rolling display window, so older valid campaign values fell out after day 30 and rankings/totals diverged from the campaign accumulation contract. | Fixed locally in `6a38cc4d`: isolated server-resolved saved-import-boundary query through the campaign-timezone latest completed day; deployment/live parity remains a certification gate |
-| AC-10 | Major | Active imported sources with no exact materialized amount were filtered out, so the table could claim there were no additional sources instead of showing the source as unavailable. | Fixed in `defce198` and present in certified runtime `12789c1e`: render the source as `Unavailable`, retain valid zero and other exact values, and suppress unavailable-source subsections; current regression and exact-SHA live available-source/UI evidence pass |
+| AC-10 | Major | Active imported sources with no exact materialized amount were filtered out, so the table could claim there were no additional sources instead of showing the source as unavailable. | Fixed in `defce198` and present in certified runtime `b8c73621`: render the source as `Unavailable`, retain valid zero and other exact values, and suppress unavailable-source subsections; current regression and exact-SHA live available-source/UI evidence pass |
 
 Historical AC-04 concerned Reports-owned browser/scheduled PDF parity. It was
 fixed in the broader implementation commit but is outside this tab-only
@@ -312,11 +312,11 @@ Broader repository run:
 These gates certify only historical revision `83d12427`; they do not certify the
 current candidate.
 
-### Current exact-SHA gates for certified runtime `12789c1e`
+### Current exact-SHA gates for certified runtime `b8c73621`
 
 - certified runtime deployment: passed; `/api/health` returned exact SHA
-  `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit
-  `e175ac5c` was later deployed and confirmed without changing runtime code
+  `b8c7362121593502955d41e522d32396a963fdcc`; relative to `12789c1e`, the
+  runtime changes only the established campaign-access guard on outcome totals
 - provider/window: passed for property `542352127`, `Europe/Amsterdam`, saved
   start `2026-07-02`, completed end `2026-08-20`, 50 inclusive days, exact
   three-value filter, and 33 provider rows
@@ -344,7 +344,7 @@ current candidate.
 
 All required local and exact-SHA production gates pass for the defined live-tab
 boundary. The machine record is `PRODUCTION_READY` for certified runtime
-boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded normalized
+boundary `b8c7362121593502955d41e522d32396a963fdcc` and the recorded normalized
 dependency hashes. This section result is included in the final combined GA4
 certification.
 

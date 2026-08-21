@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
-  "certifiedSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
-  "deployedSha": "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
+  "lastReviewedSha": "b8c7362121593502955d41e522d32396a963fdcc",
+  "certifiedSha": "b8c7362121593502955d41e522d32396a963fdcc",
+  "deployedSha": "b8c7362121593502955d41e522d32396a963fdcc",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -49,9 +49,9 @@
     { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "a34e62a3ac46d5d8e1b9d187fb1f27c0ad1b609a050fc6da0465a1272416055d" },
     { "path": "PRODUCTION_READINESS.md", "role": "production-readiness contract", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 validation workflow", "sha256": "3c41bf02990f5d19109e2eaa5de4d36865426eb0ebc6826e2bcfc7c0e816fd50" },
-    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "8bd89afda1decac10cdbb6d9bfb7ec4c2da915a40eb178b62159b0ef1a993b73" },
-    { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": "4a843dd8fc28dc543f0039190c44aacf3adfc7d7044e9a251e8abef4f523f7c5" },
-    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "10f74eb12282840cdc713da3404a080831b34845a09134fc6a6bca366953e1bf" },
+    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "e777d1ad761efdd3973ec982a5e0c89cdb8bcd74a61ae67e78d0fb949a5f4b5f" },
+    { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": "69674266ea977be0ff039327d3c706897a5ac02ba61874ef9a4a785c73da6fca" },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "b33bdc47c5a53e541f2b0035cd8b1780852dbf871cca512a9cc829259a363715" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md", "role": "Overview evidence ledger", "sha256": "9567f00aedb4ae5e222e1abe34d85992959f57820d4cafa9e3934250dc3b3373" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md", "role": "Overview history ledger", "sha256": "f6afa29b5bd85bd08f641875d82bf1058fd311816d4902aef111ef5edf762ef1" },
     { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial source contract", "sha256": "8d1da2cffaa1bc953c1c985884cff2a9e670ad0195073c901b505d5c4b07ed7d" },
@@ -64,7 +64,7 @@
     { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify source input boundary", "sha256": "3bcebff7db14d62dddac2b84e6db00b92bd76a044f2fc26890914c5fc85493ab" },
     { "path": "shared/schema.ts", "role": "shared persistence contracts", "sha256": "72aaf81f747c2dd4766435125bc62e2fa83228d1ca30f53b61a7a08e3c196e9b" },
     { "path": "shared/ga4-financial-source.ts", "role": "financial-source semantics", "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3" },
-    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": "9caec4a0e2e04fa1ce12500fb154c84845282a2934e79712e04ee6dfc06029e4" },
+    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": "8924798dc702eee952767fcd44248685987f330f909c8cb674fdf375635963ad" },
     { "path": "server/storage.ts", "role": "Overview storage and lifecycle paths", "sha256": "ffd115b83cc2c2d6c7a503197a7103936c1a5cea1ad56a745b7b8c75dfd95424" },
     { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1" },
     { "path": "server/ga4-daily-scheduler.ts", "role": "GA4 daily refresh path", "sha256": "49fa6b8892b94bd6edf97adc065cca632555ea2af7983e57ddc8f6909e19dd59" },
@@ -145,47 +145,47 @@
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "The complete exact-12789c1e current-version run passed all Overview regressions within 1,528 passing tests; zero blocking failures remained."
+      "evidence": "The complete exact-b8c73621 current-version run passed all Overview regressions within 1,529 passing tests; 45 declared future-platform failures remained visible and zero blocking failures remained."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "The complete exact-12789c1e current-version run exercised the recorded shared dependencies and passed 1,528 tests with zero blocking current-version failures."
+      "evidence": "The complete exact-b8c73621 current-version run exercised the recorded shared dependencies and passed 1,529 tests with zero blocking current-version failures."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed for certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
+      "evidence": "npm run check passed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed for certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
+      "evidence": "The production Vite and server esbuild completed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627 on 2026-08-21. Evidence-only commit e175ac5c was subsequently deployed and user-confirmed; its diff contains no production runtime code changes."
+      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc on 2026-08-21. Authenticated owner outcome totals returned HTTP 200 with exact campaign scope; an unauthenticated request returned HTTP 401 without campaign data."
     },
     {
       "id": "authenticated_ui_api_source_parity",
       "status": "passed",
-      "evidence": "Authenticated exact-12789c1e read-only KPI, Benchmark, Ad Comparison, and Insights validators reconciled the Overview-originated cumulative boundary and financial totals for property 542352127 without application-data mutation."
+      "evidence": "Authenticated exact-b8c73621 read-only KPI, Benchmark, Ad Comparison, and Insights validators reconciled the Overview-originated cumulative boundary and financial totals for property 542352127 without application-data mutation."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
       "status": "passed",
-      "evidence": "The post-scheduler target audit on runtime 3c45aae7 carries to documentation-only deployed revision 12789c1e because scheduler and recompute runtime files are byte-identical. No exact-12789c1e natural timer firing or global all-campaign scheduler-health claim is made; 17 obsolete campaigns remain excluded."
+      "evidence": "The post-scheduler target audit on runtime 3c45aae7 carries to deployed revision b8c73621 because scheduler and recompute runtime files are byte-identical; b8c73621 changes only outcome-totals campaign-access middleware. No exact-b8c73621 natural timer firing or global all-campaign scheduler-health claim is made; 17 obsolete campaigns remain excluded."
     },
     {
       "id": "production_data_integrity",
       "status": "passed",
-      "evidence": "Exact-12789c1e validators made zero application-data mutations. Revenue 72,766.69, spend 2,699.75, conversions 251, and the exact 2026-07-02 through 2026-08-20 cumulative boundary reconciled across current consumers."
+      "evidence": "Exact-b8c73621 validators made zero application-data mutations. Revenue 72,766.69, spend 2,699.75, conversions 251, and the exact 2026-07-02 through 2026-08-20 cumulative boundary reconciled across current consumers."
     }
   ]
 }

@@ -11,7 +11,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness 
 
 Current controlling answer:
 
-GA4 Insights is **PRODUCTION_READY** for the recorded live-tab boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Authenticated UI/API value parity, expected-stale handling, tenant isolation, and downstream consistency passed. Natural scheduler evidence carries from `85f5233e` because the relevant timer, producer, persistence, and job files are byte-identical through `892ff339`; no exact-current natural timer firing is claimed. Reports-owned behavior remains covered by the separate Reports certification.
+GA4 Insights is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was deployed and confirmed without changing production runtime code. Authenticated UI/API value parity, expected-stale handling, tenant isolation, and downstream consistency passed. Natural scheduler evidence carries from `85f5233e` because the relevant timer, producer, persistence, and job files are byte-identical through `12789c1e`; no exact-current natural timer firing is claimed. Reports-owned behavior remains covered by the separate Reports certification.
 
 <!-- /ga4-insights-current-status -->
 

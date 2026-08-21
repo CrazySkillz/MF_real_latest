@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for the recorded campaign/property/source boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Authenticated read-only Summary, financial, source, Campaign Breakdown, and downstream parity passed. The process-wide scheduler's 17 excluded obsolete campaigns remain outside this boundary; no global all-campaign scheduler-health claim is made.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was deployed and confirmed without changing production runtime code. Authenticated read-only Summary, financial, source, Campaign Breakdown, and downstream parity passed. The process-wide scheduler's 17 excluded obsolete campaigns remain outside this boundary; no global all-campaign scheduler-health claim is made.
 
 <!-- /ga4-overview-current-status -->
 
@@ -204,7 +204,7 @@ High-level rule:
 - GA4 itself does not provide spend for this page's spend cards
 - Historical Commit 5 (`5da5f41c`) temporarily narrowed the GA4 new-source Spend chooser. Current Commit 21 restored the existing Google Sheets Revenue and Spend chooser paths and deployed them while preserving the established scoped/atomic workflows; future source instances require their own validation
 - new GA4 CSV Spend requires a Date column in both UI and API; already-undated saved sources remain continuity-only and are not certified
-- the earlier Current Commit 5 two-option chooser evidence is historical; the current deployed Spend chooser includes Google Ads, Google Sheets, and Upload CSV, while Google Ads remains excluded from this Overview certification
+- the earlier Current Commit 5 two-option chooser evidence is historical; at certified runtime boundary `12789c1e`, the Spend chooser includes Google Ads, Google Sheets, and Upload CSV, while Google Ads remains excluded from this Overview certification
 - active Google Sheets spend sources must be repulled automatically after mapped sheet values change; the default near-real-time target is a provider pull within 1 minute, and the open Overview spend queries refetch persisted values within 15 additional seconds
 - this Google Sheets spend contract is bounded polling rather than an instantaneous provider push; failed pulls must retain the last successful stored spend instead of clearing or replacing it with guessed values
 - Google Sheets is available in both GA4 financial-source choosers; new Revenue and Spend requests use the existing campaign-scoped, platform-scoped mapping and atomic source/record replacement paths. The chooser path is deployed. Google Sheets Revenue is not independently generalized beyond configured/validated sources, while observed OAuth durability for the certified GA4 connection passed on `2026-08-10`
@@ -317,7 +317,7 @@ Important clarification:
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one campaign row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
-Current deployed candidate evidence on `2026-08-13`:
+Historical deployed candidate evidence captured on `2026-08-13`:
 
 - property `542352127` returned `isSimulated=false`; the app read the live GA4 property, which contains user-seeded test data
 - `yesop_retargeting`: 17 Sessions, 17 Users, 17 Conversions, 100.0% conversion rate, `$3,818.40` native GA4 revenue, `$16,100.00` exact HubSpot imports, `$19,918.40` displayed Revenue
@@ -409,7 +409,7 @@ This failure-state contract does not close the later GA4 spend-context/cache, so
 
 ## Overview Tables Deployed Validation Checklist
 
-The current recorded Overview boundary is **PRODUCTION_READY** at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. The following checklist is retained for future campaigns, source configurations, and scope expansions.
+The current recorded Overview boundary is **PRODUCTION_READY** at certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. The following checklist is retained for future campaigns, source configurations, and scope expansions.
 
 Connection and scope:
 

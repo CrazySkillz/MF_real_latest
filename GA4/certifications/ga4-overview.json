@@ -49,13 +49,13 @@
     { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "a34e62a3ac46d5d8e1b9d187fb1f27c0ad1b609a050fc6da0465a1272416055d" },
     { "path": "PRODUCTION_READINESS.md", "role": "production-readiness contract", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 validation workflow", "sha256": "3c41bf02990f5d19109e2eaa5de4d36865426eb0ebc6826e2bcfc7c0e816fd50" },
-    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "f54ef34c5fd8f2d1e0b15aeae401018f3f5ec3f345f15913fe62d369b89db13b" },
-    { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": "3f032e9f7bceb347b9623aae2a09e2413b1a574d47dfe3842aa0d325c36f940e" },
-    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "0baa7ec4c58f7d56730bbbe0a8a4341215632c38a8a1ece8eebd1c176aa2a8e7" },
-    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md", "role": "Overview evidence ledger", "sha256": "9812c3d8bfa74c87e622679fb4dad6de6eb07f117aef14478bcfecf3828cfe9e" },
+    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "8bd89afda1decac10cdbb6d9bfb7ec4c2da915a40eb178b62159b0ef1a993b73" },
+    { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": "4a843dd8fc28dc543f0039190c44aacf3adfc7d7044e9a251e8abef4f523f7c5" },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "10f74eb12282840cdc713da3404a080831b34845a09134fc6a6bca366953e1bf" },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md", "role": "Overview evidence ledger", "sha256": "9567f00aedb4ae5e222e1abe34d85992959f57820d4cafa9e3934250dc3b3373" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md", "role": "Overview history ledger", "sha256": "f6afa29b5bd85bd08f641875d82bf1058fd311816d4902aef111ef5edf762ef1" },
-    { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial source contract", "sha256": "0dc6b0cfb0b85e571a5e3c95aa87078a5a4693d0df859e24c09a157433bdb54c" },
-    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and scheduler contract", "sha256": "46da7797ccd2ee9efdd0f99b130092029d1db794ced3d9e1d2becc50eca1a961" },
+    { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial source contract", "sha256": "8d1da2cffaa1bc953c1c985884cff2a9e670ad0195073c901b505d5c4b07ed7d" },
+    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and scheduler contract", "sha256": "842f8b34bdad88d98ec55e43ea66fcce03af5febcc877bf4b38b6596aaa1272a" },
     { "path": "client/public/ga4-overview-validation-runner.js", "role": "bounded Overview validation runner", "sha256": "6f580cf0bf17e4ae9a6967abd147c5ba14be23429b4bd2c0204a156626982efb" },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "Overview UI and browser data consumer", "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1" },
     { "path": "client/src/components/AddRevenueWizardModal.tsx", "role": "revenue source lifecycle UI", "sha256": "92a453b77523d938b5e6151ae0a0aaac1cecaed955e119482a2d86e453f5eac4" },
@@ -157,20 +157,20 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on exact deployed revision 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
+      "evidence": "npm run check passed for certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed on exact deployed revision 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
+      "evidence": "The production Vite and server esbuild completed for certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed revision 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627 on 2026-08-21."
+      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 12789c1ebb92dd6a905a9f2f0f877f0bc6a90627 on 2026-08-21. Evidence-only commit e175ac5c was subsequently deployed and user-confirmed; its diff contains no production runtime code changes."
     },
     {
       "id": "authenticated_ui_api_source_parity",

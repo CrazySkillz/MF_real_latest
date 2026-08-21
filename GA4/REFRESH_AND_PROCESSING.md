@@ -73,7 +73,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is **RELEASE_CANDIDATE_READY** for implementation boundary `c6487555c55726427afed8342312b8393498303b` and the exact campaign/property/source boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. The corrected initial-import boundary, authenticated UI/API/source parity, native/imported USD currency parity, and natural timer-fired target persistence passed. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate.
+- GA4 Overview is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the exact campaign/property/source boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Evidence-only deployment `e175ac5c` does not change production runtime code. The corrected initial-import boundary, authenticated UI/API/source parity, native/imported USD currency parity, and natural timer-fired target persistence passed.
 
 Historical Commit 16 record: authenticated connection responses added sanitized saved-window metadata, and runner `2026-07-31.13` detected mismatches. The existing `GA4 single` / `ga4_mock` response returned `lookbackDays: 30`, closing that bounded correction. Commit 19 later narrowed the supported production contract to 30 days only; retained non-30 rows now fail closed. No scheduler cadence, provider query, formula, storage/schema, campaign scope, or production data changed. Timer-fired and durability evidence were unproven at that date; the `2026-08-10` exact target run and provider-usable connection evidence closed those gates for the certified boundary.
 
@@ -418,7 +418,7 @@ It refreshes because:
 
 Readiness note: GA4 Ad Comparison uses an isolated provider query from the saved
 initial-import boundary through the campaign-timezone latest completed day. It
-is `PRODUCTION_READY` for exact deployed revision `7374e824` and the
+is `PRODUCTION_READY` for certified runtime boundary `12789c1e` and the
 recorded boundary. It has no independent scheduler; Reports-owned generation
 and delivery remain outside the tab boundary.
 

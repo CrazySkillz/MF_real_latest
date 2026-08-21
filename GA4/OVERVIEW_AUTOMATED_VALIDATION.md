@@ -6,7 +6,7 @@ This file defines the accelerated validation path for GA4 Overview. It replaces 
 
 ## Current Readiness Boundary
 
-GA4 Overview is **RELEASE_CANDIDATE_READY** only for the exact implementation/configuration/campaign/property/source/data boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. This runner remains a bounded evidence tool and does not by itself create or extend readiness.
+GA4 Overview is **PRODUCTION_READY** only for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the exact configuration/campaign/property/source/data boundary in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Evidence-only deployment `e175ac5c` does not change production runtime code. This runner remains a bounded evidence tool and does not by itself create or extend readiness.
 
 Historical runner record: the Current Commit 11–18 queue used Commit 16 runner `2026-07-31.13`, deployed in `747192ff`; the authenticated existing connection response returned its saved `lookbackDays: 30`, closing the bounded saved-window correction. That packet did not produce a live 60/90-day fixture, independent provider-value comparison, observed expiry advancement, or external seven-day durability evidence. Later exact-boundary production evidence—not this runner alone—closed the historical certification; current release-candidate evidence is controlled by the canonical readiness document.
 

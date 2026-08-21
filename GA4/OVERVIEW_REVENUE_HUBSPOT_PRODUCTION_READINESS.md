@@ -3,11 +3,12 @@
 ## Mandatory status
 
 **Current status: CLEAN-CERTIFIED AND PRODUCTION-READY for the three enabled
-HubSpot source IDs inside the exact GA4 Overview boundary at deployed runtime
-`8ba694060411a2a05663a4915652767e4e3ba713`, campaign
+HubSpot source IDs inside certified GA4 Overview runtime boundary
+`12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`, campaign
 `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, and USD.
 Future HubSpot configurations, other campaigns, and future provider behavior
-are excluded.**
+are excluded. Evidence-only deployment `e175ac5c` does not change production
+runtime code.**
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
@@ -1666,4 +1667,4 @@ Not proven by local H9:
 
 ## Certification gate
 
-**Current decision: CLEAN-CERTIFIED AND PRODUCTION-READY for the exact three-source boundary stated above.** The currency/total/OAuth fixes are deployed, focused and adjacent tests passed, all three source IDs survived provider-authoritative manual and scheduler refresh, USD provenance is persisted, and current read-only totals reconcile. Historical H10 evidence remains history only; this decision is bound to runtime `8ba694060411a2a05663a4915652767e4e3ba713` and the recorded source IDs. Automatic cleanup remains forbidden.
+**Current decision: CLEAN-CERTIFIED AND PRODUCTION-READY for the exact three-source boundary stated above within certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** The currency/total/OAuth fixes are deployed, focused and adjacent tests passed, all three source IDs survived provider-authoritative manual and scheduler refresh, USD provenance is persisted, and current read-only totals reconcile. Historical H10 and `8ba69406` evidence remains revision-bounded history. Automatic cleanup remains forbidden.

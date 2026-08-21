@@ -8,8 +8,8 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`PRODUCTION_READY` for exact deployed revision
-`7c40833e52aa9011abf6e06e3c2a56853fef1d12` and the recorded dependency and
+`PRODUCTION_READY` for certified runtime boundary
+`12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded dependency and
 configuration boundary. Current revalidation proved that later changes in the
 four drifted dependencies do not alter the isolated Ad Comparison query, fixed
 import-to-date window, property/filter scope, aggregation, ranking, or revenue
@@ -19,7 +19,8 @@ parity all pass. The prior certifications are historical only. The root cause,
 fix, and current evidence are recorded in
 `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports-owned PDFs, downloads,
 saved reports, snapshots, scheduling, and delivery remain outside this tab-only
-boundary.
+boundary. Evidence-only commit `e175ac5c` was deployed and confirmed without
+changing production runtime code.
 
 ## Document Ownership
 

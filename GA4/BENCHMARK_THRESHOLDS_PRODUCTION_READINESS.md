@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `Benchmarks` tab is production-ready.
 > Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 Benchmarks are **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. The `650ce59c` certification remains historical supporting evidence. Reports behavior is separately certified and is not proved by this threshold document.
+> Current durable whole-tab answer: GA4 Benchmarks are **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. The `650ce59c` certification remains historical supporting evidence. Reports behavior is separately certified and is not proved by this threshold document.
 
 ## Purpose
 

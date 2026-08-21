@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: **GA4 Overview is RELEASE_CANDIDATE_READY for the exact campaign/property/source boundary and implementation SHA `c6487555c55726427afed8342312b8393498303b` recorded in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.** Current authenticated financial cards and source lists reconciled at native GA4 revenue `$55,966.70 USD`, five imported sources totaling `$16,799.99 USD`, and Total Revenue `$72,766.69 USD`. The exact source inventory, currency boundary, and natural scheduler target-persistence check passed; no global scheduler-health claim is made because 17 excluded obsolete campaigns still fail. Machine status remains `UNVERIFIED` because the final combined GA4 certification is separate. Google Ads, future source configurations, and scheduled report delivery are excluded. No cleanup was performed.
+Production-readiness note: **GA4 Overview is PRODUCTION_READY for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the exact campaign/property/source boundary recorded in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.** Evidence-only deployment `e175ac5c` does not change production runtime code. Current authenticated financial cards and source lists reconciled at native GA4 revenue `$55,966.70 USD`, five imported sources totaling `$16,799.99 USD`, and Total Revenue `$72,766.69 USD`. The exact source inventory, currency boundary, and natural scheduler target-persistence check passed; no global scheduler-health claim is made because 17 excluded obsolete campaigns still fail. Google Ads, future source configurations, and unrecorded future report delivery remain excluded. No cleanup was performed.
 
 Campaign DeepDive financial provenance rule:
 
@@ -97,8 +97,8 @@ Important clarification:
   combined `Total Revenue` or unallocated ranking row is rendered
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
-Production-readiness note: GA4 Ad Comparison is `PRODUCTION_READY` for exact
-deployed revision `7374e824` and the recorded boundary. Its native rows
+Production-readiness note: GA4 Ad Comparison is `PRODUCTION_READY` for certified
+runtime boundary `12789c1e` and the recorded boundary. Its native rows
 resolve from the saved initial-import boundary through the latest completed day.
 Reports-owned output remains outside the tab-only boundary.
 
@@ -230,7 +230,7 @@ Revenue source options:
 
 Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Upload CSV Revenue is clean-certified for its validated documented scope. Google Sheets Revenue is re-enabled by Current Commit 21 but is not independently clean-certified until its remaining source-family gates are proven.
 
-Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility is proven at historical runtime `8ba694060411a2a05663a4915652767e4e3ba713`, while a newly configured future Google Sheets Revenue lifecycle remains outside the current release-candidate boundary.
+Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility is proven at historical runtime `8ba694060411a2a05663a4915652767e4e3ba713`, while a newly configured future Google Sheets Revenue lifecycle remains outside the current certified boundary.
 
 Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
 

@@ -208,7 +208,8 @@
     },
     "limitations": [
       "Browser PDF remains bounded Benchmark row-propagation evidence; Reports is separately certified.",
-      "No exact-12789c1e natural timer run is claimed; bounded post-scheduler evidence carries from byte-identical runtime 3c45aae7 and the earlier natural-timer proof remains historical support."
+      "No exact-12789c1e natural timer run is claimed; bounded post-scheduler evidence carries from byte-identical runtime 3c45aae7 and the earlier natural-timer proof remains historical support.",
+      "Evidence-only commit e175ac5c was subsequently deployed and user-confirmed; its diff contains no production runtime code changes, so the certified runtime boundary remains 12789c1e."
     ]
   },
   "activeProductionCertificationCommits": [

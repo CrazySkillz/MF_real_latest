@@ -30,7 +30,7 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**RELEASE_CANDIDATE_READY at user-confirmed deployed implementation boundary `c6487555c55726427afed8342312b8393498303b`; machine status remains `UNVERIFIED` because final combined GA4 certification is outside this session.**
+**PRODUCTION_READY for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only deployment `e175ac5c` does not change production runtime code. The exact controlling status and exclusions remain in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.**
 
 Current candidate evidence captured on `2026-08-13` through `2026-08-15` proves:
 
@@ -125,7 +125,7 @@ This inventory was derived from current render code, query code, API routes, sto
 | Revenue Sources modal | configured GA4-native contribution plus active source definitions joined to materialized breakdown totals | active GA4/null-context revenue sources | Six contributions reconcile to Total Revenue; valid `$0` remains visible and only a missing materialized record renders `Unavailable`. Shopify freshness/test labels are omitted from the compact row. |
 | Spend Sources modal | merged GA4-scoped active source definitions and materialized spend breakdown rows | active `ga4` plus reviewed legacy null-context sources | Four reviewed sources reconcile to Total Spend; source-list failure remains distinct from an empty set. |
 | Pipeline Proxy modal | positive same-scope HubSpot/Salesforce provider entries | selected source configs | Cross-context fallback is blocked and unavailable remains explicit; Pipeline Proxy never enters Total Revenue. |
-| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property/filter; native row metrics use the last 30 completed days; matched imports are source-to-date | Exact mappings allocate only matched imported revenue; unmatched revenue is not invented or spread across rows. Current deployed parity reconciled `$19,918.40`, `$3,481.00`, and `$3,265.39` exactly, and the subtitle discloses both windows. |
+| Campaign Breakdown | GA4 acquisition rows plus exact mapped imported campaign revenue | selected property/filter; native row metrics use the last 30 completed days; matched imports are source-to-date | Exact mappings allocate only matched imported revenue; unmatched revenue is not invented or spread across rows. The documented deployed parity run reconciled `$19,918.40`, `$3,481.00`, and `$3,265.39` exactly, and the subtitle disclosed both windows. |
 | Landing Pages | GA4 rows with exact-key same-scope conversion supplementation | selected property/filter and configured completed-day detail window; API limit 50, UI renders 20 | Initial loading, successful empty, last-good background failure, and unavailable states remain distinct; no campaign-level revenue allocation is invented. |
 | Conversion Events | GA4 event rows with exact event-name supplementation | selected property/filter and configured completed-day detail window; API limit 50, UI renders 25 | Uses the same explicit state contract and does not allocate imported campaign revenue into event rows. |
 | Overview request warning | combined error state for visible connection, GA4, table, revenue, spend, source-list, and configured Pipeline Proxy queries | affected request set | Last-successful cached content is distinguished from inputs with no usable data; hidden/duplicate requests do not create a false page-wide warning. |
@@ -490,7 +490,7 @@ No cleanup was run. The forward producer is deployed and immediate no-growth val
 - deployed failure/valid-zero UI behavior introduced by Current Commit 3
 - exact completeness of every active revenue/spend source lifecycle
 - safe cleanup boundaries for orphan or drifted production rows
-- current deployed browser pixel/text behavior
+- browser pixel/text behavior on the deployed evidence commit
 - all scheduled report/provider/inbox variants
 - complete downstream parity across every configured source mix
 
@@ -509,7 +509,7 @@ Historical Current Commits 0-20 remain in chronological order in the [history le
 Root cause:
 
 - the product exposes 30/60/90-day choices
-- current deployed production evidence covers only an existing saved 30-day live property
+- deployed production evidence at the time of this check covered only an existing saved 30-day live property
 - leaving unvalidated choices enabled would make a 30-day certification misleading
 
 Required smallest safe implementation:

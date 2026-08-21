@@ -6,7 +6,7 @@ This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress ru
 
 ## Production Readiness Status
 
-As of August 15, 2026, the GA4 `Benchmarks` tab is **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. Authenticated consumer parity, stale fail-closed behavior, lifecycle guards, and exact target natural-run persistence passed. The natural-run evidence is carried from `85f5233e` across byte-identical scheduler/job files; no exact-`892ff339` timer firing or global all-campaign scheduler-health claim is made.
+As of August 21, 2026, the GA4 `Benchmarks` tab is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was deployed and confirmed without changing production runtime code. Authenticated consumer parity, stale fail-closed behavior, lifecycle guards, and exact target natural-run persistence passed. The natural-run evidence is carried from `85f5233e` across byte-identical scheduler/job files; no exact-`12789c1e` timer firing or global all-campaign scheduler-health claim is made.
 
 The controlling source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit and do not gate this Benchmark certification.
 
@@ -260,6 +260,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `Benchmarks` tab is **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. The historical `650ce59c` certification remains revision-specific supporting evidence only.
+The GA4 `Benchmarks` tab is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. The historical `650ce59c` certification remains revision-specific supporting evidence only.
 
 Future boundaries are not current blockers, but they are not certified claims: timer-fired executions beyond the exact `2026-08-12` certified run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.

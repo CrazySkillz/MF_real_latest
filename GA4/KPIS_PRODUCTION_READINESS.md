@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-21 reconciliation: the authoritative machine record certifies exact deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Older narrative SHA references below are revision-specific history where they differ.
+2026-08-21 reconciliation: the authoritative machine record certifies runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was subsequently deployed and confirmed; it changes only documentation, certification records, and focused tests, so production runtime code remains byte-identical to the certified boundary. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ This file defines whether the current implementation is production-ready, what h
 
 ### August 21, 2026 exact-SHA revalidation decision (controlling)
 
-**Result: PRODUCTION_READY for the recorded KPI boundary at deployed runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** Production health returned that exact SHA. Authenticated read-only validation matched all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Stale traffic-dependent inputs failed closed. The complete current-version boundary is clean after the focused legacy report-fixture correction; 46 declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports UI/PDF and post-scheduler evidence carries from byte-identical runtime `3c45aae7`, because `12789c1e` changes documentation only.
+**Result: PRODUCTION_READY for certified KPI runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** Production health returned that exact SHA during certification; evidence-only commit `e175ac5c` was later deployed without changing runtime code. Authenticated read-only validation matched all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Stale traffic-dependent inputs failed closed. The complete current-version boundary is clean after the focused legacy report-fixture correction; 45 declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports UI/PDF and post-scheduler evidence carries from byte-identical runtime `3c45aae7`.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -733,7 +733,7 @@ Chronological smallest-safe validation-closure queue (current evidence status):
 #### August 4, 2026 invalidated closure evidence
 
 - Both SHA-bound `b91d0968` monitors recorded `sha_mismatch` after deployment changed to `82369cf5`; neither captured alert delivery or scheduler completion.
-- Production health then confirmed exact current deployed SHA `1166b9f27b81a06bd5c8b43072f77379e46453f4`. Its process started the GA4 daily scheduler at `2026-08-04T04:17:09.854Z`, has zero runs, and reports `nextRunAt=2026-08-05T03:00:00.000Z`.
+- Historical production health evidence confirmed exact deployed SHA `1166b9f27b81a06bd5c8b43072f77379e46453f4`. Its process started the GA4 daily scheduler at `2026-08-04T04:17:09.854Z`, had zero runs, and reported `nextRunAt=2026-08-05T03:00:00.000Z`.
 - Read-only current-SHA audit inspection found GA4 KPI alert attempts but no delivery. Mailgun returned HTTP `429` with reset after `2026-08-04T19:34:00Z`; provider acceptance, response ID, and delivered timestamp are absent.
 - Commit 11 exact-clean staged-patch validation on base `79322c4b`: the current-version command executed 1,366 tests, with 1,322 passed, exactly 3 blocking KPI failures, and exactly 41 visible deferred failures. The focused boundary/certification packet passed 15/15, the checker passed, TypeScript passed, and the production build passed.
 - Commit 12 exact-clean staged-patch validation on base `b4178415`: the focused Benchmark file passed 15/15, the affected packet passed 14 files / 123 tests, and the current-version command executed 1,366 tests with 1,324 passed, exactly 1 blocking Commit 13 failure, and exactly 41 visible deferred failures. The deferred command independently executed 41/41 and reported all 41 failed; TypeScript, production build, certification regression, and checker passed. Runtime behavior did not change.
@@ -860,7 +860,7 @@ Read in this order:
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Answer that GA4 KPIs are **RELEASE_CANDIDATE_READY** for exact deployed implementation SHA `1a93d8d88debba4baefd666aa063c59b10b00e95`. Do not call them `PRODUCTION_READY` and do not imply that final combined GA4 certification was performed. The machine record remains `UNVERIFIED` only because its schema has no release-candidate state and final-certification gates remain separate.
+Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only deployment `e175ac5c` does not change runtime code.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -1272,7 +1272,7 @@ Local fix:
 Deployed validation evidence:
 
 - Commit `4d3a3838` was pushed, Render deployed it, and the user confirmed direct GA4 snapshot PDF validation passed on June 29, 2026.
-- This closes the direct snapshot PDF freshness gate for the current deployed app; scheduled GA4 report execution and provider/email delivery were validated later and are recorded under `CERT-EVIDENCE-4`.
+- This historical evidence closed the direct snapshot PDF freshness gate for that deployed app; scheduled GA4 report execution and provider/email delivery were validated later and are recorded under `CERT-EVIDENCE-4`.
 
 ### CERT-EVIDENCE-4: Deployed scheduler/report/provider validation completed
 
@@ -1876,7 +1876,7 @@ The following remain external caveats after current certification:
 - future Mailgun/provider outages, provider event telemetry gaps, or recipient spam filtering
 - future source mixes, platform extensions, or code changes that have not gone through a new readiness pass
 
-These external, manual, or deployed-runtime caveats do not block the current production-ready certification because the current deployed GA4 KPI UI, scheduler, report, immediate alert email, provider acceptance, and inbox receipt evidence has passed.
+These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `12789c1e`; its supporting GA4 KPI UI, scheduler, report, immediate alert email, provider-acceptance, and inbox-receipt evidence passed within the bounded environments documented above. Evidence-only commit `e175ac5c` does not change that runtime boundary.
 
 ## Future Platform Template
 

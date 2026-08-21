@@ -3,11 +3,12 @@
 ## Status
 
 **Current status: CLEAN-CERTIFIED AND PRODUCTION-READY for enabled GA4 Shopify
-source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the exact Overview
-boundary at deployed runtime `8ba694060411a2a05663a4915652767e4e3ba713`,
+source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside certified Overview runtime
+boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`,
 campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, and
 USD. Dormant OAuth, non-GA4 Shopify sources, future stores, and future provider
-behavior are excluded.**
+behavior are excluded. Evidence-only deployment `e175ac5c` does not change
+production runtime code.**
 
 Current review traced add, edit, exact-attribution preview,
 explicit refresh, scheduler refresh, exact-source delete, full disconnect,
@@ -962,11 +963,11 @@ Deployed completion evidence on 2026-07-15:
 
 ## Certification Gate
 
-**Current decision: CLEAN-CERTIFIED AND PRODUCTION-READY for the exact current source boundary stated above.** The 2026-07-15 evidence remains history; current evidence is bound to deployed runtime `8ba694060411a2a05663a4915652767e4e3ba713`.
+**Current decision: CLEAN-CERTIFIED AND PRODUCTION-READY for the exact current source boundary stated above within certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** The 2026-07-15 and `8ba69406` evidence remains revision-bounded history; current whole-Overview parity retained the same enabled source and exact `$99.99` contribution.
 
 The required certification conditions are satisfied:
 
 - Current Commit 9.3 is deployed and its response confirms successful cleanup of only the one documented GA4 campaign/source/connection set, with no recompute failure
 - the one-call owner-scoped batch returned `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` as `true`, `openRefreshFailureCount` as `0`, and no failed campaigns
 
-Current exact-source evidence includes focused and adjacent regression validation, bounded provider requests, explicit provider-authoritative `Refresh from Shopify`, stable exact-source scheduler refresh, USD source/record parity, and `$99.99` source reconciliation. The current whole-tab release-candidate reconciliation retains that `$99.99` contribution inside Total Revenue `$72,766.69`; this does not broaden the Shopify source boundary. The user-facing action is `Refresh`, not `Repair`; backend atomic replacement and last-good retention are unchanged. No automatic cleanup is authorized. Dormant OAuth remains excluded.
+Current exact-source evidence includes focused and adjacent regression validation, bounded provider requests, explicit provider-authoritative `Refresh from Shopify`, stable exact-source scheduler refresh, USD source/record parity, and `$99.99` source reconciliation. The current whole-tab certification retains that `$99.99` contribution inside Total Revenue `$72,766.69`; this does not broaden the Shopify source boundary. The user-facing action is `Refresh`, not `Repair`; backend atomic replacement and last-good retention are unchanged. No automatic cleanup is authorized. Dormant OAuth remains excluded.

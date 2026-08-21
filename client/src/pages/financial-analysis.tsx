@@ -19,8 +19,8 @@ interface Campaign {
   name: string;
   budget?: string;
   status: string;
-  startDate?: string | Date | null;
-  endDate?: string | Date | null;
+  pacingStartDate?: string | null;
+  pacingEndDate?: string | null;
 }
 
 type FinancialSourceBreakdown = {
@@ -73,8 +73,16 @@ export default function FinancialAnalysis() {
 
   const formatDateInputValue = (value?: string | Date | null) => {
     if (!value) return "";
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     const date = value instanceof Date ? value : new Date(value);
     return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  };
+
+  const parsePacingDateValue = (value?: string | null) => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
   };
 
   const formatBudgetInputValue = (value?: string | number | null, padDecimals = false) => {
@@ -92,17 +100,17 @@ export default function FinancialAnalysis() {
   useEffect(() => {
     if (!campaign) return;
     setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));
-    setPacingStartDateInput(formatDateInputValue(campaign.startDate));
-    setPacingEndDateInput(formatDateInputValue(campaign.endDate));
+    setPacingStartDateInput(formatDateInputValue(campaign.pacingStartDate));
+    setPacingEndDateInput(formatDateInputValue(campaign.pacingEndDate));
     setPacingInputError(null);
-  }, [campaign?.budget, campaign?.startDate, campaign?.endDate]);
+  }, [campaign?.budget, campaign?.pacingStartDate, campaign?.pacingEndDate]);
 
   const updatePacingInputsMutation = useMutation({
-    mutationFn: async (data: { budget: string; startDate: string; endDate: string }) => {
+    mutationFn: async (data: { budget: string; pacingStartDate: string; pacingEndDate: string }) => {
       const response = await apiRequest("PATCH", `/api/campaigns/${campaignId}`, {
         budget: data.budget ? data.budget.replace(/,/g, "") : null,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
+        pacingStartDate: data.pacingStartDate || null,
+        pacingEndDate: data.pacingEndDate || null,
       });
       return response.json();
     },
@@ -364,8 +372,8 @@ export default function FinancialAnalysis() {
   // Get campaign budget and currency
   const campaignBudget = campaign.budget ? (parseFloat(campaign.budget) || 0) : 0;
   const hasCampaignBudget = campaignBudget > 0;
-  const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : null;
-  const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
+  const campaignStartDate = parsePacingDateValue(campaign.pacingStartDate);
+  const campaignEndDate = parsePacingDateValue(campaign.pacingEndDate);
   const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));
   const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));
   const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -373,7 +381,7 @@ export default function FinancialAnalysis() {
   const campaignStartDay = hasCampaignStartDate ? startOfDay(campaignStartDate!) : null;
   const campaignEndDay = hasCampaignEndDate ? startOfDay(campaignEndDate!) : null;
   const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());
-  // Active campaigns pace through today; completed campaigns stop elapsed days at the campaign end date.
+  // Active budget periods pace through today; completed periods stop elapsed days at the pacing end date.
   const campaignElapsedEndDay = campaignEndDay && todayPacingDate.getTime() > campaignEndDay.getTime() ? campaignEndDay : todayPacingDate;
   const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()
     ? Math.max(1, Math.floor((campaignElapsedEndDay.getTime() - campaignStartDay.getTime()) / (1000 * 60 * 60 * 24)) + 1)
@@ -492,8 +500,8 @@ export default function FinancialAnalysis() {
   const hasPacingInputDraft = Boolean(pacingBudgetInput.trim() || pacingStartDateInput || pacingEndDateInput);
   const handleCancelPacingInputs = () => {
     setPacingBudgetInput(formatBudgetInputValue(campaign?.budget, true));
-    setPacingStartDateInput(formatDateInputValue(campaign?.startDate));
-    setPacingEndDateInput(formatDateInputValue(campaign?.endDate));
+    setPacingStartDateInput(formatDateInputValue(campaign?.pacingStartDate));
+    setPacingEndDateInput(formatDateInputValue(campaign?.pacingEndDate));
     setPacingInputError(null);
     setIsEditingPacingInputs(false);
   };
@@ -509,21 +517,21 @@ export default function FinancialAnalysis() {
     }
 
     if (startDateValue && endDateValue && new Date(endDateValue).getTime() < new Date(startDateValue).getTime()) {
-      setPacingInputError("Campaign end date must be on or after the start date.");
+      setPacingInputError("Budget period end must be on or after its start date.");
       return;
     }
 
     updatePacingInputsMutation.mutate({
       budget: normalizedBudget,
-      startDate: startDateValue,
-      endDate: endDateValue,
+      pacingStartDate: startDateValue,
+      pacingEndDate: endDateValue,
     });
   };
   const handleDeletePacingInputs = () => {
     updatePacingInputsMutation.mutate({
       budget: "",
-      startDate: "",
-      endDate: "",
+      pacingStartDate: "",
+      pacingEndDate: "",
     });
   };
   const formatOverviewCurrency = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
@@ -926,10 +934,10 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Daily Burn Rate</p>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend and start date</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
                                 {overviewSpendMetric.available && campaignElapsedDays > 0 && (
                                   <p className="text-xs text-muted-foreground">
-                                    Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}
+                                    Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
                                   </p>
                                 )}
                               </div>
@@ -938,14 +946,14 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Target Daily Spend</p>
-                                <p className="text-xs text-muted-foreground">Requires campaign budget, start date, and end date</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign budget and budget period dates</p>
                               </div>
                               <p className="font-semibold">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</p>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Pacing Status</p>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, start date, and end date</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, and budget period dates</p>
                               </div>
                               <Badge className={
                                 pacingStatus === "unavailable" ? "bg-gray-100 text-gray-700" :
@@ -995,7 +1003,7 @@ export default function FinancialAnalysis() {
                                     />
                                   </label>
                                   <label className="space-y-1 text-xs font-medium">
-                                    Start Date
+                                    Budget Period Start
                                     <Input
                                       type="date"
                                       value={pacingStartDateInput}
@@ -1004,7 +1012,7 @@ export default function FinancialAnalysis() {
                                     />
                                   </label>
                                   <label className="space-y-1 text-xs font-medium">
-                                    End Date
+                                    Budget Period End
                                     <Input
                                       type="date"
                                       value={pacingEndDateInput}
@@ -1046,7 +1054,7 @@ export default function FinancialAnalysis() {
                             {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (
                               <p className="border-t pt-3 text-xs text-muted-foreground">
                                 At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
-                                {campaignEndDate && <span> ({projectedEndDate > campaignEndDate ? "after" : "before"} campaign end date)</span>}
+                                {campaignEndDate && <span> ({projectedEndDate > campaignEndDate ? "after" : "before"} budget period end)</span>}
                               </p>
                             )}
                           </div>
@@ -1366,7 +1374,7 @@ export default function FinancialAnalysis() {
                             })()}</div>
                             {!hasPacingHealthInputs && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                {!hasCampaignBudget ? "Campaign budget is required for pacing" : !hasCampaignStartDate ? "Campaign start date is required for pacing" : !hasCampaignEndDate ? "Campaign end date is required for pacing" : !hasCampaignDateRange ? "Campaign end date must be on or after the start date for pacing" : overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend")}
+                                {!hasCampaignBudget ? "Campaign budget is required for pacing" : !hasCampaignStartDate ? "Budget period start is required for pacing" : !hasCampaignEndDate ? "Budget period end is required for pacing" : !hasCampaignDateRange ? "Budget period end must be on or after its start date" : overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend")}
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.pacing.status)}`}>
@@ -1523,10 +1531,10 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Daily Burn Rate</span>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend and start date</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
                                 {overviewSpendMetric.available && campaignElapsedDays > 0 && (
                                   <p className="text-xs text-muted-foreground">
-                                    Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}
+                                    Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
                                   </p>
                                 )}
                               </div>
@@ -1535,14 +1543,14 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Target Daily Spend</span>
-                                <p className="text-xs text-muted-foreground">Requires campaign budget, start date, and end date</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign budget and budget period dates</p>
                               </div>
                               <span className="text-sm text-muted-foreground">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Pacing Status</span>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, start date, and end date</p>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, and budget period dates</p>
                               </div>
                               <Badge className={
                                 pacingStatus === 'unavailable' ? 'bg-gray-100 text-gray-700' :
@@ -1597,7 +1605,7 @@ export default function FinancialAnalysis() {
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <span className="text-xs font-medium">Start Date</span>
+                                    <span className="text-xs font-medium">Budget Period Start</span>
                                     <Input
                                       type="date"
                                       value={pacingStartDateInput}
@@ -1606,7 +1614,7 @@ export default function FinancialAnalysis() {
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <span className="text-xs font-medium">End Date</span>
+                                    <span className="text-xs font-medium">Budget Period End</span>
                                     <Input
                                       type="date"
                                       value={pacingEndDateInput}
@@ -1656,7 +1664,7 @@ export default function FinancialAnalysis() {
                                 <p className="text-xs text-muted-foreground">
                                   At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
                                   {campaignEndDate && (
-                                    <span> ({projectedEndDate > campaignEndDate ? 'after' : 'before'} campaign end date)</span>
+                                    <span> ({projectedEndDate > campaignEndDate ? 'after' : 'before'} budget period end)</span>
                                   )}
                                 </p>
                               </div>

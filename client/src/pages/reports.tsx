@@ -1243,8 +1243,15 @@ export default function Reports() {
     };
     const addFinancialAnalysisContent = (section: string) => {
       const campaignBudget = Number(String(campaignFinancialContext?.budget ?? "").replace(/,/g, "")) || 0;
-      const campaignStartDate = campaignFinancialContext?.startDate ? new Date(campaignFinancialContext.startDate) : null;
-      const campaignEndDate = campaignFinancialContext?.endDate ? new Date(campaignFinancialContext.endDate) : null;
+      const parsePacingDate = (value: unknown) => {
+        const raw = String(value || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+        const [year, month, day] = raw.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+      };
+      const campaignStartDate = parsePacingDate(campaignFinancialContext?.pacingStartDate);
+      const campaignEndDate = parsePacingDate(campaignFinancialContext?.pacingEndDate);
       const hasCampaignDateRange = !!campaignStartDate && !!campaignEndDate && campaignEndDate.getTime() >= campaignStartDate.getTime();
       const today = new Date();
       const effectiveElapsedEnd = campaignEndDate && campaignEndDate.getTime() < today.getTime() ? campaignEndDate : today;
@@ -1373,12 +1380,12 @@ export default function Reports() {
         addRow("Remaining", campaignBudget > 0 && metricAvailable("spend") ? formatCustomReportMetricValue("spend", remainingBudget) : "Unavailable");
         addText("Budget Pacing & Burn Rate", { bold: true, indent: 4 });
         addRow("Daily Burn Rate", dailyBurnRate === null ? "Unavailable" : formatCustomReportMetricValue("spend", dailyBurnRate));
-        addRow("Daily Burn Rate Basis", campaignElapsedDays > 0 ? `Based on ${campaignElapsedDays} elapsed campaign ${campaignElapsedDays === 1 ? "day" : "days"}` : "Requires campaign spend and start date");
+        addRow("Daily Burn Rate Basis", campaignElapsedDays > 0 ? `Based on ${campaignElapsedDays} elapsed budget-period ${campaignElapsedDays === 1 ? "day" : "days"}` : "Requires campaign spend and budget period start");
         addRow("Target Daily Spend", targetDailySpend === null ? "Unavailable" : formatCustomReportMetricValue("spend", targetDailySpend));
         addRow("Pacing Status", pacingStatus);
         addRow("Campaign Budget", campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable");
-        addRow("Start Date", formatDate(campaignStartDate));
-        addRow("End Date", formatDate(campaignEndDate));
+        addRow("Budget Period Start", formatDate(campaignStartDate));
+        addRow("Budget Period End", formatDate(campaignEndDate));
         if (remainingBudget < 0 && campaignBudget > 0 && metricAvailable("spend")) {
           addRow("Budget exceeded by", formatCustomReportMetricValue("spend", Math.abs(remainingBudget)));
         }

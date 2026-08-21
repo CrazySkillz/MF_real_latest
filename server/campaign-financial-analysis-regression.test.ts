@@ -1,8 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { insertCampaignSchema } from "@shared/schema";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("keeps pacing dates separate from campaign financial dates", () => {
+    const schema = readFileSync(join(process.cwd(), "shared", "schema.ts"), "utf-8");
+    const migration = readFileSync(join(process.cwd(), "migrations", "0013_add_campaign_pacing_dates.sql"), "utf-8");
+    const startup = readFileSync(join(process.cwd(), "server", "index.ts"), "utf-8");
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const mutationStart = page.indexOf("const updatePacingInputsMutation = useMutation({");
+    const mutationEnd = page.indexOf("const comparisonType", mutationStart);
+    const mutation = page.slice(mutationStart, mutationEnd);
+
+    expect(schema).toContain('pacingStartDate: text("pacing_start_date")');
+    expect(schema).toContain('pacingEndDate: text("pacing_end_date")');
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS pacing_start_date TEXT");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS pacing_end_date TEXT");
+    expect(startup).toContain("ADD COLUMN IF NOT EXISTS pacing_start_date TEXT");
+    expect(startup).toContain("ADD COLUMN IF NOT EXISTS pacing_end_date TEXT");
+    expect(migration).not.toMatch(/\bUPDATE\b/i);
+    expect(migration).not.toMatch(/\b(start_date|end_date)\s*=/i);
+    expect(page).toContain("pacingStartDate?: string | null;");
+    expect(page).toContain("pacingEndDate?: string | null;");
+    expect(mutation).toContain("pacingStartDate: data.pacingStartDate || null");
+    expect(mutation).toContain("pacingEndDate: data.pacingEndDate || null");
+    expect(mutation).not.toContain("startDate:");
+    expect(mutation).not.toContain("endDate:");
+    expect(page).toContain("campaign.pacingStartDate");
+    expect(page).toContain("campaign.pacingEndDate");
+    expect(page).not.toContain("setPacingStartDateInput(formatDateInputValue(campaign.startDate))");
+    expect(page).not.toContain("setPacingEndDateInput(formatDateInputValue(campaign.endDate))");
+    expect(page).toContain("Budget Period Start");
+    expect(page).toContain("Budget Period End");
+    expect(insertCampaignSchema.partial().safeParse({ pacingStartDate: "2026-08-01", pacingEndDate: "2026-11-30" }).success).toBe(true);
+    expect(insertCampaignSchema.partial().safeParse({ pacingStartDate: "2026-02-30" }).success).toBe(false);
+  });
+
   it("requires campaign access before returning outcome totals", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
 
@@ -157,7 +191,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("const formatHealthStatus = (status: string) => status === 'unavailable' ? 'Unavailable' : status;");
     expect(overview).toContain("Campaign budget is required for budget health");
     expect(overview).toContain("Campaign budget is required for pacing");
-    expect(overview).toContain("Campaign end date is required for pacing");
+    expect(overview).toContain("Budget period end is required for pacing");
     expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
     expect(overview).toContain('{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}');
@@ -173,10 +207,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('if (padDecimals) return `${formattedInteger}.${decimalPart.slice(0, 2).padEnd(2, "0")}`;');
     expect(page).toContain('replace(/[^\\d.]/g, "")');
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));");
-    expect(overview).toContain("Requires campaign spend and start date");
-    expect(overview).toContain('Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}');
-    expect(overview).toContain("Requires campaign budget, start date, and end date");
-    expect(overview).toContain("Requires campaign spend, budget, start date, and end date");
+    expect(overview).toContain("Requires campaign spend and budget period start");
+    expect(overview).toContain('Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}');
+    expect(overview).toContain("Requires campaign budget and budget period dates");
+    expect(overview).toContain("Requires campaign spend, budget, and budget period dates");
     expect(overview).toContain("const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
     expect(overview).toContain('data-testid="input-pacing-budget"');
     expect(overview).toContain("onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}");

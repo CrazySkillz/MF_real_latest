@@ -367,6 +367,13 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS reporting_time_zone TEXT NOT NULL DEFAULT 'UTC';
           `);
 
+          // Migration: Add date-only budget pacing boundaries without changing financial campaign dates
+          await db.execute(sql`
+            ALTER TABLE campaigns
+            ADD COLUMN IF NOT EXISTS pacing_start_date TEXT,
+            ADD COLUMN IF NOT EXISTS pacing_end_date TEXT;
+          `);
+
           // GA4 daily metrics (persisted daily facts powering "daily values" GA4 UI)
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS ga4_daily_metrics (

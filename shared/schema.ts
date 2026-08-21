@@ -44,6 +44,8 @@ export const campaigns = pgTable("campaigns", {
   trendKeywords: text("trend_keywords").array(), // Keywords to track in Google Trends
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
+  pacingStartDate: text("pacing_start_date"), // Date-only budget pacing boundary; never filters source metrics
+  pacingEndDate: text("pacing_end_date"), // Date-only budget pacing boundary; never filters source metrics
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -1133,6 +1135,13 @@ export const kpiReports = pgTable("kpi_reports", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+const campaignPacingDateSchema = z.string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }, "Invalid budget pacing date");
+
 export const insertCampaignSchema = createInsertSchema(campaigns)
   .extend({
     currency: z.string().default("USD"),
@@ -1159,6 +1168,8 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     trendKeywords: true,
     startDate: true,
     endDate: true,
+    pacingStartDate: true,
+    pacingEndDate: true,
   })
   .extend({
     startDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
@@ -1189,6 +1200,8 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
       }
       return null;
     }).nullable().optional(),
+    pacingStartDate: campaignPacingDateSchema.nullable().optional(),
+    pacingEndDate: campaignPacingDateSchema.nullable().optional(),
   });
 
 export const insertMetricSchema = createInsertSchema(metrics).pick({

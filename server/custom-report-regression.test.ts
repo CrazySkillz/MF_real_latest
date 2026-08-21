@@ -554,8 +554,10 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Daily Burn Rate Basis");
     expect(reports).toContain("Target Daily Spend");
     expect(reports).toContain("Campaign Budget");
-    expect(reports).toContain("Start Date");
-    expect(reports).toContain("End Date");
+    expect(reports).toContain("Budget Period Start");
+    expect(reports).toContain("Budget Period End");
+    expect(reports).toContain("campaignFinancialContext?.pacingStartDate");
+    expect(reports).toContain("campaignFinancialContext?.pacingEndDate");
     expect(reports).toContain("Cost Efficiency Metrics");
     expect(reports).toContain("ROI & ROAS Analysis");
     expect(reports).toContain("Return on Ad Spend (ROAS)");

@@ -54,7 +54,7 @@ describe("campaign current-value financial source contract", () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it("keeps native and imported revenue on the import boundary while retaining source-to-date spend", async () => {
+  it("keeps native revenue and conversions campaign-to-date while retaining source-to-date imports", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-21T12:00:00.000Z"));
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 500, conversions: 25 }]);
@@ -64,10 +64,11 @@ describe("campaign current-value financial source contract", () => {
     await refreshCampaignCurrentValuesForCampaign("campaign-1");
 
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-01", "2026-08-20");
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-05-20", "2026-08-20");
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
     expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-08-20", [], "USD");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-05-20", "2026-08-20", [], "USD");
     expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "1300" });
   });
 

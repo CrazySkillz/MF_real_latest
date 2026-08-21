@@ -95,7 +95,8 @@ describe("scheduled report email regression guard", () => {
     expect(serverSource).toContain("const reportCumulativeWindow = resolveGA4ImportToDateWindow(");
     expect(serverSource).toContain("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
     expect(serverSource).toContain("const overviewStartDate = reportCumulativeWindow.startDate;");
-    expect(serverSource).toContain("const financialStartDate = reportCumulativeWindow.startDate;");
+    expect(serverSource).toContain("const financialStartDate = toISODateUTC((campaign as any)?.startDate)");
+    expect(serverSource).toContain('|| toISODateUTC((campaign as any)?.createdAt)');
     expect(serverSource).toContain("const financialEndDate = reportCumulativeWindow.endDate;");
     expect(serverSource).toContain('const spendSourceStartDate = "1900-01-01";');
     expect(serverSource).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4")');

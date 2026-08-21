@@ -19,7 +19,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";');
   });
 
-  it("keeps native GA4 metrics on the fixed import boundary without clipping source-to-date financial inputs", () => {
+  it("keeps native financial metrics campaign-to-date without clipping source-to-date financial inputs", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
@@ -139,7 +139,10 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('const revenueStartDate = "1900-01-01";');
     expect(route).not.toContain("Campaign-to-date revenue source is not fully materialized");
     expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };");
-    expect(route).toContain('const startDateUsed = currentValueWindow.startDate;');
+    expect(route).toContain("const financialStartDateUsed = (() => {");
+    expect(route).toContain("const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;");
+    expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed)");
+    expect(route).toContain("financialStartDateUsed,");
     expect(route).toContain('const endDateUsed = currentValueWindow.endDate;');
     expect(route).toContain("latestPersistedFinancialDate === endDateUsed");
     expect(route).toContain("ga4Service.getTotalsWithRevenue(");

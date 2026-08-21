@@ -142,6 +142,9 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   if (primary?.propertyId && !ga4Window) return null;
   const startDate = ga4Window?.startDate || toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
   const endDate = ga4Window?.endDate || todayUTC();
+  const financialStartDate = toISODateUTC((campaign as any)?.startDate)
+    || toISODateUTC((campaign as any)?.createdAt)
+    || "2000-01-01";
   const financialSourceStartDate = "1900-01-01";
   const spendSourceStartDate = "1900-01-01";
   let ga4Available = false;
@@ -177,7 +180,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       financialConversions = conversions;
     } else if (useFullFinancialCandidate) {
       const financialEndDate = endDate;
-      const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, financialEndDate).catch(() => null as any);
+      const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, financialEndDate).catch(() => null as any);
       const dailyCandidate = (financialRows || []).reduce((totals: any, row: any) => ({
         revenue: totals.revenue + parseNum(row?.revenue),
         conversions: totals.conversions + parseNum(row?.conversions),
@@ -185,12 +188,12 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       let toDateCandidate: any = null;
       let breakdownCandidate: any = null;
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-      if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && startDate <= financialEndDate) {
+      if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && financialStartDate <= financialEndDate) {
         try {
           const toDate = await ga4Service.getTotalsWithRevenue(
             propertyId,
             String((primary as any).accessToken),
-            startDate,
+            financialStartDate,
             financialEndDate,
             campaignFilter,
             String((campaign as any)?.currency || "USD").trim().toUpperCase(),

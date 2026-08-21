@@ -67,6 +67,13 @@ const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabel
   return "No spend or revenue source is connected.";
 };
 
+const toISODateUTC = (value: any) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+};
+
 const parseGA4CampaignFilter = (raw: any): CampaignFilter => {
   if (raw === null || raw === undefined) return undefined;
   const s = String(raw || "").trim();
@@ -462,7 +469,9 @@ async function buildGA4ReportPayload(report: any) {
     ? '30daysAgo'
     : reportLookbackRange;
   const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);
-  const financialStartDate = reportCumulativeWindow.startDate;
+  const financialStartDate = toISODateUTC((campaign as any)?.startDate)
+    || toISODateUTC((campaign as any)?.createdAt)
+    || "2000-01-01";
   const financialEndDate = reportCumulativeWindow.endDate;
   const spendSourceStartDate = "1900-01-01";
   const importedRevenueStartDate = "1900-01-01";

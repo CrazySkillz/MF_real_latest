@@ -256,7 +256,7 @@ async function inspectFinancialSourceWindowDrift(result: CleanupResult, options:
 
     const oldWindow = { startDate: OLD_FINANCIAL_SOURCE_START_DATE, endDate: latestDate };
     const oldData = await buildFinancialInputs(campaign, propertyId, campaignStartDate(campaign), latestDate, oldWindow.startDate, oldWindow.endDate);
-    const newData = await buildFinancialInputs(campaign, propertyId, newWindow.startDate, newWindow.endDate, "1900-01-01", newWindow.endDate);
+    const newData = await buildFinancialInputs(campaign, propertyId, campaignStartDate(campaign), newWindow.endDate, "1900-01-01", newWindow.endDate);
 
     for (const row of rows) {
       const id = String(row?.id || "");

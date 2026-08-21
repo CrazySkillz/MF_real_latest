@@ -156,6 +156,10 @@ describe("GA4 KPI authoritative reporting window", () => {
 
     expect(result.date).toBe("2026-07-30");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-01", "2026-07-30");
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-06-01", "2026-07-30");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      "properties/123", "token", "2026-06-01", "2026-07-30", undefined, "USD",
+    );
     expect(storageMock.updateKPI).toHaveBeenCalledWith("users", { currentValue: "200" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("sessions", { currentValue: "400" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("pageviews", { currentValue: "800" });

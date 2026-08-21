@@ -358,10 +358,16 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       // Build GA4 to-date totals (campaign lifetime) for accurate financial KPIs (ROAS/ROI/CPA).
       // Production path: GA4 API totals (with automatic token refresh).
       // Stored daily totals are retained only for the explicit mock/demo property.
+      const financialStartDate = (() => {
+        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+        if (!raw) return "2000-01-01";
+        const date = new Date(raw);
+        return Number.isNaN(date.getTime()) ? "2000-01-01" : isoDateUTC(date);
+      })();
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const [reportingRows, toDateRows] = await Promise.all([
         storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => null as any),
-        storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => null as any),
+        storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, reportingWindow.endDate).catch(() => null as any),
       ]);
       const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
       let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
@@ -413,7 +419,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
           if (conn && conn.method === "access_token" && conn.accessToken) {
             const attempt = async (token: string) => {
-              return await ga4Service.getTotalsWithRevenue(propertyId, token, reportingWindow.startDate, reportingWindow.endDate, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
+              return await ga4Service.getTotalsWithRevenue(propertyId, token, financialStartDate, reportingWindow.endDate, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
             };
             try {
               const res = await attempt(String(conn.accessToken));

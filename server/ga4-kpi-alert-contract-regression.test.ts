@@ -163,7 +163,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
-  it("uses the initial import boundary and financial conversions for CPA alerts", async () => {
+  it("uses campaign-to-date financial conversions for CPA alerts while traffic keeps the import boundary", async () => {
     storageMock.getCampaign.mockResolvedValue({
       ...campaign,
       startDate: "2026-06-20T00:00:00.000Z",
@@ -190,13 +190,13 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith(
       campaign.id,
       connection.propertyId,
-      "2026-07-01",
+      "2026-06-20",
       "2026-07-31",
     );
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       connection.propertyId,
       "access-token",
-      "2026-07-01",
+      "2026-06-20",
       "2026-07-31",
       "scoped_campaign",
       "USD",

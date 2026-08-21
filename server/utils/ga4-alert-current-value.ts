@@ -28,6 +28,14 @@ const isGA4Platform = (value: unknown) => {
   return platform === "google_analytics" || platform === "ga4";
 };
 
+const campaignStartDate = (campaign: any) => {
+  const raw = campaign?.startDate || campaign?.createdAt || null;
+  if (!raw) return "2000-01-01";
+  const date = new Date(raw);
+  if (!Number.isFinite(date.getTime())) return "2000-01-01";
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+};
+
 const toInputs = (totals: ReturnType<typeof summarizeGA4TrafficRows>) => ({
   users: Math.round(totals.users || 0),
   sessions: Math.round(totals.sessions || 0),
@@ -136,7 +144,9 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     );
     const startDate = reportingWindow.startDate;
     const endDate = reportingWindow.endDate;
-    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
+    const financialStartDate = campaignStartDate(campaign);
+    const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
+    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate).catch(() => null as any);
     const sourceRows = Array.isArray(rows) ? rows : [];
     const trafficRows = sourceRows.filter((sourceRow: any) => {
       const date = String(sourceRow?.date || "");
@@ -201,7 +211,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             String((campaign as any)?.currency || "USD").trim().toUpperCase(),
           );
         const assignProviderInputs = async (token: string) => {
-          const candidate = (await attempt(token, startDate))?.totals;
+          const candidate = (await attempt(token, financialStartDate))?.totals;
           providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;
         };
         try {

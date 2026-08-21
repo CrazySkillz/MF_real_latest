@@ -9017,9 +9017,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
 
-      // Preserve the legacy simulated-property boundary; the real provider path
-      // replaces this with the selected connection's saved import boundary.
-      let startDateUsed = (() => {
+      // Native financial totals remain campaign-to-date. The GA4 import boundary
+      // applies to cumulative traffic metrics, not this financial endpoint.
+      const startDateUsed = (() => {
         const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
         if (!raw) return "2000-01-01";
         const d = new Date(raw);
@@ -9124,12 +9124,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection || connection.method !== "access_token" || !connection.accessToken) {
         return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
       }
-      const currentValueWindow = resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone);
-      if (!currentValueWindow) {
-        return res.status(409).json({ success: false, error: "INVALID_GA4_IMPORT_WINDOW", message: "The GA4 import-to-date window is unavailable." });
-      }
-      startDateUsed = currentValueWindow.startDate;
-
       if (startDateUsed > endDateUsed) {
         return res.json({
           success: true,
@@ -9471,20 +9465,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       const providerInput = buildProviderInput(providerTotals);
       const currentValueProviderInput = buildProviderInput(currentValueProviderTotals);
+      const requestedWindowInputs = providerInput || dailyInput;
       const currentValueWindowInputs = currentValueDateDimensionProviderInput || currentValueDailyInput;
       const schedulerInputs = currentValueWindowInputs;
       const uiBaseInputs = (currentValueDailyInput.sessions > 0 || currentValueDailyInput.users > 0 || currentValueDailyInput.conversions > 0 || currentValueDailyInput.pageviews > 0 || currentValueDailyInput.ga4Revenue > 0)
         ? currentValueDailyInput
         : (currentValueProviderInput || currentValueDailyInput);
-      const uiFinancialProviderCandidate = currentValueProviderInput ? {
-        revenue: currentValueProviderInput.ga4Revenue,
-        conversions: currentValueProviderInput.conversions,
-        value: currentValueProviderInput,
+      const uiFinancialProviderCandidate = providerInput ? {
+        revenue: providerInput.ga4Revenue,
+        conversions: providerInput.conversions,
+        value: providerInput,
       } : null;
       const uiFinancialDailyCandidate = {
-        revenue: currentValueDailyInput.ga4Revenue,
-        conversions: currentValueDailyInput.conversions,
-        value: currentValueDailyInput,
+        revenue: dailyInput.ga4Revenue,
+        conversions: dailyInput.conversions,
+        value: dailyInput,
       };
       const uiFinancialBase = selectGA4FinancialTotalsSource(
         [uiFinancialProviderCandidate, uiFinancialDailyCandidate],
@@ -9505,7 +9500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metricKey = String(benchmark?.metric || "").trim();
         const computable = !!metricKey && metricKey !== "__custom__" && isComputableGA4KpiMetric(metricKey);
         const storedCurrent = Number(String(benchmark?.currentValue ?? "").replace(/,/g, ""));
-        const schedulerInputsForMetric = currentValueWindowInputs;
+        const schedulerInputsForMetric = isGA4FinancialKpiMetricIdentity(metricKey)
+          ? requestedWindowInputs
+          : currentValueWindowInputs;
         const schedulerCurrent = computable ? round2Local(computeKpiValue(metricKey, schedulerInputsForMetric)) : null;
         const uiCurrent = computable ? round2Local(computeUIValue(metricKey)) : null;
         return {
@@ -14495,9 +14492,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let persistedFinancialCandidate: any = null;
           let toDateFinancialCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
-          const startDateUsed = currentValueWindow.startDate;
+          const financialStartDateUsed = (() => {
+            const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+            if (!raw) return "2000-01-01";
+            const date = new Date(raw);
+            return Number.isNaN(date.getTime()) ? "2000-01-01" : formatISODateUTC(date);
+          })();
           const endDateUsed = currentValueWindow.endDate;
-          const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDateUsed, endDateUsed).catch(() => [] as any[]);
+          const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed).catch(() => [] as any[]);
           const latestPersistedFinancialDate = persistedFinancialRows.reduce(
             (latest: string, row: any) => String(row?.date || "") > latest ? String(row?.date || "") : latest,
             "",
@@ -14516,7 +14518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const toDate = await ga4Service.getTotalsWithRevenue(
                 String(primaryGA4.propertyId),
                 String(primaryGA4.accessToken),
-                startDateUsed,
+                financialStartDateUsed,
                 endDateUsed,
                 parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
                 String((campaign as any)?.currency || "USD").trim().toUpperCase(),

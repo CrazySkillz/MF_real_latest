@@ -132,6 +132,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("let ga4TotalsAvailable = !activeGA4;");
     expect(route).toContain("let importedRevenueAvailable = false;");
     expect(route).toContain("let hasImportedRevenueSource = false;");
+    expect(route).toContain('await storage.getRevenueTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), "ga4");');
+    expect(route).not.toContain("Campaign-to-date revenue source is not fully materialized");
     expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };");
     expect(route).toContain('const startDateUsed = currentValueWindow.startDate;');
     expect(route).toContain('const endDateUsed = currentValueWindow.endDate;');

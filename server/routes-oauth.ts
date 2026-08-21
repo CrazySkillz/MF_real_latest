@@ -14266,19 +14266,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const revenueStartDate = currentValueWindow?.startDate || "1900-01-01";
         const revenueEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
+        if (currentValueWindow) {
+          await storage.getRevenueTotalForRange(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), "ga4");
+        }
         const [revenueTotals, revenueBreakdown, revenueSourceDefinitions] = await Promise.all([
           storage.getRevenueTotalForRange(campaignId, revenueStartDate, revenueEndDate, "ga4"),
           storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4"),
           storage.getRevenueSources(campaignId, "ga4"),
         ]);
         hasImportedRevenueSource = revenueSourceDefinitions.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
-        if (currentValueWindow) {
-          const representedSourceIds = new Set(revenueBreakdown.map((source: any) => String(source?.sourceId || "")).filter(Boolean));
-          const hasMissingActiveSource = revenueSourceDefinitions.some((source: any) =>
-            source?.isActive !== false && !representedSourceIds.has(String(source?.id || ""))
-          );
-          if (hasMissingActiveSource) throw new Error("Campaign-to-date revenue source is not fully materialized");
-        }
         importedRevenueAvailable = true;
         const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
         for (const source of revenueBreakdown) {

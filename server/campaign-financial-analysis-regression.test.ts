@@ -3,6 +3,12 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("requires campaign access before returning outcome totals", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+
+    expect(routes).toContain('app.get("/api/campaigns/:id/outcome-totals", requireCampaignAccessParamId, async (req, res) => {');
+  });
+
   it("adds the shared performanceSummary aggregate contract for Budget & Financial tabs", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
 

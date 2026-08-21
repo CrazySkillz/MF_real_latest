@@ -13887,7 +13887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * - Revenue sources connected via LinkedIn "additional data" (HubSpot/Salesforce/Shopify) can optionally be classified
    *   as offsite revenue (not tracked in GA4) and will be reported separately to avoid double-counting.
    */
-  app.get("/api/campaigns/:id/outcome-totals", async (req, res) => {
+  app.get("/api/campaigns/:id/outcome-totals", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
       const dateRange = String(req.query.dateRange || "30days");

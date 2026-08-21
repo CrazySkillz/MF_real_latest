@@ -253,8 +253,8 @@ Test that routes return correct shapes and handle auth/errors. Requires mocking 
 ```
 server/ga4-endpoints.test.ts
 ├── GET /ga4-daily — correct date range, missing connection handling
-├── GET /ga4-to-date — uses yesterday, returns deduplicated users
-├── GET /ga4-breakdown — 90-day window, filters (not set)
+├── GET /ga4-to-date — uses the saved initial-import boundary through the latest completed day
+├── GET /ga4-breakdown — uses the saved initial-import boundary through the latest completed day and filters (not set)
 ├── Auth — all endpoints require ensureCampaignAccess
 └── Error responses — correct status codes and shapes
 ```
@@ -292,11 +292,13 @@ export default defineConfig({
 
 Use this when verifying GA4 data accuracy against the real Google Analytics console.
 
+Current window contract: the selected 30/60/90-day setup window establishes the fixed initial-import boundary. Current GA4 traffic values then accumulate from that boundary through the latest completed reporting day; they are not rolling-window totals. GA4 financial values are campaign-to-date. Total Revenue is native GA4 revenue plus all active imported revenue sources.
+
 ### Overview Tab
 | MimoSaaS Metric | GA4 Console Location | Expected Match? |
 |---|---|---|
-| Sessions (Summary) | Reports > Acquisition > Sessions (campaign lifetime) | Exact |
-| Users (Summary) | Reports > User Attributes > Users (campaign lifetime) | Exact (uses deduplicated ga4-to-date) |
+| Sessions (Summary) | Reports > Acquisition > Sessions (saved initial-import boundary through latest completed day) | Exact |
+| Users (Summary) | Sum of GA4 daily users over the same completed-day boundary | Exact for the application's daily-summed users contract; not cross-day deduplicated |
 | Conversions | Reports > Engagement > Conversions (filtered by campaign) | Exact |
 | Revenue | Reports > Monetization > Purchase Revenue | Exact |
 | Engagement Rate | Reports > Engagement > Engagement Rate | Close (client uses cumulative weighted avg) |
@@ -304,7 +306,7 @@ Use this when verifying GA4 data accuracy against the real Google Analytics cons
 ### Ad Comparison Tab
 | MimoSaaS Metric | GA4 Console Location | Expected Match? |
 |---|---|---|
-| Campaign sessions | Reports > Acquisition > Traffic Acquisition (90 days) | Exact per campaign |
+| Campaign sessions | Reports > Acquisition > Traffic Acquisition (saved initial-import boundary through latest completed day) | Exact per campaign |
 | Campaign conversions | Same report, conversions column | Exact |
 | Campaign users | Same report, users column | Approximate (non-additive across dimensions) |
 | Total across campaigns | Sum of above | Sessions/Conversions: exact. Users: overcounted |
@@ -313,16 +315,16 @@ Use this when verifying GA4 data accuracy against the real Google Analytics cons
 | MimoSaaS Metric | Source of Truth | Verification |
 |---|---|---|
 | Total Spend | `spend-breakdown` endpoint (sums spend_records) | Should match sum of all spend sources |
-| Total Revenue | GA4 native revenue (ga4-to-date) | Match GA4 Monetization report |
-| ROAS | `revenue / spend * 100` | Manual calculation matches |
+| Total Revenue | GA4 native revenue plus active imported revenue sources | Native amount matches GA4; imported amounts match their authoritative source records; total is additive |
+| ROAS | `revenue / spend` | Manual ratio calculation matches |
 | ROI | `(revenue - spend) / spend * 100` | Manual calculation matches |
 | CPA | `spend / conversions` | Manual calculation matches |
 
 ### Date Range Awareness
 | Tab/Section | Date Range | Notes |
 |---|---|---|
-| Overview Summary | Campaign lifetime (start → yesterday) | Largest numbers |
-| Ad Comparison | 90 days (hardcoded) | May be lower than Overview for old campaigns |
+| Overview Summary | Saved initial-import boundary through latest completed reporting day | Cumulative, not rolling |
+| Ad Comparison | Saved initial-import boundary through latest completed reporting day | Uses the same cumulative GA4 boundary |
 | Daily chart | Last N days (default 30) | Configurable via dropdown |
 | Latest Day Revenue | Yesterday (ga4ReportDate) | Excludes partial today |
 | Latest Day Spend | Today OR yesterday | Manual/CSV dated today |
@@ -456,19 +458,19 @@ If using the mock system, each "Run Refresh" injects one daily data point with t
 
 ### Tab 1: Overview
 
-#### Summary Cards (ga4-to-date endpoint, campaign lifetime)
+#### Summary Cards (fixed initial-import boundary through latest completed day)
 
 | Card | How to verify | Formula |
 |------|--------------|---------|
 | Total Sessions | Compare against GA4 Console > Acquisition > Sessions | Direct from API |
-| Total Users | Compare against GA4 Console > User Attributes | Must use deduplicated count (NOT sum of daily) |
+| Total Users | Sum GA4 daily users over the saved initial-import boundary through the latest completed day | Daily-summed count; the same user may appear on multiple days |
 | Total Conversions | GA4 Console > Engagement > Conversions | Direct from API |
-| Total Revenue | GA4 Console > Monetization > Purchase Revenue | GA4 native only (not CRM) |
+| Total Revenue | GA4 Console native revenue plus authoritative imported source records | Native GA4 plus all active imported revenue sources |
 | Engagement Rate | GA4 Console > Engagement > Engagement Rate | `engagedSessions / sessions * 100` |
 
 **Validation steps:**
 1. Open GA4 Console for the same property
-2. Set date range to campaign start date through yesterday
+2. Set the date range to the saved initial-import boundary through the latest completed reporting day
 3. Apply the same campaign filter (UTM campaign name)
 4. Compare each Summary card value — should be exact match (or very close for ER)
 
@@ -477,7 +479,7 @@ If using the mock system, each "Run Refresh" injects one daily data point with t
 | Card | How to verify | Formula |
 |------|--------------|---------|
 | Total Spend | Should equal sum of all spend sources | `SUM(spend_records)` via spend-breakdown |
-| Total Revenue | GA4 native OR imported (not both) | GA4 takes precedence if available |
+| Total Revenue | GA4 native plus all active imported revenue sources | Additive across available, currency-compatible sources |
 | ROAS | `Total Revenue / Total Spend` displayed as Xx | `(revenue / spend)` ratio |
 | ROI | `(Revenue - Spend) / Spend` as percentage | `((revenue - spend) / spend) * 100` |
 | CPA | `Total Spend / Total Conversions` | `spend / conversions` |
@@ -490,7 +492,7 @@ If using the mock system, each "Run Refresh" injects one daily data point with t
 3. Check ROI: (2850-950)/950 = 200.00%
 4. Check CPA: 950/38 = $25.00
 
-#### Campaign Breakdown (ga4-breakdown, 90-day window)
+#### Campaign Breakdown (saved initial-import boundary through latest completed day)
 
 | Column | Additive? | Notes |
 |--------|-----------|-------|
@@ -501,7 +503,7 @@ If using the mock system, each "Run Refresh" injects one daily data point with t
 | CR% | Weighted | Must be `totalConversions / totalSessions * 100` NOT average of per-campaign CRs |
 
 **Validation steps:**
-1. Note this uses a 90-day window — totals will be lower than Summary for campaigns older than 90 days
+1. Confirm the displayed window begins at the saved initial-import boundary and advances through the latest completed reporting day without dropping older imported days
 2. `(not set)` rows are filtered out — sum may be lower than Summary
 3. Users column should show a tooltip warning about non-additivity
 
@@ -539,13 +541,13 @@ For each KPI template, the "Current Value" comes from:
 
 | KPI Template | Current Value Source | Example (yesop-brand) |
 |-------------|---------------------|----------------------|
-| Revenue | `financialRevenue` (ga4-to-date or imported) | $2,850.00 |
-| ROAS | `computeRoasPercent(revenue, spend)` | 300.00% |
+| Revenue | Persisted campaign-to-date all-source financial total | $2,850.00 |
+| ROAS | `revenue / spend` | 3.00x |
 | ROI | `computeRoiPercent(revenue, spend)` | 200.00% |
 | CPA | `computeCpa(spend, conversions)` | $25.00 |
-| Total Conversions | `breakdownTotals.conversions` | 38 |
-| Total Sessions | `breakdownTotals.sessions` | 750 |
-| Total Users | `breakdownTotals.users` (deduplicated) | 500 |
+| Total Conversions | Persisted cumulative GA4 KPI current value | 38 |
+| Total Sessions | Persisted cumulative GA4 KPI current value | 750 |
+| Total Users | Persisted cumulative daily-summed GA4 KPI current value | 500 |
 | Conversion Rate | `computeConversionRatePercent(conv, sessions)` | 5.07% |
 | Engagement Rate | `normalizeRateToPercent(engagementRate)` | 62.00% |
 
@@ -636,7 +638,7 @@ For each KPI template, the "Current Value" comes from:
 
 | Column | Additive? | Verification |
 |--------|-----------|-------------|
-| Sessions | Yes | Sum should match total (within 90-day window) |
+| Sessions | Yes | Sum should match the displayed cumulative comparison boundary |
 | Users | **No** | Shows tooltip warning — sum overcounts |
 | Conversions | Yes | Sum is correct |
 | Revenue | Yes | Sum is correct |
@@ -766,7 +768,7 @@ These are the most important validations — values MUST match across tabs:
 | ROI | Overview card, Insights ROI | Exact |
 | CPA | Overview card, KPI "CPA" current value | Exact |
 | Sessions | Overview Summary, KPI "Sessions" current value | Exact |
-| Users | Overview Summary, KPI "Users" current value | Exact (both use deduplicated count) |
+| Users | Overview Summary, KPI "Users" current value | Exact (both use the cumulative daily-summed users contract) |
 | Conversions | Overview Summary, KPI "Conversions" current value | Exact |
 | CR% | KPI "Conversion Rate" current value | Must equal `(conversions/sessions)*100` |
 | Blocked KPIs | KPIs tab blocked count, Insights blocked insight count | Exact |

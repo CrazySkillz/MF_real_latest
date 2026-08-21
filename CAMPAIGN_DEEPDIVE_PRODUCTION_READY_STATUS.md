@@ -27,9 +27,11 @@ The implementation now follows the shared connected-source aggregate pattern: Co
 
 The remaining work is validation hardening and source-specific proof, not a full redesign.
 
-## Current Production-Ready Status
+Current documentation reconciliation (2026-08-21): Performance Summary now has one controlling data-window contract. GA4 traffic current values accumulate from the saved initial-import boundary through the latest completed reporting day; refreshed KPI/Benchmark current values feed Campaign Health, Top Priority Action, and Recommended Actions; Key Outcomes uses those current connected-source values; and Recent Movement alone uses exact-date historical comparisons for yesterday, seven days earlier, and the same calendar date one month earlier. Production code, tests, validators, and machine certification records were not changed by this reconciliation.
 
-Campaign DeepDive is production-ready locally for the implemented connected-source aggregate contract and the current GA4/current-source scope, with the outstanding validation items below.
+## Current Implementation And Certification Status
+
+Do not use this top-level file as a current whole-section production certification. The implemented shared aggregate and corrected Performance Summary value paths are locally regression-covered, but each subsection and source remains bounded by its own exact-SHA readiness evidence. The 2026-08-21 documentation reconciliation does not certify the current repository SHA.
 
 The remaining validation items can wait until mock-live historical data and future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation and Commit 15 browser smoke passed on 2026-06-04 and are tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 18 browser validation, live OAuth, and deployed scheduled-report evidence remain separate. Instagram Commit 1 documentation validation and Commit 2 API/source-contract validation passed, Commit 3 schema/storage foundation is implemented, Commit 4A-4F backend-only contract work is pushed and validation passed, Commit 5A Create Campaign option, Commit 5B test setup path, Commit 5C finalization guard, Commit 5D query invalidation, and Commit 5E Create Campaign closeout validation passed by connecting to the Instagram test account. Instagram Commit 6A Connected Platforms backend status, Commit 6B card shell, Commit 6C add-source setup, Commit 6D state/invalidation, and Commit 6E Connected Platforms closeout validation passed by connecting to the Instagram test account; Commit 6F Connected Platforms disconnect UI mapping validation passed by disconnecting Instagram from Connected Platforms; Commit 7A Campaign Overview source-status boundary, Commit 7B unavailable metric state, Commit 7C source-backed daily-row metric read, and Commit 7D Campaign Overview validation closeout passed by connecting to the Instagram test account; Commit 8A Instagram analytics route shell, Commit 8B daily metrics endpoint, Commit 8C Overview tab, Commit 8D Campaign Breakdown tab, Commit 8E unavailable/error/freshness states, and Commit 8F guarded analytics link/validation closeout validation passed by connecting to the Instagram test account; Commit 9A Instagram aggregate source builder, Commit 9B aggregate source composition, Commit 9C Meta/Facebook plus Instagram no-double-counting guard, Commit 9D Campaign DeepDive aggregate route wiring, and Commit 9E aggregate validation closeout validation passed by connecting to the Instagram test account; Commit 10A Instagram financial platform-context allowlist, Commit 10B spend source identity guard, Commit 10C revenue source identity guard, and Commit 10D revenue/spend validation closeout validation passed by connecting to the Instagram test account and running focused regression checks; Commit 11A-11F refresh and scheduler foundation validation passed through `npm run check` plus the focused regression suite; Commit 12A-12F validation passed for lifecycle, test data, core metrics, and Campaign DeepDive source-backed inclusion; Commit 13A Instagram KPI current-value source contract, Commit 13B Instagram Benchmark current-value source contract, Commit 13C Instagram analytics tab shell cleanup, Commit 13D Instagram KPI tab management UI parity, Commit 13E Instagram test-mode missing daily-row self-heal, Commit 13F Instagram Create KPI modal parity, Commit 13G Instagram Create KPI modal input constraints, Commit 13H Instagram analytics connection loading-state stability, Commit 13I Instagram Overview metrics loading-state stability, Commit 13J Instagram Benchmark tab management UI parity, Commit 13K Instagram Ad Comparison selected-campaign UI parity, and Commit 13L Instagram Insights tab source-backed UI parity are pushed with user validation pending; Commit 13M Instagram Insights missing-data and revenue-readiness guidance is implemented locally; the startup migration correction for Commit 5C is pushed, and source-specific planning is tracked in `INSTAGRAM_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
@@ -120,7 +122,7 @@ Expected proof:
 
 | Subsection | Current status | Source-of-truth path | Remaining item |
 | --- | --- | --- | --- |
-| Performance Summary | Production-ready locally for the registered aggregate path and future `platformSources` contract | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` | Future source-specific validation when new integrations are refined |
+| Performance Summary | Current cumulative/exact-date implementation documented; current-SHA certification not asserted by this docs-only pass | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, exact-date financial/history reads | Run exact-SHA certification gates separately if a new production-ready claim is required |
 | Budget & Financial Analysis | Production-ready locally after regression correction | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` plus campaign budget/start/end metadata | Live/source-refresh validation as real integrations are exercised |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
 | Trend Analysis | Aggregate-backed locally; historical accuracy validation pending | `/api/campaigns/:campaignId/trend-analysis` -> `trend_analysis_aggregate_v1` | Mock-live historical data validation |
@@ -188,7 +190,7 @@ New integrations should not require a Campaign DeepDive redesign. They should en
 - `server/custom-report-regression.test.ts`
 - `server/performance-summary-scheduler-regression.test.ts`
 
-## Latest Local Validation
+## Historical Local Validation
 
 Passed locally on 2026-05-30:
 
@@ -204,6 +206,8 @@ Meta/Facebook source-specific final regression passed locally on 2026-06-04:
 ## Final Readiness Statement
 
 The current Campaign DeepDive implementation is architecturally aligned with the connected-source aggregate pattern.
+
+This statement describes architectural and implementation alignment only. It is not a current whole-section production-ready certification.
 
 The remaining work is:
 

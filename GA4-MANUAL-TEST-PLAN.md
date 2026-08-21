@@ -125,9 +125,9 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 
 Important `Users` interpretation rule:
 
-- the top Overview `Users` card is the overall deduplicated GA4 user total for the selected campaign scope
+- the top Overview `Users` card is the sum of GA4 daily `totalUsers` values from the saved initial-import boundary through the latest completed reporting day; the same user may appear on more than one day
 - the top Overview `Users` card may show a short clarification tooltip:
-  `Deduplicated GA4 users for the selected campaign scope.`
+  `GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.`
 - `Users` in `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are row-level breakdown values
 - the same person can appear in more than one row, so table `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
@@ -193,6 +193,8 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 Note:
 
+- the selected 30/60/90-day setup window establishes the fixed initial-import boundary; later refreshes append completed days and must not turn the current value into a rolling window
+- refreshed cumulative GA4 values propagate to matching KPI and Benchmark current values and the Campaign DeepDive Performance Summary consumers
 - the mock refresh path is intended to produce visibly updated KPI and Benchmark inputs on rerun
 - if the campaign already has previous refresh history, use delta checks and cross-tab consistency rather than expecting one exact hard-coded total
 
@@ -1018,6 +1020,9 @@ For each add/edit/delete action above, validate all related revenue surfaces:
   `All Campaigns` row revenue for the displayed comparison window
 - [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
 - [ ] Reports generated after the change use the updated revenue values from the current tab state
+- [ ] Campaign DeepDive Performance Summary Key Outcomes matches the authoritative cumulative traffic and campaign-to-date financial values
+- [ ] Campaign Health, Top Priority Action, and Recommended Actions use the refreshed persisted KPI and Benchmark current values and fail closed when a configured metric is not safely scorable
+- [ ] Recent Movement compares Sessions and Conversions with cumulative values at the exact selected prior date, Spend with a compatible exact-date snapshot, and Total Revenue with exact-date same-source revenue; unavailable history must not reuse the current total
 
 Latest mapped-revenue validation evidence:
 

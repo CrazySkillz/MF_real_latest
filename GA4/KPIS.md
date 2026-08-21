@@ -129,6 +129,9 @@ Important meaning:
 
 - KPIs track the latest GA4-backed campaign state
 - KPI current values should stay consistent with the Overview and financial-source logic
+- GA4 traffic KPI current values accumulate from the saved initial-import boundary through the latest completed reporting day; the configured import depth does not become a rolling window after setup
+- financial KPI current values retain the campaign-to-date native/imported revenue and spend contract documented in `GA4/FINANCIAL_SOURCES.md`
+- saved timeframe or tracking-period fields are target metadata; they do not replace the authoritative cumulative current-value window
 
 Current-value hierarchy:
 
@@ -158,7 +161,7 @@ Campaign-level KPI source previews:
 - the campaign-level `Create KPI` modal should match the GA4 KPI modal's visual pattern: card-colored dialog, muted template container, blue selected tile state, neutral unselected tiles, KPI form fields directly below the template selector, Priority field, and the same `Enable alerts for this KPI` section layout
 - campaign-level KPI summary cards should use the same executive snapshot model as GA4 KPIs: shared metric-aware `Above Target`, `On Track`, and `Below Target` classification plus bounded `Avg. Progress`
 - the campaign-level `Create KPI` modal must use the same GA4-scoped totals as the GA4 Overview page for GA4 source values
-- GA4 revenue, conversions, sessions, and users shown in campaign-level KPI source options must be derived from the selected GA4 connection using the GA4 to-date response plus persisted daily rows, matching the GA4 Overview fallback rules
+- GA4 conversions, sessions, and users shown in campaign-level KPI source options must use the selected connection's scheduler-backed cumulative Overview totals from the initial-import boundary through the latest completed day; GA4 revenue uses the documented selected financial-source contract
 - do not read GA4 campaign KPI source values only from generic campaign outcome totals when a GA4-page-specific total exists, because that can drift from the values shown in GA4 Overview and Total Revenue Sources
 - campaign efficiency KPIs must use aggregate campaign inputs: `ROAS` and `ROI` use `Total Revenue` plus `Total Spend`; `CPA` uses `Total Spend` plus `Total Conversions`
 - standalone KPIs like `Revenue`, `Spend`, `Conversions`, and `Users` may expose individual source rows because those KPIs are explicitly source-selectable
@@ -231,7 +234,7 @@ Expected behavior:
 - breached KPIs show a red pulsing circle indicator on the KPI card
 - breached KPI alerts should appear in the bell icon and notifications center
 - enabled KPI alerts should not appear in the bell icon or main Notifications page unless the alert condition is currently breached; once the KPI no longer breaches, stale `performance-alert` rows should be hidden/resolved instead of remaining visible
-- traffic-dependent KPI Notifications must also be hidden when the stored 30-day GA4 traffic input is stale, matching the card's fail-closed state; `CPA` inherits this guard because it requires traffic plus spend, while financial-only `Revenue`, `ROAS`, and `ROI` continue to use their financial input states
+- traffic-dependent KPI Notifications must also be hidden when the stored cumulative GA4 traffic input is stale, matching the card's fail-closed state; `CPA` inherits this guard because it requires traffic plus spend, while financial-only `Revenue`, `ROAS`, and `ROI` continue to use their financial input states
 - for GA4 financial KPI alerts such as `Revenue`, `Total Revenue`, `ROAS`, `ROI`, and `CPA`, the Notifications current value and breach check must use the same selected GA4 financial-source model as the live KPI card; an existing active alert should disappear after refetch/recompute when the card value no longer breaches, and users should not need to create a new alert
 - bell and Notifications `View KPI` navigation should always open the correct campaign, the `KPIs` tab, and the exact KPI card
 - if the user is already on the same GA4 campaign page, the URL change must still switch to the correct KPI tab/item instead of staying on the previously open tab

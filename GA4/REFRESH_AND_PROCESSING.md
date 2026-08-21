@@ -382,6 +382,7 @@ Required order:
 Important meaning:
 
 - KPI alerts must run only after both the KPI grid state and the KPI `Executive snapshot` state are coherent with the latest recomputed values
+- traffic KPI current values are recomputed from the fixed initial-import boundary through the latest completed reporting day; the scheduler repair window and saved target-period metadata must not replace that cumulative boundary
 - for GA4 mock/test flows, the stored KPI value used by alerts must be refreshed from the same total-construction model as the live KPI cards
 - `/api/notifications` must also resolve GA4 financial KPI visibility from the same selected financial-source model as the live KPI cards, so stale `performance-alert` rows disappear when the refreshed Revenue/ROAS/ROI/CPA value no longer breaches
 - if the exact report-date daily row is missing, an earlier current value may remain as last-good state, but the KPI recompute path must not record that value as target-day history
@@ -401,6 +402,7 @@ Required order:
 Important meaning:
 
 - Benchmark alerts must run only after both the benchmark grid state and the Benchmark `Executive snapshot` state are coherent with the latest recomputed values
+- traffic Benchmark current values are recomputed from the fixed initial-import boundary through the latest completed reporting day; the scheduler repair window and saved target-period metadata must not replace that cumulative boundary
 - if the exact report-date daily row is missing, an earlier current value may remain as last-good state, but the benchmark recompute path must not record that value as target-day history
 - real-property financial Benchmark values follow the same live campaign-to-date and currency-parity requirements as financial KPI values
 
@@ -449,6 +451,7 @@ Instead:
 
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
+- GA4 scheduled/server report generation resolves the saved initial-import boundary through the latest completed campaign reporting day and fails closed when that cumulative boundary cannot be proven
 - scheduled/server-generated GA4 reports and direct GA4 snapshot PDF downloads fail closed unless the campaign KPI/Benchmark recompute runs for the target campaign before PDF generation; direct GA4 snapshot PDF deployed validation passed after commit `4d3a3838`
 - platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
 - scheduled/test-send report emails must attach the generated PDF and keep the email body plain and transactional; the PDF is the report artifact

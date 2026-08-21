@@ -6,7 +6,25 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Purpose
 
-Track the outstanding work required to make the Campaign DeepDive `Performance Summary` section production ready.
+Record the implemented Campaign DeepDive `Performance Summary` contract, its validation boundary, and the historical work that led to the current implementation.
+
+## Current Controlling Implementation Contract (2026-08-21)
+
+This section supersedes older implementation descriptions in the chronological commit history below.
+
+- `client/src/pages/campaign-performance.tsx` consumes `/api/campaigns/:id/outcome-totals.performanceSummary` for the campaign-level aggregate and uses focused read-only GA4 requests where an exact GA4 current or historical boundary is required.
+- The GA4 setup lookback establishes a fixed initial-import boundary. Sessions, Users, Conversions, pageviews, Engagement Rate, and Key Events per Session current values accumulate from that boundary through the latest completed reporting day; the original lookback is not reused as a rolling current-value window.
+- GA4 KPI and Benchmark persisted `currentValue` fields are recomputed from those cumulative traffic inputs. Revenue, Spend, ROAS, ROI, and CPA retain the documented campaign-to-date financial-source contract.
+- Key Outcomes renders `Total Users`, `Total Sessions`, `Total Conversions`, `Total Spend`, and `Total Revenue` from the authoritative current inputs. It does not derive a separate rolling Performance Summary total.
+- Campaign Health scores the complete configured GA4 KPI/Benchmark inventory only when every row is scorable from a verified current value and valid target. If any configured row is excluded, the section shows `Verification Needed` and does not calculate a partial health percentage.
+- Top Priority Action evaluates below-target KPIs first, orders them by configured KPI priority and then target-gap severity, and falls back to the worst eligible Benchmark only when no eligible KPI is below target. It fails closed for unavailable lists, unscorable inputs, incomplete coverage, invalid targets, and missing source metrics.
+- Recommended Actions evaluates the refreshed KPI and Benchmark current values with the shared metric-aware direction, sufficiency, and threshold policies. It returns at most three target-backed cards, deduplicates repeated action categories, and identifies target gaps only. The UI states that the underlying causes must be investigated before changing spend.
+- Recent Movement renders `Sessions`, `Conversions`, `Spend`, and `Total Revenue`. Yesterday and seven-day selections use the exact prior calendar date. One month uses the same calendar day in the previous month, clamped to that month's last valid day.
+- Sessions and Conversions derive the cumulative value at the exact prior date by subtracting covered intervening daily facts from the current cumulative Summary total. Spend requires a stable, source-compatible `performanceSummary` snapshot recorded on the exact date. Total Revenue requires same-source native/imported totals through the exact date. Missing, incompatible, ambiguous, or stale inputs produce `Comparison unavailable`; the current total is never presented as a verified historical value.
+- The removed `Available comparisons use data from ...` microcopy must remain absent.
+- The disabled legacy Metric Trends render path is not a visible Performance Summary feature; users are directed to the separate Trend Analysis section.
+
+Documentation/certification boundary: this reconciliation changes documentation only. It does not alter production code, tests, validators, machine certification records, or the exact-SHA scope of any prior GA4 certification.
 
 The intended product behavior is:
 
@@ -32,9 +50,9 @@ Do not turn Performance Summary into another platform-specific page.
 Do not duplicate aggregation logic across tabs.
 Do not invent unavailable metrics for sources that do not provide them.
 
-## Current Root Cause
+## Historical Root Cause (Resolved)
 
-`client/src/pages/campaign-performance.tsx` currently performs page-local aggregation from separate source queries.
+The original `client/src/pages/campaign-performance.tsx` implementation performed page-local aggregation from separate source queries. The current implementation uses the shared aggregate plus the focused exact-boundary GA4 inputs described in the controlling contract above.
 
 That implementation was not driven by the same connected-source registry required by the campaign `Connected Platforms` section. As a result:
 
@@ -50,7 +68,7 @@ The issue is an aggregation contract problem, not a single-card display bug.
 
 - `client/src/pages/campaign-performance.tsx`
   - Current Performance Summary page and tab UI.
-  - Performs local aggregation and tab-specific calculations.
+  - Consumes the shared aggregate and focused GA4 current/exact-date inputs for the visible consumer logic.
 
 - `client/src/pages/campaign-detail.tsx`
   - Campaign Overview and Connected Platforms section.
@@ -229,10 +247,10 @@ Important:
 
 Current behavior:
 
-- `Campaign Health` summarizes campaign-level KPIs and Benchmarks that are above target or on track.
-- `Top Priority Action` flags the least-performing campaign-level KPI first; if no KPI is below target, it falls back to the least-performing Benchmark.
+- `Campaign Health` summarizes the complete configured GA4 KPI/Benchmark inventory and withholds a partial score when any configured metric is unverified or unscorable.
+- `Top Priority Action` ranks eligible below-target KPIs by configured priority and then gap severity; if no eligible KPI is below target, it falls back to the worst eligible Benchmark.
 - `Top Priority Action` metric values must be formatted for display, for example `$450,000.00` and `80,000`.
-- `Total Impressions`, `Total Sessions`, `Total Conversions`, and `Total Spend` are populated from the campaign's connected sources in `Connected Platforms`.
+- `Total Users`, `Total Sessions`, `Total Conversions`, `Total Spend`, and `Total Revenue` are populated from the authoritative cumulative traffic and campaign-to-date financial inputs.
 - Each card only uses metrics that the connected source actually provides. GA4 can provide sessions and conversions, but not impressions.
 - If a connected source does not provide a metric, the card must clearly show that the metric is unavailable instead of inventing a value.
 
@@ -268,15 +286,14 @@ Outstanding fixes:
 - Trace legacy/manual snapshot route reachability before changing or removing it.
 - Prevent comparisons between incompatible aggregate versions where source inclusion changed.
 
-Reviewed current behavior:
+Historical snapshot behavior, superseded for the four visible Recent Movement cards:
 
 - Delta cards are populated by `client/src/pages/campaign-performance.tsx` from `/api/campaigns/:id/snapshots/comparison?type=...`.
 - The selected range maps to comparison types: `24h -> yesterday`, `7d -> last_week`, and `30d -> last_month`.
-- Current delta-card values prefer live `outcomeTotals.performanceSummary.totals` and fall back to local page totals only when no aggregate metric is available.
-- Previous delta-card values prefer `previous.metrics.performanceSummary.totals`; if the historical snapshot does not have the same `performance_summary_aggregate_v2` version as the current aggregate, the UI shows no historical comparison instead of comparing incompatible data.
+- Generic non-GA4 comparison support still requires compatible `performance_summary_aggregate_v2` snapshots.
+- The visible GA4 Recent Movement cards follow the exact-date paths in the current controlling contract: cumulative GA4 daily derivation for Sessions/Conversions, stable exact-date snapshots for Spend, and exact-date same-source native/imported totals for Total Revenue.
 - Snapshot creation through scheduler/platform-sync/manual snapshot routes uses `aggregateCampaignMetrics`, which embeds `metrics.performanceSummary` in new snapshots.
-- Trend charts are still populated from `/api/campaigns/:id/snapshots?period=...` using legacy snapshot columns only: impressions, clicks, conversions, and spend. They do not yet render sessions, users, revenue, or aggregate source capability metadata.
-- Current logic is safe for avoiding incompatible delta-card comparisons, but the tab is not fully aggregate-model complete until trend charts and snapshot read routes are aligned with the same aggregate display model and access-guard expectations.
+- The legacy Metric Trends code path is disabled and is not rendered; visible trend analysis belongs to the separate Campaign DeepDive Trend Analysis section.
 
 Production-ready task bundle:
 
@@ -443,7 +460,7 @@ Scope:
 - Completed follow-up: Confirmed Campaign Health and Top Priority use campaign-level KPI/Benchmark records, not platform-level routes.
 - Completed follow-up: Kept Total Impressions unavailable for GA4-only campaigns because GA4 engagement rate is not interchangeable with impressions.
 - Completed follow-up: `outcome-totals` now uses system-generated GA4 test data for mock/test GA4 properties and passes spend-to-date into `performanceSummary` while preserving the existing top-level `spend` response shape.
-- Completed follow-up: Overview now requests the 90-day `outcome-totals` window to match the GA4 detail Summary window.
+- Historical follow-up, superseded: Overview once requested a 90-day `outcome-totals` view. Current GA4 traffic current values come from scheduler-backed cumulative Summary totals spanning the fixed initial-import boundary through the latest completed day; the `dateRange=90days` compatibility parameter must not be interpreted as the Performance Summary traffic window.
 - Completed follow-up: Unavailable Overview metrics now show connected non-financial source labels, so GA4-only Total Impressions can show `Sources: Google Analytics` while the value remains unavailable.
 - Completed follow-up: Unavailable Overview metrics now also show the aggregate unavailable reason, so GA4-only Total Impressions explains that GA4 engagement rate is not an impressions metric.
 - Completed follow-up: Shortened GA4-only Total Impressions card copy to `Sources: Google Analytics - Impressions not available` while preserving the aggregate unavailable reason in the API.
@@ -525,6 +542,7 @@ Scope:
 - Completed: `What's Changed` now compares current values only against historical snapshots with the same `performance_summary_aggregate_v2` version and reads historical values from `metrics.performanceSummary.totals`.
 - Completed: `What's Changed` no longer compares aggregate current values against legacy snapshot columns when the historical snapshot lacks compatible aggregate metadata.
 - Completed: The old `Engagements` comparison was replaced with `Sessions` because the aggregate contract does not define an `engagements` total.
+- Current superseding behavior: the visible Recent Movement cards use the exact-date per-metric paths in the controlling contract. Compatible aggregate snapshots remain the generic non-GA4 fallback, not the GA4 Sessions/Conversions or Total Revenue source.
 - Completed: Added `server/performance-summary-scheduler-regression.test.ts`.
 
 Validation:
@@ -698,7 +716,7 @@ Live GA4 end-to-end validation setup for later:
 
 ### Commit 6: Docs And Final Validation
 
-Status: Not started.
+Status: Documentation reconciliation completed on `2026-08-21`; this documentation-only pass does not recertify the section.
 
 Goal:
 
@@ -706,13 +724,9 @@ Goal:
 
 Scope:
 
-- Update `ARCHITECTURE_USER_JOURNEY.md` if the final contract needs clarification.
-- Update GA4 and financial-source docs if their Performance Summary behavior is changed.
-- Update this tracker with completed evidence for each commit.
-- Run targeted Performance Summary tests.
-- Run targeted scheduler tests.
-- Run `npm run check`.
-- Run `npm run build`.
+- Updated `ARCHITECTURE_USER_JOURNEY.md`, the campaign KPI/Benchmark contract, the relevant GA4 functional docs, and this tracker to describe the cumulative current-value and exact-date comparison contracts.
+- Production code, tests, validators, and machine certification records were intentionally unchanged.
+- Documentation validation is limited to diff review and `git diff --check`; prior code/test evidence remains revision-specific and is not reasserted by this documentation pass.
 
 Why this is last:
 
@@ -744,12 +758,12 @@ Automatic aggregation status:
 - Future main Connected Platforms are supported by the generic `platformSources` contract. Each platform still needs its own campaign-scoped resolver, but once that resolver supplies a valid source breakdown, Performance Summary tabs consume the new source automatically through the existing aggregate contract.
 - Google Ads, TikTok, Instagram, and other future standalone platforms do not require tab rewiring. Their remaining work is platform-specific connection, storage, refresh, campaign scoping, and resolver implementation.
 
-Production-readiness conclusion:
+Implementation conclusion:
 
-- Production-ready for the current registered main Connected Platform aggregate path covering GA4, LinkedIn, Meta, and Custom Integration, with campaign financial totals able to include parent-platform child revenue/spend inputs when those inputs are configured inside the relevant platform flow.
-- Production-ready at the Performance Summary aggregate layer for future standalone platforms that supply valid `platformSources`.
+- Implemented and regression-covered for the registered main Connected Platform aggregate path covering GA4, LinkedIn, Meta, and Custom Integration, with campaign financial totals able to include parent-platform child revenue/spend inputs when those inputs are configured inside the relevant platform flow.
+- The aggregate layer can accept future standalone platforms that supply valid `platformSources`, but that capability is not source-specific production-readiness proof.
 - Platform-specific production readiness for Google Ads, TikTok, Instagram, and other future sources still depends on each platform's own connection, storage, refresh, campaign scoping, and resolver validation.
-- Live GA4 7-day and 30-day time-based validation remains a later production validation task using the documented live GA4 test-property setup.
+- Current whole-section certification is not asserted by this documentation-only reconciliation; exact-SHA certification gates and deployed evidence remain separate.
 
 ## Production Readiness Definition
 
@@ -770,7 +784,7 @@ Performance Summary is production ready only when:
 
 ## Current Status
 
-Production-ready for the current registered Performance Summary aggregate path and for future main Connected Platforms at the aggregate-contract layer via `platformSources`.
+Current implementation aligned with the cumulative current-value and exact-date Recent Movement contracts described above. This documentation-only reconciliation does not certify the current repository SHA.
 
 Platform-specific readiness for Google Ads, TikTok, Instagram, and other future standalone platforms remains part of each platform's own connection, storage, refresh, campaign scoping, and resolver implementation.
 
@@ -799,4 +813,4 @@ Unverified:
 
 ## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
 
-Root cause: scheduler snapshots used 90-day GA4 financial values while Overview/current-value consumers used the ordered campaign-to-date contract, and ROAS/ROI incorrectly required positive revenue. Commit `ec265895` deployed the shared full financial selector reuse, GA4-scoped persisted financial values, valid zero/negative revenue handling, and `performance_summary_aggregate_v2`; dynamic version comparison prevents v1 history from mixing with corrected values. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend. Performance Summary currently has no Total Revenue card, so no revenue-card validation is claimed here. The bounded Commit 10 packet is closed; scheduler-snapshot, historical, live multi-source, and zero/negative production-fixture proof remain external.
+Root cause: scheduler snapshots used 90-day GA4 financial values while Overview/current-value consumers used the ordered campaign-to-date contract, and ROAS/ROI incorrectly required positive revenue. Commit `ec265895` deployed the shared full financial selector reuse, GA4-scoped persisted financial values, valid zero/negative revenue handling, and `performance_summary_aggregate_v2`; dynamic version comparison prevents v1 history from mixing with corrected values. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend. The historical packet did not include a Total Revenue card; the current UI now renders Total Revenue in Key Outcomes and Recent Movement under the controlling contract above. The bounded Commit 10 packet is closed; scheduler-snapshot, historical, live multi-source, and zero/negative production-fixture proof remain external.

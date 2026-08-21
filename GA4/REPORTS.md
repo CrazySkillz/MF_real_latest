@@ -303,6 +303,9 @@ Important meaning:
 - `Reports` sits at the end of the GA4 dependency chain:
   `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights -> Reports`
 - reports are an output view of the latest refreshed GA4 campaign state
+- GA4 report Summary, KPI, and Benchmark traffic values use the saved initial-import boundary through the latest completed reporting day; the configured import depth is not converted into a rolling report window
+- scheduled/server-generated GA4 reports must prove that cumulative boundary from the saved connection and fail closed when it cannot be established
+- direct/browser and scheduled/server consumers must not substitute a narrower configured-lookback or rolling total for the cumulative current value
 - editing a report changes report configuration, scheduling, and delivery settings; it does not directly edit stored campaign metrics
 - generated report cards should not show a `Generated` status pill; generated state is already clear from the generated timestamp and download action
 

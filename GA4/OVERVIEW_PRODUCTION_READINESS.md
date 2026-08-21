@@ -14,6 +14,8 @@ This is the concise canonical index for the current GA4 Overview readiness decis
 
 Only evidence from the same deployed commit, production-data state, and documented scope can support certification. Every status must remain **proven**, **unproven**, or **requires external validation**.
 
+2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `1cf9031d50d321fb5cbd39deb26ecdf5ae60831c`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+
 ## Current Decision — Stable Cross-Session Answer
 
 <!-- ga4-overview-current-status -->

@@ -1,5 +1,7 @@
 # GA4 Insights Production Readiness
 
+2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `09e3b64ed67fec70aa84f969a09aae1f368a4f02`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->

@@ -142,6 +142,9 @@ Current-value hierarchy:
 - revenue-dependent benchmarks should use recomputed campaign revenue values
 - spend-dependent benchmarks should use recomputed campaign spend values
 - efficiency benchmarks like `ROAS`, `ROI`, and `CPA` should be derived from the current recomputed financial state
+- GA4 traffic Benchmark current values accumulate from the saved initial-import boundary through the latest completed reporting day; the configured import depth does not become a rolling window after setup
+- financial Benchmark current values retain the campaign-to-date native/imported revenue and spend contract documented in `GA4/FINANCIAL_SOURCES.md`
+- saved timeframe or period fields are target metadata and do not replace the authoritative cumulative current-value window
 - HubSpot imported revenue must enter GA4 financial Benchmark values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); the three exact enabled HubSpot source IDs are clean-certified inside the recorded Overview boundary, with `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` as the controlling source-family record
 - if dependencies are missing, the benchmark should be blocked instead of showing a misleading value
 

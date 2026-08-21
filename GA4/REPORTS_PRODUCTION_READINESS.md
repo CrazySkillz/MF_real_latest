@@ -5,6 +5,8 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
+2026-08-21 reconciliation: the authoritative machine record currently certifies only exact SHA `1cf9031d50d321fb5cbd39deb26ecdf5ae60831c`. Older narrative SHA references below are revision-specific history where they differ. This documentation-only reconciliation does not update the machine record or certify the current working tree.
+
 ## Purpose
 
 This file is the canonical production-readiness source of truth for the GA4 `Reports` tab and its GA4 report delivery surfaces. Campaign DeepDive is explicitly outside this certification.

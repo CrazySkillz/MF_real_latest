@@ -145,11 +145,10 @@ Current meaning:
 
 - findings are grouped by investigation type
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
-- KPI target findings require an explicit 30-day tracking period for 30-day traffic values; campaign-to-date financial values require a campaign-to-date target
+- standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: traffic metrics use the initial-import-through-latest-completed-day cumulative window, while financial metrics use campaign-to-date inputs
 - below-target KPI findings use factual `Below Saved Target` wording and the priority saved on that KPI; attainment percentage does not invent severity
 - every verified, period-compatible KPI below its saved target is shown; arbitrary attainment bands do not hide a miss
-- Benchmark findings require an explicitly matching reporting period; incompatible targets are withheld and summarized as one configuration finding
-- the period-mismatch finding identifies each affected saved target and value
+- legacy timeframe or period metadata must not replace the authoritative cumulative current-value window; unsupported custom metrics remain unscorable rather than being forced into a standard window
 - cards include data-basis and confidence labels
 - unverified KPI and Benchmark evaluations are consolidated into one data-readiness finding instead of presenting one shared source failure as many business issues
 - missing snapshot history is reported as unavailable and does not assume that a future scheduler run will succeed

@@ -451,6 +451,14 @@ Performance Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_P
 
 Performance Summary Overview should distinguish source availability from target evaluation. Connected-source metrics can populate the cards, but `Top Priority Action` should not say all metrics are on track unless campaign KPI or Benchmark targets exist. If no source metrics are available it should prompt for a connected source; if source metrics are available but no targets exist it should prompt for KPI or Benchmark targets.
 
+GA4 current-value window contract:
+
+- the configured historical lookback establishes the fixed initial-import boundary; it is not a permanent rolling display window
+- after the initial import, GA4 Summary traffic values accumulate from that fixed boundary through the latest completed reporting day
+- corresponding GA4 KPI and Benchmark `currentValue` fields are recomputed from those cumulative traffic inputs, while financial metrics retain their documented campaign-to-date source contract
+- Performance Summary Key Outcomes consume the same authoritative cumulative traffic and campaign-to-date financial source values; Campaign Health, Top Priority Action, and Recommended Actions consume the refreshed KPI and Benchmark current values. None may independently substitute a rolling 30/60/90-day total
+- Recent Movement is intentionally different: it compares the current cumulative value with the cumulative value at the exact prior date selected by the user
+
 Budget & Financial Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`.
 
 Platform Comparison production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`.

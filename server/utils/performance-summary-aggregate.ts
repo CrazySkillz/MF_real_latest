@@ -25,6 +25,13 @@ type SourceBreakdown = {
 type PerformanceSummaryAggregateInput = {
   campaignId: string;
   dateRange: string;
+  currentValueWindow?: {
+    mode: "initial_import_to_latest_completed_day";
+    startDate: string;
+    endDate: string;
+    dataThroughDate: string;
+    reportingTimeZone: string;
+  };
   ga4?: any;
   webAnalytics?: any;
   spend?: any;
@@ -133,15 +140,17 @@ const mainSourceAdapters: SourceAdapter[] = [
     build: (input) => {
       const linkedin = input.platforms?.linkedin || {};
       const linkedinConnected = linkedin.connected === true;
-      const hasLinkedInRevenue = linkedin.hasRevenueTracking === true;
+      const linkedinAvailable = linkedinConnected && linkedin.available !== false;
+      const linkedinSpendAvailable = linkedinAvailable && linkedin.spendAvailable !== false;
+      const hasLinkedInRevenue = linkedinAvailable && linkedin.hasRevenueTracking === true;
       return {
         id: "linkedin",
         label: "LinkedIn Ads",
         category: "paid_media",
         connected: linkedinConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"],
-        includedMetrics: linkedinConnected
-          ? ["impressions", "clicks", "spend", "conversions", "leads", ...(hasLinkedInRevenue ? ["attributedRevenue"] : [])]
+        includedMetrics: linkedinAvailable
+          ? ["impressions", "clicks", ...(linkedinSpendAvailable ? ["spend"] : []), "conversions", "leads", ...(hasLinkedInRevenue ? ["attributedRevenue"] : [])]
           : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
@@ -152,11 +161,11 @@ const mainSourceAdapters: SourceAdapter[] = [
             : []),
         ],
         metrics: {
-          impressions: parseNum(linkedin.impressions),
-          clicks: parseNum(linkedin.clicks),
-          spend: parseNum(linkedin.spend),
-          conversions: parseNum(linkedin.conversions),
-          leads: parseNum(linkedin.leads),
+          impressions: linkedinAvailable ? parseNum(linkedin.impressions) : null,
+          clicks: linkedinAvailable ? parseNum(linkedin.clicks) : null,
+          spend: linkedinSpendAvailable ? parseNum(linkedin.spend) : null,
+          conversions: linkedinAvailable ? parseNum(linkedin.conversions) : null,
+          leads: linkedinAvailable ? parseNum(linkedin.leads) : null,
           attributedRevenue: hasLinkedInRevenue ? parseNum(linkedin.attributedRevenue) : null,
         },
         freshness: linkedin.lastImportedAt ? { lastImportedAt: linkedin.lastImportedAt } : undefined,
@@ -168,15 +177,17 @@ const mainSourceAdapters: SourceAdapter[] = [
     build: (input) => {
       const meta = input.platforms?.meta || {};
       const metaConnected = meta.connected === true;
-      const hasMetaRevenue = meta.hasRevenueTracking === true;
+      const metaAvailable = metaConnected && meta.available !== false;
+      const metaSpendAvailable = metaAvailable && meta.spendAvailable !== false;
+      const hasMetaRevenue = metaAvailable && meta.hasRevenueTracking === true;
       return {
         id: "meta",
         label: "Meta Ads",
         category: "paid_media",
         connected: metaConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-        includedMetrics: metaConnected
-          ? ["impressions", "clicks", "spend", "conversions", ...(hasMetaRevenue ? ["attributedRevenue"] : [])]
+        includedMetrics: metaAvailable
+          ? ["impressions", "clicks", ...(metaSpendAvailable ? ["spend"] : []), "conversions", ...(hasMetaRevenue ? ["attributedRevenue"] : [])]
           : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
@@ -188,10 +199,10 @@ const mainSourceAdapters: SourceAdapter[] = [
             : []),
         ],
         metrics: {
-          impressions: parseNum(meta.impressions),
-          clicks: parseNum(meta.clicks),
-          spend: parseNum(meta.spend),
-          conversions: parseNum(meta.conversions),
+          impressions: metaAvailable ? parseNum(meta.impressions) : null,
+          clicks: metaAvailable ? parseNum(meta.clicks) : null,
+          spend: metaSpendAvailable ? parseNum(meta.spend) : null,
+          conversions: metaAvailable ? parseNum(meta.conversions) : null,
           attributedRevenue: hasMetaRevenue ? parseNum(meta.attributedRevenue) : null,
         },
       };
@@ -202,6 +213,7 @@ const mainSourceAdapters: SourceAdapter[] = [
     build: (input) => {
       const custom = input.platforms?.customIntegration || {};
       const customConnected = custom.connected === true;
+      const customAvailable = customConnected && custom.available !== false;
       const customIsWebProvider = input.webAnalytics?.provider === "custom_integration";
       const paidMetricKeys = ["impressions", "clicks", "spend", "conversions"];
       const webMetricKeys = ["users", "sessions", "pageviews", "revenue"];
@@ -215,7 +227,7 @@ const mainSourceAdapters: SourceAdapter[] = [
         category: "custom",
         connected: customConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
-        includedMetrics: customConnected
+        includedMetrics: customAvailable
           ? [...includedPaidMetrics, ...includedWebMetrics]
           : [],
         excludedMetrics: customConnected
@@ -241,14 +253,14 @@ const mainSourceAdapters: SourceAdapter[] = [
             ]
           : [],
         metrics: {
-          impressions: parseNum(custom.impressions),
-          clicks: parseNum(custom.clicks),
-          spend: parseNum(custom.spend),
-          conversions: parseNum(custom.conversions),
-          users: parseNum(custom.users),
-          sessions: parseNum(custom.sessions),
-          pageviews: parseNum(custom.pageviews),
-          revenue: parseNum(custom.revenue),
+          impressions: customAvailable ? parseNum(custom.impressions) : null,
+          clicks: customAvailable ? parseNum(custom.clicks) : null,
+          spend: customAvailable ? parseNum(custom.spend) : null,
+          conversions: customAvailable ? parseNum(custom.conversions) : null,
+          users: customAvailable ? parseNum(custom.users) : null,
+          sessions: customAvailable ? parseNum(custom.sessions) : null,
+          pageviews: customAvailable ? parseNum(custom.pageviews) : null,
+          revenue: customAvailable ? parseNum(custom.revenue) : null,
         },
         freshness: custom.lastUploadedAt ? { lastUploadedAt: custom.lastUploadedAt } : undefined,
       };
@@ -260,6 +272,14 @@ export const getPerformanceSummaryMainSourceAdapterIds = () => mainSourceAdapter
 
 export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggregateInput) {
   const sourceBreakdown: SourceBreakdown[] = [];
+  const currentValueWindow = input.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && /^\d{4}-\d{2}-\d{2}$/.test(input.currentValueWindow.startDate)
+    && /^\d{4}-\d{2}-\d{2}$/.test(input.currentValueWindow.endDate)
+    && input.currentValueWindow.startDate <= input.currentValueWindow.endDate
+    && input.currentValueWindow.dataThroughDate === input.currentValueWindow.endDate
+    && Boolean(input.currentValueWindow.reportingTimeZone)
+      ? input.currentValueWindow
+      : null;
 
   for (const adapter of mainSourceAdapters) {
     addMainSource(sourceBreakdown, adapter.build(input));
@@ -307,6 +327,8 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     paidMetricSources(metricName).reduce((sum, source) => sum + parseNum(source.metrics[metricName]), 0);
 
   const webConnected = input.webAnalytics?.connected === true && input.webAnalytics?.available !== false;
+  const webProviderConfigured = input.webAnalytics?.connected === true
+    && ["ga4", "custom_integration"].includes(String(input.webAnalytics?.provider || ""));
   const webSource = webConnected && input.webAnalytics?.provider === "ga4" ? "ga4"
     : webConnected && input.webAnalytics?.provider === "custom_integration" ? "custom_integration"
       : null;
@@ -330,7 +352,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const impressionsSources = paidMetricSources("impressions").map((source) => source.id);
   const clicksSources = paidMetricSources("clicks").map((source) => source.id);
   const paidConversionSources = paidMetricSources("conversions").map((source) => source.id);
-  const conversionSources = webSource ? [webSource] : paidConversionSources;
+  const conversionSources = webSource ? [webSource] : webProviderConfigured ? [] : paidConversionSources;
   const leadsSources = paidMetricSources("leads").map((source) => source.id);
   const sessionSources = webSource ? [webSource] : [];
   const userSources = webSource ? [webSource] : [];
@@ -339,31 +361,42 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const totalClicks = sumPaidMetric("clicks");
   const totalConversions = webSource
     ? parseNum(input.webAnalytics?.conversions)
-    : sumPaidMetric("conversions");
+    : webProviderConfigured ? 0 : sumPaidMetric("conversions");
   const totalLeads = sumPaidMetric("leads");
   const totalSessions = webSource ? parseNum(input.webAnalytics?.sessions) : 0;
   const totalUsers = webSource ? parseNum(input.webAnalytics?.users) : 0;
-  const cpc = spendValue > 0 && totalClicks > 0 ? round2(spendValue / totalClicks) : null;
+  const costSources = currentValueWindow ? paidMetricSources("spend") : paidSources;
+  const costSpendValue = currentValueWindow
+    ? costSources.reduce((sum, source) => sum + parseNum(source.metrics.spend), 0)
+    : spendValue;
+  const costClicks = currentValueWindow
+    ? costSources.reduce((sum, source) => sum + (source.includedMetrics.includes("clicks") ? parseNum(source.metrics.clicks) : 0), 0)
+    : totalClicks;
+  const costImpressions = currentValueWindow
+    ? costSources.reduce((sum, source) => sum + (source.includedMetrics.includes("impressions") ? parseNum(source.metrics.impressions) : 0), 0)
+    : totalImpressions;
+  const cpc = costSpendValue > 0 && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
   const cpa = spendValue > 0 && totalConversions > 0 ? round2(spendValue / totalConversions) : null;
-  const cpm = spendValue > 0 && totalImpressions > 0 ? round2((spendValue / totalImpressions) * 1000) : null;
+  const cpm = costSpendValue > 0 && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
   const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
-  const cvr = totalClicks > 0 && totalConversions > 0
-    ? round2((totalConversions / totalClicks) * 100)
-    : totalSessions > 0 && totalConversions > 0
+  const cvr = webSource && totalSessions > 0 && totalConversions > 0
       ? round2((totalConversions / totalSessions) * 100)
+    : !webSource && totalClicks > 0 && totalConversions > 0
+      ? round2((totalConversions / totalClicks) * 100)
       : null;
-  const cvrSources = totalClicks > 0 && totalConversions > 0
-    ? ["conversions", "clicks"]
-    : totalSessions > 0 && totalConversions > 0
+  const cvrSources = webSource && totalSessions > 0 && totalConversions > 0
       ? ["conversions", "sessions"]
+    : !webSource && totalClicks > 0 && totalConversions > 0
+      ? ["conversions", "clicks"]
       : [];
 
   return {
     campaignId: input.campaignId,
     dateRange: input.dateRange,
-    version: "performance_summary_aggregate_v2",
+    version: currentValueWindow ? "performance_summary_aggregate_v3" : "performance_summary_aggregate_v2",
+    ...(currentValueWindow ? { currentValueWindow } : {}),
     sources: sourceBreakdown,
     totals: {
       impressions: metric(totalImpressions, impressionsSources, ["No connected paid-media source provides impressions; GA4 engagement rate is not an impressions metric"]),

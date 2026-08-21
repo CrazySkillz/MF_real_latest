@@ -209,7 +209,7 @@ function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
   };
 }
 
-async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
+async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string, requirePersistedRows = false) {
   const parseNum = (v: any): number => {
     if (v === null || typeof v === "undefined" || v === "") return 0;
     const n = typeof v === "string" ? parseFloat(v) : Number(v);
@@ -236,6 +236,11 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
       const selectedSet = new Set(selectedCampaignIds);
       const googleAdsRows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))
         .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId)));
+      const coveredCampaignIds = new Set(googleAdsRows
+        .filter((row: any) => String(row?.date || "") === endDate)
+        .map((row: any) => String(row?.googleCampaignId || "")));
+      const hasWindowData = !requirePersistedRows || (selectedSet.size > 0 && selectedCampaignIds.every((id) => coveredCampaignIds.has(id)));
+      const spendAvailable = hasWindowData && !requirePersistedRows;
       const totals = googleAdsRows.reduce((sum: any, row: any) => ({
         impressions: sum.impressions + parseNum(row?.impressions),
         clicks: sum.clicks + parseNum(row?.clicks),
@@ -250,12 +255,12 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
       const importedRevenueSourceIds = Array.isArray((importedRevenueTotals as any)?.sourceIds)
         ? (importedRevenueTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
         : [];
-      const hasImportedAttributedRevenue = importedAttributedRevenue > 0;
+      const hasImportedAttributedRevenue = !requirePersistedRows && importedAttributedRevenue > 0;
       const ga4AttributedRevenue = parseNum(totals.ga4AttributedRevenue);
       const conversionValue = parseNum(totals.conversionValue);
       const attributedRevenueSource = hasImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";
       const attributedRevenue = hasImportedAttributedRevenue ? importedAttributedRevenue : 0;
-      googleAdsSpend = parseNum(totals.spend);
+      googleAdsSpend = spendAvailable ? parseNum(totals.spend) : 0;
       const lastRow = googleAdsRows[googleAdsRows.length - 1];
       googleAdsLastUpdate = (lastRow as any)?.date || null;
       googleAds = {
@@ -264,17 +269,17 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
         category: "paid_media",
         connected: true,
         capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-        includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])],
+        includedMetrics: hasWindowData ? ["impressions", "clicks", ...(spendAvailable ? ["spend"] : []), "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])] : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
           ...(hasImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
         ],
         metrics: {
-          impressions: parseNum(totals.impressions),
-          clicks: parseNum(totals.clicks),
-          spend: googleAdsSpend,
-          conversions: parseNum(totals.conversions),
+          impressions: hasWindowData ? parseNum(totals.impressions) : null,
+          clicks: hasWindowData ? parseNum(totals.clicks) : null,
+          spend: spendAvailable ? googleAdsSpend : null,
+          conversions: hasWindowData ? parseNum(totals.conversions) : null,
           conversionValue,
           ga4AttributedRevenue,
           importedAttributedRevenue,
@@ -297,7 +302,7 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
   return { googleAds, googleAdsSpend, googleAdsLastUpdate };
 }
 
-async function buildInstagramPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
+async function buildInstagramPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string, requirePersistedRows = false) {
   const parseNum = (v: any): number => {
     if (v === null || typeof v === "undefined" || v === "") return 0;
     const n = typeof v === "string" ? parseFloat(v) : Number(v);
@@ -324,13 +329,18 @@ async function buildInstagramPlatformSourceForAggregate(campaignId: string, star
       const selectedSet = new Set(selectedCampaignIds);
       const instagramRows = (await storage.getInstagramDailyMetrics(campaignId, startDate, endDate))
         .filter((row: any) => selectedSet.has(String(row?.instagramCampaignId)) && String(row?.publisherPlatform || "instagram") === "instagram");
+      const coveredCampaignIds = new Set(instagramRows
+        .filter((row: any) => String(row?.date || "") === endDate)
+        .map((row: any) => String(row?.instagramCampaignId || "")));
+      const hasWindowData = !requirePersistedRows || selectedCampaignIds.every((id) => coveredCampaignIds.has(id));
+      const spendAvailable = hasWindowData && !requirePersistedRows;
       const totals = instagramRows.reduce((sum: any, row: any) => ({
         impressions: sum.impressions + parseNum(row?.impressions),
         clicks: sum.clicks + parseNum(row?.clicks),
         spend: sum.spend + parseNum(row?.spend),
         conversions: sum.conversions + parseNum(row?.conversions),
       }), { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
-      instagramSpend = parseNum(totals.spend);
+      instagramSpend = spendAvailable ? parseNum(totals.spend) : 0;
       const lastRow = instagramRows[instagramRows.length - 1];
       instagramLastUpdate = (lastRow as any)?.date || null;
       instagram = {
@@ -339,17 +349,17 @@ async function buildInstagramPlatformSourceForAggregate(campaignId: string, star
         category: "paid_media",
         connected: true,
         capabilities: ["impressions", "clicks", "spend", "conversions"],
-        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: hasWindowData ? ["impressions", "clicks", ...(spendAvailable ? ["spend"] : []), "conversions"] : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
           { metric: "attributedRevenue", reason: "Instagram attributed revenue requires an Instagram-scoped imported revenue source" },
         ],
         metrics: {
-          impressions: parseNum(totals.impressions),
-          clicks: parseNum(totals.clicks),
-          spend: instagramSpend,
-          conversions: parseNum(totals.conversions),
+          impressions: hasWindowData ? parseNum(totals.impressions) : null,
+          clicks: hasWindowData ? parseNum(totals.clicks) : null,
+          spend: spendAvailable ? instagramSpend : null,
+          conversions: hasWindowData ? parseNum(totals.conversions) : null,
         },
         revenueSemantics: {
           attributedRevenueSource: "unavailable",
@@ -368,7 +378,13 @@ async function buildInstagramPlatformSourceForAggregate(campaignId: string, star
   return { instagram, instagramSpend, instagramLastUpdate };
 }
 
-async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
+async function buildTikTokPlatformSourceForAggregate(
+  campaignId: string,
+  startDate: string,
+  endDate: string,
+  requirePersistedRows = false,
+  expectedCurrency?: string,
+) {
   const parseNum = (v: any): number => {
     if (v === null || typeof v === "undefined" || v === "") return 0;
     const n = typeof v === "string" ? parseFloat(v) : Number(v);
@@ -395,6 +411,13 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
       const selectedSet = new Set(selectedCampaignIds);
       const tiktokRows = (await storage.getTikTokDailyMetrics(campaignId, startDate, endDate))
         .filter((row: any) => selectedSet.has(String(row?.tiktokCampaignId)));
+      const coveredCampaignIds = new Set(tiktokRows
+        .filter((row: any) => String(row?.date || "") === endDate)
+        .map((row: any) => String(row?.tiktokCampaignId || "")));
+      const hasWindowData = !requirePersistedRows || selectedCampaignIds.every((id) => coveredCampaignIds.has(id));
+      const observedCurrencies = new Set(tiktokRows.map((row: any) => String(row?.currency || "").trim().toUpperCase()).filter(Boolean));
+      const spendAvailable = hasWindowData && (!requirePersistedRows
+        || (observedCurrencies.size === 1 && observedCurrencies.has(String(expectedCurrency || "").trim().toUpperCase())));
       const totals = tiktokRows.reduce((sum: any, row: any) => ({
         impressions: sum.impressions + parseNum(row?.impressions),
         clicks: sum.clicks + parseNum(row?.clicks),
@@ -407,8 +430,8 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
       const importedRevenueSourceIds = Array.isArray((importedRevenueTotals as any)?.sourceIds)
         ? (importedRevenueTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
         : [];
-      const hasImportedAttributedRevenue = importedAttributedRevenue > 0;
-      tiktokSpend = parseNum(totals.spend);
+      const hasImportedAttributedRevenue = !requirePersistedRows && importedAttributedRevenue > 0;
+      tiktokSpend = spendAvailable ? parseNum(totals.spend) : 0;
       const lastRow = tiktokRows[tiktokRows.length - 1];
       tiktokLastUpdate = (lastRow as any)?.date || null;
       tiktok = {
@@ -417,7 +440,7 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
         category: "paid_media",
         connected: true,
         capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-        includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])],
+        includedMetrics: hasWindowData ? ["impressions", "clicks", ...(spendAvailable ? ["spend"] : []), "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])] : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
@@ -425,10 +448,10 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
           ...(hasImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source" }]),
         ],
         metrics: {
-          impressions: parseNum(totals.impressions),
-          clicks: parseNum(totals.clicks),
-          spend: tiktokSpend,
-          conversions: parseNum(totals.conversions),
+          impressions: hasWindowData ? parseNum(totals.impressions) : null,
+          clicks: hasWindowData ? parseNum(totals.clicks) : null,
+          spend: spendAvailable ? tiktokSpend : null,
+          conversions: hasWindowData ? parseNum(totals.conversions) : null,
           importedAttributedRevenue,
           attributedRevenue: hasImportedAttributedRevenue ? importedAttributedRevenue : null,
         },
@@ -447,7 +470,11 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
   return { tiktok, tiktokSpend, tiktokLastUpdate };
 }
 
-async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any) {
+async function buildLinkedInPlatformSourceForAggregate(
+  campaignId: string,
+  linkedInConn?: any,
+  exactWindow?: { startDate: string; endDate: string },
+) {
   const parseNum = (v: any): number => {
     if (v === null || typeof v === "undefined" || v === "") return 0;
     const n = typeof v === "string" ? parseFloat(v) : Number(v);
@@ -461,6 +488,35 @@ async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linke
   try {
     const connection = linkedInConn ?? await storage.getLinkedInConnection(campaignId).catch(() => null);
     if (connection && connection.adAccountId && !(connection as any).spendOnly) {
+      if (exactWindow) {
+        const rows = await storage.getLinkedInDailyMetrics(campaignId, exactWindow.startDate, exactWindow.endDate);
+        const totals = rows.reduce((sum: any, row: any) => ({
+          impressions: sum.impressions + parseNum(row?.impressions),
+          clicks: sum.clicks + parseNum(row?.clicks),
+          spend: sum.spend + parseNum(row?.spend),
+          conversions: sum.conversions + parseNum(row?.conversions),
+          leads: sum.leads + parseNum(row?.leads),
+        }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, leads: 0 });
+        const hasWindowData = rows.some((row: any) => String(row?.date || "") === exactWindow.endDate);
+        const lastRow = rows[rows.length - 1];
+        linkedInSpend = 0;
+        linkedInLastUpdate = lastRow?.updatedAt instanceof Date
+          ? lastRow.updatedAt.toISOString()
+          : String(lastRow?.date || "") || null;
+        linkedIn = {
+          connected: true,
+          available: hasWindowData,
+          spendAvailable: false,
+          spend: null,
+          clicks: hasWindowData ? parseNum(totals.clicks) : null,
+          impressions: hasWindowData ? parseNum(totals.impressions) : null,
+          conversions: hasWindowData ? parseNum(totals.conversions) : null,
+          leads: hasWindowData ? parseNum(totals.leads) : null,
+          hasRevenueTracking: false,
+          lastImportedAt: linkedInLastUpdate,
+        };
+        return { linkedIn, linkedInSpend, linkedInLastUpdate };
+      }
       const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
       if (latestSession) {
         const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
@@ -14001,7 +14057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getCustomIntegration(campaignId),
         storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]),
       ]);
-      const activeGA4 = (ga4Connections || []).some((c: any) => c?.propertyId && c.propertyId !== "");
+      const activeGA4 = (ga4Connections || []).some((c: any) => c?.isActive !== false && c?.propertyId && c.propertyId !== "");
 
       // GA4 totals
       let ga4Totals: any = {
@@ -14093,7 +14149,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Persisted spend totals (manual/CSV/Sheets imports)
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const persistedPrimaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
+      const persistedPrimaryGA4 = (ga4Connections || []).find((c: any) => c?.isActive !== false && c?.isPrimary && c?.propertyId)
+        || (ga4Connections || []).find((c: any) => c?.isActive !== false && c?.propertyId);
       const persistedPropertyId = String(persistedPrimaryGA4?.propertyId || "");
       if (!ga4TotalsFromSourceTruth && activeGA4 && persistedPropertyId && (
         isYesopMockProperty(persistedPropertyId)
@@ -14142,18 +14199,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Keep live GA4 result if persisted fallback is unavailable.
         }
       }
-      const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate, "ga4");
+      const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate, "ga4")
+        .catch(() => ({ totalSpend: 0, sourceIds: [] as string[] }));
       const persistedSpend = parseNum((spendTotals as any)?.totalSpend);
-      let performanceSummarySpendTotals = spendTotals;
-      let performanceSummarySpend = persistedSpend;
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const campaignToDateWindow = activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)
+        ? resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
+        : null;
+      const currentValueWindow = campaignToDateWindow ? {
+        mode: "initial_import_to_latest_completed_day" as const,
+        startDate: campaignToDateWindow.startDate,
+        endDate: campaignToDateWindow.endDate,
+        dataThroughDate: campaignToDateWindow.dataThroughDate,
+        reportingTimeZone: campaignToDateWindow.reportingTimeZone,
+      } : null;
+      let performanceSummarySpendTotals: any = currentValueWindow ? null : spendTotals;
+      let performanceSummarySpend = currentValueWindow ? 0 : persistedSpend;
+      let canonicalPerformanceSummarySpendAvailable = !currentValueWindow && Array.isArray((spendTotals as any)?.sourceIds)
+        && (spendTotals as any).sourceIds.length > 0;
       let financialSpendInputs: any[] = [];
       try {
-        // Budget pacing dates are campaign metadata and must not narrow imported spend provenance.
-        const spendStartDate = "1900-01-01";
-        const spendEndDate = new Date().toISOString().slice(0, 10);
-        const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4");
+        const spendStartDate = currentValueWindow?.startDate || "1900-01-01";
+        const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
+        const [spendToDateTotals, spendBreakdown] = await Promise.all([
+          storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4"),
+          storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4"),
+        ]);
+        const spendSourceIds = Array.isArray((spendToDateTotals as any)?.sourceIds)
+          ? (spendToDateTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
+          : [];
+        if (currentValueWindow && spendSourceIds.length > 0 && String((spendToDateTotals as any)?.currency || "").trim().toUpperCase() !== campaignCurrency) {
+          throw new Error("Campaign-to-date spend currency does not match the campaign currency");
+        }
         financialSpendInputs = spendBreakdown
-          .filter((source: any) => parseNum(source?.spend) > 0)
           .map((source: any) => ({
             id: String(source?.sourceId || source?.displayName || "spend_source"),
             label: String(source?.displayName || source?.sourceType || "Spend Source"),
@@ -14161,17 +14239,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             value: parseNum(source?.spend),
             currency: source?.currency || null,
           }));
-        const spendToDate = spendBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.spend), 0);
-        if (spendToDate > persistedSpend) {
+        const spendToDate = parseNum((spendToDateTotals as any)?.totalSpend);
+        if (currentValueWindow || spendToDate > persistedSpend) {
           performanceSummarySpend = Number(spendToDate.toFixed(2));
           performanceSummarySpendTotals = {
             totalSpend: performanceSummarySpend,
-            currency: spendBreakdown.find((source: any) => source?.currency)?.currency || (spendTotals as any)?.currency,
-            sourceIds: spendBreakdown.map((source: any) => String(source?.sourceId)).filter(Boolean),
+            currency: (spendToDateTotals as any)?.currency,
+            sourceIds: spendSourceIds,
           };
+          canonicalPerformanceSummarySpendAvailable = spendSourceIds.length > 0;
         }
       } catch {
-        // Keep the date-range spend total if spend-to-date cannot be resolved.
+        if (currentValueWindow) {
+          performanceSummarySpendTotals = null;
+          performanceSummarySpend = 0;
+          canonicalPerformanceSummarySpendAvailable = false;
+          financialSpendInputs = [];
+        }
       }
       let importedRevenueToDateTotal = 0;
       let importedRevenueSources: any[] = [];
@@ -14180,20 +14264,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let hasImportedRevenueSource = false;
       const materializedRevenueSourceTypes = new Set<string>();
       try {
-        // Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.
-        const revenueStartDate = "1900-01-01";
-        const revenueEndDate = new Date().toISOString().slice(0, 10);
-        const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
-        importedRevenueAvailable = true;
-        const revenueSourceDefinitions = await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]);
+        const revenueStartDate = currentValueWindow?.startDate || "1900-01-01";
+        const revenueEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
+        const [revenueTotals, revenueBreakdown, revenueSourceDefinitions] = await Promise.all([
+          storage.getRevenueTotalForRange(campaignId, revenueStartDate, revenueEndDate, "ga4"),
+          storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4"),
+          storage.getRevenueSources(campaignId, "ga4"),
+        ]);
         hasImportedRevenueSource = revenueSourceDefinitions.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
+        if (currentValueWindow) {
+          const representedSourceIds = new Set(revenueBreakdown.map((source: any) => String(source?.sourceId || "")).filter(Boolean));
+          const hasMissingActiveSource = revenueSourceDefinitions.some((source: any) =>
+            source?.isActive !== false && !representedSourceIds.has(String(source?.id || ""))
+          );
+          if (hasMissingActiveSource) throw new Error("Campaign-to-date revenue source is not fully materialized");
+        }
+        importedRevenueAvailable = true;
         const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
         for (const source of revenueBreakdown) {
           materializedRevenueSourceTypes.add(String(source?.sourceType || "").trim().toLowerCase());
         }
-        importedRevenueToDateTotal = Number(revenueBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));
+        importedRevenueToDateTotal = Number(parseNum((revenueTotals as any)?.totalRevenue).toFixed(2));
         financialRevenueInputs = revenueBreakdown
-          .filter((source: any) => parseNum(source?.revenue) > 0)
           .map((source: any) => ({
             id: String(source?.sourceId || source?.displayName || "revenue_source"),
             label: String(source?.displayName || source?.sourceType || "Revenue Source"),
@@ -14202,7 +14294,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency: source?.currency || null,
           }));
         importedRevenueSources = revenueBreakdown
-          .filter((source: any) => parseNum(source?.revenue) > 0)
           .map((source: any) => ({
             type: String(source?.displayName || source?.sourceType || "Revenue Source"),
             connected: true,
@@ -14218,7 +14309,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Keep mapped-source fallback if revenue records cannot be resolved.
       }
 
-      const { linkedIn, linkedInSpend } = await buildLinkedInPlatformSourceForAggregate(campaignId, linkedInConn);
+      const { linkedIn, linkedInSpend } = await buildLinkedInPlatformSourceForAggregate(
+        campaignId,
+        linkedInConn,
+        currentValueWindow ? { startDate: currentValueWindow.startDate, endDate: currentValueWindow.endDate } : undefined,
+      );
 
       // Meta summary inputs — resolve revenue using canonical meta-revenue utility
       let meta: any = { connected: false };
@@ -14226,11 +14321,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         if (metaConn && !(metaConn as any).spendOnly) {
           let spend = 0, clicks = 0, impressions = 0, conversions = 0;
+          let metaWindowAvailable = !currentValueWindow;
           const selectedMetaCampaignIds = parseMetaSelectedCampaignIds(metaConn);
           const selectedMetaCampaignSet = new Set(selectedMetaCampaignIds);
 
           if (selectedMetaCampaignIds.length === 0) {
             meta = { connected: false, hasSelectedCampaigns: false };
+          } else if (currentValueWindow) {
+            const rows = (await storage.getMetaDailyMetrics(campaignId, currentValueWindow.startDate, currentValueWindow.endDate).catch(() => [] as any[]))
+              .filter((row: any) => selectedMetaCampaignSet.has(String(row?.metaCampaignId || "")));
+            const coveredCampaignIds = new Set(rows
+              .filter((row: any) => String(row?.date || "") === currentValueWindow.endDate)
+              .map((row: any) => String(row?.metaCampaignId || "")));
+            metaWindowAvailable = selectedMetaCampaignIds.every((id) => coveredCampaignIds.has(id));
+            for (const row of rows) {
+              spend += parseNum(row?.spend);
+              clicks += parseNum(row?.clicks);
+              impressions += parseNum(row?.impressions);
+              conversions += parseNum(row?.conversions);
+            }
           } else if ((metaConn as any).method === "test_mode") {
             const rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]))
               .filter((row: any) => selectedMetaCampaignSet.has(String(row?.metaCampaignId || "")));
@@ -14260,23 +14369,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           if (selectedMetaCampaignIds.length > 0) {
-            metaSpend = spend;
+            metaSpend = currentValueWindow ? 0 : spend;
 
-            // Resolve Meta revenue using canonical utility (mirrors LinkedIn pattern)
-            const { resolveMetaRevenueContext } = await import("./utils/meta-revenue");
-            const rev = await resolveMetaRevenueContext({
-              campaignId,
-              conversionsTotal: conversions,
-            });
-
-            const hasRevenueTracking = !!rev.hasRevenueTracking;
+            const rev = currentValueWindow ? null : await (async () => {
+              const { resolveMetaRevenueContext } = await import("./utils/meta-revenue");
+              return resolveMetaRevenueContext({ campaignId, conversionsTotal: conversions });
+            })();
+            const hasRevenueTracking = !!rev?.hasRevenueTracking;
             const attributedRevenue = hasRevenueTracking ? parseFloat(Number(rev.totalRevenue || 0).toFixed(2)) : null;
             const roas = hasRevenueTracking && metaSpend > 0 ? parseFloat((Number(attributedRevenue) / metaSpend).toFixed(2)) : null;
             const roi = hasRevenueTracking && metaSpend > 0 ? parseFloat((((Number(attributedRevenue) - metaSpend) / metaSpend) * 100).toFixed(2)) : null;
 
             meta = {
               connected: true,
-              spend: metaSpend,
+              available: metaWindowAvailable,
+              spendAvailable: !currentValueWindow,
+              spend: currentValueWindow ? null : metaSpend,
               clicks: parseNum(clicks),
               impressions: parseNum(impressions),
               conversions: parseNum(conversions),
@@ -14293,11 +14401,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         meta = { connected: !!metaConn, error: e?.message || "Meta unavailable" };
       }
 
-      const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);
-      const { instagram, instagramSpend } = await buildInstagramPlatformSourceForAggregate(campaignId, startDate, endDate);
-      const { tiktok, tiktokSpend } = await buildTikTokPlatformSourceForAggregate(campaignId, startDate, endDate);
-      const googleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(campaignId, startDate, endDate);
-      const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials);
+      const aggregateStartDate = currentValueWindow?.startDate || startDate;
+      const aggregateEndDate = currentValueWindow?.endDate || endDate;
+      const requireExactPlatformRows = Boolean(currentValueWindow);
+      const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows);
+      const { instagram, instagramSpend } = await buildInstagramPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows);
+      const { tiktok, tiktokSpend } = await buildTikTokPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows, campaignCurrency);
+      const googleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(campaignId, aggregateStartDate, aggregateEndDate);
+      const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow);
 
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
@@ -14309,20 +14420,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasImportedCustomMetric(source, key) ? parseNum(source?.[key]) : null;
       try {
         if (customIntegration) {
-          const latest = await storage.getLatestCustomIntegrationMetrics(campaignId);
-          const m: any = latest || {};
-          custom = {
-            connected: true,
-            spend: customMetricValue(m, "spend"),
-            clicks: customMetricValue(m, "clicks"),
-            impressions: customMetricValue(m, "impressions"),
-            conversions: customMetricValue(m, "conversions"),
-            users: customMetricValue(m, "users"),
-            sessions: customMetricValue(m, "sessions"),
-            pageviews: customMetricValue(m, "pageviews"),
-            revenue: customMetricValue(m, "revenue"),
-            lastUploadedAt: m.uploadedAt || null,
-          };
+          if (currentValueWindow) {
+            custom = { connected: true, available: false };
+          } else {
+            const latest = await storage.getLatestCustomIntegrationMetrics(campaignId);
+            const m: any = latest || {};
+            custom = {
+              connected: true,
+              spend: customMetricValue(m, "spend"),
+              clicks: customMetricValue(m, "clicks"),
+              impressions: customMetricValue(m, "impressions"),
+              conversions: customMetricValue(m, "conversions"),
+              users: customMetricValue(m, "users"),
+              sessions: customMetricValue(m, "sessions"),
+              pageviews: customMetricValue(m, "pageviews"),
+              revenue: customMetricValue(m, "revenue"),
+              lastUploadedAt: m.uploadedAt || null,
+            };
+          }
         }
       } catch (e: any) {
         custom = { connected: !!customIntegration, error: e?.message || "Custom integration unavailable" };
@@ -14365,22 +14480,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? parseNum(custom?.users)
               : 0,
       };
-      let financialGa4Totals = { ...ga4Totals, available: ga4TotalsAvailable };
-      const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? ga4TotalsAvailable : !webAnalyticsProvider || !custom?.error };
+      let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };
+      const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
-        try {
+        if (!currentValueWindow) {
+          financialGa4Totals = { ...financialGa4Totals, available: false };
+          financialWebAnalytics.available = false;
+          financialWebAnalytics.revenue = 0;
+          financialWebAnalytics.conversions = 0;
+          financialWebAnalytics.sessions = 0;
+          financialWebAnalytics.users = 0;
+        } else {
+          try {
           let persistedFinancialCandidate: any = null;
           let toDateFinancialCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
-          const rawStart = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
-          const startDateUsed = rawStart && !Number.isNaN(new Date(rawStart).getTime())
-            ? new Date(rawStart).toISOString().slice(0, 10)
-            : "2000-01-01";
-          const now = new Date();
-          const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-          const endDateUsed = formatISODateUTC(new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000));
+          const startDateUsed = currentValueWindow.startDate;
+          const endDateUsed = currentValueWindow.endDate;
           const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDateUsed, endDateUsed).catch(() => [] as any[]);
-          if (persistedFinancialRows.length > 0) {
+          const latestPersistedFinancialDate = persistedFinancialRows.reduce(
+            (latest: string, row: any) => String(row?.date || "") > latest ? String(row?.date || "") : latest,
+            "",
+          );
+          if (persistedFinancialRows.length > 0 && latestPersistedFinancialDate === endDateUsed) {
             persistedFinancialCandidate = persistedFinancialRows.reduce((totals: any, row: any) => ({
               revenue: totals.revenue + parseNum(row?.revenue),
               conversions: totals.conversions + parseNum(row?.conversions),
@@ -14406,30 +14528,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           if (hasImportedRevenueSource && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate)) {
-            ga4TotalsAvailable = false;
             financialGa4Totals = { ...financialGa4Totals, available: false };
             financialWebAnalytics.available = false;
             financialWebAnalytics.revenue = 0;
             financialWebAnalytics.conversions = 0;
           } else {
-            financialGa4Totals = selectGA4FinancialTotalsSource([
+            const exactFinancialCandidate = selectGA4FinancialTotalsSource([
               toDateFinancialCandidate,
               persistedFinancialCandidate,
-              financialGa4Totals,
-            ], toDateFinancialCandidate || financialGa4Totals);
-            financialGa4Totals.available = ga4TotalsAvailable;
+            ], null as any);
+            const exactFinancialCandidateAvailable = isGA4FinancialTotalsCandidate(exactFinancialCandidate);
+            financialGa4Totals = exactFinancialCandidateAvailable
+              ? { ...exactFinancialCandidate, connected: true, available: true }
+              : { ...financialGa4Totals, available: false };
+            financialWebAnalytics.available = exactFinancialCandidateAvailable;
             financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
             financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
             financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
-            financialWebAnalytics.users = parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users);
+            financialWebAnalytics.users = parseNum(financialGa4Totals.users);
           }
-        } catch {
-          if (hasImportedRevenueSource) {
-            ga4TotalsAvailable = false;
+          } catch {
             financialGa4Totals = { ...financialGa4Totals, available: false };
             financialWebAnalytics.available = false;
             financialWebAnalytics.revenue = 0;
             financialWebAnalytics.conversions = 0;
+            financialWebAnalytics.sessions = 0;
+            financialWebAnalytics.users = 0;
           }
         }
       }
@@ -14438,9 +14562,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
       // - Otherwise, fall back to sum of connected ad-platform spends.
       const instagramSpendForAggregate = instagramSpend;
-      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(custom?.spend)).toFixed(2));
+      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(googleSheets?.metrics?.spend) + parseNum(custom?.spend)).toFixed(2));
       const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
       const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
+      const exactPlatformSpendAvailable = currentValueWindow ? [
+        linkedIn?.available !== false && linkedIn?.spend !== null && typeof linkedIn?.spend !== "undefined",
+        meta?.available !== false && meta?.spend !== null && typeof meta?.spend !== "undefined",
+        googleAds?.includedMetrics?.includes("spend"),
+        instagram?.includedMetrics?.includes("spend"),
+        tiktok?.includedMetrics?.includes("spend"),
+        googleSheets?.includedMetrics?.includes("spend"),
+      ].some(Boolean) : true;
+      const performanceSummarySpendAvailable = currentValueWindow
+        ? canonicalPerformanceSummarySpendAvailable || exactPlatformSpendAvailable
+        : true;
+      const performanceSummarySpendSource = currentValueWindow
+        ? canonicalPerformanceSummarySpendAvailable ? "persisted_spend_sources" : "platform_spend_fallback"
+        : spendSource;
 
       // Offsite revenue sources (best-effort; populated by mapping wizards when configured)
       const parseMappingConfig = (raw: any) => {
@@ -14455,7 +14593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueSources: any[] = [...importedRevenueSources];
       let offsiteRevenueTotal = importedRevenueToDateTotal;
       try {
-        if (revenueSources.length === 0) {
+        if (!currentValueWindow && revenueSources.length === 0) {
           const [hubspotConn, sfConn, shopifyConn] = await Promise.all([
             storage.getHubspotConnection(campaignId),
             storage.getSalesforceConnection(campaignId),
@@ -14495,7 +14633,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const onsiteRevenue = parseNum(financialWebAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
-      const financialSpendForOutcome = webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
+      const financialSpendForOutcome = currentValueWindow
+        ? canonicalPerformanceSummarySpendAvailable ? performanceSummarySpend : platformSpendFallback
+        : webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
       const financialConversionsForOutcome = parseNum(financialWebAnalytics.conversions);
       const financials = {
         nativeRevenue: onsiteRevenue,
@@ -14526,14 +14666,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const performanceSummary = buildCampaignPerformanceSummaryAggregate({
         campaignId,
         dateRange,
+        ...(currentValueWindow ? { currentValueWindow } : {}),
         ga4: financialGa4Totals,
         webAnalytics: financialWebAnalytics,
         spend: {
           persistedSpend: performanceSummarySpend,
           unifiedSpend: financialSpendForOutcome,
-          spendSource,
-          startDate,
-          endDate,
+          spendSource: performanceSummarySpendSource,
+          available: performanceSummarySpendAvailable,
+          startDate: currentValueWindow?.startDate || startDate,
+          endDate: currentValueWindow?.endDate || endDate,
           ...(performanceSummarySpendTotals || {}),
         },
         platforms: {
@@ -14543,7 +14685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         mainPlatformSources: { googleAds, instagram, tiktok, googleSheets },
         revenue: {
-          available: (!activeGA4 || ga4TotalsAvailable) && importedRevenueAvailable,
+          available: (webAnalyticsProvider !== "ga4" || financialWebAnalytics.available) && importedRevenueAvailable,
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
           totalRevenue: totalRevenueUnified,

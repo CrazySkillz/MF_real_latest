@@ -19,7 +19,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";');
   });
 
-  it("keeps outcome-totals aligned with system-generated GA4 test data, stored daily overlays, and spend-to-date", () => {
+  it("keeps outcome-totals aligned with the fixed GA4 import boundary and exact completed-day financial inputs", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
@@ -32,17 +32,19 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("ga4Totals.sessions = Math.round(parseNum(ga4Totals.sessions) + persistedGA4.sessions);");
     expect(route).toContain("ga4Totals.conversions = Math.round(parseNum(ga4Totals.conversions) + persistedGA4.conversions);");
     expect(route).toContain('ga4Totals.mergedSource = "ga4_daily_metrics";');
-    expect(route).toContain('const spendStartDate = "1900-01-01";');
-    expect(route).toContain("Budget pacing dates are campaign metadata and must not narrow imported spend provenance.");
-    expect(route).toContain('const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4");');
+    expect(route).toContain("resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate");
+    expect(route).toContain('mode: "initial_import_to_latest_completed_day" as const');
+    expect(route).toContain('const spendStartDate = currentValueWindow?.startDate || "1900-01-01";');
+    expect(route).toContain('storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4")');
+    expect(route).toContain('storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4")');
     expect(route).toContain("let financialSpendInputs: any[] = [];");
     expect(route).toContain("financialSpendInputs = spendBreakdown");
     expect(route).toContain("performanceSummarySpendTotals");
-    expect(route).toContain("const financialSpendForOutcome = webAnalyticsProvider === \"ga4\" ? performanceSummarySpend : unifiedSpend;");
+    expect(route).toContain("const financialSpendForOutcome = currentValueWindow");
     expect(route).toContain("unifiedSpend: financialSpendForOutcome");
-    expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, \"ga4\");");
-    expect(route).toContain('const revenueStartDate = "1900-01-01";');
-    expect(route).toContain("Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.");
+    expect(route).toContain('const revenueStartDate = currentValueWindow?.startDate || "1900-01-01";');
+    expect(route).toContain('storage.getRevenueTotalForRange(campaignId, revenueStartDate, revenueEndDate, "ga4")');
+    expect(route).toContain('storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4")');
     expect(route).toContain("let financialRevenueInputs: any[] = [];");
     expect(route).toContain("financialRevenueInputs = revenueBreakdown");
     expect(route).toContain("importedRevenueToDateTotal");
@@ -130,18 +132,23 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("let ga4TotalsAvailable = !activeGA4;");
     expect(route).toContain("let importedRevenueAvailable = false;");
     expect(route).toContain("let hasImportedRevenueSource = false;");
-    expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: ga4TotalsAvailable };");
-    expect(route).toContain('const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? ga4TotalsAvailable : !webAnalyticsProvider || !custom?.error };');
+    expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };");
+    expect(route).toContain('const startDateUsed = currentValueWindow.startDate;');
+    expect(route).toContain('const endDateUsed = currentValueWindow.endDate;');
+    expect(route).toContain("latestPersistedFinancialDate === endDateUsed");
     expect(route).toContain("ga4Service.getTotalsWithRevenue(");
-    expect(route).toContain("financialGa4Totals = selectGA4FinancialTotalsSource([");
+    expect(route).toContain("const exactFinancialCandidate = selectGA4FinancialTotalsSource([");
     expect(route).toContain("toDateFinancialCandidate,");
     expect(route).toContain("persistedFinancialCandidate,");
     expect(route).toContain("if (hasImportedRevenueSource && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate))");
     expect(route).toContain("financialWebAnalytics.available = false;");
+    expect(route).toContain("financialWebAnalytics.users = parseNum(financialGa4Totals.users);");
+    expect(route).not.toContain("parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users)");
     expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
     expect(route).toContain("ga4: financialGa4Totals,");
     expect(route).toContain("webAnalytics: financialWebAnalytics,");
-    expect(route).toContain("available: (!activeGA4 || ga4TotalsAvailable) && importedRevenueAvailable,");
+    expect(route).toContain('available: (webAnalyticsProvider !== "ga4" || financialWebAnalytics.available) && importedRevenueAvailable,');
+    expect(route).toContain("...(currentValueWindow ? { currentValueWindow } : {}),");
     expect(route).toContain("ga4: ga4Totals,");
   });
 });

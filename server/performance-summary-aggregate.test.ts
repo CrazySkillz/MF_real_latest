@@ -34,6 +34,72 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.roas.available).toBe(false);
   });
 
+  it("publishes v3 campaign-to-date metadata and derives compatible financial metrics from that window", () => {
+    const currentValueWindow = {
+      mode: "initial_import_to_latest_completed_day" as const,
+      startDate: "2026-05-01",
+      endDate: "2026-08-20",
+      dataThroughDate: "2026-08-20",
+      reportingTimeZone: "Europe/Amsterdam",
+    };
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-to-date",
+      dateRange: "90days",
+      currentValueWindow,
+      ga4: { connected: true, available: true, revenue: 1000, conversions: 20, sessions: 500, users: 300 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 1000, conversions: 20, sessions: 500, users: 300 },
+      spend: { available: true, unifiedSpend: 400, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {
+        linkedin: { connected: true, available: true, impressions: 10000, clicks: 1000, spend: 250, conversions: 30, leads: 5 },
+      },
+      revenue: { available: true, onsiteRevenue: 1000, offsiteRevenue: 0, totalRevenue: 1000 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.version).toBe("performance_summary_aggregate_v3");
+    expect(aggregate.currentValueWindow).toEqual(currentValueWindow);
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 400 });
+    expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 1000 });
+    expect(aggregate.totals.roas).toMatchObject({ available: true, value: 2.5 });
+    expect(aggregate.totals.roi).toMatchObject({ available: true, value: 150 });
+    expect(aggregate.totals.cpa).toMatchObject({ available: true, value: 20 });
+    expect(aggregate.totals.cpc).toMatchObject({ available: true, value: 0.25 });
+    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 25 });
+    expect(aggregate.totals.ctr).toMatchObject({ available: true, value: 10 });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 4 });
+  });
+
+  it("fails closed instead of substituting paid conversions when configured GA4 is unavailable", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-stale-ga4",
+      dateRange: "90days",
+      currentValueWindow: {
+        mode: "initial_import_to_latest_completed_day",
+        startDate: "2026-05-01",
+        endDate: "2026-08-20",
+        dataThroughDate: "2026-08-20",
+        reportingTimeZone: "UTC",
+      },
+      ga4: { connected: true, available: false },
+      webAnalytics: { connected: true, available: false, provider: "ga4" },
+      spend: { available: true, unifiedSpend: 100, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {
+        linkedin: { connected: true, available: true, impressions: 1000, clicks: 50, spend: 100, conversions: 5, leads: 2 },
+        meta: { connected: true, available: false, impressions: 5000, clicks: 500, spend: 500, conversions: 50 },
+        customIntegration: { connected: true, available: false, impressions: 5000, clicks: 500, spend: 500, conversions: 50 },
+      },
+      revenue: { available: false, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.totals.conversions).toMatchObject({ available: false, value: 0, sources: [] });
+    expect(aggregate.totals.cpa.available).toBe(false);
+    expect(aggregate.totals.cvr.available).toBe(false);
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 50, sources: ["linkedin"] });
+    expect(aggregate.sources.find((source) => source.id === "meta")?.includedMetrics).toEqual([]);
+    expect(aggregate.sources.find((source) => source.id === "custom_integration")?.includedMetrics).toEqual([]);
+  });
+
   it("keeps connected GA4 visible but marks failed downstream inputs unavailable", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-failed-ga4",

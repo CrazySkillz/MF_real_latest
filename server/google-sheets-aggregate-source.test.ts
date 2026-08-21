@@ -82,6 +82,29 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(source).toBeNull();
   });
 
+  it("excludes undated cached metrics while preserving exact-window zero financial records", () => {
+    const source = buildGoogleSheetsPlatformSourceForAggregate(
+      { platform: "Google Sheets" },
+      [{
+        id: "main-sheet",
+        spreadsheetId: "sheet-main",
+        purpose: "general",
+        isActive: true,
+        columnMappings: JSON.stringify([{ targetFieldId: "clicks", sourceColumnIndex: 0 }]),
+        cachedData: { rows: [["25"]] },
+      }],
+      { revenue: 0, spend: 0, revenueSourceIds: ["revenue-1"], spendSourceIds: ["spend-1"], currency: "USD" },
+      false,
+    ) as any;
+
+    expect(source.includedMetrics).toEqual(["revenue", "spend"]);
+    expect(source.metrics.clicks).toBeNull();
+    expect(source.metrics.revenue).toBe(0);
+    expect(source.metrics.spend).toBe(0);
+    expect(source.metrics.roas).toBeNull();
+    expect(source.metrics.roi).toBeNull();
+  });
+
   it("renders Google Sheets financial cards from scoped confirmed sources and CRM Pipeline Proxy only", () => {
     const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
 

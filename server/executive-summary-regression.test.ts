@@ -78,10 +78,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const performanceSummary = buildCampaignPerformanceSummaryAggregate({");
     expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
     expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
-    expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)");
-    expect(routes).toContain("const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);");
+    expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string, requirePersistedRows = false)");
+    expect(routes).toContain("buildGoogleAdsPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows)");
     expect(route).toContain("const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);");
-    expect(routes).toContain("async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any)");
+    expect(routes).toContain("exactWindow?: { startDate: string; endDate: string }");
     expect(route).toContain("} = await buildLinkedInPlatformSourceForAggregate(id);");
     expect(routes).toContain("const hasRevenueTracking = !!(rev as any).hasRevenueTracking;");
     expect(routes).toContain("roas: hasRevenueTracking && linkedInSpend > 0");

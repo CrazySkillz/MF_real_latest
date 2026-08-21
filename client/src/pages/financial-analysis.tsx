@@ -273,6 +273,14 @@ export default function FinancialAnalysis() {
   // Data loading state — prevent flash of stale/zero metrics on refresh
   const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading || outcomeTotalsLoading);
   const performanceSummary = outcomeTotals?.performanceSummary;
+  const currentValueWindow = performanceSummary?.currentValueWindow;
+  const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"
+    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
+    && currentValueWindow.startDate <= currentValueWindow.endDate
+    && currentValueWindow.dataThroughDate === currentValueWindow.endDate
+    && Boolean(String(currentValueWindow?.reportingTimeZone || "").trim());
   const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
@@ -624,7 +632,7 @@ export default function FinancialAnalysis() {
   const campaignToDateCostMetric = (
     metric: { available: boolean; value: number; unavailableReasons: string[] },
     metricName: string,
-  ) => demoMode ? metric : {
+  ) => demoMode || hasCampaignToDateWindow ? metric : {
     available: false,
     value: 0,
     unavailableReasons: [`${metricName} is withheld until every input has a certified campaign-to-date window`],
@@ -633,7 +641,7 @@ export default function FinancialAnalysis() {
   const costEfficiencyCpmMetric = campaignToDateCostMetric(overviewCpmMetric, "CPM");
   const costEfficiencyCtrMetric = campaignToDateCostMetric(overviewCtrMetric, "CTR");
   const costEfficiencyCvrMetric = campaignToDateCostMetric(overviewCvrMetric, "CVR");
-  const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode ? budgetAllocationSources : [];
+  const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];
 
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {

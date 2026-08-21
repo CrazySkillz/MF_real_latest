@@ -30,6 +30,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("enabled: false, // Withhold comparisons until the protected exact-date snapshot path is certified.");
     expect(page).not.toContain("snapshots?date=");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
+    expect(page).toContain('const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"');
+    expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
     expect(page).toContain("const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);");
     expect(page).toContain("const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];");
     expect(page).toContain("const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];");
@@ -72,7 +74,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const costEfficiencyCpmMetric = campaignToDateCostMetric(overviewCpmMetric, \"CPM\");");
     expect(page).toContain("const costEfficiencyCtrMetric = campaignToDateCostMetric(overviewCtrMetric, \"CTR\");");
     expect(page).toContain("const costEfficiencyCvrMetric = campaignToDateCostMetric(overviewCvrMetric, \"CVR\");");
-    expect(page).toContain("const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode ? budgetAllocationSources : [];");
+    expect(page).toContain("const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];");
     expect(executiveView).not.toContain("<TabsList>");
     expect(executiveView).not.toContain("<TabsTrigger");
     expect(executiveView).not.toContain("Campaign Health Score");
@@ -87,19 +89,25 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)");
-    expect(routes).toContain("async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any)");
+    expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string, requirePersistedRows = false)");
+    expect(routes).toContain("exactWindow?: { startDate: string; endDate: string }");
     expect(routes).toContain("const googleAdsConn = await storage.getGoogleAdsConnection(campaignId).catch(() => null);");
     expect(routes).toContain("const googleAdsRows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))");
     expect(routes).toContain('id: "google_ads"');
     expect(routes).toContain('label: "Google Ads"');
     expect(routes).toContain('category: "paid_media"');
-    expect(routes).toContain('includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])]');
+    expect(routes).toContain('includedMetrics: hasWindowData ? ["impressions", "clicks", ...(spendAvailable ? ["spend"] : []), "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])] : []');
     expect(routes).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
-    expect(route).toContain("const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);");
-    expect(route).toContain("const { linkedIn, linkedInSpend } = await buildLinkedInPlatformSourceForAggregate(campaignId, linkedInConn);");
-    expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(custom?.spend)).toFixed(2));");
+    expect(routes).toContain('selectedCampaignIds.every((id) => coveredCampaignIds.has(id))');
+    expect(routes).toContain('observedCurrencies.size === 1 && observedCurrencies.has(String(expectedCurrency || "").trim().toUpperCase())');
+    expect(route).toContain("spendAvailable: !currentValueWindow");
+    expect(route).toContain("custom = { connected: true, available: false };");
+    expect(route).toContain("const aggregateStartDate = currentValueWindow?.startDate || startDate;");
+    expect(route).toContain("buildGoogleAdsPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows)");
+    expect(route).toContain("currentValueWindow ? { startDate: currentValueWindow.startDate, endDate: currentValueWindow.endDate } : undefined");
+    expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(googleSheets?.metrics?.spend) + parseNum(custom?.spend)).toFixed(2));");
     expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
+    expect(route).toContain("buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow)");
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {

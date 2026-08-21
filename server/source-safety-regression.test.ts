@@ -649,8 +649,8 @@ describe("source safety regression guards", () => {
 
     expect(routesSource).toContain('import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";');
     expect(outcomeRoute).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
-    expect(outcomeRoute).toContain("const googleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(campaignId, startDate, endDate);");
-    expect(outcomeRoute).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials);");
+    expect(outcomeRoute).toContain("const googleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(campaignId, aggregateStartDate, aggregateEndDate);");
+    expect(outcomeRoute).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow);");
     expect(outcomeRoute).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(routesSource).toContain("const executiveGoogleSheetsConnections = await storage.getGoogleSheetsConnections(id).catch(() => [] as any[]);");
     expect(routesSource).toContain("const executiveGoogleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(id, startDate, endDate);");
@@ -663,8 +663,8 @@ describe("source safety regression guards", () => {
     expect(aggregateSource).toContain('&& (!purpose || purpose === "general")');
     expect(routesSource).toContain('storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "google_sheets")');
     expect(routesSource).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
-    expect(aggregateSource).toContain("const hasConfirmedRevenue = confirmedRevenue > 0 && revenueSourceIds.length > 0;");
-    expect(aggregateSource).toContain("const hasConfirmedSpend = confirmedSpend > 0 && spendSourceIds.length > 0;");
+    expect(aggregateSource).toContain("const hasConfirmedRevenue = exactCurrencyVerified && revenueSourceIds.length > 0;");
+    expect(aggregateSource).toContain("const hasConfirmedSpend = exactCurrencyVerified && spendSourceIds.length > 0;");
     expect(aggregateSource).toContain("metrics.revenue = hasConfirmedRevenue");
     expect(aggregateSource).toContain("metrics.spend = hasConfirmedSpend");
     expect(aggregateSource).toContain('metric: "revenue", reason: "Google Sheets confirmed revenue requires an active google_sheets-scoped revenue source"');

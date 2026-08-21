@@ -94,7 +94,7 @@ describe("Google Ads production readiness regression guard", () => {
     const analytics = read("client", "src", "pages", "google-ads-analytics.tsx");
     const helper = sliceBetween(
       routes,
-      "async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)",
+      "async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string, requirePersistedRows = false)",
       "async function buildLinkedInPlatformSourceForAggregate"
     );
     const trendRoute = sliceBetween(
@@ -105,7 +105,7 @@ describe("Google Ads production readiness regression guard", () => {
 
     expect(helper).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads")');
     expect(helper).toContain('const attributedRevenueSource = hasImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";');
-    expect(helper).toContain('includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])]');
+    expect(helper).toContain('includedMetrics: hasWindowData ? ["impressions", "clicks", ...(spendAvailable ? ["spend"] : []), "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])] : []');
     expect(helper).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
     expect(helper).toContain('importedAttributedRevenue');
     expect(helper).toContain('conversionValueLabel: "Native Google Ads conversion value"');

@@ -131,14 +131,15 @@ describe("Meta production readiness regression guard", () => {
       "// Fetch GA4 metrics"
     );
 
-    expect(outcomeTotalsMetaBlock).toContain("const hasRevenueTracking = !!rev.hasRevenueTracking;");
+    expect(outcomeTotalsMetaBlock).toContain("const rev = currentValueWindow ? null");
+    expect(outcomeTotalsMetaBlock).toContain("const hasRevenueTracking = !!rev?.hasRevenueTracking;");
     expect(outcomeTotalsMetaBlock).toContain("const attributedRevenue = hasRevenueTracking ?");
     expect(outcomeTotalsMetaBlock).toContain("const roas = hasRevenueTracking && metaSpend > 0");
     expect(outcomeTotalsMetaBlock).toContain("const roi = hasRevenueTracking && metaSpend > 0");
     expect(executiveSummaryMetaBlock).toContain('storage.getRevenueTotalForRange(id, metaStart, metaEnd, "meta")');
     expect(executiveSummaryMetaBlock).not.toContain("storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch");
     expect(executiveSummaryMetaBlock).toContain("metaMetrics.hasRevenueTracking = metaMetrics.revenue > 0;");
-    expect(aggregate).toContain("const hasMetaRevenue = meta.hasRevenueTracking === true;");
+    expect(aggregate).toContain("const hasMetaRevenue = metaAvailable && meta.hasRevenueTracking === true;");
     expect(aggregate).toContain('...(hasMetaRevenue ? ["attributedRevenue"] : [])');
     expect(aggregate).toContain('reason: "Meta Total Revenue requires a Meta-scoped imported revenue source"');
     expect(aggregate).toContain("attributedRevenue: hasMetaRevenue ? parseNum(meta.attributedRevenue) : null");

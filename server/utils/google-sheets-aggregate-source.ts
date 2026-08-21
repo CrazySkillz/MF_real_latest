@@ -76,6 +76,7 @@ export function buildGoogleSheetsPlatformSourceForAggregate(
   campaign: any,
   connections: any[],
   confirmedFinancials: GoogleSheetsConfirmedFinancials = {},
+  includeCachedMetrics = true,
 ) {
   const mainConnections = (Array.isArray(connections) ? connections : [])
     .filter((conn: any) => isMainGoogleSheetsConnection(campaign, conn));
@@ -91,13 +92,16 @@ export function buildGoogleSheetsPlatformSourceForAggregate(
   const spendSourceIds = Array.isArray(confirmedFinancials.spendSourceIds)
     ? confirmedFinancials.spendSourceIds.map(String).filter(Boolean)
     : [];
-  const hasConfirmedRevenue = confirmedRevenue > 0 && revenueSourceIds.length > 0;
-  const hasConfirmedSpend = confirmedSpend > 0 && spendSourceIds.length > 0;
+  const campaignCurrency = String(campaign?.currency || "USD").trim().toUpperCase();
+  const confirmedCurrency = String(confirmedFinancials.currency || "").trim().toUpperCase();
+  const exactCurrencyVerified = includeCachedMetrics || confirmedCurrency === campaignCurrency;
+  const hasConfirmedRevenue = exactCurrencyVerified && revenueSourceIds.length > 0;
+  const hasConfirmedSpend = exactCurrencyVerified && spendSourceIds.length > 0;
 
   for (const metricName of GOOGLE_SHEETS_KNOWN_METRICS) {
     let hasMappedRows = false;
     let total = 0;
-    for (const conn of mainConnections) {
+    for (const conn of includeCachedMetrics ? mainConnections : []) {
       const columnIndex = mappedColumnIndex(conn, metricName);
       const rows = cachedRows(conn);
       if (columnIndex === null || rows.length === 0) continue;
@@ -110,11 +114,11 @@ export function buildGoogleSheetsPlatformSourceForAggregate(
 
   metrics.revenue = hasConfirmedRevenue ? Number(confirmedRevenue.toFixed(2)) : null;
   metrics.spend = hasConfirmedSpend ? Number(confirmedSpend.toFixed(2)) : null;
-  metrics.roas = hasConfirmedRevenue && hasConfirmedSpend ? Number((confirmedRevenue / confirmedSpend).toFixed(2)) : null;
-  metrics.roi = hasConfirmedRevenue && hasConfirmedSpend ? Number((((confirmedRevenue - confirmedSpend) / confirmedSpend) * 100).toFixed(2)) : null;
+  metrics.roas = hasConfirmedRevenue && hasConfirmedSpend && confirmedSpend > 0 ? Number((confirmedRevenue / confirmedSpend).toFixed(2)) : null;
+  metrics.roi = hasConfirmedRevenue && hasConfirmedSpend && confirmedSpend > 0 ? Number((((confirmedRevenue - confirmedSpend) / confirmedSpend) * 100).toFixed(2)) : null;
   if (hasConfirmedRevenue) includedMetrics.push("revenue");
   if (hasConfirmedSpend) includedMetrics.push("spend");
-  if (hasConfirmedRevenue && hasConfirmedSpend) includedMetrics.push("roas", "roi");
+  if (hasConfirmedRevenue && hasConfirmedSpend && confirmedSpend > 0) includedMetrics.push("roas", "roi");
 
   const excludedMetrics = [
     ...GOOGLE_SHEETS_KNOWN_METRICS
@@ -125,7 +129,7 @@ export function buildGoogleSheetsPlatformSourceForAggregate(
       })),
     ...(hasConfirmedSpend ? [] : [{ metric: "spend", reason: "Google Sheets spend requires an active google_sheets-scoped spend source" }]),
     ...(hasConfirmedRevenue ? [] : [{ metric: "revenue", reason: "Google Sheets confirmed revenue requires an active google_sheets-scoped revenue source" }]),
-    ...(hasConfirmedRevenue && hasConfirmedSpend ? [] : [
+    ...(hasConfirmedRevenue && hasConfirmedSpend && confirmedSpend > 0 ? [] : [
       { metric: "roi", reason: "ROI requires confirmed Google Sheets revenue and spend source paths" },
       { metric: "roas", reason: "ROAS requires confirmed Google Sheets revenue and spend source paths" },
     ]),

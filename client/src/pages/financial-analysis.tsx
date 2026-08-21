@@ -77,7 +77,7 @@ export default function FinancialAnalysis() {
     return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
   };
 
-  const formatBudgetInputValue = (value?: string | number | null) => {
+  const formatBudgetInputValue = (value?: string | number | null, padDecimals = false) => {
     const raw = String(value ?? "").replace(/,/g, "").trim().replace(/[^\d.]/g, "");
     if (!raw) return "";
     const [integerPart, ...decimalParts] = raw.split(".");
@@ -85,12 +85,13 @@ export default function FinancialAnalysis() {
     const integerValue = Number(integerPart || "0");
     if (!Number.isFinite(integerValue)) return "";
     const formattedInteger = new Intl.NumberFormat("en-US").format(integerValue);
+    if (padDecimals) return `${formattedInteger}.${decimalPart.slice(0, 2).padEnd(2, "0")}`;
     return decimalParts.length > 0 ? `${formattedInteger}.${decimalPart.slice(0, 2)}` : formattedInteger;
   };
 
   useEffect(() => {
     if (!campaign) return;
-    setPacingBudgetInput(formatBudgetInputValue(campaign.budget));
+    setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));
     setPacingStartDateInput(formatDateInputValue(campaign.startDate));
     setPacingEndDateInput(formatDateInputValue(campaign.endDate));
     setPacingInputError(null);
@@ -490,7 +491,7 @@ export default function FinancialAnalysis() {
   const hasSavedPacingMetadata = hasCampaignBudget || hasCampaignStartDate || hasCampaignEndDate;
   const hasPacingInputDraft = Boolean(pacingBudgetInput.trim() || pacingStartDateInput || pacingEndDateInput);
   const handleCancelPacingInputs = () => {
-    setPacingBudgetInput(formatBudgetInputValue(campaign?.budget));
+    setPacingBudgetInput(formatBudgetInputValue(campaign?.budget, true));
     setPacingStartDateInput(formatDateInputValue(campaign?.startDate));
     setPacingEndDateInput(formatDateInputValue(campaign?.endDate));
     setPacingInputError(null);
@@ -988,7 +989,7 @@ export default function FinancialAnalysis() {
                                       inputMode="decimal"
                                       value={pacingBudgetInput}
                                       onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}
-                                      onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}
+                                      onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput, true))}
                                       placeholder="Budget"
                                       data-testid="input-pacing-budget"
                                     />
@@ -1590,7 +1591,7 @@ export default function FinancialAnalysis() {
                                       inputMode="decimal"
                                       value={pacingBudgetInput}
                                       onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}
-                                      onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}
+                                      onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput, true))}
                                       placeholder="Budget"
                                       data-testid="input-pacing-budget"
                                     />

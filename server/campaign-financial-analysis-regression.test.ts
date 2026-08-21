@@ -169,9 +169,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const handleDeletePacingInputs = () => {");
     expect(page).toContain("const handleCancelPacingInputs = () => {");
     expect(page).toContain("setIsEditingPacingInputs(false);");
-    expect(page).toContain("const formatBudgetInputValue = (value?: string | number | null) => {");
+    expect(page).toContain("const formatBudgetInputValue = (value?: string | number | null, padDecimals = false) => {");
+    expect(page).toContain('if (padDecimals) return `${formattedInteger}.${decimalPart.slice(0, 2).padEnd(2, "0")}`;');
     expect(page).toContain('replace(/[^\\d.]/g, "")');
-    expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget));");
+    expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));");
     expect(overview).toContain("Requires campaign spend and start date");
     expect(overview).toContain('Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}');
     expect(overview).toContain("Requires campaign budget, start date, and end date");
@@ -179,7 +180,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
     expect(overview).toContain('data-testid="input-pacing-budget"');
     expect(overview).toContain("onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}");
-    expect(overview).toContain("onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}");
+    expect(overview).toContain("onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput, true))}");
     expect(overview).toContain('data-testid="input-pacing-start-date"');
     expect(overview).toContain('data-testid="input-pacing-end-date"');
     expect(overview).toContain("Save");

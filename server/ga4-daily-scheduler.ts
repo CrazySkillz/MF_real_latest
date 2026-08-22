@@ -6,6 +6,7 @@ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
+import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -27,6 +28,7 @@ export type GA4DailyRefreshResult = {
   propertyIdsProcessed: string[];
   propertyIdsFailed: string[];
   rowsUpserted: number;
+  reportingDatesByCampaign: Record<string, string>;
 };
 
 const ga4DailySchedulerStatus = {
@@ -197,6 +199,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
   const campaignIdsFailed: string[] = [];
   const propertyIdsProcessed: string[] = [];
   const propertyIdsFailed: string[] = [];
+  const reportingDatesByCampaign: Record<string, string> = {};
 
   for (const c of campaigns) {
     const currentCampaignId = String((c as any)?.id || "");
@@ -207,6 +210,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
     if (activeConnections.length === 0) { campaignIdsSkipped.push(currentCampaignId); continue; }
     const campaignFilter = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
     const reportingWindow = getReportingDateWindow(lookbackDays, (c as any)?.reportingTimeZone, now);
+    reportingDatesByCampaign[currentCampaignId] = reportingWindow.endDate;
     let failed = false;
     for (const connection of activeConnections) {
       try {
@@ -261,7 +265,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
   }
 
   console.log(`[GA4 Daily] Refresh done (campaignsProcessed=${campaignIdsProcessed.length}, campaignsFailed=${campaignIdsFailed.length}, rowsUpserted=${upserted})`);
-  return { campaignIdsProcessed, campaignIdsSkipped, campaignIdsFailed, propertyIdsProcessed, propertyIdsFailed, rowsUpserted: upserted };
+  return { campaignIdsProcessed, campaignIdsSkipped, campaignIdsFailed, propertyIdsProcessed, propertyIdsFailed, rowsUpserted: upserted, reportingDatesByCampaign };
 }
 
 async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
@@ -276,6 +280,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   }
 
   (global as any).__ga4DailyRefreshInProgress = true;
+  beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   const startedAtDate = new Date();
   const startedAt = Date.now();
   ga4DailySchedulerStatus.totalRuns += 1;
@@ -323,6 +328,17 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     const recomputeFailure = getGA4DailyRecomputeFailure(recomputeResult, Boolean(campaignId));
     if (recomputeFailure) throw new Error(recomputeFailure);
     if (refreshFailure) throw new Error(refreshFailure);
+
+    const completedAt = new Date().toISOString();
+    for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
+      recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
+        campaignId: processedCampaignId,
+        reportingDate: refreshResult.reportingDatesByCampaign[processedCampaignId] || "",
+        status: "success",
+        completedAt,
+        failures: [],
+      });
+    }
 
     if (!campaignId && !opts.suppressAlerts) {
       try {

@@ -17,6 +17,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
 import { storage } from "./storage";
+import { getFinancialDailySnapshotObservationStatus } from "./utils/financial-daily-snapshot-observation";
 
 const app = express();
 
@@ -188,6 +189,7 @@ process.on('uncaughtException', (error: Error) => {
           scheduler: metrics,
           autoRefreshScheduler: getAutoRefreshSchedulerStatus(),
           ga4DailyScheduler: getGA4DailySchedulerStatus(),
+          financialDailySnapshot: getFinancialDailySnapshotObservationStatus(),
           timestamp: new Date().toISOString(),
         });
       } catch (error) {
@@ -372,6 +374,17 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE campaigns
             ADD COLUMN IF NOT EXISTS pacing_start_date TEXT,
             ADD COLUMN IF NOT EXISTS pacing_end_date TEXT;
+          `);
+
+          // Migration: Add an idempotent reporting-day identity for forward-only financial snapshots
+          await db.execute(sql`
+            ALTER TABLE metric_snapshots
+            ADD COLUMN IF NOT EXISTS reporting_date TEXT;
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS metric_snapshots_financial_day_unique
+            ON metric_snapshots (campaign_id, reporting_date)
+            WHERE snapshot_type = 'financial_daily' AND reporting_date IS NOT NULL;
           `);
 
           // GA4 daily metrics (persisted daily facts powering "daily values" GA4 UI)

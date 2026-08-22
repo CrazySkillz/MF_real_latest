@@ -909,9 +909,76 @@ export const metricSnapshots = pgTable("metric_snapshots", {
   metrics: jsonb("metrics"), // { linkedin: { impressions: 100, clicks: 50, ... }, customIntegration: { users: 200, sessions: 150, ... } }
   // Metadata
   snapshotType: text("snapshot_type").notNull().default("automatic"), // 'automatic', 'manual'
+  reportingDate: text("reporting_date"), // Date-only identity for forward-only daily snapshots; legacy rows remain null
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   notes: text("notes"),
+}, (table) => ({
+  financialDailyReportingDateUnique: uniqueIndex("metric_snapshots_financial_day_unique")
+    .on(table.campaignId, table.reportingDate)
+    .where(sql`${table.snapshotType} = 'financial_daily' AND ${table.reportingDate} IS NOT NULL`),
+}));
+
+const financialSnapshotDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}, "Invalid calendar date");
+
+const financialSnapshotMoneyInputSchema = z.discriminatedUnion("available", [
+  z.object({
+    value: z.string().regex(/^(?:0|[1-9]\d{0,7})(?:\.\d{1,2})?$/),
+    available: z.literal(true),
+    sources: z.array(z.string().trim().min(1)).min(1),
+  }).strict(),
+  z.object({
+    value: z.null(),
+    available: z.literal(false),
+    sources: z.array(z.never()).length(0),
+  }).strict(),
+]);
+
+const financialSnapshotConversionInputSchema = z.discriminatedUnion("available", [
+  z.object({
+    value: z.number().nonnegative().finite(),
+    available: z.literal(true),
+    sources: z.array(z.string().trim().min(1)).min(1),
+  }).strict(),
+  z.object({
+    value: z.null(),
+    available: z.literal(false),
+    sources: z.array(z.never()).length(0),
+  }).strict(),
+]);
+
+export const financialDailySnapshotInputSchema = z.object({
+  version: z.literal("financial_daily_snapshot_v1"),
+  campaignId: z.string().trim().min(1),
+  reportingDate: financialSnapshotDateSchema,
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  currentValueWindow: z.object({
+    mode: z.literal("initial_import_to_latest_completed_day"),
+    startDate: financialSnapshotDateSchema,
+    endDate: financialSnapshotDateSchema,
+    dataThroughDate: financialSnapshotDateSchema,
+    reportingTimeZone: z.string().trim().min(1),
+  }).strict(),
+  inputs: z.object({
+    spend: financialSnapshotMoneyInputSchema,
+    revenue: financialSnapshotMoneyInputSchema,
+    conversions: financialSnapshotConversionInputSchema,
+  }).strict(),
+}).strict().superRefine((snapshot, ctx) => {
+  if (snapshot.currentValueWindow.startDate > snapshot.currentValueWindow.endDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "startDate"], message: "Window start must not follow window end" });
+  }
+  if (snapshot.currentValueWindow.endDate !== snapshot.reportingDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "endDate"], message: "Window end must equal reporting date" });
+  }
+  if (snapshot.currentValueWindow.dataThroughDate !== snapshot.reportingDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "dataThroughDate"], message: "Data-through date must equal reporting date" });
+  }
 });
+
+export type FinancialDailySnapshotInput = z.infer<typeof financialDailySnapshotInputSchema>;
 
 export const abTests = pgTable("ab_tests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1662,7 +1729,10 @@ export const insertMetricSnapshotSchema = createInsertSchema(metricSnapshots).pi
   totalSpend: true,
   metrics: true,
   snapshotType: true,
+  reportingDate: true,
   notes: true,
+}).extend({
+  reportingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
 export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pick({

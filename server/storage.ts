@@ -1,8 +1,8 @@
-import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
-import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
@@ -443,6 +443,7 @@ export interface IStorage {
   getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]>;
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
+  upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput): Promise<MetricSnapshot>;
   getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month', reportingTimeZone?: string, comparisonDate?: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -4641,7 +4642,7 @@ export class DatabaseStorage implements IStorage {
   // Metric Snapshot methods
   async getCampaignSnapshots(campaignId: string): Promise<MetricSnapshot[]> {
     return db.select().from(metricSnapshots)
-      .where(eq(metricSnapshots.campaignId, campaignId))
+      .where(and(eq(metricSnapshots.campaignId, campaignId), ne(metricSnapshots.snapshotType, 'financial_daily')))
       .orderBy(desc(metricSnapshots.recordedAt));
   }
 
@@ -4667,6 +4668,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(metricSnapshots)
       .where(and(
         eq(metricSnapshots.campaignId, campaignId),
+        ne(metricSnapshots.snapshotType, 'financial_daily'),
         sql`${metricSnapshots.recordedAt} >= ${startDate}`
       ))
       .orderBy(metricSnapshots.recordedAt);
@@ -4676,6 +4678,7 @@ export class DatabaseStorage implements IStorage {
     const [snapshot] = await db.select().from(metricSnapshots)
       .where(and(
         eq(metricSnapshots.campaignId, campaignId),
+        ne(metricSnapshots.snapshotType, 'financial_daily'),
         eq(metricSnapshots.recordedAt, date)
       ))
       .limit(1);
@@ -4683,9 +4686,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMetricSnapshot(snapshotData: InsertMetricSnapshot): Promise<MetricSnapshot> {
+    if (snapshotData.snapshotType === 'financial_daily' || snapshotData.reportingDate != null) {
+      throw new Error('Use upsertFinancialDailySnapshot for reporting-day financial snapshots');
+    }
     const [snapshot] = await db
       .insert(metricSnapshots)
       .values(snapshotData)
+      .returning();
+    return snapshot;
+  }
+
+  async upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput): Promise<MetricSnapshot> {
+    const snapshotInput = financialDailySnapshotInputSchema.parse(snapshotData);
+    const { campaignId, reportingDate, ...financialDaily } = snapshotInput;
+    const [snapshot] = await db
+      .insert(metricSnapshots)
+      .values({
+        campaignId,
+        totalConversions: Math.round(snapshotInput.inputs.conversions.value ?? 0),
+        totalSpend: snapshotInput.inputs.spend.value ?? "0",
+        metrics: { financialDaily },
+        snapshotType: 'financial_daily',
+        reportingDate,
+      })
+      .onConflictDoUpdate({
+        target: [metricSnapshots.campaignId, metricSnapshots.reportingDate],
+        targetWhere: sql`${metricSnapshots.snapshotType} = 'financial_daily' AND ${metricSnapshots.reportingDate} IS NOT NULL`,
+        set: {
+          totalConversions: sql`EXCLUDED.total_conversions`,
+          totalSpend: sql`EXCLUDED.total_spend`,
+          metrics: sql`EXCLUDED.metrics`,
+          recordedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      })
       .returning();
     return snapshot;
   }
@@ -4702,7 +4735,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get the most recent snapshot (current)
     const [currentSnapshot] = await db.select().from(metricSnapshots)
-      .where(eq(metricSnapshots.campaignId, campaignId))
+      .where(and(eq(metricSnapshots.campaignId, campaignId), ne(metricSnapshots.snapshotType, 'financial_daily')))
       .orderBy(desc(metricSnapshots.recordedAt))
       .limit(1);
 
@@ -4711,7 +4744,11 @@ export class DatabaseStorage implements IStorage {
       ? sql`to_char(timezone(${comparisonBoundary.reportingTimeZone}, timezone('UTC', ${metricSnapshots.recordedAt})), 'YYYY-MM-DD') = ${exactComparisonDate}`
       : sql`${metricSnapshots.recordedAt} <= ${targetDate}`;
     const previousSnapshotsQuery = db.select().from(metricSnapshots)
-      .where(and(eq(metricSnapshots.campaignId, campaignId), previousSnapshotDateFilter))
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        ne(metricSnapshots.snapshotType, 'financial_daily'),
+        previousSnapshotDateFilter,
+      ))
       .orderBy(desc(metricSnapshots.recordedAt));
     const previousSnapshots = exactComparisonDate
       ? await previousSnapshotsQuery

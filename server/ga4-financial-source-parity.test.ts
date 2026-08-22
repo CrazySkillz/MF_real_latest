@@ -172,10 +172,16 @@ return buildTotals;`,
     expect(campaign).toContain('if (metric === "cpa")');
     expect(campaign).toContain("sumSelectedFinancialConversions(cfg?.inputs?.conversions, totals)");
     const outcome = read("server/routes-oauth.ts");
+    const cumulativeFinancials = read("server/utils/campaign-cumulative-financials.ts");
     const deepDive = read("client/src/pages/campaign-detail.tsx");
-    expect(outcome).toContain("const financials = {");
+    expect(outcome).toContain("resolveCampaignCumulativeFinancials({");
     expect(outcome).toContain("nativeRevenue: onsiteRevenue");
-    expect(outcome).toContain("importedRevenue: parseFloat(offsiteRevenueTotal.toFixed(2))");
+    expect(outcome).toContain("importedRevenue: offsiteRevenueTotal");
+    expect(cumulativeFinancials).toContain("round2(nativeRevenue + importedRevenue) - round2(revenue.value)");
+    expect(cumulativeFinancials).toContain("const profit = round2(revenue.value - spend.value)");
+    expect(cumulativeFinancials).toContain("roas: spend.value > 0 ? revenue.value / spend.value : 0");
+    expect(cumulativeFinancials).toContain("roi: spend.value > 0 ? ((revenue.value - spend.value) / spend.value) * 100 : 0");
+    expect(cumulativeFinancials).toContain("cpa: conversions.value > 0 ? spend.value / conversions.value : 0");
     expect(deepDive).toContain("(outcomeTotals as any)?.financials?.totalRevenue");
     expect(deepDive).toContain("financials?.nativeRevenue");
   });

@@ -22,6 +22,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows } from "./utils/csv";
 import { buildShopifyRefreshFailureNotification, findOpenShopifyRefreshFailureNotification, resolveShopifyRefreshFailureNotification } from "./utils/shopify-refresh-notification";
+import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { randomUUID } from "crypto";
 
 type AnyRecord = Record<string, any>;
@@ -744,12 +745,14 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
   }
   // Claim priority before waiting so another Sheets spend interval cannot start.
   (global as any).__autoRefreshInProgress = true;
+  beginFinancialDailySnapshotRefreshObservation("financial_sources");
+  const startedAtDate = new Date();
   const startedAt = Date.now();
   autoRefreshSchedulerStatus.totalRuns += 1;
   if (trigger === "startup") autoRefreshSchedulerStatus.totalStartupRuns += 1;
   else if (trigger === "scheduled") autoRefreshSchedulerStatus.totalScheduledRuns += 1;
   else autoRefreshSchedulerStatus.totalManualRuns += 1;
-  autoRefreshSchedulerStatus.lastRunStartedAt = new Date();
+  autoRefreshSchedulerStatus.lastRunStartedAt = startedAtDate;
   autoRefreshSchedulerStatus.lastRunFinishedAt = null;
   autoRefreshSchedulerStatus.lastRunTrigger = trigger;
   autoRefreshSchedulerStatus.lastRunStatus = "running";
@@ -1059,6 +1062,16 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
       autoRefreshSchedulerStatus.lastError = failure;
     } else {
       autoRefreshSchedulerStatus.lastRunStatus = "success";
+    }
+    const completedAt = new Date().toISOString();
+    for (const campaign of campaigns) {
+      recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
+        campaignId: String(campaign.id),
+        reportingDate: getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, startedAtDate),
+        status: failure ? "failed" : "success",
+        completedAt,
+        failures: failure ? [failure] : [],
+      });
     }
   } catch (e: any) {
     autoRefreshSchedulerStatus.lastRunStatus = "failed";

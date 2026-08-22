@@ -41,6 +41,8 @@ import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefresh
 import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefreshPipeline } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
+import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
+import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-snapshot-observation";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { addDerivedGA4EngagedSessions, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
@@ -14639,7 +14641,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? canonicalPerformanceSummarySpendAvailable ? performanceSummarySpend : platformSpendFallback
         : webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
       const financialConversionsForOutcome = parseNum(financialWebAnalytics.conversions);
-      const financials = {
+      // Backward-compatible non-v3 response only; this path is never eligible for financial_daily snapshots.
+      const nonCumulativeFinancials = {
         nativeRevenue: onsiteRevenue,
         importedRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
         totalRevenue: totalRevenueUnified,
@@ -14694,6 +14697,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         revenueSources,
       });
+      const cumulativeFinancials = currentValueWindow
+        ? resolveCampaignCumulativeFinancials({
+            campaignId,
+            currency: campaignCurrency,
+            performanceSummary,
+            nativeRevenue: onsiteRevenue,
+            importedRevenue: offsiteRevenueTotal,
+          })
+        : null;
+      const financials = cumulativeFinancials?.financials || nonCumulativeFinancials;
+      if (cumulativeFinancials) {
+        observeFinancialDailySnapshotReadiness({
+          campaignId,
+          reportingDate: cumulativeFinancials.snapshot.reportingDate,
+          currency: campaignCurrency,
+          requiredInputs: ["spend", "revenue", "conversions"],
+          snapshot: cumulativeFinancials.snapshot,
+        });
+      }
 
       res.json({
         success: true,

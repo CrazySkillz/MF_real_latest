@@ -1033,11 +1033,11 @@ const campaignDeepDiveMetricAliases: Record<string, string> = {
   roi: "roi",
 };
 
-function formatCampaignDeepDiveMetricValue(key: string, value: unknown): string {
+function formatCampaignDeepDiveMetricValue(key: string, value: unknown, currency = "USD"): string {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return "Unavailable";
   if (["revenue", "spend", "cpc", "cpa", "cpm"].includes(key)) {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
+    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(n);
   }
   if (["ctr", "cvr", "roi"].includes(key)) return `${n.toFixed(1)}%`;
   if (key === "roas") return `${n.toFixed(1)}x`;
@@ -1120,6 +1120,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const reportType = String(cfg?.reportType || "").trim();
   const selectedSections = Array.isArray(cfg?.selectedSections) ? cfg.selectedSections.map(String).filter(Boolean) : [];
   const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
+  const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));
   const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
   const reportContext = campaignId
     ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
@@ -1148,9 +1149,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const metric = (key: string) => performanceSummary?.totals?.[key];
   const metricAvailable = (key: string) => metric(key)?.available === true;
   const metricNumber = (key: string) => metricAvailable(key) ? Number(metric(key)?.value) || 0 : 0;
-  const metricValue = (key: string) => {
+  const metricValue = (key: string, currency = "USD") => {
     const value = metric(key);
-    if (value?.available === true) return formatCampaignDeepDiveMetricValue(key, value.value);
+    if (value?.available === true) return formatCampaignDeepDiveMetricValue(key, value.value, currency);
     const reason = Array.isArray(value?.unavailableReasons) ? value.unavailableReasons[0] : "";
     return `Unavailable${reason ? ` - ${reason}` : ""}`;
   };
@@ -1175,12 +1176,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       benchmarkValue: Number(row?.benchmarkValue ?? row?.benchmark) || 0,
     });
   };
-  const addMetricRows = (keys: string[], indent = 8) => {
+  const addMetricRows = (keys: string[], indent = 8, currency = "USD") => {
     if (!performanceSummary) {
       addText("- Connected-source aggregate values are unavailable.", { indent });
       return;
     }
-    keys.forEach((key) => addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${metricValue(key)}`, { indent }));
+    keys.forEach((key) => addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${metricValue(key, currency)}`, { indent }));
   };
   const addSourceRows = (indent = 8) => {
     if (aggregateSources.length === 0) {
@@ -1241,12 +1242,68 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Data Sources", { bold: true, indent: 4 });
       addSourceRows();
     } else if (section.startsWith("financial-analysis:")) {
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
+      const rawBudget = (campaign as any)?.budget;
+      const parsedBudget = rawBudget === null || rawBudget === undefined || String(rawBudget).trim() === ""
+        ? null
+        : Number(String(rawBudget).replace(/,/g, ""));
+      const campaignBudget = parsedBudget !== null && Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : null;
+      const parsePacingDate = (value: unknown) => {
+        const raw = String(value || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+        const [year, month, day] = raw.split("-").map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? date : null;
+      };
+      const pacingStartDate = parsePacingDate((campaign as any)?.pacingStartDate);
+      const pacingEndDate = parsePacingDate((campaign as any)?.pacingEndDate);
+      const pacingToday = getZonedParts(new Date(), String((report as any)?.scheduleTimeZone || (campaign as any)?.reportingTimeZone || "UTC"));
+      const today = new Date(Date.UTC(pacingToday.year, pacingToday.month - 1, pacingToday.day));
+      const effectiveElapsedEnd = pacingEndDate && pacingEndDate.getTime() < today.getTime() ? pacingEndDate : today;
+      const elapsedDays = pacingStartDate && effectiveElapsedEnd.getTime() >= pacingStartDate.getTime()
+        ? Math.max(1, Math.floor((effectiveElapsedEnd.getTime() - pacingStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+        : 0;
+      const hasPacingRange = Boolean(pacingStartDate && pacingEndDate && pacingEndDate.getTime() >= pacingStartDate.getTime());
+      const totalDays = hasPacingRange
+        ? Math.max(1, Math.floor((pacingEndDate!.getTime() - pacingStartDate!.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+        : 0;
+      const spend = metricAvailable("spend") ? metricNumber("spend") : null;
+      const revenue = metricAvailable("revenue") ? metricNumber("revenue") : null;
+      const remainingBudget = campaignBudget !== null && spend !== null ? campaignBudget - spend : null;
+      const budgetUtilization = campaignBudget !== null && spend !== null ? (spend / campaignBudget) * 100 : null;
+      const dailyBurnRate = spend !== null && elapsedDays > 0 ? spend / elapsedDays : null;
+      const targetDailySpend = campaignBudget !== null && totalDays > 0 ? campaignBudget / totalDays : null;
+      const pacingPercentage = dailyBurnRate !== null && targetDailySpend !== null && targetDailySpend > 0
+        ? (dailyBurnRate / targetDailySpend) * 100
+        : null;
+      const pacingStatus = pacingPercentage === null
+        ? "Unavailable"
+        : pacingPercentage > 115
+          ? `${(pacingPercentage - 100).toFixed(1)}% Over`
+          : pacingPercentage < 85
+            ? `${(100 - pacingPercentage).toFixed(1)}% Under`
+            : "On Track";
+      const money = (value: number | null) => value === null
+        ? "Unavailable"
+        : formatCampaignDeepDiveMetricValue("spend", value, campaignCurrency);
+      const pacingDate = (date: Date | null) => date ? date.toISOString().slice(0, 10) : "Unavailable";
       addText("Financial metrics", { bold: true, indent: 4 });
-      addMetricRows(["revenue", "spend", "conversions", "cvr", "cpc", "cpa", "roas", "roi"]);
-      addText("Campaign budget context", { bold: true, indent: 4 });
-      addText(`- Budget: ${formatCampaignDeepDiveMetricValue("spend", (campaign as any)?.budget)}`, { indent: 8 });
-      addText(`- Start Date: ${(campaign as any)?.startDate || "Unavailable"}`, { indent: 8 });
-      addText(`- End Date: ${(campaign as any)?.endDate || "Unavailable"}`, { indent: 8 });
+      addMetricRows(["revenue", "spend", "conversions", "cvr", "cpc", "cpa", "roas", "roi"], 8, campaignCurrency);
+      addText(`- Profit: ${revenue !== null && spend !== null ? money(revenue - spend) : "Unavailable"}`, { indent: 8 });
+      if (section === "financial-analysis:overview") {
+        addText("Budget Position", { bold: true, indent: 4 });
+        addText(`- Campaign Budget: ${money(campaignBudget)}`, { indent: 8 });
+        addText(`- Budget Used: ${money(spend)}`, { indent: 8 });
+        addText(`- Remaining Budget: ${money(remainingBudget)}`, { indent: 8 });
+        addText(`- Budget Utilization: ${budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}%`}`, { indent: 8 });
+        addText("Budget Pacing & Burn Rate", { bold: true, indent: 4 });
+        addText(`- Daily Burn Rate: ${money(dailyBurnRate)}`, { indent: 8 });
+        addText(`- Daily Burn Rate Basis: ${elapsedDays > 0 ? `Based on ${elapsedDays} elapsed budget-period ${elapsedDays === 1 ? "day" : "days"}` : "Requires campaign spend and budget period start"}`, { indent: 8 });
+        addText(`- Target Daily Spend: ${money(targetDailySpend)}`, { indent: 8 });
+        addText(`- Pacing Status: ${pacingStatus}`, { indent: 8 });
+        addText(`- Budget Period Start: ${pacingDate(pacingStartDate)}`, { indent: 8 });
+        addText(`- Budget Period End: ${pacingDate(pacingEndDate)}`, { indent: 8 });
+      }
       addText("Financial source rows", { bold: true, indent: 4 });
       addSourceRows();
     } else if (section.startsWith("platform-comparison:")) {
@@ -1299,7 +1356,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   addText(String(report?.name || "Campaign Report"), { size: 18, bold: true });
   addText(`Campaign: ${campaignName || "Campaign"}`);
   addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
-  addText(`Window: ${windowStart} to ${windowEnd}`);
+  addText(isFinancialAnalysisReport
+    ? "Metric basis: cumulative connected-source traffic through the latest completed reporting day; financial values are campaign-to-date."
+    : `Window: ${windowStart} to ${windowEnd}`);
   addText(`Generated: ${new Date().toLocaleString()}`);
   y += 4;
   addText("Included sections", { size: 14, bold: true });

@@ -336,6 +336,38 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("Recommendation basis");
   });
 
+  it("keeps scheduled Budget & Financial PDFs aligned with campaign pacing metadata", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const builderStart = scheduler.indexOf("async function buildCampaignDeepDiveScheduledPdfAttachment");
+    const builderEnd = scheduler.indexOf("export async function buildPdfAttachmentForReport", builderStart);
+    const builder = scheduler.slice(builderStart, builderEnd);
+
+    expect(builder).toContain('(campaign as any)?.pacingStartDate');
+    expect(builder).toContain('(campaign as any)?.pacingEndDate');
+    expect(builder).toContain('getZonedParts(new Date(), String((report as any)?.scheduleTimeZone || (campaign as any)?.reportingTimeZone || "UTC"))');
+    expect(builder).not.toContain('(campaign as any)?.startDate');
+    expect(builder).not.toContain('(campaign as any)?.endDate');
+    expect(builder).toContain('const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";');
+    expect(builder).toContain('rawBudget === null || rawBudget === undefined || String(rawBudget).trim() === ""');
+    expect(builder).toContain('const effectiveElapsedEnd = pacingEndDate && pacingEndDate.getTime() < today.getTime() ? pacingEndDate : today;');
+    expect(builder).toContain('Math.floor((effectiveElapsedEnd.getTime() - pacingStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1');
+    expect(builder).toContain('const remainingBudget = campaignBudget !== null && spend !== null ? campaignBudget - spend : null;');
+    expect(builder).toContain('const dailyBurnRate = spend !== null && elapsedDays > 0 ? spend / elapsedDays : null;');
+    expect(builder).toContain('const targetDailySpend = campaignBudget !== null && totalDays > 0 ? campaignBudget / totalDays : null;');
+    expect(builder).toContain('pacingPercentage > 115');
+    expect(builder).toContain('pacingPercentage < 85');
+    expect(builder).toContain('Campaign Budget');
+    expect(builder).toContain('Remaining Budget');
+    expect(builder).toContain('Daily Burn Rate');
+    expect(builder).toContain('Target Daily Spend');
+    expect(builder).toContain('Budget Period Start');
+    expect(builder).toContain('Budget Period End');
+    expect(builder).toContain('addMetricRows(["revenue", "spend", "conversions", "cvr", "cpc", "cpa", "roas", "roi"], 8, campaignCurrency);');
+    expect(builder).toContain('if (section === "financial-analysis:overview")');
+    expect(builder).toContain('const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));');
+    expect(builder).toContain('financial values are campaign-to-date');
+  });
+
   it("loads latest aggregate context for scheduled Campaign DeepDive PDFs", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 

@@ -93,6 +93,8 @@ describe("financial daily snapshot observation", () => {
     expect(observer).not.toContain('from "../storage"');
     expect(observer).not.toContain("upsertFinancialDailySnapshot");
     expect(autoRefresh).toContain('recordFinancialDailySnapshotRefreshEvidence("financial_sources"');
+    expect(autoRefresh).toContain("getCampaignAutoRefreshFailures({");
+    expect(autoRefresh).not.toContain('status: failure ? "failed" : "success"');
     expect(ga4Daily).toContain('recordFinancialDailySnapshotRefreshEvidence("ga4_daily"');
     expect(routes).toContain("observeFinancialDailySnapshotReadiness({");
     expect(index).toContain("financialDailySnapshot: getFinancialDailySnapshotObservationStatus()");

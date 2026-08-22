@@ -327,7 +327,6 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     })}`);
     const recomputeFailure = getGA4DailyRecomputeFailure(recomputeResult, Boolean(campaignId));
     if (recomputeFailure) throw new Error(recomputeFailure);
-    if (refreshFailure) throw new Error(refreshFailure);
 
     const completedAt = new Date().toISOString();
     for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
@@ -339,6 +338,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
         failures: [],
       });
     }
+    if (refreshFailure) throw new Error(refreshFailure);
 
     if (!campaignId && !opts.suppressAlerts) {
       try {

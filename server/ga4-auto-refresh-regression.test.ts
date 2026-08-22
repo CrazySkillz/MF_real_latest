@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   getAutoRefreshRunFailure,
+  getCampaignAutoRefreshFailures,
   getAutoRefreshSchedulerConfig,
   getAutoRefreshSchedulerStatus,
   getNextAutoRefreshRunAt,
@@ -46,6 +47,28 @@ describe("GA4 external value auto-refresh regression guard", () => {
     });
     expect(scheduler).toContain('runDailyAutoRefreshOnce("scheduled")');
     expect(serverIndex).toContain("autoRefreshScheduler: getAutoRefreshSchedulerStatus(),");
+  });
+
+  it("isolates financial refresh evidence to each campaign", () => {
+    const runStartedAt = new Date("2026-08-22T13:20:00.000Z");
+    expect(getCampaignAutoRefreshFailures({
+      providerJobsAttempted: 2,
+      providerJobsSucceeded: 2,
+      campaignError: false,
+      recomputeFailed: false,
+      linkedInRequired: true,
+      linkedInLastRefreshAt: "2026-08-22T13:21:00.000Z",
+      runStartedAt,
+    })).toEqual([]);
+    expect(getCampaignAutoRefreshFailures({
+      providerJobsAttempted: 2,
+      providerJobsSucceeded: 1,
+      campaignError: false,
+      recomputeFailed: false,
+      linkedInRequired: true,
+      linkedInLastRefreshAt: "2026-08-22T13:19:59.000Z",
+      runStartedAt,
+    })).toEqual(["1_provider_jobs_failed", "linkedin_refresh_incomplete"]);
   });
 
   it("schedules external refresh by configured reporting timezone instead of server local time", () => {

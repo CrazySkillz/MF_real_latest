@@ -114,6 +114,9 @@ describe("GA4 daily scheduler timing", () => {
     expect(source.indexOf("const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs")).toBeLessThan(
       source.indexOf("if (refreshFailure) throw new Error(refreshFailure);"),
     );
+    expect(source.indexOf('recordFinancialDailySnapshotRefreshEvidence("ga4_daily"')).toBeLessThan(
+      source.indexOf("if (refreshFailure) throw new Error(refreshFailure);"),
+    );
   });
 
   it("fails a targeted run when its provider refresh failed or was skipped", () => {

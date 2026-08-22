@@ -103,6 +103,29 @@ export function getAutoRefreshRunFailure(summary: Pick<
   return failures.length > 0 ? `Auto-refresh incomplete (${failures.join("; ")})` : null;
 }
 
+export function getCampaignAutoRefreshFailures(input: {
+  providerJobsAttempted: number;
+  providerJobsSucceeded: number;
+  campaignError: boolean;
+  recomputeFailed: boolean;
+  linkedInRequired: boolean;
+  linkedInLastRefreshAt: unknown;
+  runStartedAt: Date;
+}): string[] {
+  const failures: string[] = [];
+  const providerFailures = Math.max(0, input.providerJobsAttempted - input.providerJobsSucceeded);
+  if (providerFailures > 0) failures.push(`${providerFailures}_provider_jobs_failed`);
+  if (input.campaignError) failures.push("campaign_refresh_failed");
+  if (input.recomputeFailed) failures.push("campaign_recompute_failed");
+  if (input.linkedInRequired) {
+    const refreshedAt = new Date(input.linkedInLastRefreshAt as any).getTime();
+    if (!Number.isFinite(refreshedAt) || refreshedAt < input.runStartedAt.getTime()) {
+      failures.push("linkedin_refresh_incomplete");
+    }
+  }
+  return failures;
+}
+
 export function getAutoRefreshSchedulerStatus() {
   return {
     started: Boolean(autoRefreshSchedulerStatus.startedAt),
@@ -794,7 +817,11 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
     let anyCampaignUpdated = false;
 
     for (const campaign of campaigns) {
-      const campaignId = campaign.id;
+      const campaignId = String(campaign.id);
+      const campaignAttemptedAtStart = attempted;
+      const campaignSucceededAtStart = succeeded;
+      let campaignError = false;
+      let campaignRecomputeFailed = false;
       try {
         let anyUpdated = false;
         // HubSpot revenue sources are the source of truth for saved campaign mappings.
@@ -1021,11 +1048,38 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
           });
           if (!recomputeResult || Number(recomputeResult.campaignsProcessed || 0) <= 0 || recomputeResult.campaignIdsSkipped.length > 0 || recomputeResult.campaignIdsFailed.length > 0 || recomputeResult.kpiIdsSkipped.length > 0 || recomputeResult.kpiIdsFailed.length > 0 || recomputeResult.alertReconciliationFailures.length > 0) {
             anyCampaignRecomputeFailed = true;
+            campaignRecomputeFailed = true;
           }
         }
       } catch (e: any) {
         campaignErrors++;
+        campaignError = true;
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
+      } finally {
+        let linkedInConnection: any = null;
+        let linkedInConnectionCheckFailed = false;
+        try {
+          linkedInConnection = await storage.getLinkedInConnection(campaignId);
+        } catch {
+          linkedInConnectionCheckFailed = true;
+        }
+        const failures = getCampaignAutoRefreshFailures({
+          providerJobsAttempted: attempted - campaignAttemptedAtStart,
+          providerJobsSucceeded: succeeded - campaignSucceededAtStart,
+          campaignError,
+          recomputeFailed: campaignRecomputeFailed,
+          linkedInRequired: Boolean(linkedInConnection),
+          linkedInLastRefreshAt: linkedInConnection?.lastRefreshAt,
+          runStartedAt: startedAtDate,
+        });
+        if (linkedInConnectionCheckFailed) failures.push("linkedin_connection_check_failed");
+        recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
+          campaignId,
+          reportingDate: getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, startedAtDate),
+          status: failures.length > 0 ? "failed" : "success",
+          completedAt: new Date().toISOString(),
+          failures,
+        });
       }
     }
 
@@ -1062,16 +1116,6 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
       autoRefreshSchedulerStatus.lastError = failure;
     } else {
       autoRefreshSchedulerStatus.lastRunStatus = "success";
-    }
-    const completedAt = new Date().toISOString();
-    for (const campaign of campaigns) {
-      recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
-        campaignId: String(campaign.id),
-        reportingDate: getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, startedAtDate),
-        status: failure ? "failed" : "success",
-        completedAt,
-        failures: failure ? [failure] : [],
-      });
     }
   } catch (e: any) {
     autoRefreshSchedulerStatus.lastRunStatus = "failed";

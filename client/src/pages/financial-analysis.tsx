@@ -50,6 +50,22 @@ type FinancialSpendInputBreakdown = {
 type InsightTone = "success" | "warning" | "info";
 
 const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;
+const resolveFinancialComparisonDate = (dataThroughDate: string, comparisonPeriod: string) => {
+  if (!["1d", "7d", "30d"].includes(comparisonPeriod)) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return "";
+  const completedDate = new Date(`${dataThroughDate}T00:00:00.000Z`);
+  if (Number.isNaN(completedDate.getTime()) || completedDate.toISOString().slice(0, 10) !== dataThroughDate) return "";
+  if (comparisonPeriod !== "30d") {
+    completedDate.setUTCDate(completedDate.getUTCDate() - (comparisonPeriod === "1d" ? 1 : 7));
+    return completedDate.toISOString().slice(0, 10);
+  }
+  const day = completedDate.getUTCDate();
+  completedDate.setUTCDate(1);
+  completedDate.setUTCMonth(completedDate.getUTCMonth() - 1);
+  const lastDay = new Date(Date.UTC(completedDate.getUTCFullYear(), completedDate.getUTCMonth() + 1, 0)).getUTCDate();
+  completedDate.setUTCDate(Math.min(day, lastDay));
+  return completedDate.toISOString().slice(0, 10);
+};
 
 export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
@@ -129,16 +145,6 @@ export default function FinancialAnalysis() {
 
   const comparisonType = comparisonPeriod === "1d" ? "yesterday" : comparisonPeriod === "7d" ? "last_week" : "last_month";
 
-  // Get compatible historical snapshots for comparison
-  const { data: comparisonData } = useQuery<{ current: any | null; previous: any | null }>({
-    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
-    enabled: false, // Withhold comparisons until the protected exact-date snapshot path is certified.
-    placeholderData: (previousData: any) => previousData,
-    refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-  });
-
   // Get LinkedIn metrics
   const { data: linkedInData, isLoading: linkedInLoading } = useQuery({
     queryKey: ["/api/linkedin/metrics", campaignId],
@@ -193,6 +199,19 @@ export default function FinancialAnalysis() {
       if (!response.ok) throw new Error("Failed to load aggregate financial totals");
       return response.json();
     },
+    placeholderData: (previousData: any) => previousData,
+    refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+  const financialComparisonDate = resolveFinancialComparisonDate(
+    String(outcomeTotals?.performanceSummary?.currentValueWindow?.dataThroughDate || ""),
+    comparisonPeriod,
+  );
+  const financialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}&snapshotType=financial_daily&comparisonDate=${financialComparisonDate}`;
+  const { data: comparisonData } = useQuery<{ current: any | null; previous: any | null; comparisonDate?: string }>({
+    queryKey: [financialComparisonUrl],
+    enabled: !!campaignId && !!financialComparisonDate && !demoMode,
     placeholderData: (previousData: any) => previousData,
     refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
     refetchIntervalInBackground: false,
@@ -291,6 +310,7 @@ export default function FinancialAnalysis() {
     && currentValueWindow.dataThroughDate === currentValueWindow.endDate
     && Boolean(String(currentValueWindow?.reportingTimeZone || "").trim());
   const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);
+  const campaignCurrency = String((campaign as any).currency || 'USD').trim().toUpperCase();
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
@@ -319,14 +339,26 @@ export default function FinancialAnalysis() {
   };
   void budgetFinancialAggregate;
 
-  const snapshotPerformanceSummary = effectiveSnapshot?.metrics?.performanceSummary;
-  const compatibleHistoricalSummary = performanceSummary?.version && snapshotPerformanceSummary?.version === performanceSummary.version
-    ? snapshotPerformanceSummary
-    : null;
-  const aggregateSnapshotMetricValue = (summary: any, metricName: string): number | null => {
-    const metric = summary?.totals?.[metricName];
-    const value = Number(metric?.value);
-    return metric?.available === true && Number.isFinite(value) ? value : null;
+  const snapshotFinancialDaily = effectiveSnapshot?.metrics?.financialDaily;
+  const compatibleHistoricalFinancialDaily = !demoMode
+    && comparisonData?.comparisonDate === financialComparisonDate
+    && effectiveSnapshot?.campaignId === campaignId
+    && effectiveSnapshot?.snapshotType === "financial_daily"
+    && effectiveSnapshot?.reportingDate === financialComparisonDate
+    && snapshotFinancialDaily?.version === "financial_daily_snapshot_v1"
+    && snapshotFinancialDaily?.currency === campaignCurrency
+    && snapshotFinancialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && snapshotFinancialDaily?.currentValueWindow?.startDate === currentValueWindow?.startDate
+    && snapshotFinancialDaily?.currentValueWindow?.endDate === financialComparisonDate
+    && snapshotFinancialDaily?.currentValueWindow?.dataThroughDate === financialComparisonDate
+    && snapshotFinancialDaily?.currentValueWindow?.reportingTimeZone === currentValueWindow?.reportingTimeZone
+      ? snapshotFinancialDaily
+      : null;
+  const historicalFinancialInputValue = (metricName: "spend" | "revenue" | "conversions"): number | null => {
+    const input = compatibleHistoricalFinancialDaily?.inputs?.[metricName];
+    const value = Number(input?.value);
+    return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0
+      && Number.isFinite(value) && value >= 0 ? value : null;
   };
 
   // Aggregate metrics from all platforms
@@ -389,8 +421,6 @@ export default function FinancialAnalysis() {
   const campaignTotalDays = hasCampaignDateRange
     ? Math.max(1, Math.floor((campaignEndDay!.getTime() - campaignStartDay!.getTime()) / (1000 * 60 * 60 * 24)) + 1)
     : 0;
-  const campaignCurrency = (campaign as any).currency || 'USD';
-  
   // Format currency with campaign's currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -669,18 +699,25 @@ export default function FinancialAnalysis() {
     );
   };
 
+  const historicalSpend = historicalFinancialInputValue("spend");
+  const historicalRevenue = historicalFinancialInputValue("revenue");
+  const historicalConversions = historicalFinancialInputValue("conversions");
   const historicalMetrics = demoMode && effectiveSnapshot ? {
     spend: effectiveSnapshot.totalSpend || 0,
     conversions: effectiveSnapshot.totalConversions || 0,
     revenue: (effectiveSnapshot.totalConversions || 0) * estimatedAOV,
+    profit: ((effectiveSnapshot.totalConversions || 0) * estimatedAOV) - (effectiveSnapshot.totalSpend || 0),
     roas: effectiveSnapshot.totalSpend > 0 ? ((effectiveSnapshot.totalConversions || 0) * estimatedAOV) / effectiveSnapshot.totalSpend : 0,
     roi: effectiveSnapshot.totalSpend > 0 ? (((effectiveSnapshot.totalConversions || 0) * estimatedAOV - effectiveSnapshot.totalSpend) / effectiveSnapshot.totalSpend) * 100 : 0,
-  } : compatibleHistoricalSummary ? {
-    spend: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "spend"),
-    conversions: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "conversions"),
-    revenue: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "revenue"),
-    roas: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "roas"),
-    roi: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "roi"),
+    cpa: effectiveSnapshot.totalConversions > 0 ? effectiveSnapshot.totalSpend / effectiveSnapshot.totalConversions : null,
+  } : compatibleHistoricalFinancialDaily ? {
+    spend: historicalSpend,
+    conversions: historicalConversions,
+    revenue: historicalRevenue,
+    profit: historicalSpend !== null && historicalRevenue !== null ? historicalRevenue - historicalSpend : null,
+    roas: historicalSpend !== null && historicalRevenue !== null && historicalSpend > 0 ? historicalRevenue / historicalSpend : null,
+    roi: historicalSpend !== null && historicalRevenue !== null && historicalSpend > 0 ? ((historicalRevenue - historicalSpend) / historicalSpend) * 100 : null,
+    cpa: historicalSpend !== null && historicalConversions !== null && historicalConversions > 0 ? historicalSpend / historicalConversions : null,
   } : null;
 
   const financialProfitAvailable = financialRevenueMetric.available && financialSpendMetric.available;

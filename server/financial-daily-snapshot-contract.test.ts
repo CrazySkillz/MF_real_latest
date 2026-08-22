@@ -127,4 +127,26 @@ describe("compact daily financial snapshot contract", () => {
     expect(readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8")).not.toContain(".upsertFinancialDailySnapshot(");
     expect(readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8")).not.toContain(".upsertFinancialDailySnapshot(");
   });
+
+  it("reads financial comparisons only by their exact stored reporting dates", () => {
+    const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const readerStart = storage.indexOf("async getFinancialDailyComparisonData(");
+    const readerEnd = storage.indexOf("async getComparisonData(", readerStart);
+    const reader = storage.slice(readerStart, readerEnd);
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/snapshots/comparison"');
+    const routeEnd = routes.indexOf("// Get campaign snapshots by time period", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(readerStart).toBeGreaterThan(-1);
+    expect(reader).toContain("eq(metricSnapshots.snapshotType, 'financial_daily')");
+    expect(reader).toContain("eq(metricSnapshots.reportingDate, currentReportingDate)");
+    expect(reader).toContain("eq(metricSnapshots.reportingDate, comparisonDate)");
+    expect(reader).toContain("financialDailySnapshotInputSchema.safeParse({");
+    expect(reader).not.toContain("recordedAt");
+    expect(reader).not.toContain("orderBy");
+    expect(route).toContain("snapshotType && snapshotType !== 'financial_daily'");
+    expect(route).toContain("snapshotType === 'financial_daily' && !comparisonDate");
+    expect(route).toContain("storage.getFinancialDailyComparisonData(id, latestComparisonDate, comparisonDate)");
+  });
 });

@@ -444,6 +444,10 @@ export interface IStorage {
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
   upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput): Promise<MetricSnapshot>;
+  getFinancialDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
+    current: MetricSnapshot | null;
+    previous: MetricSnapshot | null;
+  }>;
   getComparisonData(campaignId: string, comparisonType: 'yesterday' | 'last_week' | 'last_month', reportingTimeZone?: string, comparisonDate?: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -4721,6 +4725,39 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return snapshot;
+  }
+
+  async getFinancialDailyComparisonData(
+    campaignId: string,
+    currentReportingDate: string,
+    comparisonDate: string,
+  ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null }> {
+    const [[currentSnapshot], [previousSnapshot]] = await Promise.all([
+      db.select().from(metricSnapshots).where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'financial_daily'),
+        eq(metricSnapshots.reportingDate, currentReportingDate),
+      )).limit(1),
+      db.select().from(metricSnapshots).where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'financial_daily'),
+        eq(metricSnapshots.reportingDate, comparisonDate),
+      )).limit(1),
+    ]);
+    const validatedSnapshot = (snapshot: MetricSnapshot | undefined): MetricSnapshot | null => {
+      const financialDaily = (snapshot?.metrics as any)?.financialDaily;
+      if (!snapshot || !financialDaily || typeof financialDaily !== 'object' || Array.isArray(financialDaily)) return null;
+      return financialDailySnapshotInputSchema.safeParse({
+        ...financialDaily,
+        campaignId: snapshot.campaignId,
+        reportingDate: snapshot.reportingDate,
+      }).success ? snapshot : null;
+    };
+
+    return {
+      current: validatedSnapshot(currentSnapshot),
+      previous: validatedSnapshot(previousSnapshot),
+    };
   }
 
   async getComparisonData(

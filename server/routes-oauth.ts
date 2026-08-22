@@ -30160,9 +30160,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { type } = req.query;
+      const snapshotType = String((req.query as any)?.snapshotType || "").trim();
 
       if (!type || !['yesterday', 'last_week', 'last_month'].includes(type as string)) {
         return res.status(400).json({ message: "Invalid comparison type. Use: yesterday, last_week, or last_month" });
+      }
+      if (snapshotType && snapshotType !== 'financial_daily') {
+        return res.status(400).json({ message: "Invalid snapshot type" });
       }
 
       const comparisonDate = String((req.query as any)?.comparisonDate || "").trim();
@@ -30173,13 +30177,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         || comparisonDate < "1900-01-01" || comparisonDate > latestComparisonDate)) {
         return res.status(400).json({ message: "comparisonDate must be a completed campaign reporting date in YYYY-MM-DD format" });
       }
+      if (snapshotType === 'financial_daily' && !comparisonDate) {
+        return res.status(400).json({ message: "comparisonDate is required for financial daily snapshots" });
+      }
 
-      const comparisonData = await storage.getComparisonData(
-        id,
-        type as 'yesterday' | 'last_week' | 'last_month',
-        (req as any)._campaign?.reportingTimeZone,
-        comparisonDate || undefined,
-      );
+      const comparisonData = snapshotType === 'financial_daily'
+        ? await storage.getFinancialDailyComparisonData(id, latestComparisonDate, comparisonDate)
+        : await storage.getComparisonData(
+            id,
+            type as 'yesterday' | 'last_week' | 'last_month',
+            (req as any)._campaign?.reportingTimeZone,
+            comparisonDate || undefined,
+          );
       res.json(comparisonDate ? { ...comparisonData, comparisonDate } : comparisonData);
     } catch (error) {
       console.error('Comparison data fetch error:', error);

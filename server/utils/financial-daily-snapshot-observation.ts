@@ -6,7 +6,12 @@ import {
 } from "./financial-daily-snapshot-readiness";
 
 type RefreshStage = "financial_sources" | "ga4_daily";
-type Observation = FinancialDailySnapshotReadiness & { evaluatedAt: string };
+type SnapshotWriteStatus = "written" | "failed";
+type Observation = FinancialDailySnapshotReadiness & {
+  evaluatedAt: string;
+  reportingDate: string;
+  writeStatus?: SnapshotWriteStatus;
+};
 
 const evidenceByStage: Record<RefreshStage, Map<string, FinancialDailyRefreshEvidence>> = {
   financial_sources: new Map(),
@@ -56,8 +61,27 @@ export function observeFinancialDailySnapshotReadiness(input: {
     ga4DailyRefresh: evidenceByStage.ga4_daily.get(campaignId)
       || missingEvidence(campaignId, reportingDate, "ga4_daily"),
   });
-  observations.set(campaignId, { ...result, evaluatedAt: new Date().toISOString() });
+  const previous = observations.get(campaignId);
+  observations.set(campaignId, {
+    ...result,
+    evaluatedAt: new Date().toISOString(),
+    reportingDate,
+    ...(previous?.reportingDate === reportingDate && previous.writeStatus
+      ? { writeStatus: previous.writeStatus }
+      : {}),
+  });
   return result;
+}
+
+export function recordFinancialDailySnapshotWriteOutcome(
+  campaignId: string,
+  reportingDate: string,
+  writeStatus: SnapshotWriteStatus,
+): void {
+  const id = String(campaignId || "").trim();
+  const observation = observations.get(id);
+  if (!observation || observation.reportingDate !== String(reportingDate || "").trim()) return;
+  observations.set(id, { ...observation, writeStatus });
 }
 
 export function getFinancialDailySnapshotObservationStatus() {
@@ -74,13 +98,15 @@ export function getFinancialDailySnapshotObservationStatus() {
     {},
   );
   return {
-    mode: "observation_only" as const,
-    snapshotWritesEnabled: false,
+    mode: "gated_write" as const,
+    snapshotWritesEnabled: true,
     financialSourceEvidenceCampaigns: evidenceByStage.financial_sources.size,
     ga4DailyEvidenceCampaigns: evidenceByStage.ga4_daily.size,
     observedCampaigns: values.length,
     readyCampaigns: values.filter((observation) => observation.ready).length,
     blockedCampaigns: values.filter((observation) => !observation.ready).length,
+    writtenCampaigns: values.filter((observation) => observation.writeStatus === "written").length,
+    writeFailedCampaigns: values.filter((observation) => observation.writeStatus === "failed").length,
     blockingReasons,
     latestEvaluatedAt: latestEvaluatedAt || null,
   };

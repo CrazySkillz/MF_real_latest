@@ -91,14 +91,19 @@ describe("authoritative cumulative campaign financial resolver", () => {
     })).toThrow(/do not match/);
   });
 
-  it("is used by the Budget API while the scheduler and writer remain disconnected", () => {
+  it("is shared by the read-only Budget API and scheduler-owned gated writer", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const scheduler = readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
+    const ga4Scheduler = readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
+    const writer = readFileSync(join(process.cwd(), "server", "utils", "financial-daily-snapshot-writer.ts"), "utf-8");
 
     expect(routes).toContain("resolveCampaignCumulativeFinancials({");
     expect(routes).toContain("performanceSummary,");
     expect(routes).not.toContain(".upsertFinancialDailySnapshot(");
     expect(scheduler).not.toContain("resolveCampaignCumulativeFinancials");
     expect(scheduler).not.toContain(".upsertFinancialDailySnapshot(");
+    expect(writer).toContain("resolveCampaignCumulativeFinancials({");
+    expect(writer).toContain("upsertFinancialDailySnapshot(cumulative.snapshot)");
+    expect(ga4Scheduler).toContain("writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate })");
   });
 });

@@ -7,6 +7,7 @@ import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReport
 import { createHash } from "crypto";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
+import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -329,15 +330,25 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     if (recomputeFailure) throw new Error(recomputeFailure);
 
     const completedAt = new Date().toISOString();
+    const snapshotWriteFailures: string[] = [];
     for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
+      const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId] || "";
       recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
         campaignId: processedCampaignId,
-        reportingDate: refreshResult.reportingDatesByCampaign[processedCampaignId] || "",
+        reportingDate,
         status: "success",
         completedAt,
         failures: [],
       });
+      try {
+        const writeResult = await writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate });
+        console.log(`[GA4 Daily] Financial snapshot ${writeResult.status} for campaign ${processedCampaignId}${writeResult.reasons.length > 0 ? ` (${writeResult.reasons.join(", ")})` : ""}`);
+      } catch (error: any) {
+        snapshotWriteFailures.push(processedCampaignId);
+        console.warn(`[GA4 Daily] Financial snapshot write failed for campaign ${processedCampaignId}:`, error?.message || error);
+      }
     }
+    if (snapshotWriteFailures.length > 0) throw new Error(`Financial snapshot write failed for ${snapshotWriteFailures.length} campaign(s)`);
     if (refreshFailure) throw new Error(refreshFailure);
 
     if (!campaignId && !opts.suppressAlerts) {

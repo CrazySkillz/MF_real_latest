@@ -9,7 +9,7 @@ type CalcConfig = {
   inputs?: Record<string, string[]>;
 };
 
-type CampaignMetricTotals = {
+export type CampaignMetricTotals = {
   revenue: number;
   ga4Revenue: number;
   spend: number;
@@ -27,6 +27,7 @@ type CampaignMetricTotals = {
   ga4Available?: boolean;
   ga4RevenueAvailable?: boolean;
   financialConversionsAvailable?: boolean;
+  ga4FinancialSource?: "provider_to_date" | "persisted_daily" | "rolling_breakdown" | "deterministic_simulation" | null;
 };
 
 const round2 = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
@@ -150,6 +151,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   let ga4Available = false;
   let ga4RevenueAvailable = false;
   let verifiedToDateFinancialCandidateAvailable = false;
+  let ga4FinancialSource: CampaignMetricTotals["ga4FinancialSource"] = null;
   if (primary?.propertyId) {
     const propertyId = String(primary.propertyId);
     const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
@@ -178,6 +180,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       ga4Revenue += baseline.revenue;
       engagementRate = engagementRate > 0 ? engagementRate : baseline.engagementRate;
       financialConversions = conversions;
+      ga4FinancialSource = "deterministic_simulation";
     } else if (useFullFinancialCandidate) {
       const financialEndDate = endDate;
       const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, financialEndDate).catch(() => null as any);
@@ -235,6 +238,11 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
       if (ga4RevenueAvailable) {
         ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
         financialConversions = parseNum(selectedFinancialCandidate?.conversions);
+        ga4FinancialSource = selectedFinancialCandidate === toDateCandidate
+          ? "provider_to_date"
+          : selectedFinancialCandidate === dailyCandidate
+            ? "persisted_daily"
+            : "rolling_breakdown";
       }
     }
   }
@@ -273,6 +281,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
     ga4Available,
     ga4RevenueAvailable,
     financialConversionsAvailable: ga4RevenueAvailable,
+    ga4FinancialSource,
   };
 }
 

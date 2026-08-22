@@ -23,6 +23,7 @@ import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTi
 import { aggregateCsvRevenueRows } from "./utils/csv";
 import { buildShopifyRefreshFailureNotification, findOpenShopifyRefreshFailureNotification, resolveShopifyRefreshFailureNotification } from "./utils/shopify-refresh-notification";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
+import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { randomUUID } from "crypto";
 
 type AnyRecord = Record<string, any>;
@@ -1073,13 +1074,21 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
           runStartedAt: startedAtDate,
         });
         if (linkedInConnectionCheckFailed) failures.push("linkedin_connection_check_failed");
+        const reportingDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, startedAtDate);
         recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
           campaignId,
-          reportingDate: getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, startedAtDate),
+          reportingDate,
           status: failures.length > 0 ? "failed" : "success",
           completedAt: new Date().toISOString(),
           failures,
         });
+        try {
+          const writeResult = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate });
+          console.log(`[Auto Refresh] Financial snapshot ${writeResult.status} for campaign ${campaignId}${writeResult.reasons.length > 0 ? ` (${writeResult.reasons.join(", ")})` : ""}`);
+        } catch (error: any) {
+          campaignErrors++;
+          console.warn(`[Auto Refresh] Financial snapshot write failed for campaign ${campaignId}:`, error?.message || error);
+        }
       }
     }
 

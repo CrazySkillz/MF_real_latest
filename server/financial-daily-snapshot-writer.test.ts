@@ -118,6 +118,31 @@ describe("gated financial daily snapshot writer", () => {
     expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
   });
 
+  it("writes when the later financial refresh supplies the GA4 reporting date", async () => {
+    const delayedReportingDate = "2026-08-22";
+    recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
+      campaignId,
+      reportingDate: delayedReportingDate,
+      status: "success",
+      completedAt: "2026-08-22T22:05:00.000Z",
+      failures: [],
+    });
+    beginFinancialDailySnapshotRefreshObservation("financial_sources");
+    recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
+      campaignId,
+      reportingDate: delayedReportingDate,
+      status: "success",
+      completedAt: "2026-08-23T18:41:00.000Z",
+      failures: [],
+    });
+    const deps = dependencies({ now: () => new Date("2026-08-23T18:41:00.000Z") });
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate: delayedReportingDate }, deps);
+
+    expect(result.status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects a rolling GA4 fallback and leaves storage untouched", async () => {
     successfulEvidence();
     const deps = dependencies();

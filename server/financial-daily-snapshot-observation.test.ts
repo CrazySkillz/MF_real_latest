@@ -104,7 +104,7 @@ describe("financial daily snapshot observation", () => {
     expect(result.reasons).toContain("ga4_daily_not_successful");
   });
 
-  it("keeps the GET route read-only and connects writes only from the GA4 scheduler", () => {
+  it("keeps the GET route read-only and connects the gated writer after either refresh", () => {
     const observer = readFileSync(join(process.cwd(), "server", "utils", "financial-daily-snapshot-observation.ts"), "utf-8");
     const autoRefresh = readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf-8");
     const ga4Daily = readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
@@ -115,6 +115,9 @@ describe("financial daily snapshot observation", () => {
     expect(observer).not.toContain('from "../storage"');
     expect(observer).not.toContain("upsertFinancialDailySnapshot");
     expect(autoRefresh).toContain('recordFinancialDailySnapshotRefreshEvidence("financial_sources"');
+    expect(autoRefresh).toContain("writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })");
+    expect(autoRefresh.indexOf("writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })"))
+      .toBeGreaterThan(autoRefresh.indexOf('recordFinancialDailySnapshotRefreshEvidence("financial_sources"'));
     expect(autoRefresh).toContain("getCampaignAutoRefreshFailures({");
     expect(autoRefresh).not.toContain('status: failure ? "failed" : "success"');
     expect(ga4Daily).toContain('recordFinancialDailySnapshotRefreshEvidence("ga4_daily"');

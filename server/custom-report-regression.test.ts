@@ -578,6 +578,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Campaign ROI");
     expect(reports).toContain("Campaign ROAS");
     expect(reports).toContain("Key Financial Metrics");
+    expect(reports).toContain('addFinancialMetricRow("Total Revenue", "revenue");');
+    expect(reports).toContain('addRow("Profit", metricAvailable("revenue") && metricAvailable("spend") ? formatCustomReportMetricValue("revenue", revenue - spend) : "Unavailable");');
+    expect(reports).not.toContain('`${pacingPercentage === null ? "Unavailable" : `${pacingPercentage.toFixed(1)}%`} - ${pacingHealthStatus}`');
     expect(reports).toContain("Budget Utilization");
     expect(reports).toContain("Budget Used");
     expect(reports).toContain("Remaining");

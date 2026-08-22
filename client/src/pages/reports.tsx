@@ -1348,7 +1348,6 @@ export default function Reports() {
       };
       const budgetHealthStatus = budgetUtilization === null ? "Unavailable" : budgetUtilization <= 80 ? "excellent" : budgetUtilization <= 95 ? "good" : budgetUtilization <= 100 ? "warning" : "critical";
       const pacingDeviation = pacingPercentage === null ? null : Math.abs(pacingPercentage - 100);
-      const pacingHealthStatus = pacingDeviation === null ? "Unavailable" : pacingDeviation <= 15 ? "excellent" : pacingDeviation <= 30 ? "good" : pacingDeviation <= 50 ? "warning" : "critical";
       const roiStatus = !metricAvailable("roi") ? "Unavailable" : metricNumber("roi") >= 100 ? "excellent" : metricNumber("roi") >= 50 ? "good" : metricNumber("roi") >= 0 ? "warning" : "critical";
       const roasStatus = !metricAvailable("roas") ? "Unavailable" : metricNumber("roas") >= 3 ? "excellent" : metricNumber("roas") >= 1.5 ? "good" : metricNumber("roas") >= 1 ? "warning" : "critical";
       const budgetScore = budgetUtilization === null ? 0 : budgetUtilization <= 80 ? 25 : budgetUtilization <= 95 ? 15 : budgetUtilization <= 100 ? 10 : 0;
@@ -1368,11 +1367,13 @@ export default function Reports() {
         addRow("Score", displayHealthScore === null ? "Unavailable" : `${displayHealthScore} out of 100 (${availableHealthMetricCount}/4 inputs)`);
         addRow("Rating", healthRating);
         addRow("Budget Utilization", `${budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}%`} - ${budgetHealthStatus}`);
-        addRow("Pacing Status", `${pacingPercentage === null ? "Unavailable" : `${pacingPercentage.toFixed(1)}%`} - ${pacingHealthStatus}`);
+        addRow("Pacing Status", pacingStatus);
         addRow("Campaign ROI", `${metricValue("roi")} - ${roiStatus}`);
         addRow("Campaign ROAS", `${metricValue("roas")} - ${roasStatus}`);
         addText("Key Financial Metrics", { bold: true, indent: 4 });
         addFinancialMetricRow("Total Spend", "spend");
+        addFinancialMetricRow("Total Revenue", "revenue");
+        addRow("Profit", metricAvailable("revenue") && metricAvailable("spend") ? formatCustomReportMetricValue("revenue", revenue - spend) : "Unavailable");
         addFinancialMetricRow("Conversions", "conversions");
         addText("Budget Utilization", { bold: true, indent: 4 });
         addRow("Budget Used", `${metricValue("spend")} of ${campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable"}`);

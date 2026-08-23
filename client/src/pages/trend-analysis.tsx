@@ -1199,6 +1199,14 @@ export default function TrendAnalysis() {
   const financialDataThroughLabel = currentValueWindow?.dataThroughDate
     ? format(new Date(`${currentValueWindow.dataThroughDate}T00:00:00`), "MMM d, yyyy")
     : "";
+  const exactTrafficComparisonUnavailable = cumulativeGA4CurrentCompatible
+    && !exactTrafficComparison
+    && Boolean(trendComparisonDate);
+  const trafficComparisonAvailabilityMessage = !exactTrafficComparisonUnavailable || !comparisonDateLabel
+    ? ""
+    : !compatibleFinancialDaily
+      ? `Exact traffic and financial comparisons are unavailable for ${comparisonDateLabel}; current cumulative and campaign-to-date values remain visible without fallback comparisons.`
+      : `Exact traffic comparison is unavailable for ${comparisonDateLabel}; current cumulative values remain visible without a fallback comparison.`;
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -1296,10 +1304,11 @@ export default function TrendAnalysis() {
                             })
                           : null;
                         return (
-                          <Card key={i}>
-                            <CardContent className="p-4">
+                          <Card key={i} className="h-full">
+                            <CardContent className="p-4 h-full">
                               <div className="text-xs text-muted-foreground/70 mb-1">{card.label}</div>
                               <div className="text-xl font-bold text-foreground">{card.value}</div>
+                              <div className="min-h-[5rem]">
                               {overviewTrendData.hasPrevious && typeof card.change === "number" && (
                                 cumulativeComparison ? (
                                   <div className="text-xs text-muted-foreground mt-1 leading-tight">
@@ -1318,6 +1327,7 @@ export default function TrendAnalysis() {
                                   Campaign-to-date through {financialDataThroughLabel}: Spend ÷ {formatExactTrendCount(cpaConversionDenominator)} conversions
                                 </div>
                               )}
+                              </div>
                             </CardContent>
                           </Card>
                         );
@@ -1329,9 +1339,14 @@ export default function TrendAnalysis() {
                       Traffic cards are cumulative from the initial import through {currentValueWindow.dataThroughDate}. Financial KPIs are campaign-to-date. The selector controls the daily chart and exact comparison date; comparisons appear only where that exact historical value is available.
                     </p>
                   )}
-                  {usesCumulativeGA4Consumer && comparisonDateLabel && !compatibleFinancialDaily && (
+                  {usesCumulativeGA4Consumer && comparisonDateLabel && !compatibleFinancialDaily && !exactTrafficComparisonUnavailable && (
                     <p className="text-sm text-muted-foreground">
                       Exact financial comparison unavailable for {comparisonDateLabel}; current campaign-to-date financial KPIs remain visible without fallback percentages.
+                    </p>
+                  )}
+                  {trafficComparisonAvailabilityMessage && (
+                    <p className="text-sm text-muted-foreground">
+                      {trafficComparisonAvailabilityMessage}
                     </p>
                   )}
 
@@ -1340,12 +1355,6 @@ export default function TrendAnalysis() {
                       Showing {overviewTrendData.currentPeriodDays} of {overviewTrendData.requestedPeriodDays} days available for this selection. Full-period trend comparisons appear once enough daily history exists.
                     </p>
                   )}
-                  {usesCumulativeGA4Consumer && overviewTrendData.hasCompleteCurrentPeriod && !overviewTrendData.hasPrevious && trendComparisonDate && (
-                    <p className="text-sm text-muted-foreground">
-                      Exact comparison for {trendComparisonDate} is unavailable. Current cumulative values remain visible without a fallback comparison.
-                    </p>
-                  )}
-
                   <Card>
                     <CardContent className="p-4 space-y-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

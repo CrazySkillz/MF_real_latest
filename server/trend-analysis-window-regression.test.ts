@@ -41,4 +41,19 @@ describe("Trend Analysis window regression guard", () => {
     expect(page).toContain("efficiencyTrendData?.series.length > 0");
     expect(page).toContain("Trend & comparison window");
   });
+
+  it("keeps KPI card height stable and renders one precise comparison-availability message", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    expect(page).toContain('className="min-h-[5rem]"');
+    expect(page).toContain("const trafficComparisonAvailabilityMessage");
+    expect(page).toContain("Exact traffic and financial comparisons are unavailable");
+    const executiveViewStart = page.indexOf('<TabsContent value="overview"');
+    const executiveViewEnd = page.indexOf('<TabsContent value="efficiency"', executiveViewStart);
+    expect(page.slice(executiveViewStart, executiveViewEnd)).not.toContain("Exact comparison for {trendComparisonDate} is unavailable");
+
+    const cumulativeRenderStart = page.indexOf("cumulativeComparison ? (");
+    const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("text-green-600");
+  });
 });

@@ -6,6 +6,7 @@ import {
   deriveTrendFinancialRatios,
   filterTrendRowsToCalendarWindow,
   resolveCompatibleTrendFinancialDaily,
+  resolveTrendConsumerMode,
   resolveTrendComparisonDate,
 } from "../client/src/lib/trend-analysis-cumulative";
 
@@ -36,7 +37,9 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).not.toContain("<TabsTrigger");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/trend-analysis`, trendDateRange, perfDays]');
     expect(page).toContain("trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}");
-    expect(page).toContain("const trendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;");
+    expect(page).toContain("const responseTrendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;");
+    expect(page).toContain("responseTrendAggregate?.campaignId === campaignId");
+    expect(page).toContain("responseTrendAggregate?.dateRange === trendDateRange");
     expect(page).toContain("const overviewTrendData = useMemo<any>(() => {");
     expect(page).toContain("normalizeRateToPercent");
     expect(overview).toContain("overviewTrendData.availableSeries.map");
@@ -46,6 +49,40 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(overview).toContain("No connected source trend data available");
     expect(overview).not.toContain("crossPlatformData");
     expect(overview).not.toContain("Connect a platform (GA4, LinkedIn, Meta, or Google Ads) to see performance trends.");
+  });
+
+  it("holds the executive render until campaign source scope resolves", () => {
+    expect(resolveTrendConsumerMode({
+      outcomeTotalsFetched: false,
+      performanceSummary: undefined,
+      campaignId: "campaign-1",
+    })).toBe("pending");
+    expect(resolveTrendConsumerMode({
+      outcomeTotalsFetched: true,
+      performanceSummary: { campaignId: "campaign-2", version: "performance_summary_aggregate_v3", sources: [] },
+      campaignId: "campaign-1",
+    })).toBe("unavailable");
+    expect(resolveTrendConsumerMode({
+      outcomeTotalsFetched: true,
+      performanceSummary: {
+        campaignId: "campaign-1",
+        version: "performance_summary_aggregate_v3",
+        sources: [{ id: "ga4", connected: true, category: "web_analytics" }],
+      },
+      campaignId: "campaign-1",
+    })).toBe("cumulative_ga4");
+    expect(resolveTrendConsumerMode({
+      outcomeTotalsFetched: true,
+      performanceSummary: {
+        campaignId: "campaign-1",
+        version: "performance_summary_aggregate_v3",
+        sources: [
+          { id: "ga4", connected: true, category: "web_analytics" },
+          { id: "meta", connected: true, category: "paid_media" },
+        ],
+      },
+      campaignId: "campaign-1",
+    })).toBe("aggregate");
   });
 
   it("uses cumulative current values and exact-date history only for the compatible GA4 consumer", () => {
@@ -60,7 +97,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}");
     expect(page).toContain('performanceSummary?.version === "performance_summary_aggregate_v3"');
     expect(page).toContain("performanceSummary?.campaignId === campaignId");
-    expect(page).toContain("const usesCumulativeGA4Consumer = performanceMainSources.length === 1 && performanceMainSources[0]?.id === \"ga4\";");
+    expect(page).toContain('const usesCumulativeGA4Consumer = trendConsumerMode === "cumulative_ga4";');
+    expect(page).toContain('if (trendConsumerMode === "pending" || trendConsumerMode === "unavailable") return null;');
     expect(page).toContain("ga4Daily?.providerRefreshAttempted === false");
     expect(page).toContain('String(ga4Daily?.propertyId || "") === trendGA4PropertyId');
     expect(page).toContain('const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");');
@@ -71,6 +109,14 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(overviewModel).toContain("currentPeriodDays: currentPeriod.length");
     expect(overviewModel).toContain("requestedPeriodDays: perfDays");
     expect(page).toContain("Current cumulative values are not being reused as historical values.");
+    const cumulativeQueryStart = page.indexOf("data: ga4Daily");
+    const cumulativeQueryEnd = page.indexOf("const { data: linkedinDaily", cumulativeQueryStart);
+    expect(page.slice(cumulativeQueryStart, cumulativeQueryEnd)).not.toContain("placeholderData: keepPreviousData");
+    const trendQueryStart = page.indexOf("data: trendAnalysisResponse");
+    const trendQueryEnd = page.indexOf("// Unified Cross-Platform Data Layer", trendQueryStart);
+    expect(page.slice(trendQueryStart, trendQueryEnd)).not.toContain("placeholderData: keepPreviousData");
+    expect(page).toContain('|| trendConsumerMode === "pending"');
+    expect(page).toContain("|| cumulativeConsumerLoading");
   });
 
   it("derives exact cumulative GA4 traffic and fails closed on incompatible coverage", () => {
@@ -227,6 +273,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("conversionFunnelData?.webAvailable");
     expect(page).toContain("platformBreakdownData?.sources?.length === 1");
     expect(executiveView).toContain("Connected source coverage");
+    expect(executiveView).toContain("Available decision signals");
+    expect(executiveView).toContain("Unavailable as a comparable daily series");
     expect(executiveView).toContain("Campaign Performance Trend");
     expect(executiveView).toContain('card.key === "roi"');
     expect(executiveView).toContain('card.key === "cpc"');
@@ -236,8 +284,12 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).not.toContain("fmtTrendCurrency(overviewTrendData.current.cpm)");
     expect(executiveView).toContain("Efficiency Trends");
     expect(executiveView).toContain("Conversion Quality Trend");
+    expect(executiveView).toContain('<Card className="lg:col-span-2">');
     expect(executiveView).toContain('label={{ value: "ROAS Target"');
     expect(executiveView).toContain("Paid Acquisition Funnel");
+    expect(executiveView).toContain("Website Conversion Journey");
+    expect(executiveView).toContain("Engaged Sessions");
+    expect(executiveView).toContain("Session conversion rate");
     expect(executiveView).toContain("Source Contribution");
     expect(executiveView).toContain("Coverage notes");
     expect(executiveView).toContain("source.unavailable.join");
@@ -248,6 +300,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).not.toContain("Web Analytics Funnel");
     expect(executiveView).not.toContain("Platform Performance Comparison");
     expect(executiveView).not.toContain("Conversion Funnel");
+    expect(page).toContain('? ["users", "sessions", "conversions"]');
+    expect(executiveView).toContain("isAnimationActive={false}");
   });
 
   it("stores scheduler snapshots with the Trend Analysis aggregate contract", () => {

@@ -2,6 +2,23 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const hasNonNegativeMetric = (value: any) => value !== null && typeof value !== "undefined" && value !== ""
   && Number.isFinite(Number(value)) && Number(value) >= 0;
 
+export type TrendConsumerMode = "pending" | "unavailable" | "cumulative_ga4" | "aggregate";
+
+export const resolveTrendConsumerMode = (args: {
+  outcomeTotalsFetched: boolean;
+  performanceSummary: any;
+  campaignId: string;
+}): TrendConsumerMode => {
+  const { outcomeTotalsFetched, performanceSummary, campaignId } = args;
+  if (!outcomeTotalsFetched) return "pending";
+  if (performanceSummary?.campaignId !== campaignId
+    || performanceSummary?.version !== "performance_summary_aggregate_v3"
+    || !Array.isArray(performanceSummary?.sources)) return "unavailable";
+  const mainSources = performanceSummary.sources
+    .filter((source: any) => source?.connected === true && source?.category !== "financial");
+  return mainSources.length === 1 && mainSources[0]?.id === "ga4" ? "cumulative_ga4" : "aggregate";
+};
+
 export const resolveTrendComparisonDate = (dataThroughDate: string, comparisonDays: number) => {
   if (!ISO_DATE_PATTERN.test(dataThroughDate) || ![7, 14, 30, 90].includes(comparisonDays)) return "";
   const date = new Date(`${dataThroughDate}T00:00:00.000Z`);

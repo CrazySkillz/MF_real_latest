@@ -22,6 +22,7 @@ import {
   deriveTrendFinancialRatios,
   filterTrendRowsToCalendarWindow,
   resolveCompatibleTrendFinancialDaily,
+  resolveTrendConsumerMode,
   resolveTrendComparisonDate,
 } from "@/lib/trend-analysis-cumulative";
 
@@ -40,6 +41,10 @@ const fmtNum = (n: number) => {
   return n.toLocaleString();
 };
 const fmtCur = (n: number, currency = "USD") => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+const fmtMetricLabel = (value: string) => value
+  .replace(/_/g, " ")
+  .replace(/([a-z])([A-Z])/g, "$1 $2")
+  .replace(/^./, (character) => character.toUpperCase());
 const pctChange = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
 const sumArr = (arr: any[], key: string) => arr.reduce((s, r) => s + (r[key] || 0), 0);
 const avgArr = (arr: any[], key: string) => arr.length > 0 ? sumArr(arr, key) / arr.length : 0;
@@ -116,7 +121,7 @@ export default function TrendAnalysis() {
     enabled: !!campaignId,
   });
 
-  const { data: kpis = [] } = useQuery<any[]>({
+  const { data: kpis = [], isFetched: trendKpisFetched } = useQuery<any[]>({
     queryKey: [`/api/platforms/google_analytics/kpis`, campaignId],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -126,7 +131,7 @@ export default function TrendAnalysis() {
     },
   });
 
-  const { data: trendGA4ConnectionsResponse } = useQuery<any>({
+  const { data: trendGA4ConnectionsResponse, isFetched: trendGA4ConnectionsFetched } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-connections", "performance-summary-read-only"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -143,10 +148,9 @@ export default function TrendAnalysis() {
     (trendGA4Connections.find((connection: any) => connection?.isPrimary) || trendGA4Connections[0])?.propertyId || "",
   );
 
-  const { data: ga4Daily } = useQuery<any>({
+  const { data: ga4Daily, isFetched: trendGA4DailyFetched } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", TREND_GA4_DAILY_DAYS, trendGA4PropertyId, "trend-read-only"],
     enabled: !!campaignId && !!trendGA4PropertyId,
-    placeholderData: keepPreviousData,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1`);
       const data = await resp.json().catch(() => null);
@@ -162,7 +166,7 @@ export default function TrendAnalysis() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: outcomeTotals } = useQuery<any>({
+  const { data: outcomeTotals, isFetched: outcomeTotalsFetched } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -171,7 +175,6 @@ export default function TrendAnalysis() {
       if (!response.ok || !data?.performanceSummary) throw new Error(data?.error || "Failed to fetch cumulative Trend totals");
       return data;
     },
-    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchInterval: TREND_REFRESH_MS,
     refetchIntervalInBackground: false,
@@ -183,10 +186,9 @@ export default function TrendAnalysis() {
     perfDays,
   );
   const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`;
-  const { data: trendFinancialComparison } = useQuery<any>({
+  const { data: trendFinancialComparison, isFetched: trendFinancialComparisonFetched } = useQuery<any>({
     queryKey: [trendFinancialComparisonUrl, "trend-exact-financial"],
     enabled: !!campaignId && !!trendComparisonDate,
-    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await fetch(trendFinancialComparisonUrl, { credentials: "include" });
       const data = await response.json().catch(() => null);
@@ -257,7 +259,6 @@ export default function TrendAnalysis() {
   } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/trend-analysis`, trendDateRange, perfDays],
     enabled: !!campaignId,
-    placeholderData: keepPreviousData,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}`, {
         credentials: "include",
@@ -434,13 +435,22 @@ export default function TrendAnalysis() {
     return { series: currentPeriod, current, previous, comparison, anomalies, hasPrevious: previousPeriod.length > 0, platformTotals };
   }, [ga4Daily, linkedinDaily, metaDaily, googleAdsDaily, dailyFinancials, perfDays]);
 
-  const trendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;
+  const responseTrendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;
+  const trendAggregate = responseTrendAggregate?.campaignId === campaignId
+    && responseTrendAggregate?.dateRange === trendDateRange
+    ? responseTrendAggregate
+    : null;
   const performanceSummary = outcomeTotals?.performanceSummary;
+  const trendConsumerMode = resolveTrendConsumerMode({
+    outcomeTotalsFetched,
+    performanceSummary,
+    campaignId: String(campaignId || ""),
+  });
   const currentValueWindow = performanceSummary?.currentValueWindow;
   const performanceMainSources = Array.isArray(performanceSummary?.sources)
     ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
     : [];
-  const usesCumulativeGA4Consumer = performanceMainSources.length === 1 && performanceMainSources[0]?.id === "ga4";
+  const usesCumulativeGA4Consumer = trendConsumerMode === "cumulative_ga4";
   const ga4TrendSource = Array.isArray(trendAggregate?.sources)
     ? trendAggregate.sources.find((source: any) => source?.id === "ga4")
     : null;
@@ -510,6 +520,7 @@ export default function TrendAnalysis() {
   const authoritativeTrendCurrent = cumulativeGA4CurrentCompatible && currentTraffic ? {
     users: currentTraffic.users,
     sessions: currentTraffic.sessions,
+    engagedSessions: currentTraffic.engagedSessions,
     conversions: currentTraffic.conversions,
     engagementRate: currentTraffic.engagementRate,
     cvr: currentTraffic.cvr,
@@ -535,6 +546,7 @@ export default function TrendAnalysis() {
   const authoritativeTrendPrevious = exactTrafficComparison ? {
     users: exactTrafficComparison.previous.users,
     sessions: exactTrafficComparison.previous.sessions,
+    engagedSessions: exactTrafficComparison.previous.engagedSessions,
     conversions: exactTrafficComparison.previous.conversions,
     engagementRate: exactTrafficComparison.previous.engagementRate,
     cvr: exactTrafficComparison.previous.cvr,
@@ -551,6 +563,7 @@ export default function TrendAnalysis() {
   } : null;
 
   const overviewTrendData = useMemo<any>(() => {
+    if (trendConsumerMode === "pending" || trendConsumerMode === "unavailable") return null;
     const aggregate = trendAggregate;
     const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
     if (rows.length === 0 && !authoritativeTrendCurrent) return null;
@@ -661,14 +674,22 @@ export default function TrendAnalysis() {
         ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean)
         : performanceMainSources.map((source: any) => String(source?.label || source?.id)).filter(Boolean),
     };
-  }, [trendAggregate, perfDays, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, performanceMainSources]);
+  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, performanceMainSources]);
 
   const overviewVisibleSeries = useMemo(() => {
     const keys = (overviewTrendData?.availableSeries || []).map((item: any) => item.key);
+    const hasInitialSelection = visibleSeries.size === 3
+      && ["spend", "revenue", "conversions"].every((key) => visibleSeries.has(key));
+    if (hasInitialSelection) {
+      const preferred = usesCumulativeGA4Consumer
+        ? ["users", "sessions", "conversions"]
+        : ["spend", "revenue", "conversions"];
+      return new Set(preferred.filter((key) => keys.includes(key)));
+    }
     const selected = new Set(Array.from(visibleSeries).filter((key) => keys.includes(key)));
     if (selected.size > 0) return selected;
     return new Set(keys.slice(0, 3));
-  }, [visibleSeries, overviewTrendData]);
+  }, [visibleSeries, overviewTrendData, usesCumulativeGA4Consumer]);
 
   const efficiencyTrendData = useMemo<any>(() => {
     const aggregate = trendAggregate;
@@ -835,6 +856,7 @@ export default function TrendAnalysis() {
     const rollingCurrent = {
         sessions,
         users,
+        engagedSessions: null,
         conversions,
         webCvr: conversions !== null && sessions && sessions > 0 ? (conversions / sessions) * 100 : null,
         engagementRate: hasEngagementRate ? avg("engagementRate") : null,
@@ -851,6 +873,7 @@ export default function TrendAnalysis() {
     const current = usesCumulativeGA4Consumer && authoritativeTrendCurrent ? {
       sessions: authoritativeTrendCurrent.sessions,
       users: authoritativeTrendCurrent.users,
+      engagedSessions: authoritativeTrendCurrent.engagedSessions,
       conversions: authoritativeTrendCurrent.conversions,
       webCvr: authoritativeTrendCurrent.cvr,
       engagementRate: authoritativeTrendCurrent.engagementRate,
@@ -941,7 +964,7 @@ export default function TrendAnalysis() {
       cpc: null,
       cpa: null,
       roas: null,
-      includedMetrics: ["users", "sessions", "conversions"],
+      includedMetrics: ["users", "sessions", "conversions", "engagementRate"],
       unavailable: ["spend: no compatible source-level daily series", "revenue: no compatible source-level daily series", "impressions: GA4 is not an ad-impression source"],
     }] : rollingSourceRows;
 
@@ -1086,7 +1109,11 @@ export default function TrendAnalysis() {
 
   const toggleSeries = (key: string) => {
     setVisibleSeries(prev => {
-      const next = new Set(prev);
+      const hasInitialSelection = prev.size === 3
+        && ["spend", "revenue", "conversions"].every((item) => prev.has(item));
+      const next = new Set(hasInitialSelection && usesCumulativeGA4Consumer
+        ? ["users", "sessions", "conversions"]
+        : prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
@@ -1148,7 +1175,17 @@ export default function TrendAnalysis() {
   }
 
   const overviewHasData = Boolean(overviewTrendData && overviewTrendData.series.length > 0);
-  const overviewLoading = trendAnalysisLoading && !trendAnalysisFetched && !overviewTrendData;
+  const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
+    !trendGA4ConnectionsFetched
+    || (!!trendGA4PropertyId && !trendGA4DailyFetched)
+    || (!!trendComparisonDate && !trendFinancialComparisonFetched)
+  );
+  const overviewLoading = !overviewTrendData && (
+    (trendAnalysisLoading && !trendAnalysisFetched)
+    || trendConsumerMode === "pending"
+    || !trendKpisFetched
+    || cumulativeConsumerLoading
+  );
   const executiveTrendInsights = trendInsights
     .filter((insight) => !["Connected Source Coverage", "Single-Source Trend View"].includes(insight.title))
     .slice(0, 3);
@@ -1269,16 +1306,38 @@ export default function TrendAnalysis() {
                   )}
 
                   <Card>
-                    <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-foreground">Connected source coverage</div>
-                        <div className="text-xs text-muted-foreground">Only campaign-scoped metrics supported by these sources are included.</div>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-foreground">Connected source coverage</div>
+                          <div className="text-xs text-muted-foreground">Only campaign-scoped metrics supported by these sources are included.</div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {overviewTrendData.connectedSources.map((source: string) => (
+                            <Badge key={source} variant="outline">{source}</Badge>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {overviewTrendData.connectedSources.map((source: string) => (
-                          <Badge key={source} variant="outline">{source}</Badge>
-                        ))}
-                      </div>
+                      {platformBreakdownData?.sources?.length === 1 && (
+                        <div className="grid gap-4 border-t pt-4 md:grid-cols-2">
+                          <div>
+                            <div className="text-xs font-medium text-foreground mb-2">Available decision signals</div>
+                            <div className="flex flex-wrap gap-2">
+                              {platformBreakdownData.sources[0].includedMetrics.map((metric: string) => (
+                                <Badge key={metric} variant="secondary">{fmtMetricLabel(metric)}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-foreground mb-2">Unavailable as a comparable daily series</div>
+                            <p className="text-xs text-muted-foreground">
+                              {platformBreakdownData.sources[0].unavailable.length
+                                ? platformBreakdownData.sources[0].unavailable.join("; ")
+                                : "No source capability gaps reported."}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -1320,13 +1379,13 @@ export default function TrendAnalysis() {
                               if (['Spend', 'Revenue'].some(n => name.includes(n))) return [fmtTrendCurrency(Number(value)), name];
                               return [Number(value).toLocaleString(), name];
                             }} />
-                            {overviewVisibleSeries.has('spend') && <Area yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
-                            {overviewVisibleSeries.has('revenue') && <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />}
-                            {overviewVisibleSeries.has('conversions') && <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
-                            {overviewVisibleSeries.has('impressions') && <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
-                            {overviewVisibleSeries.has('clicks') && <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
-                            {overviewVisibleSeries.has('users') && <Line yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
-                            {overviewVisibleSeries.has('sessions') && <Line yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
+                            {overviewVisibleSeries.has('spend') && <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
+                            {overviewVisibleSeries.has('revenue') && <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />}
+                            {overviewVisibleSeries.has('conversions') && <Bar isAnimationActive={false} yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
+                            {overviewVisibleSeries.has('impressions') && <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
+                            {overviewVisibleSeries.has('clicks') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
+                            {overviewVisibleSeries.has('users') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
+                            {overviewVisibleSeries.has('sessions') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
                             {/* KPI target lines */}
                             {kpiTargets.revenue && overviewVisibleSeries.has('revenue') && (
                               <ReferenceLine yAxisId="right" y={kpiTargets.revenue} ifOverflow="extendDomain" stroke="#10b981" strokeDasharray="5 5" label={{ value: 'Revenue Target', fill: '#10b981', fontSize: 10 }} />
@@ -1366,8 +1425,8 @@ export default function TrendAnalysis() {
                                     <YAxis yAxisId="left" className="text-xs" />
                                     <YAxis yAxisId="right" orientation="right" className="text-xs" />
                                     <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [name === "ROAS" ? `${Number(value).toFixed(2)}x` : formatPct(Number(value)), name]} />
-                                    {efficiencyTrendData.current.roas !== null && <Line yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />}
-                                    {efficiencyTrendData.current.roi !== null && <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI" />}
+                                    {efficiencyTrendData.current.roas !== null && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />}
+                                    {efficiencyTrendData.current.roi !== null && <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI" />}
                                     {kpiTargets.roas && efficiencyTrendData.current.roas !== null && <ReferenceLine yAxisId="left" y={kpiTargets.roas} ifOverflow="extendDomain" stroke="#10b981" strokeDasharray="5 5" label={{ value: "ROAS Target", fill: "#10b981", fontSize: 10 }} />}
                                   </ComposedChart>
                                 </ResponsiveContainer>
@@ -1387,9 +1446,9 @@ export default function TrendAnalysis() {
                                     <XAxis dataKey="label" className="text-xs" />
                                     <YAxis className="text-xs" />
                                     <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [fmtTrendCurrency(Number(value)), name]} />
-                                    {efficiencyTrendData.current.cpa !== null && <Line type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />}
-                                    {efficiencyTrendData.current.cpc !== null && <Line type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />}
-                                    {efficiencyTrendData.current.cpm !== null && <Line type="monotone" dataKey="cpm" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CPM" />}
+                                    {efficiencyTrendData.current.cpa !== null && <Line isAnimationActive={false} type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />}
+                                    {efficiencyTrendData.current.cpc !== null && <Line isAnimationActive={false} type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />}
+                                    {efficiencyTrendData.current.cpm !== null && <Line isAnimationActive={false} type="monotone" dataKey="cpm" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CPM" />}
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>
@@ -1398,7 +1457,7 @@ export default function TrendAnalysis() {
                         )}
 
                         {efficiencyTrendData.hasRateEfficiency && (
-                          <Card className={efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency ? "lg:col-span-2" : ""}>
+                          <Card className="lg:col-span-2">
                             <CardHeader><CardTitle>Conversion Quality Trend</CardTitle></CardHeader>
                             <CardContent>
                               <div className="h-64">
@@ -1408,9 +1467,9 @@ export default function TrendAnalysis() {
                                     <XAxis dataKey="label" className="text-xs" />
                                     <YAxis className="text-xs" />
                                     <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [formatPct(Number(value)), name]} />
-                                    {efficiencyTrendData.current.ctr !== null && <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
-                                    {efficiencyTrendData.current.cvr !== null && <Line type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR" />}
-                                    {efficiencyTrendData.current.engagementRate !== null && <Line type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate" />}
+                                    {efficiencyTrendData.current.ctr !== null && <Line isAnimationActive={false} type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
+                                    {efficiencyTrendData.current.cvr !== null && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR" />}
+                                    {efficiencyTrendData.current.engagementRate !== null && <Line isAnimationActive={false} type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate" />}
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>
@@ -1419,6 +1478,43 @@ export default function TrendAnalysis() {
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {conversionFunnelData?.webAvailable && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <BarChart3 className="w-5 h-5" />
+                          <span>Website Conversion Journey</span>
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">How qualified website activity progresses into campaign conversions.</p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid gap-3 md:grid-cols-3">
+                          {[
+                            { label: "Sessions", value: conversionFunnelData.current.sessions === null ? null : fmtNum(conversionFunnelData.current.sessions) },
+                            Number.isFinite(conversionFunnelData.current.engagedSessions)
+                              ? { label: "Engaged Sessions", value: fmtNum(conversionFunnelData.current.engagedSessions) }
+                              : { label: "Users", value: conversionFunnelData.current.users === null ? null : fmtNum(conversionFunnelData.current.users) },
+                            { label: "Conversions", value: conversionFunnelData.current.conversions === null ? null : fmtNum(conversionFunnelData.current.conversions) },
+                          ].filter((stage) => stage.value !== null).map((stage, index, stages) => (
+                            <div key={stage.label} className="relative rounded-lg border p-4">
+                              <div className="text-xs text-muted-foreground mb-1">{stage.label}</div>
+                              <div className="text-xl font-bold text-foreground">{stage.value}</div>
+                              {index < stages.length - 1 && <div className="absolute -right-3 top-1/2 hidden text-muted-foreground md:block">→</div>}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
+                          {conversionFunnelData.current.engagementRate !== null && (
+                            <div><span className="text-xs text-muted-foreground">Engagement rate</span><div className="font-semibold">{formatPct(conversionFunnelData.current.engagementRate)}</div></div>
+                          )}
+                          {conversionFunnelData.current.webCvr !== null && (
+                            <div><span className="text-xs text-muted-foreground">Session conversion rate</span><div className="font-semibold">{formatPct(conversionFunnelData.current.webCvr)}</div></div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
 
                   {conversionFunnelData?.paidAvailable && (
@@ -1515,7 +1611,7 @@ export default function TrendAnalysis() {
                                   <YAxis className="text-xs" />
                                   <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [platformBreakdownData.activeMetric === "spend" || platformBreakdownData.activeMetric === "revenue" ? fmtTrendCurrency(Number(value)) : Number(value).toLocaleString(), name]} />
                                   {platformBreakdownData.sources.map((source: any) => (
-                                    <Bar key={source.id} dataKey={`${source.id}_${platformBreakdownData.activeMetric}`} stackId="source" fill={source.color} name={source.label} />
+                                    <Bar isAnimationActive={false} key={source.id} dataKey={`${source.id}_${platformBreakdownData.activeMetric}`} stackId="source" fill={source.color} name={source.label} />
                                   ))}
                                 </BarChart>
                               </ResponsiveContainer>

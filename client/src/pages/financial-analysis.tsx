@@ -742,7 +742,6 @@ export default function FinancialAnalysis() {
   const financialProfit = financialProfitAvailable
     ? financialRevenueMetric.value - financialSpendMetric.value
     : 0;
-  const allocationSpendTotal = campaignToDateAllocationSources.reduce((sum, source) => sum + source.spend, 0);
   const executiveFinancialActions: Array<{ title: string; body: string; tone: InsightTone }> = [];
 
   if (financialRoasMetric.available && financialRoiMetric.available) {
@@ -1166,78 +1165,39 @@ export default function FinancialAnalysis() {
                 <div>
                   <h2 id="allocation-sources-heading" className="text-xl font-semibold">Allocation & Sources</h2>
                   <p className="text-sm text-muted-foreground">
-                    Allocation uses spend-capable main Connected Platforms. Financial child inputs remain provenance and are never treated as standalone platforms.
+                    Detailed revenue and spend provenance from authoritative campaign financial inputs.
                   </p>
                 </div>
-                <div className="grid gap-6 xl:grid-cols-2">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Budget Allocation</CardTitle>
-                      <CardDescription>Spend share and compatible return evidence by main source</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {campaignToDateAllocationSources.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Campaign-to-date allocation is unavailable until each source provides compatible cumulative spend and revenue.</p>
-                      ) : (
-                        <div className="space-y-4">
-                          {campaignToDateAllocationSources.map((source) => {
-                            const share = allocationSpendTotal > 0 ? (source.spend / allocationSpendTotal) * 100 : 0;
-                            return (
-                              <div key={source.id} className="space-y-2 rounded-lg border p-4">
-                                <div className="flex items-center justify-between gap-4">
-                                  <p className="font-medium">{source.label}</p>
-                                  <Badge variant="outline">{source.roas === null ? "ROAS unavailable" : `${source.roas.toFixed(2)}x ROAS`}</Badge>
-                                </div>
-                                <div className="grid grid-cols-3 gap-3 text-sm">
-                                  <div><p className="text-xs text-muted-foreground">Spend</p><p className="font-medium">{formatCurrency(source.spend)}</p></div>
-                                  <div><p className="text-xs text-muted-foreground">Share</p><p className="font-medium">{formatPercentage(share)}</p></div>
-                                  <div><p className="text-xs text-muted-foreground">Revenue</p><p className="font-medium">{source.revenue > 0 ? formatCurrency(source.revenue) : "Unavailable"}</p></div>
-                                </div>
-                                <Progress value={Math.min(Math.max(share, 0), 100)} className="h-2" />
-                              </div>
-                            );
-                          })}
-                          <p className="text-xs text-muted-foreground">
-                            {campaignToDateAllocationSources.length > 1
-                              ? "Compare compatible spend share and ROAS before reallocating budget."
-                              : "Budget reallocation recommendations require at least two spend-capable sources."}
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Sources Used</CardTitle>
-                      <CardDescription>Detailed revenue and spend provenance from the campaign financial path</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 md:grid-cols-2">
-                      <div>
-                        <p className="text-sm font-semibold">Revenue</p>
-                        <div className="mt-3 space-y-2">
-                          {financialChildSourceBreakdowns.length > 0 ? financialChildSourceBreakdowns.map((source) => (
-                            <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
-                              <span className="text-muted-foreground">{source.label}</span>
-                              <span className="font-medium">{formatCurrency(source.revenue)}</span>
-                            </div>
-                          )) : <p className="text-sm text-muted-foreground">No detailed revenue inputs are available.</p>}
-                        </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Sources Used</CardTitle>
+                    <CardDescription>Detailed revenue and spend provenance from the campaign financial path</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-6 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm font-semibold">Revenue</p>
+                      <div className="mt-3 space-y-2">
+                        {financialChildSourceBreakdowns.length > 0 ? financialChildSourceBreakdowns.map((source) => (
+                          <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
+                            <span className="text-muted-foreground">{source.label}</span>
+                            <span className="font-medium">{formatCurrency(source.revenue)}</span>
+                          </div>
+                        )) : <p className="text-sm text-muted-foreground">No detailed revenue inputs are available.</p>}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold">Spend</p>
-                        <div className="mt-3 space-y-2">
-                          {financialSpendInputBreakdowns.length > 0 ? financialSpendInputBreakdowns.map((source) => (
-                            <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
-                              <span className="text-muted-foreground">{source.label}</span>
-                              <span className="font-medium">{formatCurrency(source.spend)}</span>
-                            </div>
-                          )) : <p className="text-sm text-muted-foreground">No detailed spend inputs are available.</p>}
-                        </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Spend</p>
+                      <div className="mt-3 space-y-2">
+                        {financialSpendInputBreakdowns.length > 0 ? financialSpendInputBreakdowns.map((source) => (
+                          <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
+                            <span className="text-muted-foreground">{source.label}</span>
+                            <span className="font-medium">{formatCurrency(source.spend)}</span>
+                          </div>
+                        )) : <p className="text-sm text-muted-foreground">No detailed spend inputs are available.</p>}
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </section>
 
               <section aria-labelledby="executive-action-heading" className="space-y-4">

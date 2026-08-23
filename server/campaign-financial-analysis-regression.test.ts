@@ -113,6 +113,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const financialPositionStart = executiveView.indexOf('aria-labelledby="financial-position-heading"');
     const budgetPacingStart = executiveView.indexOf('aria-labelledby="budget-pacing-heading"');
     const financialPosition = executiveView.slice(financialPositionStart, budgetPacingStart);
+    const allocationSourcesStart = executiveView.indexOf('aria-labelledby="allocation-sources-heading"');
+    const executiveActionStart = executiveView.indexOf('aria-labelledby="executive-action-heading"');
+    const allocationSources = executiveView.slice(allocationSourcesStart, executiveActionStart);
 
     expect(executiveStart).toBeGreaterThan(-1);
     expect(legacyStart).toBeGreaterThan(executiveStart);
@@ -129,7 +132,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveView).toContain('label: "ROAS"');
     expect(executiveView).toContain('label: "ROI"');
     expect(executiveView).toContain('label: "CPA"');
-    expect(executiveView).toContain("campaignToDateAllocationSources.map");
+    expect(allocationSources).toContain("<CardTitle>Sources Used</CardTitle>");
+    expect(allocationSources).not.toContain("<CardTitle>Budget Allocation</CardTitle>");
+    expect(allocationSources).not.toContain('className="grid gap-6 xl:grid-cols-2"');
     expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
     expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
     expect(executiveView).toContain("executiveFinancialActions.map");

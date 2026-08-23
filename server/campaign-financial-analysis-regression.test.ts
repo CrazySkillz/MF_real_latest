@@ -110,12 +110,16 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const executiveStart = page.indexOf('<div className="space-y-8" data-testid="executive-financial-analysis">');
     const legacyStart = page.indexOf("{/* Legacy tab renderer retained as a non-rendering rollback reference. */}", executiveStart);
     const executiveView = page.slice(executiveStart, legacyStart);
+    const financialPositionStart = executiveView.indexOf('aria-labelledby="financial-position-heading"');
+    const budgetPacingStart = executiveView.indexOf('aria-labelledby="budget-pacing-heading"');
+    const financialPosition = executiveView.slice(financialPositionStart, budgetPacingStart);
 
     expect(executiveStart).toBeGreaterThan(-1);
     expect(legacyStart).toBeGreaterThan(executiveStart);
     expect(executiveView).toContain('aria-labelledby="financial-position-heading"');
     expect(executiveView).toContain('aria-labelledby="budget-pacing-heading"');
-    expect(executiveView).toContain('aria-labelledby="conversion-efficiency-heading"');
+    expect(financialPosition).toContain('<h3 id="conversion-efficiency-heading"');
+    expect(executiveView.match(/id="conversion-efficiency-heading"/g)).toHaveLength(1);
     expect(executiveView).toContain('aria-labelledby="paid-media-efficiency-heading"');
     expect(executiveView).toContain('aria-labelledby="allocation-sources-heading"');
     expect(executiveView).toContain('aria-labelledby="executive-action-heading"');

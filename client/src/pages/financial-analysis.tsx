@@ -915,6 +915,23 @@ export default function FinancialAnalysis() {
                     </Card>
                   ))}
                 </div>
+                {conversionEfficiencyCvrMetric.available && (
+                  <div className="rounded-lg border bg-card p-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 id="conversion-efficiency-heading" className="font-semibold">Conversion Efficiency</h3>
+                        <p className="text-sm text-muted-foreground">CVR shows how effectively campaign sessions or clicks become conversions.</p>
+                        {conversionEfficiencySourceLabels.length > 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">Source: {conversionEfficiencySourceLabels.join(", ")}</p>
+                        )}
+                      </div>
+                      <div className="sm:text-right">
+                        <p className="text-sm font-medium text-muted-foreground">CVR</p>
+                        <p className="mt-1 text-2xl font-bold">{formatOverviewPercentage(conversionEfficiencyCvrMetric)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
 
               <section aria-labelledby="budget-pacing-heading" className="space-y-4">
@@ -1143,33 +1160,6 @@ export default function FinancialAnalysis() {
                     </CardContent>
                   </Card>
                 </section>
-              )}
-
-              {conversionEfficiencyCvrMetric.available && (
-              <section aria-labelledby="conversion-efficiency-heading" className="space-y-4">
-                <div>
-                  <h2 id="conversion-efficiency-heading" className="text-xl font-semibold">Conversion Efficiency</h2>
-                  <p className="text-sm text-muted-foreground">CVR shows how effectively campaign sessions or clicks become conversions.</p>
-                </div>
-                <Card>
-                  <CardContent className="space-y-5 p-6">
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-lg border p-4">
-                        <p className="text-sm font-medium text-muted-foreground">CVR</p>
-                        <p className="mt-1 text-xl font-bold">{formatOverviewPercentage(conversionEfficiencyCvrMetric)}</p>
-                      </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <p className="text-sm font-semibold">Sources</p>
-                      {conversionEfficiencySourceLabels.length > 0 ? (
-                        <p className="mt-1 text-sm text-muted-foreground">{conversionEfficiencySourceLabels.join(", ")}</p>
-                      ) : (
-                        <p className="mt-1 text-sm text-muted-foreground">No connected source provides conversion-efficiency inputs yet.</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </section>
               )}
 
               <section aria-labelledby="allocation-sources-heading" className="space-y-4">

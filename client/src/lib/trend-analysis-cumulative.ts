@@ -27,6 +27,32 @@ export const resolveTrendComparisonDate = (dataThroughDate: string, comparisonDa
   return date.toISOString().slice(0, 10);
 };
 
+export const formatExactTrendCount = (value: number) => Number(value).toLocaleString("en-US", {
+  maximumFractionDigits: Number.isInteger(Number(value)) ? 0 : 2,
+});
+
+export const formatTrendComparison = (args: {
+  current: number;
+  previous: number;
+  comparisonDate: string;
+  kind: "count" | "rate";
+}) => {
+  const { current, previous, comparisonDate, kind } = args;
+  if (!ISO_DATE_PATTERN.test(comparisonDate) || !Number.isFinite(current)
+    || !Number.isFinite(previous) || previous <= 0) return null;
+  const dateLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${comparisonDate}T00:00:00.000Z`));
+  const delta = current - previous;
+  const sign = delta > 0 ? "+" : "";
+  if (kind === "rate") return `${sign}${delta.toFixed(2)} pp vs cumulative through ${dateLabel}`;
+  const change = ((current - previous) / previous) * 100;
+  return `${sign}${formatExactTrendCount(delta)} (${change >= 0 ? "+" : ""}${change.toFixed(1)}%) vs cumulative through ${dateLabel}`;
+};
+
 export const filterTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: string, days: number) => {
   if (!ISO_DATE_PATTERN.test(dataThroughDate) || !Number.isInteger(days) || days < 1) return [];
   const start = new Date(`${dataThroughDate}T00:00:00.000Z`);

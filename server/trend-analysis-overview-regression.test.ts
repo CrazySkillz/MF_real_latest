@@ -5,6 +5,8 @@ import {
   deriveExactCumulativeGA4Traffic,
   deriveTrendFinancialRatios,
   filterTrendRowsToCalendarWindow,
+  formatExactTrendCount,
+  formatTrendComparison,
   resolveCompatibleTrendFinancialDaily,
   resolveTrendConsumerMode,
   resolveTrendComparisonDate,
@@ -198,6 +200,28 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(ratios.cpa).toBeCloseTo(2699.75 / 251, 10);
     expect(deriveTrendFinancialRatios({ spend: 0, revenue: 72766.69, conversions: 0 }))
       .toEqual({ roas: null, roi: null, cpa: null });
+  });
+
+  it("presents exact counts and unambiguous cumulative comparisons", () => {
+    expect(formatExactTrendCount(1183)).toBe("1,183");
+    expect(formatExactTrendCount(1184)).toBe("1,184");
+    expect(formatTrendComparison({ current: 1183, previous: 866, comparisonDate: "2026-07-23", kind: "count" }))
+      .toBe("+317 (+36.6%) vs cumulative through Jul 23, 2026");
+    expect(formatTrendComparison({ current: 12.8486897718, previous: 12.7020785219, comparisonDate: "2026-07-23", kind: "rate" }))
+      .toBe("+0.15 pp vs cumulative through Jul 23, 2026");
+    expect(formatTrendComparison({ current: 68.3854606932, previous: 68.3602771363, comparisonDate: "2026-07-23", kind: "rate" }))
+      .toBe("+0.03 pp vs cumulative through Jul 23, 2026");
+    expect(formatTrendComparison({ current: 10, previous: 0, comparisonDate: "2026-07-23", kind: "count" })).toBeNull();
+
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    expect(page).toContain("formatExactTrendCount(overviewTrendData.current.sessions)");
+    expect(page).toContain("formatExactTrendCount(overviewTrendData.current.users)");
+    expect(page).toContain("const comparisonText = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
+    expect(page).toContain("comparisonDateLabel && !compatibleFinancialDaily");
+    expect(page).toContain("Exact financial comparison unavailable for {comparisonDateLabel}; current campaign-to-date financial KPIs remain visible without fallback percentages.");
+    expect(page).toContain('const cpaConversionDenominator = usesCumulativeGA4Consumer ? aggregateMetricValue("conversions") : null;');
+    expect(page).toContain("Campaign-to-date through {financialDataThroughLabel}: Spend ÷ {formatExactTrendCount(cpaConversionDenominator)} conversions");
+    expect(page).toContain("Traffic cards are cumulative from the initial import");
   });
 
   it("wires the Efficiency Metrics tab to aggregate-backed derived metrics", () => {

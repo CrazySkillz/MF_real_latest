@@ -110,7 +110,7 @@ export default function TrendAnalysis() {
   const [platformMetric, setPlatformMetric] = useState<string>("spend");
 
   const perfDays = perfPeriod === '7d' ? 7 : perfPeriod === '14d' ? 14 : perfPeriod === '90d' ? 90 : 30;
-  const trendDateRange = perfDays === 7 ? "7days" : perfDays === 90 ? "90days" : "30days";
+  const trendDateRange = `${perfDays}days`;
 
   // ─── Data Queries (all fetched on load, not gated by tab) ────────
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
@@ -596,7 +596,7 @@ export default function TrendAnalysis() {
     });
 
     const currentPeriod = usesCumulativeGA4Consumer
-      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
       : series.slice(-perfDays);
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
@@ -729,7 +729,7 @@ export default function TrendAnalysis() {
     });
 
     const currentPeriod = usesCumulativeGA4Consumer
-      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
       : series.slice(-perfDays);
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
@@ -841,7 +841,7 @@ export default function TrendAnalysis() {
       };
     });
     const currentPeriod = usesCumulativeGA4Consumer
-      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
       : series.slice(-perfDays);
     const sum = (key: string) => currentPeriod.reduce((total: number, row: any) => total + (Number(row[key]) || 0), 0);
     const avg = (key: string) => {
@@ -917,7 +917,7 @@ export default function TrendAnalysis() {
       const excludedMetrics = Array.isArray(source?.excludedMetrics) ? source.excludedMetrics : [];
       const dailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
       const currentRows = usesCumulativeGA4Consumer
-        ? filterTrendRowsToCalendarWindow(dailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+        ? filterTrendRowsToCalendarWindow(dailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
         : dailyRows.slice(-perfDays);
       const hasMetric = (metricName: string) => includedMetrics.includes(metricName);
       const sum = (metricName: string) => hasMetric(metricName)
@@ -979,7 +979,7 @@ export default function TrendAnalysis() {
       const sourceId = String(source?.id || "");
       const sourceDailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
       const dailyRows = usesCumulativeGA4Consumer
-        ? filterTrendRowsToCalendarWindow(sourceDailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+        ? filterTrendRowsToCalendarWindow(sourceDailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
         : sourceDailyRows.slice(-perfDays);
       for (const row of dailyRows) {
         const date = String(row?.date || "").slice(0, 10);
@@ -1176,7 +1176,8 @@ export default function TrendAnalysis() {
     );
   }
 
-  const overviewHasData = Boolean(overviewTrendData && overviewTrendData.series.length > 0);
+  const overviewHasData = Boolean(overviewTrendData
+    && (overviewTrendData.series.length > 0 || (usesCumulativeGA4Consumer && authoritativeTrendCurrent)));
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
     !trendGA4ConnectionsFetched
     || (!!trendGA4PropertyId && !trendGA4DailyFetched)
@@ -1218,18 +1219,21 @@ export default function TrendAnalysis() {
                   <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              <Select value={perfPeriod} onValueChange={setPerfPeriod}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 Days</SelectItem>
-                  <SelectItem value="14d">Last 14 Days</SelectItem>
-                  <SelectItem value="30d">Last 30 Days</SelectItem>
-                  <SelectItem value="90d">Last 90 Days</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Trend & comparison window</span>
+                <Select value={perfPeriod} onValueChange={setPerfPeriod}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7d">Last 7 Days</SelectItem>
+                    <SelectItem value="14d">Last 14 Days</SelectItem>
+                    <SelectItem value="30d">Last 30 Days</SelectItem>
+                    <SelectItem value="90d">Last 90 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -1378,8 +1382,9 @@ export default function TrendAnalysis() {
                     </CardContent>
                   </Card>
 
-                  {/* Metric Toggle Row */}
-                  <div className="flex flex-wrap gap-2">
+                  {overviewTrendData.series.length > 0 ? <>
+                    {/* Metric Toggle Row */}
+                    <div className="flex flex-wrap gap-2">
                     {overviewTrendData.availableSeries.map((s: any) => (
                       <button
                         key={s.key}
@@ -1438,9 +1443,16 @@ export default function TrendAnalysis() {
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </> : (
+                    <Card>
+                      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                        No daily activity is available in this trend window. Current cumulative and campaign-to-date values remain visible above.
+                      </CardContent>
+                    </Card>
+                  )}
 
-                  {efficiencyTrendData && (efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency || efficiencyTrendData.hasRateEfficiency) && (
+                  {efficiencyTrendData?.series.length > 0 && (efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency || efficiencyTrendData.hasRateEfficiency) && (
                     <div className="space-y-3">
                       <div>
                         <h2 className="text-xl font-semibold text-foreground">Efficiency Trends</h2>

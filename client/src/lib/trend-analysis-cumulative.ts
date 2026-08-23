@@ -57,11 +57,13 @@ export const formatTrendComparison = (args: {
   };
 };
 
-export const filterTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: string, days: number) => {
-  if (!ISO_DATE_PATTERN.test(dataThroughDate) || !Number.isInteger(days) || days < 1) return [];
+export const filterTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: string, days: number, minimumDate = "") => {
+  if (!ISO_DATE_PATTERN.test(dataThroughDate) || !Number.isInteger(days) || days < 1
+    || (minimumDate && !ISO_DATE_PATTERN.test(minimumDate))) return [];
   const start = new Date(`${dataThroughDate}T00:00:00.000Z`);
   start.setUTCDate(start.getUTCDate() - (days - 1));
-  const startDate = start.toISOString().slice(0, 10);
+  const requestedStartDate = start.toISOString().slice(0, 10);
+  const startDate = minimumDate && minimumDate > requestedStartDate ? minimumDate : requestedStartDate;
   return (Array.isArray(rows) ? rows : []).filter((row) => {
     const date = String(row?.date || "").slice(0, 10);
     return ISO_DATE_PATTERN.test(date) && date >= startDate && date <= dataThroughDate;

@@ -1217,16 +1217,21 @@ export default function TrendAnalysis() {
               ) : (
                 <>
                   {/* Executive KPI scorecard: one card per decision metric. */}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[
                         { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtTrendCurrency(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
                         { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtTrendCurrency(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
                         { label: 'ROAS', value: overviewTrendData.current.roas === null ? null : `${overviewTrendData.current.roas.toFixed(1)}x`, change: overviewTrendData.comparison.roas },
+                        efficiencyTrendData?.cards?.find((card: any) => card.key === "roi") || { label: 'ROI', value: null, change: null },
                         { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
                         { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtTrendCurrency(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },
+                        efficiencyTrendData?.cards?.find((card: any) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
+                        efficiencyTrendData?.cards?.find((card: any) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
                         { label: 'Sessions', value: overviewTrendData.current.sessions === null ? null : fmtNum(overviewTrendData.current.sessions), change: overviewTrendData.comparison.sessions },
+                        { label: 'Users', value: overviewTrendData.current.users === null ? null : fmtNum(overviewTrendData.current.users), change: overviewTrendData.comparison.users },
                         { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
                         { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(normalizeRateToPercent(overviewTrendData.current.engagementRate)), change: overviewTrendData.comparison.engagementRate },
+                        { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
                       ].filter((card) => card.value !== null).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
                         return (
@@ -1339,6 +1344,109 @@ export default function TrendAnalysis() {
                     </CardContent>
                   </Card>
 
+                  {efficiencyTrendData && (efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency || efficiencyTrendData.hasRateEfficiency) && (
+                    <div className="space-y-3">
+                      <div>
+                        <h2 className="text-xl font-semibold text-foreground">Efficiency Trends</h2>
+                        <p className="text-sm text-muted-foreground">How return, acquisition cost, and conversion quality are changing over time.</p>
+                        {usesCumulativeGA4Consumer && !efficiencyTrendData.hasFinancialEfficiency && !efficiencyTrendData.hasCostEfficiency && (
+                          <p className="text-xs text-muted-foreground mt-1">Return and cost trends remain withheld until a compatible cumulative financial series is available; the current financial KPIs above remain authoritative.</p>
+                        )}
+                      </div>
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        {efficiencyTrendData.hasFinancialEfficiency && (
+                          <Card>
+                            <CardHeader><CardTitle>Return Efficiency</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <ComposedChart data={efficiencyTrendData.series}>
+                                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                    <XAxis dataKey="label" className="text-xs" />
+                                    <YAxis yAxisId="left" className="text-xs" />
+                                    <YAxis yAxisId="right" orientation="right" className="text-xs" />
+                                    <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [name === "ROAS" ? `${Number(value).toFixed(2)}x` : formatPct(Number(value)), name]} />
+                                    {efficiencyTrendData.current.roas !== null && <Line yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />}
+                                    {efficiencyTrendData.current.roi !== null && <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI" />}
+                                    {kpiTargets.roas && efficiencyTrendData.current.roas !== null && <ReferenceLine yAxisId="left" y={kpiTargets.roas} ifOverflow="extendDomain" stroke="#10b981" strokeDasharray="5 5" label={{ value: "ROAS Target", fill: "#10b981", fontSize: 10 }} />}
+                                  </ComposedChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {efficiencyTrendData.hasCostEfficiency && (
+                          <Card>
+                            <CardHeader><CardTitle>Acquisition Cost Trend</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={efficiencyTrendData.series}>
+                                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                    <XAxis dataKey="label" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [fmtTrendCurrency(Number(value)), name]} />
+                                    {efficiencyTrendData.current.cpa !== null && <Line type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />}
+                                    {efficiencyTrendData.current.cpc !== null && <Line type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />}
+                                    {efficiencyTrendData.current.cpm !== null && <Line type="monotone" dataKey="cpm" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CPM" />}
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {efficiencyTrendData.hasRateEfficiency && (
+                          <Card className={efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency ? "lg:col-span-2" : ""}>
+                            <CardHeader><CardTitle>Conversion Quality Trend</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={efficiencyTrendData.series}>
+                                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                    <XAxis dataKey="label" className="text-xs" />
+                                    <YAxis className="text-xs" />
+                                    <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [formatPct(Number(value)), name]} />
+                                    {efficiencyTrendData.current.ctr !== null && <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
+                                    {efficiencyTrendData.current.cvr !== null && <Line type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR" />}
+                                    {efficiencyTrendData.current.engagementRate !== null && <Line type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate" />}
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {conversionFunnelData?.paidAvailable && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Layers className="w-5 h-5" />
+                          <span>Paid Acquisition Funnel</span>
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">Reach-to-conversion progression for connected paid-media sources.</p>
+                      </CardHeader>
+                      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                        {[
+                          { label: "Impressions", value: conversionFunnelData.current.impressions === null ? null : fmtNum(conversionFunnelData.current.impressions) },
+                          { label: "Clicks", value: conversionFunnelData.current.clicks === null ? null : fmtNum(conversionFunnelData.current.clicks) },
+                          { label: "Conversions", value: conversionFunnelData.current.conversions === null ? null : fmtNum(conversionFunnelData.current.conversions) },
+                          { label: "CTR", value: conversionFunnelData.current.ctr === null ? null : formatPct(conversionFunnelData.current.ctr) },
+                          { label: "Paid CVR", value: conversionFunnelData.current.paidCvr === null ? null : formatPct(conversionFunnelData.current.paidCvr) },
+                        ].filter((item) => item.value !== null).map((item) => (
+                          <div key={item.label} className="rounded-lg border p-4">
+                            <div className="text-xs text-muted-foreground mb-1">{item.label}</div>
+                            <div className="text-xl font-bold text-foreground">{item.value}</div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {platformBreakdownData?.sources?.length > 1 && (
                     <Card>
                       <CardHeader>
@@ -1353,9 +1461,14 @@ export default function TrendAnalysis() {
                             <tr className="border-b text-muted-foreground">
                               <th className="text-left py-2 pr-4">Source</th>
                               <th className="text-right py-2 px-2">Spend</th>
-                              <th className="text-right py-2 px-2">Revenue</th>
+                              <th className="text-right py-2 px-2">Traffic</th>
                               <th className="text-right py-2 px-2">Conversions</th>
-                              <th className="text-right py-2 pl-2">Sessions</th>
+                              <th className="text-right py-2 px-2">Revenue</th>
+                              <th className="text-right py-2 px-2">ROAS</th>
+                              <th className="text-right py-2 px-2">CPA</th>
+                              <th className="text-right py-2 px-2">CTR</th>
+                              <th className="text-right py-2 px-2">CPC</th>
+                              <th className="text-left py-2 pl-2">Coverage notes</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1363,13 +1476,52 @@ export default function TrendAnalysis() {
                               <tr key={source.id} className="border-b last:border-0">
                                 <td className="py-3 pr-4 font-medium">{source.label}</td>
                                 <td className="text-right py-3 px-2">{source.spend === null ? "—" : fmtTrendCurrency(source.spend)}</td>
-                                <td className="text-right py-3 px-2">{source.revenue === null ? "—" : fmtTrendCurrency(source.revenue)}</td>
+                                <td className="text-right py-3 px-2">
+                                  {source.sessions !== null ? fmtNum(source.sessions) : source.clicks !== null ? fmtNum(source.clicks) : "—"}
+                                  {(source.sessions !== null || source.clicks !== null) && <div className="text-[10px] text-muted-foreground">{source.sessions !== null ? "sessions" : "clicks"}</div>}
+                                </td>
                                 <td className="text-right py-3 px-2">{source.conversions === null ? "—" : fmtNum(source.conversions)}</td>
-                                <td className="text-right py-3 pl-2">{source.sessions === null ? "—" : fmtNum(source.sessions)}</td>
+                                <td className="text-right py-3 px-2">{source.revenue === null ? "—" : fmtTrendCurrency(source.revenue)}</td>
+                                <td className="text-right py-3 px-2">{source.roas === null ? "—" : `${source.roas.toFixed(2)}x`}</td>
+                                <td className="text-right py-3 px-2">{source.cpa === null ? "—" : fmtTrendCurrency(source.cpa)}</td>
+                                <td className="text-right py-3 px-2">{source.ctr === null ? "—" : formatPct(source.ctr)}</td>
+                                <td className="text-right py-3 px-2">{source.cpc === null ? "—" : fmtTrendCurrency(source.cpc)}</td>
+                                <td className="py-3 pl-2 text-xs text-muted-foreground">{source.unavailable.length ? source.unavailable.join("; ") : "—"}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
+                        {platformBreakdownData.trendRows.length > 0 && platformBreakdownData.metricOptions.length > 0 && (
+                          <div className="border-t mt-6 pt-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h3 className="font-medium text-foreground">Contribution Over Time</h3>
+                                <p className="text-xs text-muted-foreground">See which connected source is driving the selected metric.</p>
+                              </div>
+                              <Select value={platformBreakdownData.activeMetric} onValueChange={setPlatformMetric}>
+                                <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {platformBreakdownData.metricOptions.map((metricName: string) => (
+                                    <SelectItem key={metricName} value={metricName}>{metricName.charAt(0).toUpperCase() + metricName.slice(1)}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="h-64">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={platformBreakdownData.trendRows}>
+                                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                  <XAxis dataKey="label" className="text-xs" />
+                                  <YAxis className="text-xs" />
+                                  <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [platformBreakdownData.activeMetric === "spend" || platformBreakdownData.activeMetric === "revenue" ? fmtTrendCurrency(Number(value)) : Number(value).toLocaleString(), name]} />
+                                  {platformBreakdownData.sources.map((source: any) => (
+                                    <Bar key={source.id} dataKey={`${source.id}_${platformBreakdownData.activeMetric}`} stackId="source" fill={source.color} name={source.label} />
+                                  ))}
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   )}

@@ -228,9 +228,25 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("platformBreakdownData?.sources?.length === 1");
     expect(executiveView).toContain("Connected source coverage");
     expect(executiveView).toContain("Campaign Performance Trend");
+    expect(executiveView).toContain('card.key === "roi"');
+    expect(executiveView).toContain('card.key === "cpc"');
+    expect(executiveView).toContain('card.key === "cpm"');
+    expect(executiveView).not.toContain("formatPct(overviewTrendData.current.roi)");
+    expect(executiveView).not.toContain("fmtTrendCurrency(overviewTrendData.current.cpc)");
+    expect(executiveView).not.toContain("fmtTrendCurrency(overviewTrendData.current.cpm)");
+    expect(executiveView).toContain("Efficiency Trends");
+    expect(executiveView).toContain("Conversion Quality Trend");
+    expect(executiveView).toContain('label={{ value: "ROAS Target"');
+    expect(executiveView).toContain("Paid Acquisition Funnel");
     expect(executiveView).toContain("Source Contribution");
+    expect(executiveView).toContain("Coverage notes");
+    expect(executiveView).toContain("source.unavailable.join");
+    expect(executiveView).toContain("Contribution Over Time");
     expect(executiveView).toContain("Executive Recommendations");
     expect(executiveView).toContain("executiveTrendInsights.map");
+    expect(executiveView).not.toContain("efficiencyTrendData.cards.map");
+    expect(executiveView).not.toContain("Web Analytics Funnel");
+    expect(executiveView).not.toContain("Platform Performance Comparison");
     expect(executiveView).not.toContain("Conversion Funnel");
   });
 

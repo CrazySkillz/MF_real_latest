@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import {
+  deriveExactCumulativeGA4Traffic,
+  deriveTrendFinancialRatios,
+  filterTrendRowsToCalendarWindow,
+  resolveCompatibleTrendFinancialDaily,
+  resolveTrendComparisonDate,
+} from "../client/src/lib/trend-analysis-cumulative";
 
 describe("Trend Analysis Overview regression guard", () => {
   it("reads KPI targets from GA4 and preserves GA4 ROAS ratio semantics", () => {
@@ -40,18 +47,110 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(overview).not.toContain("Connect a platform (GA4, LinkedIn, Meta, or Google Ads) to see performance trends.");
   });
 
-  it("does not show previous-period comparison until a complete previous window exists", () => {
+  it("uses cumulative current values and exact-date history only for the compatible GA4 consumer", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     const overviewStart = page.indexOf("const overviewTrendData = useMemo<any>(() => {");
     const overviewEnd = page.indexOf("const overviewVisibleSeries", overviewStart);
     const overviewModel = page.slice(overviewStart, overviewEnd);
 
-    expect(overviewModel).toContain("const hasCompleteCurrentPeriod = currentPeriod.length >= perfDays;");
-    expect(overviewModel).toContain("const hasCompletePreviousPeriod = previousPeriod.length >= perfDays;");
-    expect(overviewModel).toContain("hasPrevious: hasCompletePreviousPeriod");
+    expect(page).toContain("ga4-connections?readOnly=1");
+    expect(page).toContain("ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1");
+    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"]');
+    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}");
+    expect(page).toContain('performanceSummary?.version === "performance_summary_aggregate_v3"');
+    expect(page).toContain("performanceSummary?.campaignId === campaignId");
+    expect(page).toContain("const usesCumulativeGA4Consumer = performanceMainSources.length === 1 && performanceMainSources[0]?.id === \"ga4\";");
+    expect(page).toContain("ga4Daily?.providerRefreshAttempted === false");
+    expect(page).toContain('String(ga4Daily?.propertyId || "") === trendGA4PropertyId');
+    expect(page).toContain('const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");');
+    expect(overviewModel).toContain("const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);");
+    expect(overviewModel).toContain("const previous = usesCumulativeGA4Consumer ? authoritativeTrendPrevious : buildSummary(previousPeriod);");
+    expect(overviewModel).toContain("(!usesCumulativeGA4Consumer || Number(previousValue) > 0)");
+    expect(overviewModel).toContain('hasPrevious: Object.values(comparison).some((value) => typeof value === "number")');
     expect(overviewModel).toContain("currentPeriodDays: currentPeriod.length");
     expect(overviewModel).toContain("requestedPeriodDays: perfDays");
-    expect(page).toContain("Full-period trend comparisons appear once enough daily history exists.");
+    expect(page).toContain("Current cumulative values are not being reused as historical values.");
+  });
+
+  it("derives exact cumulative GA4 traffic and fails closed on incompatible coverage", () => {
+    const response = {
+      validationReadOnly: true,
+      overviewStartDate: "2026-07-02",
+      startDate: "2026-05-24",
+      endDate: "2026-08-22",
+      dataThroughDate: "2026-08-22",
+      overviewTotals: { users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 },
+      data: [
+        { date: "2026-08-08", users: 108, sessions: 108, conversions: 14, engagedSessions: 74 },
+        { date: "2026-08-09", users: 106, sessions: 106, conversions: 14, engagedSessions: 72 },
+        { date: "2026-08-10", users: 103, sessions: 103, conversions: 14, engagedSessions: 71 },
+      ],
+    };
+
+    expect(resolveTrendComparisonDate("2026-08-22", 7)).toBe("2026-08-15");
+    expect(resolveTrendComparisonDate("2026-08-22", 30)).toBe("2026-07-23");
+    expect(resolveTrendComparisonDate("2026-08-22", 90)).toBe("2026-05-24");
+    expect(resolveTrendComparisonDate("2026-02-30", 7)).toBe("");
+
+    const exact = deriveExactCumulativeGA4Traffic(response, "2026-07-23");
+    expect(exact?.current).toMatchObject({ users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 });
+    expect(exact?.current.engagementRate).toBeCloseTo((809 / 1183) * 100, 10);
+    expect(exact?.current.cvr).toBeCloseTo((152 / 1183) * 100, 10);
+    expect(exact?.previous).toMatchObject({ users: 867, sessions: 866, conversions: 110, engagedSessions: 592 });
+    expect(exact?.previous.engagementRate).toBeCloseTo((592 / 866) * 100, 10);
+    expect(exact?.previous.cvr).toBeCloseTo((110 / 866) * 100, 10);
+    expect(deriveExactCumulativeGA4Traffic(response, "2026-08-08")?.previous)
+      .toMatchObject({ users: 975, sessions: 974, conversions: 124, engagedSessions: 666 });
+    expect(deriveExactCumulativeGA4Traffic(response, "2026-08-15")?.previous)
+      .toMatchObject({ users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 });
+    expect(deriveExactCumulativeGA4Traffic(response, "2026-07-01")).toBeNull();
+    expect(deriveExactCumulativeGA4Traffic({ ...response, providerRefreshWarning: "stale" }, "2026-07-23")).toBeNull();
+    expect(deriveExactCumulativeGA4Traffic({ ...response, startDate: "2026-08-22" }, "2026-07-23")).toBeNull();
+    expect(deriveExactCumulativeGA4Traffic({ ...response, data: [...response.data, response.data[1]] }, "2026-07-23")).toBeNull();
+    expect(deriveExactCumulativeGA4Traffic({ ...response, overviewTotals: { ...response.overviewTotals, users: null } }, "2026-07-23")).toBeNull();
+    expect(deriveExactCumulativeGA4Traffic({ ...response, data: [{ ...response.data[0], engagedSessions: null }] }, "2026-07-23")).toBeNull();
+  });
+
+  it("uses calendar windows and accepts only an exact compatible financial snapshot", () => {
+    const rows = ["2026-08-14", "2026-08-16", "2026-08-20", "2026-08-22", "2026-08-23"].map((date) => ({ date }));
+    expect(filterTrendRowsToCalendarWindow(rows, "2026-08-22", 7).map((row) => row.date))
+      .toEqual(["2026-08-16", "2026-08-20", "2026-08-22"]);
+
+    const currentValueWindow = {
+      startDate: "2026-07-02",
+      reportingTimeZone: "Europe/Amsterdam",
+    };
+    const snapshot = {
+      campaignId: "campaign-1",
+      snapshotType: "financial_daily",
+      reportingDate: "2026-08-15",
+      metrics: {
+        financialDaily: {
+          version: "financial_daily_snapshot_v1",
+          currency: "USD",
+          currentValueWindow: {
+            mode: "initial_import_to_latest_completed_day",
+            startDate: "2026-07-02",
+            endDate: "2026-08-15",
+            dataThroughDate: "2026-08-15",
+            reportingTimeZone: "Europe/Amsterdam",
+          },
+          inputs: { spend: { available: true, value: 10, sources: ["sheet"] } },
+        },
+      },
+    };
+    const args = { snapshot, campaignId: "campaign-1", comparisonDate: "2026-08-15", campaignCurrency: "USD", currentValueWindow };
+    expect(resolveCompatibleTrendFinancialDaily(args)).toBe(snapshot.metrics.financialDaily);
+    expect(resolveCompatibleTrendFinancialDaily({ ...args, comparisonDate: "2026-08-14" })).toBeNull();
+    expect(resolveCompatibleTrendFinancialDaily({ ...args, campaignCurrency: "EUR" })).toBeNull();
+    expect(resolveCompatibleTrendFinancialDaily({ ...args, campaignId: "campaign-2" })).toBeNull();
+
+    const ratios = deriveTrendFinancialRatios({ spend: 2699.75, revenue: 72766.69, conversions: 251 });
+    expect(ratios.roas).toBeCloseTo(72766.69 / 2699.75, 10);
+    expect(ratios.roi).toBeCloseTo(((72766.69 - 2699.75) / 2699.75) * 100, 10);
+    expect(ratios.cpa).toBeCloseTo(2699.75 / 251, 10);
+    expect(deriveTrendFinancialRatios({ spend: 0, revenue: 72766.69, conversions: 0 }))
+      .toEqual({ roas: null, roi: null, cpa: null });
   });
 
   it("wires the Efficiency Metrics tab to aggregate-backed derived metrics", () => {
@@ -65,7 +164,10 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("roi: toMetric(metrics.roi)");
     expect(page).toContain("cpa: toMetric(metrics.cpa)");
     expect(page).toContain("engagementRate === null ? null : normalizeRateToPercent(engagementRate)");
-    expect(page).toContain("hasCompleteCurrentPeriod: currentPeriod.length >= perfDays");
+    expect(page).toContain("hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays");
+    expect(page).toContain('hasFinancialEfficiency: !usesCumulativeGA4Consumer && (hasValue("roas") || hasValue("roi"))');
+    expect(page).toContain("Daily ROAS and ROI trends are unavailable because no compatible cumulative financial series exists.");
+    expect(page).toContain("if (usesCumulativeGA4Consumer && !authoritativeTrendCurrent) return null;");
     expect(page).toContain("Validate full-period efficiency trends after enough daily history exists.");
     expect(efficiency).toContain("No connected source efficiency metrics available");
     expect(efficiency).toContain("ROAS and ROI require both spend and revenue from connected source data.");
@@ -80,7 +182,7 @@ describe("Trend Analysis Overview regression guard", () => {
     const funnel = page.slice(funnelStart, funnelEnd);
 
     expect(page).toContain("const conversionFunnelData = useMemo<any>(() => {");
-    expect(page).toContain('paidAvailable: hasMetric("impressions") || hasMetric("clicks")');
+    expect(page).toContain('paidAvailable: usesCumulativeGA4Consumer ? false : hasMetric("impressions") || hasMetric("clicks")');
     expect(funnel).toContain("Web Analytics Funnel");
     expect(funnel).toContain("Paid-Media Funnel");
     expect(funnel).toContain("Paid-media funnel metrics require a connected paid-media source with impressions or clicks.");

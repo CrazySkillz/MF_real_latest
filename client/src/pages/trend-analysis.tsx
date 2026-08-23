@@ -17,6 +17,13 @@ import {
 import { format, subDays } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
+import {
+  deriveExactCumulativeGA4Traffic,
+  deriveTrendFinancialRatios,
+  filterTrendRowsToCalendarWindow,
+  resolveCompatibleTrendFinancialDaily,
+  resolveTrendComparisonDate,
+} from "@/lib/trend-analysis-cumulative";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 const PLATFORM_COLORS: Record<string, string> = {
@@ -32,10 +39,14 @@ const fmtNum = (n: number) => {
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return n.toLocaleString();
 };
-const fmtCur = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+const fmtCur = (n: number, currency = "USD") => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
 const pctChange = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
 const sumArr = (arr: any[], key: string) => arr.reduce((s, r) => s + (r[key] || 0), 0);
 const avgArr = (arr: any[], key: string) => arr.length > 0 ? sumArr(arr, key) / arr.length : 0;
+
+const TREND_REFRESH_MS = 30000;
+const TREND_GA4_DAILY_DAYS = 91;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const tooltipStyle = {
   backgroundColor: 'var(--background)',
@@ -116,15 +127,79 @@ export default function TrendAnalysis() {
     },
   });
 
-  const { data: ga4Daily, isPlaceholderData: isRefreshing } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", perfDays],
+  const { data: trendGA4ConnectionsResponse } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-connections", "performance-summary-read-only"],
     enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections?readOnly=1`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false) throw new Error(data?.error || "Failed to fetch GA4 connections");
+      return data;
+    },
+  });
+  const trendGA4Connections = Array.isArray(trendGA4ConnectionsResponse?.connections)
+    ? trendGA4ConnectionsResponse.connections
+    : [];
+  const trendGA4PropertyId = String(
+    (trendGA4Connections.find((connection: any) => connection?.isPrimary) || trendGA4Connections[0])?.propertyId || "",
+  );
+
+  const { data: ga4Daily } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", TREND_GA4_DAILY_DAYS, trendGA4PropertyId, "trend-read-only"],
+    enabled: !!campaignId && !!trendGA4PropertyId,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${perfDays * 2}`);
-      if (!resp.ok) return null;
-      return resp.json().catch(() => null);
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1`);
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data || data?.success === false || data?.validationReadOnly !== true
+        || String(data?.propertyId || "") !== trendGA4PropertyId) {
+        throw new Error(data?.error || "Failed to fetch cumulative GA4 Trend inputs");
+      }
+      return data;
     },
+    staleTime: 0,
+    refetchInterval: TREND_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/outcome-totals?dateRange=90days`, { credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.performanceSummary) throw new Error(data?.error || "Failed to fetch cumulative Trend totals");
+      return data;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+    refetchInterval: TREND_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+
+  const trendComparisonDate = resolveTrendComparisonDate(
+    String(outcomeTotals?.performanceSummary?.currentValueWindow?.dataThroughDate || ""),
+    perfDays,
+  );
+  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`;
+  const { data: trendFinancialComparison } = useQuery<any>({
+    queryKey: [trendFinancialComparisonUrl, "trend-exact-financial"],
+    enabled: !!campaignId && !!trendComparisonDate,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const response = await fetch(trendFinancialComparisonUrl, { credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || data?.comparisonDate !== trendComparisonDate) {
+        throw new Error(data?.message || "Failed to fetch exact-date Trend financials");
+      }
+      return data;
+    },
+    staleTime: 0,
+    refetchInterval: TREND_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const { data: linkedinDaily } = useQuery({
@@ -361,11 +436,125 @@ export default function TrendAnalysis() {
   }, [ga4Daily, linkedinDaily, metaDaily, googleAdsDaily, dailyFinancials, perfDays]);
 
   const trendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;
+  const performanceSummary = outcomeTotals?.performanceSummary;
+  const currentValueWindow = performanceSummary?.currentValueWindow;
+  const performanceMainSources = Array.isArray(performanceSummary?.sources)
+    ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
+    : [];
+  const usesCumulativeGA4Consumer = performanceMainSources.length === 1 && performanceMainSources[0]?.id === "ga4";
+  const ga4TrendSource = Array.isArray(trendAggregate?.sources)
+    ? trendAggregate.sources.find((source: any) => source?.id === "ga4")
+    : null;
+  const cumulativeGA4CurrentCompatible = usesCumulativeGA4Consumer
+    && performanceSummary?.campaignId === campaignId
+    && performanceSummary?.version === "performance_summary_aggregate_v3"
+    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && ISO_DATE_PATTERN.test(String(currentValueWindow?.startDate || ""))
+    && ISO_DATE_PATTERN.test(String(currentValueWindow?.endDate || ""))
+    && currentValueWindow.startDate <= currentValueWindow.endDate
+    && currentValueWindow?.startDate === ga4Daily?.overviewStartDate
+    && currentValueWindow?.endDate === ga4Daily?.dataThroughDate
+    && currentValueWindow?.dataThroughDate === ga4Daily?.dataThroughDate
+    && ga4Daily?.endDate === ga4Daily?.dataThroughDate
+    && ga4Daily?.reportingTimeZone === currentValueWindow?.reportingTimeZone
+    && Boolean(String(currentValueWindow?.reportingTimeZone || "").trim())
+    && ga4Daily?.success === true
+    && ga4Daily?.validationReadOnly === true
+    && ga4Daily?.providerRefreshAttempted === false
+    && ["read_only", "simulated"].includes(String(ga4Daily?.providerRefreshOutcome || ""))
+    && !ga4Daily?.providerRefreshWarning
+    && String(ga4Daily?.propertyId || "") === trendGA4PropertyId
+    && (!ga4TrendSource?.freshness?.propertyId || String(ga4TrendSource.freshness.propertyId) === trendGA4PropertyId);
+  const aggregateMetricValue = (metricName: string): number | null => {
+    const metric = performanceSummary?.totals?.[metricName];
+    if (metric?.value === null || typeof metric?.value === "undefined" || metric?.value === "") return null;
+    const value = Number(metric?.value);
+    const validValue = Number.isFinite(value) && (metricName === "roi" || value >= 0);
+    return metric?.available === true && Array.isArray(metric?.sources) && metric.sources.length > 0 && validValue ? value : null;
+  };
+  const currentTraffic = cumulativeGA4CurrentCompatible
+    ? deriveExactCumulativeGA4Traffic(ga4Daily, trendComparisonDate)?.current || (() => {
+      const totals = ga4Daily?.overviewTotals || {};
+      if ([totals.users, totals.sessions, totals.conversions, totals.engagedSessions]
+        .some((value) => value === null || typeof value === "undefined" || value === "")) return null;
+      const users = Number(totals.users);
+      const sessions = Number(totals.sessions);
+      const conversions = Number(totals.conversions);
+      const engagedSessions = Number(totals.engagedSessions);
+      if ([users, sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
+      return {
+        users, sessions, conversions, engagedSessions,
+        engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : 0,
+        cvr: sessions > 0 ? (conversions / sessions) * 100 : 0,
+      };
+    })()
+    : null;
+  const exactTrafficComparison = cumulativeGA4CurrentCompatible
+    ? deriveExactCumulativeGA4Traffic(ga4Daily, trendComparisonDate)
+    : null;
+  const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
+  const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");
+  const compatibleFinancialDaily = resolveCompatibleTrendFinancialDaily({
+    snapshot: trendFinancialComparison?.previous,
+    campaignId: String(campaignId || ""),
+    comparisonDate: trendComparisonDate,
+    campaignCurrency,
+    currentValueWindow,
+  });
+  const historicalFinancialValue = (metricName: "spend" | "revenue" | "conversions"): number | null => {
+    const input = compatibleFinancialDaily?.inputs?.[metricName];
+    if (input?.value === null || typeof input?.value === "undefined" || input?.value === "") return null;
+    const value = Number(input?.value);
+    return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0
+      && Number.isFinite(value) && value >= 0 ? value : null;
+  };
+  const authoritativeTrendCurrent = cumulativeGA4CurrentCompatible && currentTraffic ? {
+    users: currentTraffic.users,
+    sessions: currentTraffic.sessions,
+    conversions: currentTraffic.conversions,
+    engagementRate: currentTraffic.engagementRate,
+    cvr: currentTraffic.cvr,
+    revenue: aggregateMetricValue("revenue"),
+    spend: aggregateMetricValue("spend"),
+    roas: aggregateMetricValue("roas"),
+    roi: aggregateMetricValue("roi"),
+    cpa: aggregateMetricValue("cpa"),
+    impressions: aggregateMetricValue("impressions"),
+    clicks: aggregateMetricValue("clicks"),
+    ctr: aggregateMetricValue("ctr"),
+    cpc: aggregateMetricValue("cpc"),
+    cpm: aggregateMetricValue("cpm"),
+  } : null;
+  const historicalSpend = historicalFinancialValue("spend");
+  const historicalRevenue = historicalFinancialValue("revenue");
+  const historicalFinancialConversions = historicalFinancialValue("conversions");
+  const historicalFinancialRatios = deriveTrendFinancialRatios({
+    spend: historicalSpend,
+    revenue: historicalRevenue,
+    conversions: historicalFinancialConversions,
+  });
+  const authoritativeTrendPrevious = exactTrafficComparison ? {
+    users: exactTrafficComparison.previous.users,
+    sessions: exactTrafficComparison.previous.sessions,
+    conversions: exactTrafficComparison.previous.conversions,
+    engagementRate: exactTrafficComparison.previous.engagementRate,
+    cvr: exactTrafficComparison.previous.cvr,
+    revenue: historicalRevenue,
+    spend: historicalSpend,
+    roas: historicalFinancialRatios.roas,
+    roi: historicalFinancialRatios.roi,
+    cpa: historicalFinancialRatios.cpa,
+    impressions: null,
+    clicks: null,
+    ctr: null,
+    cpc: null,
+    cpm: null,
+  } : null;
 
   const overviewTrendData = useMemo<any>(() => {
     const aggregate = trendAggregate;
     const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
-    if (rows.length === 0) return null;
+    if (rows.length === 0 && !authoritativeTrendCurrent) return null;
 
     const sourcesFor = (metricName: string): string[] => {
       const sources = aggregate?.metrics?.[metricName]?.sources;
@@ -392,7 +581,9 @@ export default function TrendAnalysis() {
       };
     });
 
-    const currentPeriod = series.slice(-perfDays);
+    const currentPeriod = usesCumulativeGA4Consumer
+      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+      : series.slice(-perfDays);
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
@@ -429,16 +620,22 @@ export default function TrendAnalysis() {
       };
     };
 
-    const current = buildSummary(currentPeriod);
-    const previous = buildSummary(previousPeriod);
-    const hasCompleteCurrentPeriod = currentPeriod.length >= perfDays;
-    const hasCompletePreviousPeriod = previousPeriod.length >= perfDays;
+    const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);
+    const previous = usesCumulativeGA4Consumer ? authoritativeTrendPrevious : buildSummary(previousPeriod);
+    if (!current) return null;
     const comparison = Object.fromEntries(
-      Object.keys(current).map((key) => [key, pctChange(Number((current as any)[key] || 0), Number((previous as any)[key] || 0))]),
+      Object.keys(current).map((key) => {
+        const currentValue = (current as any)[key];
+        const previousValue = (previous as any)?.[key];
+        return [key, Number.isFinite(currentValue) && Number.isFinite(previousValue)
+          && (!usesCumulativeGA4Consumer || Number(previousValue) > 0)
+          ? pctChange(Number(currentValue), Number(previousValue))
+          : null];
+      }),
     );
     const availableSeries = [
-      { key: "spend", label: "Spend", color: "#f59e0b", available: hasMetric("spend") },
-      { key: "revenue", label: "Revenue", color: "#10b981", available: hasMetric("revenue") },
+      { key: "spend", label: "Spend", color: "#f59e0b", available: !usesCumulativeGA4Consumer && hasMetric("spend") },
+      { key: "revenue", label: "Revenue", color: "#10b981", available: !usesCumulativeGA4Consumer && hasMetric("revenue") },
       { key: "conversions", label: "Conversions", color: "#8b5cf6", available: hasMetric("conversions") },
       { key: "impressions", label: "Impressions", color: "#3b82f6", available: hasMetric("impressions") },
       { key: "clicks", label: "Clicks", color: "#06b6d4", available: hasMetric("clicks") },
@@ -454,14 +651,18 @@ export default function TrendAnalysis() {
       comparison,
       availableSeries,
       anomalies: detectAnomalies(currentPeriod, anomalyKeys),
-      hasPrevious: hasCompletePreviousPeriod,
-      hasCompleteCurrentPeriod,
+      hasPrevious: Object.values(comparison).some((value) => typeof value === "number"),
+      hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays,
+      currentValuesUnavailable: usesCumulativeGA4Consumer && !authoritativeTrendCurrent,
+      exactComparisonDate: usesCumulativeGA4Consumer ? trendComparisonDate : null,
       currentPeriodDays: currentPeriod.length,
       previousPeriodDays: previousPeriod.length,
       requestedPeriodDays: perfDays,
-      connectedSources: Array.isArray(aggregate?.sources) ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean) : [],
+      connectedSources: Array.isArray(aggregate?.sources) && aggregate.sources.length > 0
+        ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean)
+        : performanceMainSources.map((source: any) => String(source?.label || source?.id)).filter(Boolean),
     };
-  }, [trendAggregate, perfDays]);
+  }, [trendAggregate, perfDays, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, performanceMainSources]);
 
   const overviewVisibleSeries = useMemo(() => {
     const keys = (overviewTrendData?.availableSeries || []).map((item: any) => item.key);
@@ -473,7 +674,7 @@ export default function TrendAnalysis() {
   const efficiencyTrendData = useMemo<any>(() => {
     const aggregate = trendAggregate;
     const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
-    if (rows.length === 0) return null;
+    if (rows.length === 0 && !authoritativeTrendCurrent) return null;
 
     const toMetric = (value: any) => {
       if (value === null || typeof value === "undefined") return null;
@@ -505,7 +706,9 @@ export default function TrendAnalysis() {
       };
     });
 
-    const currentPeriod = series.slice(-perfDays);
+    const currentPeriod = usesCumulativeGA4Consumer
+      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+      : series.slice(-perfDays);
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
@@ -537,22 +740,28 @@ export default function TrendAnalysis() {
       };
     };
 
-    const current = buildSummary(currentPeriod);
-    const previous = buildSummary(previousPeriod);
+    const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);
+    const previous = usesCumulativeGA4Consumer ? authoritativeTrendPrevious : buildSummary(previousPeriod);
+    if (!current) return null;
     const compare = (key: string) => {
       const curr = (current as any)[key];
-      const prev = (previous as any)[key];
-      return curr !== null && prev !== null ? pctChange(Number(curr), Number(prev)) : null;
+      const prev = (previous as any)?.[key];
+      return Number.isFinite(curr) && Number.isFinite(prev)
+        && (!usesCumulativeGA4Consumer || Number(prev) > 0)
+        ? pctChange(Number(curr), Number(prev))
+        : null;
     };
-    const hasValue = (key: string) => current[key as keyof typeof current] !== null || currentPeriod.some((row: any) => row[key] !== null && typeof row[key] !== "undefined");
+    const hasValue = (key: string) => usesCumulativeGA4Consumer
+      ? current[key as keyof typeof current] !== null
+      : current[key as keyof typeof current] !== null || currentPeriod.some((row: any) => row[key] !== null && typeof row[key] !== "undefined");
     const cards = [
       { key: "roas", label: "ROAS", value: current.roas === null ? null : `${current.roas.toFixed(1)}x`, change: compare("roas") },
       { key: "roi", label: "ROI", value: current.roi === null ? null : formatPct(current.roi), change: compare("roi") },
-      { key: "cpa", label: "CPA", value: current.cpa === null ? null : fmtCur(current.cpa), change: compare("cpa"), invertColor: true },
+      { key: "cpa", label: "CPA", value: current.cpa === null ? null : fmtTrendCurrency(current.cpa), change: compare("cpa"), invertColor: true },
       { key: "cvr", label: "CVR", value: current.cvr === null ? null : formatPct(current.cvr), change: compare("cvr") },
       { key: "engagementRate", label: "Engagement Rate", value: current.engagementRate === null ? null : formatPct(current.engagementRate), change: compare("engagementRate") },
-      { key: "cpc", label: "CPC", value: current.cpc === null ? null : fmtCur(current.cpc), change: compare("cpc"), invertColor: true },
-      { key: "cpm", label: "CPM", value: current.cpm === null ? null : fmtCur(current.cpm), change: compare("cpm"), invertColor: true },
+      { key: "cpc", label: "CPC", value: current.cpc === null ? null : fmtTrendCurrency(current.cpc), change: compare("cpc"), invertColor: true },
+      { key: "cpm", label: "CPM", value: current.cpm === null ? null : fmtTrendCurrency(current.cpm), change: compare("cpm"), invertColor: true },
       { key: "ctr", label: "CTR", value: current.ctr === null ? null : formatPct(current.ctr), change: compare("ctr") },
     ].filter((card) => hasValue(card.key) && card.value !== null);
 
@@ -560,20 +769,21 @@ export default function TrendAnalysis() {
       series: currentPeriod,
       current,
       cards,
-      hasPrevious: previousPeriod.length >= perfDays,
-      hasCompleteCurrentPeriod: currentPeriod.length >= perfDays,
+      hasPrevious: cards.some((card) => typeof card.change === "number"),
+      hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays,
+      exactComparisonDate: usesCumulativeGA4Consumer ? trendComparisonDate : null,
       currentPeriodDays: currentPeriod.length,
       requestedPeriodDays: perfDays,
-      hasFinancialEfficiency: hasValue("roas") || hasValue("roi"),
-      hasCostEfficiency: hasValue("cpa") || hasValue("cpc") || hasValue("cpm"),
+      hasFinancialEfficiency: !usesCumulativeGA4Consumer && (hasValue("roas") || hasValue("roi")),
+      hasCostEfficiency: !usesCumulativeGA4Consumer && (hasValue("cpa") || hasValue("cpc") || hasValue("cpm")),
       hasRateEfficiency: hasValue("ctr") || hasValue("cvr") || hasValue("engagementRate"),
     };
-  }, [trendAggregate, perfDays]);
+  }, [trendAggregate, perfDays, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, campaignCurrency]);
 
   const conversionFunnelData = useMemo<any>(() => {
     const aggregate = trendAggregate;
     const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
-    if (rows.length === 0) return null;
+    if (rows.length === 0 && !authoritativeTrendCurrent) return null;
 
     const sourcesFor = (metricName: string): string[] => {
       const sources = aggregate?.metrics?.[metricName]?.sources;
@@ -608,7 +818,9 @@ export default function TrendAnalysis() {
         roas: toMetric(metrics.roas),
       };
     });
-    const currentPeriod = series.slice(-perfDays);
+    const currentPeriod = usesCumulativeGA4Consumer
+      ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+      : series.slice(-perfDays);
     const sum = (key: string) => currentPeriod.reduce((total: number, row: any) => total + (Number(row[key]) || 0), 0);
     const avg = (key: string) => {
       const values = currentPeriod.map((row: any) => row[key]).filter((value: any) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
@@ -621,9 +833,7 @@ export default function TrendAnalysis() {
     const clicks = hasMetric("clicks") ? sum("clicks") : null;
     const spend = hasMetric("spend") ? sum("spend") : null;
 
-    return {
-      series: currentPeriod,
-      current: {
+    const rollingCurrent = {
         sessions,
         users,
         conversions,
@@ -638,30 +848,53 @@ export default function TrendAnalysis() {
         cpc: spend && spend > 0 && clicks ? spend / clicks : null,
         cpm: spend && spend > 0 && impressions ? (spend / impressions) * 1000 : null,
         roas: avg("roas"),
-      },
-      webAvailable: hasMetric("sessions") || hasMetric("users") || hasMetric("conversions") || hasEngagementRate,
-      paidAvailable: hasMetric("impressions") || hasMetric("clicks"),
-      hasCompleteCurrentPeriod: currentPeriod.length >= perfDays,
+    };
+    const current = usesCumulativeGA4Consumer && authoritativeTrendCurrent ? {
+      sessions: authoritativeTrendCurrent.sessions,
+      users: authoritativeTrendCurrent.users,
+      conversions: authoritativeTrendCurrent.conversions,
+      webCvr: authoritativeTrendCurrent.cvr,
+      engagementRate: authoritativeTrendCurrent.engagementRate,
+      impressions: null,
+      clicks: null,
+      spend: null,
+      ctr: null,
+      paidCvr: null,
+      cpa: null,
+      cpc: null,
+      cpm: null,
+      roas: null,
+    } : rollingCurrent;
+
+    return {
+      series: currentPeriod,
+      current,
+      webAvailable: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : hasMetric("sessions") || hasMetric("users") || hasMetric("conversions") || hasEngagementRate,
+      paidAvailable: usesCumulativeGA4Consumer ? false : hasMetric("impressions") || hasMetric("clicks"),
+      hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays,
       currentPeriodDays: currentPeriod.length,
       requestedPeriodDays: perfDays,
     };
-  }, [trendAggregate, perfDays]);
+  }, [trendAggregate, perfDays, usesCumulativeGA4Consumer, authoritativeTrendCurrent]);
 
   const platformBreakdownData = useMemo<any>(() => {
     const aggregate = trendAggregate;
     const sources = Array.isArray(aggregate?.sources) ? aggregate.sources : [];
-    if (sources.length === 0) return null;
+    if (usesCumulativeGA4Consumer && !authoritativeTrendCurrent) return null;
+    if (sources.length === 0 && !authoritativeTrendCurrent) return null;
 
     const toMetric = (value: any) => {
       if (value === null || typeof value === "undefined") return null;
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : null;
     };
-    const sourceRows = sources.map((source: any, index: number) => {
+    const rollingSourceRows = sources.map((source: any, index: number) => {
       const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];
       const excludedMetrics = Array.isArray(source?.excludedMetrics) ? source.excludedMetrics : [];
       const dailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
-      const currentRows = dailyRows.slice(-perfDays);
+      const currentRows = usesCumulativeGA4Consumer
+        ? filterTrendRowsToCalendarWindow(dailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+        : dailyRows.slice(-perfDays);
       const hasMetric = (metricName: string) => includedMetrics.includes(metricName);
       const sum = (metricName: string) => hasMetric(metricName)
         ? currentRows.reduce((total: number, row: any) => total + (Number(row?.metrics?.[metricName]) || 0), 0)
@@ -693,6 +926,25 @@ export default function TrendAnalysis() {
         unavailable: excludedMetrics.map((item: any) => `${item.metric}: ${item.reason}`).slice(0, 3),
       };
     });
+    const sourceRows = usesCumulativeGA4Consumer && authoritativeTrendCurrent ? [{
+      id: "ga4",
+      label: "Google Analytics",
+      category: "web_analytics",
+      color: PLATFORM_COLORS.ga4,
+      users: authoritativeTrendCurrent.users,
+      sessions: authoritativeTrendCurrent.sessions,
+      impressions: null,
+      clicks: null,
+      spend: null,
+      conversions: authoritativeTrendCurrent.conversions,
+      revenue: null,
+      ctr: null,
+      cpc: null,
+      cpa: null,
+      roas: null,
+      includedMetrics: ["users", "sessions", "conversions"],
+      unavailable: ["spend: no compatible source-level daily series", "revenue: no compatible source-level daily series", "impressions: GA4 is not an ad-impression source"],
+    }] : rollingSourceRows;
 
     const metricOptions = ["spend", "clicks", "conversions", "impressions", "sessions", "users", "revenue"]
       .filter((metricName) => sourceRows.some((source: any) => source[metricName] !== null));
@@ -701,7 +953,10 @@ export default function TrendAnalysis() {
     const trendRowsByDate = new Map<string, any>();
     for (const source of sources) {
       const sourceId = String(source?.id || "");
-      const dailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows.slice(-perfDays) : [];
+      const sourceDailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
+      const dailyRows = usesCumulativeGA4Consumer
+        ? filterTrendRowsToCalendarWindow(sourceDailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays)
+        : sourceDailyRows.slice(-perfDays);
       for (const row of dailyRows) {
         const date = String(row?.date || "").slice(0, 10);
         if (!date) continue;
@@ -721,7 +976,7 @@ export default function TrendAnalysis() {
       spendSources: sourceRows.filter((source: any) => source.spend !== null && source.spend > 0),
       efficiencySources: sourceRows.filter((source: any) => (source.cpa !== null && source.cpa > 0) || (source.cpc !== null && source.cpc > 0)),
     };
-  }, [trendAggregate, perfDays, platformMetric]);
+  }, [trendAggregate, perfDays, platformMetric, usesCumulativeGA4Consumer, authoritativeTrendCurrent]);
 
   const trendInsights = useMemo<any[]>(() => {
     const insights: any[] = [];
@@ -764,7 +1019,9 @@ export default function TrendAnalysis() {
       pushInsight({
         type: "info",
         title: "Historical Comparison Pending",
-        message: `Current values are available for ${overviewTrendData.currentPeriodDays} of ${overviewTrendData.requestedPeriodDays} selected days. Full trend comparisons need enough compatible daily history.`,
+        message: overviewTrendData.exactComparisonDate
+          ? `Exact comparison data for ${overviewTrendData.exactComparisonDate} is unavailable. Current cumulative values are not being reused as historical values.`
+          : `Current values are available for ${overviewTrendData.currentPeriodDays} of ${overviewTrendData.requestedPeriodDays} selected days. Full trend comparisons need enough compatible daily history.`,
       });
     }
 
@@ -781,7 +1038,7 @@ export default function TrendAnalysis() {
         pushInsight({
           type: "info",
           title: "Cost Efficiency Available",
-          message: `CPA is ${fmtCur(cpa)}. Use this with conversion trend movement before deciding whether spend needs optimization.`,
+          message: `CPA is ${fmtTrendCurrency(cpa)}. Use this with conversion trend movement before deciding whether spend needs optimization.`,
         });
       }
     } else {
@@ -826,7 +1083,7 @@ export default function TrendAnalysis() {
     }
 
     return insights.slice(0, 5);
-  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData]);
+  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData, campaignCurrency]);
 
   const toggleSeries = (key: string) => {
     setVisibleSeries(prev => {
@@ -973,12 +1230,12 @@ export default function TrendAnalysis() {
                         { label: 'Sessions', value: overviewTrendData.current.sessions === null ? null : fmtNum(overviewTrendData.current.sessions), change: overviewTrendData.comparison.sessions },
                         { label: 'Users', value: overviewTrendData.current.users === null ? null : fmtNum(overviewTrendData.current.users), change: overviewTrendData.comparison.users },
                         { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
-                        { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtCur(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
+                        { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtTrendCurrency(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
                         { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
                         { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(normalizeRateToPercent(overviewTrendData.current.engagementRate)), change: overviewTrendData.comparison.engagementRate },
-                        { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtCur(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
+                        { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtTrendCurrency(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
                         { label: 'ROAS', value: overviewTrendData.current.roas === null ? null : `${overviewTrendData.current.roas.toFixed(1)}x`, change: overviewTrendData.comparison.roas },
-                        { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtCur(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },
+                        { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtTrendCurrency(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },
                         { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
                       ].filter((card) => card.value !== null).slice(0, 6).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
@@ -987,7 +1244,7 @@ export default function TrendAnalysis() {
                             <CardContent className="p-4">
                               <div className="text-xs text-muted-foreground/70 mb-1">{card.label}</div>
                               <div className="text-xl font-bold text-foreground">{card.value}</div>
-                              {overviewTrendData.hasPrevious && (
+                              {overviewTrendData.hasPrevious && typeof card.change === "number" && (
                                 <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
                                   {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
                                   {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
@@ -999,9 +1256,20 @@ export default function TrendAnalysis() {
                       })}
                     </div>
 
+                  {usesCumulativeGA4Consumer && currentValueWindow?.dataThroughDate && (
+                    <p className="text-sm text-muted-foreground">
+                      Current cards are cumulative through {currentValueWindow.dataThroughDate}; the selector controls the daily chart and exact comparison date. Comparisons appear only where that exact historical value is available.
+                    </p>
+                  )}
+
                   {!overviewTrendData.hasCompleteCurrentPeriod && (
                     <p className="text-sm text-muted-foreground">
                       Showing {overviewTrendData.currentPeriodDays} of {overviewTrendData.requestedPeriodDays} days available for this selection. Full-period trend comparisons appear once enough daily history exists.
+                    </p>
+                  )}
+                  {usesCumulativeGA4Consumer && overviewTrendData.hasCompleteCurrentPeriod && !overviewTrendData.hasPrevious && trendComparisonDate && (
+                    <p className="text-sm text-muted-foreground">
+                      Exact comparison for {trendComparisonDate} is unavailable. Current cumulative values remain visible without a fallback comparison.
                     </p>
                   )}
 
@@ -1040,7 +1308,7 @@ export default function TrendAnalysis() {
                             <YAxis yAxisId="left" className="text-xs" />
                             <YAxis yAxisId="right" orientation="right" className="text-xs" />
                             <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => {
-                              if (['Spend', 'Revenue'].some(n => name.includes(n))) return [fmtCur(Number(value)), name];
+                              if (['Spend', 'Revenue'].some(n => name.includes(n))) return [fmtTrendCurrency(Number(value)), name];
                               return [Number(value).toLocaleString(), name];
                             }} />
                             {overviewVisibleSeries.has('spend') && <Area yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
@@ -1091,8 +1359,8 @@ export default function TrendAnalysis() {
                                     <Badge variant="outline" className="text-xs">{a.label}</Badge>
                                   </div>
                                   <div className="text-sm text-muted-foreground/70">
-                                    <span className="font-semibold">{a.metric === 'spend' || a.metric === 'cpa' ? fmtCur(a.value) : a.value.toLocaleString()}</span>
-                                    <span className="text-xs ml-1">(expected ~{a.metric === 'spend' || a.metric === 'cpa' ? fmtCur(a.expected) : Math.round(a.expected).toLocaleString()})</span>
+                                    <span className="font-semibold">{a.metric === 'spend' || a.metric === 'cpa' ? fmtTrendCurrency(a.value) : a.value.toLocaleString()}</span>
+                                    <span className="text-xs ml-1">(expected ~{a.metric === 'spend' || a.metric === 'cpa' ? fmtTrendCurrency(a.expected) : Math.round(a.expected).toLocaleString()})</span>
                                   </div>
                                 </div>
                               </div>
@@ -1149,6 +1417,11 @@ export default function TrendAnalysis() {
                       Showing {efficiencyTrendData.currentPeriodDays} of {efficiencyTrendData.requestedPeriodDays} days available for this selection. Validate full-period efficiency trends after enough daily history exists.
                     </p>
                   )}
+                  {usesCumulativeGA4Consumer && efficiencyTrendData.hasCompleteCurrentPeriod && !efficiencyTrendData.hasPrevious && trendComparisonDate && (
+                    <p className="text-sm text-muted-foreground">
+                      Exact comparison for {trendComparisonDate} is unavailable. Current cumulative efficiency values remain visible without a fallback comparison.
+                    </p>
+                  )}
 
                   {/* ROAS & ROI Chart */}
                   {efficiencyTrendData.hasFinancialEfficiency ? (
@@ -1172,7 +1445,11 @@ export default function TrendAnalysis() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">ROAS and ROI require both spend and revenue from connected source data.</CardContent></Card>
+                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">
+                      {usesCumulativeGA4Consumer
+                        ? "Daily ROAS and ROI trends are unavailable because no compatible cumulative financial series exists. Current cumulative cards remain authoritative."
+                        : "ROAS and ROI require both spend and revenue from connected source data."}
+                    </CardContent></Card>
                   )}
 
                   {/* CPA & CPC Chart */}
@@ -1186,7 +1463,7 @@ export default function TrendAnalysis() {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="label" className="text-xs" />
                               <YAxis className="text-xs" />
-                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [fmtCur(Number(v)), name]} />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [fmtTrendCurrency(Number(v)), name]} />
                               {efficiencyTrendData.current.cpa !== null && <Line type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />}
                               {efficiencyTrendData.current.cpc !== null && <Line type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />}
                               {efficiencyTrendData.current.cpm !== null && <Line type="monotone" dataKey="cpm" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CPM" />}
@@ -1196,7 +1473,11 @@ export default function TrendAnalysis() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">CPA requires spend and conversions. CPC and CPM require paid-media clicks or impressions from a connected source.</CardContent></Card>
+                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">
+                      {usesCumulativeGA4Consumer
+                        ? "Daily cost-efficiency trends are unavailable because no compatible cumulative financial series exists. Current cumulative cards remain authoritative."
+                        : "CPA requires spend and conversions. CPC and CPM require paid-media clicks or impressions from a connected source."}
+                    </CardContent></Card>
                   )}
 
                   {/* CTR & Engagement Rate Chart */}
@@ -1287,7 +1568,7 @@ export default function TrendAnalysis() {
                             { label: 'Clicks', value: conversionFunnelData.current.clicks === null ? null : fmtNum(conversionFunnelData.current.clicks) },
                             { label: 'CTR', value: conversionFunnelData.current.ctr === null ? null : formatPct(conversionFunnelData.current.ctr) },
                             { label: 'Paid CVR', value: conversionFunnelData.current.paidCvr === null ? null : formatPct(conversionFunnelData.current.paidCvr) },
-                            { label: 'CPA', value: conversionFunnelData.current.cpa === null ? null : fmtCur(conversionFunnelData.current.cpa) },
+                            { label: 'CPA', value: conversionFunnelData.current.cpa === null ? null : fmtTrendCurrency(conversionFunnelData.current.cpa) },
                           ].filter((card) => card.value !== null).map((card, i) => (
                             <Card key={i}><CardContent className="p-4"><div className="text-xs text-muted-foreground mb-1">{card.label}</div><div className="text-xl font-bold text-foreground">{card.value}</div></CardContent></Card>
                           ))}
@@ -1299,7 +1580,7 @@ export default function TrendAnalysis() {
                               <XAxis dataKey="label" className="text-xs" />
                               <YAxis yAxisId="left" className="text-xs" />
                               <YAxis yAxisId="right" orientation="right" className="text-xs" />
-                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'Spend' ? fmtCur(Number(v)) : Number(v).toLocaleString(), name]} />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'Spend' ? fmtTrendCurrency(Number(v)) : Number(v).toLocaleString(), name]} />
                               {conversionFunnelData.current.impressions !== null && <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
                               {conversionFunnelData.current.clicks !== null && <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
                               {conversionFunnelData.current.conversions !== null && <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
@@ -1374,14 +1655,14 @@ export default function TrendAnalysis() {
                                   </td>
                                   <td className="text-right py-3 px-2">{p.users === null ? '—' : fmtNum(p.users)}</td>
                                   <td className="text-right py-3 px-2">{p.sessions === null ? '—' : fmtNum(p.sessions)}</td>
-                                  <td className="text-right py-3 px-2">{p.spend === null ? '—' : fmtCur(p.spend)}</td>
+                                  <td className="text-right py-3 px-2">{p.spend === null ? '—' : fmtTrendCurrency(p.spend)}</td>
                                   <td className="text-right py-3 px-2">{p.impressions === null ? '—' : fmtNum(p.impressions)}</td>
                                   <td className="text-right py-3 px-2">{p.clicks === null ? '—' : fmtNum(p.clicks)}</td>
                                   <td className="text-right py-3 px-2">{p.ctr === null ? '—' : formatPct(p.ctr)}</td>
                                   <td className="text-right py-3 px-2">{p.conversions === null ? '—' : fmtNum(p.conversions)}</td>
-                                  <td className="text-right py-3 px-2">{p.revenue === null ? '—' : fmtCur(p.revenue)}</td>
-                                  <td className={`text-right py-3 px-2 ${p.cpa > 0 && p.cpa === bestCpa ? 'text-green-600 font-semibold' : ''}`}>{p.cpa > 0 ? fmtCur(p.cpa) : '—'}</td>
-                                  <td className={`text-right py-3 px-2 ${p.cpc > 0 && p.cpc === bestCpc ? 'text-green-600 font-semibold' : ''}`}>{p.cpc > 0 ? fmtCur(p.cpc) : '—'}</td>
+                                  <td className="text-right py-3 px-2">{p.revenue === null ? '—' : fmtTrendCurrency(p.revenue)}</td>
+                                  <td className={`text-right py-3 px-2 ${p.cpa > 0 && p.cpa === bestCpa ? 'text-green-600 font-semibold' : ''}`}>{p.cpa > 0 ? fmtTrendCurrency(p.cpa) : '—'}</td>
+                                  <td className={`text-right py-3 px-2 ${p.cpc > 0 && p.cpc === bestCpc ? 'text-green-600 font-semibold' : ''}`}>{p.cpc > 0 ? fmtTrendCurrency(p.cpc) : '—'}</td>
                                   <td className="py-3 px-2 text-xs text-muted-foreground">{p.unavailable.length ? p.unavailable.join("; ") : "—"}</td>
                                 </tr>
                               );
@@ -1414,7 +1695,7 @@ export default function TrendAnalysis() {
                                     <Cell key={i} fill={p.color} />
                                   ))}
                                 </Pie>
-                                <Tooltip formatter={(v: any) => fmtCur(Number(v))} />
+                                <Tooltip formatter={(v: any) => fmtTrendCurrency(Number(v))} />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
@@ -1435,7 +1716,7 @@ export default function TrendAnalysis() {
                                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                 <XAxis type="number" className="text-xs" />
                                 <YAxis dataKey="label" type="category" className="text-xs" width={100} />
-                                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtCur(Number(v))} />
+                                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtTrendCurrency(Number(v))} />
                                 <Bar dataKey="cpa" fill="#ef4444" name="CPA" />
                                 <Bar dataKey="cpc" fill="#f59e0b" name="CPC" />
                               </BarChart>
@@ -1470,7 +1751,7 @@ export default function TrendAnalysis() {
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="label" className="text-xs" />
                             <YAxis className="text-xs" />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [platformBreakdownData.activeMetric === 'spend' || platformBreakdownData.activeMetric === 'revenue' ? fmtCur(Number(v)) : Number(v).toLocaleString(), name]} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [platformBreakdownData.activeMetric === 'spend' || platformBreakdownData.activeMetric === 'revenue' ? fmtTrendCurrency(Number(v)) : Number(v).toLocaleString(), name]} />
                             {platformBreakdownData.sources.map((source: any) => (
                               <Bar key={source.id} dataKey={`${source.id}_${platformBreakdownData.activeMetric}`} stackId="a" fill={source.color} name={source.label} />
                             ))}

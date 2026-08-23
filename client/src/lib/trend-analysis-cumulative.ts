@@ -48,9 +48,13 @@ export const formatTrendComparison = (args: {
   }).format(new Date(`${comparisonDate}T00:00:00.000Z`));
   const delta = current - previous;
   const sign = delta > 0 ? "+" : "";
-  if (kind === "rate") return `${sign}${delta.toFixed(2)} pp vs cumulative through ${dateLabel}`;
+  const context = `vs cumulative ${dateLabel}`;
+  if (kind === "rate") return { value: `${sign}${delta.toFixed(2)} pp`, context };
   const change = ((current - previous) / previous) * 100;
-  return `${sign}${formatExactTrendCount(delta)} (${change >= 0 ? "+" : ""}${change.toFixed(1)}%) vs cumulative through ${dateLabel}`;
+  return {
+    value: `${sign}${formatExactTrendCount(delta)} (${change >= 0 ? "+" : ""}${change.toFixed(1)}%)`,
+    context,
+  };
 };
 
 export const filterTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: string, days: number) => {

@@ -206,17 +206,23 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(formatExactTrendCount(1183)).toBe("1,183");
     expect(formatExactTrendCount(1184)).toBe("1,184");
     expect(formatTrendComparison({ current: 1183, previous: 866, comparisonDate: "2026-07-23", kind: "count" }))
-      .toBe("+317 (+36.6%) vs cumulative through Jul 23, 2026");
+      .toEqual({ value: "+317 (+36.6%)", context: "vs cumulative Jul 23, 2026" });
     expect(formatTrendComparison({ current: 12.8486897718, previous: 12.7020785219, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toBe("+0.15 pp vs cumulative through Jul 23, 2026");
+      .toEqual({ value: "+0.15 pp", context: "vs cumulative Jul 23, 2026" });
     expect(formatTrendComparison({ current: 68.3854606932, previous: 68.3602771363, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toBe("+0.03 pp vs cumulative through Jul 23, 2026");
+      .toEqual({ value: "+0.03 pp", context: "vs cumulative Jul 23, 2026" });
     expect(formatTrendComparison({ current: 10, previous: 0, comparisonDate: "2026-07-23", kind: "count" })).toBeNull();
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain("formatExactTrendCount(overviewTrendData.current.sessions)");
     expect(page).toContain("formatExactTrendCount(overviewTrendData.current.users)");
-    expect(page).toContain("const comparisonText = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
+    expect(page).toContain("const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
+    expect(page).toContain('<div className="text-xs text-muted-foreground mt-1 leading-tight">');
+    expect(page).toContain("<div>{cumulativeComparison.context}</div>");
+    const cumulativeRenderStart = page.indexOf("cumulativeComparison ? (");
+    const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("text-green-600");
     expect(page).toContain("comparisonDateLabel && !compatibleFinancialDaily");
     expect(page).toContain("Exact financial comparison unavailable for {comparisonDateLabel}; current campaign-to-date financial KPIs remain visible without fallback percentages.");
     expect(page).toContain('const cpaConversionDenominator = usesCumulativeGA4Consumer ? aggregateMetricValue("conversions") : null;');

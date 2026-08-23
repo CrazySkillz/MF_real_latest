@@ -1283,7 +1283,7 @@ export default function TrendAnalysis() {
                         const countKey = ({ Conversions: "conversions", Sessions: "sessions", Users: "users" } as Record<string, string>)[card.label];
                         const rateKey = ({ CVR: "cvr", "Engagement Rate": "engagementRate", CTR: "ctr" } as Record<string, string>)[card.label];
                         const comparisonKey = countKey || rateKey;
-                        const comparisonText = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate
+                        const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate
                           ? formatTrendComparison({
                               current: Number(overviewTrendData.current[comparisonKey]),
                               previous: Number(overviewTrendData.previous?.[comparisonKey]),
@@ -1297,10 +1297,17 @@ export default function TrendAnalysis() {
                               <div className="text-xs text-muted-foreground/70 mb-1">{card.label}</div>
                               <div className="text-xl font-bold text-foreground">{card.value}</div>
                               {overviewTrendData.hasPrevious && typeof card.change === "number" && (
-                                <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
-                                  {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
-                                  {comparisonText || `${card.change >= 0 ? '+' : ''}${card.change.toFixed(1)}%`}
-                                </div>
+                                cumulativeComparison ? (
+                                  <div className="text-xs text-muted-foreground mt-1 leading-tight">
+                                    <div>{cumulativeComparison.value}</div>
+                                    <div>{cumulativeComparison.context}</div>
+                                  </div>
+                                ) : (
+                                  <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
+                                    {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                                    {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
+                                  </div>
+                                )
                               )}
                               {card.label === "CPA" && cpaConversionDenominator !== null && financialDataThroughLabel && (
                                 <div className="text-xs text-muted-foreground mt-1">

@@ -115,7 +115,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(legacyStart).toBeGreaterThan(executiveStart);
     expect(executiveView).toContain('aria-labelledby="financial-position-heading"');
     expect(executiveView).toContain('aria-labelledby="budget-pacing-heading"');
-    expect(executiveView).toContain('aria-labelledby="cost-efficiency-heading"');
+    expect(executiveView).toContain('aria-labelledby="conversion-efficiency-heading"');
+    expect(executiveView).toContain('aria-labelledby="paid-media-efficiency-heading"');
     expect(executiveView).toContain('aria-labelledby="allocation-sources-heading"');
     expect(executiveView).toContain('aria-labelledby="executive-action-heading"');
     expect(executiveView).toContain('label: "Total Spend"');
@@ -128,10 +129,14 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
     expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
     expect(executiveView).toContain("executiveFinancialActions.map");
-    expect(page).toContain("const costEfficiencyCpcMetric = campaignToDateCostMetric(overviewCpcMetric, \"CPC\");");
-    expect(page).toContain("const costEfficiencyCpmMetric = campaignToDateCostMetric(overviewCpmMetric, \"CPM\");");
-    expect(page).toContain("const costEfficiencyCtrMetric = campaignToDateCostMetric(overviewCtrMetric, \"CTR\");");
-    expect(page).toContain("const costEfficiencyCvrMetric = campaignToDateCostMetric(overviewCvrMetric, \"CVR\");");
+    expect(page).toContain("const paidMediaEfficiencyMetrics = [");
+    expect(page).toContain("].filter((item) => item.metric.available);");
+    expect(page).toContain("const paidMediaEfficiencySourceLabels = financialMainSources");
+    expect(page).toContain("const conversionEfficiencySourceLabels = financialMainSources");
+    expect(page).toContain("const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, \"CVR\");");
+    expect(executiveView).toContain("paidMediaEfficiencyMetrics.length > 0");
+    expect(executiveView).toContain("conversionEfficiencyCvrMetric.available");
+    expect(executiveView).not.toContain('id="cost-efficiency-heading"');
     expect(page).toContain("const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];");
     expect(executiveView).not.toContain("<TabsList>");
     expect(executiveView).not.toContain("<TabsTrigger");

@@ -668,7 +668,23 @@ export default function FinancialAnalysis() {
       .map((source: any) => String(source?.label || source?.id || "").trim())
       .filter(Boolean)
   ));
-  const campaignToDateCostMetric = (
+  const paidMediaEfficiencySourceLabels = financialMainSources
+    .filter((source: any) =>
+      (source?.category === "paid_media" || source?.id === "custom_integration") &&
+      Array.isArray(source?.includedMetrics) &&
+      source.includedMetrics.some((metric: string) => ["clicks", "impressions", "spend"].includes(metric))
+    )
+    .map((source: any) => String(source?.label || source?.id || "").trim())
+    .filter(Boolean);
+  const conversionEfficiencySourceLabels = financialMainSources
+    .filter((source: any) =>
+      Array.isArray(source?.includedMetrics) &&
+      source.includedMetrics.includes("conversions") &&
+      source.includedMetrics.some((metric: string) => ["sessions", "clicks"].includes(metric))
+    )
+    .map((source: any) => String(source?.label || source?.id || "").trim())
+    .filter(Boolean);
+  const campaignToDateEfficiencyMetric = (
     metric: { available: boolean; value: number; unavailableReasons: string[] },
     metricName: string,
   ) => demoMode || hasCampaignToDateWindow ? metric : {
@@ -676,10 +692,12 @@ export default function FinancialAnalysis() {
     value: 0,
     unavailableReasons: [`${metricName} is withheld until every input has a certified campaign-to-date window`],
   };
-  const costEfficiencyCpcMetric = campaignToDateCostMetric(overviewCpcMetric, "CPC");
-  const costEfficiencyCpmMetric = campaignToDateCostMetric(overviewCpmMetric, "CPM");
-  const costEfficiencyCtrMetric = campaignToDateCostMetric(overviewCtrMetric, "CTR");
-  const costEfficiencyCvrMetric = campaignToDateCostMetric(overviewCvrMetric, "CVR");
+  const paidMediaEfficiencyMetrics = [
+    { label: "CPC", metric: campaignToDateEfficiencyMetric(overviewCpcMetric, "CPC"), value: formatOverviewCurrency(overviewCpcMetric) },
+    { label: "CPM", metric: campaignToDateEfficiencyMetric(overviewCpmMetric, "CPM"), value: formatOverviewCurrency(overviewCpmMetric) },
+    { label: "CTR", metric: campaignToDateEfficiencyMetric(overviewCtrMetric, "CTR"), value: formatOverviewPercentage(overviewCtrMetric) },
+  ].filter((item) => item.metric.available);
+  const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, "CVR");
   const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];
 
   // Calculate comparison metrics
@@ -1102,40 +1120,57 @@ export default function FinancialAnalysis() {
                 </div>
               </section>
 
-              <section aria-labelledby="cost-efficiency-heading" className="space-y-4">
+              {paidMediaEfficiencyMetrics.length > 0 && (
+                <section aria-labelledby="paid-media-efficiency-heading" className="space-y-4">
+                  <div>
+                    <h2 id="paid-media-efficiency-heading" className="text-xl font-semibold">Paid Media Efficiency</h2>
+                    <p className="text-sm text-muted-foreground">Shown only when compatible campaign-to-date paid-media inputs are available.</p>
+                  </div>
+                  <Card>
+                    <CardContent className="space-y-5 p-6">
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {paidMediaEfficiencyMetrics.map((item) => (
+                          <div key={item.label} className="rounded-lg border p-4">
+                            <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+                            <p className="mt-1 text-xl font-bold">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t pt-4">
+                        <p className="text-sm font-semibold">Sources</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{paidMediaEfficiencySourceLabels.join(", ")}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
+
+              {conversionEfficiencyCvrMetric.available && (
+              <section aria-labelledby="conversion-efficiency-heading" className="space-y-4">
                 <div>
-                  <h2 id="cost-efficiency-heading" className="text-xl font-semibold">Cost Efficiency</h2>
-                  <p className="text-sm text-muted-foreground">Metrics appear only when every required input has a compatible campaign-to-date window.</p>
+                  <h2 id="conversion-efficiency-heading" className="text-xl font-semibold">Conversion Efficiency</h2>
+                  <p className="text-sm text-muted-foreground">CVR shows how effectively campaign sessions or clicks become conversions.</p>
                 </div>
                 <Card>
                   <CardContent className="space-y-5 p-6">
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        { label: "CPC", metric: costEfficiencyCpcMetric, value: formatOverviewCurrency(costEfficiencyCpcMetric), fallback: "CPC requires compatible spend and clicks" },
-                        { label: "CPM", metric: costEfficiencyCpmMetric, value: formatOverviewCurrency(costEfficiencyCpmMetric), fallback: "CPM requires compatible spend and impressions" },
-                        { label: "CTR", metric: costEfficiencyCtrMetric, value: formatOverviewPercentage(costEfficiencyCtrMetric), fallback: "CTR requires compatible clicks and impressions" },
-                        { label: "CVR", metric: costEfficiencyCvrMetric, value: formatOverviewPercentage(costEfficiencyCvrMetric), fallback: "CVR requires compatible conversions and clicks or sessions" },
-                      ].map((item) => (
-                        <div key={item.label} className="rounded-lg border p-4">
-                          <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-                          <p className="mt-1 text-xl font-bold">{item.value}</p>
-                          {!item.metric.available && (
-                            <p className="mt-2 text-xs text-muted-foreground">{overviewMetricUnavailableText(item.metric, item.fallback)}</p>
-                          )}
-                        </div>
-                      ))}
+                      <div className="rounded-lg border p-4">
+                        <p className="text-sm font-medium text-muted-foreground">CVR</p>
+                        <p className="mt-1 text-xl font-bold">{formatOverviewPercentage(conversionEfficiencyCvrMetric)}</p>
+                      </div>
                     </div>
                     <div className="border-t pt-4">
                       <p className="text-sm font-semibold">Sources</p>
-                      {costAnalysisSourceLabels.length > 0 ? (
-                        <p className="mt-1 text-sm text-muted-foreground">{costAnalysisSourceLabels.join(", ")}</p>
+                      {conversionEfficiencySourceLabels.length > 0 ? (
+                        <p className="mt-1 text-sm text-muted-foreground">{conversionEfficiencySourceLabels.join(", ")}</p>
                       ) : (
-                        <p className="mt-1 text-sm text-muted-foreground">No connected source provides cost-efficiency inputs yet.</p>
+                        <p className="mt-1 text-sm text-muted-foreground">No connected source provides conversion-efficiency inputs yet.</p>
                       )}
                     </div>
                   </CardContent>
                 </Card>
               </section>
+              )}
 
               <section aria-labelledby="allocation-sources-heading" className="space-y-4">
                 <div>

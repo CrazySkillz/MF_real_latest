@@ -135,6 +135,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(allocationSources).toContain("<CardTitle>Sources Used</CardTitle>");
     expect(allocationSources).not.toContain("<CardTitle>Budget Allocation</CardTitle>");
     expect(allocationSources).not.toContain('className="grid gap-6 xl:grid-cols-2"');
+    expect(allocationSources.match(/grid-cols-\[minmax\(0,1fr\)_7rem\]/g)).toHaveLength(2);
+    expect(allocationSources.match(/whitespace-nowrap font-medium tabular-nums/g)).toHaveLength(2);
     expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
     expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
     expect(executiveView).toContain("executiveFinancialActions.map");

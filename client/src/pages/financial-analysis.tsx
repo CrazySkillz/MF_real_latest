@@ -1178,9 +1178,9 @@ export default function FinancialAnalysis() {
                       <p className="text-sm font-semibold">Revenue</p>
                       <div className="mt-3 space-y-2">
                         {financialChildSourceBreakdowns.length > 0 ? financialChildSourceBreakdowns.map((source) => (
-                          <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
+                          <div key={source.id} className="grid grid-cols-[minmax(0,1fr)_7rem] items-start gap-3 text-sm">
                             <span className="text-muted-foreground">{source.label}</span>
-                            <span className="font-medium">{formatCurrency(source.revenue)}</span>
+                            <span className="whitespace-nowrap font-medium tabular-nums">{formatCurrency(source.revenue)}</span>
                           </div>
                         )) : <p className="text-sm text-muted-foreground">No detailed revenue inputs are available.</p>}
                       </div>
@@ -1189,9 +1189,9 @@ export default function FinancialAnalysis() {
                       <p className="text-sm font-semibold">Spend</p>
                       <div className="mt-3 space-y-2">
                         {financialSpendInputBreakdowns.length > 0 ? financialSpendInputBreakdowns.map((source) => (
-                          <div key={source.id} className="flex items-start justify-between gap-3 text-sm">
+                          <div key={source.id} className="grid grid-cols-[minmax(0,1fr)_7rem] items-start gap-3 text-sm">
                             <span className="text-muted-foreground">{source.label}</span>
-                            <span className="font-medium">{formatCurrency(source.spend)}</span>
+                            <span className="whitespace-nowrap font-medium tabular-nums">{formatCurrency(source.spend)}</span>
                           </div>
                         )) : <p className="text-sm text-muted-foreground">No detailed spend inputs are available.</p>}
                       </div>

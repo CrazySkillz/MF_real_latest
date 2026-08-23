@@ -1,4 +1,112 @@
-# Budget & Financial Analysis - Overview Tab
+# Budget & Financial Analysis - Current Single-Page Contract
+
+Last reconciled with implementation through consumer commit `1205ed49` on 2026-08-23.
+
+## Current Visible Contract
+
+`client/src/pages/financial-analysis.tsx` renders one executive financial view. The old
+`Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, and `Insights` tabs are
+not visible. Their renderer remains behind a constant-false rollback guard and is not
+the product contract.
+
+The visible sections, in order, are:
+
+1. `Financial Position`
+2. `Budget & Pacing`
+3. `Paid Media Efficiency`, only when at least one compatible paid-media metric exists
+4. `Allocation & Sources`
+5. `Executive Action`
+
+### Authoritative Inputs And Synchronization
+
+- `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` supplies
+  `performanceSummary.totals`, `performanceSummary.sources`, the cumulative
+  `currentValueWindow`, unavailable reasons, and `financialInputs` provenance.
+- `/api/campaigns/{campaignId}` supplies `budget`, `currency`, `pacingStartDate`, and
+  `pacingEndDate`.
+- The visible values refetch every 30 seconds while the page is visible and on window
+  focus. This is bounded polling, not real-time push.
+- Refetch keeps the last compatible aggregate visible while loading. A failed or
+  missing aggregate does not fall back to stale page-local financial totals.
+- Revenue, spend, conversions, ROI, ROAS, CPA, CPC, CPM, CTR, and CVR are read from
+  the shared aggregate. Budget metadata never filters or changes those source totals.
+
+The accepted current-value window is `performance_summary_aggregate_v3` with mode
+`initial_import_to_latest_completed_day`, a valid start/end date, a matching
+`dataThroughDate`, and a reporting timezone. It is cumulative from the fixed initial
+import boundary through the latest completed reporting day.
+
+### Financial Position
+
+- `Total Spend`, `Total Revenue`, `ROAS`, `ROI`, and `CPA` render from
+  `performanceSummary.totals` only when marked available.
+- `Profit = Total Revenue - Total Spend`; it is unavailable unless both inputs are
+  compatible and available.
+- `CVR` appears as the compact `Conversion Efficiency` subsection only when available.
+  Its source labels come from connected main sources that provide conversions plus
+  sessions or clicks.
+- Missing inputs render `Unavailable`; they are never displayed as zero.
+
+### Budget & Pacing
+
+- Campaign Budget is the shared campaign `budget` field.
+- Budget period dates are the dedicated campaign `pacingStartDate` and
+  `pacingEndDate` fields. They are separate from financial source dates and campaign
+  revenue windows.
+- `Remaining Budget = Campaign Budget - Total Spend`.
+- `Budget Used % = Total Spend / Campaign Budget * 100`.
+- `Daily Burn Rate = Total Spend / inclusive elapsed budget-period days`.
+- `Target Daily Spend = Campaign Budget / inclusive total budget-period days`.
+- `Pacing % = Daily Burn Rate / Target Daily Spend * 100`.
+- `On Track` is 85%-115%, `Under` is below 85%, and `Over` is above 115%.
+- A period that has not started has zero elapsed days and does not receive a pacing
+  judgment. A completed period stops elapsed days at `pacingEndDate`.
+- The inline editor writes only `budget`, `pacingStartDate`, and `pacingEndDate` through
+  the existing campaign update route. Budget accepts numeric input and displays two
+  decimals after blur.
+
+### Efficiency And Provenance
+
+- `Paid Media Efficiency` shows only available CPC, CPM, and CTR cards. The complete
+  section is omitted when none are available; unavailable placeholder cards are not
+  rendered.
+- `Allocation & Sources` contains one full-width `Sources Used` card. Revenue and spend
+  rows come from `outcomeTotals.financialInputs`, not from guessed platform allocation.
+- Revenue and spend amounts use fixed-width, tabular-number columns so currency signs
+  align within each list.
+- CSV and Google Sheets spend inputs are valid spend-source provenance. They may support
+  a source-mix action when their positive amounts reconcile to authoritative Total Spend,
+  but they do not become standalone main Connected Platforms.
+
+### Executive Action Rules
+
+The three cards are fixed decision categories, not a ranked or prioritized list:
+
+- Return: uses the displayed compatible ROAS and ROI; unavailable inputs fail closed,
+  values below break-even warn, and otherwise the card reports positive return.
+- Budget: uses actual pacing progress. Over-budget takes precedence; otherwise missing
+  dates, a future period, below-target pace, above-target pace, and on-track pace produce
+  distinct actions. Low total-budget utilization alone is not treated as proof of
+  underdelivery.
+- Source mix: when positive financial spend-input rows reconcile to authoritative Total
+  Spend within one cent, the action names the largest spend source and its share. A
+  mismatch withholds guidance. If no detailed spend inputs exist, the action falls back
+  to comparable spend-capable main-source rules and requires two compatible source
+  returns before suggesting a reallocation review.
+
+### Historical Values
+
+The current visible single-page view does not render trend indicators. Retained
+comparison plumbing accepts only an exact-date `financial_daily_snapshot_v1` whose
+currency, reporting date, cumulative start boundary, data-through date, reporting
+timezone, and aggregate version are compatible. It must never substitute today's
+cumulative value for a requested historical date.
+
+## Superseded Multi-Tab Implementation Ledger
+
+The material below documents the earlier multi-tab implementation and migration work.
+It is retained because the source file still contains a constant-false rollback
+renderer, but it does not describe the current visible UI or current product contract.
 
 ## How the Overview Tab Is Populated and Calculated
 

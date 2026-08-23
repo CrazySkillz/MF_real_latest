@@ -87,7 +87,7 @@
     { "path": "client/src/pages/notifications.tsx", "role": "Notifications value and action consumer", "sha256": "ab9244e87c36ba2f80b73a669ef0adebc5028af9d6081643785bbd06e73e8085" },
     { "path": "client/src/components/layout/navigation.tsx", "role": "bell visibility and navigation consumer", "sha256": "81946878fafefeb278454d99aecbe5d967f7b26525189efbef3eefea13b902b0" },
     { "path": "client/src/pages/executive-summary.tsx", "role": "downstream KPI progress and risk consumer", "sha256": "40413c239f5accca99ff3b91a64c9a19ef445ee164988b7813386450337cdd86" },
-    { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "2c28e2004df4a749b16ac208317178e746d3951662c70222b5743f08f9ab501e" },
+    { "path": "client/src/pages/reports.tsx", "role": "browser and manual report consumer", "sha256": "91634b3233c12e18d65d696a82b2834726d62181fda2b8171c9a18d5bce2986f" },
     { "path": "client/src/pages/campaign-detail.tsx", "role": "campaign aggregate and downstream navigation consumer", "sha256": "054072569a1502407c4b3cf74e356703e1decc8b23f978607d0d71e155fb1f2e" },
     { "path": "server/routes-oauth.ts", "role": "KPI API, lifecycle, notification, report, and downstream routes", "sha256": "c16802e8c78522fe865dcabfb3e8b8f9ba704bd452d80155956bad30707ac606" },
     { "path": "server/storage.ts", "role": "KPI, progress, source, notification, and delete persistence", "sha256": "6d6ddc86b9875eed3fcb044bdde032a951890a4c78cf6c899865771cd12e2be5" },
@@ -157,7 +157,7 @@
     { "path": "server/shopify-revenue-regression.test.ts", "role": "configured revenue source downstream alert resolver regression", "sha256": "176f93d3565b1c298c850c7f1d6f99300170751a23bb3a0536f2e08b30b70558" },
     { "path": "server/ga4-insights-regression.test.ts", "role": "Insights KPI context regression", "sha256": "81a0823fca750fce09ef21c19925dbbd8592cbd5784290bffa7fdbc88be42652" },
     { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Insights report parity regression", "sha256": "76cc38ffe5b7215e7bcc945a3388a6f73ef9bedb6fd5d54c58ce36c69584f8f2" },
-    { "path": "server/custom-report-regression.test.ts", "role": "custom report KPI consumer regression", "sha256": "8d16add90b0db2dcbb9fc509c55cd4cd36127e4c59a9d28128b33959e69233fd" },
+    { "path": "server/custom-report-regression.test.ts", "role": "custom report KPI consumer regression", "sha256": "858d8cf85fdbc8b8c2ad89b49c7e6f0e1345ade77cd034b11320b111fad70b2e" },
     { "path": "server/executive-summary-regression.test.ts", "role": "Executive Summary KPI consumer regression", "sha256": "c3af8b9265bb1e4b0ff15839d5cebde1f2d9c9b7e79027b03c06048d90a64f8b" }
   ],
   "statusDocuments": [

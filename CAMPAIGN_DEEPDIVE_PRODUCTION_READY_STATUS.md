@@ -29,6 +29,15 @@ The remaining work is validation hardening and source-specific proof, not a full
 
 Current documentation reconciliation (2026-08-21): Performance Summary now has one controlling data-window contract. GA4 traffic current values accumulate from the saved initial-import boundary through the latest completed reporting day; refreshed KPI/Benchmark current values feed Campaign Health, Top Priority Action, and Recommended Actions; Key Outcomes uses those current connected-source values; and Recent Movement alone uses exact-date historical comparisons for yesterday, seven days earlier, and the same calendar date one month earlier. Production code, tests, validators, and machine certification records were not changed by this reconciliation.
 
+Budget & Financial Analysis reconciliation (2026-08-23): the current consumer through
+`1205ed49` renders one executive financial page rather than multiple visible tabs.
+Financial Position, Budget & Pacing, conditional Paid Media Efficiency, Sources Used,
+and the three fixed Executive Action categories consume the same cumulative aggregate.
+Budget-period dates are dedicated `pacingStartDate` / `pacingEndDate` campaign fields;
+they do not filter revenue or spend. The post-certification commits changed only the
+Budget consumer/helper and its focused regression test, not protected GA4 runtime,
+storage, routes, calculations, or machine certification records.
+
 ## Current Implementation And Certification Status
 
 Do not use this top-level file as a current whole-section production certification. The implemented shared aggregate and corrected Performance Summary value paths are locally regression-covered, but each subsection and source remains bounded by its own exact-SHA readiness evidence. The 2026-08-21 documentation reconciliation does not certify the current repository SHA.
@@ -123,7 +132,7 @@ Expected proof:
 | Subsection | Current status | Source-of-truth path | Remaining item |
 | --- | --- | --- | --- |
 | Performance Summary | Current cumulative/exact-date implementation documented; current-SHA certification not asserted by this docs-only pass | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, exact-date financial/history reads | Run exact-SHA certification gates separately if a new production-ready claim is required |
-| Budget & Financial Analysis | Production-ready locally after regression correction | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` plus campaign budget/start/end metadata | Live/source-refresh validation as real integrations are exercised |
+| Budget & Financial Analysis | Current single-page consumer aligned through `1205ed49`; focused regression, TypeScript, and build passed | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` and `financialInputs`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Confirm the latest consumer SHA in production if that deployment has not already been checked; future sources retain their own source-specific validation |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
 | Trend Analysis | Aggregate-backed locally; historical accuracy validation pending | `/api/campaigns/:campaignId/trend-analysis` -> `trend_analysis_aggregate_v1` | Mock-live historical data validation |
 | Executive Summary | Production-ready locally as an aggregate consumer | `/api/campaigns/:campaignId/executive-summary` plus `/outcome-totals` | Future source-mix deployed validation and source-specific acceptance gates |

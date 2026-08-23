@@ -57,11 +57,54 @@ Executive use case:
 - The same executive uses Platform Comparison to answer "which connected source is contributing what?" For a GA4-only campaign, Platform Comparison should show GA4's available analytics metrics. When LinkedIn, Meta, Google Ads, or another main paid-media source is connected, Platform Comparison should compare the supported source-level metrics side by side.
 - Budget & Financial Analysis may use source breakdowns as evidence, but its primary job is campaign-wide financial decision support, not source ranking.
 
-## Current Root Cause
+## Current Implemented Consumer Contract
 
-`client/src/pages/financial-analysis.tsx` currently performs page-local aggregation from separate source queries.
+Reconciled with current code through consumer commit `1205ed49` on 2026-08-23.
 
-That implementation is not driven by the same connected-source aggregate contract used by the production-ready Performance Summary path. As a result:
+The visible Budget & Financial Analysis experience is now one executive page, not five
+tabs. It renders `Financial Position`, `Budget & Pacing`, conditional `Paid Media
+Efficiency`, `Allocation & Sources`, and `Executive Action` from the same shared
+campaign aggregate.
+
+Current consumer-only refinements after the `e5195f9a` GA4 certification-record commit:
+
+- `148cc6d0`: unavailable CPC/CPM/CTR cards no longer consume space; the paid-media
+  efficiency section appears only when compatible inputs exist.
+- `f43cf7cd`: available CVR moved into a compact `Conversion Efficiency` subsection
+  inside `Financial Position`.
+- `eef9f809`: the redundant visible `Budget Allocation` card was removed; `Sources Used`
+  spans the `Allocation & Sources` section.
+- `c879b041`: revenue and spend amounts use aligned fixed-width tabular-number columns.
+- `fbc14b38`: executive budget guidance uses actual budget-period pacing rather than
+  total-budget utilization alone, and the source action reports the exact availability
+  reason.
+- `1205ed49`: reconciled CSV/Google Sheets spend inputs can drive factual spend-source
+  mix guidance; the Executive Action subtitle no longer calls fixed cards prioritized.
+
+The three Executive Action cards are fixed categories: return, budget pacing, and
+source mix/allocation. The source-mix card may use positive detailed spend input rows
+only when their sum reconciles to authoritative Total Spend within one cent. It does
+not promote CSV or Google Sheets child inputs into main Connected Platforms.
+
+Campaign Budget uses the shared campaign `budget` field. Budget-period dates use the
+dedicated campaign `pacingStartDate` and `pacingEndDate` fields. These dates affect
+only elapsed days, target spend, pacing status, and exhaustion projection; they never
+filter or change connected-source spend or revenue.
+
+The visible page refetches the campaign aggregate and campaign metadata every 30
+seconds while visible and on window focus. This is bounded polling, not real-time push.
+The current visible page does not render historical trend indicators; retained
+comparison plumbing remains exact-date and compatibility-gated.
+
+The detailed current functional contract is `docs/financial-analysis-overview.md`.
+
+## Historical Root Cause (Resolved)
+
+Before the shared-aggregate migration, `client/src/pages/financial-analysis.tsx`
+performed page-local aggregation from separate source queries.
+
+That implementation was not driven by the same connected-source aggregate contract
+used by Performance Summary. As a result, it had these defects:
 
 - source inclusion is hard-coded in the frontend
 - the page manually combines LinkedIn, Meta, Custom Integration, Google Sheets, and GA4 fallback fields
@@ -71,13 +114,14 @@ That implementation is not driven by the same connected-source aggregate contrac
 - unavailable metrics can be treated as zero instead of explicitly unavailable
 - scheduler/history alignment is not guaranteed to match the same aggregate model
 
-The issue is an aggregation contract problem, not a single-card display bug.
+The issue was an aggregation-contract problem, not a single-card display bug.
 
 ## Existing Relevant Paths
 
 - `client/src/pages/financial-analysis.tsx`
-  - Current Budget & Financial Analysis page and tab UI.
-  - Performs local aggregation and tab-specific calculations.
+  - Current single-page Budget & Financial Analysis consumer.
+  - Renders aggregate financial values, pacing metadata, financial provenance, and
+    executive decision rules; the former tab renderer is constant-false rollback code.
 
 - `client/src/pages/campaign-performance.tsx`
   - Performance Summary page.
@@ -97,11 +141,15 @@ The issue is an aggregation contract problem, not a single-card display bug.
 - `GA4/FINANCIAL_SOURCES.md`
   - Canonical GA4 financial source rules for revenue, spend, provenance, recomputation, and child source behavior.
 
-## Production-Ready Target Contract
+## Historical Production-Ready Migration Target (Completed)
+
+This was the migration target that replaced page-local financial truth with the shared
+aggregate. The current visible section contract is documented above.
 
 Budget & Financial Analysis should consume one campaign-level aggregate contract.
 
-The safest fix is to reuse the already-built Performance Summary aggregate contract, then wire each Budget & Financial tab to that same source-aware model.
+The implemented fix reused the Performance Summary aggregate contract and wired the
+visible Budget & Financial sections to that source-aware model.
 
 The contract should provide:
 
@@ -120,11 +168,11 @@ Preferred approach:
 
 - Reuse `/api/campaigns/:id/outcome-totals` and `outcomeTotals.performanceSummary` wherever the required financial metrics already exist.
 - Use `/api/campaigns/:id/outcome-totals.financialInputs` for detailed revenue/spend input provenance. `performanceSummary.sources` is a connected-source aggregate breakdown and must not be treated as the complete GA4 financial source-modal provenance list.
-- Extend the aggregate helper only if a Budget & Financial tab needs a financial field that is not yet represented.
+- Extend the aggregate helper only if a visible Budget & Financial section needs a financial field that is not yet represented.
 - Keep persistence reads in `server/storage.ts`.
 - Keep API composition in `server/routes-oauth.ts`.
 - Keep scheduler alignment in `server/scheduler.ts`.
-- Keep tab rendering in `client/src/pages/financial-analysis.tsx`.
+- Keep section rendering in `client/src/pages/financial-analysis.tsx`.
 
 ## Source Capability Rules
 
@@ -194,7 +242,11 @@ Rules:
 - do not assume Custom Integration is a paid-media source unless it provides spend/click/impression fields
 - use unavailable reasons when required financial inputs are missing
 
-## Tab-by-Tab Target Behavior
+## Historical Multi-Tab Migration Target (Superseded)
+
+The following target described the phased migration into the shared aggregate. The
+current visible product is the single-page contract above; these tab descriptions are
+retained only as implementation history for the constant-false rollback renderer.
 
 ### Overview
 
@@ -256,7 +308,7 @@ It should prioritize:
 - poor cost efficiency
 - source-specific spend concentration only when multiple spend-capable sources exist
 
-## Implementation Plan
+## Historical Implementation Plan
 
 ### Commit 1: Aggregate Contract
 
@@ -430,38 +482,63 @@ Before marking this subsection production ready:
 - Unavailable metrics show clear unavailable states.
 - Scheduler snapshots use the same aggregate version for historical comparisons.
 - Open UI refreshes current aggregate values after source updates.
-- Regression coverage proves each migrated tab.
+- Regression coverage proves the current visible single-page section inventory and
+  decision rules; the historical tabs remain non-rendering rollback code.
 
 ## Current Status
 
-Production ready for the currently implemented Budget & Financial Analysis scope through Commit 7, with live/source-refresh validation still expected as integrations are exercised in deployed environments.
+The current single-page consumer is locally validated through `1205ed49`. Focused
+Budget regression tests, TypeScript checking, and the production build passed for the
+consumer-only changes. This document does not claim production UI parity for
+`1205ed49` until that exact deployment is confirmed.
 
 Source-of-truth rule: main sources connected in the campaign's Connected Platforms section feed the shared campaign aggregate. Budget & Financial Analysis does not calculate platform truth independently and does not send values back into platform analytics.
 
-Future-source rule: as each new main Connected Platform is implemented, its campaign-scoped metrics must be added to the shared aggregate contract. The Budget & Financial tabs then consume that source automatically through `performanceSummary.sources` and `performanceSummary.totals`; the tabs should not need one-off platform-specific rewiring.
+Future-source rule: as each new main Connected Platform is implemented, its
+campaign-scoped metrics must be added to the shared aggregate contract. The visible
+Budget & Financial sections then consume that source through
+`performanceSummary.sources`, `performanceSummary.totals`, and `financialInputs`;
+they should not need one-off platform-specific rewiring.
 
 Proven:
 
 - Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
 - Performance Summary already has a source-aware aggregate contract through `/api/campaigns/:id/outcome-totals`.
-- Budget & Financial Analysis completed tabs now use the shared aggregate contract for current financial totals, source capability checks, unavailable states, financial input provenance, budget allocation, and financial insights.
-- Budget Pacing & Burn Rate now fails closed when required campaign dates are missing or invalid: Daily Burn Rate requires a valid campaign start date, and Target Daily Spend/Pacing Status require a valid start/end date range.
-- Budget Pacing & Burn Rate allows users to fill, edit, or delete campaign budget/start/end metadata inline through the existing campaign update route, without entering calculated values directly.
-- Budget & Financial Overview spend and pacing values are sourced from the shared aggregate contract; if that aggregate is unavailable, the page must show unavailable or retain prior aggregate data during refetch rather than displaying legacy fallback totals.
+- The visible page has no tab navigation, Campaign Health Score, duplicate Budget
+  Allocation card, or visible historical trend indicators.
+- Financial Position uses the shared aggregate for Total Spend, Total Revenue, Profit,
+  ROAS, ROI, CPA, and available CVR.
+- Paid Media Efficiency renders only when at least one compatible CPC, CPM, or CTR
+  value is available; it does not fill the page with unavailable cards.
+- `Sources Used` is the only visible Allocation & Sources card. It uses explicit
+  `financialInputs` revenue/spend provenance and aligns currency columns.
+- Budget Pacing & Burn Rate fails closed when required budget-period dates are missing
+  or invalid: Daily Burn Rate requires `pacingStartDate`; Target Daily Spend and Pacing
+  Status require a valid `pacingStartDate` / `pacingEndDate` range.
+- Users can fill, edit, or delete campaign `budget`, `pacingStartDate`, and
+  `pacingEndDate` through the existing campaign update route without entering
+  calculated values directly.
+- Current spend and pacing values use the shared aggregate; if it is unavailable, the
+  page shows unavailable or retains prior compatible aggregate data during refetch
+  instead of displaying legacy fallback totals.
 - Platform-level connected-source revenue and spend are the source of truth for Budget & Financial Analysis. Budget & Financial consumes those aggregate totals downstream and must not write, override, filter, or reinterpret platform revenue/spend values.
-- Budget Pacing start/end dates must not change platform or aggregate revenue/spend totals. They only determine elapsed days, target daily spend, and pacing status.
-- Budget Pacing & Burn Rate stays synchronized through both feeder paths: campaign budget/start/end metadata refetches while visible and on window focus, and aggregate spend refetches through `/outcome-totals` while visible and on window focus.
-- Budget Pacing & Burn Rate inputs impact only campaign metadata consumers: the Campaign Management Budget display/edit form, Overview Campaign Health budget/pacing sub-scores, Budget Utilization, Budget Pacing & Burn Rate, and Financial Performance Insights budget-management copy. They do not alter source totals, source breakdowns, Budget Allocation source rows, ROI/ROAS source rows, Cost Analysis source metrics, or compatible historical snapshot values.
-- Campaign Health Score labels ROI/ROAS as campaign-level performance metrics because they read `performanceSummary.totals.roi` and `performanceSummary.totals.roas`, not platform-specific GA4 card state. The formulas match platform ROI/ROAS, but the campaign-level scope can include all eligible connected-source financial inputs.
+- Budget-period dates must not change platform or aggregate revenue/spend totals. They
+  determine only elapsed days, target daily spend, pacing status, and exhaustion
+  projection.
+- Campaign pacing metadata and aggregate values both refetch every 30 seconds while
+  visible and on window focus, so the single page converges after upstream updates.
+- Executive Action contains three fixed, unranked categories. Return uses displayed
+  ROI/ROAS, budget guidance uses actual pacing, and source mix uses reconciled detailed
+  spend inputs before falling back to comparable main-source rules.
 - Follow-up source-of-truth fix: GA4 platform `Total Revenue`, `Revenue Breakdown`, `Total Spend`, and `Spend Breakdown` now ignore Budget Pacing start/end metadata and read all active source records to date, so Budget & Financial pacing inputs cannot reduce platform-level revenue/spend or distort GA4 ROI/ROAS.
-- Follow-up copy fix: Campaign Health Pacing Status no longer displays the `of target pace` helper text; the pacing percentage and status thresholds remain unchanged.
-- Pacing Status percentage remains documented as actual daily burn rate divided by target daily spend. A value such as `3.2%` is critical because it is more than 50% away from target pace.
-- Follow-up UI consistency fix: Budget & Financial Analysis tabs now use the same content-width tab format as Performance Summary instead of full-page equal-width grid tabs.
-- Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
+- Pacing Status remains actual daily burn rate divided by target daily spend. A very low
+  percentage is below target, not proof that the overall budget value is wrong.
 - Budget & Financial Analysis remains distinct from Platform Comparison: this section owns campaign-wide budget, pacing, ROI, ROAS, allocation, and financial decisioning, while Platform Comparison owns connected-source contribution/comparison.
-- Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
+- Scheduler-created snapshots include compatible aggregate data, but the current
+  visible single-page consumer does not render historical trend indicators.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.
-- Custom Report PDF exports for Budget & Financial Analysis now include the same nested section/card/row set as the web tabs and read current values from the connected-source aggregate plus the campaign budget/start/end row, instead of using a generic metric-list export.
+- Browser and scheduled report behavior was not changed by commits `148cc6d0` through
+  `1205ed49`; prior report evidence remains bounded to its recorded report contract.
 - Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.
 - GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
 - Render validation passed for the GA4 `yesop` source-refresh path: manual refresh returned `success: true` with refreshed metrics, and the Budget & Financial current-value validation passed after refresh.

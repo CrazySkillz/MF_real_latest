@@ -31,8 +31,9 @@ describe("Trend Analysis Overview regression guard", () => {
     const overviewEnd = page.indexOf('<TabsContent value="efficiency"', overviewStart);
     const overview = page.slice(overviewStart, overviewEnd);
 
-    expect(page).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
-    expect(page).not.toContain('<TabsTrigger value="overview">Executive Overview</TabsTrigger>');
+    expect(page).toContain('<Tabs value="overview" className="space-y-6">');
+    expect(page).not.toContain("<TabsList");
+    expect(page).not.toContain("<TabsTrigger");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/trend-analysis`, trendDateRange, perfDays]');
     expect(page).toContain("trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}");
     expect(page).toContain("const trendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;");
@@ -208,26 +209,29 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(platforms).not.toContain("li_${platformMetric}");
   });
 
-  it("wires the Insights tab to aggregate-backed executive recommendations", () => {
+  it("presents one comprehensive executive view without duplicate tab navigation", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
-    const headerStart = page.indexOf("{/* Header */}");
-    const headerEnd = page.indexOf("{/* Tabs */}", headerStart);
-    const header = page.slice(headerStart, headerEnd);
-    const insightsStart = page.indexOf('<TabsContent value="insights"');
-    const insightsEnd = page.indexOf("</TabsContent>", insightsStart);
-    const insights = page.slice(insightsStart, insightsEnd);
+    const overviewStart = page.indexOf('<TabsContent value="overview"');
+    const overviewEnd = page.indexOf('<TabsContent value="efficiency"', overviewStart);
+    const executiveView = page.slice(overviewStart, overviewEnd);
 
-    expect(page).toContain('<TabsTrigger value="insights">Insights</TabsTrigger>');
-    expect(header).toContain('activeTab !== "insights"');
-    expect(header).toContain("<Select value={perfPeriod} onValueChange={setPerfPeriod}>");
+    expect(page).not.toContain("activeTab");
+    expect(page).not.toContain("setActiveTab");
+    expect(page).not.toContain("<TabsList");
+    expect(page).not.toContain("<TabsTrigger");
+    expect(page).toContain("<Select value={perfPeriod} onValueChange={setPerfPeriod}>");
     expect(page).toContain("const trendInsights = useMemo<any[]>(() => {");
+    expect(page).toContain("const executiveTrendInsights = trendInsights");
     expect(page).toContain("overviewTrendData?.hasPrevious");
     expect(page).toContain("efficiencyTrendData?.cards?.length");
     expect(page).toContain("conversionFunnelData?.webAvailable");
     expect(page).toContain("platformBreakdownData?.sources?.length === 1");
-    expect(insights).toContain("Trend Performance Insights");
-    expect(insights).toContain("Executive recommendations based on connected-source trend data from the other Trend Analysis tabs.");
-    expect(insights).toContain("trendInsights.map");
+    expect(executiveView).toContain("Connected source coverage");
+    expect(executiveView).toContain("Campaign Performance Trend");
+    expect(executiveView).toContain("Source Contribution");
+    expect(executiveView).toContain("Executive Recommendations");
+    expect(executiveView).toContain("executiveTrendInsights.map");
+    expect(executiveView).not.toContain("Conversion Funnel");
   });
 
   it("stores scheduler snapshots with the Trend Analysis aggregate contract", () => {

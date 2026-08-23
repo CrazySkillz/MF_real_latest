@@ -6,7 +6,7 @@ import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { formatPct, normalizeRateToPercent } from "@shared/metric-math";
 import {
@@ -99,7 +99,6 @@ export default function TrendAnalysis() {
 
   // Page-level state
   const [perfPeriod, setPerfPeriod] = useState<string>("30d");
-  const [activeTab, setActiveTab] = useState("overview");
   const [visibleSeries, setVisibleSeries] = useState<Set<string>>(new Set(['spend', 'revenue', 'conversions']));
   const [platformMetric, setPlatformMetric] = useState<string>("spend");
 
@@ -1150,6 +1149,9 @@ export default function TrendAnalysis() {
 
   const overviewHasData = Boolean(overviewTrendData && overviewTrendData.series.length > 0);
   const overviewLoading = trendAnalysisLoading && !trendAnalysisFetched && !overviewTrendData;
+  const executiveTrendInsights = trendInsights
+    .filter((insight) => !["Connected Source Coverage", "Single-Source Trend View"].includes(insight.title))
+    .slice(0, 3);
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -1170,33 +1172,23 @@ export default function TrendAnalysis() {
                   <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              {/* Period selector is hidden on Insights because that tab summarizes other views. */}
-              {activeTab !== "insights" && (
-                <Select value={perfPeriod} onValueChange={setPerfPeriod}>
-                  <SelectTrigger className="w-[140px] h-9">
-                    <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7d">Last 7 Days</SelectItem>
-                    <SelectItem value="14d">Last 14 Days</SelectItem>
-                    <SelectItem value="30d">Last 30 Days</SelectItem>
-                    <SelectItem value="90d">Last 90 Days</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
+              <Select value={perfPeriod} onValueChange={setPerfPeriod}>
+                <SelectTrigger className="w-[140px] h-9">
+                  <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 Days</SelectItem>
+                  <SelectItem value="14d">Last 14 Days</SelectItem>
+                  <SelectItem value="30d">Last 30 Days</SelectItem>
+                  <SelectItem value="90d">Last 90 Days</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="efficiency">Efficiency Metrics</TabsTrigger>
-              <TabsTrigger value="funnel">Conversion Funnel</TabsTrigger>
-              <TabsTrigger value="platforms">Platform Breakdown</TabsTrigger>
-              <TabsTrigger value="insights">Insights</TabsTrigger>
-            </TabsList>
+          {/* One executive Trend Analysis view. Legacy tab panels remain unmounted below for contract-safe cleanup. */}
+          <Tabs value="overview" className="space-y-6">
 
             {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
             <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
@@ -1224,20 +1216,18 @@ export default function TrendAnalysis() {
                 </Card>
               ) : (
                 <>
-                  {/* Summary Cards */}
-                  <div className="grid gap-4 md:grid-cols-6">
+                  {/* Executive KPI scorecard: one card per decision metric. */}
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       {[
-                        { label: 'Sessions', value: overviewTrendData.current.sessions === null ? null : fmtNum(overviewTrendData.current.sessions), change: overviewTrendData.comparison.sessions },
-                        { label: 'Users', value: overviewTrendData.current.users === null ? null : fmtNum(overviewTrendData.current.users), change: overviewTrendData.comparison.users },
-                        { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
                         { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtTrendCurrency(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
-                        { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
-                        { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(normalizeRateToPercent(overviewTrendData.current.engagementRate)), change: overviewTrendData.comparison.engagementRate },
                         { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtTrendCurrency(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
                         { label: 'ROAS', value: overviewTrendData.current.roas === null ? null : `${overviewTrendData.current.roas.toFixed(1)}x`, change: overviewTrendData.comparison.roas },
+                        { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
                         { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtTrendCurrency(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },
-                        { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
-                      ].filter((card) => card.value !== null).slice(0, 6).map((card, i) => {
+                        { label: 'Sessions', value: overviewTrendData.current.sessions === null ? null : fmtNum(overviewTrendData.current.sessions), change: overviewTrendData.comparison.sessions },
+                        { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
+                        { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(normalizeRateToPercent(overviewTrendData.current.engagementRate)), change: overviewTrendData.comparison.engagementRate },
+                      ].filter((card) => card.value !== null).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
                         return (
                           <Card key={i}>
@@ -1273,6 +1263,20 @@ export default function TrendAnalysis() {
                     </p>
                   )}
 
+                  <Card>
+                    <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-foreground">Connected source coverage</div>
+                        <div className="text-xs text-muted-foreground">Only campaign-scoped metrics supported by these sources are included.</div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {overviewTrendData.connectedSources.map((source: string) => (
+                          <Badge key={source} variant="outline">{source}</Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* Metric Toggle Row */}
                   <div className="flex flex-wrap gap-2">
                     {overviewTrendData.availableSeries.map((s: any) => (
@@ -1296,7 +1300,7 @@ export default function TrendAnalysis() {
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Activity className="w-5 h-5" />
-                        <span>Cross-Platform Performance</span>
+                        <span>Campaign Performance Trend</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1335,6 +1339,41 @@ export default function TrendAnalysis() {
                     </CardContent>
                   </Card>
 
+                  {platformBreakdownData?.sources?.length > 1 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <GitCompare className="w-5 h-5" />
+                          <span>Source Contribution</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-muted-foreground">
+                              <th className="text-left py-2 pr-4">Source</th>
+                              <th className="text-right py-2 px-2">Spend</th>
+                              <th className="text-right py-2 px-2">Revenue</th>
+                              <th className="text-right py-2 px-2">Conversions</th>
+                              <th className="text-right py-2 pl-2">Sessions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {platformBreakdownData.sources.map((source: any) => (
+                              <tr key={source.id} className="border-b last:border-0">
+                                <td className="py-3 pr-4 font-medium">{source.label}</td>
+                                <td className="text-right py-3 px-2">{source.spend === null ? "—" : fmtTrendCurrency(source.spend)}</td>
+                                <td className="text-right py-3 px-2">{source.revenue === null ? "—" : fmtTrendCurrency(source.revenue)}</td>
+                                <td className="text-right py-3 px-2">{source.conversions === null ? "—" : fmtNum(source.conversions)}</td>
+                                <td className="text-right py-3 pl-2">{source.sessions === null ? "—" : fmtNum(source.sessions)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Anomaly Alerts */}
                   {overviewTrendData.anomalies.length > 0 && (
                     <Card>
@@ -1367,6 +1406,35 @@ export default function TrendAnalysis() {
                             );
                           })}
                         </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {executiveTrendInsights.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Target className="w-5 h-5" />
+                          <span>Executive Recommendations</span>
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Prioritized actions based on the current campaign trend, efficiency, and conversion signals.
+                        </p>
+                      </CardHeader>
+                      <CardContent className="grid gap-4 lg:grid-cols-3">
+                        {executiveTrendInsights.map((insight, index) => {
+                          const style = insight.type === "warning"
+                            ? "border-l-orange-500 bg-orange-50 dark:bg-orange-900/20"
+                            : insight.type === "success"
+                              ? "border-l-green-500 bg-green-50 dark:bg-green-900/20"
+                              : "border-l-blue-500 bg-blue-50 dark:bg-blue-900/20";
+                          return (
+                            <div key={index} className={`border-l-4 p-4 rounded-r-lg ${style}`}>
+                              <h3 className="font-semibold mb-1">{insight.title}</h3>
+                              <p className="text-sm text-muted-foreground">{insight.message}</p>
+                            </div>
+                          );
+                        })}
                       </CardContent>
                     </Card>
                   )}

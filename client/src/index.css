@@ -75,6 +75,10 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-trend-window-select]) {
+    margin-right: 0 !important;
+  }
+
   body[data-scroll-locked]:has([data-campaign-report-dialog]) {
     margin-right: 0 !important;
   }

@@ -44,7 +44,11 @@ describe("Trend Analysis window regression guard", () => {
 
   it("keeps KPI card height stable and renders one precise comparison-availability message", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const styles = readFileSync(join(process.cwd(), "client", "src", "index.css"), "utf-8");
     expect(page).toContain('className="min-h-[5rem]"');
+    expect(page).toContain("<SelectContent data-trend-window-select>");
+    expect(styles).toContain("body[data-scroll-locked]:has([data-trend-window-select])");
+    expect(styles).toContain("margin-right: 0 !important;");
     expect(page).toContain("const trafficComparisonAvailabilityMessage");
     expect(page).toContain("Exact traffic and financial comparisons are unavailable");
     const executiveViewStart = page.indexOf('<TabsContent value="overview"');

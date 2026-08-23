@@ -1234,7 +1234,7 @@ export default function TrendAnalysis() {
                     <Calendar className="w-3.5 h-3.5 mr-1.5" />
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent data-trend-window-select>
                     <SelectItem value="7d">Last 7 Days</SelectItem>
                     <SelectItem value="14d">Last 14 Days</SelectItem>
                     <SelectItem value="30d">Last 30 Days</SelectItem>

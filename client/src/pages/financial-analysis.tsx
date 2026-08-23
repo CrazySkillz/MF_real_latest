@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "@/lib/financial-executive-actions";
 import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
@@ -742,6 +743,12 @@ export default function FinancialAnalysis() {
   const financialProfit = financialProfitAvailable
     ? financialRevenueMetric.value - financialSpendMetric.value
     : 0;
+  const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
+  const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
+  const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
+  const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
+  const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
+  const pacingStatus = !hasPacingInputs ? "unavailable" : pacingPercentage > 115 ? "ahead" : pacingPercentage < 85 ? "behind" : "on-track";
   const executiveFinancialActions: Array<{ title: string; body: string; tone: InsightTone }> = [];
 
   if (financialRoasMetric.available && financialRoiMetric.available) {
@@ -764,53 +771,24 @@ export default function FinancialAnalysis() {
     });
   }
 
-  if (!hasCampaignBudget || !overviewSpendMetric.available) {
-    executiveFinancialActions.push({
-      title: "Budget pacing unavailable",
-      body: !hasCampaignBudget
-        ? "Set the campaign budget and dates to assess utilization and pacing."
-        : overviewMetricUnavailableText(overviewSpendMetric, "A compatible spend source is required to assess budget pacing."),
-      tone: "info",
-    });
-  } else if (overviewBudgetUtilization > 100) {
-    executiveFinancialActions.push({
-      title: "Campaign is over budget",
-      body: `Spend exceeds the configured budget by ${formatCurrency(Math.abs(overviewRemainingBudget))}. Review further commitments before adding spend.`,
-      tone: "warning",
-    });
-  } else if (overviewBudgetUtilization < 50) {
-    executiveFinancialActions.push({
-      title: "Budget is underutilized",
-      body: `Only ${formatPercentage(overviewBudgetUtilization)} of the configured budget has been used. Check campaign timing and delivery before changing allocation.`,
-      tone: "warning",
-    });
-  } else {
-    executiveFinancialActions.push({
-      title: "Budget remains available",
-      body: `${formatCurrency(overviewRemainingBudget)} remains from the configured campaign budget. Use pacing and source evidence before committing it.`,
-      tone: "success",
-    });
-  }
+  executiveFinancialActions.push(buildFinancialBudgetAction({
+    hasCampaignBudget,
+    spendAvailable: overviewSpendMetric.available,
+    spendUnavailableText: overviewMetricUnavailableText(overviewSpendMetric, "A compatible spend source is required to assess budget pacing."),
+    isOverBudget,
+    overBudgetAmountText: formatCurrency(Math.abs(overviewRemainingBudget)),
+    hasValidDateRange: hasCampaignDateRange,
+    elapsedDays: campaignElapsedDays,
+    pacingStatus,
+    pacingVarianceText: formatPercentage(Math.abs(pacingPercentage - 100)),
+    budgetUtilizationText: formatPercentage(overviewBudgetUtilization),
+    remainingBudgetText: formatCurrency(overviewRemainingBudget),
+  }));
 
-  if (campaignToDateAllocationSources.length === 0) {
-    executiveFinancialActions.push({
-      title: "Allocation is not available",
-      body: "Campaign-to-date allocation is withheld until every source exposes compatible cumulative spend and revenue windows.",
-      tone: "info",
-    });
-  } else if (campaignToDateAllocationSources.length === 1) {
-    executiveFinancialActions.push({
-      title: "No reallocation decision yet",
-      body: `${campaignToDateAllocationSources[0].label} is the only spend-capable main source. Reallocation requires at least two comparable sources.`,
-      tone: "info",
-    });
-  } else {
-    executiveFinancialActions.push({
-      title: "Review source allocation",
-      body: "Multiple spend-capable sources are available. Compare spend share and compatible ROAS before reallocating budget.",
-      tone: "info",
-    });
-  }
+  executiveFinancialActions.push(buildFinancialAllocationAction({
+    hasCampaignToDateWindow,
+    sources: campaignToDateAllocationSources,
+  }));
 
   const executiveActionClass: Record<InsightTone, string> = {
     success: "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20",
@@ -988,16 +966,10 @@ export default function FinancialAnalysis() {
                     <CardContent>
                       {(() => {
                         const today = new Date();
-                        const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
-                        const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
                         const daysRemaining = !isOverBudget && dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0;
                         const projectedEndDate = !isOverBudget && dailyBurnRate > 0
                           ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000)
                           : null;
-                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
-                        const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
-                        const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
-                        const pacingStatus = !hasPacingInputs ? "unavailable" : pacingPercentage > 115 ? "ahead" : pacingPercentage < 85 ? "behind" : "on-track";
                         const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
 
                         return (

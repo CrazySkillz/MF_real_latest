@@ -2,8 +2,100 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("uses actual budget pacing instead of total-budget utilization alone", () => {
+    const base = {
+      hasCampaignBudget: true,
+      spendAvailable: true,
+      spendUnavailableText: "Spend unavailable",
+      isOverBudget: false,
+      overBudgetAmountText: "$0.00",
+      hasValidDateRange: true,
+      elapsedDays: 21,
+      pacingVarianceText: "92.2%",
+      budgetUtilizationText: "1.3%",
+      remainingBudgetText: "$197,300.25",
+    };
+
+    expect(buildFinancialBudgetAction({ ...base, pacingStatus: "behind" })).toEqual(expect.objectContaining({
+      title: "Budget is pacing below target",
+      body: expect.stringContaining("92.2% below target after 21 elapsed budget-period days"),
+      tone: "warning",
+    }));
+    expect(buildFinancialBudgetAction({ ...base, pacingStatus: "on-track" })).toEqual(expect.objectContaining({
+      title: "Budget pacing is on track",
+      body: expect.stringContaining("$197,300.25 remains available"),
+      tone: "success",
+    }));
+  });
+
+  it("withholds pacing decisions when dates are missing or the budget period has not started", () => {
+    const base = {
+      hasCampaignBudget: true,
+      spendAvailable: true,
+      spendUnavailableText: "Spend unavailable",
+      isOverBudget: false,
+      overBudgetAmountText: "$0.00",
+      pacingStatus: "unavailable" as const,
+      pacingVarianceText: "0.0%",
+      budgetUtilizationText: "1.3%",
+      remainingBudgetText: "$197,300.25",
+    };
+
+    expect(buildFinancialBudgetAction({ ...base, hasValidDateRange: false, elapsedDays: 0 }).title).toBe("Budget pacing unavailable");
+    expect(buildFinancialBudgetAction({ ...base, hasValidDateRange: true, elapsedDays: 0 }).title).toBe("Budget period has not started");
+    expect(buildFinancialBudgetAction({ ...base, spendAvailable: false, hasValidDateRange: true, elapsedDays: 21 }).body).toBe("Spend unavailable");
+  });
+
+  it("distinguishes over-budget and above-target pacing", () => {
+    const base = {
+      hasCampaignBudget: true,
+      spendAvailable: true,
+      spendUnavailableText: "Spend unavailable",
+      overBudgetAmountText: "$500.00",
+      hasValidDateRange: true,
+      elapsedDays: 10,
+      pacingStatus: "ahead" as const,
+      pacingVarianceText: "20.0%",
+      budgetUtilizationText: "60.0%",
+      remainingBudgetText: "$40,000.00",
+    };
+
+    expect(buildFinancialBudgetAction({ ...base, isOverBudget: true })).toEqual(expect.objectContaining({
+      title: "Campaign is over budget",
+      body: expect.stringContaining("$500.00"),
+    }));
+    expect(buildFinancialBudgetAction({ ...base, isOverBudget: false })).toEqual(expect.objectContaining({
+      title: "Budget is pacing above target",
+      body: expect.stringContaining("20.0% above target"),
+    }));
+  });
+
+  it("reports the exact source-allocation availability reason", () => {
+    expect(buildFinancialAllocationAction({ hasCampaignToDateWindow: false, sources: [] }).title).toBe("Allocation window unavailable");
+
+    const noMainSources = buildFinancialAllocationAction({ hasCampaignToDateWindow: true, sources: [] });
+    expect(noMainSources.title).toBe("Allocation is not available");
+    expect(noMainSources.body).toContain("Financial input records still support campaign totals");
+
+    expect(buildFinancialAllocationAction({
+      hasCampaignToDateWindow: true,
+      sources: [{ label: "Google Ads", roas: 2 }],
+    }).title).toBe("No reallocation decision yet");
+
+    expect(buildFinancialAllocationAction({
+      hasCampaignToDateWindow: true,
+      sources: [{ label: "Google Ads", roas: 2 }, { label: "LinkedIn Ads", roas: null }],
+    }).title).toBe("Source return comparison unavailable");
+
+    expect(buildFinancialAllocationAction({
+      hasCampaignToDateWindow: true,
+      sources: [{ label: "Google Ads", roas: 2 }, { label: "LinkedIn Ads", roas: 3 }],
+    }).title).toBe("Review source allocation");
+  });
+
   it("persists a valid Budget when Step 1 is resubmitted for an existing campaign draft", () => {
     const campaignsPage = readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf-8");
     const submitStart = campaignsPage.indexOf("const handleSubmit = async");
@@ -110,6 +202,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const executiveStart = page.indexOf('<div className="space-y-8" data-testid="executive-financial-analysis">');
     const legacyStart = page.indexOf("{/* Legacy tab renderer retained as a non-rendering rollback reference. */}", executiveStart);
     const executiveView = page.slice(executiveStart, legacyStart);
+    const executiveDecisionStart = page.indexOf("const executiveFinancialActions");
+    const executiveDecisionEnd = page.indexOf("const executiveActionClass", executiveDecisionStart);
+    const executiveDecisions = page.slice(executiveDecisionStart, executiveDecisionEnd);
     const financialPositionStart = executiveView.indexOf('aria-labelledby="financial-position-heading"');
     const budgetPacingStart = executiveView.indexOf('aria-labelledby="budget-pacing-heading"');
     const financialPosition = executiveView.slice(financialPositionStart, budgetPacingStart);
@@ -140,6 +235,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
     expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
     expect(executiveView).toContain("executiveFinancialActions.map");
+    expect(executiveDecisions).toContain("buildFinancialBudgetAction({");
+    expect(executiveDecisions).toContain("buildFinancialAllocationAction({");
+    expect(executiveDecisions).not.toContain("overviewBudgetUtilization < 50");
     expect(page).toContain("const paidMediaEfficiencyMetrics = [");
     expect(page).toContain("].filter((item) => item.metric.available);");
     expect(page).toContain("const paidMediaEfficiencySourceLabels = financialMainSources");

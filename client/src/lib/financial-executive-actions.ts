@@ -73,11 +73,33 @@ export function buildFinancialBudgetAction(input: {
 export function buildFinancialAllocationAction(input: {
   hasCampaignToDateWindow: boolean;
   sources: Array<{ label: string; roas: number | null }>;
+  spendInputs: Array<{ label: string; spend: number }>;
+  authoritativeSpend: number | null;
+  formatCurrency: (value: number) => string;
+  formatPercentage: (value: number) => string;
 }): FinancialExecutiveAction {
   if (!input.hasCampaignToDateWindow) {
     return {
       title: "Allocation window unavailable",
       body: "Source allocation is withheld until the campaign aggregate has a certified cumulative reporting window.",
+      tone: "info",
+    };
+  }
+  const spendInputs = input.spendInputs.filter((source) => Number.isFinite(source.spend) && source.spend > 0);
+  if (spendInputs.length > 0) {
+    const sourceSpendTotal = spendInputs.reduce((total, source) => total + source.spend, 0);
+    if (input.authoritativeSpend === null || Math.abs(sourceSpendTotal - input.authoritativeSpend) > 0.01) {
+      return {
+        title: "Spend source allocation unavailable",
+        body: "The spend-source breakdown does not reconcile to authoritative Total Spend, so no allocation guidance is shown.",
+        tone: "info",
+      };
+    }
+    const largestSource = spendInputs.reduce((largest, source) => source.spend > largest.spend ? source : largest);
+    const largestShare = sourceSpendTotal > 0 ? (largestSource.spend / sourceSpendTotal) * 100 : 0;
+    return {
+      title: "Review spend source mix",
+      body: `${largestSource.label} is the largest of ${spendInputs.length} spend ${spendInputs.length === 1 ? "source" : "sources"} at ${input.formatCurrency(largestSource.spend)} (${input.formatPercentage(largestShare)}). Compare the recorded source mix with the intended campaign plan before changing allocation.`,
       tone: "info",
     };
   }

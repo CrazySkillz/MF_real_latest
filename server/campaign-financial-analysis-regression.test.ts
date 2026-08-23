@@ -74,23 +74,49 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
   });
 
   it("reports the exact source-allocation availability reason", () => {
-    expect(buildFinancialAllocationAction({ hasCampaignToDateWindow: false, sources: [] }).title).toBe("Allocation window unavailable");
+    const base = {
+      spendInputs: [] as Array<{ label: string; spend: number }>,
+      authoritativeSpend: 2_699.75,
+      formatCurrency: (value: number) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      formatPercentage: (value: number) => `${value.toFixed(1)}%`,
+    };
+    expect(buildFinancialAllocationAction({ ...base, hasCampaignToDateWindow: false, sources: [] }).title).toBe("Allocation window unavailable");
 
-    const noMainSources = buildFinancialAllocationAction({ hasCampaignToDateWindow: true, sources: [] });
-    expect(noMainSources.title).toBe("Allocation is not available");
-    expect(noMainSources.body).toContain("Financial input records still support campaign totals");
+    const spendSourceMix = buildFinancialAllocationAction({
+      ...base,
+      hasCampaignToDateWindow: true,
+      sources: [],
+      spendInputs: [
+        { label: "Test_rev_spend.csv", spend: 550 },
+        { label: "spend.csv", spend: 200 },
+        { label: "Test_spend_alpha.csv", spend: 1_250 },
+        { label: "Google Sheets", spend: 699.75 },
+      ],
+    });
+    expect(spendSourceMix.title).toBe("Review spend source mix");
+    expect(spendSourceMix.body).toContain("Test_spend_alpha.csv is the largest of 4 spend sources at $1,250.00 (46.3%)");
 
     expect(buildFinancialAllocationAction({
+      ...base,
+      hasCampaignToDateWindow: true,
+      sources: [],
+      spendInputs: [{ label: "Incomplete.csv", spend: 550 }],
+    }).title).toBe("Spend source allocation unavailable");
+
+    expect(buildFinancialAllocationAction({
+      ...base,
       hasCampaignToDateWindow: true,
       sources: [{ label: "Google Ads", roas: 2 }],
     }).title).toBe("No reallocation decision yet");
 
     expect(buildFinancialAllocationAction({
+      ...base,
       hasCampaignToDateWindow: true,
       sources: [{ label: "Google Ads", roas: 2 }, { label: "LinkedIn Ads", roas: null }],
     }).title).toBe("Source return comparison unavailable");
 
     expect(buildFinancialAllocationAction({
+      ...base,
       hasCampaignToDateWindow: true,
       sources: [{ label: "Google Ads", roas: 2 }, { label: "LinkedIn Ads", roas: 3 }],
     }).title).toBe("Review source allocation");
@@ -238,6 +264,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveDecisions).toContain("buildFinancialBudgetAction({");
     expect(executiveDecisions).toContain("buildFinancialAllocationAction({");
     expect(executiveDecisions).not.toContain("overviewBudgetUtilization < 50");
+    expect(executiveView).toContain("Financial return, pacing, and spend-source guidance from the same displayed aggregate values.");
+    expect(executiveView).not.toContain("Prioritized financial risks and actions");
     expect(page).toContain("const paidMediaEfficiencyMetrics = [");
     expect(page).toContain("].filter((item) => item.metric.available);");
     expect(page).toContain("const paidMediaEfficiencySourceLabels = financialMainSources");

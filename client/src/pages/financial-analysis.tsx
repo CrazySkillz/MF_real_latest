@@ -788,6 +788,10 @@ export default function FinancialAnalysis() {
   executiveFinancialActions.push(buildFinancialAllocationAction({
     hasCampaignToDateWindow,
     sources: campaignToDateAllocationSources,
+    spendInputs: financialSpendInputBreakdowns,
+    authoritativeSpend: financialSpendMetric.available ? financialSpendMetric.value : null,
+    formatCurrency,
+    formatPercentage,
   }));
 
   const executiveActionClass: Record<InsightTone, string> = {
@@ -1175,7 +1179,7 @@ export default function FinancialAnalysis() {
               <section aria-labelledby="executive-action-heading" className="space-y-4">
                 <div>
                   <h2 id="executive-action-heading" className="text-xl font-semibold">Executive Action</h2>
-                  <p className="text-sm text-muted-foreground">Prioritized financial risks and actions from the same displayed aggregate values.</p>
+                  <p className="text-sm text-muted-foreground">Financial return, pacing, and spend-source guidance from the same displayed aggregate values.</p>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-3">
                   {executiveFinancialActions.map((action) => (

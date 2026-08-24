@@ -304,9 +304,10 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("efficiencyTrendData?.cards?.length");
     expect(page).toContain("conversionFunnelData?.webAvailable");
     expect(page).toContain("platformBreakdownData?.sources?.length === 1");
-    expect(executiveView).toContain("Connected source coverage");
-    expect(executiveView).toContain("Available decision signals");
-    expect(executiveView).toContain("Unavailable as a comparable daily series");
+    expect(page).toContain('Source: {overviewTrendData.connectedSources.join(", ")}');
+    expect(executiveView).not.toContain("Connected source coverage");
+    expect(executiveView).not.toContain("Available decision signals");
+    expect(executiveView).not.toContain("Unavailable as a comparable daily series");
     expect(executiveView).toContain("Campaign Performance Trend");
     expect(executiveView).toContain('card.key === "roi"');
     expect(executiveView).toContain('card.key === "cpc"');

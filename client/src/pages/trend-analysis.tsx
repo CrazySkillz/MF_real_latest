@@ -43,10 +43,6 @@ const fmtNum = (n: number) => {
   return n.toLocaleString();
 };
 const fmtCur = (n: number, currency = "USD") => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
-const fmtMetricLabel = (value: string) => value
-  .replace(/_/g, " ")
-  .replace(/([a-z])([A-Z])/g, "$1 $2")
-  .replace(/^./, (character) => character.toUpperCase());
 const pctChange = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
 const sumArr = (arr: any[], key: string) => arr.reduce((s, r) => s + (r[key] || 0), 0);
 const avgArr = (arr: any[], key: string) => arr.length > 0 ? sumArr(arr, key) / arr.length : 0;
@@ -1212,7 +1208,12 @@ export default function TrendAnalysis() {
                 </Link>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">Trend Analysis</h1>
-                  <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
+                  <div className="flex flex-wrap items-center gap-x-2 mt-1">
+                    <p className="text-muted-foreground/70">{(campaign as any)?.name}</p>
+                    {overviewTrendData?.connectedSources?.length > 0 && (
+                      <span className="text-xs text-muted-foreground">Source: {overviewTrendData.connectedSources.join(", ")}</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1328,42 +1329,6 @@ export default function TrendAnalysis() {
                       Showing {overviewTrendData.currentPeriodDays} of {overviewTrendData.requestedPeriodDays} days available for this selection. Full-period trend comparisons appear once enough daily history exists.
                     </p>
                   )}
-                  <Card>
-                    <CardContent className="p-4 space-y-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="text-sm font-medium text-foreground">Connected source coverage</div>
-                          <div className="text-xs text-muted-foreground">Only campaign-scoped metrics supported by these sources are included.</div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {overviewTrendData.connectedSources.map((source: string) => (
-                            <Badge key={source} variant="outline">{source}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      {platformBreakdownData?.sources?.length === 1 && (
-                        <div className="grid gap-4 border-t pt-4 md:grid-cols-2">
-                          <div>
-                            <div className="text-xs font-medium text-foreground mb-2">Available decision signals</div>
-                            <div className="flex flex-wrap gap-2">
-                              {platformBreakdownData.sources[0].includedMetrics.map((metric: string) => (
-                                <Badge key={metric} variant="secondary">{fmtMetricLabel(metric)}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-medium text-foreground mb-2">Unavailable as a comparable daily series</div>
-                            <p className="text-xs text-muted-foreground">
-                              {platformBreakdownData.sources[0].unavailable.length
-                                ? platformBreakdownData.sources[0].unavailable.join("; ")
-                                : "No source capability gaps reported."}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
                   {overviewTrendData.series.length > 0 ? <>
                     {/* Metric Toggle Row */}
                     <div className="flex flex-wrap gap-2">

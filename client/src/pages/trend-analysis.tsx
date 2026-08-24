@@ -20,6 +20,7 @@ import { useState, useMemo } from "react";
 import {
   deriveExactCumulativeGA4Traffic,
   deriveTrendFinancialRatios,
+  expandTrendRowsToCalendarWindow,
   filterTrendRowsToCalendarWindow,
   formatExactTrendCount,
   formatTrendComparison,
@@ -594,6 +595,13 @@ export default function TrendAnalysis() {
     const currentPeriod = usesCumulativeGA4Consumer
       ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
       : series.slice(-perfDays);
+    const chartSeries = usesCumulativeGA4Consumer && currentPeriod.length > 0
+      ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || "")).map((row) => ({
+        spend: null, revenue: null, conversions: null, impressions: null, clicks: null, users: null, sessions: null,
+        ...row,
+        label: format(new Date(`${row.date}T00:00:00`), 'MMM dd'),
+      }))
+      : currentPeriod;
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
@@ -655,7 +663,7 @@ export default function TrendAnalysis() {
     const anomalyKeys = availableSeries.map((item) => item.key).filter((key) => ["spend", "clicks", "conversions", "impressions", "revenue"].includes(key));
 
     return {
-      series: currentPeriod,
+      series: chartSeries,
       current,
       previous,
       comparison,
@@ -666,6 +674,7 @@ export default function TrendAnalysis() {
       currentValuesUnavailable: usesCumulativeGA4Consumer && !authoritativeTrendCurrent,
       exactComparisonDate: usesCumulativeGA4Consumer ? trendComparisonDate : null,
       currentPeriodDays: currentPeriod.length,
+      chartCalendarDays: chartSeries.length,
       previousPeriodDays: previousPeriod.length,
       requestedPeriodDays: perfDays,
       connectedSources: Array.isArray(aggregate?.sources) && aggregate.sources.length > 0
@@ -1355,6 +1364,9 @@ export default function TrendAnalysis() {
                         <Activity className="w-5 h-5" />
                         <span>Campaign Performance Trend</span>
                       </CardTitle>
+                      {usesCumulativeGA4Consumer && overviewTrendData.series.length > 0 && (
+                        <p className="text-xs text-muted-foreground">Daily records: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps.</p>
+                      )}
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
@@ -1373,8 +1385,8 @@ export default function TrendAnalysis() {
                             {overviewVisibleSeries.has('conversions') && <Bar isAnimationActive={false} yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
                             {overviewVisibleSeries.has('impressions') && <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
                             {overviewVisibleSeries.has('clicks') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
-                            {overviewVisibleSeries.has('users') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
-                            {overviewVisibleSeries.has('sessions') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
+                            {overviewVisibleSeries.has('users') && <Line isAnimationActive={false} connectNulls={false} yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
+                            {overviewVisibleSeries.has('sessions') && <Line isAnimationActive={false} connectNulls={false} yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} strokeDasharray="6 4" dot={false} name="Sessions" />}
                             {/* KPI target lines */}
                             {kpiTargets.revenue && overviewVisibleSeries.has('revenue') && (
                               <ReferenceLine yAxisId="right" y={kpiTargets.revenue} ifOverflow="extendDomain" stroke="#10b981" strokeDasharray="5 5" label={{ value: 'Revenue Target', fill: '#10b981', fontSize: 10 }} />

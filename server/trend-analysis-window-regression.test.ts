@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
+  expandTrendRowsToCalendarWindow,
   filterTrendRowsToCalendarWindow,
   resolveTrendComparisonDate,
 } from "../client/src/lib/trend-analysis-cumulative";
@@ -32,6 +33,24 @@ describe("Trend Analysis window regression guard", () => {
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page.match(/filterTrendRowsToCalendarWindow\([^\n]+currentValueWindow\?\.startDate/g)).toHaveLength(5);
+  });
+
+  it("preserves missing GA4 calendar dates as empty chart gaps", () => {
+    const rows = [
+      { date: "2026-08-08", users: 108 },
+      { date: "2026-08-10", users: 103 },
+    ];
+    expect(expandTrendRowsToCalendarWindow(rows, "2026-08-12", 5)).toEqual([
+      rows[0],
+      { date: "2026-08-09" },
+      rows[1],
+      { date: "2026-08-11" },
+      { date: "2026-08-12" },
+    ]);
+
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    expect(page).toContain('strokeDasharray="6 4"');
+    expect(page).toContain("missing dates remain gaps");
   });
 
   it("keeps authoritative cumulative values visible when a trend window has no daily rows", () => {

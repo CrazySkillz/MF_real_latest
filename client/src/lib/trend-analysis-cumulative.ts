@@ -70,6 +70,23 @@ export const filterTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: st
   });
 };
 
+export const expandTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: string, days: number, minimumDate = "") => {
+  if (!ISO_DATE_PATTERN.test(dataThroughDate) || !Number.isInteger(days) || days < 1
+    || (minimumDate && !ISO_DATE_PATTERN.test(minimumDate))) return [];
+  const filteredRows = filterTrendRowsToCalendarWindow(rows, dataThroughDate, days, minimumDate);
+  const end = new Date(`${dataThroughDate}T00:00:00.000Z`);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  if (minimumDate && minimumDate > start.toISOString().slice(0, 10)) start.setTime(new Date(`${minimumDate}T00:00:00.000Z`).getTime());
+  const rowsByDate = new Map(filteredRows.map((row) => [String(row.date).slice(0, 10), row]));
+  const result: any[] = [];
+  for (const date = new Date(start); date <= end; date.setUTCDate(date.getUTCDate() + 1)) {
+    const key = date.toISOString().slice(0, 10);
+    result.push(rowsByDate.get(key) || { date: key });
+  }
+  return result;
+};
+
 export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: string) => {
   const dataThroughDate = String(response?.dataThroughDate || "");
   const overviewStartDate = String(response?.overviewStartDate || "");

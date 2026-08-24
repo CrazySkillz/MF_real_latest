@@ -48,7 +48,7 @@ export const formatTrendComparison = (args: {
   }).format(new Date(`${comparisonDate}T00:00:00.000Z`));
   const delta = current - previous;
   const sign = delta > 0 ? "+" : "";
-  const context = `vs cumulative ${dateLabel}`;
+  const context = `vs cumulative - ${dateLabel}`;
   if (kind === "rate") return { value: `${sign}${delta.toFixed(2)} pp`, context };
   const change = ((current - previous) / previous) * 100;
   return {

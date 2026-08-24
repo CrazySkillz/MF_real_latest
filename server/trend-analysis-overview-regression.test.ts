@@ -206,11 +206,11 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(formatExactTrendCount(1183)).toBe("1,183");
     expect(formatExactTrendCount(1184)).toBe("1,184");
     expect(formatTrendComparison({ current: 1183, previous: 866, comparisonDate: "2026-07-23", kind: "count" }))
-      .toEqual({ value: "+317 (+36.6%)", context: "vs cumulative Jul 23, 2026" });
+      .toEqual({ value: "+317 (+36.6%)", context: "vs cumulative - Jul 23, 2026" });
     expect(formatTrendComparison({ current: 12.8486897718, previous: 12.7020785219, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toEqual({ value: "+0.15 pp", context: "vs cumulative Jul 23, 2026" });
+      .toEqual({ value: "+0.15 pp", context: "vs cumulative - Jul 23, 2026" });
     expect(formatTrendComparison({ current: 68.3854606932, previous: 68.3602771363, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toEqual({ value: "+0.03 pp", context: "vs cumulative Jul 23, 2026" });
+      .toEqual({ value: "+0.03 pp", context: "vs cumulative - Jul 23, 2026" });
     expect(formatTrendComparison({ current: 10, previous: 0, comparisonDate: "2026-07-23", kind: "count" })).toBeNull();
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
@@ -229,7 +229,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain('const isFinancialCard = ["Revenue", "Spend", "ROAS", "ROI", "CPA"].includes(card.label);');
     expect(page).toContain('isFinancialCard && usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number"');
     expect(page).toContain("<div>Comparison unavailable</div>");
-    expect(page).toContain("<div>vs cumulative {comparisonDateLabel}</div>");
+    expect(page).toContain("<div>vs cumulative - {comparisonDateLabel}</div>");
     expect(page).toContain("CPA is Spend ÷ ${formatExactTrendCount(cpaConversionDenominator)} conversions through ${financialDataThroughLabel}");
     expect(page).toContain("Traffic cards are cumulative from the initial import");
   });

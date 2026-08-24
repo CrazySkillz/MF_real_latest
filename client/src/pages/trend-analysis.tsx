@@ -1326,7 +1326,7 @@ export default function TrendAnalysis() {
                               {isFinancialCard && usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
-                                  <div>vs cumulative {comparisonDateLabel}</div>
+                                  <div>vs cumulative - {comparisonDateLabel}</div>
                                 </div>
                               )}
                               </div>

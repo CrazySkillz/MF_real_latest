@@ -208,9 +208,9 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(formatTrendComparison({ current: 1183, previous: 866, comparisonDate: "2026-07-23", kind: "count" }))
       .toEqual({ value: "+317 (+36.6%)", context: "vs cumulative - Jul 23, 2026" });
     expect(formatTrendComparison({ current: 12.8486897718, previous: 12.7020785219, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toEqual({ value: "+0.15 pp", context: "vs cumulative - Jul 23, 2026" });
+      .toEqual({ value: "+0.15 percentage points", context: "vs cumulative - Jul 23, 2026" });
     expect(formatTrendComparison({ current: 68.3854606932, previous: 68.3602771363, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toEqual({ value: "+0.03 pp", context: "vs cumulative - Jul 23, 2026" });
+      .toEqual({ value: "+0.03 percentage points", context: "vs cumulative - Jul 23, 2026" });
     expect(formatTrendComparison({ current: 10, previous: 0, comparisonDate: "2026-07-23", kind: "count" })).toBeNull();
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
@@ -223,15 +223,13 @@ describe("Trend Analysis Overview regression guard", () => {
     const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("text-green-600");
-    expect(page).toContain("comparisonDateLabel && !compatibleFinancialDaily");
-    expect(page).toContain("Exact financial comparison unavailable for {comparisonDateLabel}; current campaign-to-date financial KPIs remain visible without fallback percentages.");
-    expect(page).toContain('const cpaConversionDenominator = usesCumulativeGA4Consumer ? aggregateMetricValue("conversions") : null;');
-    expect(page).toContain('const isFinancialCard = ["Revenue", "Spend", "ROAS", "ROI", "CPA"].includes(card.label);');
-    expect(page).toContain('isFinancialCard && usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number"');
+    expect(page).not.toContain("const isFinancialCard");
+    expect(page).toContain('usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number"');
     expect(page).toContain("<div>Comparison unavailable</div>");
     expect(page).toContain("<div>vs cumulative - {comparisonDateLabel}</div>");
-    expect(page).toContain("CPA is Spend ÷ ${formatExactTrendCount(cpaConversionDenominator)} conversions through ${financialDataThroughLabel}");
-    expect(page).toContain("Traffic cards are cumulative from the initial import");
+    expect(page).not.toContain("Financial KPIs are campaign-to-date");
+    expect(page).not.toContain("current campaign-to-date financial KPIs remain visible");
+    expect(page).not.toContain("Traffic cards are cumulative from the initial import");
   });
 
   it("wires the Efficiency Metrics tab to aggregate-backed derived metrics", () => {

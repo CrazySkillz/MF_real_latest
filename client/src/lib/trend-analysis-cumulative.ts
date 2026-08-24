@@ -49,7 +49,7 @@ export const formatTrendComparison = (args: {
   const delta = current - previous;
   const sign = delta > 0 ? "+" : "";
   const context = `vs cumulative - ${dateLabel}`;
-  if (kind === "rate") return { value: `${sign}${delta.toFixed(2)} pp`, context };
+  if (kind === "rate") return { value: `${sign}${delta.toFixed(2)} percentage points`, context };
   const change = ((current - previous) / previous) * 100;
   return {
     value: `${sign}${formatExactTrendCount(delta)} (${change >= 0 ? "+" : ""}${change.toFixed(1)}%)`,

@@ -1192,21 +1192,9 @@ export default function TrendAnalysis() {
   const executiveTrendInsights = trendInsights
     .filter((insight) => !["Connected Source Coverage", "Single-Source Trend View"].includes(insight.title))
     .slice(0, 3);
-  const cpaConversionDenominator = usesCumulativeGA4Consumer ? aggregateMetricValue("conversions") : null;
   const comparisonDateLabel = trendComparisonDate
     ? format(new Date(`${trendComparisonDate}T00:00:00`), "MMM d, yyyy")
     : "";
-  const financialDataThroughLabel = currentValueWindow?.dataThroughDate
-    ? format(new Date(`${currentValueWindow.dataThroughDate}T00:00:00`), "MMM d, yyyy")
-    : "";
-  const exactTrafficComparisonUnavailable = cumulativeGA4CurrentCompatible
-    && !exactTrafficComparison
-    && Boolean(trendComparisonDate);
-  const trafficComparisonAvailabilityMessage = !exactTrafficComparisonUnavailable || !comparisonDateLabel
-    ? ""
-    : !compatibleFinancialDaily
-      ? `Exact traffic and financial comparisons are unavailable for ${comparisonDateLabel}; current cumulative and campaign-to-date values remain visible without fallback comparisons.`
-      : `Exact traffic comparison is unavailable for ${comparisonDateLabel}; current cumulative values remain visible without a fallback comparison.`;
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -1292,7 +1280,6 @@ export default function TrendAnalysis() {
                         { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
                       ].filter((card) => card.value !== null).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
-                        const isFinancialCard = ["Revenue", "Spend", "ROAS", "ROI", "CPA"].includes(card.label);
                         const countKey = ({ Conversions: "conversions", Sessions: "sessions", Users: "users" } as Record<string, string>)[card.label];
                         const rateKey = ({ CVR: "cvr", "Engagement Rate": "engagementRate", CTR: "ctr" } as Record<string, string>)[card.label];
                         const comparisonKey = countKey || rateKey;
@@ -1323,7 +1310,7 @@ export default function TrendAnalysis() {
                                   </div>
                                 )
                               )}
-                              {isFinancialCard && usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
+                              {usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
                                   <div>vs cumulative - {comparisonDateLabel}</div>
@@ -1335,22 +1322,6 @@ export default function TrendAnalysis() {
                         );
                       })}
                     </div>
-
-                  {usesCumulativeGA4Consumer && currentValueWindow?.dataThroughDate && (
-                    <p className="text-sm text-muted-foreground">
-                      Traffic cards are cumulative from the initial import through {currentValueWindow.dataThroughDate}. Financial KPIs are campaign-to-date{cpaConversionDenominator !== null && financialDataThroughLabel ? `; CPA is Spend ÷ ${formatExactTrendCount(cpaConversionDenominator)} conversions through ${financialDataThroughLabel}` : ""}. The selector controls the daily chart and exact comparison date; comparisons appear only where that exact historical value is available.
-                    </p>
-                  )}
-                  {usesCumulativeGA4Consumer && comparisonDateLabel && !compatibleFinancialDaily && !exactTrafficComparisonUnavailable && (
-                    <p className="text-sm text-muted-foreground">
-                      Exact financial comparison unavailable for {comparisonDateLabel}; current campaign-to-date financial KPIs remain visible without fallback percentages.
-                    </p>
-                  )}
-                  {trafficComparisonAvailabilityMessage && (
-                    <p className="text-sm text-muted-foreground">
-                      {trafficComparisonAvailabilityMessage}
-                    </p>
-                  )}
 
                   {!overviewTrendData.hasCompleteCurrentPeriod && (
                     <p className="text-sm text-muted-foreground">

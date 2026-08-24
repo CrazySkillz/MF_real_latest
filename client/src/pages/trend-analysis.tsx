@@ -1292,6 +1292,7 @@ export default function TrendAnalysis() {
                         { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
                       ].filter((card) => card.value !== null).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
+                        const isFinancialCard = ["Revenue", "Spend", "ROAS", "ROI", "CPA"].includes(card.label);
                         const countKey = ({ Conversions: "conversions", Sessions: "sessions", Users: "users" } as Record<string, string>)[card.label];
                         const rateKey = ({ CVR: "cvr", "Engagement Rate": "engagementRate", CTR: "ctr" } as Record<string, string>)[card.label];
                         const comparisonKey = countKey || rateKey;
@@ -1322,13 +1323,10 @@ export default function TrendAnalysis() {
                                   </div>
                                 )
                               )}
-                              {card.label === "CPA" && cpaConversionDenominator !== null && financialDataThroughLabel && (
+                              {isFinancialCard && usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
-                                  <div>Current through {financialDataThroughLabel}</div>
-                                  <div>Spend ÷ {formatExactTrendCount(cpaConversionDenominator)} conversions</div>
-                                  {usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
-                                    <div>Comparison unavailable for {comparisonDateLabel}</div>
-                                  )}
+                                  <div>Comparison unavailable</div>
+                                  <div>vs cumulative {comparisonDateLabel}</div>
                                 </div>
                               )}
                               </div>
@@ -1340,7 +1338,7 @@ export default function TrendAnalysis() {
 
                   {usesCumulativeGA4Consumer && currentValueWindow?.dataThroughDate && (
                     <p className="text-sm text-muted-foreground">
-                      Traffic cards are cumulative from the initial import through {currentValueWindow.dataThroughDate}. Financial KPIs are campaign-to-date. The selector controls the daily chart and exact comparison date; comparisons appear only where that exact historical value is available.
+                      Traffic cards are cumulative from the initial import through {currentValueWindow.dataThroughDate}. Financial KPIs are campaign-to-date{cpaConversionDenominator !== null && financialDataThroughLabel ? `; CPA is Spend ÷ ${formatExactTrendCount(cpaConversionDenominator)} conversions through ${financialDataThroughLabel}` : ""}. The selector controls the daily chart and exact comparison date; comparisons appear only where that exact historical value is available.
                     </p>
                   )}
                   {usesCumulativeGA4Consumer && comparisonDateLabel && !compatibleFinancialDaily && !exactTrafficComparisonUnavailable && (

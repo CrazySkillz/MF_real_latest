@@ -226,10 +226,11 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("comparisonDateLabel && !compatibleFinancialDaily");
     expect(page).toContain("Exact financial comparison unavailable for {comparisonDateLabel}; current campaign-to-date financial KPIs remain visible without fallback percentages.");
     expect(page).toContain('const cpaConversionDenominator = usesCumulativeGA4Consumer ? aggregateMetricValue("conversions") : null;');
-    expect(page).toContain("Current through {financialDataThroughLabel}");
-    expect(page).toContain("Spend ÷ {formatExactTrendCount(cpaConversionDenominator)} conversions");
-    expect(page).toContain('usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number"');
-    expect(page).toContain("Comparison unavailable for {comparisonDateLabel}");
+    expect(page).toContain('const isFinancialCard = ["Revenue", "Spend", "ROAS", "ROI", "CPA"].includes(card.label);');
+    expect(page).toContain('isFinancialCard && usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number"');
+    expect(page).toContain("<div>Comparison unavailable</div>");
+    expect(page).toContain("<div>vs cumulative {comparisonDateLabel}</div>");
+    expect(page).toContain("CPA is Spend ÷ ${formatExactTrendCount(cpaConversionDenominator)} conversions through ${financialDataThroughLabel}");
     expect(page).toContain("Traffic cards are cumulative from the initial import");
   });
 

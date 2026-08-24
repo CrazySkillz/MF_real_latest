@@ -1323,8 +1323,12 @@ export default function TrendAnalysis() {
                                 )
                               )}
                               {card.label === "CPA" && cpaConversionDenominator !== null && financialDataThroughLabel && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Campaign-to-date through {financialDataThroughLabel}: Spend ÷ {formatExactTrendCount(cpaConversionDenominator)} conversions
+                                <div className="text-xs text-muted-foreground mt-1 leading-tight">
+                                  <div>Current through {financialDataThroughLabel}</div>
+                                  <div>Spend ÷ {formatExactTrendCount(cpaConversionDenominator)} conversions</div>
+                                  {usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
+                                    <div>Comparison unavailable for {comparisonDateLabel}</div>
+                                  )}
                                 </div>
                               )}
                               </div>

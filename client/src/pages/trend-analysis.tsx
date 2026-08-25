@@ -1032,7 +1032,17 @@ export default function TrendAnalysis() {
     if (overviewTrendData?.hasPrevious) {
       const revenueChange = overviewTrendData.comparison?.revenue;
       const conversionsChange = overviewTrendData.comparison?.conversions;
-      if (typeof revenueChange === "number" && revenueChange < -10) {
+      if (usesCumulativeGA4Consumer) {
+        const exactDate = String(overviewTrendData.exactComparisonDate || "");
+        const exactDateLabel = ISO_DATE_PATTERN.test(exactDate)
+          ? format(new Date(`${exactDate}T00:00:00`), "MMM d, yyyy")
+          : "the requested historical date";
+        pushInsight({
+          type: "info",
+          title: "Cumulative Comparison Context",
+          message: `Current totals are compared with cumulative totals through ${exactDateLabel}. Differences show activity added since that date, not like-for-like period performance.`,
+        });
+      } else if (typeof revenueChange === "number" && revenueChange < -10) {
         pushInsight({
           type: "warning",
           title: "Revenue Trend Needs Review",
@@ -1064,7 +1074,13 @@ export default function TrendAnalysis() {
     if (efficiencyTrendData?.cards?.length) {
       const roas = efficiencyTrendData.current?.roas;
       const cpa = efficiencyTrendData.current?.cpa;
-      if (typeof roas === "number" && roas >= 4) {
+      if (usesCumulativeGA4Consumer && typeof roas === "number") {
+        pushInsight({
+          type: "info",
+          title: "ROAS Requires Business Context",
+          message: `Campaign-to-date ROAS is ${roas.toFixed(2)}x. Compare it with approved profit and margin targets and source capacity before changing spend.`,
+        });
+      } else if (typeof roas === "number" && roas >= 4) {
         pushInsight({
           type: "success",
           title: "Revenue Efficiency Is Strong",
@@ -1087,7 +1103,13 @@ export default function TrendAnalysis() {
 
     if (conversionFunnelData?.webAvailable) {
       const webCvr = conversionFunnelData.current?.webCvr;
-      if (typeof webCvr === "number" && webCvr < 2) {
+      if (usesCumulativeGA4Consumer && typeof webCvr === "number") {
+        pushInsight({
+          type: "info",
+          title: "Conversion Volume Requires Context",
+          message: `Current cumulative data shows ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
+        });
+      } else if (typeof webCvr === "number" && webCvr < 2) {
         pushInsight({
           type: "warning",
           title: "Conversion Path Opportunity",
@@ -1119,7 +1141,7 @@ export default function TrendAnalysis() {
     }
 
     return insights.slice(0, 5);
-  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData, campaignCurrency]);
+  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData, campaignCurrency, usesCumulativeGA4Consumer]);
 
   const toggleSeries = (key: string) => {
     setVisibleSeries(prev => {
@@ -1716,7 +1738,7 @@ export default function TrendAnalysis() {
                           <span>Executive Recommendations</span>
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          Prioritized actions based on the current campaign trend, efficiency, and conversion signals.
+                          Decision guidance based on the available campaign trend, efficiency, and conversion signals.
                         </p>
                       </CardHeader>
                       <CardContent className="grid gap-4 lg:grid-cols-3">

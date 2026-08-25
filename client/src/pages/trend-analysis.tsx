@@ -265,6 +265,10 @@ export default function TrendAnalysis() {
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
+    staleTime: 0,
+    refetchInterval: TREND_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   // ─── Unified Cross-Platform Data Layer ───────────────────────────
@@ -471,6 +475,7 @@ export default function TrendAnalysis() {
     && ga4Daily?.providerRefreshAttempted === false
     && ["read_only", "simulated"].includes(String(ga4Daily?.providerRefreshOutcome || ""))
     && !ga4Daily?.providerRefreshWarning
+    && ga4Daily?.refreshIsStale === false
     && String(ga4Daily?.propertyId || "") === trendGA4PropertyId
     && (!ga4TrendSource?.freshness?.propertyId || String(ga4TrendSource.freshness.propertyId) === trendGA4PropertyId);
   const aggregateMetricValue = (metricName: string): number | null => {
@@ -1210,6 +1215,7 @@ export default function TrendAnalysis() {
     );
   }
 
+  const cumulativeGA4RefreshPending = usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true;
   const overviewHasData = Boolean(overviewTrendData
     && (overviewTrendData.series.length > 0 || (usesCumulativeGA4Consumer && authoritativeTrendCurrent)));
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
@@ -1310,9 +1316,13 @@ export default function TrendAnalysis() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Activity className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No connected source trend data available</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      {cumulativeGA4RefreshPending ? "GA4 update pending" : "No connected source trend data available"}
+                    </h3>
                     <p className="text-sm text-muted-foreground/70">
-                      Refresh a connected platform to populate source-aware trend history.
+                      {cumulativeGA4RefreshPending
+                        ? "Latest completed GA4 data has not been confirmed yet. Values will appear after a successful refresh."
+                        : "Refresh a connected platform to populate source-aware trend history."}
                     </p>
                   </CardContent>
                 </Card>

@@ -338,9 +338,9 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).toContain("Contribution Over Time");
     expect(executiveView).toContain("Executive Recommendations");
     expect(executiveView).toContain("executiveTrendInsights.map");
-    expect(page).toContain("Cumulative Comparison Context");
-    expect(page).toContain("ROAS Requires Business Context");
-    expect(page).toContain("Conversion Volume Requires Context");
+    expect(page).toContain("Selected-Window Comparison");
+    expect(page).toContain("Campaign-to-Date ROAS");
+    expect(page).toContain("Campaign-to-Date Conversion Volume");
     expect(page).toContain("conversions per 100 sessions");
     expect(executiveView).not.toContain("Prioritized actions based on");
     expect(executiveView).not.toContain("efficiencyTrendData.cards.map");

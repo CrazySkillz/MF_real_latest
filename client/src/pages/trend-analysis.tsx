@@ -1039,7 +1039,7 @@ export default function TrendAnalysis() {
           : "the requested historical date";
         pushInsight({
           type: "info",
-          title: "Cumulative Comparison Context",
+          title: "Selected-Window Comparison",
           message: `Current totals are compared with cumulative totals through ${exactDateLabel}. Differences show activity added since that date, not like-for-like period performance.`,
         });
       } else if (typeof revenueChange === "number" && revenueChange < -10) {
@@ -1077,7 +1077,7 @@ export default function TrendAnalysis() {
       if (usesCumulativeGA4Consumer && typeof roas === "number") {
         pushInsight({
           type: "info",
-          title: "ROAS Requires Business Context",
+          title: "Campaign-to-Date ROAS",
           message: `Campaign-to-date ROAS is ${roas.toFixed(2)}x. Compare it with approved profit and margin targets and source capacity before changing spend.`,
         });
       } else if (typeof roas === "number" && roas >= 4) {
@@ -1106,7 +1106,7 @@ export default function TrendAnalysis() {
       if (usesCumulativeGA4Consumer && typeof webCvr === "number") {
         pushInsight({
           type: "info",
-          title: "Conversion Volume Requires Context",
+          title: "Campaign-to-Date Conversion Volume",
           message: `Current cumulative data shows ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
         });
       } else if (typeof webCvr === "number" && webCvr < 2) {

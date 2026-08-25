@@ -1441,7 +1441,7 @@ export default function TrendAnalysis() {
                         <h2 className="text-xl font-semibold text-foreground">Efficiency Trends</h2>
                         <p className="text-sm text-muted-foreground">How return, acquisition cost, and conversion quality are changing over time.</p>
                         {usesCumulativeGA4Consumer && !efficiencyTrendData.hasFinancialEfficiency && !efficiencyTrendData.hasCostEfficiency && (
-                          <p className="text-xs text-muted-foreground mt-1">Return and cost trends remain withheld until a compatible cumulative financial series is available; the current financial KPIs above remain authoritative.</p>
+                          <p className="text-xs text-muted-foreground mt-1">Return and cost trends are unavailable because compatible daily financial history is not available. Current campaign-to-date financial totals remain shown above.</p>
                         )}
                       </div>
                       <div className="grid gap-6 lg:grid-cols-2">

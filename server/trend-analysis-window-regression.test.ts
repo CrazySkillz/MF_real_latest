@@ -62,6 +62,7 @@ describe("Trend Analysis window regression guard", () => {
     expect(page).toContain("Latest recorded date: ${latestTrendDailyDateLabel}.");
     expect(page).not.toContain("No daily activity is available in this trend window");
     expect(page).toContain("{perfDays}-day trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available.");
+    expect(page).toContain("series: efficiencyChartSeries");
     expect(page).toContain('<SelectItem value="90d">Last 90 Days</SelectItem>');
   });
 

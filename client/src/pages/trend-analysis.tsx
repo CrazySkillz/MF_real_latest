@@ -736,6 +736,13 @@ export default function TrendAnalysis() {
     const currentPeriod = usesCumulativeGA4Consumer
       ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
       : series.slice(-perfDays);
+    const efficiencyChartSeries = usesCumulativeGA4Consumer && currentPeriod.length > 0
+      ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || "")).map((row) => ({
+        roas: null, roi: null, cpa: null, cpc: null, cpm: null, ctr: null, cvr: null, engagementRate: null,
+        ...row,
+        label: format(new Date(`${row.date}T00:00:00`), 'MMM dd'),
+      }))
+      : currentPeriod;
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
@@ -793,7 +800,7 @@ export default function TrendAnalysis() {
     ].filter((card) => hasValue(card.key) && card.value !== null);
 
     return {
-      series: currentPeriod,
+      series: efficiencyChartSeries,
       current,
       cards,
       hasPrevious: cards.some((card) => typeof card.change === "number"),

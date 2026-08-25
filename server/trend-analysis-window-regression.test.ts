@@ -50,6 +50,8 @@ describe("Trend Analysis window regression guard", () => {
     const emptyFourteenDayWindow = expandTrendRowsToCalendarWindow([], "2026-08-24", 14);
     expect([emptyFourteenDayWindow[0]?.date, emptyFourteenDayWindow.at(-1)?.date])
       .toEqual(["2026-08-11", "2026-08-24"]);
+    expect(expandTrendRowsToCalendarWindow([], "2026-08-24", 90, "2026-07-02")).toHaveLength(54);
+    expect(expandTrendRowsToCalendarWindow([], "2026-09-29", 90, "2026-07-02")).toHaveLength(90);
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain('strokeDasharray="6 4"');
@@ -57,6 +59,7 @@ describe("Trend Analysis window regression guard", () => {
     expect(page).toContain("No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.");
     expect(page).toContain("Latest recorded date: ${latestTrendDailyDateLabel}.");
     expect(page).not.toContain("No daily activity is available in this trend window");
+    expect(page).toContain('value="90d" disabled={!ninetyDayWindowAvailable}');
   });
 
   it("keeps authoritative cumulative values visible when a trend window has no daily rows", () => {

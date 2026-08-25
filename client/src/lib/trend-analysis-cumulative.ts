@@ -63,7 +63,8 @@ export const filterTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: st
   const start = new Date(`${dataThroughDate}T00:00:00.000Z`);
   start.setUTCDate(start.getUTCDate() - (days - 1));
   const requestedStartDate = start.toISOString().slice(0, 10);
-  const startDate = minimumDate && minimumDate > requestedStartDate ? minimumDate : requestedStartDate;
+  if (minimumDate && minimumDate > requestedStartDate) return [];
+  const startDate = requestedStartDate;
   return (Array.isArray(rows) ? rows : []).filter((row) => {
     const date = String(row?.date || "").slice(0, 10);
     return ISO_DATE_PATTERN.test(date) && date >= startDate && date <= dataThroughDate;

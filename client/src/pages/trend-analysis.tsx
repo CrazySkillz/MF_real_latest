@@ -1213,8 +1213,6 @@ export default function TrendAnalysis() {
   const latestTrendDailyDateLabel = ISO_DATE_PATTERN.test(latestTrendDailyDate)
     ? format(new Date(`${latestTrendDailyDate}T00:00:00`), "MMM d, yyyy")
     : "";
-  const ninetyDayWindowAvailable = trendConsumerMode === "aggregate" || (cumulativeGA4CurrentCompatible
-    && expandTrendRowsToCalendarWindow([], String(currentValueWindow?.dataThroughDate || ""), 90, String(currentValueWindow?.startDate || "")).length === 90);
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -1251,7 +1249,7 @@ export default function TrendAnalysis() {
                     <SelectItem value="7d">Last 7 Days</SelectItem>
                     <SelectItem value="14d">Last 14 Days</SelectItem>
                     <SelectItem value="30d">Last 30 Days</SelectItem>
-                    <SelectItem value="90d" disabled={!ninetyDayWindowAvailable} title="Available after 90 calendar days of imported history">Last 90 Days</SelectItem>
+                    <SelectItem value="90d">Last 90 Days</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1421,8 +1419,10 @@ export default function TrendAnalysis() {
                   </> : (
                     <Card>
                       <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                        {usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel
-                          ? <>No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.{latestTrendDailyDateLabel ? ` Latest recorded date: ${latestTrendDailyDateLabel}.` : ""}</>
+                        {usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel
+                          ? <>{perfDays}-day trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available. Data begins {trendWindowStartLabel}.</>
+                          : usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel
+                            ? <>No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.{latestTrendDailyDateLabel ? ` Latest recorded date: ${latestTrendDailyDateLabel}.` : ""}</>
                           : <>No daily records are available for this trend window.</>}
                       </CardContent>
                     </Card>

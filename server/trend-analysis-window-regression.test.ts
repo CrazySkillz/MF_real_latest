@@ -19,7 +19,7 @@ describe("Trend Analysis window regression guard", () => {
     expect(page).toContain("trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}");
   });
 
-  it("clamps cumulative GA4 chart rows to the authoritative import boundary", () => {
+  it("fails an incomplete cumulative GA4 chart window closed at the authoritative import boundary", () => {
     const rows = [
       { date: "2026-06-19" },
       { date: "2026-07-01" },
@@ -28,7 +28,9 @@ describe("Trend Analysis window regression guard", () => {
       { date: "2026-08-23" },
     ];
     expect(filterTrendRowsToCalendarWindow(rows, "2026-08-22", 90, "2026-07-02").map((row) => row.date))
-      .toEqual(["2026-07-02", "2026-08-10"]);
+      .toEqual([]);
+    expect(filterTrendRowsToCalendarWindow(rows, "2026-09-29", 90, "2026-07-02").map((row) => row.date))
+      .toEqual(["2026-07-02", "2026-08-10", "2026-08-23"]);
     expect(filterTrendRowsToCalendarWindow(rows, "2026-08-22", 7, "invalid")).toEqual([]);
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
@@ -59,7 +61,8 @@ describe("Trend Analysis window regression guard", () => {
     expect(page).toContain("No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.");
     expect(page).toContain("Latest recorded date: ${latestTrendDailyDateLabel}.");
     expect(page).not.toContain("No daily activity is available in this trend window");
-    expect(page).toContain('value="90d" disabled={!ninetyDayWindowAvailable}');
+    expect(page).toContain("{perfDays}-day trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available.");
+    expect(page).toContain('<SelectItem value="90d">Last 90 Days</SelectItem>');
   });
 
   it("keeps authoritative cumulative values visible when a trend window has no daily rows", () => {

@@ -326,6 +326,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).toContain('label={{ value: "ROAS Target"');
     expect(executiveView).toContain("Paid Acquisition Funnel");
     expect(executiveView).toContain("Website Engagement &amp; Conversion Summary");
+    expect(executiveView).toContain("Cumulative from initial import through {cumulativeDataThroughLabel}.");
     expect(executiveView).toContain("Engaged Sessions");
     expect(executiveView).toContain("formatExactTrendCount(conversionFunnelData.current.sessions)");
     expect(executiveView).toContain("Conversions per 100 sessions");

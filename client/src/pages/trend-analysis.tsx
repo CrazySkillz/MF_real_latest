@@ -1207,6 +1207,10 @@ export default function TrendAnalysis() {
   const comparisonDateLabel = trendComparisonDate
     ? format(new Date(`${trendComparisonDate}T00:00:00`), "MMM d, yyyy")
     : "";
+  const cumulativeDataThroughDate = String(currentValueWindow?.dataThroughDate || "");
+  const cumulativeDataThroughLabel = ISO_DATE_PATTERN.test(cumulativeDataThroughDate)
+    ? format(new Date(`${cumulativeDataThroughDate}T00:00:00`), "MMM d, yyyy")
+    : "";
   const trendWindowCalendar = usesCumulativeGA4Consumer
     ? expandTrendRowsToCalendarWindow([], String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
     : [];
@@ -1532,6 +1536,9 @@ export default function TrendAnalysis() {
                           <span>Website Engagement &amp; Conversion Summary</span>
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">Website activity, engagement, and conversion volume from connected source data.</p>
+                        {usesCumulativeGA4Consumer && cumulativeDataThroughLabel && (
+                          <p className="text-xs text-muted-foreground">Cumulative from initial import through {cumulativeDataThroughLabel}.</p>
+                        )}
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid gap-3 md:grid-cols-3">

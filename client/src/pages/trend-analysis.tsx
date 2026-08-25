@@ -1200,6 +1200,19 @@ export default function TrendAnalysis() {
   const comparisonDateLabel = trendComparisonDate
     ? format(new Date(`${trendComparisonDate}T00:00:00`), "MMM d, yyyy")
     : "";
+  const trendWindowCalendar = usesCumulativeGA4Consumer
+    ? expandTrendRowsToCalendarWindow([], String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
+    : [];
+  const trendWindowStartLabel = trendWindowCalendar[0]?.date
+    ? format(new Date(`${trendWindowCalendar[0].date}T00:00:00`), "MMM d, yyyy")
+    : "";
+  const trendWindowEndLabel = trendWindowCalendar.at(-1)?.date
+    ? format(new Date(`${trendWindowCalendar.at(-1).date}T00:00:00`), "MMM d, yyyy")
+    : "";
+  const latestTrendDailyDate = String(ga4Daily?.latestStoredDailyDate || "");
+  const latestTrendDailyDateLabel = ISO_DATE_PATTERN.test(latestTrendDailyDate)
+    ? format(new Date(`${latestTrendDailyDate}T00:00:00`), "MMM d, yyyy")
+    : "";
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -1406,7 +1419,9 @@ export default function TrendAnalysis() {
                   </> : (
                     <Card>
                       <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                        No daily activity is available in this trend window. Current cumulative and campaign-to-date values remain visible above.
+                        {usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel
+                          ? <>No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.{latestTrendDailyDateLabel ? ` Latest recorded date: ${latestTrendDailyDateLabel}.` : ""}</>
+                          : <>No daily records are available for this trend window.</>}
                       </CardContent>
                     </Card>
                   )}

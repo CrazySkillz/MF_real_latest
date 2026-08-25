@@ -47,16 +47,22 @@ describe("Trend Analysis window regression guard", () => {
       { date: "2026-08-11" },
       { date: "2026-08-12" },
     ]);
+    const emptyFourteenDayWindow = expandTrendRowsToCalendarWindow([], "2026-08-24", 14);
+    expect([emptyFourteenDayWindow[0]?.date, emptyFourteenDayWindow.at(-1)?.date])
+      .toEqual(["2026-08-11", "2026-08-24"]);
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain('strokeDasharray="6 4"');
     expect(page).toContain("missing dates remain gaps");
+    expect(page).toContain("No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.");
+    expect(page).toContain("Latest recorded date: ${latestTrendDailyDateLabel}.");
+    expect(page).not.toContain("No daily activity is available in this trend window");
   });
 
   it("keeps authoritative cumulative values visible when a trend window has no daily rows", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain("overviewTrendData.series.length > 0 || (usesCumulativeGA4Consumer && authoritativeTrendCurrent)");
-    expect(page).toContain("No daily activity is available in this trend window. Current cumulative and campaign-to-date values remain visible above.");
+    expect(page).toContain("No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.");
     expect(page).toContain("efficiencyTrendData?.series.length > 0");
     expect(page).toContain("Trend & comparison window");
   });

@@ -325,9 +325,12 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).toContain('<Card className="lg:col-span-2">');
     expect(executiveView).toContain('label={{ value: "ROAS Target"');
     expect(executiveView).toContain("Paid Acquisition Funnel");
-    expect(executiveView).toContain("Website Conversion Journey");
+    expect(executiveView).toContain("Website Engagement &amp; Conversion Summary");
     expect(executiveView).toContain("Engaged Sessions");
-    expect(executiveView).toContain("Session conversion rate");
+    expect(executiveView).toContain("formatExactTrendCount(conversionFunnelData.current.sessions)");
+    expect(executiveView).toContain("Conversions per 100 sessions");
+    expect(executiveView).not.toContain("Session conversion rate");
+    expect(executiveView).not.toContain("index < stages.length - 1");
     expect(executiveView).toContain("Source Contribution");
     expect(executiveView).toContain("Coverage notes");
     expect(executiveView).toContain("source.unavailable.join");

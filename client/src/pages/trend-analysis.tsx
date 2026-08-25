@@ -1529,23 +1529,22 @@ export default function TrendAnalysis() {
                       <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
                           <BarChart3 className="w-5 h-5" />
-                          <span>Website Conversion Journey</span>
+                          <span>Website Engagement &amp; Conversion Summary</span>
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground">How qualified website activity progresses into campaign conversions.</p>
+                        <p className="text-sm text-muted-foreground">Website activity, engagement, and conversion volume from connected source data.</p>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid gap-3 md:grid-cols-3">
                           {[
-                            { label: "Sessions", value: conversionFunnelData.current.sessions === null ? null : fmtNum(conversionFunnelData.current.sessions) },
+                            { label: "Sessions", value: conversionFunnelData.current.sessions === null ? null : formatExactTrendCount(conversionFunnelData.current.sessions) },
                             Number.isFinite(conversionFunnelData.current.engagedSessions)
-                              ? { label: "Engaged Sessions", value: fmtNum(conversionFunnelData.current.engagedSessions) }
-                              : { label: "Users", value: conversionFunnelData.current.users === null ? null : fmtNum(conversionFunnelData.current.users) },
-                            { label: "Conversions", value: conversionFunnelData.current.conversions === null ? null : fmtNum(conversionFunnelData.current.conversions) },
-                          ].filter((stage) => stage.value !== null).map((stage, index, stages) => (
+                              ? { label: "Engaged Sessions", value: formatExactTrendCount(conversionFunnelData.current.engagedSessions) }
+                              : { label: "Users", value: conversionFunnelData.current.users === null ? null : formatExactTrendCount(conversionFunnelData.current.users) },
+                            { label: "Conversions", value: conversionFunnelData.current.conversions === null ? null : formatExactTrendCount(conversionFunnelData.current.conversions) },
+                          ].filter((stage) => stage.value !== null).map((stage) => (
                             <div key={stage.label} className="relative rounded-lg border p-4">
                               <div className="text-xs text-muted-foreground mb-1">{stage.label}</div>
                               <div className="text-xl font-bold text-foreground">{stage.value}</div>
-                              {index < stages.length - 1 && <div className="absolute -right-3 top-1/2 hidden text-muted-foreground md:block">→</div>}
                             </div>
                           ))}
                         </div>
@@ -1554,7 +1553,7 @@ export default function TrendAnalysis() {
                             <div><span className="text-xs text-muted-foreground">Engagement rate</span><div className="font-semibold">{formatPct(conversionFunnelData.current.engagementRate)}</div></div>
                           )}
                           {conversionFunnelData.current.webCvr !== null && (
-                            <div><span className="text-xs text-muted-foreground">Session conversion rate</span><div className="font-semibold">{formatPct(conversionFunnelData.current.webCvr)}</div></div>
+                            <div><span className="text-xs text-muted-foreground">Conversions per 100 sessions</span><div className="font-semibold">{conversionFunnelData.current.webCvr.toFixed(1)}</div></div>
                           )}
                         </div>
                       </CardContent>

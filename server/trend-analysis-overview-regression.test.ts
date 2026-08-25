@@ -102,7 +102,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain('const usesCumulativeGA4Consumer = trendConsumerMode === "cumulative_ga4";');
     expect(page).toContain('if (trendConsumerMode === "pending" || trendConsumerMode === "unavailable") return null;');
     expect(page).toContain("ga4Daily?.providerRefreshAttempted === false");
-    expect(page).toContain("ga4Daily?.refreshIsStale === false");
+    expect(page).not.toContain("&& ga4Daily?.refreshIsStale === false");
     expect(page).toContain('String(ga4Daily?.propertyId || "") === trendGA4PropertyId');
     expect(page).toContain('const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");');
     expect(overviewModel).toContain("const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);");
@@ -124,7 +124,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(trendQuery).toContain("refetchIntervalInBackground: false");
     expect(trendQuery).toContain("refetchOnWindowFocus: true");
     expect(page).toContain("const cumulativeGA4RefreshPending = usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true;");
-    expect(page).toContain("GA4 update pending");
+    expect(page).toContain("Latest available GA4 data — pending daily confirmation.");
     expect(page).toContain('|| trendConsumerMode === "pending"');
     expect(page).toContain("|| cumulativeConsumerLoading");
   });

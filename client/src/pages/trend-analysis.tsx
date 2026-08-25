@@ -475,7 +475,6 @@ export default function TrendAnalysis() {
     && ga4Daily?.providerRefreshAttempted === false
     && ["read_only", "simulated"].includes(String(ga4Daily?.providerRefreshOutcome || ""))
     && !ga4Daily?.providerRefreshWarning
-    && ga4Daily?.refreshIsStale === false
     && String(ga4Daily?.propertyId || "") === trendGA4PropertyId
     && (!ga4TrendSource?.freshness?.propertyId || String(ga4TrendSource.freshness.propertyId) === trendGA4PropertyId);
   const aggregateMetricValue = (metricName: string): number | null => {
@@ -1316,18 +1315,19 @@ export default function TrendAnalysis() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Activity className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      {cumulativeGA4RefreshPending ? "GA4 update pending" : "No connected source trend data available"}
-                    </h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No connected source trend data available</h3>
                     <p className="text-sm text-muted-foreground/70">
-                      {cumulativeGA4RefreshPending
-                        ? "Latest completed GA4 data has not been confirmed yet. Values will appear after a successful refresh."
-                        : "Refresh a connected platform to populate source-aware trend history."}
+                      Refresh a connected platform to populate source-aware trend history.
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 <>
+                  {cumulativeGA4RefreshPending && (
+                    <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      Latest available GA4 data — pending daily confirmation. Values may change after the scheduled refresh.
+                    </div>
+                  )}
                   {/* Executive KPI scorecard: one card per decision metric. */}
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[

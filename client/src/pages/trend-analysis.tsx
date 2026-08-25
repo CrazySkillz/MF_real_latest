@@ -1214,7 +1214,6 @@ export default function TrendAnalysis() {
     );
   }
 
-  const cumulativeGA4RefreshPending = usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true;
   const overviewHasData = Boolean(overviewTrendData
     && (overviewTrendData.series.length > 0 || (usesCumulativeGA4Consumer && authoritativeTrendCurrent)));
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
@@ -1323,11 +1322,6 @@ export default function TrendAnalysis() {
                 </Card>
               ) : (
                 <>
-                  {cumulativeGA4RefreshPending && (
-                    <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                      Latest available GA4 data — pending daily confirmation. Values may change after the scheduled refresh.
-                    </div>
-                  )}
                   {/* Executive KPI scorecard: one card per decision metric. */}
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[

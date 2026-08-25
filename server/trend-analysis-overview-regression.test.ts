@@ -123,8 +123,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(trendQuery).toContain("refetchInterval: TREND_REFRESH_MS");
     expect(trendQuery).toContain("refetchIntervalInBackground: false");
     expect(trendQuery).toContain("refetchOnWindowFocus: true");
-    expect(page).toContain("const cumulativeGA4RefreshPending = usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true;");
-    expect(page).toContain("Latest available GA4 data — pending daily confirmation.");
+    expect(page).not.toContain("cumulativeGA4RefreshPending");
+    expect(page).not.toContain("Latest available GA4 data — pending daily confirmation.");
     expect(page).toContain('|| trendConsumerMode === "pending"');
     expect(page).toContain("|| cumulativeConsumerLoading");
   });

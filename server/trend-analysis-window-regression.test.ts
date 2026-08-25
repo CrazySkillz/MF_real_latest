@@ -70,7 +70,9 @@ describe("Trend Analysis window regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain("overviewTrendData.series.length > 0 || (usesCumulativeGA4Consumer && authoritativeTrendCurrent)");
     expect(page).toContain("No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.");
-    expect(page).toContain("efficiencyTrendData?.series.length > 0");
+    expect(page).toContain("efficiencyTrendData.series.length === 0");
+    expect(page).toContain("{perfDays}-day efficiency trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available.");
+    expect(page).toContain("No daily efficiency data for {trendWindowStartLabel}–{trendWindowEndLabel}.");
     expect(page).toContain("Trend & comparison window");
   });
 

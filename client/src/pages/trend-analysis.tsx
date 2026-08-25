@@ -1435,7 +1435,7 @@ export default function TrendAnalysis() {
                     </Card>
                   )}
 
-                  {efficiencyTrendData?.series.length > 0 && (efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency || efficiencyTrendData.hasRateEfficiency) && (
+                  {efficiencyTrendData && (efficiencyTrendData.hasFinancialEfficiency || efficiencyTrendData.hasCostEfficiency || efficiencyTrendData.hasRateEfficiency) && (
                     <div className="space-y-3">
                       <div>
                         <h2 className="text-xl font-semibold text-foreground">Efficiency Trends</h2>
@@ -1445,7 +1445,7 @@ export default function TrendAnalysis() {
                         )}
                       </div>
                       <div className="grid gap-6 lg:grid-cols-2">
-                        {efficiencyTrendData.hasFinancialEfficiency && (
+                        {efficiencyTrendData.series.length > 0 && efficiencyTrendData.hasFinancialEfficiency && (
                           <Card>
                             <CardHeader><CardTitle>Return Efficiency</CardTitle></CardHeader>
                             <CardContent>
@@ -1467,7 +1467,7 @@ export default function TrendAnalysis() {
                           </Card>
                         )}
 
-                        {efficiencyTrendData.hasCostEfficiency && (
+                        {efficiencyTrendData.series.length > 0 && efficiencyTrendData.hasCostEfficiency && (
                           <Card>
                             <CardHeader><CardTitle>Acquisition Cost Trend</CardTitle></CardHeader>
                             <CardContent>
@@ -1488,7 +1488,7 @@ export default function TrendAnalysis() {
                           </Card>
                         )}
 
-                        {efficiencyTrendData.hasRateEfficiency && (
+                        {efficiencyTrendData.series.length > 0 && efficiencyTrendData.hasRateEfficiency && (
                           <Card className="lg:col-span-2">
                             <CardHeader><CardTitle>Conversion Quality Trend</CardTitle></CardHeader>
                             <CardContent>
@@ -1506,6 +1506,17 @@ export default function TrendAnalysis() {
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {efficiencyTrendData.series.length === 0 && (
+                          <Card className="lg:col-span-2">
+                            <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                              {usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel
+                                ? <>{perfDays}-day efficiency trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available. Data begins {trendWindowStartLabel}.</>
+                                : usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel
+                                  ? <>No daily efficiency data for {trendWindowStartLabel}–{trendWindowEndLabel}.{latestTrendDailyDateLabel ? ` Latest recorded date: ${latestTrendDailyDateLabel}.` : ""}</>
+                                  : <>No daily efficiency data is available for this trend window.</>}
                             </CardContent>
                           </Card>
                         )}

@@ -10,7 +10,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { formatPct, normalizeRateToPercent } from "@shared/metric-math";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
   ReferenceLine, ReferenceDot,
 } from "recharts";
@@ -1499,6 +1499,7 @@ export default function TrendAnalysis() {
                                     <XAxis dataKey="label" className="text-xs" />
                                     <YAxis className="text-xs" />
                                     <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [formatPct(Number(value)), name]} />
+                                    <Legend />
                                     {efficiencyTrendData.current.ctr !== null && <Line isAnimationActive={false} type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
                                     {efficiencyTrendData.current.cvr !== null && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR" />}
                                     {efficiencyTrendData.current.engagementRate !== null && <Line isAnimationActive={false} type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate" />}

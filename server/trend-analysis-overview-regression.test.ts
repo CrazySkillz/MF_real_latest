@@ -319,6 +319,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).not.toContain("fmtTrendCurrency(overviewTrendData.current.cpm)");
     expect(executiveView).toContain("Efficiency Trends");
     expect(executiveView).toContain("Conversion Quality Trend");
+    expect(executiveView).toContain("<Legend />");
     expect(executiveView).toContain('<Card className="lg:col-span-2">');
     expect(executiveView).toContain('label={{ value: "ROAS Target"');
     expect(executiveView).toContain("Paid Acquisition Funnel");

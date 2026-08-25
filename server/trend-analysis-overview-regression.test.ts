@@ -309,6 +309,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).not.toContain("Available decision signals");
     expect(executiveView).not.toContain("Unavailable as a comparable daily series");
     expect(executiveView).toContain("Campaign Performance Trend");
+    expect(executiveView.indexOf("Campaign Performance Trend")).toBeLessThan(executiveView.indexOf("Metric Toggle Row"));
+    expect(executiveView.match(/Campaign Performance Trend/g)).toHaveLength(1);
     expect(executiveView).toContain('card.key === "roi"');
     expect(executiveView).toContain('card.key === "cpc"');
     expect(executiveView).toContain('card.key === "cpm"');

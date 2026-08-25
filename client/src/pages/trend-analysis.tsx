@@ -1351,6 +1351,10 @@ export default function TrendAnalysis() {
                       Showing {overviewTrendData.currentPeriodDays} of {overviewTrendData.requestedPeriodDays} days available for this selection. Full-period trend comparisons appear once enough daily history exists.
                     </p>
                   )}
+                  <h2 className="flex items-center space-x-2 text-2xl font-semibold text-foreground">
+                    <Activity className="w-5 h-5" />
+                    <span>Campaign Performance Trend</span>
+                  </h2>
                   {overviewTrendData.series.length > 0 ? <>
                     {/* Metric Toggle Row */}
                     <div className="flex flex-wrap gap-2">
@@ -1372,15 +1376,11 @@ export default function TrendAnalysis() {
 
                   {/* Main Chart */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Activity className="w-5 h-5" />
-                        <span>Campaign Performance Trend</span>
-                      </CardTitle>
-                      {usesCumulativeGA4Consumer && overviewTrendData.series.length > 0 && (
+                    {usesCumulativeGA4Consumer && overviewTrendData.series.length > 0 && (
+                      <CardHeader>
                         <p className="text-xs text-muted-foreground">Daily records: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps.</p>
-                      )}
-                    </CardHeader>
+                      </CardHeader>
+                    )}
                     <CardContent>
                       <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">

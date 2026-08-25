@@ -34,6 +34,9 @@ const parseNum = (value: any): number => {
 };
 
 const round2 = (value: number): number => parseFloat(value.toFixed(2));
+const roundSourceMetric = (metricName: string, value: any): number => metricName === "engagementRate"
+  ? parseFloat(parseNum(value).toFixed(4))
+  : round2(parseNum(value));
 
 const normalizeDate = (value: any): string => String(value || "").slice(0, 10);
 
@@ -59,7 +62,7 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
         .map((row) => ({
           date: normalizeDate(row.date),
           metrics: Object.fromEntries(
-            Object.entries(row.metrics || {}).map(([key, value]) => [key, round2(parseNum(value))]),
+            Object.entries(row.metrics || {}).map(([key, value]) => [key, roundSourceMetric(key, value)]),
           ),
         }))
         .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date)),
@@ -78,7 +81,7 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
     for (const row of source.dailyRows) {
       const total = ensureDate(row.date);
       for (const metricName of source.includedMetrics) {
-        total[metricName] = round2((total[metricName] || 0) + parseNum(row.metrics[metricName]));
+        total[metricName] = roundSourceMetric(metricName, (total[metricName] || 0) + parseNum(row.metrics[metricName]));
       }
     }
   }

@@ -22,8 +22,8 @@ describe("Trend Analysis aggregate contract", () => {
             { metric: "spend", reason: "Spend is not a GA4 metric" },
           ],
           dailyRows: [
-            { date: "2026-05-01", metrics: { users: 10, sessions: 20, conversions: 2, revenue: 100, engagementRate: 50 } },
-            { date: "2026-05-02", metrics: { users: 15, sessions: 30, conversions: 3, revenue: 150, engagementRate: 55 } },
+            { date: "2026-05-01", metrics: { users: 10, sessions: 20, conversions: 2, revenue: 100, engagementRate: 0.6852 } },
+            { date: "2026-05-02", metrics: { users: 15, sessions: 30, conversions: 3, revenue: 150, engagementRate: 0.6792 } },
           ],
         },
         {
@@ -44,6 +44,7 @@ describe("Trend Analysis aggregate contract", () => {
     expect(aggregate.version).toBe("trend_analysis_aggregate_v1");
     expect(aggregate.sources.map((source) => source.id)).toEqual(["ga4"]);
     expect(aggregate.sources[0].dailyRows).toHaveLength(2);
+    expect(aggregate.sources[0].dailyRows[0].metrics.engagementRate).toBe(0.6852);
     expect(aggregate.metrics.sessions.sources).toEqual(["ga4"]);
     expect(aggregate.metrics.users.sources).toEqual(["ga4"]);
     expect(aggregate.metrics.conversions.sources).toEqual(["ga4"]);
@@ -55,6 +56,7 @@ describe("Trend Analysis aggregate contract", () => {
       sessions: 30,
       conversions: 3,
       revenue: 150,
+      engagementRate: 0.6792,
       cvr: 10,
     });
   });

@@ -409,6 +409,34 @@ describe("campaign Custom Report regression guard", () => {
     expect(metricsScheduler).toContain("const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({");
   });
 
+  it("keeps Trend reports single-view and uses exact 90-day calendar windows", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const reportTypeBlock = reports.slice(
+      reports.indexOf('key: "trend-analysis"'),
+      reports.indexOf('key: "executive-summary"'),
+    );
+    const clientTrendBuilder = reports.slice(
+      reports.indexOf("const addTrendAnalysisContent ="),
+      reports.indexOf("const addDeepDiveSectionContent ="),
+    );
+
+    expect(reportTypeBlock.match(/trend-analysis:[a-z-]+/g)).toEqual(["trend-analysis:overview"]);
+    expect(reportTypeBlock).toContain('label: "Executive View"');
+    expect(reports).toContain("const normalizeTrendReportSections =");
+    expect(scheduler).toContain("const normalizeCampaignDeepDiveTrendSections =");
+    expect(clientTrendBuilder).toContain("currentStart?.setUTCDate(currentStart.getUTCDate() - 89);");
+    expect(clientTrendBuilder).toContain("previousStart?.setUTCDate(previousStart.getUTCDate() - 179);");
+    expect(clientTrendBuilder).toContain('cumulativeStartDate > requestedCurrentStartDate');
+    expect(clientTrendBuilder).not.toContain("Math.ceil(trendRows.length / 2)");
+    expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - 89);");
+    expect(scheduler).toContain('cumulativeStartDate > requestedTrendWindowStart');
+    expect(scheduler).toContain("resolveGA4ImportToDateWindow((cumulativeGA4Connection as any)?.importStartDate");
+    expect(scheduler).toContain('cumulativeGA4Window?.endDate || trendAnalysis?.endDate');
+    expect(scheduler).toContain("const rows = trendWindowRows;");
+    expect(scheduler).not.toContain("rows.slice(-Math.max(1, Math.ceil(rows.length / 2)))");
+  });
+
   it("loads scheduled Executive Summary context only when Executive Summary tabs are selected", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 

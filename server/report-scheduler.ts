@@ -980,13 +980,24 @@ const campaignDeepDiveTabLabels: Record<string, string> = {
   "platform-comparison:performance": "Performance Metrics",
   "platform-comparison:cost-analysis": "Financial Comparison",
   "platform-comparison:insights": "Insights",
-  "trend-analysis:overview": "Overview",
+  "trend-analysis:overview": "Executive View",
   "trend-analysis:efficiency": "Efficiency Metrics",
   "trend-analysis:funnel": "Conversion Funnel",
   "trend-analysis:platforms": "Platform Breakdown",
   "trend-analysis:insights": "Insights",
   "executive-summary:overview": "Executive Overview",
   "executive-summary:recommendations": "Strategic Recommendations",
+};
+
+const normalizeCampaignDeepDiveTrendSections = (value: unknown): string[] => {
+  const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+  let trendIncluded = false;
+  return sections.flatMap((section) => {
+    if (!section.startsWith("trend-analysis:")) return [section];
+    if (trendIncluded) return [];
+    trendIncluded = true;
+    return ["trend-analysis:overview"];
+  });
 };
 
 const campaignDeepDiveMetricLabels: Record<string, string> = {
@@ -1118,7 +1129,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     ? JSON.parse(report.configuration || "{}")
     : (report?.configuration || {});
   const reportType = String(cfg?.reportType || "").trim();
-  const selectedSections = Array.isArray(cfg?.selectedSections) ? cfg.selectedSections.map(String).filter(Boolean) : [];
+  const selectedSections = normalizeCampaignDeepDiveTrendSections(cfg?.selectedSections);
   const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
   const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));
   const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
@@ -1126,6 +1137,30 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
     : { campaign: null, performanceSummary: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
   const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
+  const cumulativeGA4Connection = campaignId && aggregateSources.length === 1 && aggregateSources[0]?.id === "ga4"
+    ? await storage.getPrimaryGA4Connection(campaignId).catch(() => null)
+    : null;
+  const cumulativeGA4Window = campaign && cumulativeGA4Connection
+    ? resolveGA4ImportToDateWindow((cumulativeGA4Connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
+    : null;
+  const trendWindowEnd = String(cumulativeGA4Window?.endDate || trendAnalysis?.endDate || "");
+  const requestedTrendWindowStart = /^\d{4}-\d{2}-\d{2}$/.test(trendWindowEnd)
+    ? (() => {
+        const date = new Date(`${trendWindowEnd}T00:00:00.000Z`);
+        date.setUTCDate(date.getUTCDate() - 89);
+        return date.toISOString().slice(0, 10);
+      })()
+    : "";
+  const cumulativeStartDate = String(cumulativeGA4Window?.startDate || "");
+  const trendWindowStart = /^\d{4}-\d{2}-\d{2}$/.test(cumulativeStartDate)
+    && cumulativeStartDate > requestedTrendWindowStart
+    ? cumulativeStartDate
+    : requestedTrendWindowStart;
+  const trendWindowRows = (Array.isArray(trendAnalysis?.dailyTotals) ? trendAnalysis.dailyTotals : [])
+    .filter((row: any) => {
+      const date = String(row?.date || "").slice(0, 10);
+      return trendWindowStart && date >= trendWindowStart && date <= trendWindowEnd;
+    });
   const margin = 18;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1216,14 +1251,13 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     });
   };
   const addTrendRows = (keys: string[], indent = 8) => {
-    const rows = Array.isArray(trendAnalysis?.dailyTotals) ? trendAnalysis.dailyTotals : [];
+    const rows = trendWindowRows;
     if (rows.length === 0) {
       addText("- No connected source trend rows available.", { indent });
       return;
     }
-    const currentRows = rows.slice(-Math.max(1, Math.ceil(rows.length / 2)));
     keys.forEach((key) => {
-      const total = currentRows.reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[key]) || 0), 0);
+      const total = rows.reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[key]) || 0), 0);
       addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${total > 0 ? formatCampaignDeepDiveMetricValue(key, total) : "Unavailable"}`, { indent });
     });
   };
@@ -1313,7 +1347,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addMetricRows(["users", "sessions", "impressions", "clicks", "conversions", "revenue", "spend", "roas", "roi"]);
     } else if (section.startsWith("trend-analysis:")) {
       addText("Trend window", { bold: true, indent: 4 });
-      addText(`- ${trendAnalysis?.startDate || "Unavailable"} to ${trendAnalysis?.endDate || "Unavailable"}`, { indent: 8 });
+      addText(`- ${trendWindowStart || "Unavailable"} to ${trendWindowEnd || "Unavailable"}`, { indent: 8 });
+      addText(`- Daily records: ${trendWindowRows.length} in this 90-day calendar window`, { indent: 8 });
       addText("Trend metrics", { bold: true, indent: 4 });
       addTrendRows(["sessions", "users", "conversions", "revenue", "spend", "impressions", "clicks"]);
     } else if (section === "executive-summary:overview") {

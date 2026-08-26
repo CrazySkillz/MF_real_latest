@@ -86,11 +86,7 @@ const campaignDeepDiveReportTypes = [
     key: "trend-analysis",
     label: "Trend Analysis",
     tabs: [
-      { key: "trend-analysis:overview", label: "Overview" },
-      { key: "trend-analysis:efficiency", label: "Efficiency Metrics" },
-      { key: "trend-analysis:funnel", label: "Conversion Funnel" },
-      { key: "trend-analysis:platforms", label: "Platform Breakdown" },
-      { key: "trend-analysis:insights", label: "Insights" },
+      { key: "trend-analysis:overview", label: "Executive View" },
     ],
   },
   {
@@ -103,6 +99,17 @@ const campaignDeepDiveReportTypes = [
   },
 ];
 
+const normalizeTrendReportSections = (value: unknown): string[] => {
+  const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+  let trendIncluded = false;
+  return sections.flatMap((section) => {
+    if (!section.startsWith("trend-analysis:")) return [section];
+    if (trendIncluded) return [];
+    trendIncluded = true;
+    return ["trend-analysis:overview"];
+  });
+};
+
 const getCampaignReportTabs = (type: string) =>
   campaignDeepDiveReportTypes.find((reportType) => reportType.key === type)?.tabs || [];
 
@@ -112,7 +119,7 @@ const getReportTabLabel = (type: string, key: string) =>
     || key;
 
 const getReportSelectedTabSummary = (report: StoredReport) => {
-  const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
+  const selectedSections = normalizeTrendReportSections(report.selectedSections);
   return selectedSections.length > 0
     ? selectedSections.map((section) => getReportTabLabel(report.type, section)).join(", ")
     : "No tabs selected";
@@ -264,7 +271,7 @@ const backendScheduledReportToStoredReport = (report: any, campaignName?: string
     generatedAt: new Date(report?.createdAt || report?.updatedAt || Date.now()),
     format: "PDF",
     selectedMetrics: Array.isArray(config?.selectedMetrics) ? config.selectedMetrics : undefined,
-    selectedSections: Array.isArray(config?.selectedSections) ? config.selectedSections : undefined,
+    selectedSections: normalizeTrendReportSections(config?.selectedSections),
     backendReportId: String(report?.id || ""),
     backendPlatformType: CAMPAIGN_DEEPDIVE_REPORT_PLATFORM,
     schedule: {
@@ -748,7 +755,7 @@ export default function Reports() {
   const openEditReport = (report: StoredReport) => {
     const nextSelectedCampaigns = report.campaignId ? [report.campaignId] : (campaignContextId ? [campaignContextId] : []);
     const nextSelectedSections = Array.isArray(report.selectedSections)
-      ? report.selectedSections
+      ? normalizeTrendReportSections(report.selectedSections)
       : [
           ...(Array.isArray(report.selectedMetrics) && report.selectedMetrics.length > 0 ? ["metrics"] : []),
           ...(report.includeKPIs ? ["kpis"] : []),
@@ -1087,7 +1094,7 @@ export default function Reports() {
     const campaignFinancialContext = latestFinancialContextResult?.data ?? liveCampaignFinancialContext;
     const campaignKpis: any[] = Array.isArray(latestKpisResult?.data) ? latestKpisResult.data : liveCampaignKpis;
     const campaignBenchmarks: any[] = Array.isArray(latestBenchmarksResult?.data) ? latestBenchmarksResult.data : liveCampaignBenchmarks;
-    const selectedReportSections = Array.isArray(report.selectedSections) ? report.selectedSections.map(String) : [];
+    const selectedReportSections = normalizeTrendReportSections(report.selectedSections);
     const needsTrendAnalysis = selectedReportSections.some((section) => section.startsWith("trend-analysis:"));
     const latestTrendAnalysis = needsTrendAnalysis && reportCampaignId
       ? await fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/trend-analysis?dateRange=90days&days=180`)
@@ -1745,9 +1752,36 @@ export default function Reports() {
     const addTrendAnalysisContent = (section: string) => {
       const trendRows = Array.isArray(campaignTrendAnalysis?.dailyTotals) ? campaignTrendAnalysis.dailyTotals : [];
       const trendSources = Array.isArray(campaignTrendAnalysis?.sources) ? campaignTrendAnalysis.sources : [];
-      const currentWindowDays = Math.max(1, Math.ceil(trendRows.length / 2));
-      const currentRows = trendRows.slice(-currentWindowDays);
-      const previousRows = trendRows.slice(-currentWindowDays * 2, -currentWindowDays);
+      const cumulativeGA4Window = customReportSources.length === 1
+        && customReportSources[0]?.id === "ga4"
+        && customReportPerformanceSummary?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        ? customReportPerformanceSummary.currentValueWindow
+        : null;
+      const trendWindowEnd = String(cumulativeGA4Window?.dataThroughDate || campaignTrendAnalysis?.endDate || "");
+      const end = /^\d{4}-\d{2}-\d{2}$/.test(trendWindowEnd)
+        ? new Date(`${trendWindowEnd}T00:00:00.000Z`)
+        : null;
+      const currentStart = end ? new Date(end) : null;
+      const previousEnd = end ? new Date(end) : null;
+      const previousStart = end ? new Date(end) : null;
+      currentStart?.setUTCDate(currentStart.getUTCDate() - 89);
+      previousEnd?.setUTCDate(previousEnd.getUTCDate() - 90);
+      previousStart?.setUTCDate(previousStart.getUTCDate() - 179);
+      const requestedCurrentStartDate = currentStart?.toISOString().slice(0, 10) || "";
+      const cumulativeStartDate = String(cumulativeGA4Window?.startDate || "");
+      const currentStartDate = /^\d{4}-\d{2}-\d{2}$/.test(cumulativeStartDate)
+        && cumulativeStartDate > requestedCurrentStartDate
+        ? cumulativeStartDate
+        : requestedCurrentStartDate;
+      const previousStartDate = previousStart?.toISOString().slice(0, 10) || "";
+      const previousEndDate = previousEnd?.toISOString().slice(0, 10) || "";
+      const rowsBetween = (rows: any[], startDate: string, endDate: string) =>
+        startDate && endDate ? rows.filter((row: any) => {
+          const date = String(row?.date || "").slice(0, 10);
+          return date >= startDate && date <= endDate;
+        }) : [];
+      const currentRows = rowsBetween(trendRows, currentStartDate, trendWindowEnd);
+      const previousRows = rowsBetween(trendRows, previousStartDate, previousEndDate);
       const sumRows = (rows: any[], metricName: string) =>
         rows.reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[metricName]) || 0), 0);
       const aggregateMetric = (rows: any[], metricName: string): number | null => {
@@ -1788,7 +1822,7 @@ export default function Reports() {
         });
       };
       const sourceMetricValue = (source: any, metricName: string) => {
-        const rows = Array.isArray(source?.dailyRows) ? source.dailyRows.slice(-currentWindowDays) : [];
+        const rows = rowsBetween(Array.isArray(source?.dailyRows) ? source.dailyRows : [], currentStartDate, trendWindowEnd);
         const value = aggregateMetric(rows, metricName);
         return value === null ? "Unavailable" : formatCustomReportMetricValue(metricName, value);
       };
@@ -1800,8 +1834,8 @@ export default function Reports() {
 
       if (section === "trend-analysis:overview") {
         addText("Cross-Platform Performance", { bold: true, indent: 4 });
-        addText(`Trend window: ${campaignTrendAnalysis.startDate || "Unavailable"} to ${campaignTrendAnalysis.endDate || "Unavailable"}`, { indent: 8 });
-        addText(`Current comparable days: ${currentRows.length}; previous comparable days: ${previousRows.length}`, { indent: 8 });
+        addText(`Trend window: ${currentStartDate || "Unavailable"} to ${trendWindowEnd || "Unavailable"}`, { indent: 8 });
+        addText(`Daily records: ${currentRows.length} in the current 90-day calendar window; ${previousRows.length} in the previous window`, { indent: 8 });
         addText("Summary Metrics", { bold: true, indent: 4 });
         addTrendMetricRows(["sessions", "users", "conversions", "revenue", "cvr", "spend", "roas", "cpa", "ctr"]);
         addText("Anomaly Detection", { bold: true, indent: 4 });
@@ -1890,7 +1924,7 @@ export default function Reports() {
       yPosition += 4;
     };
 
-    const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
+    const selectedSections = normalizeTrendReportSections(report.selectedSections);
     addText(report.name, { size: 18, bold: true });
     addText(`Report Type: ${getReportTypeLabel(report.type)}`);
     addText(`Generated: ${new Date().toLocaleString()}`);

@@ -27,7 +27,7 @@ The implementation now follows the shared connected-source aggregate pattern: Co
 
 The remaining work is validation hardening and source-specific proof, not a full redesign.
 
-Current documentation reconciliation (2026-08-21): Performance Summary now has one controlling data-window contract. GA4 traffic current values accumulate from the saved initial-import boundary through the latest completed reporting day; refreshed KPI/Benchmark current values feed Campaign Health, Top Priority Action, and Recommended Actions; Key Outcomes uses those current connected-source values; and Recent Movement alone uses exact-date historical comparisons for yesterday, seven days earlier, and the same calendar date one month earlier. Production code, tests, validators, and machine certification records were not changed by this reconciliation.
+Performance Summary certification reconciliation (2026-08-26): Performance Summary is **PRODUCTION_READY** for exact certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and its recorded GA4-only deployed configuration. GA4 traffic current values accumulate from the saved initial-import boundary through the latest completed reporting day; refreshed KPI/Benchmark current values feed Campaign Health, Top Priority Action, and Recommended Actions; Key Outcomes uses those current connected-source values; and Recent Movement alone uses exact-date historical comparisons for yesterday, seven days earlier, and the same calendar date one month earlier. Render deployed evidence-only commit `e175ac5c` without production runtime changes, preserving the certified runtime. Exact values, focused validation, deployed evidence, and exclusions are recorded in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`.
 
 Budget & Financial Analysis reconciliation (2026-08-23): the current consumer through
 `1205ed49` renders one executive financial page rather than multiple visible tabs.
@@ -49,7 +49,7 @@ GA4 boundary.
 
 ## Current Implementation And Certification Status
 
-Do not use this top-level file as a current whole-section production certification. The implemented shared aggregate and corrected Performance Summary value paths are locally regression-covered, but each subsection and source remains bounded by its own exact-SHA readiness evidence. The 2026-08-21 documentation reconciliation does not certify the current repository SHA.
+Do not use this top-level file as a whole-Campaign-DeepDive production certification. Each subsection and source remains bounded by its own exact-SHA readiness evidence. Performance Summary is production-ready only for exact runtime `12789c1e` and the recorded GA4-only configuration; later or different source mixes do not inherit that status.
 
 Trend Analysis is production-ready only for the exact GA4-only boundary recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; future/refined source mixes still require their own source-specific proof.
 
@@ -68,7 +68,11 @@ LinkedIn is validated as production-ready for the current supported implementati
 - Google Ads local refinement is tracked separately in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` and has passed local source-specific proof through Commit 29.
 - Do not treat the Google Ads live OAuth path as production-ready until deployed or production-like OAuth connect/select/refresh evidence is recorded.
 
-## Outstanding Validation Items
+## Remaining Cross-Section And Future-Source Validation Items
+
+These items do not reopen the bounded Performance Summary certification above.
+They belong to other subsection boundaries or to source mixes that were not part
+of the certified GA4-only Performance Summary packet.
 
 ### 1. Trend Analysis Future Source Validation
 
@@ -138,7 +142,7 @@ Expected proof:
 
 | Subsection | Current status | Source-of-truth path | Remaining item |
 | --- | --- | --- | --- |
-| Performance Summary | Current cumulative/exact-date implementation documented; current-SHA certification not asserted by this docs-only pass | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, exact-date financial/history reads | Run exact-SHA certification gates separately if a new production-ready claim is required |
+| Performance Summary | **PRODUCTION_READY** for exact certified runtime `12789c1e` and the recorded GA4-only deployed configuration | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, refreshed KPI/Benchmark targets, exact-date financial/history reads | Revalidate after a certified dependency, source configuration, or source mix changes; future/refined sources retain source-specific proof |
 | Budget & Financial Analysis | Current single-page consumer aligned through `1205ed49`; focused regression, TypeScript, and build passed | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` and `financialInputs`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Confirm the latest consumer SHA in production if that deployment has not already been checked; future sources retain their own source-specific validation |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
 | Trend Analysis | Production-ready for the exact deployed GA4-only boundary at `cd35bba1`; one comprehensive Executive View | `/ga4-daily` + `/outcome-totals.performanceSummary` + exact-date financial comparison + `/trend-analysis` daily aggregate | Repeat source-specific validation for every future/refined main-source mix |
@@ -234,4 +238,4 @@ These are validation and source-readiness tasks. They do not require a Campaign 
 
 ## 2026-07-30 Historical Commit 10 Status — Superseded For Trend Analysis
 
-Commit `ec265895` deployed the downstream parity correction. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend, and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Scheduled/manual Campaign DeepDive aggregates follow the ordered campaign-to-date GA4 financial contract, explicit GA4 financial-source context, valid-zero/negative ROAS/ROI semantics, and `performance_summary_aggregate_v2` compatibility. This closes the bounded Commit 10 code/browser packet. Scheduled attachment values, historical Trend behavior, live multi-source variants, and valid-zero/negative production fixtures remain unproven; Campaign DeepDive is not broadly recertified by this closure.
+Commit `ec265895` deployed the downstream parity correction. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend, and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Scheduled/manual Campaign DeepDive aggregates follow the ordered campaign-to-date GA4 financial contract, explicit GA4 financial-source context, valid-zero/negative ROAS/ROI semantics, and `performance_summary_aggregate_v2` compatibility. This historical packet was later superseded for Performance Summary by the exact `12789c1e` certification record; its exclusions remain historical context and do not override the current bounded Performance Summary status.

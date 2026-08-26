@@ -8,7 +8,42 @@ Before using this document to answer an audit, review, or production-readiness q
 
 Record the implemented Campaign DeepDive `Performance Summary` contract, its validation boundary, and the historical work that led to the current implementation.
 
-## Current Controlling Implementation Contract (2026-08-21)
+## Current Certification Status
+
+**Status: PRODUCTION_READY for exact certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.**
+
+This status was reconciled on the currently deployed documentation baseline
+`bfc5714018f14f5740ff94a4bc8673e33516af20`. The later documentation update
+does not change or broaden the exact certified runtime boundary.
+
+Certified scope:
+
+- the consolidated Campaign DeepDive Performance Summary consumer
+- Key Outcomes: Total Users, Total Sessions, Total Conversions, Total Spend, and Total Revenue
+- Campaign Health, Top Priority Action, and Recommended Actions using the complete configured campaign-scoped GA4 KPI/Benchmark inventory
+- Recent Movement exact-date comparisons for yesterday, seven days earlier, and the same calendar date one month earlier
+- cumulative GA4 traffic from the saved initial-import boundary through the latest completed reporting day
+- campaign-to-date financial inputs, metric-aware target direction, fail-closed unavailable states, source-compatible history, and removal of the comparison-date microcopy
+
+Recorded validation evidence:
+
+- focused aggregate, Overview/Recent Movement, scheduler/history, and recommendation-decision regression packets passed
+- TypeScript checking and the production build passed
+- the protected GA4 Overview, KPI, Benchmark, Ad Comparison, Insights, and Reports gates were revalidated separately after the approved shared-dependency corrections; this supports the certified upstream input boundary but does not broaden Performance Summary into those tabs
+- Render deployed evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785`; the user confirmed deployment, and that commit changed no production runtime code, so the certified Performance Summary runtime remained `12789c1e`
+- the deployed GA4-only UI packet showed current values on `2026-08-18` of Sessions `1,183`, Conversions `152`, Spend `$2,699.75`, and Total Revenue `$72,766.69`; exact-date comparisons showed no change for `2026-08-17` and `2026-08-11`, while `2026-07-18` showed Sessions `866`, Conversions `110`, Spend `$2,300.00`, and Total Revenue `$62,901.89`
+- the one-month deltas therefore reconciled exactly to Sessions `+317` (`+36.6%`), Conversions `+42` (`+38.2%`), Spend `+$399.75` (`+17.4%`), and Total Revenue `+$9,864.80` (`+15.7%`)
+
+Certification exclusions:
+
+- future or differently configured source mixes not covered by their own source-specific readiness evidence
+- future-platform behavior and provider availability
+- paid-media metrics that GA4 does not supply
+- the disabled legacy Metric Trends render path
+- Trend Analysis, Budget & Financial Analysis, Platform Comparison, Executive Summary, and Custom Report certification boundaries
+- future runtime changes to a certified dependency unless the Performance Summary boundary is revalidated
+
+## Current Controlling Implementation Contract (Certified 2026-08-21)
 
 This section supersedes older implementation descriptions in the chronological commit history below.
 
@@ -24,7 +59,10 @@ This section supersedes older implementation descriptions in the chronological c
 - The removed `Available comparisons use data from ...` microcopy must remain absent.
 - The disabled legacy Metric Trends render path is not a visible Performance Summary feature; users are directed to the separate Trend Analysis section.
 
-Documentation/certification boundary: this reconciliation changes documentation only. It does not alter production code, tests, validators, machine certification records, or the exact-SHA scope of any prior GA4 certification.
+Documentation/certification boundary: Performance Summary is certified only for
+exact runtime `12789c1e` and the scope above. This documentation reconciliation
+changes no production code, tests, validators, protected GA4 machine certification
+records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
 
 The intended product behavior is:
 
@@ -89,7 +127,7 @@ The issue is an aggregation contract problem, not a single-card display bug.
 - `server/storage.ts`
   - Storage-layer access for campaign sources, GA4, LinkedIn, Meta, Google Ads, revenue, spend, Custom Integration, and snapshots.
 
-## Production-Ready Target Contract
+## Historical Production-Ready Target Contract — Implemented
 
 Performance Summary should consume one campaign-level aggregate contract.
 
@@ -241,6 +279,14 @@ Important:
 - ROAS, ROI, CPA, CPC, CTR, and CVR should be derived only when their numerator and denominator are available and valid.
 - Do not use Pipeline Proxy data for Performance Summary totals.
 
+## Historical Pre-Certification Plan — Superseded
+
+The planning and commit history below is retained to explain how the certified
+implementation was reached. Any `Outstanding`, `required`, `later`, or
+`unverified` wording inside this historical plan is superseded by `Current
+Certification Status` unless the item is repeated in the active certification
+exclusions above.
+
 ## Tab Requirements
 
 ### Overview
@@ -262,7 +308,7 @@ Required regression coverage:
 
 ### Campaign Health
 
-Outstanding fixes:
+Historical work items — resolved or superseded:
 
 - Keep KPI and Benchmark health from campaign-level KPI/Benchmark records.
 - Replace hard-coded Data Sources block with connected source list from the aggregate contract.
@@ -279,7 +325,7 @@ Required regression coverage:
 
 ### What's Changed
 
-Outstanding fixes:
+Historical work items — resolved or superseded:
 
 - Ensure current values and historical snapshots use the same aggregation helper/contract.
 - Align scheduler snapshots with Performance Summary aggregation.
@@ -295,7 +341,7 @@ Historical snapshot behavior, superseded for the four visible Recent Movement ca
 - Snapshot creation through scheduler/platform-sync/manual snapshot routes uses `aggregateCampaignMetrics`, which embeds `metrics.performanceSummary` in new snapshots.
 - The legacy Metric Trends code path is disabled and is not rendered; visible trend analysis belongs to the separate Campaign DeepDive Trend Analysis section.
 
-Production-ready task bundle:
+Historical production-ready task bundle — resolved or superseded:
 
 - Update the `What's Changed` delta cards to compare current aggregate values only against a real previous compatible aggregate snapshot.
 - Remove the fallback that compares against the latest current snapshot when no previous snapshot exists; show a clear not-enough-history state instead.
@@ -316,7 +362,7 @@ Required regression coverage:
 
 ### Insights
 
-Outstanding fixes:
+Historical work items — resolved or superseded:
 
 - Generate insights from the unified aggregate and per-source breakdown.
 - Replace LinkedIn-vs-Custom-Integration-specific comparisons with dynamic comparison across all eligible paid platforms.
@@ -390,7 +436,7 @@ Do not start a later commit until the current commit has targeted regression cov
 
 ### Commit 1: Aggregate Contract
 
-Status: Completed and pushed in commits `1d0f63af` and `1b5b604a`. Latest `platformSources` aggregate-contract follow-up completed locally, not yet pushed.
+Historical status: completed and pushed in commits `1d0f63af` and `1b5b604a`; the later generic `platformSources` follow-up was subsequently pushed in `930614e9`.
 
 Goal:
 
@@ -695,7 +741,12 @@ Validation:
 - Passed: `npm run check`.
 - Passed: `npm run build`.
 
-Live GA4 end-to-end validation setup for later:
+Historical generic-snapshot validation plan — superseded for visible GA4 Recent Movement:
+
+The plan below predates the certified exact-date GA4 comparison paths. It is
+retained only as a possible future validation recipe for generic non-GA4
+aggregate snapshot history and the disabled legacy Metric Trends path. It is
+not an outstanding Performance Summary certification gate.
 
 - Purpose: validate the full production data path with a real GA4 property: injected GA4 events -> GA4 reporting -> Market Forensics GA4 refresh -> persisted `ga4_daily_metrics` -> campaign metric snapshot -> Performance Summary `What's Changed` and `Metric Trends`.
 - This validates live GA4 API connectivity, token refresh behavior, GA4 metric ingestion, daily metric persistence, snapshot creation, aggregate snapshot compatibility, source-aware cards, source-aware trend charts, and the UI's historical comparison behavior.
@@ -716,7 +767,7 @@ Live GA4 end-to-end validation setup for later:
 
 ### Commit 6: Docs And Final Validation
 
-Status: Documentation reconciliation completed on `2026-08-21`; this documentation-only pass does not recertify the section.
+Status: completed. Performance Summary is production-ready for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code.
 
 Goal:
 
@@ -725,8 +776,8 @@ Goal:
 Scope:
 
 - Updated `ARCHITECTURE_USER_JOURNEY.md`, the campaign KPI/Benchmark contract, the relevant GA4 functional docs, and this tracker to describe the cumulative current-value and exact-date comparison contracts.
-- Production code, tests, validators, and machine certification records were intentionally unchanged.
-- Documentation validation is limited to diff review and `git diff --check`; prior code/test evidence remains revision-specific and is not reasserted by this documentation pass.
+- The final readiness decision combines the already completed focused regression, TypeScript, production-build, protected GA4 revalidation, deployed exact-value, and UI evidence recorded in `Current Certification Status`; it is not inferred from documentation changes alone.
+- Production code, protected GA4 tests, validators, and machine certification records remain unchanged by this documentation reconciliation.
 
 Why this is last:
 
@@ -763,7 +814,7 @@ Implementation conclusion:
 - Implemented and regression-covered for the registered main Connected Platform aggregate path covering GA4, LinkedIn, Meta, and Custom Integration, with campaign financial totals able to include parent-platform child revenue/spend inputs when those inputs are configured inside the relevant platform flow.
 - The aggregate layer can accept future standalone platforms that supply valid `platformSources`, but that capability is not source-specific production-readiness proof.
 - Platform-specific production readiness for Google Ads, TikTok, Instagram, and other future sources still depends on each platform's own connection, storage, refresh, campaign scoping, and resolver validation.
-- Current whole-section certification is not asserted by this documentation-only reconciliation; exact-SHA certification gates and deployed evidence remain separate.
+- Performance Summary is production-ready for the exact certified runtime and bounded scope in `Current Certification Status`. Generic future-platform support remains an implementation contract, not source-specific certification evidence.
 
 ## Production Readiness Definition
 
@@ -784,32 +835,29 @@ Performance Summary is production ready only when:
 
 ## Current Status
 
-Current implementation aligned with the cumulative current-value and exact-date Recent Movement contracts described above. This documentation-only reconciliation does not certify the current repository SHA.
+**PRODUCTION_READY for exact certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded GA4-only deployed configuration.**
 
-Platform-specific readiness for Google Ads, TikTok, Instagram, and other future standalone platforms remains part of each platform's own connection, storage, refresh, campaign scoping, and resolver implementation.
+Proven and certified:
 
-Proven:
+- the consolidated visible Performance Summary sections use the cumulative current-value and exact-date Recent Movement contracts in `Current Controlling Implementation Contract`
+- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards were covered by focused regression and deployed UI evidence
+- Campaign Health fails closed rather than scoring only a verified subset; Top Priority uses configured KPI priority before gap severity; Recommended Actions use verified target gaps and do not claim causality
+- exact historical Sessions, Conversions, Spend, and Total Revenue values for yesterday, seven days earlier, and one month earlier were reconciled against their authoritative persisted inputs
+- GA4 child revenue/spend inputs remain financial provenance under the parent campaign/platform path and do not become separate main Connected Platforms
 
-- Documentation intends Campaign DeepDive to be campaign-wide and cross-platform.
-- Overview, Campaign Health, Scheduler/What's Changed snapshot data, and Insights have been wired to the aggregate contract. Fallback calculations remain only as defensive behavior when the aggregate response is unavailable; the normal loaded path uses `performanceSummary`.
-- Campaign DeepDive Custom Report PDF exports for Performance Summary preserve the selected tab section structure. Overview, Campaign Health, What's Changed, and Insights exports use `performanceSummary` for aggregate metrics plus campaign-scoped GA4 KPI/Benchmark record values in the GA4-first version instead of the older generic metric-list export.
-- `outcome-totals` is a stronger existing candidate contract for source-aware campaign totals.
-- Platform Comparison already uses `outcome-totals` as its primary cross-platform source.
-- GA4 child revenue/spend inputs such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets imports are documented as child inputs inside the parent platform flow, not main Connected Platforms.
-- Current main Connected Platform aggregate sources are now registered through the aggregate adapter list for GA4, LinkedIn, Meta, and Custom Integration instead of being added directly inside tab-specific UI logic.
-- Future main Connected Platforms can be aggregated without Performance Summary tab rewiring by supplying validated `platformSources`.
+Proven locally as supporting aggregate behavior, but not a broader deployed source-mix certification:
 
-Partially reviewed:
+- the adapter/generic-source aggregate contract and scheduler snapshot alignment for the registered source shapes covered by the focused aggregate and scheduler regressions
+- fail-closed unavailable/zero handling, source capability checks, and financial ratio input guards covered by those regressions
 
-- GA4, LinkedIn, Meta, Custom Integration, revenue source, spend source paths.
-- Scheduler aggregation.
+Not certified by this boundary:
 
-Unverified:
-
-- Google Ads, TikTok, Instagram, and other future platform-specific connection/storage/refresh/resolver paths. The Performance Summary aggregate contract is ready to consume them through `platformSources`, but each platform path still needs its own implementation and validation.
-- All legacy snapshot route callers.
-- Complete frontend test coverage for every Performance Summary tab.
-- Live GA4 7-day and 30-day time-based validation. This will be validated later with the documented live GA4 test-property setup after enough compatible snapshots exist.
+- any source mix other than the recorded deployed GA4-only configuration unless that exact mix has its own source-specific readiness evidence
+- future or differently configured Google Ads, TikTok, Instagram, LinkedIn, Meta, Custom Integration, Google Sheets, or other main-platform resolver/provider behavior
+- the retained manual/legacy snapshot route as a visible UI feature; no current frontend caller was found and the route remains campaign-access guarded
+- the disabled legacy Metric Trends render path
+- Trend Analysis, Budget & Financial Analysis, Platform Comparison, Executive Summary, Custom Report generation/delivery, and their independent certification boundaries
+- provider behavior, source configuration, or runtime dependencies changed after the exact certified boundary without a new Performance Summary revalidation
 
 ## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
 

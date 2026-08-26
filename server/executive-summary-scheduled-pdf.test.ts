@@ -144,10 +144,20 @@ describe("scheduled Executive Summary PDF", () => {
       detailedMetrics: {
         performanceSummary: {
           ...performanceSummary,
+          version: "performance_summary_aggregate_v3",
+          totals: {
+            ...performanceSummary.totals,
+            spend: { available: true, value: 500, sources: ["canonical_spend_sources"], unavailableReasons: [] },
+          },
+          sources: [
+            { ...performanceSummary.sources[0], id: "ga4", label: "Google Analytics" },
+            { id: "revenue_source", label: "Imported revenue", category: "financial", connected: true, includedMetrics: ["revenue"], metrics: { revenue: 1000 } },
+          ],
           currentValueWindow: {
             mode: "initial_import_to_latest_completed_day",
             startDate: "2026-07-02",
             endDate: "2026-08-25",
+            dataThroughDate: "2026-08-25",
           },
         },
       },
@@ -163,6 +173,12 @@ describe("scheduled Executive Summary PDF", () => {
 
     expect(pdfTextCalls).toContain("- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for the 2026-07-02 to 2026-08-25 reporting window.");
     expect(pdfTextCalls).toContain("- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for the 2026-07-02 to 2026-08-25 reporting window.");
+    expect(pdfTextCalls).toContain("- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.");
+    expect(pdfTextCalls).not.toContain("- Review website conversion path before making paid-media budget decisions.");
+    expect(pdfTextCalls).toContain("Data Accuracy Notice");
+    expect(pdfTextCalls).toContain("Note: No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.");
+    expect(pdfTextCalls).toContain("Metric basis: GA4-native outcomes cover 2026-07-02 to 2026-08-25; connected revenue and spend inputs are source-to-date through 2026-08-25.");
+    expect(pdfTextCalls).not.toContain("Metric basis: 90-day connected-source aggregate through scheduler generation time.");
   });
 
   it("fails monetary values closed without a valid campaign currency and preserves Monitor severity", async () => {

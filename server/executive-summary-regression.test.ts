@@ -792,6 +792,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(builder).toContain('const executiveCurrency = String((campaign as any)?.currency || "").trim().toUpperCase();');
     expect(builder).toContain('const validExecutiveCurrency = /^[A-Z]{3}$/.test(executiveCurrency) ? executiveCurrency : null;');
     expect(builder).toContain("Metric basis: 90-day connected-source aggregate through scheduler generation time.");
+    expect(builder).toContain("const executiveHasAuthoritativeGA4Window =");
+    expect(builder).toContain("Metric basis: GA4-native outcomes cover ${executiveCurrentValueWindow.startDate} to ${executiveCurrentValueWindow.endDate}");
+    expect(builder).toContain("source-to-date through ${executiveCurrentValueWindow.endDate}");
     expect(executive).toContain('addText("KPI Exceptions"');
     expect(executive).toContain('addText("Benchmark Exceptions"');
     expect(executive).toContain("executiveKpiExceptions.forEach");
@@ -803,6 +806,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(executive).toContain('kpiMonitorCount > 0 ? "Monitor"');
     expect(executive).toContain('benchmarkMonitorCount > 0 ? "Monitor"');
     expect(executive).toContain('addText("Recommended Actions"');
+    expect(executive).toContain('addText("Data Accuracy Notice"');
+    expect(executive).toContain("No connected paid-media source is available, so paid-media recommendations are unavailable");
     expect(executive).not.toContain('addText("KPI Progress"');
     expect(executive).not.toContain('addText("Benchmark Comparison"');
     expect(executive).not.toContain('addText("Recommendation basis"');

@@ -1202,6 +1202,21 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     const reason = Array.isArray(value?.unavailableReasons) ? value.unavailableReasons[0] : "";
     return `Unavailable${reason ? ` - ${reason}` : ""}`;
   };
+  const executiveCurrentValueWindow = performanceSummary?.currentValueWindow;
+  const executiveAllSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
+  const executiveGA4Source = executiveAllSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
+  const executiveHasAuthoritativeGA4Window = performanceSummary?.version === "performance_summary_aggregate_v3"
+    && executiveCurrentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && executiveCurrentValueWindow?.dataThroughDate === executiveCurrentValueWindow?.endDate
+    && Array.isArray(executiveGA4Source?.includedMetrics)
+    && ["users", "sessions", "conversions", "revenue"].every((metricName) => executiveGA4Source.includedMetrics.includes(metricName));
+  const executiveSourceToDateFinancialKinds = [
+    executiveAllSources.some((source: any) => source?.connected === true && source?.category === "financial" && source?.includedMetrics?.includes("revenue")) ? "revenue" : null,
+    metric("spend")?.sources?.includes("canonical_spend_sources") ? "spend" : null,
+  ].filter(Boolean) as string[];
+  const executiveMetricBasis = executiveHasAuthoritativeGA4Window
+    ? `Metric basis: GA4-native outcomes cover ${executiveCurrentValueWindow.startDate} to ${executiveCurrentValueWindow.endDate}${executiveSourceToDateFinancialKinds.length > 0 ? `; connected ${executiveSourceToDateFinancialKinds.join(" and ")} ${executiveSourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${executiveCurrentValueWindow.endDate}` : ""}.`
+    : "Metric basis: 90-day connected-source aggregate through scheduler generation time.";
   const resolveAggregateMetric = (record: any) => {
     for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
       const key = campaignDeepDiveMetricAliases[normalizeCampaignDeepDiveMetricKey(candidate)];
@@ -1457,11 +1472,16 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const benchmarkRiskStatus = benchmarkRiskCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable";
       addText(`- KPI Risk: ${kpiRiskStatus} - ${kpiRiskCount > 0 ? `${kpiRiskCount} KPI row(s) below 70% of target` : kpiMonitorCount > 0 ? `${kpiMonitorCount} KPI row(s) below target policy but at or above the 70% risk cutoff` : executiveKpiRows.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available"}`, { indent: 8 });
       addText(`- Benchmark Risk: ${benchmarkRiskStatus} - ${benchmarkRiskCount > 0 ? `${benchmarkRiskCount} Benchmark row(s) classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional row(s) need attention` : ""}` : benchmarkMonitorCount > 0 ? `${benchmarkMonitorCount} Benchmark row(s) need attention; none is classified behind` : executiveBenchmarkRows.length > 0 ? "Mapped Benchmarks are on track" : "No evaluable campaign Benchmarks available"}`, { indent: 8 });
-      addText("Recommended Actions", { bold: true, indent: 4 });
       const paidSources = aggregateSources.filter((source: any) => source?.category !== "web_analytics" && Array.isArray(source?.includedMetrics) && ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName)));
       const hasWebAnalytics = aggregateSources.some((source: any) => source?.category === "web_analytics");
       const hasWebsiteEvidence = hasWebAnalytics && (metricAvailable("users") || metricAvailable("sessions")) && (metricAvailable("conversions") || metricAvailable("revenue"));
+      const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions].some((row: any) => ["cvr", "conversions", "revenue"].includes(reportRecordMetric(row)));
       if (paidSources.length === 0 && hasWebsiteEvidence) {
+        addText("Data Accuracy Notice", { bold: true, indent: 4 });
+        addText("Note: No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.", { indent: 8 });
+      }
+      addText("Recommended Actions", { bold: true, indent: 4 });
+      if (paidSources.length === 0 && hasWebsiteEvidence && hasWebsiteOutcomeTargetException) {
         const evidence = ["users", "sessions", "conversions", "revenue", "cvr"].filter(metricAvailable).map((key) => `${campaignDeepDiveMetricLabels[key] || key}: ${executiveMetricValue(key)}`);
         const targetMetrics = new Set([...executiveKpiRows, ...executiveBenchmarkRows].map((row: any) => reportRecordMetric(row)).filter((key: string) => ["cvr", "revenue", "conversions"].includes(key)));
         addText("- Review website conversion path before making paid-media budget decisions.", { indent: 8 });
@@ -1481,7 +1501,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   addText(isFinancialAnalysisReport
     ? "Metric basis: cumulative connected-source traffic through the latest completed reporting day; financial values are campaign-to-date."
     : isExecutiveSummaryReport
-      ? "Metric basis: 90-day connected-source aggregate through scheduler generation time."
+      ? executiveMetricBasis
       : `Window: ${windowStart} to ${windowEnd}`);
   addText(`Generated: ${new Date().toLocaleString()}`);
   y += 4;

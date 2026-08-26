@@ -1766,7 +1766,7 @@ export default function Reports() {
           ? `GA4-native outcomes cover ${executiveWindowDescription}; connected ${customReportSourceToDateFinancialLabel} ${customReportSourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${metricSummary.join(" and ")}.`
           : `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary.join(" and ")}.`
         : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
-      addText(`${report.campaignName || "Campaign"}: ${metricNarrative} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
+      addText(`${report.campaignName || campaignFinancialContext?.name || "Campaign"}: ${metricNarrative} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
       ["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]
         .forEach((key) => addText(`- ${customReportMetricLabels[key] || key}: ${executiveMetricValue(key)}`, { indent: 8 }));

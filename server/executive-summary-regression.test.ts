@@ -728,6 +728,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(reports).toContain('const executiveCurrency = String(campaignFinancialContext?.currency || "").trim().toUpperCase();');
     expect(reports).toContain('if (!/^[A-Z]{3}$/.test(executiveCurrency)) return "Unavailable";');
     expect(reports).toContain("currency: executiveCurrency");
+    expect(overview).toContain('report.campaignName || campaignFinancialContext?.name || "Campaign"');
     expect(overview).toContain("executiveMetricValue(key)");
     expect(overview).toContain('GA4-native outcomes cover ${executiveWindowDescription}; connected ${customReportSourceToDateFinancialLabel}');
     expect(overview).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');

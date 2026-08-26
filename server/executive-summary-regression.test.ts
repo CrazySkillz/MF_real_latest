@@ -520,8 +520,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("{executiveKpiProgress.length > 0 && executiveKpiExceptions.length === 0 && (");
     expect(page).toContain("KPI Status Unavailable");
     expect(page).toContain("No KPI Exceptions");
-    expect(page).toContain("No campaign KPI has both an available metric and a positive target for this 90-day view.");
-    expect(page).toContain("No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.");
+    expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
+    expect(page).toContain('`the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`');
+    expect(page).toContain("No campaign KPI has both an available metric and a positive target for {executiveWindowDescription}.");
+    expect(page).toContain("No below-target KPI was found among campaign KPIs with available data and positive targets for {executiveWindowDescription}.");
     expect(page).toContain("{executiveBenchmarkExceptions.length > 0 && (");
     expect(page).toContain("{executiveBenchmarkExceptions.map((bm: any, index: number) => (");
     expect(page).not.toContain("{executiveBenchmarkComparison.map((bm: any, index: number) => (");
@@ -530,8 +532,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("{executiveBenchmarkComparison.length > 0 && executiveBenchmarkExceptions.length === 0 && (");
     expect(page).toContain("Benchmark Status Unavailable");
     expect(page).toContain("No Benchmark Exceptions");
-    expect(page).toContain("No campaign benchmark has both an available metric and a positive target for this 90-day view.");
-    expect(page).toContain("No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.");
+    expect(page).toContain("No campaign benchmark has both an available metric and a positive target for {executiveWindowDescription}.");
+    expect(page).toContain("No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for {executiveWindowDescription}.");
     expect(page).toContain("const threshold = computeBenchmarkThresholdResult({");
     expect(page).toContain("status: threshold.status || 'behind'");
     expect(page).not.toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");

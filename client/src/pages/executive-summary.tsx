@@ -159,6 +159,13 @@ export default function ExecutiveSummary() {
   };
 
   const performanceSummary = (outcomeTotals as any)?.performanceSummary;
+  const currentValueWindow = (performanceSummary as any)?.currentValueWindow;
+  const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
+    && currentValueWindow.startDate <= currentValueWindow.endDate
+    ? `the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`
+    : "this 90-day view";
   const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
   const aggregateMetricValue = (metricName: string): number => {
@@ -790,7 +797,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No campaign KPI has both an available metric and a positive target for this 90-day view.
+                      No campaign KPI has both an available metric and a positive target for {executiveWindowDescription}.
                     </p>
                   </CardContent>
                 </Card>
@@ -805,7 +812,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.
+                      No below-target KPI was found among campaign KPIs with available data and positive targets for {executiveWindowDescription}.
                     </p>
                   </CardContent>
                 </Card>
@@ -866,7 +873,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No campaign benchmark has both an available metric and a positive target for this 90-day view.
+                      No campaign benchmark has both an available metric and a positive target for {executiveWindowDescription}.
                     </p>
                   </CardContent>
                 </Card>
@@ -881,7 +888,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.
+                      No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for {executiveWindowDescription}.
                     </p>
                   </CardContent>
                 </Card>

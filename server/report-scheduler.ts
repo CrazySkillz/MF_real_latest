@@ -1416,6 +1416,13 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Trend metrics", { bold: true, indent: 4 });
       addTrendRows(["sessions", "users", "conversions", "revenue", "spend", "impressions", "clicks"]);
     } else if (section === "executive-summary:overview") {
+      const currentValueWindow = executiveSummary?.performanceSummary?.currentValueWindow;
+      const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
+        && currentValueWindow.startDate <= currentValueWindow.endDate
+        ? `the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`
+        : "this 90-day view";
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
       if (!executiveSummary?.performanceSummary) {
         addText("- Executive Summary source context unavailable.", { indent: 8 });
@@ -1423,18 +1430,18 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addExecutiveMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
       addText("KPI Exceptions", { bold: true, indent: 4 });
       if (executiveKpiRows.length === 0) {
-        addText("- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for this 90-day view.", { indent: 8 });
+        addText(`- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for ${executiveWindowDescription}.`, { indent: 8 });
       } else if (executiveKpiExceptions.length === 0) {
-        addText("- No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.", { indent: 8 });
+        addText(`- No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for ${executiveWindowDescription}.`, { indent: 8 });
       }
       executiveKpiExceptions.forEach((row: any) => {
         addText(`- ${row?.name || row?.metric || "KPI"}: Current ${formatExecutiveRecordValue(row, reportRecordCurrentValue(row))}; Target ${formatExecutiveRecordValue(row, row?.targetValue)} (${executiveKpiProgressPct(row).toFixed(1)}%) - Below Target`, { indent: 8 });
       });
       addText("Benchmark Exceptions", { bold: true, indent: 4 });
       if (executiveBenchmarkRows.length === 0) {
-        addText("- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for this 90-day view.", { indent: 8 });
+        addText(`- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for ${executiveWindowDescription}.`, { indent: 8 });
       } else if (executiveBenchmarkExceptions.length === 0) {
-        addText("- No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.", { indent: 8 });
+        addText(`- No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for ${executiveWindowDescription}.`, { indent: 8 });
       }
       executiveBenchmarkExceptions.forEach((row: any) => {
         const threshold = benchmarkThresholdResult(row);

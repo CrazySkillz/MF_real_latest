@@ -137,6 +137,34 @@ describe("scheduled Executive Summary PDF", () => {
     expect(storageMock.getCampaignBenchmarks).toHaveBeenCalledWith("campaign-1");
   });
 
+  it("labels cumulative Executive Summary exceptions with the aggregate reporting window", async () => {
+    storageMock.getCampaignKPIs.mockResolvedValue([]);
+    storageMock.getCampaignBenchmarks.mockResolvedValue([]);
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          currentValueWindow: {
+            mode: "initial_import_to_latest_completed_day",
+            startDate: "2026-07-02",
+            endDate: "2026-08-25",
+          },
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: executiveReport(["executive-summary:overview"]),
+      windowStart: "2026-07-27",
+      windowEnd: "2026-08-25",
+      campaignName: "Campaign",
+      isTest: true,
+    });
+
+    expect(pdfTextCalls).toContain("- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for the 2026-07-02 to 2026-08-25 reporting window.");
+    expect(pdfTextCalls).toContain("- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for the 2026-07-02 to 2026-08-25 reporting window.");
+  });
+
   it("fails monetary values closed without a valid campaign currency and preserves Monitor severity", async () => {
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "" });
     storageMock.getCampaignKPIs.mockResolvedValue([

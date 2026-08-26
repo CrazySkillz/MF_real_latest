@@ -1668,6 +1668,13 @@ export default function Reports() {
     const addExecutiveOverviewContent = () => {
       const trajectory = campaignExecutiveSummary?.health?.trajectory;
       const trendPct = Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
+      const currentValueWindow = customReportPerformanceSummary?.currentValueWindow;
+      const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
+        && currentValueWindow.startDate <= currentValueWindow.endDate
+        ? `the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`
+        : "this 90-day view";
       const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
       const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(reportRecordCurrentValue(kpi), Number(kpi.target) || 0, reportRecordMetric(kpi), kpi?.name) < 70).length;
       const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status === "behind").length;
@@ -1721,16 +1728,16 @@ export default function Reports() {
       ["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]
         .forEach((key) => addText(`- ${customReportMetricLabels[key] || key}: ${executiveMetricValue(key)}`, { indent: 8 }));
       addText("KPI Exceptions", { bold: true, indent: 4 });
-      if (executiveKpiRows.length === 0) addText("- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for this 90-day view.", { indent: 8 });
-      else if (executiveKpiExceptions.length === 0) addText("- No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.", { indent: 8 });
+      if (executiveKpiRows.length === 0) addText(`- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for ${executiveWindowDescription}.`, { indent: 8 });
+      else if (executiveKpiExceptions.length === 0) addText(`- No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for ${executiveWindowDescription}.`, { indent: 8 });
       executiveKpiExceptions.forEach((kpi: any) => {
         const current = reportRecordCurrentValue(kpi);
         const target = Number(kpi.target) || 0;
         addText(`- ${kpi.name}: ${formatExecutiveRecordValue(kpi, current)} / ${formatExecutiveRecordValue(kpi, target)} (${progressPct(current, target, reportRecordMetric(kpi), kpi?.name).toFixed(1)}%) - ${kpiStatus(kpi)}`, { indent: 8 });
       });
       addText("Benchmark Exceptions", { bold: true, indent: 4 });
-      if (executiveBenchmarkRows.length === 0) addText("- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for this 90-day view.", { indent: 8 });
-      else if (executiveBenchmarkExceptions.length === 0) addText("- No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.", { indent: 8 });
+      if (executiveBenchmarkRows.length === 0) addText(`- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for ${executiveWindowDescription}.`, { indent: 8 });
+      else if (executiveBenchmarkExceptions.length === 0) addText(`- No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for ${executiveWindowDescription}.`, { indent: 8 });
       executiveBenchmarkExceptions.forEach((bm: any) => {
         const current = reportRecordCurrentValue(bm);
         const benchmark = Number(bm.benchmark) || 0;

@@ -564,6 +564,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("KPI Exceptions");
     expect(reports).toContain("Benchmark Exceptions");
     expect(reports).toContain("Risk Assessment");
+    expect(reports).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
+    expect(reports).toContain('`the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`');
+    expect(reports).toContain("for ${executiveWindowDescription}.");
   });
 
   it("keeps consolidated Executive Summary PDF actions evidence-backed and non-speculative", () => {

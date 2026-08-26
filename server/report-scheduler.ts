@@ -8,7 +8,7 @@ import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
-import { computeBenchmarkThresholdResult, isLowerIsBetterKpi } from "../shared/kpi-math";
+import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
@@ -985,8 +985,8 @@ const campaignDeepDiveTabLabels: Record<string, string> = {
   "trend-analysis:funnel": "Conversion Funnel",
   "trend-analysis:platforms": "Platform Breakdown",
   "trend-analysis:insights": "Insights",
-  "executive-summary:overview": "Executive Overview",
-  "executive-summary:recommendations": "Strategic Recommendations",
+  "executive-summary:overview": "Executive Summary",
+  "executive-summary:recommendations": "Executive Summary",
 };
 
 const normalizeCampaignDeepDiveTrendSections = (value: unknown): string[] => {
@@ -997,6 +997,17 @@ const normalizeCampaignDeepDiveTrendSections = (value: unknown): string[] => {
     if (trendIncluded) return [];
     trendIncluded = true;
     return ["trend-analysis:overview"];
+  });
+};
+
+const normalizeCampaignDeepDiveExecutiveSections = (value: unknown): string[] => {
+  const sections = normalizeCampaignDeepDiveTrendSections(value);
+  let executiveSummaryIncluded = false;
+  return sections.flatMap((section) => {
+    if (!section.startsWith("executive-summary:")) return [section];
+    if (executiveSummaryIncluded) return [];
+    executiveSummaryIncluded = true;
+    return ["executive-summary:overview"];
   });
 };
 
@@ -1092,27 +1103,27 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
   const needsKpiRows = selectedSections.some((section) =>
     section === "performance-summary:overview" ||
     section === "performance-summary:health" ||
-    section === "executive-summary:overview" ||
     section === "kpis"
   );
   const needsBenchmarkRows = selectedSections.some((section) =>
     section === "performance-summary:overview" ||
     section === "performance-summary:health" ||
-    section === "executive-summary:overview" ||
     section === "benchmarks"
   );
-  const [campaignMetrics, campaign, kpis, benchmarks] = await Promise.all([
+  const [campaignMetrics, campaign, kpis, benchmarks, executiveKpis, executiveBenchmarks] = await Promise.all([
     aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis }).catch(() => null),
     storage.getCampaign(campaignId).catch(() => null),
     needsKpiRows ? storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []) : Promise.resolve([]),
     needsBenchmarkRows ? storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []) : Promise.resolve([]),
+    needsExecutiveSummary ? storage.getCampaignKPIs(campaignId).catch(() => []) : Promise.resolve([]),
+    needsExecutiveSummary ? storage.getCampaignBenchmarks(campaignId).catch(() => []) : Promise.resolve([]),
   ]);
   const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary || null;
   const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;
   const aggregateSources = Array.isArray(performanceSummary?.sources)
     ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
     : [];
-  const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis, benchmarks } : null;
+  const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis: executiveKpis, benchmarks: executiveBenchmarks } : null;
   return { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources };
 }
 
@@ -1129,9 +1140,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     ? JSON.parse(report.configuration || "{}")
     : (report?.configuration || {});
   const reportType = String(cfg?.reportType || "").trim();
-  const selectedSections = normalizeCampaignDeepDiveTrendSections(cfg?.selectedSections);
+  const selectedSections = normalizeCampaignDeepDiveExecutiveSections(cfg?.selectedSections);
   const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
   const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));
+  const isExecutiveSummaryReport = reportType === "executive-summary" || selectedSections.some((section: string) => section.startsWith("executive-summary:"));
   const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
   const reportContext = campaignId
     ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
@@ -1210,6 +1222,58 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       current: reportRecordCurrentValue(row),
       benchmarkValue: Number(row?.benchmarkValue ?? row?.benchmark) || 0,
     });
+  };
+  const executiveCurrency = String((campaign as any)?.currency || "").trim().toUpperCase();
+  const validExecutiveCurrency = /^[A-Z]{3}$/.test(executiveCurrency) ? executiveCurrency : null;
+  const executiveKpiRows = (Array.isArray((executiveSummary as any)?.kpis) ? (executiveSummary as any).kpis : [])
+    .map((row: any) => {
+      const metricKey = resolveAggregateMetric(row);
+      const targetValue = Number(row?.targetValue ?? row?.target);
+      if (!metricKey || !Number.isFinite(targetValue) || targetValue <= 0) return null;
+      return { ...row, metricKey, currentValue: metricNumber(metricKey), targetValue };
+    })
+    .filter(Boolean);
+  const executiveBenchmarkRows = (Array.isArray((executiveSummary as any)?.benchmarks) ? (executiveSummary as any).benchmarks : [])
+    .map((row: any) => {
+      const metricKey = resolveAggregateMetric(row);
+      const benchmarkValue = Number(row?.benchmarkValue ?? row?.benchmark);
+      if (!metricKey || !Number.isFinite(benchmarkValue) || benchmarkValue <= 0) return null;
+      return { ...row, metricKey, currentValue: metricNumber(metricKey), benchmarkValue };
+    })
+    .filter(Boolean);
+  const executiveKpiProgressPct = (row: any) => {
+    const current = reportRecordCurrentValue(row);
+    const target = Number(row?.targetValue) || 0;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: reportRecordMetric(row), name: row?.name || row?.metric });
+    return target > 0 ? (lowerIsBetter ? (current > 0 ? target / current : 1) : current / target) * 100 : 0;
+  };
+  const executiveKpiBand = (row: any) => {
+    const current = reportRecordCurrentValue(row);
+    const target = Number(row?.targetValue) || 0;
+    const metricKey = reportRecordMetric(row);
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: metricKey, name: row?.name || row?.metric });
+    const policy = resolveKpiThresholdPolicy({ metric: metricKey, name: row?.name || row?.metric, unit: row?.unit, current, target, lowerIsBetter });
+    return classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy }) ?? "below";
+  };
+  const executiveKpiExceptions = executiveKpiRows.filter((row: any) => executiveKpiBand(row) === "below");
+  const executiveBenchmarkExceptions = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status !== "on_track");
+  const formatExecutiveRecordValue = (row: any, value: unknown) => {
+    const metricKey = reportRecordMetric(row);
+    if (["revenue", "spend", "cpc", "cpa", "cpm"].includes(metricKey)) {
+      return validExecutiveCurrency ? formatCampaignDeepDiveMetricValue(metricKey, value, validExecutiveCurrency) : "Unavailable";
+    }
+    return formatCampaignDeepDiveRecordValue(row, value);
+  };
+  const executiveMetricValue = (key: string) => {
+    if (["revenue", "spend", "cpc", "cpa", "cpm"].includes(key) && !validExecutiveCurrency) return "Unavailable";
+    return metricValue(key, validExecutiveCurrency || "USD");
+  };
+  const addExecutiveMetricRows = (keys: string[], indent = 8) => {
+    if (!executiveSummary?.performanceSummary) {
+      addText("- Connected-source aggregate values are unavailable.", { indent });
+      return;
+    }
+    keys.forEach((key) => addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${executiveMetricValue(key)}`, { indent }));
   };
   const addMetricRows = (keys: string[], indent = 8, currency = "USD") => {
     if (!performanceSummary) {
@@ -1356,33 +1420,49 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (!executiveSummary?.performanceSummary) {
         addText("- Executive Summary source context unavailable.", { indent: 8 });
       }
-      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
-      addText("KPI Progress", { bold: true, indent: 4 });
-      addKpiRows();
-      addText("Benchmark Comparison", { bold: true, indent: 4 });
-      addBenchmarkRows();
-      addText("Risk Assessment", { bold: true, indent: 4 });
-      const kpiRisk = (Array.isArray(kpis) ? kpis : []).filter((row: any) => {
-        const current = reportRecordCurrentValue(row);
-        const target = Number(row?.targetValue ?? row?.target) || 0;
-        const lowerIsBetter = isLowerIsBetterKpi({ metric: reportRecordMetric(row), name: row?.name || row?.metric });
-        const progress = target > 0 ? (lowerIsBetter ? (current > 0 ? target / current : 0) : current / target) : 0;
-        return target > 0 && progress < 0.7;
-      }).length;
-      const benchmarkRisk = (Array.isArray(benchmarks) ? benchmarks : []).filter((row: any) => {
-        return benchmarkThresholdResult(row)?.status === "behind";
-      }).length;
-      addText(`- KPI Risk: ${kpiRisk > 0 ? `${kpiRisk} KPI row(s) below 70% of target` : "No mapped KPI rows below 70% of target"}`, { indent: 8 });
-      addText(`- Benchmark Risk: ${benchmarkRisk > 0 ? `${benchmarkRisk} Benchmark row(s) classified behind benchmark` : "No mapped Benchmark rows classified behind"}`, { indent: 8 });
-    } else if (section === "executive-summary:recommendations") {
-      addText("Recommendation basis", { bold: true, indent: 4 });
-      if (!executiveSummary?.performanceSummary) {
-        addText("- Executive Summary source context unavailable.", { indent: 8 });
+      addExecutiveMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
+      addText("KPI Exceptions", { bold: true, indent: 4 });
+      if (executiveKpiRows.length === 0) {
+        addText("- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for this 90-day view.", { indent: 8 });
+      } else if (executiveKpiExceptions.length === 0) {
+        addText("- No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.", { indent: 8 });
       }
-      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
-      addText("Next action: compare below-target KPI or Benchmark rows against landing-page and conversion-path performance before changing spend.", { indent: 4 });
-      addText("Key assumptions", { bold: true, indent: 4 });
-      addText("- Based on connected-source aggregate values available to the scheduler at send time.", { indent: 8 });
+      executiveKpiExceptions.forEach((row: any) => {
+        addText(`- ${row?.name || row?.metric || "KPI"}: Current ${formatExecutiveRecordValue(row, reportRecordCurrentValue(row))}; Target ${formatExecutiveRecordValue(row, row?.targetValue)} (${executiveKpiProgressPct(row).toFixed(1)}%) - Below Target`, { indent: 8 });
+      });
+      addText("Benchmark Exceptions", { bold: true, indent: 4 });
+      if (executiveBenchmarkRows.length === 0) {
+        addText("- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for this 90-day view.", { indent: 8 });
+      } else if (executiveBenchmarkExceptions.length === 0) {
+        addText("- No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.", { indent: 8 });
+      }
+      executiveBenchmarkExceptions.forEach((row: any) => {
+        const threshold = benchmarkThresholdResult(row);
+        const status = threshold.status === "needs_attention" ? "Needs Attention" : "Behind";
+        addText(`- ${row?.name || row?.metric || "Benchmark"}: Yours ${formatExecutiveRecordValue(row, reportRecordCurrentValue(row))}; Benchmark ${formatExecutiveRecordValue(row, row?.benchmarkValue)} (${threshold.labelPct}%) - ${status}`, { indent: 8 });
+      });
+      addText("Risk Assessment", { bold: true, indent: 4 });
+      const kpiRiskCount = executiveKpiRows.filter((row: any) => executiveKpiProgressPct(row) < 70).length;
+      const kpiMonitorCount = executiveKpiExceptions.filter((row: any) => executiveKpiProgressPct(row) >= 70).length;
+      const benchmarkRiskCount = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status === "behind").length;
+      const benchmarkMonitorCount = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status === "needs_attention").length;
+      const kpiRiskStatus = kpiRiskCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable";
+      const benchmarkRiskStatus = benchmarkRiskCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable";
+      addText(`- KPI Risk: ${kpiRiskStatus} - ${kpiRiskCount > 0 ? `${kpiRiskCount} KPI row(s) below 70% of target` : kpiMonitorCount > 0 ? `${kpiMonitorCount} KPI row(s) below target policy but at or above the 70% risk cutoff` : executiveKpiRows.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available"}`, { indent: 8 });
+      addText(`- Benchmark Risk: ${benchmarkRiskStatus} - ${benchmarkRiskCount > 0 ? `${benchmarkRiskCount} Benchmark row(s) classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional row(s) need attention` : ""}` : benchmarkMonitorCount > 0 ? `${benchmarkMonitorCount} Benchmark row(s) need attention; none is classified behind` : executiveBenchmarkRows.length > 0 ? "Mapped Benchmarks are on track" : "No evaluable campaign Benchmarks available"}`, { indent: 8 });
+      addText("Recommended Actions", { bold: true, indent: 4 });
+      const paidSources = aggregateSources.filter((source: any) => source?.category !== "web_analytics" && Array.isArray(source?.includedMetrics) && ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName)));
+      const hasWebAnalytics = aggregateSources.some((source: any) => source?.category === "web_analytics");
+      const hasWebsiteEvidence = hasWebAnalytics && (metricAvailable("users") || metricAvailable("sessions")) && (metricAvailable("conversions") || metricAvailable("revenue"));
+      if (paidSources.length === 0 && hasWebsiteEvidence) {
+        const evidence = ["users", "sessions", "conversions", "revenue", "cvr"].filter(metricAvailable).map((key) => `${campaignDeepDiveMetricLabels[key] || key}: ${executiveMetricValue(key)}`);
+        const targetMetrics = new Set([...executiveKpiRows, ...executiveBenchmarkRows].map((row: any) => reportRecordMetric(row)).filter((key: string) => ["cvr", "revenue", "conversions"].includes(key)));
+        addText("- Review website conversion path before making paid-media budget decisions.", { indent: 8 });
+        addText(`- Current evidence: ${evidence.join(", ")}.`, { indent: 8 });
+        addText(targetMetrics.size > 0 ? `- KPI or Benchmark targets exist for ${Array.from(targetMetrics).map((key) => campaignDeepDiveMetricLabels[key] || key).join(", ")}; compare against those targets before judging quality.` : "- No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.", { indent: 8 });
+      } else {
+        addText("- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.", { indent: 8 });
+      }
     } else {
       addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
     }
@@ -1393,7 +1473,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
   addText(isFinancialAnalysisReport
     ? "Metric basis: cumulative connected-source traffic through the latest completed reporting day; financial values are campaign-to-date."
-    : `Window: ${windowStart} to ${windowEnd}`);
+    : isExecutiveSummaryReport
+      ? "Metric basis: 90-day connected-source aggregate through scheduler generation time."
+      : `Window: ${windowStart} to ${windowEnd}`);
   addText(`Generated: ${new Date().toLocaleString()}`);
   y += 4;
   addText("Included sections", { size: 14, bold: true });

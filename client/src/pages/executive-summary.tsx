@@ -1,13 +1,11 @@
-import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, Info, FlaskConical, ChevronDown } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, Info, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
@@ -15,28 +13,23 @@ import { format } from "date-fns";
 import { formatPct } from "@shared/metric-math";
 import { classifyKpiBandWithPolicy, computeAttainmentFillPct, computeAttainmentPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
-const EXECUTIVE_SUMMARY_TABS = new Set(["overview", "recommendations"]);
+function formatExecutiveCurrency(amount: number, currencyCode: unknown, showCents: boolean = false): string {
+  const normalizedCurrency = String(currencyCode || "").trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(normalizedCurrency)) return "Unavailable";
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: normalizedCurrency,
+      minimumFractionDigits: showCents ? 2 : 0,
+      maximumFractionDigits: showCents ? 2 : 0,
+    }).format(amount);
+  } catch {
+    return "Unavailable";
+  }
+}
 
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
-  const [demoMode, setDemoMode] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => {
-    try {
-      const hashTab = window.location.hash.replace("#", "");
-      return EXECUTIVE_SUMMARY_TABS.has(hashTab) ? hashTab : "overview";
-    } catch {
-      return "overview";
-    }
-  });
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    try {
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${tab}`);
-    } catch {
-      // Ignore environments without history support.
-    }
-  };
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -44,13 +37,10 @@ export default function ExecutiveSummary() {
   });
 
   const { data: executiveSummary, isLoading: summaryLoading, error: summaryError } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "executive-summary", demoMode ? "demo" : "live"],
+    queryKey: ["/api/campaigns", campaignId, "executive-summary", "live"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (demoMode) params.set("demo", "1");
-      const url = `/api/campaigns/${campaignId}/executive-summary${params.toString() ? "?" + params.toString() : ""}`;
-      const resp = await fetch(url);
+      const resp = await fetch(`/api/campaigns/${campaignId}/executive-summary`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
@@ -62,11 +52,11 @@ export default function ExecutiveSummary() {
   });
 
   const executiveOutcomeDateRange = "90days";
-  const { data: outcomeTotals } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, demoMode ? "demo" : "live", "executive-summary"],
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, "live", "executive-summary"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}${demoMode ? "&demo=1" : ""}`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}`;
       const resp = await fetch(url, { credentials: "include" });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
@@ -78,7 +68,7 @@ export default function ExecutiveSummary() {
     staleTime: 0,
   });
 
-  if (campaignLoading || summaryLoading) {
+  if (campaignLoading || summaryLoading || outcomeTotalsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -126,14 +116,9 @@ export default function ExecutiveSummary() {
     return num.toLocaleString();
   };
 
-  const formatCurrency = (amount: number, showCents: boolean = false) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: showCents ? 2 : 0,
-      maximumFractionDigits: showCents ? 2 : 0,
-    }).format(amount);
-  };
+  const executiveCurrency = String((campaign as any)?.currency || "").trim().toUpperCase();
+  const formatCurrency = (amount: number, showCents: boolean = false) =>
+    formatExecutiveCurrency(amount, executiveCurrency, showCents);
 
   // Format text strings that contain dollar amounts with commas
   const formatRecommendationText = (text: string): string => {
@@ -173,7 +158,7 @@ export default function ExecutiveSummary() {
     }
   };
 
-  const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;
+  const performanceSummary = (outcomeTotals as any)?.performanceSummary;
   const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
   const aggregateMetricValue = (metricName: string): number => {
@@ -202,7 +187,7 @@ export default function ExecutiveSummary() {
   const formatAggregateRatio = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(1)}x` : "Unavailable";
   const getRecommendationExpectedImpactItems = (rec: any): string[] => {
-    if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")];
+    if (rec?.category !== "Website Outcomes") return [];
     const webMetrics: string[] = [];
     if (aggregateMetricAvailable("users")) webMetrics.push(`${Math.round(aggregateMetricValue("users")).toLocaleString()} users`);
     if (aggregateMetricAvailable("sessions")) webMetrics.push(`${Math.round(aggregateMetricValue("sessions")).toLocaleString()} sessions`);
@@ -325,7 +310,7 @@ export default function ExecutiveSummary() {
     String(kpi?.metricKey || kpi?.metric || "__custom__");
   const resolveExecutiveKpiTargetState = (kpi: any) => {
     const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
-    const current = Number(kpi.current ?? kpi.currentValue) || 0;
+    const current = Number(kpi.current) || 0;
     const target = Number(kpi.target ?? kpi.targetValue) || 0;
     const lowerIsBetter = isLowerIsBetterKpi({ metric: executiveKpiMetric, name: kpi?.name || kpi?.metric });
     const policy = resolveKpiThresholdPolicy({
@@ -350,14 +335,28 @@ export default function ExecutiveSummary() {
   };
   const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)
     ? (executiveSummary as any).kpiProgress
+      .map((kpi: any) => {
+        const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
+        if (!aggregateKpiMetric) return null;
+        const target = Number(kpi.target ?? kpi.targetValue);
+        if (!Number.isFinite(target) || target <= 0) return null;
+        return {
+          ...kpi,
+          metricKey: aggregateKpiMetric,
+          current: aggregateMetricValue(aggregateKpiMetric),
+          target,
+        };
+      })
+      .filter(Boolean)
     : [];
   const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)
     ? (executiveSummary as any).benchmarkComparison
       .map((bm: any) => {
         const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
         if (!aggregateBenchmarkMetric) return null;
-        const yours = Number(bm.yours ?? bm.currentValue) || 0;
-        const benchmark = Number(bm.benchmark) || 0;
+        const yours = aggregateMetricValue(aggregateBenchmarkMetric);
+        const benchmark = Number(bm.benchmark);
+        if (!Number.isFinite(benchmark) || benchmark <= 0) return null;
         const threshold = computeBenchmarkThresholdResult({
           metric: aggregateBenchmarkMetric,
           name: bm?.name || bm?.metric,
@@ -376,6 +375,15 @@ export default function ExecutiveSummary() {
       })
       .filter(Boolean)
     : [];
+  const executiveKpiExceptions = executiveKpiProgress.filter((kpi: any) =>
+    resolveExecutiveKpiTargetState(kpi).band === "below"
+  );
+  const executiveBenchmarkExceptions = executiveBenchmarkComparison.filter((bm: any) => bm.status !== "on_track");
+  const sourceBackedRecommendations = Array.isArray((executiveSummary as any).recommendations)
+    ? (executiveSummary as any).recommendations
+      .filter((rec: any) => rec?.category === "Website Outcomes")
+      .slice(0, 3)
+    : [];
   const kpiProgressPct = (kpi: any): number => {
     const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
     const current = Number(kpi.current ?? kpi.currentValue) || 0;
@@ -390,6 +398,9 @@ export default function ExecutiveSummary() {
   };
   const riskKpiMissCount = executiveKpiProgress.filter((kpi: any) => kpiProgressPct(kpi) < 70).length;
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
+  const kpiMonitorCount = executiveKpiExceptions.filter((kpi: any) => kpiProgressPct(kpi) >= 70).length;
+  const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;
+  const hasMonitorConditions = kpiMonitorCount > 0 || benchmarkMonitorCount > 0;
   const riskFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [];
   const trendPercentage = Number((executiveSummary as any)?.health?.trendPercentage) || 0;
   const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
@@ -420,12 +431,26 @@ export default function ExecutiveSummary() {
     ? "high"
     : displayedRiskFactors.length > 0 ? "medium" : "low";
   const displayedRiskExplanation = displayedRiskLevel === "low"
-    ? "No configured risk factors identified from available connected-source inputs."
+    ? hasMonitorConditions
+      ? "No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring."
+      : "No configured risk factors identified from available connected-source inputs."
     : "Risk factors are based on the same connected-source inputs used by the visible Executive Summary metrics.";
   const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
+  const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
+  const kpiRiskDetail = riskKpiMissCount > 0
+    ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target${kpiMonitorCount > 0 ? `; ${kpiMonitorCount} additional KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : ""}`
+    : kpiMonitorCount > 0
+      ? `${kpiMonitorCount} KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff`
+      : executiveKpiProgress.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available";
+  const benchmarkRiskStatus = riskBenchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable";
+  const benchmarkRiskDetail = riskBenchmarkMissCount > 0
+    ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}`
+    : benchmarkMonitorCount > 0
+      ? `${benchmarkMonitorCount} benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention; none is classified behind`
+      : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available";
   const riskInputRows = [
-    { label: "KPI Risk", status: riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable", detail: riskKpiMissCount > 0 ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` : executiveKpiProgress.length > 0 ? "Mapped KPIs are at or above 70% of target" : "No mapped campaign KPIs available" },
-    { label: "Benchmark Risk", status: riskBenchmarkMissCount > 0 ? "Risk" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable", detail: riskBenchmarkMissCount > 0 ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind benchmark` : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are not classified behind" : "No mapped campaign benchmarks available" },
+    { label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail },
+    { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
     { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
     { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? [aggregateMetricAvailable("roi") ? `ROI ${formatAggregatePercent("roi")}` : null, aggregateMetricAvailable("roas") ? `ROAS ${formatAggregateRatio("roas")}` : null].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
     { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
@@ -469,37 +494,11 @@ export default function ExecutiveSummary() {
                   <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant={demoMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setDemoMode(!demoMode)}
-                >
-                  <FlaskConical className="w-4 h-4 mr-1" />
-                  {demoMode ? "Demo On" : "Demo Data"}
-                </Button>
-              </div>
             </div>
           </div>
 
-          {demoMode && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <FlaskConical className="w-4 h-4 inline mr-1" />
-                Showing demo data for testing. Toggle off to see real executive summary data.
-              </p>
-            </div>
-          )}
-
-          {/* Executive Summary Tabs */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Executive Overview</TabsTrigger>
-              <TabsTrigger value="recommendations">Strategic Recommendations</TabsTrigger>
-            </TabsList>
-
-            {/* Executive Overview Tab */}
-            <TabsContent value="overview" className="space-y-6">
+          {/* Executive Summary */}
+          <div className="space-y-6">
               {/* Campaign Trajectory & Risk */}
               <Card className="mb-6">
                 <CardContent className="p-6">
@@ -780,18 +779,48 @@ export default function ExecutiveSummary() {
                 </Card>
               </div>
 
-              {/* KPI Progress */}
-              {executiveKpiProgress.length > 0 && (
+              {/* KPI Exceptions */}
+              {executiveKpiProgress.length === 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Target className="w-5 h-5" />
-                      <span>KPI Progress</span>
+                      <span>KPI Status Unavailable</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      No campaign KPI has both an available metric and a positive target for this 90-day view.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              {executiveKpiProgress.length > 0 && executiveKpiExceptions.length === 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span>No KPI Exceptions</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              {executiveKpiExceptions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Target className="w-5 h-5" />
+                      <span>KPIs Needing Attention</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {executiveKpiProgress.map((kpi: any, index: number) => {
+                      {executiveKpiExceptions.map((kpi: any, index: number) => {
                         const targetState = resolveExecutiveKpiTargetState(kpi);
                         const { executiveKpiMetric, current, target, band, fillPct } = targetState;
                         const statusLabel = band === "above" ? 'Above Target' :
@@ -826,18 +855,48 @@ export default function ExecutiveSummary() {
                 </Card>
               )}
 
-              {/* Benchmark Comparison */}
-              {executiveBenchmarkComparison.length > 0 && (
+              {/* Benchmark Exceptions */}
+              {executiveBenchmarkComparison.length === 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Award className="w-5 h-5" />
-                      <span>Benchmark Comparison</span>
+                      <span>Benchmark Status Unavailable</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      No campaign benchmark has both an available metric and a positive target for this 90-day view.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              {executiveBenchmarkComparison.length > 0 && executiveBenchmarkExceptions.length === 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span>No Benchmark Exceptions</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              {executiveBenchmarkExceptions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Award className="w-5 h-5" />
+                      <span>Benchmarks Needing Attention</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {executiveBenchmarkComparison.map((bm: any, index: number) => (
+                      {executiveBenchmarkExceptions.map((bm: any, index: number) => (
                         <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border">
                           <div className="flex items-center space-x-3">
                             <div className={`w-2 h-8 rounded-full ${bm.status === 'on_track' ? 'bg-green-500' : bm.status === 'needs_attention' ? 'bg-yellow-500' : 'bg-red-500'}`} />
@@ -882,8 +941,8 @@ export default function ExecutiveSummary() {
                   {displayedRiskFactors.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground/70">
                       <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
-                      <p className="font-medium">No configured risk factors identified</p>
-                      <p className="text-sm">Based on available connected-source inputs checked below.</p>
+                      <p className="font-medium">No configured risk factors meet the risk thresholds</p>
+                      <p className="text-sm">{hasMonitorConditions ? "Lower-severity exceptions are identified as Monitor in the inputs below." : "Based on available connected-source inputs checked below."}</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -927,10 +986,10 @@ export default function ExecutiveSummary() {
                 </CardContent>
               </Card>
 
-            </TabsContent>
-
-            {/* Strategic Recommendations Tab */}
-            <TabsContent value="recommendations" className="space-y-6">
+              {/* Recommended Actions */}
+              <div className="pt-2">
+                <h2 className="text-2xl font-semibold text-foreground">Recommended Actions</h2>
+              </div>
               {/* Data Accuracy Notice */}
               {(executiveSummary as any).metadata?.dataAccuracy?.platformsExcludedFromRecommendations?.length > 0 && (
                 <Card className="border-border bg-muted">
@@ -966,35 +1025,21 @@ export default function ExecutiveSummary() {
                 </Card>
               )}
 
-              {/* Enterprise Disclaimer */}
-              {(executiveSummary as any).metadata?.disclaimer && (
-                <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-900 dark:text-blue-100">
-                        {(executiveSummary as any).metadata.disclaimer}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {(executiveSummary as any).recommendations.length === 0 ? (
+              {sourceBackedRecommendations.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center text-muted-foreground/70">
                     <div className="mb-4">
                       <Zap className="w-12 h-12 mx-auto text-muted-foreground/70" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
-                      No Recommendations Available
+                      No Evidence-Backed Actions Available
                     </h3>
-                    <p>Campaign is performing well. Continue monitoring for optimization opportunities.</p>
+                    <p>Available campaign data and configured targets do not support a reliable recommendation yet.</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="space-y-4">
-                  {(executiveSummary as any).recommendations.map((rec: any, index: number) => (
+                  {sourceBackedRecommendations.map((rec: any, index: number) => (
                     <Card key={index}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
@@ -1017,84 +1062,21 @@ export default function ExecutiveSummary() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
-                          <div className="grid gap-4 md:grid-cols-3">
-                            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                              <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">Expected Impact</div>
-                              {rec?.category === "Website Outcomes" ? (
-                                <ul className="list-disc pl-4 space-y-1 text-sm text-green-700 dark:text-green-300">
-                                  {getRecommendationExpectedImpactItems(rec).map((item, idx) => (
-                                    <li key={idx}>{item}</li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <div className="text-sm text-green-700 dark:text-green-300">{getRecommendationExpectedImpactItems(rec)[0]}</div>
-                              )}
-                            </div>
-                            
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                              <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Timeframe</div>
-                              <div className="text-sm text-blue-700 dark:text-blue-300">{rec.timeline}</div>
-                            </div>
-                            
-                            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                              <div className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-1">Investment Required</div>
-                              <div className="text-sm text-purple-700 dark:text-purple-300">{formatRecommendationText(rec.investmentRequired)}</div>
-                            </div>
-                          </div>
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">Current Evidence and Next Step</div>
+                          <ul className="list-disc pl-4 space-y-1 text-sm text-green-700 dark:text-green-300">
+                            {getRecommendationExpectedImpactItems(rec).map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
 
-                          {/* Scenario Planning */}
-                          {rec.scenarios && (
-                            <div className="border-t pt-4">
-                              <div className="text-sm font-semibold text-foreground mb-3">Projected Scenarios</div>
-                              <div className="grid gap-3 md:grid-cols-3">
-                                <div className="p-3 bg-muted rounded border border-border">
-                                  <div className="text-xs font-medium text-muted-foreground/70 mb-1">Best Case</div>
-                                  <div className="text-sm font-semibold text-foreground">{formatRecommendationText(rec.scenarios.bestCase)}</div>
-                                </div>
-                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
-                                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Expected</div>
-                                  <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">{formatRecommendationText(rec.scenarios.expected)}</div>
-                                </div>
-                                <div className="p-3 bg-muted rounded border border-border">
-                                  <div className="text-xs font-medium text-muted-foreground/70 mb-1">Worst Case</div>
-                                  <div className="text-sm font-semibold text-foreground">{formatRecommendationText(rec.scenarios.worstCase)}</div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Assumptions */}
-                          {rec.assumptions && rec.assumptions.length > 0 && (
-                            <div className="border-t pt-4">
-                              <div className="text-sm font-semibold text-foreground mb-2">Key Assumptions</div>
-                              <ul className="space-y-1">
-                                {rec.assumptions.map((assumption: string, idx: number) => (
-                                  <li key={idx} className="text-sm text-muted-foreground/70 flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>{assumption}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {/* Recommendation-specific disclaimer */}
-                          {rec.disclaimer && (
-                            <div className="border-t pt-4">
-                              <div className="text-xs italic text-muted-foreground/70 bg-muted p-3 rounded">
-                                {rec.disclaimer}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
+          </div>
         </main>
       </div>
     </div>

@@ -328,12 +328,12 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain('addText("Selected section content", { size: 14, bold: true });');
     expect(scheduler).toContain("selectedSections.forEach(addSelectedSectionBody);");
     expect(scheduler).toContain("Marketing Funnel Performance");
-    expect(scheduler).toContain("KPI Progress");
-    expect(scheduler).toContain("Benchmark Comparison");
+    expect(scheduler).toContain("KPI Exceptions");
+    expect(scheduler).toContain("Benchmark Exceptions");
     expect(scheduler).toContain("Risk Assessment");
     expect(scheduler).toContain("Platform Performance Summary Cards");
     expect(scheduler).toContain("Trend metrics");
-    expect(scheduler).toContain("Recommendation basis");
+    expect(scheduler).toContain("Recommended Actions");
   });
 
   it("keeps scheduled Budget & Financial PDFs aligned with campaign pacing metadata", () => {
@@ -450,12 +450,14 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain('needsBenchmarkRows ? storage.getPlatformBenchmarks("google_analytics", campaignId)');
     expect(scheduler).not.toContain("needsKpiRows ? storage.getCampaignKPIs(campaignId)");
     expect(scheduler).not.toContain("needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId)");
+    expect(scheduler).toContain("needsExecutiveSummary ? storage.getCampaignKPIs(campaignId)");
+    expect(scheduler).toContain("needsExecutiveSummary ? storage.getCampaignBenchmarks(campaignId)");
     expect(scheduler).toContain("formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.current)");
     expect(scheduler).toContain("formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.yours)");
-    expect(scheduler).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis, benchmarks } : null;");
+    expect(scheduler).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis: executiveKpis, benchmarks: executiveBenchmarks } : null;");
     expect(scheduler).toContain("if (!executiveSummary?.performanceSummary)");
     expect(scheduler).toContain("Marketing Funnel Performance");
-    expect(scheduler).toContain("Recommendation basis");
+    expect(scheduler).toContain("Recommended Actions");
   });
 
   it("does not allow scheduled Campaign DeepDive PDFs to fall back to metadata-only section names", () => {
@@ -489,7 +491,6 @@ describe("campaign Custom Report regression guard", () => {
       "platform-comparison": 'section.startsWith("platform-comparison:")',
       "trend-analysis": 'section.startsWith("trend-analysis:")',
       "executive-summary:overview": 'section === "executive-summary:overview"',
-      "executive-summary:recommendations": 'section === "executive-summary:recommendations"',
     };
 
     expect(tabKeys.length).toBeGreaterThan(0);
@@ -533,7 +534,7 @@ describe("campaign Custom Report regression guard", () => {
       "financial-analysis": ['section.startsWith("financial-analysis:")', "addFinancialAnalysisContent(section)"],
       "platform-comparison": ['section.startsWith("platform-comparison:")', "addPlatformComparisonContent(section)"],
       "trend-analysis": ['section.startsWith("trend-analysis:")', "addTrendAnalysisContent(section)"],
-      "executive-summary": ['section === "executive-summary:overview"', 'section === "executive-summary:recommendations"', "addExecutiveOverviewContent()", "addExecutiveRecommendationsContent()"],
+      "executive-summary": ['section === "executive-summary:overview"', "addExecutiveOverviewContent()", "addExecutiveRecommendationsContent()"],
     };
 
     expect(menuReportTypes).toEqual(Object.keys(dedicatedRendererGates));
@@ -542,36 +543,44 @@ describe("campaign Custom Report regression guard", () => {
     }
   });
 
-  it("renders Executive Overview PDF exports with the live tab section set", () => {
+  it("renders one consolidated Executive Summary PDF section with the live section set", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const reportTypeBlock = reports.slice(reports.indexOf('key: "executive-summary"'), reports.indexOf("];", reports.indexOf('key: "executive-summary"')));
 
     expect(reports).toContain('fetch(`/api/campaigns/${campaignContextId}/executive-summary`, { credentials: "include" })');
+    expect(reportTypeBlock.match(/executive-summary:[a-z-]+/g)).toEqual(["executive-summary:overview"]);
+    expect(reportTypeBlock).toContain('label: "Executive Summary"');
+    expect(reports).toContain("let executiveSummaryIncluded = false;");
+    expect(reports).toContain('return ["executive-summary:overview"];');
     expect(reports).toContain("const addExecutiveOverviewContent = () => {");
     expect(reports).toContain('if (section === "executive-summary:overview")');
+    expect(reports).not.toContain('section === "executive-summary:recommendations"');
+    expect(reports).toContain("addExecutiveOverviewContent();");
+    expect(reports).toContain("addExecutiveRecommendationsContent();");
     expect(reports).toContain("7-Day Snapshot Trajectory");
     expect(reports).toContain("Risk Level");
     expect(reports).toContain("Executive Summary");
     expect(reports).toContain("Marketing Funnel Performance");
-    expect(reports).toContain("KPI Progress");
-    expect(reports).toContain("Benchmark Comparison");
+    expect(reports).toContain("KPI Exceptions");
+    expect(reports).toContain("Benchmark Exceptions");
     expect(reports).toContain("Risk Assessment");
   });
 
-  it("renders Strategic Recommendations PDF exports with the live tab section set", () => {
+  it("keeps consolidated Executive Summary PDF actions evidence-backed and non-speculative", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const recommendationsStart = reports.indexOf("const addExecutiveRecommendationsContent = () => {");
+    const recommendationsEnd = reports.indexOf("const addMetricList =", recommendationsStart);
+    const recommendations = reports.slice(recommendationsStart, recommendationsEnd);
 
-    expect(reports).toContain("const addExecutiveRecommendationsContent = () => {");
-    expect(reports).toContain('section === "executive-summary:recommendations"');
-    expect(reports).toContain("Data Accuracy Notice");
-    expect(reports).toContain("Data Freshness Alert");
-    expect(reports).toContain("Enterprise Disclaimer");
-    expect(reports).toContain("No Recommendations Available");
-    expect(reports).toContain("Expected Impact");
-    expect(reports).toContain("Timeframe:");
-    expect(reports).toContain("Investment Required:");
-    expect(reports).toContain("Projected Scenarios");
-    expect(reports).toContain("Key Assumptions");
-    expect(reports).toContain("Recommendation Disclaimer");
+    expect(recommendations).toContain('rec?.category === "Website Outcomes"');
+    expect(recommendations).toContain("Data Accuracy Notice");
+    expect(recommendations).toContain("Data Freshness Alert");
+    expect(recommendations).toContain("Recommended Actions");
+    expect(recommendations).toContain("No Evidence-Backed Actions Available");
+    expect(recommendations).not.toContain("Enterprise Disclaimer");
+    expect(recommendations).not.toContain("Projected Scenarios");
+    expect(recommendations).not.toContain("Investment Required:");
+    expect(recommendations).not.toContain("Recommendation Disclaimer");
   });
 
   it("renders Performance Summary PDF exports with the live tab section set", () => {

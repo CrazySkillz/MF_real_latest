@@ -93,8 +93,7 @@ const campaignDeepDiveReportTypes = [
     key: "executive-summary",
     label: "Executive Summary",
     tabs: [
-      { key: "executive-summary:overview", label: "Executive Overview" },
-      { key: "executive-summary:recommendations", label: "Strategic Recommendations" },
+      { key: "executive-summary:overview", label: "Executive Summary" },
     ],
   },
 ];
@@ -102,11 +101,19 @@ const campaignDeepDiveReportTypes = [
 const normalizeTrendReportSections = (value: unknown): string[] => {
   const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
   let trendIncluded = false;
+  let executiveSummaryIncluded = false;
   return sections.flatMap((section) => {
-    if (!section.startsWith("trend-analysis:")) return [section];
-    if (trendIncluded) return [];
-    trendIncluded = true;
-    return ["trend-analysis:overview"];
+    if (section.startsWith("trend-analysis:")) {
+      if (trendIncluded) return [];
+      trendIncluded = true;
+      return ["trend-analysis:overview"];
+    }
+    if (section.startsWith("executive-summary:")) {
+      if (executiveSummaryIncluded) return [];
+      executiveSummaryIncluded = true;
+      return ["executive-summary:overview"];
+    }
+    return [section];
   });
 };
 
@@ -1133,6 +1140,22 @@ export default function Reports() {
       const metric = customReportPerformanceSummary?.totals?.[key];
       return metric?.available === true ? Number(metric.value) || 0 : 0;
     };
+    const executiveCurrency = String(campaignFinancialContext?.currency || "").trim().toUpperCase();
+    const formatExecutiveCurrency = (value: number) => {
+      if (!/^[A-Z]{3}$/.test(executiveCurrency)) return "Unavailable";
+      try {
+        return new Intl.NumberFormat("en-US", { style: "currency", currency: executiveCurrency, maximumFractionDigits: 2 }).format(value);
+      } catch {
+        return "Unavailable";
+      }
+    };
+    const executiveMetricValue = (key: string) => {
+      const metric = customReportPerformanceSummary?.totals?.[key];
+      if (metric?.available !== true) return metricValue(key);
+      return ["revenue", "spend", "cpc", "cpa", "cpm"].includes(key)
+        ? formatExecutiveCurrency(Number(metric.value) || 0)
+        : formatCustomReportMetricValue(key, metric.value);
+    };
     const progressPct = (current: number, target: number, metricKey: string, name?: string) => {
       if (target <= 0) return 0;
       const lowerIsBetter = isLowerIsBetterKpi({ metric: metricKey, name });
@@ -1155,6 +1178,13 @@ export default function Reports() {
     const reportRecordCurrentValue = (record: any) => {
       const value = Number(record?.currentValue ?? record?.current ?? record?.yours);
       return Number.isFinite(value) ? value : 0;
+    };
+    const formatExecutiveRecordValue = (record: any, value: unknown) => {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) return "Unavailable";
+      return ["revenue", "spend", "cpc", "cpa", "cpm"].includes(reportRecordMetric(record))
+        ? formatExecutiveCurrency(numericValue)
+        : formatCustomReportRecordValue(record, numericValue);
     };
     const kpiTargetValue = (kpi: any) => Number(kpi.targetValue ?? kpi.target) || 0;
     const benchmarkTargetValue = (benchmark: any) => Number(benchmark.benchmarkValue ?? benchmark.benchmark) || 0;
@@ -1190,6 +1220,8 @@ export default function Reports() {
       return status === "on_track" ? "On Track" : status === "needs_attention" ? "Needs Attention" : "Behind";
     };
     const benchmarkProgressLabel = (benchmark: any) => benchmarkThresholdResult(benchmark).labelPct;
+    const executiveKpiExceptions = executiveKpiRows.filter((kpi: any) => kpiBand(kpi) === "below");
+    const executiveBenchmarkExceptions = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status !== "on_track");
     const performanceHealthScore = () => {
       const total = performanceKpiRows.length + performanceBenchmarkRows.length;
       if (total === 0) return null;
@@ -1611,18 +1643,26 @@ export default function Reports() {
       }
     };
     const recommendationImpactItems = (rec: any) => {
-      if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")].filter(Boolean);
+      if (rec?.category !== "Website Outcomes") return [];
       const webMetrics: string[] = [];
       if (metricAvailable("users")) webMetrics.push(`${Math.round(metricNumber("users")).toLocaleString()} users`);
       if (metricAvailable("sessions")) webMetrics.push(`${Math.round(metricNumber("sessions")).toLocaleString()} sessions`);
       if (metricAvailable("conversions")) webMetrics.push(`${Math.round(metricNumber("conversions")).toLocaleString()} conversions`);
-      if (metricAvailable("revenue")) webMetrics.push(metricValue("revenue"));
+      if (metricAvailable("revenue")) webMetrics.push(executiveMetricValue("revenue"));
       if (metricAvailable("cvr")) webMetrics.push(`${metricNumber("cvr").toFixed(1)}% conversion rate`);
+      const targetMetrics = new Set([...executiveKpiRows, ...executiveBenchmarkRows]
+        .map((row: any) => reportRecordMetric(row))
+        .filter((key: string) => ["cvr", "revenue", "conversions"].includes(key)));
       return [
         webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "",
-        metricAvailable("revenue") && metricAvailable("conversions") ? `Revenue is ${metricValue("revenue")} from ${Math.round(metricNumber("conversions")).toLocaleString()} conversions.` : "",
+        metricAvailable("revenue") && metricAvailable("conversions") ? `Revenue is ${executiveMetricValue("revenue")} from ${Math.round(metricNumber("conversions")).toLocaleString()} conversions.` : "",
         metricAvailable("cvr") ? `Conversion rate is ${metricNumber("cvr").toFixed(1)}%.` : "",
-        formatRecommendationText(rec?.expectedImpact || ""),
+        targetMetrics.size > 0
+          ? `KPI or Benchmark targets exist for ${Array.from(targetMetrics).map((key) => customReportMetricLabels[key] || key).join(", ")}; compare against those targets before judging quality.`
+          : "No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.",
+        targetMetrics.size > 0
+          ? "Next action: inspect landing pages or conversion paths for outcome metrics below target before increasing spend."
+          : "Next action: create or confirm outcome targets before judging quality.",
       ].filter(Boolean);
     };
     const addExecutiveOverviewContent = () => {
@@ -1631,6 +1671,8 @@ export default function Reports() {
       const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
       const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(reportRecordCurrentValue(kpi), Number(kpi.target) || 0, reportRecordMetric(kpi), kpi?.name) < 70).length;
       const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status === "behind").length;
+      const kpiMonitorCount = executiveKpiExceptions.filter((kpi: any) => progressPct(reportRecordCurrentValue(kpi), Number(kpi.target) || 0, reportRecordMetric(kpi), kpi?.name) >= 70).length;
+      const benchmarkMonitorCount = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status === "needs_attention").length;
       const aggregateSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
       const paidSources = aggregateSources.filter((source: any) =>
         source?.connected === true &&
@@ -1650,9 +1692,21 @@ export default function Reports() {
         ? "high"
         : (roiRoasRisk || trendRisk || paidConcentrationRisk || kpiMissCount > 0 || benchmarkMissCount > 0 || freshnessWarnings.length > 0) ? "medium" : "low";
       const metricSummary = [metricAvailable("roi") ? `ROI is ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS is ${metricValue("roas")}` : ""].filter(Boolean);
+      const kpiRiskStatus = kpiMissCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable";
+      const kpiRiskDetail = kpiMissCount > 0
+        ? `${kpiMissCount} KPI${kpiMissCount === 1 ? " is" : "s are"} below 70% of target${kpiMonitorCount > 0 ? `; ${kpiMonitorCount} additional KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : ""}`
+        : kpiMonitorCount > 0
+          ? `${kpiMonitorCount} KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff`
+          : executiveKpiRows.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available";
+      const benchmarkRiskStatus = benchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable";
+      const benchmarkRiskDetail = benchmarkMissCount > 0
+        ? `${benchmarkMissCount} benchmark${benchmarkMissCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}`
+        : benchmarkMonitorCount > 0
+          ? `${benchmarkMonitorCount} benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention; none is classified behind`
+          : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available";
       const riskInputRows = [
-        { label: "KPI Risk", status: kpiMissCount > 0 ? "Risk" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable", detail: kpiMissCount > 0 ? `${kpiMissCount} KPI${kpiMissCount === 1 ? " is" : "s are"} below 70% of target` : executiveKpiRows.length > 0 ? "Mapped KPIs are at or above 70% of target" : "No mapped campaign KPIs available" },
-        { label: "Benchmark Risk", status: benchmarkMissCount > 0 ? "Risk" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkMissCount > 0 ? `${benchmarkMissCount} benchmark${benchmarkMissCount === 1 ? " is" : "s are"} classified behind benchmark` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are not classified behind" : "No mapped campaign benchmarks available" },
+        { label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail },
+        { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
         { label: "Data Freshness", status: freshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: freshnessWarnings.length > 0 ? `${freshnessWarnings.length} stale source warning${freshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
         { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : metricAvailable("roi") || metricAvailable("roas") ? "No Risk" : "Not Applicable", detail: metricAvailable("roi") || metricAvailable("roas") ? [metricAvailable("roi") ? `ROI ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS ${metricValue("roas")}` : ""].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
         { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : trajectory ? "No Risk" : "Not Enough History", detail: trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
@@ -1664,20 +1718,23 @@ export default function Reports() {
       addText("Executive Summary", { bold: true, indent: 4 });
       addText(`${report.campaignName || "Campaign"}: ${metricSummary.length > 0 ? `Current connected-source metrics show ${metricSummary.join(" and ")}.` : "Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS."} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
-      addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
-      addText("KPI Progress", { bold: true, indent: 4 });
-      if (executiveKpiRows.length === 0) addText("- No mapped campaign KPI rows available.", { indent: 8 });
-      executiveKpiRows.forEach((kpi: any) => {
+      ["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]
+        .forEach((key) => addText(`- ${customReportMetricLabels[key] || key}: ${executiveMetricValue(key)}`, { indent: 8 }));
+      addText("KPI Exceptions", { bold: true, indent: 4 });
+      if (executiveKpiRows.length === 0) addText("- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for this 90-day view.", { indent: 8 });
+      else if (executiveKpiExceptions.length === 0) addText("- No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for this 90-day view.", { indent: 8 });
+      executiveKpiExceptions.forEach((kpi: any) => {
         const current = reportRecordCurrentValue(kpi);
         const target = Number(kpi.target) || 0;
-        addText(`- ${kpi.name}: ${formatCustomReportRecordValue(kpi, current)} / ${formatCustomReportRecordValue(kpi, target)} (${progressPct(current, target, reportRecordMetric(kpi), kpi?.name).toFixed(1)}%)`, { indent: 8 });
+        addText(`- ${kpi.name}: ${formatExecutiveRecordValue(kpi, current)} / ${formatExecutiveRecordValue(kpi, target)} (${progressPct(current, target, reportRecordMetric(kpi), kpi?.name).toFixed(1)}%) - ${kpiStatus(kpi)}`, { indent: 8 });
       });
-      addText("Benchmark Comparison", { bold: true, indent: 4 });
-      if (executiveBenchmarkRows.length === 0) addText("- No mapped campaign Benchmark rows available.", { indent: 8 });
-      executiveBenchmarkRows.forEach((bm: any) => {
+      addText("Benchmark Exceptions", { bold: true, indent: 4 });
+      if (executiveBenchmarkRows.length === 0) addText("- Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for this 90-day view.", { indent: 8 });
+      else if (executiveBenchmarkExceptions.length === 0) addText("- No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for this 90-day view.", { indent: 8 });
+      executiveBenchmarkExceptions.forEach((bm: any) => {
         const current = reportRecordCurrentValue(bm);
         const benchmark = Number(bm.benchmark) || 0;
-        addText(`- ${bm.metric || bm.name}: Yours ${formatCustomReportRecordValue(bm, current)}; Benchmark ${formatCustomReportRecordValue(bm, benchmark)} (${benchmarkProgressLabel(bm)}%)`, { indent: 8 });
+        addText(`- ${bm.metric || bm.name}: Yours ${formatExecutiveRecordValue(bm, current)}; Benchmark ${formatExecutiveRecordValue(bm, benchmark)} (${benchmarkProgressLabel(bm)}%) - ${benchmarkStatus(bm)}`, { indent: 8 });
       });
       addText("Risk Assessment", { bold: true, indent: 4 });
       riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
@@ -1687,7 +1744,9 @@ export default function Reports() {
         ? campaignExecutiveSummary.metadata.dataAccuracy.platformsExcludedFromRecommendations
         : [];
       const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
-      const recommendations = Array.isArray(campaignExecutiveSummary?.recommendations) ? campaignExecutiveSummary.recommendations : [];
+      const recommendations = Array.isArray(campaignExecutiveSummary?.recommendations)
+        ? campaignExecutiveSummary.recommendations.filter((rec: any) => rec?.category === "Website Outcomes").slice(0, 3)
+        : [];
 
       if (excludedPlatforms.length > 0) {
         addText("Data Accuracy Notice", { bold: true, indent: 4 });
@@ -1697,39 +1756,15 @@ export default function Reports() {
         addText("Data Freshness Alert", { bold: true, indent: 4 });
         freshnessWarnings.forEach((warning: any) => addText(`- ${warning.source}: ${warning.message}`, { indent: 8 }));
       }
-      if (campaignExecutiveSummary?.metadata?.disclaimer) {
-        addText("Enterprise Disclaimer", { bold: true, indent: 4 });
-        addText(campaignExecutiveSummary.metadata.disclaimer, { indent: 8 });
-      }
+      addText("Recommended Actions", { bold: true, indent: 4 });
       if (recommendations.length === 0) {
-        addText("No Recommendations Available", { bold: true, indent: 4 });
-        addText("Campaign is performing well. Continue monitoring for optimization opportunities.", { indent: 8 });
+        addText("- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.", { indent: 8 });
         return;
       }
 
       recommendations.forEach((rec: any, index: number) => {
-        addText(`Recommendation ${index + 1}: ${formatRecommendationText(rec.action || "")}`, { bold: true, indent: 4 });
-        addText(`Category: ${rec.category || "Uncategorized"}`, { indent: 8 });
-        if (rec.priority) addText(`Priority: ${rec.priority}`, { indent: 8 });
-        if (rec.confidence) addText(`Confidence: ${rec.confidence}`, { indent: 8 });
-        addText("Expected Impact", { bold: true, indent: 8 });
+        addText(`- ${formatRecommendationText(rec.action || `Recommendation ${index + 1}`)}`, { bold: true, indent: 8 });
         recommendationImpactItems(rec).forEach((item) => addText(`- ${item}`, { indent: 12 }));
-        addText(`Timeframe: ${rec.timeline || "Not specified"}`, { bold: true, indent: 8 });
-        addText(`Investment Required: ${formatRecommendationText(rec.investmentRequired || "Not specified")}`, { bold: true, indent: 8 });
-        if (rec.scenarios) {
-          addText("Projected Scenarios", { bold: true, indent: 8 });
-          addText(`- Best Case: ${formatRecommendationText(rec.scenarios.bestCase || "")}`, { indent: 12 });
-          addText(`- Expected: ${formatRecommendationText(rec.scenarios.expected || "")}`, { indent: 12 });
-          addText(`- Worst Case: ${formatRecommendationText(rec.scenarios.worstCase || "")}`, { indent: 12 });
-        }
-        if (Array.isArray(rec.assumptions) && rec.assumptions.length > 0) {
-          addText("Key Assumptions", { bold: true, indent: 8 });
-          rec.assumptions.forEach((assumption: string) => addText(`- ${assumption}`, { indent: 12 }));
-        }
-        if (rec.disclaimer) {
-          addText("Recommendation Disclaimer", { bold: true, indent: 8 });
-          addText(rec.disclaimer, { indent: 12 });
-        }
       });
     };
     const addMetricList = (keys: string[]) => {
@@ -1882,7 +1917,6 @@ export default function Reports() {
       addText(getReportTabLabel(report.type, section), { size: 14, bold: true });
       if (section === "executive-summary:overview") {
         addExecutiveOverviewContent();
-      } else if (section === "executive-summary:recommendations") {
         addExecutiveRecommendationsContent();
       } else if (section.startsWith("performance-summary:")) {
         addPerformanceSummaryContent(section);

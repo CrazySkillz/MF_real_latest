@@ -219,7 +219,7 @@ describe("GA4 Benchmark regression guard", () => {
     const scheduledRiskEnd = schedulerFile.indexOf('} else if (section === "executive-summary:recommendations")', scheduledRiskStart);
     const scheduledRiskSection = schedulerFile.slice(scheduledRiskStart, scheduledRiskEnd);
     expect(schedulerFile).toContain("const benchmarkThresholdResult = (row: any) => {");
-    expect(scheduledRiskSection).toContain('benchmarkThresholdResult(row)?.status === "behind"');
+    expect(scheduledRiskSection).toContain('benchmarkThresholdResult(row).status === "behind"');
     expect(scheduledRiskSection).not.toContain("below 70% of benchmark");
   });
 

@@ -51,6 +51,7 @@ vi.mock("./analytics", () => ({ ga4Service: ga4ServiceMock }));
 vi.mock("./db", () => ({ db: null, pool: null }));
 vi.mock("@clerk/express", () => ({ getAuth: vi.fn(() => ({ userId: "owner-1" })) }));
 vi.mock("./utils/campaign-current-values", () => ({
+  getCampaignMetricTotals: vi.fn(),
   refreshCampaignCurrentValuesForCampaign: refreshCampaignCurrentValuesForCampaignMock,
   resolveCampaignCurrentValueForAlert: resolveCampaignCurrentValueForAlertMock,
 }));

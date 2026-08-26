@@ -221,7 +221,7 @@ describe("campaign Executive Summary regression guard", () => {
       dataThroughDate: "2026-08-25",
       reportingTimeZone: "Europe/Amsterdam",
     };
-    const ga4 = { connected: true, available: true, users: 1184, sessions: 1183, conversions: 152, revenue: 34273 };
+    const ga4 = { connected: true, available: true, users: 1184, sessions: 1179, conversions: 152, revenue: 34273 };
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "production-fixture",
       dateRange: "90days",
@@ -236,13 +236,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(aggregate.currentValueWindow).toEqual(currentValueWindow);
     expect(Object.fromEntries(Object.entries(aggregate.totals).map(([key, value]) => [key, value.value]))).toMatchObject({
       users: 1184,
-      sessions: 1183,
+      sessions: 1179,
       conversions: 152,
       revenue: 51072.99,
       spend: 2699.75,
       roas: 18.92,
       roi: 1791.77,
-      cvr: 12.85,
+      cvr: 12.89,
       cpa: 17.76,
     });
   });
@@ -505,6 +505,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
     expect(page).toContain("Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10");
+    expect(page).toContain('GA4-native outcomes cover ${executiveWindowDescription}; connected ${sourceToDateFinancialLabel}');
+    expect(page).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
     expect(page).toContain('if (rec?.category !== "Website Outcomes") return [];');
     expect(page).toContain('if (aggregateMetricAvailable("users")) webMetrics.push');
@@ -727,6 +729,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(reports).toContain('if (!/^[A-Z]{3}$/.test(executiveCurrency)) return "Unavailable";');
     expect(reports).toContain("currency: executiveCurrency");
     expect(overview).toContain("executiveMetricValue(key)");
+    expect(overview).toContain('GA4-native outcomes cover ${executiveWindowDescription}; connected ${customReportSourceToDateFinancialLabel}');
+    expect(overview).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
     expect(overview).toContain("formatExecutiveRecordValue(kpi, current)");
     expect(overview).toContain("formatExecutiveRecordValue(bm, current)");
     expect(reports).toContain('const executiveKpiExceptions = executiveKpiRows.filter((kpi: any) => kpiBand(kpi) === "below");');

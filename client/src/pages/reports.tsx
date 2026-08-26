@@ -1154,6 +1154,11 @@ export default function Reports() {
     const customReportHasPaidMediaSource = customReportAllSources.some((source: any) =>
       source?.connected === true && source?.category === "paid_media"
     );
+    const customReportSourceToDateFinancialKinds = [
+      customReportAllSources.some((source: any) => source?.connected === true && source?.category === "financial" && source?.includedMetrics?.includes("revenue")) ? "revenue" : null,
+      customReportPerformanceSummary?.totals?.spend?.sources?.includes("canonical_spend_sources") ? "spend" : null,
+    ].filter(Boolean) as string[];
+    const customReportSourceToDateFinancialLabel = customReportSourceToDateFinancialKinds.join(" and ");
     const executiveCurrency = String(campaignFinancialContext?.currency || "").trim().toUpperCase();
     const formatExecutiveCurrency = (value: number) => {
       if (!/^[A-Z]{3}$/.test(executiveCurrency)) return "Unavailable";
@@ -1756,7 +1761,12 @@ export default function Reports() {
       addText(`7-Day Snapshot Trajectory: ${trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough history"}`, { bold: true, indent: 4 });
       addText(`Risk Level: ${displayedRiskLevel.toUpperCase()}`, { bold: true, indent: 4 });
       addText("Executive Summary", { bold: true, indent: 4 });
-      addText(`${report.campaignName || "Campaign"}: ${metricSummary.length > 0 ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary.join(" and ")}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
+      const metricNarrative = metricSummary.length > 0
+        ? customReportHasAuthoritativeGA4Window && customReportSourceToDateFinancialKinds.length > 0
+          ? `GA4-native outcomes cover ${executiveWindowDescription}; connected ${customReportSourceToDateFinancialLabel} ${customReportSourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${metricSummary.join(" and ")}.`
+          : `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary.join(" and ")}.`
+        : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
+      addText(`${report.campaignName || "Campaign"}: ${metricNarrative} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
       ["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]
         .forEach((key) => addText(`- ${customReportMetricLabels[key] || key}: ${executiveMetricValue(key)}`, { indent: 8 }));

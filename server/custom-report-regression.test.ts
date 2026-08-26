@@ -567,6 +567,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
     expect(reports).toContain('`the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`');
     expect(reports).toContain("for ${executiveWindowDescription}.");
+    expect(reports).toContain('GA4-native outcomes cover ${executiveWindowDescription}; connected ${customReportSourceToDateFinancialLabel}');
+    expect(reports).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
   });
 
   it("keeps consolidated Executive Summary PDF actions evidence-backed and non-speculative", () => {

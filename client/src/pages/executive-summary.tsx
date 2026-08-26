@@ -179,6 +179,11 @@ export default function ExecutiveSummary() {
     const metric = aggregateMetric(metricName);
     return metric?.available === true && metric?.value !== null ? Number(metric.value) || 0 : 0;
   };
+  const sourceToDateFinancialKinds = [
+    aggregateSources.some((source: any) => source?.connected === true && source?.category === "financial" && source?.includedMetrics?.includes("revenue")) ? "revenue" : null,
+    aggregateMetric("spend")?.sources?.includes("canonical_spend_sources") ? "spend" : null,
+  ].filter(Boolean) as string[];
+  const sourceToDateFinancialLabel = sourceToDateFinancialKinds.join(" and ");
   const aggregateMetricReason = (metricName: string): string => {
     if ((metricName === "clicks" || metricName === "impressions") && !aggregateMetricAvailable(metricName)) {
       return "Unavailable from connected sources";
@@ -284,7 +289,9 @@ export default function ExecutiveSummary() {
   if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);
   if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);
   const executiveMetricSummary = executiveMetricParts.length > 0
-    ? `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
+    ? hasAuthoritativeGA4Window && sourceToDateFinancialKinds.length > 0
+      ? `GA4-native outcomes cover ${executiveWindowDescription}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
+      : `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
     : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
   const executiveTrajectory = hasAuthoritativeGA4Window ? null : (executiveSummary as any)?.health?.trajectory;
   const executiveTrajectorySummary = executiveTrajectory

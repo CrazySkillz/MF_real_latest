@@ -246,7 +246,7 @@ Current campaign-scoped Report Type menu:
 - `Performance Summary`: `Overview`, `Campaign Health`, `What's Changed`, `Insights`
 - `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
 - `Platform Comparison`: `Overview`, `Performance Metrics`, `Financial Comparison`, `Insights`
-- `Trend Analysis`: `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, `Insights`
+- `Trend Analysis`: `Executive View`
 - `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
 
 ### Commit 6: Regression Coverage
@@ -338,8 +338,9 @@ Custom Report is production-ready when:
 - Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for aggregate connected-source values and campaign-scoped GA4 KPI/Benchmark record values for health rows in the GA4-first version
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
 - Downloaded Platform Comparison PDFs include the same major sections shown in the selected Platform Comparison web tabs, using `/outcome-totals.performanceSummary.sources` for connected-source rows and source capability gating for paid-media-only comparison sections
-- Downloaded Trend Analysis PDFs include the same major sections shown in the selected Trend Analysis web tabs, using `/trend-analysis` source-aware daily aggregates for trend windows, efficiency, funnel, platform breakdown, and insights
-- `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, `/trend-analysis` when Trend Analysis tabs are selected, campaign context, and campaign-scoped GA4 KPIs and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
+- Downloaded Trend Analysis PDFs expose one canonical `Executive View`, using the source-aware `/trend-analysis` aggregate and exact calendar dates for the current 90-day report summary
+- `Download latest report` must refetch `/outcome-totals` and `/trend-analysis` when the Trend Analysis Executive View is selected, then use those current values immediately; GA4-only rows are clamped to the saved initial-import boundary and latest completed reporting day
+- legacy saved `trend-analysis:*` selections normalize to one `trend-analysis:overview` section so old report configurations remain compatible without rendering duplicate retired-tab content
 - Scheduled create mode uses `Schedule Automated Report`, defaults to `Daily`, and shows `Schedule Report` in the same filled primary button style as `Download Report`
 - Monthly schedule mode must show day-of-month choices: 1st day, 15th day, or last day of month
 - Quarterly schedule mode must show timing choices: start of quarter or end of quarter
@@ -361,7 +362,7 @@ Custom Report is production-ready when:
 
 Open production-readiness tasks before Custom Report can be called fully production-ready:
 
-- [x] Add dedicated Trend Analysis PDF parity so selected Trend Analysis tabs export real section content instead of relying on generic fallback output.
+- [x] Add dedicated Trend Analysis PDF parity so the canonical Executive View exports real source-aware trend content instead of generic fallback output.
 - [x] Make scheduled Campaign DeepDive PDFs include selected section body content from latest campaign data, not only report metadata and selected section names.
 - [x] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
 - [x] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
@@ -439,7 +440,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Performance Summary PDF section parity fix added on 2026-05-29.
 - Budget & Financial Analysis PDF section parity fix added on 2026-05-29 and expanded to include nested card/row parity for Campaign Health Score, Budget Pacing & Burn Rate, source performance, allocation, and insight sections.
 - Platform Comparison PDF section parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure instead of the generic DeepDive metric-list fallback.
-- Trend Analysis PDF section parity fix added on 2026-05-30: selected Trend Analysis tabs now export dedicated Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights section content from the source-aware trend aggregate instead of generic fallback output.
+- Trend Analysis PDF section parity was originally added on 2026-05-30. It was superseded on 2026-08-26 by the single `Executive View` report composition: legacy Trend selections normalize to `trend-analysis:overview`, browser and scheduled consumers use exact calendar dates, and GA4-only report rows are clamped to the authoritative cumulative boundary.
+- Commit `cd35bba1` deployed the Trend report-consumer correction. Focused Trend/Custom Report regression tests passed `56/56`, TypeScript and production build passed, read-only production-data PDF parity returned Sessions `1,183`, Users `1,184`, and Conversions `152`, and the deployed Reports bundle exposed only `Executive View` as the selectable Trend section.
 - Scheduled Campaign DeepDive PDF body-content fix added on 2026-05-30: scheduled email attachments now include selected tab body sections from latest server-side campaign aggregate inputs, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs instead of only report metadata and selected tab names.
 - Local validation passed on 2026-05-30 for scheduled Campaign DeepDive PDF body content: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Commit 5 scheduled PDF final regression coverage added on 2026-05-30: regression tests now compare current Campaign DeepDive report type/tab composition against the scheduled PDF renderer so new tabs cannot silently fall back to metadata-only scheduled attachments.

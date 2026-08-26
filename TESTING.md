@@ -348,7 +348,7 @@ curl -X POST https://your-app.onrender.com/api/campaigns/{CAMPAIGN_ID}/ga4/mock-
 | yesop-brand | 500 | 750 | 2,250 | 38 | $2,850 | $950 |
 | yesop-prospecting | 300 | 420 | 1,260 | 18 | $1,350 | $680 |
 
-Run this daily to build up time-series data for Insights and Trend Analysis tabs.
+Run this daily to build up time-series data for GA4 Insights and the Campaign DeepDive Trend Analysis charts.
 
 ### Trigger KPI/Benchmark Jobs Manually
 ```bash

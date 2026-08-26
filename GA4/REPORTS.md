@@ -170,7 +170,9 @@ Important meaning:
 - downloaded Performance Summary PDFs should include the selected web-tab section structure: Overview, Campaign Health, What's Changed, and Insights exports should each include their major live-tab subsections instead of a generic metric list
 - downloaded Budget & Financial Analysis PDFs should include the selected web-tab section structure down to the visible card and row level: Overview, ROI & ROAS, Cost Analysis, Budget Allocation, and Insights exports should each include the nested live-tab cards/rows instead of a generic metric list
 - downloaded Platform Comparison PDFs should include the selected web-tab section structure: Overview, Performance Metrics, Financial Comparison, and Insights exports should each include their major live-tab subsections instead of a generic metric list
-- downloaded Trend Analysis PDFs should include the selected web-tab section structure: Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights exports should use the source-aware `/trend-analysis` aggregate instead of generic fallback output
+- Campaign DeepDive Trend Analysis reports expose one selectable section: `Executive View` (`trend-analysis:overview`)
+- browser and scheduled Trend PDFs use the source-aware `/trend-analysis` aggregate, clamp GA4-only rows to the authoritative initial-import-to-latest-completed-day boundary, and filter the current 90-day report summary by exact calendar dates
+- legacy saved Trend section keys normalize to the single Executive View, preventing duplicate retired-tab content while preserving saved report compatibility
 - one-off generated/downloaded Campaign DeepDive reports should not create a report card, while scheduled reports should appear directly on the campaign-scoped Reports page
 - the standalone `/reports` route retains its separate report-library tabs and browser storage behavior
 - the scheduled report card download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
@@ -189,7 +191,7 @@ Campaign-scoped Report Type menu:
 - `Performance Summary`: `Overview`, `Campaign Health`, `What's Changed`, `Insights`
 - `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
 - `Platform Comparison`: `Overview`, `Performance Metrics`, `Financial Comparison`, `Insights`
-- `Trend Analysis`: `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, `Insights`
+- `Trend Analysis`: `Executive View`
 - `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
 
 Custom report output order rule:

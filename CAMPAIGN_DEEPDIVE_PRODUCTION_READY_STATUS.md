@@ -38,11 +38,22 @@ they do not filter revenue or spend. The post-certification commits changed only
 Budget consumer/helper and its focused regression test, not protected GA4 runtime,
 storage, routes, calculations, or machine certification records.
 
+Trend Analysis reconciliation (2026-08-26): the current consumer through `cd35bba1`
+renders one comprehensive Executive View rather than five visible tabs. GA4-only
+traffic totals remain cumulative from the saved initial-import boundary through the
+latest completed reporting day. The `7/14/30/90-day` selector changes exact cumulative
+comparison dates and chart windows, not the current totals. Sparse daily rows remain
+calendar gaps. Browser and scheduled Trend report consumers expose one `Executive View`,
+normalize legacy Trend selections, and use exact calendar dates within the authoritative
+GA4 boundary.
+
 ## Current Implementation And Certification Status
 
 Do not use this top-level file as a current whole-section production certification. The implemented shared aggregate and corrected Performance Summary value paths are locally regression-covered, but each subsection and source remains bounded by its own exact-SHA readiness evidence. The 2026-08-21 documentation reconciliation does not certify the current repository SHA.
 
-The remaining validation items can wait until mock-live historical data and future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation and Commit 15 browser smoke passed on 2026-06-04 and are tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 18 browser validation, live OAuth, and deployed scheduled-report evidence remain separate. Instagram Commit 1 documentation validation and Commit 2 API/source-contract validation passed, Commit 3 schema/storage foundation is implemented, Commit 4A-4F backend-only contract work is pushed and validation passed, Commit 5A Create Campaign option, Commit 5B test setup path, Commit 5C finalization guard, Commit 5D query invalidation, and Commit 5E Create Campaign closeout validation passed by connecting to the Instagram test account. Instagram Commit 6A Connected Platforms backend status, Commit 6B card shell, Commit 6C add-source setup, Commit 6D state/invalidation, and Commit 6E Connected Platforms closeout validation passed by connecting to the Instagram test account; Commit 6F Connected Platforms disconnect UI mapping validation passed by disconnecting Instagram from Connected Platforms; Commit 7A Campaign Overview source-status boundary, Commit 7B unavailable metric state, Commit 7C source-backed daily-row metric read, and Commit 7D Campaign Overview validation closeout passed by connecting to the Instagram test account; Commit 8A Instagram analytics route shell, Commit 8B daily metrics endpoint, Commit 8C Overview tab, Commit 8D Campaign Breakdown tab, Commit 8E unavailable/error/freshness states, and Commit 8F guarded analytics link/validation closeout validation passed by connecting to the Instagram test account; Commit 9A Instagram aggregate source builder, Commit 9B aggregate source composition, Commit 9C Meta/Facebook plus Instagram no-double-counting guard, Commit 9D Campaign DeepDive aggregate route wiring, and Commit 9E aggregate validation closeout validation passed by connecting to the Instagram test account; Commit 10A Instagram financial platform-context allowlist, Commit 10B spend source identity guard, Commit 10C revenue source identity guard, and Commit 10D revenue/spend validation closeout validation passed by connecting to the Instagram test account and running focused regression checks; Commit 11A-11F refresh and scheduler foundation validation passed through `npm run check` plus the focused regression suite; Commit 12A-12F validation passed for lifecycle, test data, core metrics, and Campaign DeepDive source-backed inclusion; Commit 13A Instagram KPI current-value source contract, Commit 13B Instagram Benchmark current-value source contract, Commit 13C Instagram analytics tab shell cleanup, Commit 13D Instagram KPI tab management UI parity, Commit 13E Instagram test-mode missing daily-row self-heal, Commit 13F Instagram Create KPI modal parity, Commit 13G Instagram Create KPI modal input constraints, Commit 13H Instagram analytics connection loading-state stability, Commit 13I Instagram Overview metrics loading-state stability, Commit 13J Instagram Benchmark tab management UI parity, Commit 13K Instagram Ad Comparison selected-campaign UI parity, and Commit 13L Instagram Insights tab source-backed UI parity are pushed with user validation pending; Commit 13M Instagram Insights missing-data and revenue-readiness guidance is implemented locally; the startup migration correction for Commit 5C is pushed, and source-specific planning is tracked in `INSTAGRAM_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+Trend Analysis is production-ready only for the exact GA4-only boundary recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; future/refined source mixes still require their own source-specific proof.
+
+The remaining source-specific validation items can wait until future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation and Commit 15 browser smoke passed on 2026-06-04 and are tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 18 browser validation, live OAuth, and deployed scheduled-report evidence remain separate. Instagram Commit 1 documentation validation and Commit 2 API/source-contract validation passed, Commit 3 schema/storage foundation is implemented, Commit 4A-4F backend-only contract work is pushed and validation passed, Commit 5A Create Campaign option, Commit 5B test setup path, Commit 5C finalization guard, Commit 5D query invalidation, and Commit 5E Create Campaign closeout validation passed by connecting to the Instagram test account. Instagram Commit 6A Connected Platforms backend status, Commit 6B card shell, Commit 6C add-source setup, Commit 6D state/invalidation, and Commit 6E Connected Platforms closeout validation passed by connecting to the Instagram test account; Commit 6F Connected Platforms disconnect UI mapping validation passed by disconnecting Instagram from Connected Platforms; Commit 7A Campaign Overview source-status boundary, Commit 7B unavailable metric state, Commit 7C source-backed daily-row metric read, and Commit 7D Campaign Overview validation closeout passed by connecting to the Instagram test account; Commit 8A Instagram analytics route shell, Commit 8B daily metrics endpoint, Commit 8C Overview tab, Commit 8D Campaign Breakdown tab, Commit 8E unavailable/error/freshness states, and Commit 8F guarded analytics link/validation closeout validation passed by connecting to the Instagram test account; Commit 9A Instagram aggregate source builder, Commit 9B aggregate source composition, Commit 9C Meta/Facebook plus Instagram no-double-counting guard, Commit 9D Campaign DeepDive aggregate route wiring, and Commit 9E aggregate validation closeout validation passed by connecting to the Instagram test account; Commit 10A Instagram financial platform-context allowlist, Commit 10B spend source identity guard, Commit 10C revenue source identity guard, and Commit 10D revenue/spend validation closeout validation passed by connecting to the Instagram test account and running focused regression checks; Commit 11A-11F refresh and scheduler foundation validation passed through `npm run check` plus the focused regression suite; Commit 12A-12F validation passed for lifecycle, test data, core metrics, and Campaign DeepDive source-backed inclusion; Commit 13A Instagram KPI current-value source contract, Commit 13B Instagram Benchmark current-value source contract, Commit 13C Instagram analytics tab shell cleanup, Commit 13D Instagram KPI tab management UI parity, Commit 13E Instagram test-mode missing daily-row self-heal, Commit 13F Instagram Create KPI modal parity, Commit 13G Instagram Create KPI modal input constraints, Commit 13H Instagram analytics connection loading-state stability, Commit 13I Instagram Overview metrics loading-state stability, Commit 13J Instagram Benchmark tab management UI parity, Commit 13K Instagram Ad Comparison selected-campaign UI parity, and Commit 13L Instagram Insights tab source-backed UI parity are pushed with user validation pending; Commit 13M Instagram Insights missing-data and revenue-readiness guidance is implemented locally; the startup migration correction for Commit 5C is pushed, and source-specific planning is tracked in `INSTAGRAM_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
 Instagram revenue import is now explicitly planned as Commit 13N-A through 13N-E before report work and before Commit 14 final validation, because final Instagram production-readiness evidence should include the same explicit, source-scoped revenue attribution path proven for LinkedIn. Commit 13N-A shared revenue wizard Instagram context foundation, Commit 13N-B Instagram Overview revenue source controls, and Commit 13N-C Instagram Overview financial metrics are done, pushed, and user-validated. Commit 13N-D Instagram KPI/Benchmark/Insights revenue current values and Commit 13N-E revenue lifecycle invalidation/regression closeout are implemented locally with user validation pending.
 
@@ -59,25 +70,21 @@ LinkedIn is validated as production-ready for the current supported implementati
 
 ## Outstanding Validation Items
 
-### 1. Trend Analysis Historical Validation
+### 1. Trend Analysis Future Source Validation
 
-Status: pending mock-live historical data.
+Status: the exact GA4-only Trend boundary is production-ready at deployed commit `cd35bba1`; future/refined main-source mixes remain source-specific work.
 
-Why it remains open:
+Proven for the GA4-only boundary:
 
-- Trend Analysis depends on historical daily rows and compatible aggregate snapshots.
-- Current code wiring and regression coverage prove the aggregate path, but full historical accuracy requires controlled daily data across multiple days.
+- current values use the fixed initial-import boundary through the latest completed reporting day
+- all `7/14/30/90-day` selections use exact comparison dates and exact calendar chart windows
+- missing exact historical and financial comparison inputs fail closed
+- browser and scheduled report consumers normalize legacy selections to one Executive View
 
-When to complete:
+Still required for a new source mix:
 
-- After connecting a mock-live GA4 account or other controlled source with enough daily history.
-
-Expected proof:
-
-- Trend Analysis uses only connected-source metrics.
-- Day-over-day, 7-day, and longer trend comparisons use compatible `trend_analysis_aggregate_v1` data.
-- GA4-only campaigns show GA4-capable trend metrics only.
-- Paid-media trend metrics remain unavailable until a connected paid-media source supplies them.
+- prove each added main source's scope, capabilities, daily rows, currency, freshness, derived metrics, and missing-data behavior
+- repeat live UI, report, snapshot, and downstream parity for that exact source mix
 
 ### 2. Multi-Source Deployed Validation
 
@@ -134,7 +141,7 @@ Expected proof:
 | Performance Summary | Current cumulative/exact-date implementation documented; current-SHA certification not asserted by this docs-only pass | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, exact-date financial/history reads | Run exact-SHA certification gates separately if a new production-ready claim is required |
 | Budget & Financial Analysis | Current single-page consumer aligned through `1205ed49`; focused regression, TypeScript, and build passed | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` and `financialInputs`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Confirm the latest consumer SHA in production if that deployment has not already been checked; future sources retain their own source-specific validation |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
-| Trend Analysis | Aggregate-backed locally; historical accuracy validation pending | `/api/campaigns/:campaignId/trend-analysis` -> `trend_analysis_aggregate_v1` | Mock-live historical data validation |
+| Trend Analysis | Production-ready for the exact deployed GA4-only boundary at `cd35bba1`; one comprehensive Executive View | `/ga4-daily` + `/outcome-totals.performanceSummary` + exact-date financial comparison + `/trend-analysis` daily aggregate | Repeat source-specific validation for every future/refined main-source mix |
 | Executive Summary | Production-ready locally as an aggregate consumer | `/api/campaigns/:campaignId/executive-summary` plus `/outcome-totals` | Future source-mix deployed validation and source-specific acceptance gates |
 | Custom Report | Production-ready locally for browser/PDF composition | `/reports?campaignId=...`, `/outcome-totals`, `/executive-summary`, `/trend-analysis` | Real scheduled email evidence |
 
@@ -220,12 +227,11 @@ This statement describes architectural and implementation alignment only. It is 
 
 The remaining work is:
 
-1. historical validation for Trend Analysis,
-2. source-specific deployed validation for Google Ads live OAuth, Meta live OAuth, and future/refined integrations such as TikTok,
-3. deployed scheduled Custom Report email evidence.
+1. source-specific deployed validation for Google Ads live OAuth, Meta live OAuth, and future/refined integrations such as TikTok,
+2. deployed scheduled Custom Report email-delivery evidence.
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.
 
-## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
+## 2026-07-30 Historical Commit 10 Status — Superseded For Trend Analysis
 
 Commit `ec265895` deployed the downstream parity correction. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend, and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. Scheduled/manual Campaign DeepDive aggregates follow the ordered campaign-to-date GA4 financial contract, explicit GA4 financial-source context, valid-zero/negative ROAS/ROI semantics, and `performance_summary_aggregate_v2` compatibility. This closes the bounded Commit 10 code/browser packet. Scheduled attachment values, historical Trend behavior, live multi-source variants, and valid-zero/negative production fixtures remain unproven; Campaign DeepDive is not broadly recertified by this closure.

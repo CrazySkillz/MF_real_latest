@@ -18,6 +18,115 @@ The intended product behavior is:
 - Campaign DeepDive subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign DeepDive for child systems already configured within a parent platform.
 - The section should provide a marketing-executive-ready view of how campaign metrics change over time, not another platform-specific drilldown.
 
+## Current Certified Boundary — 2026-08-26
+
+Status: **PRODUCTION_READY for the exact deployed GA4-only Campaign DeepDive Trend boundary at `cd35bba1c4ff4bb0b045c3bc6c176f2847cd80eb`.**
+
+This certification is limited to:
+
+- the audited `ga4_mock` GA4-only campaign and its saved property/filter/source configuration
+- the authoritative cumulative GA4 window `2026-07-02` through `2026-08-25`
+- campaign reporting timezone `Europe/Amsterdam`
+- the single visible Trend Analysis Executive View
+- all `7/14/30/90-day` selector options
+- browser Trend report generation and the scheduled/server Trend PDF content builder
+- persisted GA4 daily rows, financial source records, exact-date comparison behavior, snapshots, and downstream report consumers traced in the audit
+
+It does not certify:
+
+- future or different GA4 properties, campaign filters, currencies, or source configurations without their own parity evidence
+- multi-source Trend behavior for a source that has not passed its own source-specific readiness gate
+- provider or inbox delivery of a future scheduled Custom Report email; that transport gate remains in `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`
+- protected GA4 Overview, KPI, Benchmark, Ad Comparison, Insights, Reports, or machine certification records; none were changed by this Trend work
+
+### Current Visible Implementation
+
+Trend Analysis renders one comprehensive view. The retired tab navigation is not visible. The mounted view contains:
+
+- exact current decision cards
+- `Campaign Performance Trend`
+- `Efficiency Trends`
+- `Website Engagement & Conversion Summary`
+- `Paid Acquisition Funnel` only when a paid-media main source supplies the required inputs
+- `Source Contribution` only when more than one main source is available
+- anomaly context when enough compatible daily history exists
+- `Executive Recommendations`
+
+Legacy tab panels remain unmounted in `client/src/pages/trend-analysis.tsx` for contract-safe cleanup. They do not supply visible values or report composition. The current Reports UI exposes only `trend-analysis:overview`, labelled `Executive View`.
+
+### Current Value And Formula Contract
+
+For the certified GA4-only consumer:
+
+- `Sessions`, `Users`, `Conversions`, and `Engaged Sessions` come from the campaign/property-scoped persisted GA4 daily response and its `overviewTotals`.
+- These traffic totals accumulate from the fixed initial-import date through the latest completed reporting day; they are not rolling `7/14/30/90-day` totals.
+- `CVR = Conversions / Sessions * 100`.
+- `Engagement Rate = Engaged Sessions / Sessions * 100`.
+- `Revenue`, `Spend`, `ROAS`, `ROI`, and `CPA` come from `/outcome-totals.performanceSummary` only when the metric is available, has source provenance, and passes the cumulative-window compatibility checks.
+- `ROAS = Revenue / Spend`.
+- `ROI = (Revenue - Spend) / Spend * 100`.
+- `CPA = Spend / the financial conversion input published by the shared performance summary`; it is not silently relabelled as GA4 traffic conversions when those denominators differ.
+- Currency comes from the campaign currency and exact financial comparisons require the same currency.
+
+### Selector And Comparison Contract
+
+The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
+
+- It controls the Campaign Performance and Efficiency chart calendar window.
+- It sets the exact historical comparison date to `dataThroughDate - selected days`.
+- It does not change the cumulative current traffic totals or campaign-to-date financial totals.
+- Count comparisons show the exact absolute difference and percentage difference.
+- Rate comparisons show percentage-point change.
+- Cumulative comparisons use neutral presentation because cumulative totals naturally increase.
+- A comparison appears only when the exact historical value is reconstructable from compatible persisted rows or an exact compatible financial snapshot.
+- Missing, partial, mismatched-property, mismatched-window, mismatched-timezone, mismatched-currency, duplicate-date, provider-warning, or unavailable exact historical data fails closed.
+- The current cumulative value is never reused as a historical fallback.
+
+### Daily Charts And Missing Data
+
+- Charts use actual persisted daily rows inside the exact selected calendar dates.
+- Missing dates remain gaps; lines do not connect across missing dates.
+- Chart animation is disabled so a stale/placeholder chart does not transform after load.
+- All selector options remain selectable. If the campaign does not yet cover the full requested calendar window, the page explains the available boundary. If the window exists but has no daily activity rows, it shows the exact empty date range and latest recorded date.
+- Efficiency charts render only when their required daily inputs exist. Current financial cards can remain available while daily return/cost trend charts are withheld.
+
+### Current GA4-Only Website Summary
+
+- `Sessions`, `Engaged Sessions`, and `Conversions` are exact cumulative counts.
+- `Engagement rate` and `Conversions per 100 sessions` use the same cumulative numerator/denominator set.
+- The section is a cumulative website engagement/conversion summary, not a claim that Sessions, Engaged Sessions, and Conversions are sequentially attributed funnel stages.
+
+### Executive Recommendation Contract
+
+- Recommendations are contextual guidance derived from the available current, exact-comparison, efficiency, and conversion signals.
+- The selected-window comparison card changes with the selector.
+- Campaign-to-date ROAS and conversion-volume guidance stays labelled as campaign-to-date/cumulative context.
+- Recommendations do not claim causality, automatic improvement, or permission to change spend without business targets and source context.
+
+### Report, Snapshot, And Scheduler Contract
+
+- Browser and scheduled report composition exposes one Trend section: `trend-analysis:overview` / `Executive View`.
+- Any legacy saved `trend-analysis:*` selections normalize to that one section and duplicates are removed.
+- Browser and scheduled Trend PDFs use exact calendar dates rather than splitting sparse rows by record count.
+- The report summary uses a current 90-day calendar window, clamped to the saved GA4 initial-import date and latest completed reporting day.
+- Scheduler snapshots retain `metrics.trendAnalysis.version = trend_analysis_aggregate_v1`; incompatible legacy snapshots remain ineligible for comparison.
+- Trend queries refetch while the page is visible and on window focus, so the next successful daily scheduler refresh propagates through the existing stored-data path without a separate Trend write path.
+
+### Validation Evidence
+
+- deployed health returned exact SHA `cd35bba1c4ff4bb0b045c3bc6c176f2847cd80eb`
+- authenticated read-only parity passed for every visible section and all four selector options
+- actual persisted-record parity at validation returned Revenue `72766.69`, Spend `2699.75`, Sessions `1183`, Users `1184`, Conversions `152`, and Engaged Sessions `809`; derived ROAS, ROI, CPA, CVR, and Engagement Rate matched the formulas above
+- the natural `22:00 UTC` scheduler refreshed the target campaign successfully; 17 failures were read-only classified as mock/test campaigns outside this boundary
+- the active production inventory contained no saved Trend report or Trend snapshot artifact requiring cleanup
+- the exact browser/scheduled PDF builder was exercised read-only against production records and returned the authoritative Sessions `1183`, Users `1184`, and Conversions `152` inside the certified cumulative boundary
+- deployed Reports bundle inspection confirmed one selectable `Executive View` and legacy selection normalization
+- focused tests passed: `server/custom-report-regression.test.ts`, `server/trend-analysis-overview-regression.test.ts`, `server/trend-analysis-window-regression.test.ts`, and `server/trend-analysis-aggregate.test.ts` — `56/56`
+- `npm run check` and `npm run build` passed
+- no production data was mutated by the certification packet
+
+Stable future answer: Trend Analysis is production-ready only for this exact deployed GA4-only boundary. New main sources or a changed relevant implementation require source-specific parity and a renewed affected-boundary review.
+
 ## Required Architecture
 
 Preserve the documented split in `ARCHITECTURE_USER_JOURNEY.md`:
@@ -33,11 +142,11 @@ Do not invent unavailable metrics for sources that do not provide them.
 Do not display platform child revenue/spend inputs as separate main platforms.
 Do not compare incompatible historical snapshots or daily rows.
 
-## Current Root Cause
+## Historical Root Cause — Resolved
 
-`client/src/pages/trend-analysis.tsx` currently performs page-local aggregation from separate hardcoded daily endpoints.
+Before the source-aware aggregate and cumulative-consumer corrections, `client/src/pages/trend-analysis.tsx` performed page-local aggregation from separate hardcoded daily endpoints.
 
-Current implementation issues:
+Historical implementation issues fixed by the commits recorded below:
 
 - It fetches GA4, LinkedIn, Meta, Google Ads, and financial daily endpoints directly instead of using a shared connected-source trend aggregate.
 - It fetches `connectedPlatforms` but does not use it as the source-of-truth filter.
@@ -83,11 +192,11 @@ The issue is an aggregation contract problem, not a single-chart display bug.
 - `server/scheduler.ts`
   - Scheduler snapshots must align with the same aggregate model used by Campaign DeepDive sections.
 
-## Production-Ready Target Contract
+## Production-Ready Target Contract — Achieved
 
-Trend Analysis should consume one campaign-level source-aware trend contract.
+Trend Analysis consumes one campaign-level source-aware trend contract, with the certified GA4-only cumulative consumer layered on the same campaign-scoped inputs.
 
-The safest fix is to reuse the already-built Performance Summary aggregate contract pattern, then add or compose a trend-specific daily aggregate model that follows the same source identity and capability rules.
+The implementation reuses the Performance Summary aggregate contract pattern and composes a trend-specific daily aggregate model that follows the same source identity and capability rules.
 
 The contract should provide:
 
@@ -103,7 +212,7 @@ The contract should provide:
 - unavailable reasons for metrics that cannot be calculated
 - historical compatibility metadata for trend comparisons
 
-Preferred approach:
+Implemented architecture:
 
 - Keep API composition in `server/routes-oauth.ts`.
 - Keep persistence reads in `server/storage.ts`.
@@ -192,7 +301,9 @@ Rules:
 - may be referenced only as provenance if a future UI section explicitly displays financial inputs
 - do not make LinkedIn Ads, Meta Ads, or another ad platform eligible for source-level Trend Analysis unless that ad platform is connected as its own main Connected Platform
 
-## Tab Implementation Plan
+## Historical Multi-Tab Implementation Plan — Superseded
+
+Commits 1 through 7 below record how the aggregate-backed sections were originally introduced. The current product mounts those capabilities together in the single Executive View documented above; the old tab navigation and report composition are retired.
 
 ### Commit 1: Trend Aggregate Contract
 
@@ -269,7 +380,7 @@ Manual Render validation guidance:
 - `Last 7 Days` is acceptable for a quick smoke test, but it provides less history and is more sensitive to missing daily rows.
 - `Last 90 Days` requests 180 days from the aggregate endpoint, but the current GA4 mock simulator returns the current 90-day mock range. That is valid for current 90-day totals, but it may not show previous-period comparison percentages until enough compatible history exists.
 - With GA4 mock-placeholder data, validate source-aware logic only: the request succeeds, the source list contains GA4 only, GA4-capable metrics appear, paid-media-only metrics remain hidden unless available, and the selected dropdown changes the `dateRange`/`days` request.
-- Do not use the mock-placeholder values as proof of final live GA4 numeric accuracy. Final numeric/time-series validation should be done later with the planned mock-live GA4 account that receives controlled daily data.
+- Historical Commit 2 boundary: mock-placeholder values were not final numeric proof. This gate is closed for the exact GA4-only boundary by the 2026-08-26 persisted-record parity above.
 - Commit 2 follow-up fix: Trend Analysis now uses the same deterministic GA4 mock simulation path for `yesop` mock properties as the GA4 platform daily route, then overlays persisted daily rows. This prevents the Overview tab from showing unrelated persisted-only mock rows when the source GA4 page is using simulated mock data.
 - Commit 2 follow-up fix: GA4 engagement rate is normalized before display, so decimal rates such as `0.6` display as `60%`, not `0.6%`.
 - Commit 2 follow-up fix: Overview no longer treats partial historical rows as a complete comparison window. Current values can render from the available daily rows, but comparison percentages appear only after a complete previous window exists for the selected period. If the current selected window is partial, the UI shows how many daily rows are available and explains that full-period comparisons require more history.
@@ -306,7 +417,7 @@ Validation:
 Evidence:
 
 - Regression coverage proves the Efficiency Metrics tab uses `efficiencyTrendData`, consumes derived aggregate metrics such as ROAS, ROI, CPA, and normalized engagement rate, explains unavailable inputs, and no longer references `crossPlatformData`.
-- Final full-period efficiency trend validation should be done later with the planned mock-live GA4 account once enough controlled daily history exists for the selected window.
+- Historical Commit 3 boundary: full-period efficiency evidence was still pending. This gate is closed for the exact GA4-only boundary by the current exact-calendar parity evidence.
 
 ### Commit 4: Conversion Funnel
 
@@ -326,7 +437,7 @@ Root cause fixed:
 - GA4-capable web funnel metrics now render in a separate Web Analytics Funnel section.
 - Paid-media funnel metrics render only when a connected main source provides impressions or clicks.
 - Imported child spend/revenue inside GA4 does not make GA4 eligible for paid-media funnel stages.
-- Partial current windows are disclosed; full-period funnel trend validation should be completed later with the planned mock-live GA4 account after enough daily history exists.
+- Historical Commit 4 boundary: partial current windows were disclosed while full-period evidence was pending. The current GA4-only boundary now has exact-calendar missing-data and cumulative-summary parity.
 
 Files changed:
 
@@ -345,7 +456,7 @@ Evidence:
 Manual validation guidance:
 
 - Current Render validation can prove wiring and source-capability behavior: with only GA4 connected, the Conversion Funnel tab should show Web Analytics Funnel metrics from GA4 and should not show paid-media funnel metrics as available.
-- Full-period historical validation should be completed later with the planned mock-live GA4 account, because funnel trend quality depends on controlled daily rows existing across the selected date window.
+- Historical Commit 4 boundary: full-period historical validation was pending and is superseded for the exact GA4-only boundary by the current certification evidence.
 - For mock-placeholder GA4 data, treat the visible values as a source-aware smoke test, not final proof of live GA4 time-series accuracy.
 
 ### Commit 5: Platform Breakdown
@@ -385,13 +496,13 @@ Manual validation guidance:
 
 - Current Render validation can prove wiring and source-capability behavior: with only GA4 connected, Platform Breakdown should list Google Analytics as the main source and should not list GA4 child revenue/spend inputs as separate platforms.
 - Current validation should also confirm GA4-only unavailable metrics remain unavailable rather than zero-filled paid-media comparisons.
-- Full historical Platform Breakdown validation should be completed later with the planned mock-live GA4 account, because the tab's trends depend on controlled daily source rows existing across the selected date window.
+- Historical Commit 5 boundary: multi-source Platform Breakdown evidence remained pending. The retired panel is not mounted in the current one-view GA4-only product; future multi-source Source Contribution still requires source-specific validation.
 - For mock-placeholder GA4 data, treat visible Platform Breakdown values as a source-aware smoke test, not final proof of live GA4 time-series accuracy.
 
 ### Commit 6: Insights
 
 - Rename the final tab to `Insights`.
-- Replace external keyword trend widgets with executive recommendations based on the other Trend Analysis tabs.
+- Replace external keyword trend widgets with executive recommendations based on the aggregate-backed Trend sections.
 - Use the same Campaign DeepDive pattern as Performance Summary, Budget & Financial Analysis, and Platform Comparison: connected-source data in earlier tabs feeds a final recommendation/insights tab.
 - Recommendations must be based only on available connected-source trend data and should explain unavailable history or missing source inputs instead of inventing metrics.
 
@@ -401,10 +512,10 @@ Root cause fixed:
 
 - The final Trend Analysis tab was still `Market Trends`, which rendered optional Google Trends keyword widgets instead of campaign performance recommendations.
 - That did not match the current Campaign DeepDive subsection pattern, where the final tab provides executive-ready insights based on data already shown in the subsection.
-- Commit 6 renames the tab to `Insights` and adds `trendInsights`, which derives recommendations from the aggregate-backed Overview, Efficiency Metrics, Conversion Funnel, and Platform Breakdown data.
+- Commit 6 originally renamed the tab to `Insights` and added `trendInsights`. The current consumer mounts those recommendations directly in the comprehensive Executive View.
 - Insights now identify connected-source coverage, historical comparison readiness, performance trend movement, efficiency input availability, web funnel opportunities, and single-source limitations.
 - The tab does not create new metrics and does not use external Google Trends widgets for campaign performance recommendations.
-- The header date-range dropdown is hidden on Insights because Insights summarizes the other Trend Analysis tabs instead of directly changing the selected historical window itself.
+- At Commit 6 the dropdown was hidden on the separate Insights tab. The tab is now retired; the current page-level selector remains visible because it controls the mounted charts and exact comparison date.
 
 Files changed:
 
@@ -422,7 +533,7 @@ Validation:
 Evidence:
 
 - Regression coverage proves the tab trigger is `Insights`, the content uses `trendInsights`, and recommendations are derived from the aggregate-backed Trend Analysis view models.
-- Regression coverage proves the Insights tab does not show the page-level history dropdown.
+- Historical regression coverage proved the separate Insights tab did not show the page-level history dropdown; current regression coverage instead fixes the page to one mounted Executive View with one page-level selector.
 
 ### Commit 7: Scheduler, Snapshots, And Final Validation
 
@@ -489,7 +600,9 @@ Historical validation should prove:
 - old incompatible history is not compared against the new aggregate contract
 - 7-day and 30-day trends require enough compatible historical data to exist
 
-## Live GA4 / Mock-Live Test Plan
+## Historical Live GA4 / Mock-Live Test Plan — Superseded
+
+This was the pre-certification evidence plan. The exact deployed GA4-only parity recorded at the top of this document supersedes its open GA4 historical-validation statements. Its multi-source caveat remains applicable to future source mixes.
 
 Use this later to validate the end-to-end trend lifecycle with real time-series behavior:
 
@@ -525,7 +638,7 @@ Important validation boundary:
 
 Trend Analysis is production ready only when:
 
-- every tab consumes the source-aware trend aggregate or a proven compatible aggregate/snapshot model
+- every visible section in the single Executive View consumes the source-aware trend aggregate or a proven compatible cumulative/snapshot model
 - GA4-only campaigns show only GA4-capable metrics
 - paid-media metrics require connected paid-media source inputs
 - child revenue/spend inputs feed parent financial totals but do not appear as main platforms
@@ -536,10 +649,10 @@ Trend Analysis is production ready only when:
 
 ## Current Status
 
-Commits 1 through 7 are completed and validated locally.
+The controlling current status is the `2026-08-26` exact deployed GA4-only certification near the top of this document. The historical Commit 1–10 records below remain implementation history and must not override that bounded current decision.
 
-Trend Analysis now has an aggregate contract plus aggregate-backed Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, Insights, and scheduler/snapshot alignment. Final live historical validation should still be completed later with the planned mock-live GA4 account after enough controlled daily rows exist.
+Future or refined main-source mixes remain unverified until each source passes its source-specific Trend scope, capability, date-window, currency, refresh, report, snapshot, and missing-data parity checks.
 
-## 2026-07-30 Current Commit 10 Status — Implementation Deployed; External Trend Evidence Open
+## 2026-07-30 Historical Commit 10 Status — Superseded By The Current Boundary
 
 Root cause: the scheduled Trend financial SQL joined active sources without a GA4 `platform_context` predicate, so foreign-context financial rows could enter a GA4 snapshot on a multi-platform campaign. Commit `ec265895` deployed GA4 context predicates while preserving the existing 90-day Trend window and `trend_analysis_aggregate_v1` response contract; the enclosing Performance Summary snapshot is `performance_summary_aggregate_v2`. Commit 10 is closed for its bounded implementation/browser packet, but the recorded browser validation did not inspect historical Trend or a live multi-source campaign. Those exact Trend gates remain unproven.

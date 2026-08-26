@@ -467,7 +467,7 @@ Trend Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_TREND_
 
 Executive Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`.
 
-Trend Analysis tabs are `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, and `Insights`. The `Insights` tab summarizes the other aggregate-backed Trend Analysis tabs and should not show the page-level history dropdown.
+Trend Analysis renders one comprehensive executive view instead of separate tabs. The view combines current decision metrics, the Campaign Performance Trend, Efficiency Trends, Website Engagement & Conversion Summary, source detail where applicable, anomaly context, and Executive Recommendations without duplicating the same values across panels. Its `7/14/30/90-day` selector controls the chart window and exact cumulative comparison date; it does not replace the authoritative cumulative current totals with rolling-window totals.
 
 Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values. Because these are shared campaign metadata fields, changes to the pacing budget also update the Budget value shown in Campaign Management after campaign data refreshes.
 

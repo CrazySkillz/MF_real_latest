@@ -160,6 +160,13 @@ export default function ExecutiveSummary() {
 
   const performanceSummary = (outcomeTotals as any)?.performanceSummary;
   const currentValueWindow = (performanceSummary as any)?.currentValueWindow;
+  const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
+  const ga4AggregateSource = aggregateSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
+  const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"
+    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && currentValueWindow?.dataThroughDate === currentValueWindow?.endDate
+    && Array.isArray(ga4AggregateSource?.includedMetrics)
+    && ["users", "sessions", "conversions", "revenue"].every((metricName) => ga4AggregateSource.includedMetrics.includes(metricName));
   const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
@@ -191,8 +198,11 @@ export default function ExecutiveSummary() {
     aggregateMetricAvailable(metricName) ? formatCurrency(aggregateMetricValue(metricName), showCents) : "Unavailable";
   const formatAggregatePercent = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? formatPct(aggregateMetricValue(metricName)) : "Unavailable";
-  const formatAggregateRatio = (metricName: string) =>
-    aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(1)}x` : "Unavailable";
+  const formatAggregateRatio = (metricName: string) => {
+    if (!aggregateMetricAvailable(metricName)) return "Unavailable";
+    const rounded = Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10;
+    return `${rounded.toFixed(1)}x`;
+  };
   const getRecommendationExpectedImpactItems = (rec: any): string[] => {
     if (rec?.category !== "Website Outcomes") return [];
     const webMetrics: string[] = [];
@@ -274,9 +284,9 @@ export default function ExecutiveSummary() {
   if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);
   if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);
   const executiveMetricSummary = executiveMetricParts.length > 0
-    ? `Current connected-source metrics show ${executiveMetricParts.join(" and ")}.`
-    : "Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.";
-  const executiveTrajectory = (executiveSummary as any)?.health?.trajectory;
+    ? `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
+    : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
+  const executiveTrajectory = hasAuthoritativeGA4Window ? null : (executiveSummary as any)?.health?.trajectory;
   const executiveTrajectorySummary = executiveTrajectory
     ? `7-day snapshot trajectory is ${executiveTrajectory}.`
     : "7-day snapshot trajectory does not have enough compatible history yet.";
@@ -386,11 +396,21 @@ export default function ExecutiveSummary() {
     resolveExecutiveKpiTargetState(kpi).band === "below"
   );
   const executiveBenchmarkExceptions = executiveBenchmarkComparison.filter((bm: any) => bm.status !== "on_track");
-  const sourceBackedRecommendations = Array.isArray((executiveSummary as any).recommendations)
-    ? (executiveSummary as any).recommendations
-      .filter((rec: any) => rec?.category === "Website Outcomes")
-      .slice(0, 3)
-    : [];
+  const hasWebAnalyticsOutcomeEvidence = aggregateSources.some((source: any) =>
+    source?.connected === true && source?.category === "web_analytics"
+  ) && (aggregateMetricAvailable("users") || aggregateMetricAvailable("sessions"))
+    && (aggregateMetricAvailable("conversions") || aggregateMetricAvailable("revenue"));
+  const hasConnectedPaidMediaSource = aggregateSources.some((source: any) =>
+    source?.connected === true && source?.category === "paid_media"
+  );
+  const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions]
+    .some((record: any) => ["cvr", "conversions", "revenue"].includes(String(record?.metricKey || record?.aggregateMetric || record?.metric || "")));
+  const sourceBackedRecommendations = hasWebAnalyticsOutcomeEvidence && hasWebsiteOutcomeTargetException ? [{
+    priority: "medium",
+    category: "Website Outcomes",
+    action: "Review website conversion path before making paid-media budget decisions",
+    confidence: aggregateMetricAvailable("cvr") ? "medium" : "low",
+  }] : [];
   const kpiProgressPct = (kpi: any): number => {
     const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
     const current = Number(kpi.current ?? kpi.currentValue) || 0;
@@ -408,9 +428,9 @@ export default function ExecutiveSummary() {
   const kpiMonitorCount = executiveKpiExceptions.filter((kpi: any) => kpiProgressPct(kpi) >= 70).length;
   const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;
   const hasMonitorConditions = kpiMonitorCount > 0 || benchmarkMonitorCount > 0;
-  const riskFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [];
-  const trendPercentage = Number((executiveSummary as any)?.health?.trendPercentage) || 0;
-  const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
+  const riskFreshnessWarnings = (Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [])
+    .filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
+  const trendPercentage = hasAuthoritativeGA4Window ? 0 : Number((executiveSummary as any)?.health?.trendPercentage) || 0;
   const paidRiskSources = aggregateSources.filter((source: any) =>
     source?.connected === true &&
     source?.category !== "financial" &&
@@ -458,7 +478,7 @@ export default function ExecutiveSummary() {
   const riskInputRows = [
     { label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail },
     { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
-    { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
+    { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : hasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${currentValueWindow.endDate}` : "No stale connected-source warnings" },
     { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? [aggregateMetricAvailable("roi") ? `ROI ${formatAggregatePercent("roi")}` : null, aggregateMetricAvailable("roas") ? `ROAS ${formatAggregateRatio("roas")}` : null].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
     { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
     { label: "Paid Platform Concentration Risk", status: paidRiskSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidRiskSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidRiskSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
@@ -513,19 +533,19 @@ export default function ExecutiveSummary() {
                     <div className="flex items-center space-x-6">
                       <div>
                         <div className="text-sm text-muted-foreground/70 mb-1">7-Day Snapshot Trajectory</div>
-                        {(executiveSummary as any).health.trajectory ? (
+                        {executiveTrajectory ? (
                           <div className="flex items-center space-x-2">
-                            {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
-                            {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
-                            {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600" />}
+                            {executiveTrajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
+                            {executiveTrajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
+                            {executiveTrajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600" />}
                             <span className="text-lg font-medium text-foreground capitalize">
-                              {(executiveSummary as any).health.trajectory}
+                              {executiveTrajectory}
                             </span>
                           </div>
                         ) : (
                           <div className="text-lg font-medium text-muted-foreground">Not enough history</div>
                         )}
-                        <p className="text-xs text-muted-foreground/70 mt-1">Based on compatible aggregate snapshots, not the removed date selector.</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">{hasAuthoritativeGA4Window ? "Requires compatible snapshots for the same reporting-window contract." : "Based on compatible aggregate snapshots, not the removed date selector."}</p>
                       </div>
                       <div className="border-l border-border pl-6">
                         <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>
@@ -637,16 +657,6 @@ export default function ExecutiveSummary() {
                                 </div>
                               )}
                             </div>
-                            {(executiveSummary as any).metrics.totalCvr > 100 && (
-                              <div className="pt-1 border-t border-indigo-200 dark:border-indigo-700">
-                                <div className="text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-                                  Total CVR (w/ view-through)
-                                </div>
-                                <div className="text-xl font-semibold text-indigo-700 dark:text-indigo-300">
-                                  {formatPct((executiveSummary as any).metrics.totalCvr)}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -998,13 +1008,13 @@ export default function ExecutiveSummary() {
                 <h2 className="text-2xl font-semibold text-foreground">Recommended Actions</h2>
               </div>
               {/* Data Accuracy Notice */}
-              {(executiveSummary as any).metadata?.dataAccuracy?.platformsExcludedFromRecommendations?.length > 0 && (
+              {!hasConnectedPaidMediaSource && hasWebAnalyticsOutcomeEvidence && (
                 <Card className="border-border bg-muted">
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-3">
                       <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-foreground/80/60">
-                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} not a connected paid-media source, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.
+                        <strong>Note:</strong> No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.
                       </div>
                     </div>
                   </CardContent>
@@ -1012,7 +1022,7 @@ export default function ExecutiveSummary() {
               )}
 
               {/* Data Freshness Warnings */}
-              {(executiveSummary as any).dataFreshness?.warnings?.length > 0 && (
+              {riskFreshnessWarnings.length > 0 && (
                 <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-3">
@@ -1021,7 +1031,7 @@ export default function ExecutiveSummary() {
                         <div className="font-semibold text-yellow-900 dark:text-yellow-100">
                           Data Freshness Alert
                         </div>
-                        {(executiveSummary as any).dataFreshness.warnings.map((warning: any, idx: number) => (
+                        {riskFreshnessWarnings.map((warning: any, idx: number) => (
                           <div key={idx} className="text-sm text-yellow-800 dark:text-yellow-200">
                             <strong>{warning.source}:</strong> {warning.message}
                           </div>

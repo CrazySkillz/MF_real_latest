@@ -17,6 +17,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(formatter).toContain('if (!/^[A-Z]{3}$/.test(normalizedCurrency)) return "Unavailable";');
     expect(formatter).toContain("currency: normalizedCurrency,");
     expect(formatter).toContain('return "Unavailable";');
+    expect((Math.round((26.95 + Number.EPSILON) * 10) / 10).toFixed(1)).toBe("27.0");
   });
 
   it("documents Executive Summary readiness without mixing future source work into implementation status", () => {
@@ -199,6 +200,51 @@ describe("campaign Executive Summary regression guard", () => {
     expect(recommendationsBlock).toContain('hasCvrTarget: recommendationTargetMetrics.has("cvr")');
     expect(recommendationsBlock).toContain("paidMediaSources: platforms.length");
     expect(recommendationsBlock).toContain("webAnalyticsSources: platformsForDisplay.filter");
+  });
+
+  it("uses the declared current-value window for live GA4 financial totals", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/attribution-overview"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const financialStartDateUsed = currentValueWindow.startDate;");
+    expect(route).toContain("financialStartDateUsed,\n                endDateUsed,");
+    expect(route).not.toContain('const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;');
+  });
+
+  it("calculates the corrected production Executive Summary values from the declared-window inputs", () => {
+    const currentValueWindow = {
+      mode: "initial_import_to_latest_completed_day" as const,
+      startDate: "2026-07-02",
+      endDate: "2026-08-25",
+      dataThroughDate: "2026-08-25",
+      reportingTimeZone: "Europe/Amsterdam",
+    };
+    const ga4 = { connected: true, available: true, users: 1184, sessions: 1183, conversions: 152, revenue: 34273 };
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "production-fixture",
+      dateRange: "90days",
+      currentValueWindow,
+      ga4,
+      webAnalytics: { ...ga4, provider: "ga4" },
+      spend: { unifiedSpend: 2699.75, spendSource: "persisted_spend_sources", sourceIds: ["spend"] },
+      revenue: { available: true, totalRevenue: 51072.99 },
+      revenueSources: [{ connected: true, type: "imported", lastTotalRevenue: 16799.99 }],
+    });
+
+    expect(aggregate.currentValueWindow).toEqual(currentValueWindow);
+    expect(Object.fromEntries(Object.entries(aggregate.totals).map(([key, value]) => [key, value.value]))).toMatchObject({
+      users: 1184,
+      sessions: 1183,
+      conversions: 152,
+      revenue: 51072.99,
+      spend: 2699.75,
+      roas: 18.92,
+      roi: 1791.77,
+      cvr: 12.85,
+      cpa: 17.76,
+    });
   });
 
   it("derives main platform rows from performanceSummary sources and excludes financial child inputs", () => {
@@ -458,6 +504,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('return "Unavailable from connected sources";');
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
+    expect(page).toContain("Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10");
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
     expect(page).toContain('if (rec?.category !== "Website Outcomes") return [];');
     expect(page).toContain('if (aggregateMetricAvailable("users")) webMetrics.push');
@@ -471,9 +518,12 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("Next action: inspect landing pages or conversion paths for metrics below target before increasing spend.");
     expect(page).toContain("Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality.");
     expect(page).toContain("Next action: keep monitoring these outcome targets and connect a paid-media source before making budget or channel decisions.");
-    expect(page).toContain("const sourceBackedRecommendations = Array.isArray((executiveSummary as any).recommendations)");
-    expect(page).toContain('.filter((rec: any) => rec?.category === "Website Outcomes")');
-    expect(page).toContain(".slice(0, 3)");
+    expect(page).toContain('const hasWebAnalyticsOutcomeEvidence = aggregateSources.some((source: any) =>');
+    expect(page).toContain('source?.connected === true && source?.category === "web_analytics"');
+    expect(page).toContain('const sourceBackedRecommendations = hasWebAnalyticsOutcomeEvidence && hasWebsiteOutcomeTargetException ? [{');
+    expect(page).toContain('const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions]');
+    expect(page).toContain('action: "Review website conversion path before making paid-media budget decisions"');
+    expect(page).not.toContain("Array.isArray((executiveSummary as any).recommendations)");
     expect(page).toContain('<ul className="list-disc pl-4 space-y-1 text-sm text-green-700 dark:text-green-300">');
     expect(page).toContain("{getRecommendationExpectedImpactItems(rec).map((item, idx) => (");
     expect(page).toContain("{sourceBackedRecommendations.map((rec: any, index: number) => (");
@@ -559,6 +609,16 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const paidConcentrationRisk = paidRiskSources.length === 1 || paidTopSpendShare > 70;");
     expect(page).toContain("const roiRoasRisk = (aggregateMetricAvailable(\"roi\") && aggregateMetricValue(\"roi\") < 0) || (aggregateMetricAvailable(\"roas\") && aggregateMetricValue(\"roas\") < 1);");
     expect(page).toContain('const trendRisk = executiveTrajectory === "declining" && trendPercentage < -15;');
+    expect(page).toContain('const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"');
+    expect(page).toContain('const executiveTrajectory = hasAuthoritativeGA4Window ? null : (executiveSummary as any)?.health?.trajectory;');
+    expect(page).toContain('.filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));');
+    expect(page).toContain('GA4 outcome metrics cover through ${currentValueWindow.endDate}');
+    expect(page).toContain('{riskFreshnessWarnings.length > 0 && (');
+    expect(page).toContain('{riskFreshnessWarnings.map((warning: any, idx: number) => (');
+    expect(page).not.toContain('{(executiveSummary as any).health.trajectory');
+    expect(page).not.toContain('(executiveSummary as any).metrics.totalCvr');
+    expect(page).not.toContain('(executiveSummary as any).dataFreshness.warnings.map');
+    expect(page).not.toContain('(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations');
     expect(page).toContain("const displayedRiskFactors = [");
     expect(page).toContain("const riskInputRows = [");
     expect(page).toContain("paid-media recommendations are unavailable");
@@ -689,7 +749,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("classified needs attention; none is classified behind");
     expect(overview).toContain('{ label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail }');
     expect(overview).toContain('{ label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail }');
-    expect(recommendations).toContain('rec?.category === "Website Outcomes"');
+    expect(recommendations).toContain("customReportHasWebAnalyticsOutcomeEvidence");
+    expect(recommendations).toContain("customReportHasWebsiteOutcomeTargetException");
+    expect(recommendations).toContain('category: "Website Outcomes"');
+    expect(recommendations).toContain('action: "Review website conversion path before making paid-media budget decisions"');
+    expect(recommendations).not.toContain("campaignExecutiveSummary.recommendations");
     expect(recommendations).toContain('addText("Recommended Actions"');
     expect(recommendations).toContain("No Evidence-Backed Actions Available");
     expect(recommendations).not.toContain("Projected Scenarios");

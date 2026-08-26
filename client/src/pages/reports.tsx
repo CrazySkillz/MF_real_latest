@@ -1097,6 +1097,13 @@ export default function Reports() {
     const customReportPerformanceSummary = latestCampaignOutcomeTotals?.performanceSummary;
     const customReportAllSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
     const customReportSources = customReportAllSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
+    const customReportCurrentValueWindow = customReportPerformanceSummary?.currentValueWindow;
+    const customReportGA4Source = customReportAllSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
+    const customReportHasAuthoritativeGA4Window = customReportPerformanceSummary?.version === "performance_summary_aggregate_v3"
+      && customReportCurrentValueWindow?.mode === "initial_import_to_latest_completed_day"
+      && customReportCurrentValueWindow?.dataThroughDate === customReportCurrentValueWindow?.endDate
+      && Array.isArray(customReportGA4Source?.includedMetrics)
+      && ["users", "sessions", "conversions", "revenue"].every((metricName) => customReportGA4Source.includedMetrics.includes(metricName));
     const campaignExecutiveSummary = latestExecutiveSummaryResult?.data ?? liveCampaignExecutiveSummary;
     const campaignFinancialContext = latestFinancialContextResult?.data ?? liveCampaignFinancialContext;
     const campaignKpis: any[] = Array.isArray(latestKpisResult?.data) ? latestKpisResult.data : liveCampaignKpis;
@@ -1140,6 +1147,13 @@ export default function Reports() {
       const metric = customReportPerformanceSummary?.totals?.[key];
       return metric?.available === true ? Number(metric.value) || 0 : 0;
     };
+    const customReportHasWebAnalyticsOutcomeEvidence = customReportAllSources.some((source: any) =>
+      source?.connected === true && source?.category === "web_analytics"
+    ) && (metricAvailable("users") || metricAvailable("sessions"))
+      && (metricAvailable("conversions") || metricAvailable("revenue"));
+    const customReportHasPaidMediaSource = customReportAllSources.some((source: any) =>
+      source?.connected === true && source?.category === "paid_media"
+    );
     const executiveCurrency = String(campaignFinancialContext?.currency || "").trim().toUpperCase();
     const formatExecutiveCurrency = (value: number) => {
       if (!/^[A-Z]{3}$/.test(executiveCurrency)) return "Unavailable";
@@ -1152,6 +1166,10 @@ export default function Reports() {
     const executiveMetricValue = (key: string) => {
       const metric = customReportPerformanceSummary?.totals?.[key];
       if (metric?.available !== true) return metricValue(key);
+      if (key === "roas") {
+        const rounded = Math.round(((Number(metric.value) || 0) + Number.EPSILON) * 10) / 10;
+        return `${rounded.toFixed(1)}x`;
+      }
       return ["revenue", "spend", "cpc", "cpa", "cpm"].includes(key)
         ? formatExecutiveCurrency(Number(metric.value) || 0)
         : formatCustomReportMetricValue(key, metric.value);
@@ -1164,11 +1182,23 @@ export default function Reports() {
     };
     const executiveKpiRows = Array.isArray(campaignExecutiveSummary?.kpiProgress)
       ? campaignExecutiveSummary.kpiProgress
-        .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }))
+        .map((kpi: any) => {
+          const aggregateMetric = resolveCustomReportAggregateMetric(kpi);
+          const target = Number(kpi?.target ?? kpi?.targetValue);
+          if (!aggregateMetric || !metricAvailable(aggregateMetric) || !Number.isFinite(target) || target <= 0) return null;
+          return { ...kpi, aggregateMetric, current: metricNumber(aggregateMetric), target };
+        })
+        .filter(Boolean)
       : [];
     const executiveBenchmarkRows = Array.isArray(campaignExecutiveSummary?.benchmarkComparison)
       ? campaignExecutiveSummary.benchmarkComparison
-        .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
+        .map((bm: any) => {
+          const aggregateMetric = resolveCustomReportAggregateMetric(bm);
+          const benchmark = Number(bm?.benchmark ?? bm?.benchmarkValue);
+          if (!aggregateMetric || !metricAvailable(aggregateMetric) || !Number.isFinite(benchmark) || benchmark <= 0) return null;
+          return { ...bm, aggregateMetric, yours: metricNumber(aggregateMetric), benchmark };
+        })
+        .filter(Boolean)
       : [];
     const performanceKpiRows = campaignKpis
       .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }));
@@ -1222,6 +1252,8 @@ export default function Reports() {
     const benchmarkProgressLabel = (benchmark: any) => benchmarkThresholdResult(benchmark).labelPct;
     const executiveKpiExceptions = executiveKpiRows.filter((kpi: any) => kpiBand(kpi) === "below");
     const executiveBenchmarkExceptions = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status !== "on_track");
+    const customReportHasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions]
+      .some((record: any) => ["cvr", "conversions", "revenue"].includes(reportRecordMetric(record)));
     const performanceHealthScore = () => {
       const total = performanceKpiRows.length + performanceBenchmarkRows.length;
       if (total === 0) return null;
@@ -1666,16 +1698,17 @@ export default function Reports() {
       ].filter(Boolean);
     };
     const addExecutiveOverviewContent = () => {
-      const trajectory = campaignExecutiveSummary?.health?.trajectory;
-      const trendPct = Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
-      const currentValueWindow = customReportPerformanceSummary?.currentValueWindow;
+      const trajectory = customReportHasAuthoritativeGA4Window ? null : campaignExecutiveSummary?.health?.trajectory;
+      const trendPct = customReportHasAuthoritativeGA4Window ? 0 : Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
+      const currentValueWindow = customReportCurrentValueWindow;
       const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
         && currentValueWindow.startDate <= currentValueWindow.endDate
         ? `the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`
         : "this 90-day view";
-      const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
+      const freshnessWarnings = (Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [])
+        .filter((warning: any) => !(customReportHasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
       const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(reportRecordCurrentValue(kpi), Number(kpi.target) || 0, reportRecordMetric(kpi), kpi?.name) < 70).length;
       const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status === "behind").length;
       const kpiMonitorCount = executiveKpiExceptions.filter((kpi: any) => progressPct(reportRecordCurrentValue(kpi), Number(kpi.target) || 0, reportRecordMetric(kpi), kpi?.name) >= 70).length;
@@ -1714,7 +1747,7 @@ export default function Reports() {
       const riskInputRows = [
         { label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail },
         { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
-        { label: "Data Freshness", status: freshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: freshnessWarnings.length > 0 ? `${freshnessWarnings.length} stale source warning${freshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
+        { label: "Data Freshness", status: freshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: freshnessWarnings.length > 0 ? `${freshnessWarnings.length} stale source warning${freshnessWarnings.length === 1 ? "" : "s"}` : customReportHasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${currentValueWindow.endDate}` : "No stale connected-source warnings" },
         { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : metricAvailable("roi") || metricAvailable("roas") ? "No Risk" : "Not Applicable", detail: metricAvailable("roi") || metricAvailable("roas") ? [metricAvailable("roi") ? `ROI ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS ${metricValue("roas")}` : ""].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
         { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : trajectory ? "No Risk" : "Not Enough History", detail: trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
         { label: "Paid Platform Concentration Risk", status: paidSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidSources.length === 1 ? "Only one paid platform connected" : `${topSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
@@ -1723,7 +1756,7 @@ export default function Reports() {
       addText(`7-Day Snapshot Trajectory: ${trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough history"}`, { bold: true, indent: 4 });
       addText(`Risk Level: ${displayedRiskLevel.toUpperCase()}`, { bold: true, indent: 4 });
       addText("Executive Summary", { bold: true, indent: 4 });
-      addText(`${report.campaignName || "Campaign"}: ${metricSummary.length > 0 ? `Current connected-source metrics show ${metricSummary.join(" and ")}.` : "Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS."} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
+      addText(`${report.campaignName || "Campaign"}: ${metricSummary.length > 0 ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary.join(" and ")}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
       ["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]
         .forEach((key) => addText(`- ${customReportMetricLabels[key] || key}: ${executiveMetricValue(key)}`, { indent: 8 }));
@@ -1747,17 +1780,16 @@ export default function Reports() {
       riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
     };
     const addExecutiveRecommendationsContent = () => {
-      const excludedPlatforms = Array.isArray(campaignExecutiveSummary?.metadata?.dataAccuracy?.platformsExcludedFromRecommendations)
-        ? campaignExecutiveSummary.metadata.dataAccuracy.platformsExcludedFromRecommendations
-        : [];
-      const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
-      const recommendations = Array.isArray(campaignExecutiveSummary?.recommendations)
-        ? campaignExecutiveSummary.recommendations.filter((rec: any) => rec?.category === "Website Outcomes").slice(0, 3)
-        : [];
+      const freshnessWarnings = (Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [])
+        .filter((warning: any) => !(customReportHasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
+      const recommendations = customReportHasWebAnalyticsOutcomeEvidence && customReportHasWebsiteOutcomeTargetException ? [{
+        category: "Website Outcomes",
+        action: "Review website conversion path before making paid-media budget decisions",
+      }] : [];
 
-      if (excludedPlatforms.length > 0) {
+      if (!customReportHasPaidMediaSource && customReportHasWebAnalyticsOutcomeEvidence) {
         addText("Data Accuracy Notice", { bold: true, indent: 4 });
-        addText(`Note: ${excludedPlatforms.join(", ")} ${excludedPlatforms.length === 1 ? "is" : "are"} not a connected paid-media source, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.`, { indent: 8 });
+        addText("Note: No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.", { indent: 8 });
       }
       if (freshnessWarnings.length > 0) {
         addText("Data Freshness Alert", { bold: true, indent: 4 });

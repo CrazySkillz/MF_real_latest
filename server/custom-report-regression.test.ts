@@ -575,7 +575,11 @@ describe("campaign Custom Report regression guard", () => {
     const recommendationsEnd = reports.indexOf("const addMetricList =", recommendationsStart);
     const recommendations = reports.slice(recommendationsStart, recommendationsEnd);
 
-    expect(recommendations).toContain('rec?.category === "Website Outcomes"');
+    expect(recommendations).toContain("customReportHasWebAnalyticsOutcomeEvidence");
+    expect(recommendations).toContain("customReportHasWebsiteOutcomeTargetException");
+    expect(recommendations).toContain('category: "Website Outcomes"');
+    expect(recommendations).toContain('action: "Review website conversion path before making paid-media budget decisions"');
+    expect(recommendations).not.toContain("campaignExecutiveSummary.recommendations");
     expect(recommendations).toContain("Data Accuracy Notice");
     expect(recommendations).toContain("Data Freshness Alert");
     expect(recommendations).toContain("Recommended Actions");

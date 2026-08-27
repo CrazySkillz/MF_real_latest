@@ -9,7 +9,7 @@ const metricSchema = z.discriminatedUnion("available", [
 const trackedMetricNames = ["users", "sessions", "conversions", "revenue", "spend", "cvr", "cpa", "roas", "roi"] as const;
 
 export const executiveSummaryDailySnapshotInputSchema = z.object({
-  version: z.literal("executive_summary_daily_snapshot_v1"),
+  version: z.literal("executive_summary_daily_snapshot_v2"),
   campaignId: z.string().trim().min(1),
   reportingDate: dateSchema,
   currency: z.string().regex(/^[A-Z]{3}$/),
@@ -60,7 +60,7 @@ export function buildExecutiveSummaryDailySnapshotInput(input: {
     .sort();
   const totals = Object.fromEntries(trackedMetricNames.map((name) => [name, normalizeMetric(summary?.totals?.[name])])) as ExecutiveSummaryDailySnapshotInput["totals"];
   return executiveSummaryDailySnapshotInputSchema.parse({
-    version: "executive_summary_daily_snapshot_v1",
+    version: "executive_summary_daily_snapshot_v2",
     campaignId: String(input.campaignId || "").trim(),
     reportingDate: String(window?.endDate || ""),
     currency: String(input.currency || "").trim().toUpperCase(),

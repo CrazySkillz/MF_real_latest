@@ -26,11 +26,11 @@ describe("Executive Summary snapshot scheduler", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenNthCalledWith(1,
-      "http://127.0.0.1:5000/api/campaigns/campaign%20one/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1",
+      "http://127.0.0.1:5000/api/campaigns/campaign%20one/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date",
       { headers: { "x-internal-auto-refresh-token": "internal-token" } },
     );
     expect(fetchMock).toHaveBeenNthCalledWith(2,
-      "http://127.0.0.1:5000/api/campaigns/campaign-2/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1",
+      "http://127.0.0.1:5000/api/campaigns/campaign-2/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date",
       { headers: { "x-internal-auto-refresh-token": "internal-token" } },
     );
     expect(cancel).toHaveBeenCalledTimes(2);

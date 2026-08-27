@@ -11,7 +11,7 @@ export async function captureExecutiveSummarySnapshots(baseUrl: string): Promise
     if (capturedCampaignIds.has(campaign.id)) continue;
     capturedCampaignIds.add(campaign.id);
     try {
-      const response = await fetch(`${baseUrl}/api/campaigns/${encodeURIComponent(campaign.id)}/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1`, {
+      const response = await fetch(`${baseUrl}/api/campaigns/${encodeURIComponent(campaign.id)}/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date`, {
         headers: { "x-internal-auto-refresh-token": token },
       });
       if (!response.ok) {

@@ -14495,7 +14495,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let persistedFinancialCandidate: any = null;
           let toDateFinancialCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
-          const financialStartDateUsed = currentValueWindow.startDate;
+          const financialStartDateUsed = (() => {
+            const useExecutiveCampaignToDateFinancials = String(req.query.captureExecutiveSnapshot || "").trim() === "1"
+              && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
+            if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;
+            const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+            if (!raw) return "2000-01-01";
+            const date = new Date(raw);
+            return Number.isNaN(date.getTime()) ? "2000-01-01" : formatISODateUTC(date);
+          })();
           const endDateUsed = currentValueWindow.endDate;
           const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed).catch(() => [] as any[]);
           const latestPersistedFinancialDate = persistedFinancialRows.reduce(

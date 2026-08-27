@@ -202,18 +202,19 @@ describe("campaign Executive Summary regression guard", () => {
     expect(recommendationsBlock).toContain("webAnalyticsSources: platformsForDisplay.filter");
   });
 
-  it("uses the declared current-value window for live GA4 financial totals", () => {
+  it("uses campaign-to-date GA4 financial totals only for Executive Summary requests", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/attribution-overview"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("const financialStartDateUsed = currentValueWindow.startDate;");
+    expect(route).toContain('String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date"');
+    expect(route).toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
+    expect(route).toContain('const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;');
     expect(route).toContain("financialStartDateUsed,\n                endDateUsed,");
-    expect(route).not.toContain('const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;');
   });
 
-  it("calculates the corrected production Executive Summary values from the declared-window inputs", () => {
+  it("calculates the corrected production Executive Summary campaign-to-date financial values", () => {
     const currentValueWindow = {
       mode: "initial_import_to_latest_completed_day" as const,
       startDate: "2026-07-02",
@@ -221,7 +222,7 @@ describe("campaign Executive Summary regression guard", () => {
       dataThroughDate: "2026-08-25",
       reportingTimeZone: "Europe/Amsterdam",
     };
-    const ga4 = { connected: true, available: true, users: 1184, sessions: 1179, conversions: 152, revenue: 34273 };
+    const ga4 = { connected: true, available: true, users: 1184, sessions: 1179, conversions: 251, revenue: 55966.70 };
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "production-fixture",
       dateRange: "90days",
@@ -229,7 +230,7 @@ describe("campaign Executive Summary regression guard", () => {
       ga4,
       webAnalytics: { ...ga4, provider: "ga4" },
       spend: { unifiedSpend: 2699.75, spendSource: "persisted_spend_sources", sourceIds: ["spend"] },
-      revenue: { available: true, totalRevenue: 51072.99 },
+      revenue: { available: true, totalRevenue: 72766.69 },
       revenueSources: [{ connected: true, type: "imported", lastTotalRevenue: 16799.99 }],
     });
 
@@ -237,13 +238,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(Object.fromEntries(Object.entries(aggregate.totals).map(([key, value]) => [key, value.value]))).toMatchObject({
       users: 1184,
       sessions: 1179,
-      conversions: 152,
-      revenue: 51072.99,
+      conversions: 251,
+      revenue: 72766.69,
       spend: 2699.75,
-      roas: 18.92,
-      roi: 1791.77,
-      cvr: 12.89,
-      cpa: 17.76,
+      roas: 26.95,
+      roi: 2595.31,
+      cvr: 21.29,
+      cpa: 10.76,
     });
   });
 
@@ -476,7 +477,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain('params.set("period"');
     expect(page).not.toContain("<Select value={period}");
     expect(page).toContain('const executiveOutcomeDateRange = "90days";');
-    expect(page).toContain("`/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}&captureExecutiveSnapshot=1`");
+    expect(page).toContain("`/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date`");
     expect(page.match(/refetchOnMount: "always"/g)?.length).toBe(3);
     expect(page.match(/refetchOnWindowFocus: true/g)?.length).toBe(3);
     expect(page.match(/refetchInterval: 60000/g)?.length).toBe(2);
@@ -505,8 +506,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
     expect(page).toContain("Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10");
-    expect(page).toContain('GA4-native outcomes cover ${executiveWindowDescription}; connected ${sourceToDateFinancialLabel}');
-    expect(page).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
+    expect(page).toContain('GA4 campaign-to-date metrics are current through ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel}');
+    expect(page).toContain('source-to-date through the same date. Combined connected-source financial metrics show');
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
     expect(page).toContain('if (rec?.category !== "Website Outcomes") return [];');
     expect(page).toContain('if (aggregateMetricAvailable("users")) webMetrics.push');

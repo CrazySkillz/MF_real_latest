@@ -35,14 +35,14 @@ describe("Executive Summary daily snapshot wiring", () => {
     const index = readFileSync(join(process.cwd(), "server", "index.ts"), "utf8");
     expect(scheduler).toContain("getInternalAutoRefreshToken()");
     expect(scheduler).toContain('"x-internal-auto-refresh-token": token');
-    expect(scheduler).toContain("dateRange=90days&captureExecutiveSnapshot=1");
+    expect(scheduler).toContain("dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date");
     expect(scheduler).toContain("setInterval(() => void captureExecutiveSummarySnapshots(baseUrl), DAY_MS)");
     expect(index).toContain("executiveSummarySnapshotScheduler.start(port)");
   });
 
   it("uses the isolated trajectory response in the live Executive Summary", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "executive-summary.tsx"), "utf8");
-    expect(page).toContain("captureExecutiveSnapshot=1");
+    expect(page).toContain("captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date");
     expect(page).toContain("/executive-summary/trajectory?reportingDate=");
     expect(page).toContain("(executiveTrajectoryData as any)?.available === true");
     expect(page).not.toContain("const executiveTrajectory = hasAuthoritativeGA4Window ? null");

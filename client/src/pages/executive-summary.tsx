@@ -56,7 +56,7 @@ export default function ExecutiveSummary() {
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, "live", "executive-summary"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}&captureExecutiveSnapshot=1`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date`;
       const resp = await fetch(url, { credentials: "include" });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
@@ -304,7 +304,7 @@ export default function ExecutiveSummary() {
   if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);
   const executiveMetricSummary = executiveMetricParts.length > 0
     ? hasAuthoritativeGA4Window && sourceToDateFinancialKinds.length > 0
-      ? `GA4-native outcomes cover ${executiveWindowDescription}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
+      ? `GA4 campaign-to-date metrics are current through ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through the same date. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
       : `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
     : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
   const executiveTrajectory = hasAuthoritativeGA4Window

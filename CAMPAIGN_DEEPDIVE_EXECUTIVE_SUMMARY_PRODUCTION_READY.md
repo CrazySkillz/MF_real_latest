@@ -4,9 +4,159 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
+## Current Authoritative Implementation And Certification — 2026-08-27
+
+This section is the current source of truth for Campaign DeepDive `Executive Summary`. The implementation-plan material later in this file is retained as historical context and is non-normative where it conflicts with this section.
+
+### Certified Boundary
+
+- deployed commit: `ec1305b92e5eba439ce74685ea2d06ecd3fabd50`
+- campaign: `ga4_mock` (`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`)
+- GA4 property: `542352127`
+- campaign currency: `USD`
+- campaign reporting timezone: `Europe/Amsterdam`
+- product configuration: GA4-first; Google Ads, Meta, Instagram, and TikTok are not enabled/configured
+- included: the visible Executive Summary page, its three frontend queries, current aggregate calculations, GA4 platform KPI/Benchmark inputs, Risk Level, Recommended Actions, daily Executive Summary snapshot identity, trajectory unavailable states, and target-campaign daily scheduler propagation
+- excluded: Performance Summary, Budget & Financial Analysis, Trend Analysis, the certified GA4 platform section, Custom Reports/PDFs/scheduled reports, unconfigured paid-media platforms, other campaigns, and the known obsolete-campaign scheduler failures
+
+The certification is exact-boundary evidence. It must not be generalized to future providers, different source mixes, other campaigns, or excluded downstream report surfaces.
+
+### Current UI Contract
+
+Executive Summary is one continuous page. The former `Executive Overview` and `Strategic Recommendations` tabs no longer exist.
+
+The visible page contains:
+
+1. `7-Day Snapshot Trajectory`, `Risk Level`, and a factual Executive Summary narrative.
+2. `Marketing Funnel Performance`.
+3. Five key metric cards: Total Revenue/ROI, ROAS/Spend, Conversions/CVR, the selected engagement metric, and the selected reach metric.
+4. KPI exception, no-exception, or unavailable state.
+5. Benchmark exception, no-exception, or unavailable state.
+6. `Recommended Actions`, including a freshness alert when applicable and a fail-closed no-evidence state.
+
+The former full `Risk Assessment` card and its duplicate alert cards are not rendered. The top `Risk Level` badge remains. Campaign Grade, Health Score, Campaign Story, and duplicate Platform Performance are also not rendered. Backend fields retained for API compatibility are not evidence that a removed UI card is still part of the product.
+
+### Current Query And Persistence Trace
+
+| Visible consumer | Frontend query | Server/calculation path | Persisted source |
+| --- | --- | --- | --- |
+| Narrative, funnel, five metric cards | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `server/routes-oauth.ts` builds `performance_summary_aggregate_v3`; the page reads `performanceSummary.currentValueWindow`, `sources`, and `totals` | `campaigns`, active `ga4_connections`, `ga4_daily_metrics`, active GA4-context `revenue_sources`/`revenue_records`, and active GA4-context `spend_sources`/`spend_records` |
+| KPI exceptions and KPI contribution to Risk Level/Recommended Actions | `GET /api/campaigns/:id/executive-summary` | for a GA4-connected campaign, the endpoint reads `storage.getPlatformKPIs("google_analytics", campaignId)` and applies the shared KPI threshold policy | GA4 platform rows in `kpis`; scheduler/current-value refresh writes `current_value` from the configured GA4 property reporting contract |
+| Benchmark exceptions and Benchmark contribution to Risk Level/Recommended Actions | `GET /api/campaigns/:id/executive-summary` | for a GA4-connected campaign, the endpoint reads `storage.getPlatformBenchmarks("google_analytics", campaignId)` and applies the shared Benchmark threshold policy | GA4 platform rows in `benchmarks`; scheduler/current-value refresh writes `current_value` from the configured GA4 property reporting contract |
+| Risk Level | both queries plus the trajectory query | page-level risk composition uses available ROI/ROAS, paid-source concentration when applicable, compatible trajectory, GA4 KPI classifications, GA4 Benchmark classifications, and non-suppressed freshness warnings | same records as the preceding rows |
+| Recommended Actions | both current-value queries | the visible UI emits `Investigate below-target website outcomes` only when connected web/outcome evidence exists and a CVR, Conversions, or Revenue KPI/Benchmark is not on track; otherwise it fails closed | same GA4 property metrics and GA4 platform KPI/Benchmark records |
+| Trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current reporting date versus exactly seven days earlier through `evaluateExecutiveSummaryTrajectory` | `metric_snapshots` rows with `snapshot_type='executive_summary_daily'` |
+
+The two current-value queries refetch on mount, window focus, and every 60 seconds while the page is active. The trajectory query refetches on mount/focus when the authoritative reporting date is available. Current code waits for campaign, Executive Summary, outcome totals, and the applicable trajectory request before rendering the completed page.
+
+### Metric, Window, Formula, And Formatting Rules
+
+- GA4 web/outcome metrics are property-level, campaign-filtered inputs from the connected GA4 property. They are not legacy Campaign DeepDive KPI/Benchmark section values.
+- GA4 traffic/conversion current values use the saved initial-import boundary through the latest completed reporting day in the campaign reporting timezone.
+- GA4-native campaign revenue uses the validated campaign-to-date financial query. Imported revenue and spend use active GA4-context source-to-date records through the same data-through date.
+- `Total Revenue = GA4-native campaign revenue + imported connected revenue`.
+- `CVR = conversions / sessions * 100` when sessions and conversions are available.
+- `CPA = spend / conversions` when spend and conversions are available. A configured GA4 CPA KPI may legitimately use its own documented reporting contract and therefore is not interchangeable with this aggregate CPA.
+- `ROAS = total revenue / spend` when revenue and spend are available and spend is greater than zero.
+- `ROI = (total revenue - spend) / spend * 100` under the same availability rule.
+- Missing required inputs remain unavailable; they are not converted to zero and no simulated or paid-media fallback is used.
+- Integer counts use `Math.trunc` before locale formatting. Currency, percentages, and ratios display two decimals on this page; calculations use the unrounded aggregate values.
+- The funnel chooses the first available reach metric from Impressions, Users, Sessions and the first available engagement metric from Clicks, Sessions, Users. CTR appears only when available. Engagement Rate appears only when available. A GA4-only campaign therefore renders Users -> Sessions -> Conversions -> Revenue.
+
+### Risk And Recommendation Rules
+
+Risk starts at `Low`.
+
+- `High`: available ROI is below zero, or an applicable freshness warning has high severity.
+- `Medium`: at least one configured risk factor exists, including ROAS below 1x, applicable paid-source concentration, compatible decline greater than 15%, a GA4 KPI classified below target, a GA4 Benchmark classified behind, or an applicable freshness warning.
+- `Low`: none of the configured risk factors is present. A `needs_attention` Benchmark is monitor-only unless another risk factor applies.
+
+GA4 freshness warnings from the legacy Executive Summary endpoint are suppressed when the page has an authoritative `performance_summary_aggregate_v3` GA4 window. This prevents a stale secondary warning from contradicting the current property-level aggregate.
+
+Visible recommendations are deliberately narrower than the retained backend recommendation response. In the current GA4-first UI, a recommendation appears only when property-level website/outcome evidence exists and CVR, Conversions, or Revenue has a KPI/Benchmark exception. Its evidence line uses current page-level Users, Sessions, Conversions, Total Revenue, and CVR; its target line uses the GA4 platform KPI/Benchmark classifications; its next step is investigation, not a paid-media budget claim. If that evidence is absent, the page shows `No Evidence-Backed Actions Available`.
+
+### Executive Summary Daily Snapshot Contract
+
+- schema version: `executive_summary_daily_snapshot_v2`
+- uniqueness: one `executive_summary_daily` row per campaign and reporting date
+- tracked totals: Users, Sessions, Conversions, Revenue, Spend, CVR, CPA, ROAS, and ROI
+- current contract identity: campaign, currency, GA4 property, GA4 campaign filter, aggregate version, initial-import start, reporting timezone, and exact source signature
+- GA4 identity is retained as the connected web-analytics source
+- each contributing financial source is identified by its persisted source ID (`revenue_source:<id>` or `spend_source:<id>`), not by a display label
+- duplicate persisted IDs are deduplicated; distinct same-label sources remain distinct
+- a source replacement or reporting-contract change makes earlier history incompatible instead of mixing it into a trajectory
+- a snapshot write fails closed unless the current persisted GA4 property row set is non-empty and at least one row has `updatedAt` at or after the completed reporting day closed
+
+Trajectory compares revenue for the current reporting date and exactly seven days earlier only when both snapshot contracts match. More than +10% is `accelerating`; less than -10% is `declining`; otherwise it is `stable`. Missing history, incompatible history, or unavailable revenue produces an explicit unavailable state.
+
+### Exact Production Evidence
+
+Read-only production inventory and authenticated deployed output established:
+
+| Value | Exact persisted/calculated value | Page display |
+| --- | ---: | ---: |
+| Users | 1,184 | 1,184 |
+| Sessions | 1,183 | 1,183 |
+| Conversions | 152 | 152 |
+| CVR | 12.848689...% | 12.85% |
+| Engagement Rate KPI | 68.39% | 68.39% |
+| GA4-native campaign revenue | USD 55,966.70 | contributor to Total Revenue |
+| Imported connected revenue | USD 16,799.99 | contributor to Total Revenue |
+| Total Revenue | USD 72,766.69 | USD 72,766.69 |
+| Spend | USD 2,699.75 | USD 2,699.75 |
+| Aggregate CPA | USD 17.7628... | USD 17.76 where used |
+| ROAS | 26.953121...x | 26.95x |
+| ROI | 2,595.312158...% | 2,595.31% |
+
+The eight GA4 platform KPIs contained three below-target rows: Conversion Rate, Engagement Rate, and configured CPA. The two GA4 platform Benchmarks contained one behind row: Conversions. Those classifications correctly produced `Medium` Risk Level and the visible website-outcome recommendation.
+
+Production held five distinct contributing imported revenue sources and four distinct spend sources. The refreshed snapshot stored all nine persisted financial source IDs plus the GA4 web-analytics identity. No duplicate external IDs, identical cross-source value rows, duplicate reporting dates, simulated GA4 rows, or mixed-currency inputs were found in the certified boundary.
+
+### Scheduler Evidence And Permanent Configuration
+
+On the deployed commit, a natural timer run was observed after temporarily setting the GA4 daily scheduler to `18:45 UTC`:
+
+- timer fired at `2026-08-27T18:45:00.000Z` with trigger `scheduled`
+- target GA4 rows persisted before any post-run UI refresh
+- all eight target GA4 KPIs and both target GA4 Benchmarks updated with no target skips or failures
+- target values remained exactly equal to the pre-run expected values
+- after the normal page refresh, the Executive Summary snapshot updated with the same values and stable persisted source identities
+
+The process-wide run also reported 17 known obsolete-campaign failures. They are excluded and are not represented as a global scheduler success.
+
+Permanent production configuration was then restored and read-only verified:
+
+- `GA4_DAILY_REFRESH_TIME_ZONE=UTC`
+- `GA4_DAILY_REFRESH_HOUR=22`
+- `GA4_DAILY_REFRESH_MINUTE=0`
+- `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false`
+- next run armed for `2026-08-27T22:00:00.000Z`
+
+The same natural timer mechanism was proven at `18:45 UTC`; the first post-restoration `22:00 UTC` event was not observed during this audit.
+
+### Final Classification
+
+| Path | Classification | Evidence boundary |
+| --- | --- | --- |
+| Visible UI values and unavailable states | Proven | exact deployed output matched persisted/calculated production values |
+| Frontend query and refresh wiring | Proven | all three current query paths traced; normal post-scheduler refresh observed |
+| Current GA4 property metric path | Proven | UI -> outcome totals -> GA4 query/storage -> `ga4_daily_metrics` |
+| Revenue, spend, currency, ROAS, ROI, CVR, and aggregate CPA | Proven | exact source records, formulas, and deployed formatting reconciled |
+| GA4 KPI and Benchmark exception path | Proven | exact platform rows, scheduler updates, classifications, and visible counts reconciled |
+| Risk Level | Proven | exact current factors produced the expected Medium state |
+| Recommended Actions | Proven | visible eligibility, evidence, target context, and fail-closed behavior traced |
+| Current `Not enough history` trajectory state | Proven | only one compatible production reading exists |
+| Available 7-day trajectory calculation | Partially verified | deterministic tests cover exact contract and thresholds; a two-point production history was not yet available |
+| Target-campaign daily scheduler propagation | Proven | natural timer run plus pre/post read-only persistence and UI snapshot comparison |
+| Exact post-restoration `22:00 UTC` firing | Unverified | permanent configuration and next run were verified, but that clock event had not occurred |
+| PDFs, Custom Reports, scheduled reports, and other downstream report consumers | Unverified/out of scope | reserved for the Campaign DeepDive Custom Reports audit |
+| Paid-media and future connected-source variants | Unverified/out of scope | not enabled/configured in the certified GA4-first boundary |
+
+Subject to those explicit classifications and exclusions, the current GA4-first Executive Summary boundary is production-ready without extending the claim to unobserved or out-of-scope paths.
+
 ## Purpose
 
-Track the outstanding work required to make the Campaign DeepDive `Executive Summary` section production ready.
+Record the current Campaign DeepDive `Executive Summary` contract, evidence, classifications, and historical implementation work.
 
 The intended product behavior is:
 
@@ -28,18 +178,18 @@ Preserve the documented split in `ARCHITECTURE_USER_JOURNEY.md`:
 - `Executive Summary` = executive narrative, risk, trajectory, funnel, and strategic recommendation layer based on connected-source data.
 
 Do not turn Executive Summary into another platform-specific page.
-Do not duplicate aggregation logic across tabs.
+Do not duplicate aggregation logic across page sections or query paths.
 Do not invent unavailable metrics for sources that do not provide them.
 Do not display platform child revenue/spend inputs as separate main platforms.
 Do not produce paid-media recommendations when no connected main paid-media source provides the required spend, click, impression, conversion, or revenue inputs.
 
-## Current Root Cause
+## Historical Root Cause — Resolved
 
-`client/src/pages/executive-summary.tsx` fetches `/api/campaigns/:id/executive-summary`.
+The following root-cause record describes the legacy implementation before the current certified boundary. `client/src/pages/executive-summary.tsx` still fetches `/api/campaigns/:id/executive-summary`, but current values also require the authoritative `/outcome-totals` aggregate and the dedicated trajectory route documented above.
 
 `server/routes-oauth.ts` builds that endpoint through a separate legacy aggregation path instead of consuming the shared connected-source aggregate used by the other Campaign DeepDive subsections.
 
-Current implementation issues:
+Historical implementation issues:
 
 - the endpoint independently fetches LinkedIn, Meta, GA4, Custom Integration, and canonical spend/revenue data
 - source inclusion is hard-coded instead of driven by `performanceSummary.sources`
@@ -56,31 +206,35 @@ The issue is an aggregation contract problem, not a single-card display bug.
 ## Existing Relevant Paths
 
 - `client/src/pages/executive-summary.tsx`
-  - Current Executive Summary page and tab UI.
-  - Renders Executive Overview and Strategic Recommendations.
-  - Assumes the endpoint returns already-composed metrics, platform rows, risk, recommendations, KPI progress, and benchmark comparison.
+  - Current single-page Executive Summary UI; it does not render tabs.
+  - Combines `/executive-summary`, `/outcome-totals`, and `/executive-summary/trajectory`.
+  - Renders the narrative, trajectory, Risk Level, funnel, metric cards, KPI/Benchmark exceptions, and Recommended Actions.
 
 - `server/routes-oauth.ts`
   - Contains `/api/campaigns/:id/executive-summary`.
   - Contains `/api/campaigns/:id/outcome-totals`, which returns `performanceSummary`.
-  - Contains snapshot comparison routes used by other DeepDive sections.
+  - Contains `/api/campaigns/:id/executive-summary/trajectory` and the guarded Executive Summary snapshot capture path.
 
 - `server/utils/executive-summary-helpers.ts`
-  - Current helper functions for health scoring, risk assessment, and strategic recommendations.
-  - Currently assumes paid-media-style platform inputs and zero-valued missing metrics.
+  - Retains backend health, risk, and recommendation helpers for the existing response contract.
+  - Visible Risk Level and Recommended Actions receive the page-level capability and availability checks documented above.
 
 - `server/utils/performance-summary-aggregate.ts`
   - Current connected-source aggregate helper.
   - Contains source identity, capabilities, included metrics, excluded metric reasons, financial totals, and derived metrics.
 
-- `server/scheduler.ts`
-  - Scheduler snapshots include `metrics.performanceSummary`.
-  - Compatible snapshot reads should use the same aggregate version before comparing historical values.
+- `server/utils/executive-summary-daily-snapshot.ts`
+  - Defines, validates, parses, and compares `executive_summary_daily_snapshot_v2`.
+  - Enforces the GA4 refresh guard and exact compatible-history contract.
+
+- `server/executive-summary-snapshot-scheduler.ts`
+  - Requests the existing guarded outcome-totals capture path after startup and every 24 hours.
+  - Does not bypass the GA4 refresh or source-identity checks.
 
 - `server/storage.ts`
-  - Storage-layer access for campaign sources, GA4, LinkedIn, Meta, Google Ads, revenue, spend, Custom Integration, KPIs, Benchmarks, and snapshots.
+  - Storage-layer access for campaign sources, GA4, revenue, spend, platform KPIs/Benchmarks, and the unique daily Executive Summary snapshot rows.
 
-## Production-Ready Target Contract
+## Historical Production-Ready Target Contract
 
 Executive Summary should consume one campaign-level aggregate contract.
 
@@ -203,9 +357,9 @@ Rules:
 - Health, risk, and recommendations must not penalize missing unavailable metrics as failed metrics.
 - Do not use Pipeline Proxy data for Executive Summary totals.
 
-## Tab Requirements
+## Historical Tab Requirements — Superseded By The Single-Page UI
 
-### Executive Overview
+### Historical Executive Overview
 
 Target behavior:
 
@@ -265,7 +419,7 @@ Root cause for Commit 4:
 - The Executive Overview, funnel, KPI Progress, Benchmark Comparison, and Risk Assessment sections have been moved to the shared aggregate/source-aware pattern.
 - Strategic Recommendations now use source-capability gating so GA4-only campaigns do not receive paid-media recommendations and recommendation claims do not use unavailable metrics.
 
-### Strategic Recommendations
+### Historical Strategic Recommendations
 
 Target behavior:
 
@@ -294,7 +448,7 @@ Required regression coverage:
 - Revenue-without-spend avoids paid efficiency claims.
 - Spend-without-revenue avoids ROAS/ROI claims.
 
-## Backend Tasks
+## Historical Backend Tasks
 
 - Add campaign access guarding to `/api/campaigns/:id/executive-summary`.
 - Reuse or compose the shared `/outcome-totals` aggregate logic for the endpoint.
@@ -306,7 +460,7 @@ Required regression coverage:
 - Ensure Google Ads and future `platformSources` appear automatically once they are present in `performanceSummary.sources`.
 - Ensure child revenue/spend inputs feed only aggregate financial totals and provenance.
 
-## Historical And Snapshot Tasks
+## Historical Snapshot Tasks
 
 - Replace legacy trajectory comparison with compatible `metrics.performanceSummary.version` snapshot comparison.
 - Do not compare against legacy snapshots that lack `metrics.performanceSummary`.
@@ -314,7 +468,7 @@ Required regression coverage:
 - Do not estimate current or previous revenue from conversions when aggregate revenue is unavailable.
 - Keep manual and scheduler snapshot creation on the existing `aggregateCampaignMetrics` path.
 
-## Frontend Tasks
+## Historical Frontend Tasks
 
 - Keep the existing Executive Summary route and tab layout.
 - Remove hard-coded paid-media-only labels where the aggregate says the metric is unavailable.
@@ -326,7 +480,7 @@ Required regression coverage:
 - Remove visible demo controls from the production page if final production-readiness scope includes UI consistency with the other DeepDive subsections.
 - Refetch current values while visible and on window focus, matching Performance Summary, Budget & Financial Analysis, and Platform Comparison.
 
-## Testing Plan
+## Historical Testing Plan
 
 Targeted tests to add or update:
 
@@ -346,7 +500,7 @@ Validation commands after implementation:
 - `npm run check`
 - `npm run build`
 
-## Bundled Implementation Plan
+## Historical Bundled Implementation Plan
 
 Use this sequence to keep commits small enough to validate safely.
 
@@ -660,7 +814,7 @@ Why this is last:
 
 - Documentation should match the implemented behavior, and final validation should cover all previously changed paths together.
 
-## Production-Ready Acceptance Criteria
+## Historical Production-Ready Acceptance Criteria
 
 Executive Summary is production ready only when:
 
@@ -680,7 +834,7 @@ Executive Summary is production ready only when:
 - regression coverage proves GA4-only, paid multi-source, financial child-source exclusion, recommendation gating, and access guard behavior
 - documentation matches the implemented behavior
 
-## Current Status
+## Historical Status Before The 2026-08-27 Certification
 
 Production-ready by local code path review, regression coverage, build validation, and user validation for the implemented connected-source aggregate pattern. Executive Summary now follows the same future-proofing pattern as the other Campaign DeepDive subsections: current sections consume the shared connected-source aggregate, and future or refined main Connected Platforms must enter through the documented aggregate contract before being marked production-ready for that source. Google Ads has separate local Connected Platforms evidence through Commit 29 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Live OAuth deployed or production-like evidence remains separate. Executive Summary is ready to consume Google Ads through the same aggregate pattern for the validated local source path.
 
@@ -842,6 +996,6 @@ Not covered by local implementation validation:
 - Complete frontend regression coverage beyond the targeted Executive Summary guards and user-validated flows.
 - Future standalone platforms beyond the current shared aggregate contract require the future-platform acceptance gate before that specific source is called production-ready in Executive Summary.
 
-## 2026-07-30 Current Commit 10 Status — Shared Input Deployed; External Evidence Open
+## Historical 2026-07-30 Commit 10 Status — Shared Input Deployed; External Evidence Was Open
 
 Executive Summary's live aggregate contract is unchanged. Commit `ec265895` deployed its scheduled/manual snapshot input alignment to the ordered campaign-to-date GA4 financial selection, GA4-context persisted financial sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2` compatibility. Commit 10 is closed for its bounded code/browser packet, but the recorded validation did not inspect Executive Summary trajectory, scheduled output, or a live multi-source campaign. Those exact evidence gates remain unproven.

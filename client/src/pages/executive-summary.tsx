@@ -381,29 +381,17 @@ export default function ExecutiveSummary() {
     };
   };
   const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)
-    ? (executiveSummary as any).kpiProgress
-      .map((kpi: any) => {
-        const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-        if (!aggregateKpiMetric) return null;
-        const target = Number(kpi.target ?? kpi.targetValue);
-        if (!Number.isFinite(target) || target <= 0) return null;
-        return {
-          ...kpi,
-          metricKey: aggregateKpiMetric,
-          current: aggregateMetricValue(aggregateKpiMetric),
-          target,
-        };
-      })
-      .filter(Boolean)
+    ? (executiveSummary as any).kpiProgress.filter((kpi: any) =>
+      Number.isFinite(Number(kpi.current)) && Number(kpi.target ?? kpi.targetValue) > 0
+    )
     : [];
   const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)
     ? (executiveSummary as any).benchmarkComparison
       .map((bm: any) => {
-        const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
-        if (!aggregateBenchmarkMetric) return null;
-        const yours = aggregateMetricValue(aggregateBenchmarkMetric);
+        const aggregateBenchmarkMetric = String(bm.metricKey || bm.metric || "");
+        const yours = Number(bm.yours);
         const benchmark = Number(bm.benchmark);
-        if (!Number.isFinite(benchmark) || benchmark <= 0) return null;
+        if (!aggregateBenchmarkMetric || !Number.isFinite(yours) || !Number.isFinite(benchmark) || benchmark <= 0) return null;
         const threshold = computeBenchmarkThresholdResult({
           metric: aggregateBenchmarkMetric,
           name: bm?.name || bm?.metric,
@@ -441,23 +429,10 @@ export default function ExecutiveSummary() {
     action: "Review website conversion path before making paid-media budget decisions",
     confidence: aggregateMetricAvailable("cvr") ? "medium" : "low",
   }] : [];
-  const kpiProgressPct = (kpi: any): number => {
-    const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);
-    const current = Number(kpi.current ?? kpi.currentValue) || 0;
-    const target = Number(kpi.target) || 0;
-    const lowerIsBetter = isLowerIsBetterKpi({ metric: executiveKpiMetric, name: kpi?.name || kpi?.metric });
-    const progressRatio = target > 0
-      ? lowerIsBetter
-        ? (current > 0 ? target / current : 1)
-        : current / target
-      : 0;
-    return progressRatio * 100;
-  };
-  const riskKpiMissCount = executiveKpiProgress.filter((kpi: any) => kpiProgressPct(kpi) < 70).length;
+  const riskKpiMissCount = executiveKpiExceptions.length;
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
-  const kpiMonitorCount = executiveKpiExceptions.filter((kpi: any) => kpiProgressPct(kpi) >= 70).length;
   const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;
-  const hasMonitorConditions = kpiMonitorCount > 0 || benchmarkMonitorCount > 0;
+  const hasMonitorConditions = benchmarkMonitorCount > 0;
   const riskFreshnessWarnings = (Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [])
     .filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
   const trendPercentage = hasAuthoritativeGA4Window
@@ -482,7 +457,7 @@ export default function ExecutiveSummary() {
     ...(trendRisk ? [{ type: "trend", message: `Performance declining ${Math.abs(trendPercentage).toFixed(0)}% - intervention needed` }] : []),
     ...(aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0 ? [{ type: "performance", message: "Negative ROI - immediate optimization required" }] : []),
     ...(aggregateMetricAvailable("roas") && aggregateMetricValue("roas") < 1 ? [{ type: "performance", message: "ROAS below breakeven - review campaign strategy" }] : []),
-    ...(riskKpiMissCount > 0 ? [{ type: "kpi", message: `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` }] : []),
+    ...(riskKpiMissCount > 0 ? [{ type: "kpi", message: `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below target` }] : []),
     ...(riskBenchmarkMissCount > 0 ? [{ type: "benchmark", message: `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind benchmark` }] : []),
     ...riskFreshnessWarnings.map((warning: any) => ({ type: "freshness", message: warning.message })),
   ];
@@ -493,14 +468,12 @@ export default function ExecutiveSummary() {
     ? hasMonitorConditions
       ? "No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring."
       : "No configured risk factors identified from available connected-source inputs."
-    : "Risk factors are based on the same connected-source inputs used by the visible Executive Summary metrics.";
+    : "Risk factors include configured KPI and Benchmark evaluations from their connected-source reporting contracts.";
   const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
-  const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
+  const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
   const kpiRiskDetail = riskKpiMissCount > 0
-    ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target${kpiMonitorCount > 0 ? `; ${kpiMonitorCount} additional KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : ""}`
-    : kpiMonitorCount > 0
-      ? `${kpiMonitorCount} KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff`
-      : executiveKpiProgress.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available";
+    ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} classified below target`
+    : executiveKpiProgress.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available";
   const benchmarkRiskStatus = riskBenchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable";
   const benchmarkRiskDetail = riskBenchmarkMissCount > 0
     ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}`
@@ -839,7 +812,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No campaign KPI has both an available metric and a positive target for {executiveWindowDescription}.
+                      No campaign KPI has both an available value and a positive target in its configured connected-source reporting window.
                     </p>
                   </CardContent>
                 </Card>
@@ -854,7 +827,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No below-target KPI was found among campaign KPIs with available data and positive targets for {executiveWindowDescription}.
+                      No below-target KPI was found among campaign KPIs evaluated in their configured connected-source reporting windows.
                     </p>
                   </CardContent>
                 </Card>
@@ -915,7 +888,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No campaign benchmark has both an available metric and a positive target for {executiveWindowDescription}.
+                      No campaign benchmark has both an available value and a positive target in its configured connected-source reporting window.
                     </p>
                   </CardContent>
                 </Card>
@@ -930,7 +903,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for {executiveWindowDescription}.
+                      No benchmark requiring attention was found among campaign benchmarks evaluated in their configured connected-source reporting windows.
                     </p>
                   </CardContent>
                 </Card>

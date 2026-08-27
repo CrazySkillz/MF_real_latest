@@ -3,8 +3,31 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { generateRecommendations, generateRiskAssessment } from "./utils/executive-summary-helpers";
+import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
 
 describe("campaign Executive Summary regression guard", () => {
+  it("counts every below-target KPI and behind Benchmark using the connected-source policies", () => {
+    const kpis = [
+      { name: "Conversion Rate", metric: "Conversion Rate", unit: "%", current: 12.85, target: 15 },
+      { name: "CPA", metric: "CPA", unit: "USD", current: 10.76, target: 9 },
+      { name: "Engagement Rate", metric: "Engagement Rate", unit: "%", current: 68.39, target: 89 },
+      { name: "Revenue", metric: "Revenue", unit: "USD", current: 72766.69, target: 25000 },
+    ];
+    const below = kpis.filter((kpi) => {
+      const lowerIsBetter = isLowerIsBetterKpi(kpi);
+      const policy = resolveKpiThresholdPolicy({ ...kpi, lowerIsBetter });
+      return classifyKpiBandWithPolicy({ ...kpi, lowerIsBetter, policy }) === "below";
+    });
+    const benchmarks = [
+      { name: "Benchmark Revenue", metric: "revenue", unit: "USD", current: 72766.69, benchmarkValue: 20000 },
+      { name: "Total Conversions", metric: "conversions", unit: "count", current: 152, benchmarkValue: 299 },
+    ];
+    const behind = benchmarks.filter((benchmark) => computeBenchmarkThresholdResult(benchmark).status === "behind");
+
+    expect(below.map((kpi) => kpi.name)).toEqual(["Conversion Rate", "CPA", "Engagement Rate"]);
+    expect(behind.map((benchmark) => benchmark.name)).toEqual(["Total Conversions"]);
+  });
+
   it("formats monetary values with campaign currency and fails closed without it", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "executive-summary.tsx"), "utf-8");
     const formatterStart = page.indexOf("function formatExecutiveCurrency");
@@ -140,23 +163,24 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('totalrevenue: "revenue"');
     expect(route).toContain('totalconversions: "conversions"');
     expect(route).toContain('roas: "roas"');
-    expect(route).toContain("const kpis = await storage.getCampaignKPIs(id);");
-    expect(route).not.toContain('const kpis = await storage.getPlatformKPIs("google_analytics", id);');
-    expect(route).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
+    expect(route).toContain('const kpis = hasGA4Connection');
+    expect(route).toContain('? await storage.getPlatformKPIs("google_analytics", id)');
+    expect(route).toContain(': await storage.getCampaignKPIs(id);');
+    expect(route).toContain("const aggregateKpiMetric = isGA4Kpi ? resolveConnectedSourceMetric(kpi) : resolveKpiAggregateMetric(kpi);");
     expect(route).toContain("if (!aggregateKpiMetric) continue;");
-    expect(route).toContain("const currentValue = aggregateMetricValue(aggregateKpiMetric);");
+    expect(route).toContain("const currentValue = isGA4Kpi ? parseNum(kpi.currentValue) : aggregateMetricValue(aggregateKpiMetric);");
     expect(route).toContain("if (targetValue <= 0) continue;");
-    expect(route).not.toContain("const currentValue = parseNum(kpi.currentValue);");
     expect(route).toContain("metricKey: aggregateKpiMetric,");
     expect(route).toContain("const lowerIsBetter = isLowerIsBetterKpi({ metric: aggregateKpiMetric");
+    expect(route).toContain("const kpiStatus = classifyKpiBandWithPolicy({ current: currentValue, target: targetValue, lowerIsBetter, policy }) || \"below\";");
     expect(route).not.toContain("await storage.getKPIProgress(kpi.id)");
-    expect(route).toContain("const benchmarks = await storage.getCampaignBenchmarks(id);");
-    expect(route).not.toContain('const benchmarks = await storage.getPlatformBenchmarks("google_analytics", id);');
-    expect(route).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
+    expect(route).toContain('const benchmarks = hasGA4Connection');
+    expect(route).toContain('? await storage.getPlatformBenchmarks("google_analytics", id)');
+    expect(route).toContain(': await storage.getCampaignBenchmarks(id);');
+    expect(route).toContain("const aggregateBenchmarkMetric = isGA4Benchmark ? resolveConnectedSourceMetric(bm) : resolveKpiAggregateMetric(bm);");
     expect(route).toContain("if (!aggregateBenchmarkMetric) continue;");
-    expect(route).toContain("const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);");
+    expect(route).toContain("const currentVal = isGA4Benchmark ? parseNum(bm.currentValue) : aggregateMetricValue(aggregateBenchmarkMetric);");
     expect(route).toContain("if (targetVal <= 0) continue;");
-    expect(route).not.toContain("const currentVal = parseNum(bm.currentValue);");
     expect(route).toContain("metricKey: aggregateBenchmarkMetric,");
     expect(route).toContain("const threshold = computeBenchmarkThresholdResult({");
     expect(route).toContain("status: threshold.status || 'behind'");
@@ -165,7 +189,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
     expect(route).not.toContain("parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1))");
     expect(route).toContain("const riskExtraFactors: Array<{ type: string; message: string; severity?: string }> = [];");
-    expect(route).toContain("const missedKpiCount = kpiProgress.filter((kpi: any) => Number(kpi.pctComplete) < 70).length;");
+    expect(route).toContain('const missedKpiCount = kpiProgress.filter((kpi: any) => kpi.status === "below").length;');
     expect(route).toContain('const missedBenchmarkCount = benchmarkComparison.filter((bm: any) => bm.status === "behind").length;');
     expect(route).toContain("dataFreshnessWarnings.forEach((warning: any) => {");
     expect(route).toContain("}, growthTrajectory, trendPercentage, riskExtraFactors);");
@@ -367,8 +391,8 @@ describe("campaign Executive Summary regression guard", () => {
     const route = routes.slice(routeStart, routeEnd);
 
     expect(route).toContain("const platformsForDisplay: any[] = mainAggregateSources.map");
-    expect(route).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
-    expect(route).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
+    expect(route).toContain("const aggregateKpiMetric = isGA4Kpi ? resolveConnectedSourceMetric(kpi) : resolveKpiAggregateMetric(kpi);");
+    expect(route).toContain("const aggregateBenchmarkMetric = isGA4Benchmark ? resolveConnectedSourceMetric(bm) : resolveKpiAggregateMetric(bm);");
     expect(route).not.toContain("future_paid_source");
     expect(route).not.toContain("Future Paid Source");
 
@@ -550,18 +574,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
     expect(page).toContain("const resolveExecutiveKpiMetric = (kpi: any): string =>");
     expect(page).toContain("const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)");
-    expect(page).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
-    expect(page).toContain("if (!aggregateKpiMetric) return null;");
-    expect(page).toContain("const target = Number(kpi.target ?? kpi.targetValue);");
-    expect(page).toContain("if (!Number.isFinite(target) || target <= 0) return null;");
-    expect(page).toContain("current: aggregateMetricValue(aggregateKpiMetric),");
-    expect(page).not.toContain("Number(kpi.currentValue)");
+    expect(page).toContain("Number.isFinite(Number(kpi.current)) && Number(kpi.target ?? kpi.targetValue) > 0");
+    expect(page).not.toContain("current: aggregateMetricValue(aggregateKpiMetric),");
     expect(page).toContain("const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)");
-    expect(page).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
+    expect(page).toContain('const aggregateBenchmarkMetric = String(bm.metricKey || bm.metric || "");');
     expect(page).toContain("const benchmark = Number(bm.benchmark);");
-    expect(page).toContain("if (!Number.isFinite(benchmark) || benchmark <= 0) return null;");
-    expect(page).toContain("const yours = aggregateMetricValue(aggregateBenchmarkMetric);");
-    expect(page).not.toContain("Number(bm.yours ?? bm.currentValue)");
+    expect(page).toContain("const yours = Number(bm.yours);");
+    expect(page).toContain("if (!aggregateBenchmarkMetric || !Number.isFinite(yours) || !Number.isFinite(benchmark) || benchmark <= 0) return null;");
     expect(page).toContain("const executiveKpiExceptions = executiveKpiProgress.filter((kpi: any) =>");
     expect(page).toContain('resolveExecutiveKpiTargetState(kpi).band === "below"');
     expect(page).toContain('const executiveBenchmarkExceptions = executiveBenchmarkComparison.filter((bm: any) => bm.status !== "on_track");');
@@ -575,8 +594,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("No KPI Exceptions");
     expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
     expect(page).toContain('`the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`');
-    expect(page).toContain("No campaign KPI has both an available metric and a positive target for {executiveWindowDescription}.");
-    expect(page).toContain("No below-target KPI was found among campaign KPIs with available data and positive targets for {executiveWindowDescription}.");
+    expect(page).toContain("No campaign KPI has both an available value and a positive target in its configured connected-source reporting window.");
+    expect(page).toContain("No below-target KPI was found among campaign KPIs evaluated in their configured connected-source reporting windows.");
     expect(page).toContain("{executiveBenchmarkExceptions.length > 0 && (");
     expect(page).toContain("{executiveBenchmarkExceptions.map((bm: any, index: number) => (");
     expect(page).not.toContain("{executiveBenchmarkComparison.map((bm: any, index: number) => (");
@@ -585,23 +604,23 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("{executiveBenchmarkComparison.length > 0 && executiveBenchmarkExceptions.length === 0 && (");
     expect(page).toContain("Benchmark Status Unavailable");
     expect(page).toContain("No Benchmark Exceptions");
-    expect(page).toContain("No campaign benchmark has both an available metric and a positive target for {executiveWindowDescription}.");
-    expect(page).toContain("No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for {executiveWindowDescription}.");
+    expect(page).toContain("No campaign benchmark has both an available value and a positive target in its configured connected-source reporting window.");
+    expect(page).toContain("No benchmark requiring attention was found among campaign benchmarks evaluated in their configured connected-source reporting windows.");
     expect(page).toContain("const threshold = computeBenchmarkThresholdResult({");
     expect(page).toContain("status: threshold.status || 'behind'");
     expect(page).not.toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(page).toContain("const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);");
     expect(page).toContain("const current = Number(kpi.current) || 0;");
     expect(page).toContain('if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value);');
-    expect(page).toContain("const kpiProgressPct = (kpi: any): number => {");
-    expect(page).toContain("const riskKpiMissCount = executiveKpiProgress.filter((kpi: any) => kpiProgressPct(kpi) < 70).length;");
+    expect(page).not.toContain("const kpiProgressPct = (kpi: any): number => {");
+    expect(page).toContain("const riskKpiMissCount = executiveKpiExceptions.length;");
     expect(page).toContain('const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;');
-    expect(page).toContain("const kpiMonitorCount = executiveKpiExceptions.filter((kpi: any) => kpiProgressPct(kpi) >= 70).length;");
+    expect(page).not.toContain("const kpiMonitorCount =");
     expect(page).toContain('const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;');
-    expect(page).toContain("const hasMonitorConditions = kpiMonitorCount > 0 || benchmarkMonitorCount > 0;");
-    expect(page).toContain('const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor"');
+    expect(page).toContain("const hasMonitorConditions = benchmarkMonitorCount > 0;");
+    expect(page).toContain('const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk"');
     expect(page).toContain('const benchmarkRiskStatus = riskBenchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor"');
-    expect(page).toContain("below the target policy but at or above the 70% risk cutoff");
+    expect(page).toContain("classified below target");
     expect(page).toContain("classified needs attention; none is classified behind");
     expect(page).toContain('No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring.');
     expect(page).toContain('{ label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail }');
@@ -641,13 +660,12 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain("(executiveSummary as any).risk.factors.length === 0");
     expect(page).not.toContain("(executiveSummary as any).risk.factors.map");
     expect(page).not.toContain("(executiveSummary as any).risk.level === 'low'");
-    expect(page).toContain("current: aggregateMetricValue(aggregateKpiMetric),");
+    expect(page).toContain("Number.isFinite(Number(kpi.current)) && Number(kpi.target ?? kpi.targetValue) > 0");
     expect(page).toContain("classifyKpiBandWithPolicy");
     expect(page).toContain("resolveKpiThresholdPolicy");
     expect(page).toContain("const resolveExecutiveKpiTargetState = (kpi: any) => {");
     expect(page).toContain("const policy = resolveKpiThresholdPolicy({");
     expect(page).toContain('classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy }) ?? "below"');
-    expect(page).toContain("const progressRatio = target > 0");
     expect(page).toContain('const statusLabel = band === "above" ?');
     expect(page).toContain('band === "near" ? \'On Track\' : \'Below Target\';');
     expect(page).toContain("fillPct: computeAttainmentFillPct(attainmentPct),");

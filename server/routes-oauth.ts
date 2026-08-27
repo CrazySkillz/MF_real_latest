@@ -53,7 +53,7 @@ import {
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { computeBenchmarkThresholdResult, isLowerIsBetterKpi } from "@shared/kpi-math";
+import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { buildExecutiveSummaryDailySnapshotInput, evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
@@ -31191,6 +31191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ctr: "ctr",
         cvr: "cvr",
         conversionrate: "cvr",
+        engagementrate: "engagement_rate",
         cpa: "cpa",
         cpc: "cpc",
         cpm: "cpm",
@@ -31203,6 +31204,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return null;
       };
+      const resolveConnectedSourceMetric = (record: any): string | null => {
+        for (const candidate of [record?.metricKey, record?.metric, record?.name]) {
+          const normalized = String(candidate || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          if (kpiMetricAliases[normalized]) return kpiMetricAliases[normalized];
+        }
+        return null;
+      };
       const mainAggregateSources = Array.isArray((performanceSummary as any)?.sources)
         ? (performanceSummary as any).sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
         : [];
@@ -31211,11 +31219,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let kpiProgress: any[] = [];
       const recommendationTargetMetrics = new Set<string>();
       try {
-        const kpis = await storage.getCampaignKPIs(id);
+        const kpis = hasGA4Connection
+          ? await storage.getPlatformKPIs("google_analytics", id)
+          : await storage.getCampaignKPIs(id);
         for (const kpi of kpis) {
-          const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
+          const isGA4Kpi = kpi?.platformType === "google_analytics";
+          const aggregateKpiMetric = isGA4Kpi ? resolveConnectedSourceMetric(kpi) : resolveKpiAggregateMetric(kpi);
           if (!aggregateKpiMetric) continue;
-          const currentValue = aggregateMetricValue(aggregateKpiMetric);
+          const currentValue = isGA4Kpi ? parseNum(kpi.currentValue) : aggregateMetricValue(aggregateKpiMetric);
           const targetValue = parseNum(kpi.targetValue);
           if (targetValue <= 0) continue;
           if (targetValue > 0 && ["cvr", "revenue", "conversions"].includes(aggregateKpiMetric)) {
@@ -31229,9 +31240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : 0;
           const pctComplete = progressRatio * 100;
 
-          let kpiStatus = 'on_track';
-          if (pctComplete < 50) kpiStatus = 'behind';
-          else if (pctComplete < 75) kpiStatus = 'at_risk';
+          const policy = resolveKpiThresholdPolicy({
+            metric: aggregateKpiMetric,
+            name: kpi?.name || kpi?.metric,
+            unit: kpi?.unit,
+            current: currentValue,
+            target: targetValue,
+            lowerIsBetter,
+          });
+          const kpiStatus = classifyKpiBandWithPolicy({ current: currentValue, target: targetValue, lowerIsBetter, policy }) || "below";
 
           kpiProgress.push({
             kpiId: kpi.id,
@@ -31252,11 +31269,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch benchmark comparison
       let benchmarkComparison: any[] = [];
       try {
-        const benchmarks = await storage.getCampaignBenchmarks(id);
+        const benchmarks = hasGA4Connection
+          ? await storage.getPlatformBenchmarks("google_analytics", id)
+          : await storage.getCampaignBenchmarks(id);
         for (const bm of benchmarks) {
-          const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
+          const isGA4Benchmark = bm?.platformType === "google_analytics";
+          const aggregateBenchmarkMetric = isGA4Benchmark ? resolveConnectedSourceMetric(bm) : resolveKpiAggregateMetric(bm);
           if (!aggregateBenchmarkMetric) continue;
-          const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);
+          const currentVal = isGA4Benchmark ? parseNum(bm.currentValue) : aggregateMetricValue(aggregateBenchmarkMetric);
           const targetVal = parseNum(bm.benchmarkValue);
           if (targetVal <= 0) continue;
           if (targetVal > 0 && ["cvr", "revenue", "conversions"].includes(aggregateBenchmarkMetric)) {
@@ -31450,11 +31470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Risk assessment from helper
       const riskExtraFactors: Array<{ type: string; message: string; severity?: string }> = [];
-      const missedKpiCount = kpiProgress.filter((kpi: any) => Number(kpi.pctComplete) < 70).length;
+      const missedKpiCount = kpiProgress.filter((kpi: any) => kpi.status === "below").length;
       if (missedKpiCount > 0) {
         riskExtraFactors.push({
           type: "kpi",
-          message: `${missedKpiCount} KPI${missedKpiCount === 1 ? " is" : "s are"} below 70% of target`,
+          message: `${missedKpiCount} KPI${missedKpiCount === 1 ? " is" : "s are"} below target`,
           severity: "medium",
         });
       }

@@ -14753,6 +14753,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ga4PropertyId: persistedPropertyId,
             ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
             performanceSummary,
+            financialSourceIdentities: {
+              revenue: financialRevenueInputs.map((source: any) => source.id),
+              spend: financialSpendInputs.map((source: any) => source.id),
+            },
           });
           if (!executiveSnapshot.totals.revenue.available) throw new Error("Authoritative revenue is unavailable");
           await storage.upsertExecutiveSummaryDailySnapshot(executiveSnapshot);

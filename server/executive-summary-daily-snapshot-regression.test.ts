@@ -23,6 +23,9 @@ describe("Executive Summary daily snapshot wiring", () => {
     expect(outcome).toContain("buildExecutiveSummaryDailySnapshotInput");
     expect(outcome).toContain("hasRefreshedGA4RowsForExecutiveSummarySnapshot");
     expect(outcome).toContain("if (!executiveGA4SnapshotRefreshReady)");
+    expect(outcome).toContain("financialSourceIdentities:");
+    expect(outcome).toContain("revenue: financialRevenueInputs.map((source: any) => source.id)");
+    expect(outcome).toContain("spend: financialSpendInputs.map((source: any) => source.id)");
     expect(outcome).toContain("if (!executiveSnapshot.totals.revenue.available)");
     expect(outcome).toContain("upsertExecutiveSummaryDailySnapshot");
     expect(outcome.indexOf("const performanceSummary = buildCampaignPerformanceSummaryAggregate"))

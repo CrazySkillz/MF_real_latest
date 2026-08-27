@@ -60,11 +60,19 @@ export function buildExecutiveSummaryDailySnapshotInput(input: {
   ga4PropertyId: string;
   ga4CampaignFilter: unknown;
   performanceSummary: any;
+  financialSourceIdentities?: { revenue: unknown[]; spend: unknown[] };
 }): ExecutiveSummaryDailySnapshotInput {
   const summary = input.performanceSummary;
   const window = summary?.currentValueWindow;
-  const sourceSignature = (Array.isArray(summary?.sources) ? summary.sources : [])
+  const explicitFinancialSignature = input.financialSourceIdentities
+    ? [
+        ...input.financialSourceIdentities.revenue.map((id) => `revenue_source:${String(id || "").trim()}`),
+        ...input.financialSourceIdentities.spend.map((id) => `spend_source:${String(id || "").trim()}`),
+      ].filter((identity) => !identity.endsWith(":"))
+    : null;
+  const summarySourceSignature = (Array.isArray(summary?.sources) ? summary.sources : [])
     .filter((source: any) => source?.connected === true)
+    .filter((source: any) => explicitFinancialSignature === null || source?.category !== "financial")
     .map((source: any) => [
       String(source?.id || ""),
       String(source?.category || ""),
@@ -72,6 +80,10 @@ export function buildExecutiveSummaryDailySnapshotInput(input: {
     ].join(":"))
     .filter(Boolean)
     .sort();
+  const sourceSignature = Array.from(new Set([
+    ...summarySourceSignature,
+    ...(explicitFinancialSignature || []),
+  ])).sort();
   const totals = Object.fromEntries(trackedMetricNames.map((name) => [name, normalizeMetric(summary?.totals?.[name])])) as ExecutiveSummaryDailySnapshotInput["totals"];
   return executiveSummaryDailySnapshotInputSchema.parse({
     version: "executive_summary_daily_snapshot_v2",

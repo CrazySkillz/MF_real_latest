@@ -38,6 +38,7 @@ const build = (endDate: string, revenue: number) => buildExecutiveSummaryDailySn
   ga4PropertyId: "properties/542352127",
   ga4CampaignFilter: "spring_campaign",
   performanceSummary: performanceSummary(endDate, revenue),
+  financialSourceIdentities: { revenue: ["revenue-1", "revenue-2"], spend: ["spend-1"] },
 });
 
 const row = (snapshot: ExecutiveSummaryDailySnapshotInput): any => {
@@ -75,8 +76,30 @@ describe("Executive Summary daily snapshot", () => {
     expect(snapshot.totals.roi.value).toBe(2595.31);
     expect(snapshot.sourceSignature).toEqual([
       "ga4:web_analytics:conversions:revenue:sessions:users",
-      "revenue_csv:financial:revenue",
+      "revenue_source:revenue-1",
+      "revenue_source:revenue-2",
+      "spend_source:spend-1",
     ]);
+  });
+
+  it("uses stable persisted identities when financial sources have duplicate labels", () => {
+    const summary = performanceSummary("2026-08-25", 72766.69);
+    summary.sources.push({ id: "revenue_HubSpot (Deals)", category: "financial", connected: true, includedMetrics: ["revenue"] });
+    const snapshot = buildExecutiveSummaryDailySnapshotInput({
+      campaignId: "campaign-1",
+      currency: "USD",
+      ga4PropertyId: "542352127",
+      ga4CampaignFilter: "spring_campaign",
+      performanceSummary: summary,
+      financialSourceIdentities: { revenue: ["hubspot-1", "hubspot-2", "hubspot-2"], spend: ["spend-1"] },
+    });
+    expect(snapshot.sourceSignature).toEqual([
+      "ga4:web_analytics:conversions:revenue:sessions:users",
+      "revenue_source:hubspot-1",
+      "revenue_source:hubspot-2",
+      "spend_source:spend-1",
+    ]);
+    expect(snapshot.sourceSignature).not.toContain("revenue_HubSpot (Deals):financial:revenue");
   });
 
   it("classifies only an exact seven-day compatible comparison", () => {
@@ -99,6 +122,12 @@ describe("Executive Summary daily snapshot", () => {
 
     const wrongDay = build("2026-08-17", 50000);
     expect(evaluateExecutiveSummaryTrajectory(row(current), row(wrongDay))).toMatchObject({ available: false, reason: "incompatible_history" });
+
+    const changedFinancialSource = build("2026-08-18", 50000);
+    changedFinancialSource.sourceSignature = changedFinancialSource.sourceSignature
+      .map((identity) => identity === "revenue_source:revenue-1" ? "revenue_source:replacement" : identity);
+    expect(evaluateExecutiveSummaryTrajectory(row(current), row(changedFinancialSource)))
+      .toMatchObject({ available: false, reason: "incompatible_history" });
   });
 
   it("does not invent a trajectory when revenue history is unavailable", () => {

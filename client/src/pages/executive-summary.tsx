@@ -205,25 +205,14 @@ export default function ExecutiveSummary() {
     if (aggregateMetricAvailable("users")) webMetrics.push(`${formatAggregateInteger("users")} users`);
     if (aggregateMetricAvailable("sessions")) webMetrics.push(`${formatAggregateInteger("sessions")} sessions`);
     if (aggregateMetricAvailable("conversions")) webMetrics.push(`${formatAggregateInteger("conversions")} conversions`);
-    if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));
+    if (aggregateMetricAvailable("revenue")) webMetrics.push(`${formatAggregateCurrency("revenue")} total connected revenue`);
     if (aggregateMetricAvailable("cvr")) webMetrics.push(`${formatAggregatePercent("cvr")} conversion rate`);
     const expectedImpact = String(rec?.expectedImpact || "");
     const unavailableTargetText = "No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.";
     const targetText = expectedImpact.includes(unavailableTargetText)
       ? unavailableTargetText
       : (expectedImpact.match(/KPI or Benchmark targets exist for [^.]+; compare against those targets before judging quality\./)?.[0] || "");
-    const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "";
-    const interpretationText = [
-      aggregateMetricAvailable("revenue")
-        ? `Total connected revenue is ${formatAggregateCurrency("revenue")}.`
-        : "",
-      aggregateMetricAvailable("conversions")
-        ? `Connected web analytics recorded ${formatAggregateInteger("conversions")} conversions.`
-        : "",
-      aggregateMetricAvailable("cvr")
-        ? `Conversion rate is ${formatAggregatePercent("cvr")}.`
-        : "",
-    ].filter(Boolean).join(" ");
+    const evidenceText = webMetrics.length > 0 ? `Current evidence: ${webMetrics.join(", ")}.` : "";
     const targetMetricLabels: Record<string, string> = { cvr: "Conversion rate", revenue: "Revenue", conversions: "Conversions" };
     const targetMetrics = new Set(Object.keys(targetMetricLabels));
     const targetComparisons: string[] = [];
@@ -259,7 +248,7 @@ export default function ExecutiveSummary() {
       : hasBelowTarget
         ? "Next action: investigate the below-target outcome metrics, then inspect relevant landing pages, conversion paths, and revenue-source drivers."
         : "Next action: continue monitoring these outcome targets.";
-    return [metricText, interpretationText, targetComparisonText, nextActionText]
+    return [evidenceText, targetComparisonText, nextActionText]
       .filter(Boolean)
       .map((item) => formatRecommendationText(item));
   };
@@ -948,7 +937,7 @@ export default function ExecutiveSummary() {
                     <div className="flex items-start space-x-3">
                       <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-foreground/80/60">
-                        <strong>Note:</strong> No connected paid-media source is available. Actions shown below are limited to connected web analytics, outcome metrics, and configured targets.
+                        <strong>Note:</strong> Actions shown below are limited to connected web analytics, outcome metrics, and configured targets.
                       </div>
                     </div>
                   </CardContent>

@@ -7,6 +7,7 @@ import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryp
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
+import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -444,6 +445,11 @@ export interface IStorage {
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
   upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput): Promise<MetricSnapshot>;
+  upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput): Promise<MetricSnapshot>;
+  getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
+    current: MetricSnapshot | null;
+    previous: MetricSnapshot | null;
+  }>;
   getFinancialDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -4646,7 +4652,11 @@ export class DatabaseStorage implements IStorage {
   // Metric Snapshot methods
   async getCampaignSnapshots(campaignId: string): Promise<MetricSnapshot[]> {
     return db.select().from(metricSnapshots)
-      .where(and(eq(metricSnapshots.campaignId, campaignId), ne(metricSnapshots.snapshotType, 'financial_daily')))
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        ne(metricSnapshots.snapshotType, 'financial_daily'),
+        ne(metricSnapshots.snapshotType, 'executive_summary_daily'),
+      ))
       .orderBy(desc(metricSnapshots.recordedAt));
   }
 
@@ -4673,6 +4683,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(metricSnapshots.campaignId, campaignId),
         ne(metricSnapshots.snapshotType, 'financial_daily'),
+        ne(metricSnapshots.snapshotType, 'executive_summary_daily'),
         sql`${metricSnapshots.recordedAt} >= ${startDate}`
       ))
       .orderBy(metricSnapshots.recordedAt);
@@ -4683,6 +4694,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(metricSnapshots.campaignId, campaignId),
         ne(metricSnapshots.snapshotType, 'financial_daily'),
+        ne(metricSnapshots.snapshotType, 'executive_summary_daily'),
         eq(metricSnapshots.recordedAt, date)
       ))
       .limit(1);
@@ -4725,6 +4737,62 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return snapshot;
+  }
+
+  async upsertExecutiveSummaryDailySnapshot(snapshotData: ExecutiveSummaryDailySnapshotInput): Promise<MetricSnapshot> {
+    const snapshotInput = executiveSummaryDailySnapshotInputSchema.parse(snapshotData);
+    const { campaignId, reportingDate, ...executiveSummaryDaily } = snapshotInput;
+    const [snapshot] = await db
+      .insert(metricSnapshots)
+      .values({
+        campaignId,
+        totalConversions: Math.round(snapshotInput.totals.conversions.value ?? 0),
+        totalSpend: (snapshotInput.totals.spend.value ?? 0).toFixed(2),
+        metrics: { executiveSummaryDaily },
+        snapshotType: 'executive_summary_daily',
+        reportingDate,
+      })
+      .onConflictDoUpdate({
+        target: [metricSnapshots.campaignId, metricSnapshots.reportingDate],
+        targetWhere: sql`${metricSnapshots.snapshotType} = 'executive_summary_daily' AND ${metricSnapshots.reportingDate} IS NOT NULL`,
+        set: {
+          totalConversions: sql`EXCLUDED.total_conversions`,
+          totalSpend: sql`EXCLUDED.total_spend`,
+          metrics: sql`EXCLUDED.metrics`,
+          recordedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      })
+      .returning();
+    return snapshot;
+  }
+
+  async getExecutiveSummaryDailyComparisonData(
+    campaignId: string,
+    currentReportingDate: string,
+    comparisonDate: string,
+  ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null }> {
+    const [[currentSnapshot], [previousSnapshot]] = await Promise.all([
+      db.select().from(metricSnapshots).where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
+        eq(metricSnapshots.reportingDate, currentReportingDate),
+      )).limit(1),
+      db.select().from(metricSnapshots).where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
+        eq(metricSnapshots.reportingDate, comparisonDate),
+      )).limit(1),
+    ]);
+    const validatedSnapshot = (snapshot: MetricSnapshot | undefined): MetricSnapshot | null => {
+      const executiveSummaryDaily = (snapshot?.metrics as any)?.executiveSummaryDaily;
+      if (!snapshot || !executiveSummaryDaily || typeof executiveSummaryDaily !== 'object' || Array.isArray(executiveSummaryDaily)) return null;
+      return executiveSummaryDailySnapshotInputSchema.safeParse({
+        ...executiveSummaryDaily,
+        campaignId: snapshot.campaignId,
+        reportingDate: snapshot.reportingDate,
+      }).success ? snapshot : null;
+    };
+    return { current: validatedSnapshot(currentSnapshot), previous: validatedSnapshot(previousSnapshot) };
   }
 
   async getFinancialDailyComparisonData(
@@ -4772,7 +4840,11 @@ export class DatabaseStorage implements IStorage {
 
     // Get the most recent snapshot (current)
     const [currentSnapshot] = await db.select().from(metricSnapshots)
-      .where(and(eq(metricSnapshots.campaignId, campaignId), ne(metricSnapshots.snapshotType, 'financial_daily')))
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        ne(metricSnapshots.snapshotType, 'financial_daily'),
+        ne(metricSnapshots.snapshotType, 'executive_summary_daily'),
+      ))
       .orderBy(desc(metricSnapshots.recordedAt))
       .limit(1);
 
@@ -4784,6 +4856,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(metricSnapshots.campaignId, campaignId),
         ne(metricSnapshots.snapshotType, 'financial_daily'),
+        ne(metricSnapshots.snapshotType, 'executive_summary_daily'),
         previousSnapshotDateFilter,
       ))
       .orderBy(desc(metricSnapshots.recordedAt));

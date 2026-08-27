@@ -56,7 +56,7 @@ export default function ExecutiveSummary() {
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, "live", "executive-summary"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}&captureExecutiveSnapshot=1`;
       const resp = await fetch(url, { credentials: "include" });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
@@ -68,7 +68,21 @@ export default function ExecutiveSummary() {
     staleTime: 0,
   });
 
-  if (campaignLoading || summaryLoading || outcomeTotalsLoading) {
+  const executiveTrajectoryReportingDate = String((outcomeTotals as any)?.performanceSummary?.currentValueWindow?.endDate || "");
+  const { data: executiveTrajectoryData, isLoading: executiveTrajectoryLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "executive-summary", "trajectory", executiveTrajectoryReportingDate],
+    enabled: !!campaignId && /^\d{4}-\d{2}-\d{2}$/.test(executiveTrajectoryReportingDate),
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/executive-summary/trajectory?reportingDate=${encodeURIComponent(executiveTrajectoryReportingDate)}`, { credentials: "include" });
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
+  if (campaignLoading || summaryLoading || outcomeTotalsLoading || (executiveTrajectoryReportingDate && executiveTrajectoryLoading)) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -293,7 +307,16 @@ export default function ExecutiveSummary() {
       ? `GA4-native outcomes cover ${executiveWindowDescription}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
       : `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
     : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
-  const executiveTrajectory = hasAuthoritativeGA4Window ? null : (executiveSummary as any)?.health?.trajectory;
+  const executiveTrajectory = hasAuthoritativeGA4Window
+    ? (executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null
+    : (executiveSummary as any)?.health?.trajectory;
+  const executiveTrajectoryUnavailableDetail = hasAuthoritativeGA4Window
+    ? (executiveTrajectoryData as any)?.reason === "incompatible_history"
+      ? "Earlier readings used different sources or reporting settings, so they cannot be compared safely."
+      : (executiveTrajectoryData as any)?.reason === "revenue_history_unavailable"
+        ? "Revenue was unavailable in one of the two readings."
+        : "No matching Executive Summary reading exists for seven days earlier yet."
+    : "Based on compatible aggregate snapshots, not the removed date selector.";
   const executiveTrajectorySummary = executiveTrajectory
     ? `7-day snapshot trajectory is ${executiveTrajectory}.`
     : "7-day snapshot trajectory does not have enough compatible history yet.";
@@ -437,7 +460,9 @@ export default function ExecutiveSummary() {
   const hasMonitorConditions = kpiMonitorCount > 0 || benchmarkMonitorCount > 0;
   const riskFreshnessWarnings = (Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [])
     .filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
-  const trendPercentage = hasAuthoritativeGA4Window ? 0 : Number((executiveSummary as any)?.health?.trendPercentage) || 0;
+  const trendPercentage = hasAuthoritativeGA4Window
+    ? (executiveTrajectoryData as any)?.available === true ? Number((executiveTrajectoryData as any).trendPercentage) || 0 : 0
+    : Number((executiveSummary as any)?.health?.trendPercentage) || 0;
   const paidRiskSources = aggregateSources.filter((source: any) =>
     source?.connected === true &&
     source?.category !== "financial" &&
@@ -487,7 +512,7 @@ export default function ExecutiveSummary() {
     { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
     { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : hasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${currentValueWindow.endDate}` : "No stale connected-source warnings" },
     { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? [aggregateMetricAvailable("roi") ? `ROI ${formatAggregatePercent("roi")}` : null, aggregateMetricAvailable("roas") ? `ROAS ${formatAggregateRatio("roas")}` : null].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
-    { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
+    { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : executiveTrajectoryUnavailableDetail },
     { label: "Paid Platform Concentration Risk", status: paidRiskSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidRiskSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidRiskSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
   ];
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
@@ -552,7 +577,7 @@ export default function ExecutiveSummary() {
                         ) : (
                           <div className="text-lg font-medium text-muted-foreground">Not enough history</div>
                         )}
-                        <p className="text-xs text-muted-foreground/70 mt-1">{hasAuthoritativeGA4Window ? "Requires compatible snapshots for the same reporting-window contract." : "Based on compatible aggregate snapshots, not the removed date selector."}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">{executiveTrajectoryUnavailableDetail}</p>
                       </div>
                       <div className="border-l border-border pl-6">
                         <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>

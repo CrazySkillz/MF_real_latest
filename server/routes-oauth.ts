@@ -56,6 +56,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA
 import { computeBenchmarkThresholdResult, isLowerIsBetterKpi } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
+import { buildExecutiveSummaryDailySnapshotInput, evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
@@ -14692,6 +14693,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         revenueSources,
       });
+      if (String(req.query.captureExecutiveSnapshot || "").trim() === "1" && currentValueWindow) {
+        try {
+          const executiveSnapshot = buildExecutiveSummaryDailySnapshotInput({
+            campaignId,
+            currency: campaignCurrency,
+            ga4PropertyId: persistedPropertyId,
+            ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+            performanceSummary,
+          });
+          if (!executiveSnapshot.totals.revenue.available) throw new Error("Authoritative revenue is unavailable");
+          await storage.upsertExecutiveSummaryDailySnapshot(executiveSnapshot);
+        } catch (snapshotError: any) {
+          console.warn(`[Executive Summary] Daily snapshot unavailable for campaign ${campaignId}:`, snapshotError?.message || snapshotError);
+        }
+      }
       const cumulativeFinancials = currentValueWindow
         ? resolveCampaignCumulativeFinancials({
             campaignId,
@@ -30148,6 +30164,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Metric snapshot creation error:', error);
       res.status(500).json({ message: "Failed to create metric snapshot" });
+    }
+  });
+
+  app.get("/api/campaigns/:id/executive-summary/trajectory", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const reportingDate = String(req.query.reportingDate || "").trim();
+      const latestReportingDate = getReportingDateWindow(1, (req as any)._campaign?.reportingTimeZone).endDate;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(reportingDate) || reportingDate !== latestReportingDate) {
+        return res.status(400).json({ message: "reportingDate must be the latest completed campaign reporting date" });
+      }
+      const comparison = new Date(`${reportingDate}T00:00:00.000Z`);
+      comparison.setUTCDate(comparison.getUTCDate() - 7);
+      const comparisonDate = comparison.toISOString().slice(0, 10);
+      const snapshots = await storage.getExecutiveSummaryDailyComparisonData(campaignId, reportingDate, comparisonDate);
+      res.json({
+        success: true,
+        reportingDate,
+        comparisonDate,
+        ...evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous),
+      });
+    } catch (error) {
+      console.error("Executive Summary trajectory fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch Executive Summary trajectory" });
     }
   });
 

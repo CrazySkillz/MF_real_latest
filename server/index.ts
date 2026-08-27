@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-oauth";
 import { setupVite, serveStatic, log } from "./vite";
 import { snapshotScheduler } from "./scheduler";
+import { executiveSummarySnapshotScheduler } from "./executive-summary-snapshot-scheduler";
 import { startKPIScheduler } from "./kpi-scheduler";
 import { startReportScheduler, getSchedulerMetrics } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
@@ -385,6 +386,11 @@ process.on('uncaughtException', (error: Error) => {
             CREATE UNIQUE INDEX IF NOT EXISTS metric_snapshots_financial_day_unique
             ON metric_snapshots (campaign_id, reporting_date)
             WHERE snapshot_type = 'financial_daily' AND reporting_date IS NOT NULL;
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS metric_snapshots_executive_summary_day_unique
+            ON metric_snapshots (campaign_id, reporting_date)
+            WHERE snapshot_type = 'executive_summary_daily' AND reporting_date IS NOT NULL;
           `);
 
           // GA4 daily metrics (persisted daily facts powering "daily values" GA4 UI)
@@ -969,6 +975,12 @@ process.on('uncaughtException', (error: Error) => {
           snapshotScheduler.start();
         } catch (error) {
           console.error('Failed to start snapshot scheduler:', error);
+        }
+
+        try {
+          executiveSummarySnapshotScheduler.start(port);
+        } catch (error) {
+          console.error('Failed to start Executive Summary snapshot scheduler:', error);
         }
 
         // Start KPI scheduler

@@ -916,6 +916,9 @@ export const metricSnapshots = pgTable("metric_snapshots", {
   financialDailyReportingDateUnique: uniqueIndex("metric_snapshots_financial_day_unique")
     .on(table.campaignId, table.reportingDate)
     .where(sql`${table.snapshotType} = 'financial_daily' AND ${table.reportingDate} IS NOT NULL`),
+  executiveSummaryDailyReportingDateUnique: uniqueIndex("metric_snapshots_executive_summary_day_unique")
+    .on(table.campaignId, table.reportingDate)
+    .where(sql`${table.snapshotType} = 'executive_summary_daily' AND ${table.reportingDate} IS NOT NULL`),
 }));
 
 const financialSnapshotDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {

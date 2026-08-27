@@ -246,9 +246,6 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("sessions: parseNum(exactTrafficCandidate?.sessions)");
     expect(route).toContain("users: parseNum(exactTrafficCandidate?.users)");
     expect(route).toContain("...summarizeGA4TrafficRows(propertyWindowRows)");
-    expect(route).toContain("executivePropertyLatestStoredDate === endDateUsed");
-    expect(route).toContain("latestStoredDailyDate: executivePropertyLatestStoredDate");
-    expect(route).toContain("coverageCurrent: executivePropertyLatestStoredDate === currentValueWindow.endDate");
     expect(route).toContain("executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0");
     expect(route).toContain("(performanceSummary as any).totals.engagementRate");
     expect(route).toContain('sources: ["ga4"]');
@@ -659,12 +656,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"');
     expect(page).toContain('const executiveTrajectory = hasAuthoritativeGA4Window');
     expect(page).toContain('(executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null');
-    expect(page).toContain("const ga4CoverageCurrent = hasGA4CoverageContract");
-    expect(page).toContain("&& ga4CoverageCurrent;");
-    expect(page).toContain("const ga4CoverageWarning = hasGA4CoverageContract && !ga4CoverageCurrent ? {");
-    expect(page).toContain("expected latest completed reporting day ${ga4ExpectedDataThroughDate}");
-    expect(page).toContain('executiveFreshnessWarnings.filter((warning: any) => !(hasGA4CoverageContract && warning?.source === "Google Analytics"))');
-    expect(page).toContain('riskFreshnessWarnings.map((warning: any) => warning.message).join("; ")');
+    expect(page).toContain('.filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));');
     expect(page).toContain('GA4 outcome metrics cover through ${currentValueWindow.endDate}');
     expect(page).toContain('{riskFreshnessWarnings.length > 0 && (');
     expect(page).toContain('{riskFreshnessWarnings.map((warning: any, idx: number) => (');

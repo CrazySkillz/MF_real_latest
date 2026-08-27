@@ -14486,7 +14486,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
       let campaignFinancialConversions: number | null = null;
       let executivePropertyEngagementRate: number | null = null;
-      let executivePropertyLatestStoredDate: string | null = null;
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         if (!currentValueWindow) {
           financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -14525,11 +14524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if (useExecutiveCampaignToDateFinancials) {
             const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
-            executivePropertyLatestStoredDate = propertyWindowRows.reduce(
-              (latest: string, row: any) => String(row?.date || "") > latest ? String(row.date) : latest,
-              "",
-            ) || null;
-            if (propertyWindowRows.length > 0 && executivePropertyLatestStoredDate === endDateUsed) {
+            if (propertyWindowRows.length > 0) {
               propertyWindowTrafficCandidate = {
                 ...summarizeGA4TrafficRows(propertyWindowRows),
                 source: "ga4_property_window",
@@ -14735,16 +14730,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         revenueSources,
       });
-      if (useExecutiveCampaignToDateFinancials && currentValueWindow) {
-        const executiveGA4Source = (performanceSummary as any).sources.find((source: any) => source?.id === "ga4");
-        if (executiveGA4Source) {
-          executiveGA4Source.freshness = {
-            latestStoredDailyDate: executivePropertyLatestStoredDate,
-            dataThroughDate: currentValueWindow.endDate,
-            coverageCurrent: executivePropertyLatestStoredDate === currentValueWindow.endDate,
-          };
-        }
-      }
       if (useExecutiveCampaignToDateFinancials && executivePropertyEngagementRate !== null) {
         (performanceSummary as any).totals.engagementRate = {
           value: executivePropertyEngagementRate,

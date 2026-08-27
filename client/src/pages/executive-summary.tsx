@@ -169,21 +169,11 @@ export default function ExecutiveSummary() {
   const currentValueWindow = (performanceSummary as any)?.currentValueWindow;
   const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
   const ga4AggregateSource = aggregateSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
-  const ga4Freshness = ga4AggregateSource?.freshness || {};
-  const ga4LatestStoredDailyDate = String(ga4Freshness?.latestStoredDailyDate || "");
-  const ga4ExpectedDataThroughDate = String(ga4Freshness?.dataThroughDate || currentValueWindow?.endDate || "");
-  const hasGA4CoverageContract = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"
-    && ga4AggregateSource?.connected === true
-    && /^\d{4}-\d{2}-\d{2}$/.test(ga4ExpectedDataThroughDate);
-  const ga4CoverageCurrent = hasGA4CoverageContract
-    && ga4Freshness?.coverageCurrent === true
-    && ga4LatestStoredDailyDate === ga4ExpectedDataThroughDate;
   const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"
     && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
     && currentValueWindow?.dataThroughDate === currentValueWindow?.endDate
     && Array.isArray(ga4AggregateSource?.includedMetrics)
-    && ["users", "sessions", "conversions", "revenue"].every((metricName) => ga4AggregateSource.includedMetrics.includes(metricName))
-    && ga4CoverageCurrent;
+    && ["users", "sessions", "conversions", "revenue"].every((metricName) => ga4AggregateSource.includedMetrics.includes(metricName));
   const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
@@ -433,23 +423,8 @@ export default function ExecutiveSummary() {
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
   const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;
   const hasMonitorConditions = benchmarkMonitorCount > 0;
-  const executiveFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings)
-    ? (executiveSummary as any).dataFreshness.warnings
-    : [];
-  const ga4CoverageDaysBehind = ga4LatestStoredDailyDate && /^\d{4}-\d{2}-\d{2}$/.test(ga4LatestStoredDailyDate)
-    ? Math.max(0, Math.round((Date.parse(`${ga4ExpectedDataThroughDate}T00:00:00Z`) - Date.parse(`${ga4LatestStoredDailyDate}T00:00:00Z`)) / 86400000))
-    : null;
-  const ga4CoverageWarning = hasGA4CoverageContract && !ga4CoverageCurrent ? {
-    source: "Google Analytics",
-    severity: ga4CoverageDaysBehind === null || ga4CoverageDaysBehind > 14 ? "high" : "medium",
-    message: ga4LatestStoredDailyDate
-      ? `Google Analytics data covers through ${ga4LatestStoredDailyDate}; expected latest completed reporting day ${ga4ExpectedDataThroughDate}`
-      : `Google Analytics daily coverage is unavailable for latest completed reporting day ${ga4ExpectedDataThroughDate}`,
-  } : null;
-  const riskFreshnessWarnings = [
-    ...executiveFreshnessWarnings.filter((warning: any) => !(hasGA4CoverageContract && warning?.source === "Google Analytics")),
-    ...(ga4CoverageWarning ? [ga4CoverageWarning] : []),
-  ];
+  const riskFreshnessWarnings = (Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [])
+    .filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
   const trendPercentage = hasAuthoritativeGA4Window
     ? (executiveTrajectoryData as any)?.available === true ? Number((executiveTrajectoryData as any).trendPercentage) || 0 : 0
     : Number((executiveSummary as any)?.health?.trendPercentage) || 0;
@@ -498,7 +473,7 @@ export default function ExecutiveSummary() {
   const riskInputRows = [
     { label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail },
     { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
-    { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? riskFreshnessWarnings.map((warning: any) => warning.message).join("; ") : hasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${currentValueWindow.endDate}` : "No stale connected-source warnings" },
+    { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : hasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${currentValueWindow.endDate}` : "No stale connected-source warnings" },
     { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? [aggregateMetricAvailable("roi") ? `ROI ${formatAggregatePercent("roi")}` : null, aggregateMetricAvailable("roas") ? `ROAS ${formatAggregateRatio("roas")}` : null].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
     { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : executiveTrajectoryUnavailableDetail },
     { label: "Paid Platform Concentration Risk", status: paidRiskSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidRiskSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidRiskSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },

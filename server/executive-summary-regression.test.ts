@@ -236,6 +236,12 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
     expect(route).toContain('const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;');
     expect(route).toContain("financialStartDateUsed,\n                endDateUsed,");
+    expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed)");
+    expect(route).toContain('source: "ga4_property_window"');
+    expect(route).toContain("conversions: parseNum(exactTrafficCandidate?.conversions)");
+    expect(route).toContain("sessions: parseNum(exactTrafficCandidate?.sessions)");
+    expect(route).toContain("users: parseNum(exactTrafficCandidate?.users)");
+    expect(route).toContain("const financialConversionsForOutcome = campaignFinancialConversions ?? parseNum(financialWebAnalytics.conversions);");
   });
 
   it("calculates the corrected production Executive Summary campaign-to-date financial values", () => {
@@ -246,7 +252,7 @@ describe("campaign Executive Summary regression guard", () => {
       dataThroughDate: "2026-08-25",
       reportingTimeZone: "Europe/Amsterdam",
     };
-    const ga4 = { connected: true, available: true, users: 1184, sessions: 1179, conversions: 251, revenue: 55966.70 };
+    const ga4 = { connected: true, available: true, users: 1184, sessions: 1183, conversions: 152, revenue: 55966.70 };
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "production-fixture",
       dateRange: "90days",
@@ -261,14 +267,14 @@ describe("campaign Executive Summary regression guard", () => {
     expect(aggregate.currentValueWindow).toEqual(currentValueWindow);
     expect(Object.fromEntries(Object.entries(aggregate.totals).map(([key, value]) => [key, value.value]))).toMatchObject({
       users: 1184,
-      sessions: 1179,
-      conversions: 251,
+      sessions: 1183,
+      conversions: 152,
       revenue: 72766.69,
       spend: 2699.75,
       roas: 26.95,
       roi: 2595.31,
-      cvr: 21.29,
-      cpa: 10.76,
+      cvr: 12.85,
+      cpa: 17.76,
     });
   });
 
@@ -530,8 +536,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
     expect(page).toContain("Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10");
-    expect(page).toContain('GA4 campaign-to-date metrics are current through ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel}');
-    expect(page).toContain('source-to-date through the same date. Combined connected-source financial metrics show');
+    expect(page).toContain('GA4 property traffic and conversion metrics cover ${currentValueWindow.startDate} to ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel}');
+    expect(page).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
     expect(page).toContain('if (rec?.category !== "Website Outcomes") return [];');
     expect(page).toContain('if (aggregateMetricAvailable("users")) webMetrics.push');

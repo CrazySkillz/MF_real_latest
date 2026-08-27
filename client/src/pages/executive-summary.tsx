@@ -304,7 +304,7 @@ export default function ExecutiveSummary() {
   if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);
   const executiveMetricSummary = executiveMetricParts.length > 0
     ? hasAuthoritativeGA4Window && sourceToDateFinancialKinds.length > 0
-      ? `GA4 campaign-to-date metrics are current through ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through the same date. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
+      ? `GA4 property traffic and conversion metrics cover ${currentValueWindow.startDate} to ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
       : `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
     : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
   const executiveTrajectory = hasAuthoritativeGA4Window

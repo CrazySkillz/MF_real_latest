@@ -14482,6 +14482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };
       const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
+      let campaignFinancialConversions: number | null = null;
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         if (!currentValueWindow) {
           financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -14494,10 +14495,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
           let persistedFinancialCandidate: any = null;
           let toDateFinancialCandidate: any = null;
+          let propertyWindowTrafficCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
+          const useExecutiveCampaignToDateFinancials = String(req.query.captureExecutiveSnapshot || "").trim() === "1"
+            && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
           const financialStartDateUsed = (() => {
-            const useExecutiveCampaignToDateFinancials = String(req.query.captureExecutiveSnapshot || "").trim() === "1"
-              && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
             if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;
             const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
             if (!raw) return "2000-01-01";
@@ -14518,6 +14520,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               users: totals.users + parseNum(row?.users),
               source: "ga4_daily",
             }), { revenue: 0, conversions: 0, sessions: 0, users: 0, source: "ga4_daily" });
+          }
+          if (useExecutiveCampaignToDateFinancials) {
+            const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
+            if (propertyWindowRows.length > 0) {
+              propertyWindowTrafficCandidate = propertyWindowRows.reduce((totals: any, row: any) => ({
+                revenue: totals.revenue + parseNum(row?.revenue),
+                conversions: totals.conversions + parseNum(row?.conversions),
+                sessions: totals.sessions + parseNum(row?.sessions),
+                users: totals.users + parseNum(row?.users),
+                source: "ga4_property_window",
+              }), { revenue: 0, conversions: 0, sessions: 0, users: 0, source: "ga4_property_window" });
+            }
           }
           if (primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
             try {
@@ -14546,8 +14560,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               persistedFinancialCandidate,
             ], null as any);
             const exactFinancialCandidateAvailable = isGA4FinancialTotalsCandidate(exactFinancialCandidate);
+            const exactTrafficCandidate = useExecutiveCampaignToDateFinancials ? propertyWindowTrafficCandidate : exactFinancialCandidate;
+            if (useExecutiveCampaignToDateFinancials && !isGA4FinancialTotalsCandidate(exactTrafficCandidate)) {
+              throw new Error("GA4 property reporting-window totals are unavailable");
+            }
+            campaignFinancialConversions = exactFinancialCandidateAvailable ? parseNum(exactFinancialCandidate?.conversions) : null;
             financialGa4Totals = exactFinancialCandidateAvailable
-              ? { ...exactFinancialCandidate, connected: true, available: true }
+              ? {
+                  ...exactFinancialCandidate,
+                  ...(useExecutiveCampaignToDateFinancials ? {
+                    conversions: parseNum(exactTrafficCandidate?.conversions),
+                    sessions: parseNum(exactTrafficCandidate?.sessions),
+                    users: parseNum(exactTrafficCandidate?.users),
+                  } : {}),
+                  connected: true,
+                  available: true,
+                }
               : { ...financialGa4Totals, available: false };
             financialWebAnalytics.available = exactFinancialCandidateAvailable;
             financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
@@ -14644,7 +14672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const financialSpendForOutcome = currentValueWindow
         ? canonicalPerformanceSummarySpendAvailable ? performanceSummarySpend : platformSpendFallback
         : webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
-      const financialConversionsForOutcome = parseNum(financialWebAnalytics.conversions);
+      const financialConversionsForOutcome = campaignFinancialConversions ?? parseNum(financialWebAnalytics.conversions);
       // Backward-compatible non-v3 response only; this path is never eligible for financial_daily snapshots.
       const nonCumulativeFinancials = {
         nativeRevenue: onsiteRevenue,

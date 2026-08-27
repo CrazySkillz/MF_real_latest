@@ -667,7 +667,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const displayedRiskFactors = [");
     expect(page).toContain("const riskInputRows = [");
     expect(page).toContain("paid-media recommendations are unavailable");
-    expect(page).toContain("Available web analytics and outcome metrics can still feed website recommendations and risk inputs.");
+    expect(page).toContain("Available web analytics and outcome metrics still inform the summary and website recommendations.");
     expect(page).not.toContain("excluded from strategic recommendations and risk assessment");
     expect(page).toContain('label: "KPI Risk"');
     expect(page).toContain('label: "Benchmark Risk"');
@@ -675,8 +675,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('label: "ROI / ROAS Risk"');
     expect(page).toContain('label: "7-Day Trend Risk"');
     expect(page).toContain('label: "Paid Platform Concentration Risk"');
-    expect(page).toContain("{riskInputRows.length > 0 && (");
-    expect(page).toContain("{riskInputRows.map((input: any, index: number) => (");
+    expect(page).not.toContain("{riskInputRows.length > 0 && (");
+    expect(page).not.toContain("{riskInputRows.map((input: any, index: number) => (");
     expect(page).not.toContain("const riskCheckedInputs = Array.isArray((executiveSummary as any)?.risk?.checkedInputs)");
     expect(page).not.toContain("const visibleRiskCheckedInputs = riskCheckedInputs.filter");
     expect(page).not.toContain("(executiveSummary as any).risk.factors.length === 0");
@@ -732,10 +732,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("No matching Executive Summary reading exists for seven days earlier yet.");
     expect(page).toContain("Earlier readings used different sources or reporting settings, so they cannot be compared safely.");
     expect(page).toContain("Revenue was unavailable in one of the two readings.");
-    expect(overview).toContain("No configured risk factors meet the risk thresholds");
-    expect(overview).toContain("Lower-severity exceptions are identified as Monitor in the inputs below.");
-    expect(overview).toContain("Based on available connected-source inputs checked below.");
-    expect(overview).toContain("Risk inputs");
+    expect(overview).not.toContain("Risk Assessment");
+    expect(overview).not.toContain("Risk inputs");
     expect(overview).not.toContain("Campaign is operating within acceptable parameters");
     expect(overview).toContain("{formatAggregateInteger(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
     expect(overview).toContain("{formatAggregateInteger(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");

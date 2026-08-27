@@ -948,63 +948,6 @@ export default function ExecutiveSummary() {
                 </Card>
               )}
 
-              {/* Risk Assessment */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    <span>Risk Assessment</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {displayedRiskFactors.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground/70">
-                      <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
-                      <p className="font-medium">No configured risk factors meet the risk thresholds</p>
-                      <p className="text-sm">{hasMonitorConditions ? "Lower-severity exceptions are identified as Monitor in the inputs below." : "Based on available connected-source inputs checked below."}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {displayedRiskFactors.map((risk: any, index: number) => (
-                        <div key={index} className={`p-4 rounded-lg border ${
-                          risk.type === 'performance' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
-                          risk.type === 'concentration' ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20' :
-                          'border-orange-200 bg-orange-50 dark:bg-orange-900/20'
-                        }`}>
-                          <div className="flex items-start space-x-3">
-                            <AlertTriangle className={`w-5 h-5 mt-0.5 ${
-                              risk.type === 'performance' ? 'text-red-600' :
-                              risk.type === 'concentration' ? 'text-yellow-600' :
-                              'text-orange-600'
-                            }`} />
-                            <div>
-                              <div className="font-medium text-foreground capitalize mb-1">{risk.type} Risk</div>
-                              <p className="text-sm text-foreground/80/60">{risk.message}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {riskInputRows.length > 0 && (
-                    <div className="mt-5 border-t pt-4">
-                      <div className="mb-3 text-sm font-medium text-foreground">Risk inputs</div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {riskInputRows.map((input: any, index: number) => (
-                          <div key={index} className="rounded-md border p-3">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-medium">{input.label}</span>
-                              <Badge variant="outline" className="capitalize">{String(input.status || "").replace(/_/g, " ")}</Badge>
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground">{input.detail}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Recommended Actions */}
               <div className="pt-2">
                 <h2 className="text-2xl font-semibold text-foreground">Recommended Actions</h2>
@@ -1016,7 +959,7 @@ export default function ExecutiveSummary() {
                     <div className="flex items-start space-x-3">
                       <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-foreground/80/60">
-                        <strong>Note:</strong> No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.
+                        <strong>Note:</strong> No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics still inform the summary and website recommendations.
                       </div>
                     </div>
                   </CardContent>

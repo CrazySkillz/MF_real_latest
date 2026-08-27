@@ -137,19 +137,6 @@ export default function ExecutiveSummary() {
     });
   };
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">High Priority</Badge>;
-      case 'medium':
-        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Medium Priority</Badge>;
-      case 'low':
-        return <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Low Priority</Badge>;
-      default:
-        return null;
-    }
-  };
-
   const getInsightIcon = (type: string) => {
     switch (type) {
       case 'success':
@@ -227,8 +214,11 @@ export default function ExecutiveSummary() {
       : (expectedImpact.match(/KPI or Benchmark targets exist for [^.]+; compare against those targets before judging quality\./)?.[0] || "");
     const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "";
     const interpretationText = [
-      aggregateMetricAvailable("revenue") && aggregateMetricAvailable("conversions")
-        ? `Revenue is ${formatAggregateCurrency("revenue")} from ${formatAggregateInteger("conversions")} conversions.`
+      aggregateMetricAvailable("revenue")
+        ? `Total connected revenue is ${formatAggregateCurrency("revenue")}.`
+        : "",
+      aggregateMetricAvailable("conversions")
+        ? `Connected web analytics recorded ${formatAggregateInteger("conversions")} conversions.`
         : "",
       aggregateMetricAvailable("cvr")
         ? `Conversion rate is ${formatAggregatePercent("cvr")}.`
@@ -256,7 +246,8 @@ export default function ExecutiveSummary() {
       if (benchmark <= 0) return;
       const isBelow = bm.status !== "on_track";
       if (isBelow) hasBelowTarget = true;
-      targetComparisons.push(`${targetMetricLabels[metric]} Benchmark is ${isBelow ? "below benchmark" : "on track"}`);
+      const benchmarkState = bm.status === "behind" ? "behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "on track";
+      targetComparisons.push(`${targetMetricLabels[metric]} Benchmark is ${benchmarkState}`);
     });
     const targetComparisonText = targetComparisons.length > 0
       ? `Target check: ${targetComparisons.join("; ")}.`
@@ -266,8 +257,8 @@ export default function ExecutiveSummary() {
     const nextActionText = targetComparisons.length === 0
       ? "Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality."
       : hasBelowTarget
-        ? "Next action: inspect landing pages or conversion paths for metrics below target before increasing spend."
-        : "Next action: keep monitoring these outcome targets and connect a paid-media source before making budget or channel decisions.";
+        ? "Next action: investigate the below-target outcome metrics, then inspect relevant landing pages, conversion paths, and revenue-source drivers."
+        : "Next action: continue monitoring these outcome targets.";
     return [metricText, interpretationText, targetComparisonText, nextActionText]
       .filter(Boolean)
       .map((item) => formatRecommendationText(item));
@@ -414,10 +405,8 @@ export default function ExecutiveSummary() {
   const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions]
     .some((record: any) => ["cvr", "conversions", "revenue"].includes(String(record?.metricKey || record?.aggregateMetric || record?.metric || "")));
   const sourceBackedRecommendations = hasWebAnalyticsOutcomeEvidence && hasWebsiteOutcomeTargetException ? [{
-    priority: "medium",
     category: "Website Outcomes",
-    action: "Review website conversion path before making paid-media budget decisions",
-    confidence: aggregateMetricAvailable("cvr") ? "medium" : "low",
+    action: "Investigate below-target website outcomes",
   }] : [];
   const riskKpiMissCount = executiveKpiExceptions.length;
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
@@ -959,7 +948,7 @@ export default function ExecutiveSummary() {
                     <div className="flex items-start space-x-3">
                       <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-foreground/80/60">
-                        <strong>Note:</strong> No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics still inform the summary and website recommendations.
+                        <strong>Note:</strong> No connected paid-media source is available. Actions shown below are limited to connected web analytics, outcome metrics, and configured targets.
                       </div>
                     </div>
                   </CardContent>
@@ -1008,16 +997,6 @@ export default function ExecutiveSummary() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-3">
                               <CardTitle className="text-lg">{formatRecommendationText(rec.action)}</CardTitle>
-                              {getPriorityBadge(rec.priority)}
-                              {rec.confidence && (
-                                <Badge variant="outline" className={
-                                  rec.confidence === 'high' ? 'border-green-300 text-green-700 dark:border-green-700 dark:text-green-300' :
-                                  rec.confidence === 'medium' ? 'border-yellow-300 text-yellow-700 dark:border-yellow-700 dark:text-yellow-300' :
-                                  'border-border text-foreground/80/60'
-                                }>
-                                  {rec.confidence} confidence
-                                </Badge>
-                              )}
                             </div>
                             <div className="text-sm text-muted-foreground/70 mt-1">{rec.category}</div>
                           </div>

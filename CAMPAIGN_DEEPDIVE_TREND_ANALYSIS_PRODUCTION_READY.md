@@ -54,6 +54,21 @@ Trend Analysis renders one comprehensive view. The retired tab navigation is not
 
 Legacy tab panels remain unmounted in `client/src/pages/trend-analysis.tsx` for contract-safe cleanup. They do not supply visible values or report composition. The current Reports UI exposes only `trend-analysis:overview`, labelled `Executive View`.
 
+### GA4 Dependency And One-Way Data-Flow Contract
+
+Trend Analysis does not copy displayed values or calculations from GA4 UI tabs. It follows the Campaign DeepDive dependency rule in `ARCHITECTURE_USER_JOURNEY.md` by consuming the same authoritative persisted source records and shared campaign aggregate used by those tabs.
+
+| GA4 area | Relationship to Trend Analysis |
+| --- | --- |
+| Overview | Trend Analysis uses the same campaign/property-scoped GA4 records and compatible campaign financial aggregate. The Overview UI is a parallel consumer, not an input. |
+| KPIs | Valid campaign-scoped GA4 Revenue and ROAS targets may appear as optional chart reference lines. KPI current values never replace authoritative Trend base metrics. |
+| Benchmarks | Not an input to Trend Analysis. |
+| Ad Comparison | Not an input to Trend Analysis. Both may use the same underlying GA4 records within their own documented contracts. |
+| Insights | Not an input to Trend Analysis. Trend recommendations are derived independently from the current Trend view's available signals. |
+| Reports | A downstream output consumer of Trend Analysis. Reports never supply Trend calculations or current values. |
+
+This one-way pattern applies to every Campaign DeepDive subsection: persisted connected-source records feed documented calculations and the shared campaign aggregate, which feed Campaign DeepDive consumers. Derived platform tabs and report outputs must not become upstream sources for Campaign DeepDive base metrics.
+
 ### Current Value And Formula Contract
 
 For the certified GA4-only consumer:

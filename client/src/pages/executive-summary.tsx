@@ -124,12 +124,6 @@ export default function ExecutiveSummary() {
     );
   }
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toLocaleString();
-  };
-
   const executiveCurrency = String((campaign as any)?.currency || "").trim().toUpperCase();
   const formatCurrency = (amount: number, showCents: boolean = false) =>
     formatExecutiveCurrency(amount, executiveCurrency, showCents);
@@ -209,14 +203,14 @@ export default function ExecutiveSummary() {
     const sources = aggregateMetric(metricName)?.sources;
     return Array.isArray(sources) && sources.length > 0 ? `Sources: ${sources.join(", ")}` : aggregateMetricReason(metricName);
   };
-  const formatAggregateNumber = (metricName: string) =>
-    aggregateMetricAvailable(metricName) ? formatNumber(aggregateMetricValue(metricName)) : "Unavailable";
   const formatAggregateInteger = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : "Unavailable";
   const formatAggregateCurrency = (metricName: string, showCents: boolean = false) =>
     aggregateMetricAvailable(metricName) ? formatCurrency(aggregateMetricValue(metricName), showCents) : "Unavailable";
   const formatAggregatePercent = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? formatPct(aggregateMetricValue(metricName)) : "Unavailable";
+  const formatAggregatePercentExact = (metricName: string) =>
+    aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(2)}%` : "Unavailable";
   const formatAggregateRatio = (metricName: string) => {
     if (!aggregateMetricAvailable(metricName)) return "Unavailable";
     const rounded = Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10;
@@ -607,22 +601,19 @@ export default function ExecutiveSummary() {
                             <div className="text-sm font-semibold text-orange-900 dark:text-orange-300 uppercase tracking-wide">Top of Funnel</div>
                             <div className="text-xs text-orange-700 dark:text-orange-400 mt-1">{reachStageQuestion}</div>
                             <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mt-1">
-                              {formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}
+                              {formatAggregateInteger(reachMetricKey)} {reachMetricLabels[reachMetricKey]}
                             </div>
                             <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
                               {aggregateMetricSourceLabel(reachMetricKey)}
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm text-orange-700 dark:text-orange-400">Click-Through Rate</div>
-                          <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{formatAggregatePercent("ctr")}</div>
-                          {!aggregateMetricAvailable("ctr") && (
-                            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 max-w-48">
-                              {aggregateMetricReason("ctr")}
-                            </div>
-                          )}
-                        </div>
+                        {aggregateMetricAvailable("ctr") && (
+                          <div className="text-right">
+                            <div className="text-sm text-orange-700 dark:text-orange-400">Click-Through Rate</div>
+                            <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{formatAggregatePercent("ctr")}</div>
+                          </div>
+                        )}
                       </div>
                       <div className="flex justify-center my-2">
                         <ArrowDownRight className="w-8 h-8 text-muted-foreground/70" />
@@ -640,7 +631,7 @@ export default function ExecutiveSummary() {
                             <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">Mid Funnel</div>
                             <div className="text-xs text-indigo-700 dark:text-indigo-400 mt-1">{engagementStageQuestion}</div>
                             <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
-                              {formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}
+                              {formatAggregateInteger(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}
                             </div>
                             <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
                               {aggregateMetricSourceLabel(engagementMetricKey)}
@@ -649,6 +640,16 @@ export default function ExecutiveSummary() {
                         </div>
                         <div className="text-right">
                           <div className="space-y-2">
+                            {aggregateMetricAvailable("engagementRate") && (
+                              <div>
+                                <div className="text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                  Engagement Rate
+                                </div>
+                                <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
+                                  {formatAggregatePercentExact("engagementRate")}
+                                </div>
+                              </div>
+                            )}
                             <div>
                               <div className="text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
                                 {conversionRateLabel}
@@ -774,7 +775,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateNumber(engagementMetricKey)}
+                      {formatAggregateInteger(engagementMetricKey)}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">
@@ -790,7 +791,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateNumber(reachMetricKey)}
+                      {formatAggregateInteger(reachMetricKey)}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">

@@ -4,6 +4,7 @@ import { join } from "path";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { generateRecommendations, generateRiskAssessment } from "./utils/executive-summary-helpers";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
+import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 
 describe("campaign Executive Summary regression guard", () => {
   it("counts every below-target KPI and behind Benchmark using the connected-source policies", () => {
@@ -241,6 +242,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("conversions: parseNum(exactTrafficCandidate?.conversions)");
     expect(route).toContain("sessions: parseNum(exactTrafficCandidate?.sessions)");
     expect(route).toContain("users: parseNum(exactTrafficCandidate?.users)");
+    expect(route).toContain("...summarizeGA4TrafficRows(propertyWindowRows)");
+    expect(route).toContain("executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0");
+    expect(route).toContain("(performanceSummary as any).totals.engagementRate");
+    expect(route).toContain('sources: ["ga4"]');
     expect(route).toContain("const financialConversionsForOutcome = campaignFinancialConversions ?? parseNum(financialWebAnalytics.conversions);");
   });
 
@@ -276,6 +281,14 @@ describe("campaign Executive Summary regression guard", () => {
       cvr: 12.85,
       cpa: 17.76,
     });
+    const ga4Traffic = summarizeGA4TrafficRows([
+      { users: 867, sessions: 866, conversions: 110, engagedSessions: 592 },
+      { users: 108, sessions: 108, conversions: 14, engagedSessions: 74 },
+      { users: 106, sessions: 106, conversions: 14, engagedSessions: 72 },
+      { users: 103, sessions: 103, conversions: 14, engagedSessions: 71 },
+    ]);
+    expect(ga4Traffic).toMatchObject({ users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 });
+    expect(Number((ga4Traffic.engagementRate * 100).toFixed(2))).toBe(68.39);
   });
 
   it("derives main platform rows from performanceSummary sources and excludes financial child inputs", () => {
@@ -721,14 +734,20 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("Based on available connected-source inputs checked below.");
     expect(overview).toContain("Risk inputs");
     expect(overview).not.toContain("Campaign is operating within acceptable parameters");
-    expect(overview).toContain("{formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
-    expect(overview).toContain("{formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");
+    expect(overview).toContain("{formatAggregateInteger(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
+    expect(overview).toContain("{formatAggregateInteger(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");
+    expect(overview).toContain('{aggregateMetricAvailable("ctr") && (');
     expect(overview).toContain('{formatAggregatePercent("ctr")}');
+    expect(overview).not.toContain('{!aggregateMetricAvailable("ctr") && (');
     expect(overview).toContain('{formatAggregatePercent("cvr")}');
+    expect(overview).toContain('{aggregateMetricAvailable("engagementRate") && (');
+    expect(overview).toContain('{formatAggregatePercentExact("engagementRate")}');
+    expect(page).toContain("aggregateMetricValue(metricName).toFixed(2)");
     expect(overview).toContain('{formatAggregateInteger("conversions")}');
     expect(overview).toContain('{formatAggregateCurrency("revenue")}');
     expect(overview).toContain('{formatAggregateRatio("roas")}');
-    expect(overview).not.toContain('{formatAggregateNumber("conversions")}');
+    expect(page).not.toContain("formatAggregateNumber");
+    expect(page).not.toContain("const formatNumber =");
     expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions");
     expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks");
     expect(overview).not.toContain("{formatCurrency((executiveSummary as any).metrics.totalRevenue)}");

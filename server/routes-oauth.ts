@@ -14480,9 +14480,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? parseNum(custom?.users)
               : 0,
       };
+      const useExecutiveCampaignToDateFinancials = String(req.query.captureExecutiveSnapshot || "").trim() === "1"
+        && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
       let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };
       const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
       let campaignFinancialConversions: number | null = null;
+      let executivePropertyEngagementRate: number | null = null;
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         if (!currentValueWindow) {
           financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -14497,8 +14500,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let toDateFinancialCandidate: any = null;
           let propertyWindowTrafficCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
-          const useExecutiveCampaignToDateFinancials = String(req.query.captureExecutiveSnapshot || "").trim() === "1"
-            && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
           const financialStartDateUsed = (() => {
             if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;
             const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
@@ -14524,13 +14525,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (useExecutiveCampaignToDateFinancials) {
             const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
             if (propertyWindowRows.length > 0) {
-              propertyWindowTrafficCandidate = propertyWindowRows.reduce((totals: any, row: any) => ({
-                revenue: totals.revenue + parseNum(row?.revenue),
-                conversions: totals.conversions + parseNum(row?.conversions),
-                sessions: totals.sessions + parseNum(row?.sessions),
-                users: totals.users + parseNum(row?.users),
+              propertyWindowTrafficCandidate = {
+                ...summarizeGA4TrafficRows(propertyWindowRows),
                 source: "ga4_property_window",
-              }), { revenue: 0, conversions: 0, sessions: 0, users: 0, source: "ga4_property_window" });
+              };
+              executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0
+                ? Number((propertyWindowTrafficCandidate.engagementRate * 100).toFixed(2))
+                : null;
             }
           }
           if (primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
@@ -14729,6 +14730,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         revenueSources,
       });
+      if (useExecutiveCampaignToDateFinancials && executivePropertyEngagementRate !== null) {
+        (performanceSummary as any).totals.engagementRate = {
+          value: executivePropertyEngagementRate,
+          available: true,
+          sources: ["ga4"],
+          unavailableReasons: [],
+        };
+      }
       if (String(req.query.captureExecutiveSnapshot || "").trim() === "1" && currentValueWindow) {
         try {
           const executiveSnapshot = buildExecutiveSummaryDailySnapshotInput({

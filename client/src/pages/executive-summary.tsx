@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
-import { formatPct } from "@shared/metric-math";
 import { classifyKpiBandWithPolicy, computeAttainmentFillPct, computeAttainmentPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 function formatExecutiveCurrency(amount: number, currencyCode: unknown, showCents: boolean = false): string {
@@ -204,26 +203,23 @@ export default function ExecutiveSummary() {
     return Array.isArray(sources) && sources.length > 0 ? `Sources: ${sources.join(", ")}` : aggregateMetricReason(metricName);
   };
   const formatAggregateInteger = (metricName: string) =>
-    aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : "Unavailable";
-  const formatAggregateCurrency = (metricName: string, showCents: boolean = false) =>
+    aggregateMetricAvailable(metricName) ? Math.trunc(aggregateMetricValue(metricName)).toLocaleString() : "Unavailable";
+  const formatAggregateCurrency = (metricName: string, showCents: boolean = true) =>
     aggregateMetricAvailable(metricName) ? formatCurrency(aggregateMetricValue(metricName), showCents) : "Unavailable";
   const formatAggregatePercent = (metricName: string) =>
-    aggregateMetricAvailable(metricName) ? formatPct(aggregateMetricValue(metricName)) : "Unavailable";
-  const formatAggregatePercentExact = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(2)}%` : "Unavailable";
   const formatAggregateRatio = (metricName: string) => {
     if (!aggregateMetricAvailable(metricName)) return "Unavailable";
-    const rounded = Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10;
-    return `${rounded.toFixed(1)}x`;
+    return `${aggregateMetricValue(metricName).toFixed(2)}x`;
   };
   const getRecommendationExpectedImpactItems = (rec: any): string[] => {
     if (rec?.category !== "Website Outcomes") return [];
     const webMetrics: string[] = [];
-    if (aggregateMetricAvailable("users")) webMetrics.push(`${Math.round(aggregateMetricValue("users")).toLocaleString()} users`);
-    if (aggregateMetricAvailable("sessions")) webMetrics.push(`${Math.round(aggregateMetricValue("sessions")).toLocaleString()} sessions`);
-    if (aggregateMetricAvailable("conversions")) webMetrics.push(`${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions`);
+    if (aggregateMetricAvailable("users")) webMetrics.push(`${formatAggregateInteger("users")} users`);
+    if (aggregateMetricAvailable("sessions")) webMetrics.push(`${formatAggregateInteger("sessions")} sessions`);
+    if (aggregateMetricAvailable("conversions")) webMetrics.push(`${formatAggregateInteger("conversions")} conversions`);
     if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));
-    if (aggregateMetricAvailable("cvr")) webMetrics.push(`${aggregateMetricValue("cvr").toFixed(1)}% conversion rate`);
+    if (aggregateMetricAvailable("cvr")) webMetrics.push(`${formatAggregatePercent("cvr")} conversion rate`);
     const expectedImpact = String(rec?.expectedImpact || "");
     const unavailableTargetText = "No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.";
     const targetText = expectedImpact.includes(unavailableTargetText)
@@ -232,10 +228,10 @@ export default function ExecutiveSummary() {
     const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "";
     const interpretationText = [
       aggregateMetricAvailable("revenue") && aggregateMetricAvailable("conversions")
-        ? `Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.`
+        ? `Revenue is ${formatAggregateCurrency("revenue")} from ${formatAggregateInteger("conversions")} conversions.`
         : "",
       aggregateMetricAvailable("cvr")
-        ? `Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.`
+        ? `Conversion rate is ${formatAggregatePercent("cvr")}.`
         : "",
     ].filter(Boolean).join(" ");
     const targetMetricLabels: Record<string, string> = { cvr: "Conversion rate", revenue: "Revenue", conversions: "Conversions" };
@@ -483,14 +479,14 @@ export default function ExecutiveSummary() {
     { label: "Paid Platform Concentration Risk", status: paidRiskSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidRiskSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidRiskSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
   ];
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
-    if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
-    if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
-    if (metricName === "roas") return `${value.toFixed(1)}x`;
-    if (metricName && ["users", "sessions", "conversions", "clicks", "impressions"].includes(metricName)) return Math.round(value).toLocaleString();
-    if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value);
-    if (unit === "%") return `${value.toFixed(1)}%`;
-    if (unit === "ratio") return `${value.toFixed(1)}x`;
-    if (unit === "count") return Math.round(value).toLocaleString();
+    if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, true);
+    if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return `${value.toFixed(2)}%`;
+    if (metricName === "roas") return `${value.toFixed(2)}x`;
+    if (metricName && ["users", "sessions", "conversions", "clicks", "impressions"].includes(metricName)) return Math.trunc(value).toLocaleString();
+    if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value, true);
+    if (unit === "%") return `${value.toFixed(2)}%`;
+    if (unit === "ratio") return `${value.toFixed(2)}x`;
+    if (unit === "count") return Math.trunc(value).toLocaleString();
     return `${value}${unit}`;
   };
   const funnelPathLabel = `${reachMetricLabels[reachMetricKey]} -> ${engagementMetricLabels[engagementMetricKey]} -> Conversions -> Revenue`;
@@ -646,7 +642,7 @@ export default function ExecutiveSummary() {
                                   Engagement Rate
                                 </div>
                                 <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
-                                  {formatAggregatePercentExact("engagementRate")}
+                                  {formatAggregatePercent("engagementRate")}
                                 </div>
                               </div>
                             )}

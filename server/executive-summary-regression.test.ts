@@ -41,7 +41,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(formatter).toContain('if (!/^[A-Z]{3}$/.test(normalizedCurrency)) return "Unavailable";');
     expect(formatter).toContain("currency: normalizedCurrency,");
     expect(formatter).toContain('return "Unavailable";');
-    expect((Math.round((26.95 + Number.EPSILON) * 10) / 10).toFixed(1)).toBe("27.0");
+    expect(new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(72766.69)).toBe("$72,766.69");
+    expect((26.95).toFixed(2)).toBe("26.95");
+    expect((2595.31).toFixed(2)).toBe("2595.31");
+    expect((12.85).toFixed(2)).toBe("12.85");
   });
 
   it("documents Executive Summary readiness without mixing future source work into implementation status", () => {
@@ -547,8 +550,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('if ((metricName === "clicks" || metricName === "impressions") && !aggregateMetricAvailable(metricName)) {');
     expect(page).toContain('return "Unavailable from connected sources";');
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
-    expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
-    expect(page).toContain("Math.round((aggregateMetricValue(metricName) + Number.EPSILON) * 10) / 10");
+    expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.trunc(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
+    expect(page).toContain("return `${aggregateMetricValue(metricName).toFixed(2)}x`;");
     expect(page).toContain('GA4 property traffic and conversion metrics cover ${currentValueWindow.startDate} to ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel}');
     expect(page).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
@@ -558,8 +561,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('if (aggregateMetricAvailable("conversions")) webMetrics.push');
     expect(page).toContain('if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));');
     expect(page).toContain('if (aggregateMetricAvailable("cvr")) webMetrics.push');
-    expect(page).toContain('Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.');
-    expect(page).toContain('Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.');
+    expect(page).toContain('Revenue is ${formatAggregateCurrency("revenue")} from ${formatAggregateInteger("conversions")} conversions.');
+    expect(page).toContain('Conversion rate is ${formatAggregatePercent("cvr")}.');
     expect(page).toContain("Target check: ${targetComparisons.join(\"; \")}.");
     expect(page).toContain("Next action: inspect landing pages or conversion paths for metrics below target before increasing spend.");
     expect(page).toContain("Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality.");
@@ -630,7 +633,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(page).toContain("const executiveKpiMetric = resolveExecutiveKpiMetric(kpi);");
     expect(page).toContain("const current = Number(kpi.current) || 0;");
-    expect(page).toContain('if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value);');
+    expect(page).toContain('if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value, true);');
     expect(page).not.toContain("const kpiProgressPct = (kpi: any): number => {");
     expect(page).toContain("const riskKpiMissCount = executiveKpiExceptions.length;");
     expect(page).toContain('const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;');
@@ -741,7 +744,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).not.toContain('{!aggregateMetricAvailable("ctr") && (');
     expect(overview).toContain('{formatAggregatePercent("cvr")}');
     expect(overview).toContain('{aggregateMetricAvailable("engagementRate") && (');
-    expect(overview).toContain('{formatAggregatePercentExact("engagementRate")}');
+    expect(overview).toContain('{formatAggregatePercent("engagementRate")}');
     expect(page).toContain("aggregateMetricValue(metricName).toFixed(2)");
     expect(overview).toContain('{formatAggregateInteger("conversions")}');
     expect(overview).toContain('{formatAggregateCurrency("revenue")}');

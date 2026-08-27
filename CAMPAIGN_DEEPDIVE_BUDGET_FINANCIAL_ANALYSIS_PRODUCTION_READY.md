@@ -98,6 +98,27 @@ comparison plumbing remains exact-date and compatibility-gated.
 
 The detailed current functional contract is `docs/financial-analysis-overview.md`.
 
+### Relationship To GA4 Analytics Tabs
+
+Budget & Financial Analysis does not use rendered GA4 tab values as inputs. It reads
+`/api/campaigns/:id/outcome-totals.performanceSummary` and `financialInputs`, which are
+built from the same authoritative GA4 and campaign financial source records used by
+the GA4 analytics experience.
+
+- GA4 Overview and Budget & Financial Analysis align because both consume the same
+  underlying GA4 and financial source truth; neither UI tab feeds the other.
+- GA4 KPI and Benchmark rows are separate evaluative consumers. Their targets or
+  classifications may inform another Campaign DeepDive section only where explicitly
+  documented, but they do not replace Budget's Spend, Revenue, Conversions, or derived
+  financial inputs.
+- GA4 Ad Comparison and Insights are derived analysis consumers, and Reports is an
+  output consumer. They never feed Budget & Financial calculations.
+- Budget derives Profit, ROAS, ROI, CPA, and compatible efficiency metrics from the
+  shared authoritative inputs. Campaign budget and budget-period dates come only from
+  campaign metadata and affect pacing, not connected-source financial totals.
+- Source refresh and page refetch keep the consumers synchronized; synchronization is
+  through authoritative backend state, never through tab-to-tab value copying.
+
 ## Historical Root Cause (Resolved)
 
 Before the shared-aggregate migration, `client/src/pages/financial-analysis.tsx`

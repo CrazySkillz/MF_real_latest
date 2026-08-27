@@ -590,6 +590,18 @@ This means:
 - Platform Comparison Overview can display single-source aggregate financial totals for the only connected main platform, but this does not make analytics-only sources eligible for Financial Comparison paid-media rows or budget recommendation logic
 - Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, and Executive Summary should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots or daily aggregate rows being created after source refresh.
 
+### Campaign DeepDive Data Dependency Rule
+
+All Campaign DeepDive sections must preserve this one-way data flow:
+
+`persisted connected-source records -> documented source calculations -> shared campaign aggregate -> Campaign DeepDive consumers`
+
+- A Campaign DeepDive section must consume authoritative metrics through the shared aggregate/source-capability contract. It must not copy displayed values, cached state, or calculations from another UI tab.
+- GA4 Overview is a platform-detail consumer of the underlying GA4 and financial source records. Campaign DeepDive values align with it by consuming the same authoritative records, not by treating the Overview UI as an input.
+- KPI and Benchmark current values must follow their documented connected-source reporting contracts. Their definitions, targets, or classifications may inform target, health, risk, or action logic only where that dependency is explicitly documented; they must never replace authoritative Spend, Revenue, Conversions, or other base metrics.
+- Ad Comparison and Insights are derived analysis consumers. Reports are output consumers. None of them may become an upstream source for Campaign DeepDive base calculations.
+- When source values change, refresh and recomputation update the shared aggregate and any dependent KPI or Benchmark current values; visible Campaign DeepDive sections converge by refetching that authoritative state. No tab-to-tab copying or real-time push dependency is required.
+
 ## Consistency Review Of The Current Codebase
 
 Based on the current implementation, the codebase is broadly consistent with this pattern, with these important clarifications:

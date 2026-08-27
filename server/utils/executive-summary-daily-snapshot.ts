@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { MetricSnapshot } from "../../shared/schema";
+import { getExpectedDailyRefreshAt } from "./reporting-timezone";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const metricSchema = z.discriminatedUnion("available", [
@@ -35,6 +36,19 @@ export const executiveSummaryDailySnapshotInputSchema = z.object({
 });
 
 export type ExecutiveSummaryDailySnapshotInput = z.infer<typeof executiveSummaryDailySnapshotInputSchema>;
+
+export function hasRefreshedGA4RowsForExecutiveSummarySnapshot(input: {
+  reportingDate: string;
+  reportingTimeZone: string;
+  rows: Array<{ updatedAt?: Date | string | null }>;
+}): boolean {
+  const reportingDayClosedAt = getExpectedDailyRefreshAt(input.reportingDate, input.reportingTimeZone, 0, 0);
+  if (!reportingDayClosedAt || !Array.isArray(input.rows) || input.rows.length === 0) return false;
+  return input.rows.some((row) => {
+    const updatedAt = row?.updatedAt instanceof Date ? row.updatedAt : new Date(String(row?.updatedAt || ""));
+    return !Number.isNaN(updatedAt.getTime()) && updatedAt.getTime() >= reportingDayClosedAt.getTime();
+  });
+}
 
 const normalizeMetric = (metric: any) => metric?.available === true && Number.isFinite(Number(metric?.value))
   ? { value: Number(metric.value), available: true as const, sources: Array.isArray(metric?.sources) ? metric.sources.map(String).sort() : [] }

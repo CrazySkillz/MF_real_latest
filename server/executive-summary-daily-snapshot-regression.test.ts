@@ -21,6 +21,8 @@ describe("Executive Summary daily snapshot wiring", () => {
     const outcome = routes.slice(outcomeStart, outcomeEnd);
     expect(outcome).toContain('req.query.captureExecutiveSnapshot');
     expect(outcome).toContain("buildExecutiveSummaryDailySnapshotInput");
+    expect(outcome).toContain("hasRefreshedGA4RowsForExecutiveSummarySnapshot");
+    expect(outcome).toContain("if (!executiveGA4SnapshotRefreshReady)");
     expect(outcome).toContain("if (!executiveSnapshot.totals.revenue.available)");
     expect(outcome).toContain("upsertExecutiveSummaryDailySnapshot");
     expect(outcome.indexOf("const performanceSummary = buildCampaignPerformanceSummaryAggregate"))

@@ -56,7 +56,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
-import { buildExecutiveSummaryDailySnapshotInput, evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
+import { buildExecutiveSummaryDailySnapshotInput, evaluateExecutiveSummaryTrajectory, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
@@ -14486,6 +14486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
       let campaignFinancialConversions: number | null = null;
       let executivePropertyEngagementRate: number | null = null;
+      let executiveGA4SnapshotRefreshReady = false;
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         if (!currentValueWindow) {
           financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -14524,6 +14525,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if (useExecutiveCampaignToDateFinancials) {
             const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
+            executiveGA4SnapshotRefreshReady = hasRefreshedGA4RowsForExecutiveSummarySnapshot({
+              reportingDate: endDateUsed,
+              reportingTimeZone: currentValueWindow.reportingTimeZone,
+              rows: propertyWindowRows,
+            });
             if (propertyWindowRows.length > 0) {
               propertyWindowTrafficCandidate = {
                 ...summarizeGA4TrafficRows(propertyWindowRows),
@@ -14740,6 +14746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (String(req.query.captureExecutiveSnapshot || "").trim() === "1" && currentValueWindow) {
         try {
+          if (!executiveGA4SnapshotRefreshReady) throw new Error("Persisted GA4 property metrics have not refreshed for the completed reporting day");
           const executiveSnapshot = buildExecutiveSummaryDailySnapshotInput({
             campaignId,
             currency: campaignCurrency,

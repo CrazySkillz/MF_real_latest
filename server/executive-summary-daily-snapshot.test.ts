@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildExecutiveSummaryDailySnapshotInput,
   evaluateExecutiveSummaryTrajectory,
+  hasRefreshedGA4RowsForExecutiveSummarySnapshot,
   type ExecutiveSummaryDailySnapshotInput,
 } from "./utils/executive-summary-daily-snapshot";
 
@@ -45,6 +46,26 @@ const row = (snapshot: ExecutiveSummaryDailySnapshotInput): any => {
 };
 
 describe("Executive Summary daily snapshot", () => {
+  it("waits for persisted GA4 property rows to refresh after the reporting day closes", () => {
+    const base = { reportingDate: "2026-08-26", reportingTimeZone: "Europe/Amsterdam" };
+    expect(hasRefreshedGA4RowsForExecutiveSummarySnapshot({
+      ...base,
+      rows: [{ updatedAt: "2026-08-26T21:59:59.999Z" }],
+    })).toBe(false);
+    expect(hasRefreshedGA4RowsForExecutiveSummarySnapshot({
+      ...base,
+      rows: [{ updatedAt: "2026-08-26T22:00:00.000Z" }],
+    })).toBe(true);
+  });
+
+  it("accepts a fresh refresh even when GA4 omitted the zero-activity reporting date", () => {
+    expect(hasRefreshedGA4RowsForExecutiveSummarySnapshot({
+      reportingDate: "2026-08-26",
+      reportingTimeZone: "Europe/Amsterdam",
+      rows: [{ updatedAt: "2026-08-27T09:57:12.259Z" }],
+    })).toBe(true);
+  });
+
   it("copies the exact authoritative values and source contract", () => {
     const snapshot = build("2026-08-25", 72766.69);
     expect(snapshot.reportingDate).toBe("2026-08-25");

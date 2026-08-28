@@ -8,8 +8,10 @@ import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
-import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
+import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, computeEffectiveDeltaPct, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
+import { buildPerformanceRecommendedActions, resolvePerformanceAggregateMetricValue, resolvePerformanceConfiguredMetricValue, resolvePerformanceHealthCoverage, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -969,10 +971,10 @@ const campaignDeepDiveReportTypeLabels: Record<string, string> = {
 };
 
 const campaignDeepDiveTabLabels: Record<string, string> = {
-  "performance-summary:overview": "Overview",
-  "performance-summary:health": "Campaign Health",
-  "performance-summary:changes": "What's Changed",
-  "performance-summary:insights": "Insights",
+  "performance-summary:overview": "Performance Summary",
+  "performance-summary:health": "Performance Summary",
+  "performance-summary:changes": "Performance Summary",
+  "performance-summary:insights": "Performance Summary",
   "financial-analysis:overview": "Overview",
   "financial-analysis:roi-roas": "ROI & ROAS",
   "financial-analysis:costs": "Cost Analysis",
@@ -993,8 +995,14 @@ const campaignDeepDiveTabLabels: Record<string, string> = {
 
 const normalizeCampaignDeepDiveTrendSections = (value: unknown): string[] => {
   const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+  let performanceSummaryIncluded = false;
   let trendIncluded = false;
   return sections.flatMap((section) => {
+    if (section.startsWith("performance-summary:")) {
+      if (performanceSummaryIncluded) return [];
+      performanceSummaryIncluded = true;
+      return ["performance-summary:overview"];
+    }
     if (!section.startsWith("trend-analysis:")) return [section];
     if (trendIncluded) return [];
     trendIncluded = true;
@@ -1102,16 +1110,8 @@ type CampaignDeepDiveReportContext = {
 async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSections: string[]): Promise<CampaignDeepDiveReportContext> {
   const needsTrendAnalysis = selectedSections.some((section) => section.startsWith("trend-analysis:"));
   const needsExecutiveSummary = selectedSections.some((section) => section.startsWith("executive-summary:"));
-  const needsKpiRows = selectedSections.some((section) =>
-    section === "performance-summary:overview" ||
-    section === "performance-summary:health" ||
-    section === "kpis"
-  );
-  const needsBenchmarkRows = selectedSections.some((section) =>
-    section === "performance-summary:overview" ||
-    section === "performance-summary:health" ||
-    section === "benchmarks"
-  );
+  const needsKpiRows = selectedSections.some((section) => section.startsWith("performance-summary:") || section === "kpis");
+  const needsBenchmarkRows = selectedSections.some((section) => section.startsWith("performance-summary:") || section === "benchmarks");
   const allowIsolatedTestAggregate = process.env.NODE_ENV === "test";
   const certifiedPerformanceSummaryPromise = allowIsolatedTestAggregate
     ? Promise.resolve(null)
@@ -1186,6 +1186,46 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const date = String(row?.date || "").slice(0, 10);
       return trendWindowStart && date >= trendWindowStart && date <= trendWindowEnd;
     });
+  const performanceRecentMovement: Array<{ key: string; current: number; previous: number | null; sourceLabel: string; unavailableLabel?: string }> = [];
+  if (selectedSections.some((section: string) => section.startsWith("performance-summary:")) && cumulativeGA4Connection && cumulativeGA4Window) {
+    const dataThroughDate = String(performanceSummary?.currentValueWindow?.dataThroughDate || "");
+    const cumulativeDataThroughDate = String(cumulativeGA4Window.dataThroughDate || cumulativeGA4Window.endDate || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate) && dataThroughDate === cumulativeDataThroughDate) {
+      const comparisonDateValue = new Date(`${dataThroughDate}T00:00:00.000Z`);
+      comparisonDateValue.setUTCDate(comparisonDateValue.getUTCDate() - 7);
+      const comparisonDate = comparisonDateValue.toISOString().slice(0, 10);
+      const recentStartValue = new Date(`${dataThroughDate}T00:00:00.000Z`);
+      recentStartValue.setUTCDate(recentStartValue.getUTCDate() - 6);
+      const recentRows = await storage.getGA4DailyMetrics(campaignId, String((cumulativeGA4Connection as any).propertyId), recentStartValue.toISOString().slice(0, 10), dataThroughDate).catch(() => []);
+      for (const key of ["sessions", "conversions"]) {
+        const currentMetric = performanceSummary?.totals?.[key];
+        const current = Number(currentMetric?.value);
+        const recent = (Array.isArray(recentRows) ? recentRows : []).reduce((sum: number, row: any) => sum + (Number(row?.[key]) || 0), 0);
+        const previous = current - recent;
+        if (currentMetric?.available === true && Number.isFinite(current)) {
+          performanceRecentMovement.push({ key, current, previous: Number.isFinite(previous) && previous >= 0 ? previous : null, sourceLabel: "Google Analytics" });
+        }
+      }
+      const spendMetric = performanceSummary?.totals?.spend;
+      if (spendMetric?.available === true && Number.isFinite(Number(spendMetric.value))) {
+        const comparison = await storage.getComparisonData(campaignId, "last_week", String((campaign as any)?.reportingTimeZone || "UTC"), comparisonDate).catch(() => null);
+        const previousSummary = (comparison as any)?.previous?.metrics?.performanceSummary;
+        const currentSourceIds = Array.isArray(spendMetric?.sources) ? spendMetric.sources.map(String).sort() : [];
+        const previousSpendMetric = previousSummary?.totals?.spend;
+        const previousSourceIds = Array.isArray(previousSpendMetric?.sources) ? previousSpendMetric.sources.map(String).sort() : [];
+        const previous = previousSummary?.version === performanceSummary?.version
+          && previousSpendMetric?.available === true
+          && JSON.stringify(currentSourceIds) === JSON.stringify(previousSourceIds)
+          ? Number(previousSpendMetric.value)
+          : null;
+        performanceRecentMovement.push({ key: "spend", current: Number(spendMetric.value), previous: Number.isFinite(previous) ? previous : null, sourceLabel: "Campaign spend sources" });
+      }
+      const revenueMetric = performanceSummary?.totals?.revenue;
+      if (revenueMetric?.available === true && Number.isFinite(Number(revenueMetric.value))) {
+        performanceRecentMovement.push({ key: "revenue", current: Number(revenueMetric.value), previous: null, sourceLabel: "Google Analytics", unavailableLabel: "Comparison unavailable - exact-date Revenue unavailable" });
+      }
+    }
+  }
   const margin = 18;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1358,6 +1398,82 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText(`- ${row?.name || row?.metric || "Benchmark"}: Yours ${formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.yours)}; Benchmark ${formatCampaignDeepDiveRecordValue(row, target)}`, { indent });
     });
   };
+  const performanceTrafficTotals = {
+    sessions: metricAvailable("sessions") ? metricNumber("sessions") : 0,
+    users: metricAvailable("users") ? metricNumber("users") : 0,
+    conversions: metricAvailable("conversions") ? metricNumber("conversions") : 0,
+    pageviews: 0,
+    engagedSessions: 0,
+  };
+  const performanceScoringValue = (row: any) =>
+    resolvePerformanceConfiguredMetricValue(row) ?? resolvePerformanceAggregateMetricValue(row, performanceSummary?.totals);
+  const performanceKpiScore = (row: any) => {
+    const current = performanceScoringValue(row);
+    const target = Number(String(row?.targetValue ?? "").replace(/,/g, ""));
+    if (current === null || !Number.isFinite(target) || target <= 0) return null;
+    const metricKey = row?.metric || row?.metricName || row?.name;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: metricKey, name: row?.name });
+    const policy = resolveKpiThresholdPolicy({ metric: metricKey, name: row?.name, unit: row?.unit, current, target, lowerIsBetter });
+    const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });
+    const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
+    return band && effectiveDeltaPct !== null ? { band, effectiveDeltaPct, current, target } : null;
+  };
+  const performanceBenchmarkScore = (row: any) => {
+    const current = performanceScoringValue(row);
+    const target = Number(String(row?.benchmarkValue ?? row?.industryAverage ?? "").replace(/,/g, ""));
+    if (current === null || !Number.isFinite(target) || target <= 0) return null;
+    const result = computeBenchmarkThresholdResult({ metric: row?.metric || row?.metricName || row?.name, name: row?.name || row?.metricName, unit: row?.unit, current, benchmarkValue: target });
+    return result.status ? { ...result, current, target } : null;
+  };
+  const performanceScoredKpis = (Array.isArray(kpis) ? kpis : []).map((item: any) => ({ item, score: performanceKpiScore(item) })).filter((entry: any) => entry.score !== null);
+  const performanceScoredBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).map((item: any) => ({ item, score: performanceBenchmarkScore(item) })).filter((entry: any) => entry.score !== null);
+  const performanceHealth = resolvePerformanceHealthCoverage({
+    configuredKpiCount: kpis.length,
+    configuredBenchmarkCount: benchmarks.length,
+    scoredKpiCount: performanceScoredKpis.length,
+    scoredBenchmarkCount: performanceScoredBenchmarks.length,
+    kpisOnTrack: performanceScoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length,
+    benchmarksOnTrack: performanceScoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length,
+  });
+  const performanceTrafficState = metricAvailable("sessions") && metricAvailable("users") && metricAvailable("conversions") ? "ready" : "unavailable";
+  const performanceRecommendedActions = buildPerformanceRecommendedActions({
+    kpis,
+    benchmarks,
+    kpiListState: "ready",
+    benchmarkListState: "ready",
+    trafficState: performanceTrafficState,
+    revenueState: metricAvailable("revenue") ? "ready" : "unavailable",
+    spendState: metricAvailable("spend") ? "ready" : "unavailable",
+    financialConversionsState: metricAvailable("conversions") ? "ready" : "unavailable",
+    trafficTotals: performanceTrafficTotals,
+    trafficMetricAvailability: {
+      sessions: metricAvailable("sessions"), users: metricAvailable("users"), conversions: metricAvailable("conversions"),
+      pageviews: false, conversion_rate: metricAvailable("sessions") && metricAvailable("conversions"), engagement_rate: false,
+    },
+    financialRevenue: metricAvailable("revenue") ? metricNumber("revenue") : 0,
+    financialSpend: metricAvailable("spend") ? metricNumber("spend") : 0,
+    financialConversions: metricAvailable("conversions") ? metricNumber("conversions") : 0,
+  });
+  const performancePriorityAction = () => {
+    if (!Object.values(performanceSummary?.totals || {}).some((value: any) => value?.available === true && value?.value !== null)) {
+      return "No connected-source metrics available. Connect a source to generate a priority action.";
+    }
+    if (performanceHealth.configuredMetricCount === 0) return "No GA4 KPI or Benchmark targets configured. Add them in View Detailed Analytics to generate a priority action.";
+    if (performanceHealth.verifiedMetricCount === 0) return "Configured GA4 KPI and Benchmark targets are currently unavailable or unscorable.";
+    if (performanceHealth.excludedMetricCount > 0) return `Verify ${performanceHealth.excludedMetricCount} configured metric${performanceHealth.excludedMetricCount === 1 ? "" : "s"} before acting - only ${performanceHealth.verifiedMetricCount} of ${performanceHealth.configuredMetricCount} currently have verified inputs.`;
+    const targetSetupAction = performanceRecommendedActions.find((action) => action.category === "invalid-targets");
+    if (targetSetupAction) return `${targetSetupAction.title}: ${targetSetupAction.message}`;
+    const periodComparable = (row: any) => resolveGA4InsightTargetPeriodCompatibility({ metric: row?.metric || row?.metricName, name: row?.name || row?.metricName, timeframe: row?.timeframe, trackingPeriod: row?.trackingPeriod, period: row?.period }).comparable;
+    const laggingKpi = performanceScoredKpis
+      .filter((entry: any) => periodComparable(entry.item) && entry.score.band === "below")
+      .sort((a: any, b: any) => resolvePerformancePriorityRank(a.item?.priority) - resolvePerformancePriorityRank(b.item?.priority) || Math.abs(b.score.effectiveDeltaPct) - Math.abs(a.score.effectiveDeltaPct))[0];
+    if (laggingKpi) return `KPI below target: ${laggingKpi.item?.name || laggingKpi.item?.metric || "KPI"} - Current ${formatCampaignDeepDiveRecordValue(laggingKpi.item, laggingKpi.score.current)}, Target ${formatCampaignDeepDiveRecordValue(laggingKpi.item, laggingKpi.score.target)}`;
+    const laggingBenchmark = performanceScoredBenchmarks
+      .filter((entry: any) => periodComparable(entry.item) && entry.score.status !== "on_track")
+      .sort((a: any, b: any) => Math.abs(b.score.effectiveDeltaPct || 0) - Math.abs(a.score.effectiveDeltaPct || 0))[0];
+    if (laggingBenchmark) return `Benchmark needs attention: ${laggingBenchmark.item?.name || laggingBenchmark.item?.metric || "Benchmark"} - ${laggingBenchmark.score.status === "behind" ? "behind benchmark" : "needs attention"}`;
+    return "Maintain current performance - all metrics on track";
+  };
   const addTrendRows = (keys: string[], indent = 8) => {
     const rows = trendWindowRows;
     if (rows.length === 0) {
@@ -1372,17 +1488,46 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const addSelectedSectionBody = (section: string) => {
     addText(campaignDeepDiveTabLabels[section] || section, { size: 14, bold: true });
     if (section.startsWith("performance-summary:")) {
-      addText("Connected-source performance", { bold: true, indent: 4 });
-      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "impressions", "clicks", "spend"]);
-      if (section === "performance-summary:health" || section === "performance-summary:overview") {
-        addText("Campaign KPI rows", { bold: true, indent: 4 });
-        addKpiRows();
-        addText("Campaign Benchmark rows", { bold: true, indent: 4 });
-        addBenchmarkRows();
+      const performanceCurrency = validExecutiveCurrency || "USD";
+      addText("Key Outcomes", { bold: true, indent: 4 });
+      ([
+        ["users", "Total Users"],
+        ["sessions", "Total Sessions"],
+        ["conversions", "Total Conversions"],
+        ["revenue", "Total Revenue"],
+        ["spend", "Total Spend"],
+      ] as const).forEach(([key, label]) => addText(`- ${label}: ${metricValue(key, performanceCurrency)}`, { indent: 8 }));
+      addText("Campaign Health", { bold: true, indent: 4 });
+      if (performanceHealth.configuredMetricCount === 0) {
+        addText("No GA4 KPI or Benchmark targets configured.", { indent: 8 });
+      } else if (performanceHealth.excludedMetricCount > 0) {
+        addText(`Verification Needed - ${performanceHealth.verifiedMetricCount} of ${performanceHealth.configuredMetricCount} configured metrics verified; ${performanceHealth.excludedMetricCount} awaiting verification.`, { indent: 8 });
+      } else {
+        const score = performanceHealth.healthScore || 0;
+        const label = score >= 80 ? "Excellent" : score >= 60 ? "Good" : score >= 40 ? "Needs Attention" : "Critical";
+        addText(`${score}% - ${label}; ${performanceHealth.totalOnTrackMetrics} of ${performanceHealth.configuredMetricCount} configured metrics on track.`, { indent: 8 });
       }
-      if (section === "performance-summary:changes") addText("Metric trends require compatible historical aggregate snapshots; current values are included above.", { indent: 4 });
-      addText("Data Sources", { bold: true, indent: 4 });
-      addSourceRows();
+      addText("Top Priority Action", { bold: true, indent: 4 });
+      addText(performancePriorityAction(), { indent: 8 });
+      addText("Recent Movement", { bold: true, indent: 4 });
+      addText("Compare with 7 days ago", { indent: 8 });
+      if (performanceRecentMovement.length === 0) {
+        addText("No compatible historical data yet.", { indent: 8 });
+      } else {
+        performanceRecentMovement.forEach((item) => {
+          const current = formatCampaignDeepDiveMetricValue(item.key, item.current, performanceCurrency);
+          if (item.previous === null) {
+            addText(`- ${item.key === "revenue" ? "Total Revenue" : campaignDeepDiveMetricLabels[item.key] || item.key}: ${current}; ${item.unavailableLabel || "Comparison unavailable - incomplete source history"}; Sources: ${item.sourceLabel}`, { indent: 8 });
+            return;
+          }
+          const change = item.current - item.previous;
+          const pctChange = item.previous > 0 ? (change / item.previous) * 100 : null;
+          const changeLabel = `${change >= 0 ? "+" : ""}${formatCampaignDeepDiveMetricValue(item.key, change, performanceCurrency)}${pctChange === null ? "" : ` (${pctChange >= 0 ? "+" : ""}${pctChange.toFixed(1)}%)`}`;
+          addText(`- ${campaignDeepDiveMetricLabels[item.key] || item.key}: ${current}; ${changeLabel}; Previous ${formatCampaignDeepDiveMetricValue(item.key, item.previous, performanceCurrency)}; Sources: ${item.sourceLabel}`, { indent: 8 });
+        });
+      }
+      addText("Recommended Actions", { bold: true, indent: 4 });
+      performanceRecommendedActions.forEach((action) => addText(`- ${action.title}: ${action.message}`, { indent: 8 }));
     } else if (section.startsWith("financial-analysis:")) {
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
       const rawBudget = (campaign as any)?.budget;

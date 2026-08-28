@@ -55,10 +55,7 @@ const campaignDeepDiveReportTypes = [
     key: "performance-summary",
     label: "Performance Summary",
     tabs: [
-      { key: "performance-summary:overview", label: "Overview" },
-      { key: "performance-summary:health", label: "Campaign Health" },
-      { key: "performance-summary:changes", label: "What's Changed" },
-      { key: "performance-summary:insights", label: "Insights" },
+      { key: "performance-summary:overview", label: "Performance Summary" },
     ],
   },
   {
@@ -100,9 +97,15 @@ const campaignDeepDiveReportTypes = [
 
 const normalizeTrendReportSections = (value: unknown): string[] => {
   const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+  let performanceSummaryIncluded = false;
   let trendIncluded = false;
   let executiveSummaryIncluded = false;
   return sections.flatMap((section) => {
+    if (section.startsWith("performance-summary:")) {
+      if (performanceSummaryIncluded) return [];
+      performanceSummaryIncluded = true;
+      return ["performance-summary:overview"];
+    }
     if (section.startsWith("trend-analysis:")) {
       if (trendIncluded) return [];
       trendIncluded = true;

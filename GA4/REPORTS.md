@@ -167,7 +167,7 @@ Important meaning:
 - unscheduled create mode should show `Download Report`, download the selected report sections as a PDF, and create no browser or backend report-library row
 - downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from `performanceSummary.totals` and `performanceSummary.sources`, not just the selected tab names
 - the current Campaign DeepDive Executive Summary report composition exposes one `Executive Summary` selection; legacy Executive Summary selection keys normalize to that one composition so retired keys cannot duplicate output
-- downloaded Performance Summary PDFs should include the selected web-tab section structure: Overview, Campaign Health, What's Changed, and Insights exports should each include their major live-tab subsections instead of a generic metric list
+- downloaded Performance Summary PDFs expose one consolidated `performance-summary:overview` composition with Key Outcomes, Campaign Health, Top Priority Action, the default seven-day Recent Movement, and Recommended Actions; legacy Performance Summary keys normalize to this one body instead of rendering retired tabs or repeated generic metrics
 - downloaded Budget & Financial Analysis PDFs should include the selected web-tab section structure down to the visible card and row level: Overview, ROI & ROAS, Cost Analysis, Budget Allocation, and Insights exports should each include the nested live-tab cards/rows instead of a generic metric list
 - downloaded Platform Comparison PDFs should include the selected web-tab section structure: Overview, Performance Metrics, Financial Comparison, and Insights exports should each include their major live-tab subsections instead of a generic metric list
 - Campaign DeepDive Trend Analysis reports expose one selectable section: `Executive View` (`trend-analysis:overview`)
@@ -188,7 +188,7 @@ Important meaning:
 
 Campaign-scoped Report Type menu:
 
-- `Performance Summary`: `Overview`, `Campaign Health`, `What's Changed`, `Insights`
+- `Performance Summary`: `Performance Summary`
 - `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
 - `Trend Analysis`: `Executive View`
 - `Executive Summary`: `Executive Summary`

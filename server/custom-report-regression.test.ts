@@ -539,8 +539,7 @@ describe("campaign Custom Report regression guard", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 
     expect(scheduler).toContain('section.startsWith("executive-summary:")');
-    expect(scheduler).toContain('section === "performance-summary:overview"');
-    expect(scheduler).toContain('section === "performance-summary:health"');
+    expect(scheduler).toContain('section.startsWith("performance-summary:")');
     expect(scheduler).toContain('section === "executive-summary:overview"');
     expect(scheduler).toContain('section === "kpis"');
     expect(scheduler).toContain('section === "benchmarks"');
@@ -566,10 +565,12 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(builder).toContain('addText("Selected section content", { size: 14, bold: true });');
     expect(builder).toContain("selectedSections.forEach(addSelectedSectionBody);");
-    expect(builder).toContain("addMetricRows([\"users\", \"sessions\", \"conversions\", \"revenue\", \"cvr\", \"impressions\", \"clicks\", \"spend\"]);");
-    expect(builder).toContain("addSourceRows();");
-    expect(builder).toContain("addKpiRows();");
-    expect(builder).toContain("addBenchmarkRows();");
+    expect(builder).toContain('addText("Key Outcomes", { bold: true, indent: 4 });');
+    expect(builder).toContain('addText("Campaign Health", { bold: true, indent: 4 });');
+    expect(builder).toContain('addText("Top Priority Action", { bold: true, indent: 4 });');
+    expect(builder).toContain('addText("Recent Movement", { bold: true, indent: 4 });');
+    expect(builder).toContain('addText("Recommended Actions", { bold: true, indent: 4 });');
+    expect(builder).not.toContain('addText("Connected-source performance", { bold: true, indent: 4 });');
     expect(builder).toContain("addTrendRows([\"sessions\", \"users\", \"conversions\", \"revenue\", \"spend\", \"impressions\", \"clicks\"]);");
     expect(builder).not.toContain("This PDF includes the report header only.");
     expect(builder).not.toContain("For full interactive content, open the dashboard Reports tab.");
@@ -693,21 +694,16 @@ describe("campaign Custom Report regression guard", () => {
 
   it("renders Performance Summary PDF exports with the live tab section set", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const reportTypeBlock = reports.slice(reports.indexOf('key: "performance-summary"'), reports.indexOf('key: "financial-analysis"'));
 
-    expect(reports).toContain("const addPerformanceSummaryContent = (section: string) => {");
-    expect(reports).toContain('section.startsWith("performance-summary:")');
-    expect(reports).toContain("Campaign Health");
-    expect(reports).toContain("Top Priority Action");
-    expect(reports).toContain("Aggregated Metrics Snapshot");
-    expect(reports).toContain("Overall Health Summary");
-    expect(reports).toContain("KPIs On Track or Above");
-    expect(reports).toContain("Benchmarks On Track");
-    expect(reports).toContain("Key Performance Indicators (KPIs)");
-    expect(reports).toContain("Data Sources");
-    expect(reports).toContain("What's Changed");
-    expect(reports).toContain("Metric Trends");
-    expect(reports).toContain("Data-Driven Insights & Recommendations");
-    expect(reports).toContain("Performance Analysis");
+    expect(reportTypeBlock.match(/performance-summary:[a-z-]+/g)).toEqual(["performance-summary:overview"]);
+    expect(reportTypeBlock).toContain('label: "Performance Summary"');
+    expect(reports).toContain('return ["performance-summary:overview"];');
+    for (const heading of ["Key Outcomes", "Campaign Health", "Top Priority Action", "Recent Movement", "Recommended Actions"]) {
+      expect(scheduler).toContain(`addText("${heading}", { bold: true, indent: 4 });`);
+    }
+    expect(scheduler).not.toContain('addText("Connected-source performance", { bold: true, indent: 4 });');
   });
 
   it("renders Budget & Financial Analysis PDF exports with the live tab section set", () => {

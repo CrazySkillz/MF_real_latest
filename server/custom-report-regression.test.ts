@@ -396,9 +396,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("Marketing Funnel Performance");
     expect(scheduler).toContain("KPI Exceptions");
     expect(scheduler).toContain("Benchmark Exceptions");
-    expect(scheduler).toContain("Risk Assessment");
+    expect(scheduler).toContain("Risk Level");
     expect(scheduler).toContain("Platform Performance Summary Cards");
-    expect(scheduler).toContain("Trend metrics");
+    expect(scheduler).toContain("Current Decision Metrics");
     expect(scheduler).toContain("Recommended Actions");
   });
 
@@ -452,8 +452,11 @@ describe("campaign Custom Report regression guard", () => {
     expect(builder).toContain('Target Daily Spend');
     expect(builder).toContain('Budget Period Start');
     expect(builder).toContain('Budget Period End');
-    expect(builder).toContain('addMetricRows(["revenue", "spend", "conversions", "cvr", "cpc", "cpa", "roas", "roi"], 8, campaignCurrency);');
-    expect(builder).toContain('if (section === "financial-analysis:overview")');
+    expect(builder).toContain('addText("Financial Position", { bold: true, indent: 4 });');
+    expect(builder).toContain('addText("Allocation & Sources", { bold: true, indent: 4 });');
+    expect(builder).toContain('addText("Executive Action", { bold: true, indent: 4 });');
+    expect(builder).toContain("buildFinancialBudgetAction");
+    expect(builder).toContain("buildFinancialAllocationAction");
     expect(builder).toContain('const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));');
     expect(builder).toContain('financial values are campaign-to-date');
   });
@@ -499,7 +502,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("const needsTrendAnalysis = selectedSections.some((section) => section.startsWith(\"trend-analysis:\"));");
     expect(scheduler).toContain("aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis })");
     expect(scheduler).toContain("const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;");
-    expect(scheduler).toContain("addTrendRows([\"sessions\", \"users\", \"conversions\", \"revenue\", \"spend\", \"impressions\", \"clicks\"]);");
+    expect(scheduler).toContain("addTrendRows([\"revenue\", \"spend\", \"roas\", \"roi\", \"conversions\", \"cpa\", \"cpc\", \"cpm\", \"sessions\", \"users\", \"cvr\", \"engagementRate\", \"ctr\"]);");
     expect(metricsScheduler).toContain("interface AggregateCampaignMetricsOptions");
     expect(metricsScheduler).toContain("includeTrendAnalysis?: boolean;");
     expect(metricsScheduler).toContain("const includeTrendAnalysis = options.includeTrendAnalysis !== false;");
@@ -507,32 +510,24 @@ describe("campaign Custom Report regression guard", () => {
     expect(metricsScheduler).toContain("const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({");
   });
 
-  it("keeps Trend reports single-view and uses exact 90-day calendar windows", () => {
+  it("keeps Trend reports single-view and matches the UI-default 30-day comparison window", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
     const reportTypeBlock = reports.slice(
       reports.indexOf('key: "trend-analysis"'),
       reports.indexOf('key: "executive-summary"'),
     );
-    const clientTrendBuilder = reports.slice(
-      reports.indexOf("const addTrendAnalysisContent ="),
-      reports.indexOf("const addDeepDiveSectionContent ="),
-    );
-
     expect(reportTypeBlock.match(/trend-analysis:[a-z-]+/g)).toEqual(["trend-analysis:overview"]);
     expect(reportTypeBlock).toContain('label: "Executive View"');
     expect(reports).toContain("const normalizeTrendReportSections =");
     expect(scheduler).toContain("const normalizeCampaignDeepDiveTrendSections =");
-    expect(clientTrendBuilder).toContain("currentStart?.setUTCDate(currentStart.getUTCDate() - 89);");
-    expect(clientTrendBuilder).toContain("previousStart?.setUTCDate(previousStart.getUTCDate() - 179);");
-    expect(clientTrendBuilder).toContain('cumulativeStartDate > requestedCurrentStartDate');
-    expect(clientTrendBuilder).not.toContain("Math.ceil(trendRows.length / 2)");
-    expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - 89);");
-    expect(scheduler).toContain('cumulativeStartDate > requestedTrendWindowStart');
+    expect(scheduler).toContain("const trendReportDays = 30;");
+    expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - (trendReportDays - 1));");
+    expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - trendReportDays);");
     expect(scheduler).toContain("resolveGA4ImportToDateWindow((cumulativeGA4Connection as any)?.importStartDate");
     expect(scheduler).toContain('cumulativeGA4Window?.endDate || trendAnalysis?.endDate');
-    expect(scheduler).toContain("const rows = trendWindowRows;");
-    expect(scheduler).not.toContain("rows.slice(-Math.max(1, Math.ceil(rows.length / 2)))");
+    expect(scheduler).toContain("const trendCurrentMetric = (key: string): number | null =>");
+    expect(scheduler).toContain("const trendPreviousMetric = (key: string): number | null =>");
   });
 
   it("loads scheduled Executive Summary context only when Executive Summary tabs are selected", () => {
@@ -551,7 +546,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("needsExecutiveSummary ? storage.getCampaignBenchmarks(campaignId)");
     expect(scheduler).toContain("formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.current)");
     expect(scheduler).toContain("formatCampaignDeepDiveRecordValue(row, row?.currentValue ?? row?.yours)");
-    expect(scheduler).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis: executiveKpis, benchmarks: executiveBenchmarks } : null;");
+    expect(scheduler).toContain("const usesGA4ExecutiveRows = aggregateSources.length === 1 && aggregateSources[0]?.id === \"ga4\";");
+    expect(scheduler).toContain("kpis: usesGA4ExecutiveRows ? executiveGA4Kpis : executiveKpis");
+    expect(scheduler).toContain("benchmarks: usesGA4ExecutiveRows ? executiveGA4Benchmarks : executiveBenchmarks");
     expect(scheduler).toContain("if (!executiveSummary?.performanceSummary)");
     expect(scheduler).toContain("Marketing Funnel Performance");
     expect(scheduler).toContain("Recommended Actions");
@@ -571,7 +568,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(builder).toContain('addText("Recent Movement", { bold: true, indent: 4 });');
     expect(builder).toContain('addText("Recommended Actions", { bold: true, indent: 4 });');
     expect(builder).not.toContain('addText("Connected-source performance", { bold: true, indent: 4 });');
-    expect(builder).toContain("addTrendRows([\"sessions\", \"users\", \"conversions\", \"revenue\", \"spend\", \"impressions\", \"clicks\"]);");
+    expect(builder).toContain("addTrendRows([\"revenue\", \"spend\", \"roas\", \"roi\", \"conversions\", \"cpa\", \"cpc\", \"cpm\", \"sessions\", \"users\", \"cvr\", \"engagementRate\", \"ctr\"]);");
     expect(builder).not.toContain("This PDF includes the report header only.");
     expect(builder).not.toContain("For full interactive content, open the dashboard Reports tab.");
   });
@@ -796,23 +793,16 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Strategic Recommendations");
   });
 
-  it("renders Trend Analysis PDF exports with the live tab section set", () => {
+  it("renders current campaign Trend Analysis PDFs through the shared 30-day UI-aligned server body", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 
-    expect(reports).toContain("const addTrendAnalysisContent = (section: string) => {");
-    expect(reports).toContain("fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/trend-analysis?dateRange=90days&days=180`)");
-    expect(reports).toContain('section.startsWith("trend-analysis:")');
-    expect(reports).toContain("Cross-Platform Performance");
-    expect(reports).toContain("Summary Metrics");
-    expect(reports).toContain("Anomaly Detection");
-    expect(reports).toContain("ROAS & ROI Trend");
-    expect(reports).toContain("Cost Efficiency Trend");
-    expect(reports).toContain("Website Conversion Funnel");
-    expect(reports).toContain("Paid-Media Funnel");
-    expect(reports).toContain("Platform Performance Comparison");
-    expect(reports).toContain("Spend Distribution");
-    expect(reports).toContain("Efficiency Comparison");
-    expect(reports).toContain("Trend Performance Insights");
+    expect(reports).toContain("downloadCampaignReportPdf");
+    expect(reports).toContain("/api/campaigns/${encodeURIComponent(reportCampaignId)}/custom-report-pdf");
+    expect(scheduler).toContain("const trendReportDays = 30;");
+    expect(scheduler).toContain('addText("Current Decision Metrics"');
+    expect(scheduler).toContain('addText("Campaign Performance Trend"');
+    expect(scheduler).toContain('addText("Efficiency Trends"');
   });
 
   it("maps Campaign DeepDive KPI and Benchmark report sections directly to GA4 records", () => {

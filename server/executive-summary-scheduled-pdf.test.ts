@@ -181,7 +181,7 @@ describe("scheduled Executive Summary PDF", () => {
     expect(pdfTextCalls).not.toContain("Metric basis: 90-day connected-source aggregate through scheduler generation time.");
   });
 
-  it("fails monetary values closed without a valid campaign currency and preserves Monitor severity", async () => {
+  it("fails monetary values closed without a valid campaign currency and renders the UI Risk Level", async () => {
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "" });
     storageMock.getCampaignKPIs.mockResolvedValue([
       { id: "kpi-revenue", name: "Revenue target", metric: "revenue", unit: "USD", targetValue: "6000" },
@@ -199,7 +199,7 @@ describe("scheduled Executive Summary PDF", () => {
     });
 
     expect(pdfTextCalls.some((text) => text.includes("Revenue target: Current Unavailable; Target Unavailable"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.startsWith("- KPI Risk: Monitor"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.startsWith("- Benchmark Risk: Monitor"))).toBe(true);
+    expect(pdfTextCalls).toContain("Risk Level: MEDIUM");
+    expect(pdfTextCalls).not.toContain("Risk Assessment");
   });
 });

@@ -826,7 +826,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(recommendations).not.toContain("Investment Required:");
   });
 
-  it("keeps scheduled Executive Summary PDFs campaign-wide, exception-only, and isolated from certified report rows", () => {
+  it("keeps scheduled Executive Summary PDFs aligned with the GA4-first UI records and current exception body", () => {
     const scheduler = readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
     const contextStart = scheduler.indexOf("type CampaignDeepDiveReportContext = {");
     const contextEnd = scheduler.indexOf("async function buildCampaignDeepDiveScheduledPdfAttachment", contextStart);
@@ -844,10 +844,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(context).toContain('needsBenchmarkRows ? storage.getPlatformBenchmarks("google_analytics", campaignId)');
     expect(context).toContain("needsExecutiveSummary ? storage.getCampaignKPIs(campaignId)");
     expect(context).toContain("needsExecutiveSummary ? storage.getCampaignBenchmarks(campaignId)");
-    expect(context).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis: executiveKpis, benchmarks: executiveBenchmarks } : null;");
+    expect(context).toContain("kpis: usesGA4ExecutiveRows ? executiveGA4Kpis : executiveKpis");
+    expect(context).toContain("benchmarks: usesGA4ExecutiveRows ? executiveGA4Benchmarks : executiveBenchmarks");
     expect(builder).toContain("const executiveKpiRows =");
     expect(builder).toContain("const executiveBenchmarkRows =");
-    expect(builder).toContain("currentValue: metricNumber(metricKey)");
+    expect(builder).toContain("executiveSummary?.usesGA4PlatformRows ? Number(row?.currentValue) : executiveMetricNumber(metricKey)");
     expect(builder).toContain("const executiveKpiExceptions = executiveKpiRows.filter");
     expect(builder).toContain("const executiveBenchmarkExceptions = executiveBenchmarkRows.filter");
     expect(builder).toContain('const executiveCurrency = String((campaign as any)?.currency || "").trim().toUpperCase();');
@@ -864,8 +865,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(executive).toContain("No KPI Exceptions");
     expect(executive).toContain("Benchmark Status Unavailable");
     expect(executive).toContain("No Benchmark Exceptions");
-    expect(executive).toContain('kpiMonitorCount > 0 ? "Monitor"');
-    expect(executive).toContain('benchmarkMonitorCount > 0 ? "Monitor"');
+    expect(executive).toContain("7-Day Snapshot Trajectory:");
+    expect(executive).toContain("Risk Level:");
+    expect(executive).not.toContain('addText("Risk Assessment"');
     expect(executive).toContain('addText("Recommended Actions"');
     expect(executive).toContain('addText("Data Accuracy Notice"');
     expect(executive).toContain("No connected paid-media source is available, so paid-media recommendations are unavailable");

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
+const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getCampaignKPIs: vi.fn(),
@@ -15,6 +16,7 @@ const storageMock = vi.hoisted(() => ({
 
 vi.mock("./storage", () => ({ storage: storageMock }));
 vi.mock("./scheduler", () => ({ aggregateCampaignMetrics: aggregateCampaignMetricsMock }));
+vi.mock("./utils/campaign-current-values", () => ({ getCampaignMetricTotals: getCampaignMetricTotalsMock }));
 vi.mock("./db", () => ({ db: {} }));
 vi.mock("./services/email-service", () => ({ emailService: {} }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({ runGA4DailyKPIAndBenchmarkJobs: vi.fn() }));
@@ -85,10 +87,12 @@ describe("scheduled Performance Summary PDF", () => {
       { id: "bm-cvr", name: "Conversion Rate", metric: "conversion_rate", currentValue: "12.85", benchmarkValue: "15", unit: "%" },
     ]);
     storageMock.getPrimaryGA4Connection.mockResolvedValue({ propertyId: "properties/123", importStartDate: "2026-07-02" });
-    storageMock.getGA4DailyMetrics.mockResolvedValue([
-      { date: "2026-08-21", sessions: 10, conversions: 5 },
-      { date: "2026-08-27", sessions: 20, conversions: 7 },
-    ]);
+    storageMock.getGA4DailyMetrics.mockImplementation((_campaignId: string, _propertyId: string, startDate: string) => Promise.resolve(startDate === "2026-07-02"
+      ? [{ date: "2026-07-02", users: 1184, sessions: 1183, conversions: 152, pageviews: 1600, engagedSessions: 809 }]
+      : [
+          { date: "2026-08-21", sessions: 10, conversions: 5 },
+          { date: "2026-08-27", sessions: 20, conversions: 7 },
+        ]));
     storageMock.getComparisonData.mockResolvedValue({
       previous: {
         metrics: {
@@ -98,6 +102,20 @@ describe("scheduled Performance Summary PDF", () => {
           },
         },
       },
+    });
+    getCampaignMetricTotalsMock.mockResolvedValue({
+      users: 1184,
+      sessions: 1183,
+      conversions: 152,
+      revenue: 72766.69,
+      ga4Revenue: 55966.7,
+      spend: 2699.75,
+      revenueBySource: new Map([["revenue-1", 16799.99]]),
+      spendBySource: new Map([["spend-1", 2699.75]]),
+      revenueAvailable: true,
+      spendAvailable: true,
+      ga4Available: true,
+      ga4RevenueAvailable: true,
     });
     aggregateCampaignMetricsMock.mockResolvedValue({ detailedMetrics: { performanceSummary } });
   });
@@ -131,14 +149,14 @@ describe("scheduled Performance Summary PDF", () => {
       expect(pdfTextCalls.filter((text) => text === heading)).toHaveLength(1);
     }
     expect(pdfTextCalls).toContain("- Total Users: 1,184");
-    expect(pdfTextCalls).toContain("- Total Sessions: 1,179");
+    expect(pdfTextCalls).toContain("- Total Sessions: 1,183");
     expect(pdfTextCalls).toContain("- Total Conversions: 152");
-    expect(pdfTextCalls).toContain("- Total Revenue: $51,072.99");
+    expect(pdfTextCalls).toContain("- Total Revenue: $72,766.69");
     expect(pdfTextCalls).toContain("- Total Spend: $2,699.75");
     expect(pdfTextCalls.some((text) => text.includes("KPI below target: CPA"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,179") && text.includes("Previous 1,149"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,183") && text.includes("Previous 1,153"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Spend: $2,699.75") && text.includes("Previous $2,500.00"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Total Revenue: $51,072.99") && text.includes("exact-date Revenue unavailable"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Total Revenue: $72,766.69") && text.includes("exact-date Revenue unavailable") && text.includes("GA4 native revenue, Imported revenue"))).toBe(true);
     expect(pdfTextCalls).not.toContain("Overview");
     expect(pdfTextCalls).not.toContain("What's Changed");
     expect(pdfTextCalls).not.toContain("Insights");
@@ -146,6 +164,65 @@ describe("scheduled Performance Summary PDF", () => {
     expect(pdfTextCalls).not.toContain("Campaign KPI rows");
     expect(pdfTextCalls).not.toContain("Campaign Benchmark rows");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-08-21", "2026-08-27");
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-02", "2026-08-27");
     expect(storageMock.getComparisonData).toHaveBeenCalledWith("campaign-1", "last_week", "Europe/Amsterdam", "2026-08-20");
+    expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true);
+  });
+
+  it("fails closed when the UI-aligned Performance Summary values are unavailable", async () => {
+    getCampaignMetricTotalsMock.mockResolvedValueOnce(null);
+
+    await expect(buildPdfAttachmentForReport({
+      report: {
+        id: "report-1",
+        name: "Performance report",
+        platformType: "campaign_deepdive",
+        campaignId: "campaign-1",
+        reportType: "custom",
+        configuration: { reportType: "performance-summary", selectedSections: ["performance-summary:overview"] },
+      },
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+      isTest: true,
+    })).rejects.toThrow("Performance Summary UI-aligned values are unavailable");
+
+    expect(pdfTextCalls).not.toContain("- Total Sessions: 1,179");
+  });
+
+  it("does not fall back to a differing aggregate revenue value", async () => {
+    getCampaignMetricTotalsMock.mockResolvedValueOnce({
+      users: 1184,
+      sessions: 1183,
+      conversions: 152,
+      revenue: 72766.69,
+      ga4Revenue: 55966.7,
+      spend: 2699.75,
+      revenueBySource: new Map([["revenue-1", 16799.99]]),
+      spendBySource: new Map([["spend-1", 2699.75]]),
+      revenueAvailable: false,
+      spendAvailable: true,
+      ga4Available: true,
+      ga4RevenueAvailable: false,
+    });
+
+    const buffer = await buildPdfAttachmentForReport({
+      report: {
+        id: "report-1",
+        name: "Performance report",
+        platformType: "campaign_deepdive",
+        campaignId: "campaign-1",
+        reportType: "custom",
+        configuration: { reportType: "performance-summary", selectedSections: ["performance-summary:overview"] },
+      },
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+      isTest: true,
+    });
+
+    expect(buffer?.length).toBeGreaterThan(100);
+    expect(pdfTextCalls).toContain("- Total Revenue: Unavailable - Performance Summary UI value unavailable");
+    expect(pdfTextCalls).not.toContain("- Total Revenue: $51,072.99");
   });
 });

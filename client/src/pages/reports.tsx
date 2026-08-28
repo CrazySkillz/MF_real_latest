@@ -62,11 +62,7 @@ const campaignDeepDiveReportTypes = [
     key: "financial-analysis",
     label: "Budget & Financial Analysis",
     tabs: [
-      { key: "financial-analysis:overview", label: "Overview" },
-      { key: "financial-analysis:roi-roas", label: "ROI & ROAS" },
-      { key: "financial-analysis:costs", label: "Cost Analysis" },
-      { key: "financial-analysis:budget", label: "Budget Allocation" },
-      { key: "financial-analysis:insights", label: "Insights" },
+      { key: "financial-analysis:overview", label: "Budget & Financial Analysis" },
     ],
   },
   {
@@ -98,6 +94,7 @@ const campaignDeepDiveReportTypes = [
 const normalizeTrendReportSections = (value: unknown): string[] => {
   const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
   let performanceSummaryIncluded = false;
+  let financialAnalysisIncluded = false;
   let trendIncluded = false;
   let executiveSummaryIncluded = false;
   return sections.flatMap((section) => {
@@ -105,6 +102,11 @@ const normalizeTrendReportSections = (value: unknown): string[] => {
       if (performanceSummaryIncluded) return [];
       performanceSummaryIncluded = true;
       return ["performance-summary:overview"];
+    }
+    if (section.startsWith("financial-analysis:")) {
+      if (financialAnalysisIncluded) return [];
+      financialAnalysisIncluded = true;
+      return ["financial-analysis:overview"];
     }
     if (section.startsWith("trend-analysis:")) {
       if (trendIncluded) return [];

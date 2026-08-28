@@ -124,7 +124,7 @@ describe("Campaign Custom Report PDF window metadata", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("Trend window: 2026-05-28 to 2026-08-25.");
+    expect(pdfTextCalls).toContain("Trend window: 2026-07-27 to 2026-08-25.");
     expect(pdfTextCalls).not.toContain("Window: 2026-07-27 to 2026-08-25");
   });
 

@@ -59,7 +59,7 @@ Executive use case:
 
 ## Current Implemented Consumer Contract
 
-Reconciled with current code through consumer commit `1205ed49` on 2026-08-23.
+Reconciled with current code through deployed runtime commit `19f055372abe8aee789dd4205eba5decef5f39a5` on 2026-08-28.
 
 The visible Budget & Financial Analysis experience is now one executive page, not five
 tabs. It renders `Financial Position`, `Budget & Pacing`, conditional `Paid Media
@@ -80,6 +80,12 @@ Current consumer-only refinements after the `e5195f9a` GA4 certification-record 
   reason.
 - `1205ed49`: reconciled CSV/Google Sheets spend inputs can drive factual spend-source
   mix guidance; the Executive Action subtitle no longer calls fixed cards prioritized.
+- `4d54dd89`: current financial Revenue and CPA Conversions use GA4 Overview's ordered
+  campaign-to-date financial source instead of the cumulative traffic import boundary.
+- `1bea01ef` / `4be16c54`: Conversion Efficiency uses the same one-decimal traffic CVR
+  shown by GA4 Overview and omits redundant numerator/denominator copy.
+- `19f05537`: the shared Budget PDF body preserves the live Financial Position ROAS
+  precision (`26.95x`) instead of rounding it to one decimal.
 
 The three Executive Action cards are fixed categories: return, budget pacing, and
 source mix/allocation. The source-mix card may use positive detailed spend input rows
@@ -139,11 +145,12 @@ traffic Sessions `1,183`, traffic Conversions `152`, and financial Conversions `
 The expected Budget cards are therefore Total Revenue `$72,766.69`, Profit
 `$70,066.94`, ROAS `26.95x`, ROI `2595.3%`, CPA `$10.76`, and Conversion Efficiency
 `12.8%`. The shared aggregate retains the raw `152 / 1,183` ratio so the one-decimal
-display matches GA4 Overview instead of double-rounding `12.85` to `12.9%`. This is
-local code/test evidence only until the exact
-change is committed, deployed, and checked in the authenticated production UI. Because
-`server/routes-oauth.ts` is a protected GA4 dependency, the affected GA4 certification
-boundary must be revalidated after deployment.
+display matches GA4 Overview instead of double-rounding `12.85` to `12.9%`. The
+correction is deployed and authenticated production UI parity is confirmed. The
+subsequent report-only precision fix is deployed at `19f05537`; the generated Budget
+PDF now shows `26.95x`, matching the live card. Required KPI and Reports certification
+revalidation and locked-Benchmark supporting parity passed without application-data
+mutation.
 
 ## Historical Root Cause (Resolved)
 
@@ -534,10 +541,27 @@ Before marking this subsection production ready:
 
 ## Current Status
 
-The current single-page consumer is locally validated through `1205ed49`. Focused
-Budget regression tests, TypeScript checking, and the production build passed for the
-consumer-only changes. This document does not claim production UI parity for
-`1205ed49` until that exact deployment is confirmed.
+**PRODUCTION_READY for the bounded GA4-first runtime `19f055372abe8aee789dd4205eba5decef5f39a5`.**
+
+This status is limited to campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, GA4
+property `542352127`, reporting timezone `Europe/Amsterdam`, currency `USD`, the
+currently active GA4-context revenue/spend source set, and Campaign Budget
+`$150,000.00`. It certifies the live single-page consumer and its current Budget PDF
+body. It does not certify future source configurations or disabled/future platforms.
+
+Production UI values were confirmed as Total Spend `$2,699.75`, Total Revenue
+`$72,766.69`, Profit `$70,066.94`, ROAS `26.95x`, ROI `2595.3%`, CPA `$10.76`, and
+traffic CVR `12.8%`. The deployed Budget PDF uses the same financial values, Campaign
+Budget `$150,000.00`, and corrected ROAS precision `26.95x`.
+
+Focused Budget/Custom Report validation passed `42/42`; TypeScript and the production
+build passed. Exact deployed KPI validation matched all eight cards, Tracker,
+Notifications, Insights findings, and browser-PDF rows with unchanged semantic
+persistence. Benchmark supporting parity passed for two campaigns and four active
+Benchmarks; the Benchmark certification remains locked separately at `12789c1e`.
+The protected current-version classifier has zero blocking failures after the
+certification-record refresh; 35 declared future-platform failures remain visible and
+nonblocking.
 
 Source-of-truth rule: main sources connected in the campaign's Connected Platforms section feed the shared campaign aggregate. Budget & Financial Analysis does not calculate platform truth independently and does not send values back into platform analytics.
 
@@ -590,11 +614,16 @@ Proven:
 - GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
 - Render validation passed for the GA4 `yesop` source-refresh path: manual refresh returned `success: true` with refreshed metrics, and the Budget & Financial current-value validation passed after refresh.
 
-Outstanding:
+Excluded future acceptance work (not blockers for the certified GA4-first boundary):
 
-- Complete deployed live OAuth/source-refresh validation as real non-test integrations are exercised.
-- Register future main Connected Platforms, including TikTok, Instagram, and other sources, into the shared aggregate contract as part of implementing those integrations.
-- Keep documentation updated if future source integrations add new aggregate capabilities.
+- Each future live OAuth/source configuration requires its own source-family and
+  deployed-provider validation before its values are included in this status.
+- Future main Connected Platforms, including TikTok, Instagram, and other sources,
+  must register with and pass the shared aggregate contract before Budget consumes them.
+- Sparse mock-property daily activity remains an input-data condition. Missing history
+  must continue to fail closed; no synthetic value or historical backfill is certified.
+- No production-data cleanup, new provider-delivery event, inbox receipt, or global
+  all-campaign scheduler-health claim is made by this certification.
 
 ## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
 

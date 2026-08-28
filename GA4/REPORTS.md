@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Current status: GA4 Reports is `PRODUCTION_READY` for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was deployed and confirmed without changing production runtime code. The user confirmed that the scheduled 09:00 reports were sent after that deployment; this is operational send evidence, not a new provider-event, inbox-content, or numerical-parity claim. The exact evidence and exclusions live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Current status: GA4 Reports is `PRODUCTION_READY` for certified runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. The only shared scheduler delta from the preceding certified boundary is isolated to Campaign DeepDive Budget PDF ROAS presentation. Exact deployed KPI and Benchmark browser-PDF parity and protected regressions passed; no new provider-delivery or inbox claim is made. The exact evidence and exclusions live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section remains
 `PRODUCTION_READY`. Local browser/scheduled output guards pass, and the deployed
 revision and direct-consumer parity gates in

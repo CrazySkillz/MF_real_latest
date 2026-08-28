@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Exact production health, authenticated read-only KPI validation, supporting Benchmark/Ad Comparison/Insights parity, the protected current-version boundary, TypeScript, and the production build passed. Older narrative SHA references below are revision-specific history where they differ.
+2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. The only runtime delta from `4be16c54` is a Campaign DeepDive Budget PDF ROAS presentation correction inside the shared report scheduler. Exact production health, authenticated read-only KPI validation, supporting Benchmark parity, the protected current-version boundary, TypeScript, and the production build passed. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ This file defines whether the current implementation is production-ready, what h
 
 ### August 28, 2026 exact-SHA revalidation decision (controlling)
 
-**Result: PRODUCTION_READY for certified KPI runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`.** Production health returned that exact SHA. Authenticated read-only validation matched all eight configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Revenue was `$72,766.69`, Spend `$2,699.75`, and financial conversions `251`. Stale traffic-dependent inputs failed closed. The complete current-version boundary has zero blocking failures after certification-record refresh; declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports and scheduler evidence remain separately bounded.
+**Result: PRODUCTION_READY for certified KPI runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`.** Production health returned that exact SHA. Authenticated read-only validation matched all eight configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, and browser-PDF rows with no application mutations and unchanged semantic persistence. Revenue was `$72,766.69`, Spend `$2,699.75`, financial conversions were `251`, and ROAS was `26.95`. Stale traffic-dependent inputs failed closed. The complete current-version boundary has zero blocking failures after certification-record refresh; 35 declared future-platform failures remain visible and nonblocking. TypeScript and production build passed. Reports and scheduler evidence remain separately bounded.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -860,7 +860,7 @@ Read in this order:
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`.
+Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -1876,7 +1876,7 @@ The following remain external caveats after current certification:
 - future Mailgun/provider outages, provider event telemetry gaps, or recipient spam filtering
 - future source mixes, platform extensions, or code changes that have not gone through a new readiness pass
 
-These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `b8c73621`; its supporting GA4 KPI UI, scheduler, report, immediate alert email, provider-acceptance, and inbox-receipt evidence passed within the bounded environments documented above. The access-guard-only runtime change does not broaden those historical evidence claims.
+These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`; authenticated KPI UI and browser-PDF parity passed within the bounded environment documented above. The Campaign DeepDive-only Budget PDF presentation change does not broaden historical timer, provider-acceptance, or inbox-receipt evidence.
 
 ## Future Platform Template
 

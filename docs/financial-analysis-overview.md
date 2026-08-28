@@ -49,6 +49,8 @@ import boundary through the latest completed reporting day.
 
 - `Total Spend`, `Total Revenue`, `ROAS`, `ROI`, and `CPA` render from
   `performanceSummary.totals` only when marked available.
+- `ROAS` renders with two decimals in both the live Financial Position card and the
+  shared one-off/snapshot/scheduled Budget PDF body.
 - `Profit = Total Revenue - Total Spend`; it is unavailable unless both inputs are
   compatible and available.
 - `CVR` appears as the compact `Conversion Efficiency` subsection only when available.

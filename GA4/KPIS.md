@@ -8,7 +8,7 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-As of August 28, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Deployed read-only KPI parity passed without application-data mutation.
+As of August 28, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. Deployed read-only KPI parity passed without application-data mutation after the Campaign DeepDive-only Budget PDF precision change.
 
 The exact-SHA KPI production check passed for all eight currently configured KPI cards, Tracker, Notifications, KPI-derived Insights findings, every selected browser-PDF KPI row, and stored values. The validator recorded no unsafe GET, no application mutation, and unchanged semantic persistence; stale traffic-dependent KPI inputs failed closed.
 
@@ -290,6 +290,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPI tab is production-ready for certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
+The GA4 KPI tab is production-ready for certified runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
 
 The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

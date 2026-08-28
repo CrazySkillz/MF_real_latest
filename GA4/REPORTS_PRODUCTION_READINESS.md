@@ -5,7 +5,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Exact deployed health, upstream read-only parity, protected regressions, current-version validation, TypeScript, and build passed. The certified `ga4_mock` Overview, KPI, Benchmark, and Ad Comparison scheduled report rows all completed successfully on August 28. An unrelated invalid `myGA4` test campaign failed closed and is excluded from this target-scoped claim. Older narrative SHA references below are revision-specific history where they differ.
+2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. The only shared scheduler delta from `4be16c54` is isolated to the Campaign DeepDive Budget PDF branch. Exact deployed health, authenticated KPI and Benchmark browser-PDF parity, protected regressions, current-version validation, TypeScript, and build passed. Earlier provider delivery and scheduled-send evidence remains revision-bounded; no new provider-event or inbox-content claim is made. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Purpose
 
@@ -21,11 +21,11 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: PRODUCTION_READY -->
 ## Current Controlling Answer
 
-August 28, 2026 final decision: GA4 Reports is **PRODUCTION_READY** for certified GA4 Reports runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Campaign DeepDive remains outside the boundary.
+August 28, 2026 final decision: GA4 Reports is **PRODUCTION_READY** for certified GA4 Reports runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. Campaign DeepDive remains outside the GA4 Reports certification boundary.
 
 The current Reports consumers resolve one authoritative cumulative initial-import boundary and fail closed when that boundary cannot be proven. The complete current-version boundary exposed one stale legacy Shopify test fixture; adding its exact 30-day/import-start boundary restored all seven focused report-consumer tests without changing runtime code.
 
-Final evidence includes the current-version suite, TypeScript, production build, exact `4be16c54` health, authenticated guarded outcome totals, current browser KPI/Benchmark PDF parity, deterministic cumulative/fail-closed report tests, and target-scoped scheduled-report audit evidence. The August 28 sends occurred on the immediately preceding runtime whose Reports dependencies are byte-identical to `4be16c54`; they are bounded operational evidence, not a new provider-event, inbox-content, attachment-value, or numerical-parity claim. Earlier provider delivery, inbox receipt, truthful snapshot, and schedule-restoration evidence remains revision-bounded historical support.
+Final evidence includes the current-version suite, TypeScript, production build, exact `19f05537` health, authenticated guarded outcome totals, current browser KPI/Benchmark PDF parity, deterministic cumulative/fail-closed report tests, and the user-confirmed deployed Budget PDF correction. The Budget branch change does not alter GA4 report composition, calculation, delivery, persistence, or scheduling. Earlier provider delivery, inbox receipt, truthful snapshot, and schedule-restoration evidence remains revision-bounded historical support.
 
 The production database audit found no active orphan report, tenant mismatch, or invalid active schedule. Historical orphan/mismatched artifacts remain preserved rather than rewritten and are fail-closed by current access/type guards. The unavailable-materialized-revenue negative branch remains proven by deterministic regression coverage rather than production-data mutation.
 
@@ -950,7 +950,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that GA4 Reports is **PRODUCTION_READY** for certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`. The user-confirmed 09:00 send is bounded operational evidence; Campaign DeepDive and future provider/recipient behavior remain excluded.
+Answer that GA4 Reports is **PRODUCTION_READY** for certified runtime boundary `19f055372abe8aee789dd4205eba5decef5f39a5`. Historical send evidence remains bounded operational evidence; Campaign DeepDive and future provider/recipient behavior remain excluded from the GA4 Reports certification.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

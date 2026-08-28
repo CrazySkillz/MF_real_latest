@@ -298,12 +298,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("financialRevenueMetric.value - financialSpendMetric.value");
     expect(executiveView).toContain("formatOverviewCurrency(overviewCpaMetric)");
     expect(executiveView).toContain("formatOverviewPercentage(conversionEfficiencyCvrMetric)");
-    expect(executiveView).toContain("{conversionEfficiencyDescription}");
+    expect(executiveView).not.toContain("{conversionEfficiencyDescription}");
     expect(executiveView).not.toContain("CVR shows how effectively campaign sessions or clicks become conversions.");
-    expect(page).toContain('conversionEfficiencyCvrInputs.includes("sessions")');
-    expect(page).toContain('`${formatNumber(overviewConversionsMetric.value)} conversions from ${formatNumber(overviewSessionsMetric.value)} sessions in the cumulative reporting window.`');
-    expect(page).toContain('conversionEfficiencyCvrInputs.includes("clicks")');
-    expect(page).toContain('`${formatNumber(overviewConversionsMetric.value)} conversions from ${formatNumber(overviewClicksMetric.value)} clicks in the cumulative reporting window.`');
+    expect(page).not.toContain("conversionEfficiencyDescription");
+    expect(page).not.toContain("cumulative reporting window");
     expect(executiveView).toContain("formatCurrency(overviewRemainingBudget)");
     expect(page).toContain("campaignToDateEfficiencyMetric(overviewCpcMetric, \"CPC\")");
     expect(page).toContain("campaignToDateEfficiencyMetric(overviewCpmMetric, \"CPM\")");

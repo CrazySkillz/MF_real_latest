@@ -52,9 +52,8 @@ import boundary through the latest completed reporting day.
 - `Profit = Total Revenue - Total Spend`; it is unavailable unless both inputs are
   compatible and available.
 - `CVR` appears as the compact `Conversion Efficiency` subsection only when available.
-  Its explanation names the actual cumulative GA4 Conversions and Sessions used by the
-  GA4 Overview conversion-rate card. Its source labels come from the connected main
-  sources that supplied those inputs.
+  It shows the aggregate GA4 conversion-rate value and the connected main source label
+  without repeating the underlying Conversions and Sessions in the card.
 - Missing inputs render `Unavailable`; they are never displayed as zero.
 
 ### Budget & Pacing

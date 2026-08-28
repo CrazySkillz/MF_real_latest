@@ -47,6 +47,16 @@ calendar gaps. Browser and scheduled Trend report consumers expose one `Executiv
 normalize legacy Trend selections, and use exact calendar dates within the authoritative
 GA4 boundary.
 
+Custom Report reconciliation (2026-08-28): Campaign DeepDive -> Custom Report is
+**PRODUCTION_READY** for the GA4-first scope at deployed runtime commit
+`41ec6015b4aae0090e834294a5355c06fbccaa34`. Production evidence covers campaign/client/
+owner/platform isolation, create/edit/delete, schedule/reschedule/disable, browser and
+scheduled immutable PDFs, selected-section body content, scheduler deduplication,
+Mailgun delivery confirmation, inbox receipt, and accurate send bookkeeping. Disabled or
+unconfigured Google Ads, Meta, Instagram, TikTok, future source mixes, and other email
+providers are not certified by this evidence. Exact values and artifact hashes are in
+`CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`.
+
 ## Current Implementation And Certification Status
 
 Do not use this top-level file as a whole-Campaign-DeepDive production certification. Each subsection and source remains bounded by its own exact-SHA readiness evidence. Performance Summary is production-ready only for exact runtime `12789c1e` and the recorded GA4-only configuration; later or different source mixes do not inherit that status.
@@ -115,28 +125,23 @@ Expected proof:
 
 ### 3. Scheduled Custom Report Email Evidence
 
-Status: pending real scheduled send evidence.
+Status: completed for the GA4-first scope on 2026-08-28 at deployed runtime commit
+`41ec6015b4aae0090e834294a5355c06fbccaa34`.
 
-Why it remains open:
+Proven:
 
-- Local implementation and regression coverage prove scheduled Campaign DeepDive PDF body rendering.
-- Actual scheduled email delivery depends on deployed runtime email infrastructure.
-- Provider acceptance is not the same as inbox receipt.
+- one due scheduled key produced exactly one send event and one linked immutable snapshot
+- the attached PDF contained real selected-section body content and current aggregate values
+- the scheduled attachment exactly matched its stored snapshot artifact
+- Mailgun recorded `delivery_status=delivered` with provider response and delivery timestamps
+- the user confirmed inbox receipt at the only authorized recipient
+- the original report schedule was restored and `lastSentAt` remained accurate
 
-When to complete:
+Boundary:
 
-- This can be completed now with GA4-only data, or later after LinkedIn/Meta are added.
-- If completed after another integration is added, the evidence proves that exact connected-source mix.
-
-Expected proof:
-
-- Create a scheduled Campaign DeepDive Custom Report.
-- Select known Campaign DeepDive report type and tabs.
-- Wait for the saved scheduled time in the saved browser time zone.
-- Confirm the email is received by the configured recipient.
-- Confirm the attached PDF includes selected section body content, not just section names.
-- Confirm PDF values match the current app values at send time.
-- Record the connected-source mix active at send time, such as GA4-only or GA4 + LinkedIn.
+- provider acceptance alone was not treated as delivery
+- the evidence applies only to the tested GA4-first source mix and configured Mailgun path
+- future source mixes and other email providers require their own evidence
 
 ## Subsection Status Map
 
@@ -147,7 +152,7 @@ Expected proof:
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
 | Trend Analysis | Production-ready for the exact deployed GA4-only boundary at `cd35bba1`; one comprehensive Executive View | `/ga4-daily` + `/outcome-totals.performanceSummary` + exact-date financial comparison + `/trend-analysis` daily aggregate | Repeat source-specific validation for every future/refined main-source mix |
 | Executive Summary | Production-ready locally as an aggregate consumer | `/api/campaigns/:campaignId/executive-summary` plus `/outcome-totals` | Future source-mix deployed validation and source-specific acceptance gates |
-| Custom Report | Production-ready locally for browser/PDF composition | `/reports?campaignId=...`, `/outcome-totals`, `/executive-summary`, `/trend-analysis` | Real scheduled email evidence |
+| Custom Report | **PRODUCTION_READY** for GA4-first scope at deployed runtime `41ec6015` | `/reports?campaignId=...`, `/outcome-totals`, immutable report snapshots, scheduled delivery audit | Revalidate for any future/refined source mix or other email provider |
 
 ## Future Integration Rule
 
@@ -229,10 +234,9 @@ The current Campaign DeepDive implementation is architecturally aligned with the
 
 This statement describes architectural and implementation alignment only. It is not a current whole-section production-ready certification.
 
-The remaining work is:
-
-1. source-specific deployed validation for Google Ads live OAuth, Meta live OAuth, and future/refined integrations such as TikTok,
-2. deployed scheduled Custom Report email-delivery evidence.
+The remaining work is source-specific deployed validation for Google Ads live OAuth,
+Meta live OAuth, and future/refined integrations such as TikTok. The GA4-first Custom
+Report scheduled-delivery evidence is complete and is not an open item.
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.
 

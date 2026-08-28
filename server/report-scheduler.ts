@@ -1689,16 +1689,13 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     return "Maintain current performance - all metrics on track";
   };
   const addTrendRows = (keys: string[], indent = 8) => {
-    if (keys.every((key) => trendCurrentMetric(key) === null)) {
+    const availableKeys = keys.filter((key) => trendCurrentMetric(key) !== null);
+    if (availableKeys.length === 0) {
       addText("- No connected source trend rows available.", { indent });
       return;
     }
-    keys.forEach((key) => {
-      const current = trendCurrentMetric(key);
-      if (current === null) {
-        addText(`- ${campaignDeepDiveMetricLabels[key] || key}: Unavailable`, { indent });
-        return;
-      }
+    availableKeys.forEach((key) => {
+      const current = Number(trendCurrentMetric(key));
       const currency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
       const previous = trendPreviousMetric(key);
       let comparison = `Comparison unavailable vs cumulative - ${trendComparisonDate || "unknown date"}`;
@@ -1881,15 +1878,104 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Detailed Performance Metrics", { bold: true, indent: 4 });
       addMetricRows(["users", "sessions", "impressions", "clicks", "conversions", "revenue", "spend", "roas", "roi"]);
     } else if (section.startsWith("trend-analysis:")) {
+      const trendSourceLabels = (Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : [])
+        .map((source: any) => String(source?.label || source?.id || "").trim())
+        .filter(Boolean);
+      const dailyMetric = (row: any, key: string): number | null => {
+        const raw = row?.metrics?.[key];
+        if (raw === null || typeof raw === "undefined") return null;
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : null;
+      };
+      const dailyRate = (row: any, key: string): number | null => {
+        const value = dailyMetric(row, key);
+        return value === null ? null : Math.abs(value) <= 1 ? value * 100 : value;
+      };
+      const comparisonDateLabel = /^\d{4}-\d{2}-\d{2}$/.test(trendComparisonDate)
+        ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${trendComparisonDate}T00:00:00.000Z`))
+        : trendComparisonDate;
+      if (trendSourceLabels.length > 0) addText(`Source: ${trendSourceLabels.join(", ")}`, { indent: 4 });
       addText("Current Decision Metrics", { bold: true, indent: 4 });
       addText(`- Current GA4 traffic values are cumulative through ${trendWindowEnd || "the latest completed reporting day"}; the selector comparison date is ${trendComparisonDate || "Unavailable"}.`, { indent: 8 });
       addTrendRows(["revenue", "spend", "roas", "roi", "conversions", "cpa", "cpc", "cpm", "sessions", "users", "cvr", "engagementRate", "ctr"]);
       addText("Campaign Performance Trend", { bold: true, indent: 4 });
       addText(`- ${trendWindowStart || "Unavailable"} to ${trendWindowEnd || "Unavailable"}`, { indent: 8 });
-      addText(`- Daily records: ${trendWindowRows.length} in this ${trendReportDays}-day calendar window; missing dates remain gaps.`, { indent: 8 });
-      if (trendWindowRows.length === 0) addText("- Daily trend chart unavailable for the selected window.", { indent: 8 });
+      addText(`- Daily records: ${trendWindowRows.length} of ${trendReportDays} calendar dates; missing dates remain gaps.`, { indent: 8 });
+      if (trendWindowRows.length === 0) {
+        addText("- Daily trend chart unavailable for the selected window.", { indent: 8 });
+      } else {
+        addText("Daily Traffic", { bold: true, indent: 8 });
+        trendWindowRows.forEach((row: any) => {
+          const values = (["users", "sessions", "conversions"] as const)
+            .map((key) => {
+              const value = dailyMetric(row, key);
+              return value === null ? null : `${campaignDeepDiveMetricLabels[key]} ${formatCampaignDeepDiveMetricValue(key, value)}`;
+            })
+            .filter(Boolean);
+          addText(`- ${String(row?.date || "").slice(0, 10)}: ${values.length > 0 ? values.join("; ") : "No traffic values available"}`, { indent: 12 });
+        });
+      }
       addText("Efficiency Trends", { bold: true, indent: 4 });
-      addText("- Return and cost comparisons use only compatible exact-date financial history; missing history remains unavailable.", { indent: 8 });
+      addText("- Return and cost trends are unavailable when compatible daily financial history is unavailable. Current campaign-to-date financial totals remain shown above.", { indent: 8 });
+      const qualityRows = trendWindowRows.filter((row: any) => dailyRate(row, "cvr") !== null || dailyRate(row, "engagementRate") !== null);
+      if (qualityRows.length > 0) {
+        addText("Conversion Quality Trend", { bold: true, indent: 8 });
+        qualityRows.forEach((row: any) => {
+          const cvr = dailyRate(row, "cvr");
+          const engagementRate = dailyRate(row, "engagementRate");
+          const values = [
+            cvr === null ? null : `CVR ${formatCampaignDeepDiveMetricValue("cvr", cvr)}`,
+            engagementRate === null ? null : `Engagement Rate ${formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)}`,
+          ].filter(Boolean);
+          addText(`- ${String(row?.date || "").slice(0, 10)}: ${values.join("; ")}`, { indent: 12 });
+        });
+      }
+      if (performancePageTrafficTotals) {
+        const sessions = Number(performancePageTrafficTotals.sessions);
+        const engagedSessions = Number(performancePageTrafficTotals.engagedSessions);
+        const conversions = Number(performancePageTrafficTotals.conversions);
+        const engagementRate = sessions > 0 ? (engagedSessions / sessions) * 100 : 0;
+        const conversionsPerHundredSessions = sessions > 0 ? (conversions / sessions) * 100 : 0;
+        addText("Website Engagement & Conversion Summary", { bold: true, indent: 4 });
+        addText(`- Cumulative from initial import through ${trendWindowEnd || "the latest completed reporting day"}.`, { indent: 8 });
+        addText(`- Sessions: ${formatCampaignDeepDiveMetricValue("sessions", sessions)}`, { indent: 8 });
+        addText(`- Engaged Sessions: ${formatCampaignDeepDiveMetricValue("sessions", engagedSessions)}`, { indent: 8 });
+        addText(`- Conversions: ${formatCampaignDeepDiveMetricValue("conversions", conversions)}`, { indent: 8 });
+        addText(`- Engagement rate: ${formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)}`, { indent: 8 });
+        addText(`- Conversions per 100 sessions: ${conversionsPerHundredSessions.toFixed(1)}`, { indent: 8 });
+      }
+      const trendRecommendations: Array<{ title: string; message: string }> = [];
+      const hasExactTrendComparison = ["users", "sessions", "conversions", "cvr", "engagementRate"]
+        .some((key) => trendPreviousMetric(key) !== null && Number(trendPreviousMetric(key)) > 0);
+      if (hasExactTrendComparison) {
+        trendRecommendations.push({
+          title: "Selected-Window Comparison",
+          message: `Current totals are compared with cumulative totals through ${comparisonDateLabel || "the requested historical date"}. Differences show activity added since that date, not like-for-like period performance.`,
+        });
+      } else if (trendWindowRows.length > 0) {
+        trendRecommendations.push({
+          title: "Historical Comparison Pending",
+          message: `Exact comparison data for ${trendComparisonDate || "the requested historical date"} is unavailable. Current cumulative values are not being reused as historical values.`,
+        });
+      }
+      const currentRoas = trendCurrentMetric("roas");
+      if (currentRoas !== null) {
+        trendRecommendations.push({
+          title: "Campaign-to-Date ROAS",
+          message: `Campaign-to-date ROAS is ${currentRoas.toFixed(2)}x. Compare it with approved profit and margin targets and source capacity before changing spend.`,
+        });
+      }
+      if (performancePageTrafficTotals && Number(performancePageTrafficTotals.sessions) > 0) {
+        const webCvr = (Number(performancePageTrafficTotals.conversions) / Number(performancePageTrafficTotals.sessions)) * 100;
+        trendRecommendations.push({
+          title: "Campaign-to-Date Conversion Volume",
+          message: `Current cumulative data shows ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
+        });
+      }
+      if (trendRecommendations.length > 0) {
+        addText("Executive Recommendations", { bold: true, indent: 4 });
+        trendRecommendations.slice(0, 3).forEach((recommendation) => addText(`- ${recommendation.title}: ${recommendation.message}`, { indent: 8 }));
+      }
     } else if (section === "executive-summary:overview") {
       const currentValueWindow = executiveSummary?.performanceSummary?.currentValueWindow;
       const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"

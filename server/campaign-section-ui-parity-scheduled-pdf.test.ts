@@ -77,7 +77,7 @@ const performanceSummary = {
     label: "Google Analytics",
     category: "web_analytics",
     connected: true,
-    includedMetrics: ["users", "sessions", "conversions", "revenue"],
+    includedMetrics: ["users", "sessions", "conversions", "revenue", "engagementRate"],
     metrics: { users: 1184, sessions: 1183, conversions: 152, revenue: 55966.70 },
   }],
 };
@@ -163,7 +163,11 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
           campaignId: "campaign-1",
           dateRange: "90days",
           endDate: "2026-08-27",
-          dailyTotals: [{ date: "2026-08-27", metrics: { users: 30, sessions: 30, conversions: 7, revenue: 1000 } }],
+          dailyTotals: [
+            { date: "2026-08-25", metrics: { users: 10, sessions: 10, conversions: 2, revenue: 250, engagementRate: 0.6, cvr: 20 } },
+            { date: "2026-08-26", metrics: { users: 10, sessions: 10, conversions: 2, revenue: 300, engagementRate: 0.7, cvr: 20 } },
+            { date: "2026-08-27", metrics: { users: 10, sessions: 10, conversions: 3, revenue: 450, engagementRate: 0.6333, cvr: 30 } },
+          ],
           sources: performanceSummary.sources,
         },
       },
@@ -182,9 +186,23 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,183"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Revenue: $72,766.69"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("selector comparison date is 2026-07-28"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Daily records: 1 in this 30-day calendar window"))).toBe(true);
+    expect(pdfTextCalls).toContain("Source: Google Analytics");
+    expect(pdfTextCalls.some((text) => text.includes("Daily records: 3 of 30 calendar dates"))).toBe(true);
+    expect(pdfTextCalls).toContain("Daily Traffic");
+    expect(pdfTextCalls).toContain("- 2026-08-25: Users 10; Sessions 10; Conversions 2");
+    expect(pdfTextCalls).toContain("Conversion Quality Trend");
+    expect(pdfTextCalls).toContain("- 2026-08-25: CVR 20.0%; Engagement Rate 60.0%");
+    expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
+    expect(pdfTextCalls).toContain("- Engaged Sessions: 809");
+    expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 12.8");
+    expect(pdfTextCalls).toContain("Executive Recommendations");
+    expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison") && text.includes("Jul 28, 2026"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("26.95x"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date Conversion Volume") && text.includes("12.8 conversions per 100 sessions"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,179"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 30"))).toBe(false);
+    expect(pdfTextCalls.some((text) => text.includes("Cost per click: Unavailable"))).toBe(false);
+    expect(pdfTextCalls.some((text) => text.includes("Click-through rate: Unavailable"))).toBe(false);
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 

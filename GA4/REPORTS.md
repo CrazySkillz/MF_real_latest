@@ -145,7 +145,7 @@ Important meaning:
 - campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
 - campaign-scoped Reports pages should show the active campaign's backend scheduled report cards directly, without Standard Reports, Scheduled Reports, or All Reports tabs, report type filters, result counts, or global/demo reports
 - for GA4-first Campaign DeepDive Custom Reports, the metric picker exposes available Users, Sessions, Conversions, Revenue, and CVR; paid-media picker keys remain hidden without a connected main paid-media source. The certified aggregate/report bodies also contained source-backed Spend, ROAS, ROI, and CPA financial outcomes, while Impressions, Clicks, Leads, CPC, CPM, and CTR remained unavailable
-- for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
+- for new Campaign DeepDive Custom Reports, choosing a report type automatically saves that type's full mapped single-page composition; the create screen does not show `Tabs to include`
 - for the GA4-first version, Campaign DeepDive KPI and Benchmark report sections use the campaign-scoped GA4 platform records for row identity, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled
 - campaign-scoped scheduled report cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
 - campaign-scoped scheduled report cards should show edit, `Download latest report`, Pause/Resume, and delete actions
@@ -162,6 +162,7 @@ Important meaning:
 - Pause/Resume controls recurring email delivery without deleting the saved report setup
 - scheduled report card `Download latest report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
+- existing saved report compositions are not migrated; the composition picker remains available during edit for backward compatibility
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report`, download the selected report sections as a PDF, and create no browser or backend report-library row
 - downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from `performanceSummary.totals` and `performanceSummary.sources`, not just the selected tab names

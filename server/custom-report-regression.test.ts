@@ -600,7 +600,7 @@ describe("campaign Custom Report regression guard", () => {
     }
   });
 
-  it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {
+  it("automatically includes the full section composition for new campaign-scoped reports", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
     expect(reports).toContain("const campaignDeepDiveReportTypes = [");
@@ -616,7 +616,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports.indexOf('label: "Platform Comparison"')).toBeLessThan(reports.indexOf('label: "Trend Analysis"'));
     expect(reports.indexOf('label: "Trend Analysis"')).toBeLessThan(reports.indexOf('label: "Executive Summary"'));
     expect(reports).not.toContain('{ key: "custom", label: "Custom Report", tabs: customReportSections }');
-    expect(reports).toContain('Select the tabs from this Campaign DeepDive subsection to include in the report.');
+    expect(reports).toContain('setSelectedReportSections(campaignContextId ? getCampaignReportTabs(value).map((tab) => tab.key) : []);');
+    expect(reports).toContain('campaignContextId && editingReportId && reportType !== "custom" && campaignReportTabs.length > 0');
     expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
   });
 

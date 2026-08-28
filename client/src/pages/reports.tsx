@@ -2222,7 +2222,7 @@ export default function Reports() {
                           value={reportType}
                           onValueChange={(value) => {
                             setReportType(value);
-                            setSelectedReportSections([]);
+                            setSelectedReportSections(campaignContextId ? getCampaignReportTabs(value).map((tab) => tab.key) : []);
                             setSelectedReportMetrics([]);
                           }}
                         >
@@ -2280,7 +2280,7 @@ export default function Reports() {
                         </div>
                       )}
 
-                      {campaignContextId && reportType !== "custom" && campaignReportTabs.length > 0 && (
+                      {campaignContextId && editingReportId && reportType !== "custom" && campaignReportTabs.length > 0 && (
                         <div className="space-y-3 rounded-md border p-3">
                           <div>
                             <Label>Tabs to include</Label>

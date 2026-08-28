@@ -385,7 +385,8 @@ Custom Report is production-ready when:
 - Schedule form must create a backend scheduled report record with `scheduleTimeZone`, `scheduleTime`, recipients, saved report type, and selected tabs so `server/report-scheduler.ts` can send the report like platform-level scheduled reports
 - scheduled processing deduplicates by report ID and `reportId + scheduledKey`; missing campaigns, recipients, or artifacts fail closed; and the certified Mailgun path creates snapshots plus `lastSentAt` bookkeeping only after confirmed delivery
 - New campaign-scoped Custom Report creation exposes `Performance Summary`, `Budget & Financial Analysis`, `Trend Analysis`, and `Executive Summary`; `Platform Comparison` is retained only for editing a legacy saved report of that type
-- Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
+- New campaign-scoped reports hide `Tabs to include`; selecting a report type automatically saves its full mapped single-page composition in `selectedSections`
+- Existing saved compositions are not migrated, and their composition picker remains available during edit for backward compatibility
 - regression coverage guards GA4-only and future paid-media source scenarios
 - documentation matches the implemented behavior
 

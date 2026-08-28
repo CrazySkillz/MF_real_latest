@@ -207,6 +207,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     }
     expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
     expect(pdfTextCalls).toContain("- Spend: $2,699.75");
+    expect(pdfTextCalls).toContain("- ROAS: 26.95x");
     expect(pdfTextCalls).toContain("- Conversion rate: 12.8%");
     expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");

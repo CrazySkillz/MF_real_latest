@@ -1812,7 +1812,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Financial Position", { bold: true, indent: 4 });
       addMetricRows(["spend", "revenue"], 8, campaignCurrency);
       addText(`- Profit: ${revenue !== null && spend !== null ? money(revenue - spend) : "Unavailable"}`, { indent: 8 });
-      addMetricRows(["roas", "roi", "cpa", "cvr"], 8, campaignCurrency);
+      addText(`- ROAS: ${metricAvailable("roas") ? `${metricNumber("roas").toFixed(2)}x` : metricValue("roas", campaignCurrency)}`, { indent: 8 });
+      addMetricRows(["roi", "cpa", "cvr"], 8, campaignCurrency);
       addText("Budget & Pacing", { bold: true, indent: 4 });
       addText("Budget Position", { bold: true, indent: 8 });
       addText(`- Campaign Budget: ${money(campaignBudget)}`, { indent: 12 });

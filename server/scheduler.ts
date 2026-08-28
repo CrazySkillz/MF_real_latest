@@ -168,14 +168,17 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   }
 
   let ga4FinancialData = { ...ga4Data };
+  let ga4FinancialConversions = ga4Data.conversions;
+  let ga4FinancialConversionsAvailable = false;
   if (ga4Connected) {
     const financialTotals = await getCampaignMetricTotals(campaignId, true).catch(() => null);
     if (financialTotals) {
       ga4FinancialData = {
         ...ga4Data,
         revenue: financialTotals.ga4Revenue,
-        conversions: financialTotals.financialConversions,
       };
+      ga4FinancialConversions = financialTotals.financialConversions;
+      ga4FinancialConversionsAvailable = financialTotals.financialConversionsAvailable === true;
     }
   }
 
@@ -423,11 +426,16 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     campaignId,
     dateRange: "90days",
     ga4: { connected: ga4Connected, ...ga4FinancialData },
+    financialConversions: ga4Connected ? {
+      value: ga4FinancialConversions,
+      available: ga4FinancialConversionsAvailable,
+      sources: ga4FinancialConversionsAvailable ? ["ga4"] : [],
+    } : undefined,
     webAnalytics: {
       connected: ga4Connected || customIntegrationIsWebProvider,
       provider: ga4Connected ? "ga4" : customIntegrationIsWebProvider ? "custom_integration" : null,
       revenue: ga4Connected ? ga4FinancialData.revenue : parseNum(customIntegrationData.revenue),
-      conversions: ga4Connected ? ga4FinancialData.conversions : parseNum(customIntegrationData.conversions),
+      conversions: ga4Connected ? ga4Data.conversions : parseNum(customIntegrationData.conversions),
       sessions: ga4Connected ? ga4Data.sessions : parseNum(customIntegrationData.sessions),
       users: ga4Connected ? ga4Data.users : parseNum(customIntegrationData.users),
     },

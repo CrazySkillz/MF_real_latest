@@ -31,14 +31,14 @@ The visible sections, in order, are:
 - Revenue, spend, conversions, ROI, ROAS, CPA, CPC, CPM, CTR, and CVR are read from
   the shared aggregate. Budget metadata never filters or changes those source totals.
 - In the GA4-first path, Users, Sessions, traffic Conversions, and CVR retain the fixed
-  initial-import-to-latest-completed-day traffic window. Native GA4 Revenue and the
-  conversion denominator used by CPA retain GA4 Overview's ordered campaign-to-date
-  financial-source contract. The traffic conversion total must never replace the
-  compatible financial conversion input used by CPA.
+  initial-import-to-latest-completed-day traffic window. Budget Conversion Efficiency
+  reuses that same aggregate CVR input. Native GA4 Revenue and the conversion input used
+  by CPA separately retain GA4 Overview's ordered campaign-to-date financial-source
+  contract.
 - Financial Position, Budget & Pacing, and Executive Action reuse the same aggregate
   Spend, Revenue, ROI, and ROAS metric objects. Paid Media Efficiency uses only the
-  compatible aggregate CPC/CPM/CTR inputs, Conversion Efficiency uses aggregate traffic
-  CVR, and Sources Used renders the matching `financialInputs` provenance rows.
+  compatible aggregate CPC/CPM/CTR inputs, Conversion Efficiency uses aggregate GA4
+  traffic CVR, and Sources Used renders the matching `financialInputs` provenance rows.
 
 The accepted current-value window is `performance_summary_aggregate_v3` with mode
 `initial_import_to_latest_completed_day`, a valid start/end date, a matching
@@ -52,10 +52,9 @@ import boundary through the latest completed reporting day.
 - `Profit = Total Revenue - Total Spend`; it is unavailable unless both inputs are
   compatible and available.
 - `CVR` appears as the compact `Conversion Efficiency` subsection only when available.
-  Its explanation names the actual aggregate denominator and displayed inputs: web
-  analytics shows cumulative conversions and sessions, while a compatible non-web
-  source shows cumulative conversions and clicks. Its source labels come from the
-  connected main sources that supplied those inputs.
+  Its explanation names the actual cumulative GA4 Conversions and Sessions used by the
+  GA4 Overview conversion-rate card. Its source labels come from the connected main
+  sources that supplied those inputs.
 - Missing inputs render `Unavailable`; they are never displayed as zero.
 
 ### Budget & Pacing

@@ -10,6 +10,8 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(scheduler).toContain("const performanceSummary = buildPerformanceSummaryAggregate({");
     expect(scheduler).toContain('dateRange: "90days"');
     expect(scheduler).toContain('getCampaignMetricTotals(campaignId, true)');
+    expect(scheduler).toContain("financialConversions: ga4Connected ? {");
+    expect(scheduler).toContain("conversions: ga4Connected ? ga4Data.conversions");
     expect(scheduler).toContain('const financialSourceStartDate = "1900-01-01";');
     expect(scheduler).toContain("getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate");
     expect(scheduler).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4")');

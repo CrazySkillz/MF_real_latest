@@ -389,9 +389,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
   const cvr = webSource && totalSessions > 0 && totalConversions > 0
-      ? round2((totalConversions / totalSessions) * 100)
+      ? (totalConversions / totalSessions) * 100
     : !webSource && totalClicks > 0 && totalConversions > 0
-      ? round2((totalConversions / totalClicks) * 100)
+      ? (totalConversions / totalClicks) * 100
       : null;
   const cvrSources = webSource && totalSessions > 0 && totalConversions > 0
       ? ["conversions", "sessions"]

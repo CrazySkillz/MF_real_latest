@@ -281,7 +281,7 @@ describe("campaign Executive Summary regression guard", () => {
       spend: 2699.75,
       roas: 26.95,
       roi: 2595.31,
-      cvr: 12.85,
+      cvr: (152 / 1183) * 100,
       cpa: 17.76,
     });
     const ga4Traffic = summarizeGA4TrafficRows([

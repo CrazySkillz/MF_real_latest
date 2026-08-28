@@ -3,6 +3,7 @@ import {
   buildPerformanceSummaryAggregate,
   getPerformanceSummaryMainSourceAdapterIds,
 } from "./utils/performance-summary-aggregate";
+import { formatPct } from "../shared/metric-math";
 
 describe("Performance Summary aggregate contract", () => {
   it("defines main Connected Platform sources through the aggregate adapter registry", () => {
@@ -90,7 +91,9 @@ describe("Performance Summary aggregate contract", () => {
     });
 
     expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 152 });
-    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 12.85 });
+    expect(aggregate.totals.cvr.available).toBe(true);
+    expect(aggregate.totals.cvr.value).toBeCloseTo((152 / 1183) * 100, 10);
+    expect(formatPct(Number(aggregate.totals.cvr.value))).toBe("12.8%");
     expect(aggregate.totals.spend).toMatchObject({ available: true, value: 2699.75 });
     expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 72766.69 });
     expect(aggregate.totals.roas).toMatchObject({ available: true, value: 26.95 });

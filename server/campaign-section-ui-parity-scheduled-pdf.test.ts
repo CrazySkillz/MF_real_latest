@@ -63,14 +63,14 @@ const performanceSummary = {
   },
   totals: {
     users: metric(1184),
-    sessions: metric(1179),
+    sessions: metric(1183),
     conversions: metric(152),
-    revenue: metric(51072.99, ["ga4", "imported_revenue"]),
+    revenue: metric(72766.69, ["ga4", "imported_revenue"]),
     spend: metric(2699.75, ["canonical_spend_sources"]),
-    cvr: metric(12.89),
-    roas: metric(18.92, ["ga4", "canonical_spend_sources"]),
-    roi: metric(1792, ["ga4", "canonical_spend_sources"]),
-    cpa: metric(17.76, ["ga4", "canonical_spend_sources"]),
+    cvr: metric((152 / 1183) * 100),
+    roas: metric(26.95, ["ga4", "canonical_spend_sources"]),
+    roi: metric(2595.31, ["ga4", "canonical_spend_sources"]),
+    cpa: metric(10.76, ["ga4", "canonical_spend_sources"]),
   },
   sources: [{
     id: "ga4",
@@ -78,7 +78,7 @@ const performanceSummary = {
     category: "web_analytics",
     connected: true,
     includedMetrics: ["users", "sessions", "conversions", "revenue"],
-    metrics: { users: 1184, sessions: 1179, conversions: 152, revenue: 51072.99 },
+    metrics: { users: 1184, sessions: 1183, conversions: 152, revenue: 55966.70 },
   }],
 };
 
@@ -180,7 +180,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
 
     expect(pdfTextCalls).toContain("Trend window: 2026-07-29 to 2026-08-27.");
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,183"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Revenue: $51,072.99"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Revenue: $72,766.69"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("selector comparison date is 2026-07-28"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Daily records: 1 in this 30-day calendar window"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,179"))).toBe(false);
@@ -205,8 +205,9 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     for (const heading of ["Financial Position", "Budget & Pacing", "Allocation & Sources", "Executive Action"]) {
       expect(pdfTextCalls.filter((text) => text === heading)).toHaveLength(1);
     }
-    expect(pdfTextCalls).toContain("- Revenue: $51,072.99");
+    expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
     expect(pdfTextCalls).toContain("- Spend: $2,699.75");
+    expect(pdfTextCalls).toContain("- Conversion rate: 12.8%");
     expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");

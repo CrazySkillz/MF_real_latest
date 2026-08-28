@@ -140,8 +140,10 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).not.toContain("Campaign-to-date revenue source is not fully materialized");
     expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };");
     expect(route).toContain("const financialStartDateUsed = (() => {");
+    expect(route).not.toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
     expect(route).toContain("const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed)");
+    expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed)");
     expect(route).toContain("financialStartDateUsed,");
     expect(route).toContain('const endDateUsed = currentValueWindow.endDate;');
     expect(route).toContain("latestPersistedFinancialDate === endDateUsed");
@@ -156,6 +158,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
     expect(route).toContain("ga4: financialGa4Totals,");
     expect(route).toContain("webAnalytics: financialWebAnalytics,");
+    expect(route).toContain('const ga4FinancialConversions = webAnalyticsProvider === "ga4" ? {');
+    expect(route).toContain("financialConversions: ga4FinancialConversions || undefined,");
     expect(route).toContain('available: (webAnalyticsProvider !== "ga4" || financialWebAnalytics.available) && importedRevenueAvailable,');
     expect(route).toContain("...(currentValueWindow ? { currentValueWindow } : {}),");
     expect(route).toContain("ga4: ga4Totals,");

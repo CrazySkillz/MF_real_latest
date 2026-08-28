@@ -116,8 +116,31 @@ the GA4 analytics experience.
 - Budget derives Profit, ROAS, ROI, CPA, and compatible efficiency metrics from the
   shared authoritative inputs. Campaign budget and budget-period dates come only from
   campaign metadata and affect pacing, not connected-source financial totals.
+- For a GA4-first campaign, cumulative Users, Sessions, traffic Conversions, and CVR
+  stay on the fixed initial-import-to-latest-completed-day traffic window. Native GA4
+  Revenue and the conversion denominator for CPA use the same ordered campaign-to-date
+  financial source as GA4 Overview. These two compatible contracts are carried
+  separately through the shared aggregate and must not overwrite one another.
 - Source refresh and page refetch keep the consumers synchronized; synchronization is
   through authoritative backend state, never through tab-to-tab value copying.
+
+### 2026-08-28 Current-Value Correction
+
+Root cause: ordinary `/outcome-totals` requests used the cumulative GA4 traffic import
+start as the native financial request start. That truncated campaign-to-date GA4
+Revenue and also reused traffic Conversions as the CPA denominator. The corrected
+shared path keeps property traffic on its fixed cumulative import window while using
+the GA4 Overview campaign-to-date financial source for native Revenue and financial
+Conversions.
+
+Read-only reconciliation for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` proved
+native GA4 Revenue `$55,966.70`, imported Revenue `$16,799.99`, Spend `$2,699.75`,
+traffic Conversions `152`, and financial Conversions `251`. The expected Budget cards
+are therefore Total Revenue `$72,766.69`, Profit `$70,066.94`, ROAS `26.95x`, ROI
+`2595.3%`, and CPA `$10.76`. This is local code/test evidence only until the exact
+change is committed, deployed, and checked in the authenticated production UI. Because
+`server/routes-oauth.ts` is a protected GA4 dependency, the affected GA4 certification
+boundary must be revalidated after deployment.
 
 ## Historical Root Cause (Resolved)
 

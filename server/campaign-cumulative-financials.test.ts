@@ -69,6 +69,27 @@ describe("authoritative cumulative campaign financial resolver", () => {
     expect(result.snapshot.inputs.revenue).toEqual({ value: null, available: false, sources: [] });
   });
 
+  it("uses the separate campaign-to-date conversion input for financial CPA and snapshots", () => {
+    const result = resolveCampaignCumulativeFinancials({
+      campaignId: "campaign-1",
+      currency: "USD",
+      performanceSummary: {
+        ...performanceSummary,
+        totals: {
+          ...performanceSummary.totals,
+          conversions: { value: 152, available: true, sources: ["ga4"] },
+        },
+      },
+      financialConversions: { value: 251, available: true, sources: ["ga4"] },
+      nativeRevenue: 55966.70,
+      importedRevenue: 16799.99,
+    });
+
+    expect(result.financials.conversions).toBe(251);
+    expect(result.financials.cpa).toBe(2699.75 / 251);
+    expect(result.snapshot.inputs.conversions).toEqual({ value: 251, available: true, sources: ["ga4"] });
+  });
+
   it("rejects rolling, mismatched, or internally incompatible inputs", () => {
     expect(() => resolve({ ...performanceSummary, version: "performance_summary_aggregate_v2" })).toThrow(/v3/);
     expect(() => resolve({

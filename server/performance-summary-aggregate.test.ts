@@ -69,6 +69,35 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 4 });
   });
 
+  it("keeps cumulative traffic conversions separate from campaign-to-date financial conversions", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-financial-window",
+      dateRange: "90days",
+      currentValueWindow: {
+        mode: "initial_import_to_latest_completed_day",
+        startDate: "2026-07-02",
+        endDate: "2026-08-27",
+        dataThroughDate: "2026-08-27",
+        reportingTimeZone: "Europe/Amsterdam",
+      },
+      ga4: { connected: true, available: true, revenue: 55966.70, conversions: 152, sessions: 1183, users: 1184 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 55966.70, conversions: 152, sessions: 1183, users: 1184 },
+      financialConversions: { value: 251, available: true, sources: ["ga4"] },
+      spend: { available: true, unifiedSpend: 2699.75, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {},
+      revenue: { available: true, onsiteRevenue: 55966.70, offsiteRevenue: 16799.99, totalRevenue: 72766.69 },
+      revenueSources: [{ type: "imported", connected: true, lastTotalRevenue: 16799.99 }],
+    });
+
+    expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 152 });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 12.85 });
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 2699.75 });
+    expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 72766.69 });
+    expect(aggregate.totals.roas).toMatchObject({ available: true, value: 26.95 });
+    expect(aggregate.totals.roi).toMatchObject({ available: true, value: 2595.31 });
+    expect(aggregate.totals.cpa).toMatchObject({ available: true, value: 10.76 });
+  });
+
   it("fails closed instead of substituting paid conversions when configured GA4 is unavailable", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-stale-ga4",

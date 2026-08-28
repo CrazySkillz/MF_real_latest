@@ -571,10 +571,10 @@ export default function FinancialAnalysis() {
     metric.available ? formatNumber(metric.value) : "Unavailable";
   const formatOverviewPercentage = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
     metric.available ? formatPercentage(metric.value) : "Unavailable";
-  const financialSpendMetric = getOverviewMetric("spend", totalSpend);
-  const financialRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);
-  const financialRoiMetric = getOverviewMetric("roi", roi);
-  const financialRoasMetric = getOverviewMetric("roas", roas);
+  const financialSpendMetric = overviewSpendMetric;
+  const financialRevenueMetric = overviewRevenueMetric;
+  const financialRoiMetric = overviewRoiMetric;
+  const financialRoasMetric = overviewRoasMetric;
   const parseSourceMetric = (source: any, metricName: string) => {
     const parsed = Number(source?.metrics?.[metricName]);
     return Number.isFinite(parsed) ? parsed : 0;

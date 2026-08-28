@@ -283,6 +283,30 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("{((): boolean => false)() && (");
   });
 
+  it("keeps every visible financial section on the same authoritative aggregate inputs", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const executiveStart = page.indexOf('<div className="space-y-8" data-testid="executive-financial-analysis">');
+    const legacyStart = page.indexOf("{/* Legacy tab renderer retained as a non-rendering rollback reference. */}", executiveStart);
+    const executiveView = page.slice(executiveStart, legacyStart);
+
+    expect(page).toContain("const financialSpendMetric = overviewSpendMetric;");
+    expect(page).toContain("const financialRevenueMetric = overviewRevenueMetric;");
+    expect(page).toContain("const financialRoiMetric = overviewRoiMetric;");
+    expect(page).toContain("const financialRoasMetric = overviewRoasMetric;");
+    expect(executiveView).toContain("formatOverviewCurrency(financialSpendMetric)");
+    expect(executiveView).toContain("formatOverviewCurrency(financialRevenueMetric)");
+    expect(page).toContain("financialRevenueMetric.value - financialSpendMetric.value");
+    expect(executiveView).toContain("formatOverviewCurrency(overviewCpaMetric)");
+    expect(executiveView).toContain("formatOverviewPercentage(conversionEfficiencyCvrMetric)");
+    expect(executiveView).toContain("formatCurrency(overviewRemainingBudget)");
+    expect(page).toContain("campaignToDateEfficiencyMetric(overviewCpcMetric, \"CPC\")");
+    expect(page).toContain("campaignToDateEfficiencyMetric(overviewCpmMetric, \"CPM\")");
+    expect(page).toContain("campaignToDateEfficiencyMetric(overviewCtrMetric, \"CTR\")");
+    expect(executiveView).toContain("financialChildSourceBreakdowns.length > 0");
+    expect(executiveView).toContain("financialSpendInputBreakdowns.length > 0");
+    expect(page).toContain("authoritativeSpend: financialSpendMetric.available ? financialSpendMetric.value : null");
+  });
+
   it("feeds first-class Connected Platform sources into the shared aggregate contract", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
@@ -414,10 +438,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const roiEnd = page.indexOf('<TabsContent value="costs"', roiStart);
     const roiTab = page.slice(roiStart, roiEnd);
 
-    expect(page).toContain('const financialSpendMetric = getOverviewMetric("spend", totalSpend);');
-    expect(page).toContain('const financialRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);');
-    expect(page).toContain('const financialRoiMetric = getOverviewMetric("roi", roi);');
-    expect(page).toContain('const financialRoasMetric = getOverviewMetric("roas", roas);');
+    expect(page).toContain("const financialSpendMetric = overviewSpendMetric;");
+    expect(page).toContain("const financialRevenueMetric = overviewRevenueMetric;");
+    expect(page).toContain("const financialRoiMetric = overviewRoiMetric;");
+    expect(page).toContain("const financialRoasMetric = overviewRoasMetric;");
     expect(page).toContain("const financialMainSources = performanceSources");
     expect(page).toContain("const useAggregateSourceTotals = financialMainSources.length === 1;");
     expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = financialMainSources");

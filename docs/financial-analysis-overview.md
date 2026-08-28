@@ -1,6 +1,6 @@
 # Budget & Financial Analysis - Current Single-Page Contract
 
-Last reconciled with implementation through consumer commit `1205ed49` on 2026-08-23.
+Last reconciled with the current implementation on 2026-08-28.
 
 ## Current Visible Contract
 
@@ -30,6 +30,15 @@ The visible sections, in order, are:
   missing aggregate does not fall back to stale page-local financial totals.
 - Revenue, spend, conversions, ROI, ROAS, CPA, CPC, CPM, CTR, and CVR are read from
   the shared aggregate. Budget metadata never filters or changes those source totals.
+- In the GA4-first path, Users, Sessions, traffic Conversions, and CVR retain the fixed
+  initial-import-to-latest-completed-day traffic window. Native GA4 Revenue and the
+  conversion denominator used by CPA retain GA4 Overview's ordered campaign-to-date
+  financial-source contract. The traffic conversion total must never replace the
+  compatible financial conversion input used by CPA.
+- Financial Position, Budget & Pacing, and Executive Action reuse the same aggregate
+  Spend, Revenue, ROI, and ROAS metric objects. Paid Media Efficiency uses only the
+  compatible aggregate CPC/CPM/CTR inputs, Conversion Efficiency uses aggregate traffic
+  CVR, and Sources Used renders the matching `financialInputs` provenance rows.
 
 The accepted current-value window is `performance_summary_aggregate_v3` with mode
 `initial_import_to_latest_completed_day`, a valid start/end date, a matching

@@ -81,6 +81,7 @@ export function resolveCampaignCumulativeFinancials(input: {
   campaignId: string;
   currency: string;
   performanceSummary: PerformanceSummaryV3;
+  financialConversions?: FinancialMetric;
   nativeRevenue: number;
   importedRevenue: number;
 }): CampaignCumulativeFinancials {
@@ -94,7 +95,7 @@ export function resolveCampaignCumulativeFinancials(input: {
 
   const spend = resolveFinancialMetric("spend", input.performanceSummary.totals?.spend);
   const revenue = resolveFinancialMetric("revenue", input.performanceSummary.totals?.revenue);
-  const conversions = resolveFinancialMetric("conversions", input.performanceSummary.totals?.conversions);
+  const conversions = resolveFinancialMetric("conversions", input.financialConversions ?? input.performanceSummary.totals?.conversions);
   const nativeRevenue = Number(input.nativeRevenue);
   const importedRevenueValue = Number(input.importedRevenue);
   const importedRevenue = round2(importedRevenueValue);

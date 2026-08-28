@@ -230,14 +230,14 @@ describe("campaign Executive Summary regression guard", () => {
     expect(recommendationsBlock).toContain("webAnalyticsSources: platformsForDisplay.filter");
   });
 
-  it("uses campaign-to-date GA4 financial totals only for Executive Summary requests", () => {
+  it("uses campaign-to-date GA4 financial totals while retaining cumulative property traffic", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/attribution-overview"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
     expect(route).toContain('String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date"');
-    expect(route).toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
+    expect(route).not.toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
     expect(route).toContain('const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;');
     expect(route).toContain("financialStartDateUsed,\n                endDateUsed,");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed)");

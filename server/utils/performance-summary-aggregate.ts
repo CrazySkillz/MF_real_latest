@@ -34,6 +34,7 @@ type PerformanceSummaryAggregateInput = {
   };
   ga4?: any;
   webAnalytics?: any;
+  financialConversions?: { value?: unknown; available?: boolean; sources?: unknown };
   spend?: any;
   platforms?: {
     linkedin?: any;
@@ -362,6 +363,12 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const totalConversions = webSource
     ? parseNum(input.webAnalytics?.conversions)
     : webProviderConfigured ? 0 : sumPaidMetric("conversions");
+  const hasSeparateFinancialConversions = typeof input.financialConversions !== "undefined";
+  const financialConversionSources = input.financialConversions?.available === true && Array.isArray(input.financialConversions.sources)
+    ? input.financialConversions.sources.map(String).filter(Boolean)
+    : [];
+  const cpaConversions = hasSeparateFinancialConversions ? parseNum(input.financialConversions?.value) : totalConversions;
+  const cpaConversionsAvailable = hasSeparateFinancialConversions ? financialConversionSources.length > 0 : conversionSources.length > 0;
   const totalLeads = sumPaidMetric("leads");
   const totalSessions = webSource ? parseNum(input.webAnalytics?.sessions) : 0;
   const totalUsers = webSource ? parseNum(input.webAnalytics?.users) : 0;
@@ -376,7 +383,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     ? costSources.reduce((sum, source) => sum + (source.includedMetrics.includes("impressions") ? parseNum(source.metrics.impressions) : 0), 0)
     : totalImpressions;
   const cpc = costSpendValue > 0 && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
-  const cpa = spendValue > 0 && totalConversions > 0 ? round2(spendValue / totalConversions) : null;
+  const cpa = spendValue > 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
   const cpm = costSpendValue > 0 && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
   const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;

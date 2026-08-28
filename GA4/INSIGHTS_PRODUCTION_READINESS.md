@@ -1,15 +1,15 @@
 # GA4 Insights Production Readiness
 
-2026-08-21 revalidation: the authoritative machine record certifies deployed runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`. Relative to `12789c1e`, it changes only the established campaign-access middleware on outcome totals. Focused, current-version, TypeScript, build, exact-health, authenticated-owner, unauthenticated-denial, and deployed read-only Insights checks passed. Older narrative SHA references below are revision-specific history where they differ.
+2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Focused, current-version, TypeScript, build, exact-health, authenticated-owner, tenant-isolation, and deployed read-only Insights checks passed. Older narrative SHA references below are revision-specific history where they differ.
 
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-Section status: **PRODUCTION_READY** for certified live GA4 Insights runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`.
+Section status: **PRODUCTION_READY** for certified live GA4 Insights runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`.
 
-Authenticated read-only value parity, expected-stale handling, tenant isolation, protected regressions, TypeScript, and the production build passed. The controlled rerun matched five Executive Financial values, three summary values, three channel rows, four trend modes, three tracker values, six visible findings, exact cumulative KPI/Benchmark target inputs, and unchanged semantic persistence. The temporary Clerk-only non-owner was deleted during cleanup.
+Authenticated read-only value parity, expected-stale handling, tenant isolation, protected regressions, TypeScript, and the production build passed. The controlled rerun matched five Executive Financial values, three summary values, three channel rows, four trend modes, three tracker values, the visible findings, exact cumulative KPI/Benchmark inputs, and unchanged semantic persistence. Financial totals reconciled at Revenue `$72,766.69`, Spend `$2,699.75`, Profit `$70,066.94`, ROAS `26.9531`, ROI `2595.31%`, CPA `$10.76`, and `251` financial conversions. The temporary Clerk-only non-owner was deleted during cleanup.
 
 <!-- /ga4-insights-current-status -->
 

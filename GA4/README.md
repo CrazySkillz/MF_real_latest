@@ -15,7 +15,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: PRODUCTION_READY -->
 
-- GA4 Insights is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-insights.json`, `b8c7362121593502955d41e522d32396a963fdcc`. Authenticated value parity remains bounded to the recorded campaign/property/configuration.
+- GA4 Insights is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-insights.json`, `4be16c54c550a45dbf3104313c820ea47b453604`. Authenticated value parity remains bounded to the recorded campaign/property/configuration.
 
 <!-- /ga4-insights-current-status -->
 
@@ -24,21 +24,21 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-- GA4 Overview is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-overview.json`, `b8c7362121593502955d41e522d32396a963fdcc`. That record remains bounded to its campaign/property/source/configuration.
+- GA4 Overview is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-overview.json`, `4be16c54c550a45dbf3104313c820ea47b453604`. That record remains bounded to its campaign/property/source/configuration.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
-- GA4 KPIs are **PRODUCTION_READY** only for exact certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc` recorded in `GA4/certifications/ga4-kpis.json`.
-- GA4 Benchmarks remain **PRODUCTION_READY** for their locked certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Authenticated read-only parity also passed on `b8c73621`, but reissuing the protected Benchmark record would require a protected test change and is not claimed here.
-- GA4 Ad Comparison remains **PRODUCTION_READY** at certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc` for its recorded property/filter/source boundary.
-- GA4 Reports is **PRODUCTION_READY** only for exact certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc` recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive remains excluded.
+- GA4 KPIs are **PRODUCTION_READY** only for exact certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604` recorded in `GA4/certifications/ga4-kpis.json`.
+- GA4 Benchmarks remain **PRODUCTION_READY** for their locked certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Authenticated read-only supporting parity passed on `4be16c54`, but the protected Benchmark certification record is not reissued here.
+- GA4 Ad Comparison remains **PRODUCTION_READY** at certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604` for its recorded property/filter/source boundary.
+- GA4 Reports is **PRODUCTION_READY** only for exact certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604` recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive remains excluded.
 - The final combined GA4 release-certification audit is complete for these six recorded section boundaries. It does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or the 17 obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
 - Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
 - Certification integrity rule: GA4 readiness is valid only for the exact certified SHA/configuration/dependency boundary. A relevant upstream or downstream change automatically invalidates affected tabs. The Overview record is `GA4/certifications/ga4-overview.json` and its checker is `npm run check:ga4-overview-certification`; the KPI record and checker remain separate. Copied formulas and source-text guards are structural evidence only.
-- Exact-SHA reconciliation note (2026-08-21): `b8c73621` is the certified GA4 runtime boundary. It differs from prior boundary `12789c1e` only by the established campaign-access guard on `/api/campaigns/:id/outcome-totals`. Focused tests, the current-version boundary, TypeScript, production build, exact deployed health, authenticated owner access, unauthenticated denial, and read-only KPI/Benchmark/Ad Comparison/Insights parity passed without application-data mutation. Earlier scheduled-report delivery evidence remains revision-bounded support; no new send or inbox claim is made.
+- Exact-SHA reconciliation note (2026-08-28): `4be16c54` is the certified Overview, KPI, Ad Comparison, Insights, and Reports runtime boundary. Focused tests, the current-version boundary, TypeScript, production build, exact deployed health, and read-only KPI/Benchmark/Ad Comparison/Insights parity passed without application-data mutation. Revenue reconciled at `$72,766.69`, Spend at `$2,699.75`, and financial conversions at `251`. Benchmark certification remains locked separately at `12789c1e`.
 - Shopify Revenue status (2026-08-10): **clean-certified for exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the recorded Overview boundary**. Dormant OAuth, non-GA4 sources, future stores, and generalized provider behavior remain excluded.
 - Upload CSV Revenue status (2026-08-10): **clean-certified for exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` inside the recorded Overview boundary**. Unlisted CSV variants and an unconfigured future Google Sheets Revenue source remain excluded.
 - HubSpot Revenue status (2026-08-10): **clean-certified for exact enabled sources `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` inside the recorded Overview boundary**. Future mappings and unrelated historical rows remain excluded.

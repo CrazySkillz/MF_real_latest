@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-reports",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "b8c7362121593502955d41e522d32396a963fdcc",
-  "certifiedSha": "b8c7362121593502955d41e522d32396a963fdcc",
-  "deployedSha": "b8c7362121593502955d41e522d32396a963fdcc",
+  "lastReviewedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
+  "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
+  "deployedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -49,27 +49,27 @@
   },
   "dependencies": [
     { "path": "AGENTS.md", "role": "repository operating and anti-overclaim contract", "sha256": "3547f1141b24069a323aebc95478af5a832c62870e1cdcc9573b105f642b522e" },
-    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics-layer boundary", "sha256": "a34e62a3ac46d5d8e1b9d187fb1f27c0ad1b609a050fc6da0465a1272416055d" },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics-layer boundary", "sha256": "3ea8fae2ab55e934bb0cd83f54353866df2565f552d7c9509fff266b9eae2aec" },
     { "path": "PRODUCTION_READINESS.md", "role": "repository production-readiness standard", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
-    { "path": "GA4/README.md", "role": "GA4 canonical reference index", "sha256": "e777d1ad761efdd3973ec982a5e0c89cdb8bcd74a61ae67e78d0fb949a5f4b5f" },
-    { "path": "GA4/REPORTS.md", "role": "Reports product contract", "sha256": "ad4cca8b8105244e940d08593d16598e5440fd05636db015b23963dbc134cd92" },
-    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "Reports controlling readiness status", "sha256": "0f36d50d0c1147f9ec01728b52ee83fc75d9f0da9ab740e52f58a6d027dbde4d" },
+    { "path": "GA4/README.md", "role": "GA4 canonical reference index", "sha256": "dd804f36d3d47a0358e708b3389a5cf2b74a001e6ac9b371e3c8413bddf6e74b" },
+    { "path": "GA4/REPORTS.md", "role": "Reports product contract", "sha256": "08d7f2148515a0d89fe927edeb8e90f2692f8488c9062a4df776961b843730b7" },
+    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "Reports controlling readiness status", "sha256": "7f1430406349492ac16cb4fbc31d363ca8217595282984aa4c3d08fcbad35697" },
     { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and processing contract", "sha256": "842f8b34bdad88d98ec55e43ea66fcce03af5febcc877bf4b38b6596aaa1272a" },
     { "path": "client/src/pages/ga4-metrics.tsx", "role": "GA4 Reports tab UI and browser artifact consumer", "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1" },
-    { "path": "shared/schema.ts", "role": "shared report and persistence contracts", "sha256": "72aaf81f747c2dd4766435125bc62e2fa83228d1ca30f53b61a7a08e3c196e9b" },
+    { "path": "shared/schema.ts", "role": "shared report and persistence contracts", "sha256": "973f7cbe8a862c55519c201202dfd28aa7af5c46c500546f4153461fe308b192" },
     { "path": "shared/ga4-financial-source.ts", "role": "GA4 financial-source semantics", "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3" },
     { "path": "shared/ga4-kpi-consumer-state.ts", "role": "shared KPI consumer-state semantics", "sha256": "eaf5db47cbf04a675ec410dafceacbbdacdc742409b8d83a63f878a00ce0046a" },
-    { "path": "server/routes-oauth.ts", "role": "report API, access, CRUD, generation, and delivery routes", "sha256": "8924798dc702eee952767fcd44248685987f330f909c8cb674fdf375635963ad" },
-    { "path": "server/storage.ts", "role": "report and snapshot persistence boundary", "sha256": "ffd115b83cc2c2d6c7a503197a7103936c1a5cea1ad56a745b7b8c75dfd95424" },
-    { "path": "server/report-scheduler.ts", "role": "scheduled report discovery and processing", "sha256": "042dc221f8a95e8c6dd96dc9fdffb5f0eae7cb01f2babb4a4dc3e6d527018d21" },
-    { "path": "server/ga4-scheduled-report-pdf.ts", "role": "server GA4 PDF rendering", "sha256": "3333174f8de2ebae4fe5e45158461a53c25e4a6a75165ac3e38f7308c9fb6ef3" },
-    { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "report preflight KPI and benchmark processing", "sha256": "3535fbdd3e3d5b6a1a3331ebf1f5bd5b26f2d3878601ba71b82797b0bdfbbe64" },
+    { "path": "server/routes-oauth.ts", "role": "report API, access, CRUD, generation, and delivery routes", "sha256": "9899cd6c3342687c635c389ed520d181402a7c9b2f7d7c129a580e193180fc0d" },
+    { "path": "server/storage.ts", "role": "report and snapshot persistence boundary", "sha256": "553fd9495ae02b76d93538f5573070ccc1691830cf10918f371baadf02e114d8" },
+    { "path": "server/report-scheduler.ts", "role": "scheduled report discovery and processing", "sha256": "03fa9c8b7e9bfe509523804811e1a37ff8b4983bc09139eeebc9a7d294b4dcc2" },
+    { "path": "server/ga4-scheduled-report-pdf.ts", "role": "server GA4 PDF rendering", "sha256": "80d7b99241946e0ab68e57f400ea8067e076e26560a51dd1c91e0adfc7c894e5" },
+    { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "report preflight KPI and benchmark processing", "sha256": "3d36266794159db236ea7605a6366c7c68a18de5d731b1a260b6a496c2825902" },
     { "path": "server/analytics.ts", "role": "report analytics transformation boundary", "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1" },
     { "path": "server/services/email-service.ts", "role": "report email composition and provider submission", "sha256": "5f3d80a20cf5fa81555e4ee59b4e59aefe5c6d54e39886317f101c73fb396788" },
     { "path": "server/utils/mailgun-delivery.ts", "role": "provider delivery-event confirmation", "sha256": "e35f44bd4a6bd481c40c4009f83cdefb3c650e2e1442bc757611c22622e42da6" },
     { "path": "server/utils/reporting-timezone.ts", "role": "report scheduling and reporting-timezone rules", "sha256": "d744c0b03b3ad1408b235296176a9b9a852c62fc04e69384f393dddbc819a442" },
-    { "path": "server/report-email-regression.test.ts", "role": "report scheduler and email regression evidence", "sha256": "504443ec0d31d30d174cca7826856cdd3d1979f027fadec3628d4febdd0c39ae" },
-    { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "production KPI path parity evidence", "sha256": "6cb9589cada3481f7d0f365566000493491ec71a7a5e74bf11635320f90ae8c7" },
+    { "path": "server/report-email-regression.test.ts", "role": "report scheduler and email regression evidence", "sha256": "80516763d67cc921ea8c62fa2294e2859ee8ec331d61c46a5bdaa532347e1668" },
+    { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "production KPI path parity evidence", "sha256": "caae1533bd382a0d751490f6e3b650214e6b800e2c0306d2db52cefa82a9190d" },
     { "path": "server/ga4-kpi-report-consumer-regression.test.ts", "role": "KPI report-consumer parity evidence", "sha256": "34294e886a0714df59de329c6ddfce2b603ccbebca614e11d367ffe5466568ec" },
     { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Insights and report parity evidence", "sha256": "ec1cc8ab3ab1b55f4f911e1218b068e6148dec69d50cfff0c1ea130ce65a3ad7" },
     { "path": "server/ga4-reports-certification-gate.ts", "role": "machine certification and invalidation gate", "sha256": "826ceb8b050305ce3c204d5680dbb3692b2dc645abf32322c0d564a645e6df24" },
@@ -91,39 +91,39 @@
     {
       "id": "focused_reports_regressions",
       "status": "passed",
-      "evidence": "The exact-b8c73621 current-version suite passed all protected Reports regressions; the corrected stale Shopify boundary fixture separately passed 7/7 focused tests."
+      "evidence": "The exact-4be16c54 current-version suite passed all protected Reports regressions, and the machine Reports gate passed."
     },
     {
       "id": "protected_overview_insights_regressions",
       "status": "passed",
-      "evidence": "The exact-b8c73621 current-version run executed 1,574 tests: 1,529 passed, 45 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained."
+      "evidence": "The exact-4be16c54 current-version run executed 1,659 tests: 1,624 passed, 35 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained."
     },
     {
       "id": "typescript",
       "status": "passed",
-      "evidence": "npm run check passed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
+      "evidence": "npm run check passed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
     },
     {
       "id": "production_build",
       "status": "passed",
-      "evidence": "npm run build passed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
+      "evidence": "npm run build passed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
     },
     {
       "id": "complete_numerical_failure_matrix",
       "status": "passed",
-      "evidence": "Deterministic negative regressions cover unavailable materialized revenue, missing cumulative boundaries, mixed-window disclosure, and fail-closed direct snapshot mismatches. Authenticated UI/PDF and post-scheduler parity from runtime 3c45aae7 carries to deployed revision b8c73621 because the report-specific routes, scheduler, and PDF paths are byte-identical."
+      "evidence": "Deterministic negative regressions cover unavailable materialized revenue, missing cumulative boundaries, mixed-window disclosure, and fail-closed direct snapshot mismatches. Authenticated UI/PDF and post-scheduler parity carries to deployed revision 4be16c54 only across byte-identical report-specific paths; no new inbox-content claim is made."
     }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc on 2026-08-21. The outcome-totals owner path returned HTTP 200 and the unauthenticated path failed closed with HTTP 401." },
-    { "id": "upstream_section_certifications", "status": "passed", "evidence": "Overview, KPI, Ad Comparison, and Insights were revalidated against exact deployed b8c73621; Benchmark remains locked to certified boundary 12789c1e, with b8c73621 read-only parity recorded only as supporting evidence. All available fail-closed machine gates pass." },
-    { "id": "browser_server_pdf_value_parity", "status": "passed", "evidence": "Authenticated browser/server PDF parity and the post-scheduler report audit passed on runtime 3c45aae7. That evidence carries to deployed revision b8c73621 because report-specific routes, scheduler, and PDF code are byte-identical; no new inbox or provider-delivery claim is made." },
+    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604 on 2026-08-28." },
+    { "id": "upstream_section_certifications", "status": "passed", "evidence": "Overview, KPI, Ad Comparison, and Insights were revalidated against exact deployed 4be16c54; Benchmark remains locked to certified boundary 12789c1e, with 4be16c54 read-only parity recorded only as supporting evidence. All five available fail-closed machine gates pass." },
+    { "id": "browser_server_pdf_value_parity", "status": "passed", "evidence": "Exact-4be16c54 KPI browser-PDF rows and the current protected Reports regressions passed. Earlier authenticated report parity carries only across byte-identical report-specific paths; no new inbox or provider-delivery claim is made." },
     { "id": "report_crud_tenant_isolation", "status": "passed", "evidence": "Current ownership/destructive regressions pass. The report access and CRUD code blocks are byte-identical to prior exact authenticated mutation/isolation evidence (hashes f84b0bc36858 and d8b44dc74b73), so no production mutation was repeated." },
-    { "id": "deployed_scheduled_visibility", "status": "passed", "evidence": "Historical controlled validation resolved and processed the authorized scheduled Overview report and restored its daily 09:00 Europe/Amsterdam schedule and recipient exactly. After evidence-only commit e175ac5c deployed on 2026-08-21, the user confirmed that the scheduled 09:00 reports were sent. This is operational send evidence, not a new provider-event, inbox-content, attachment-value, or numerical-parity claim." },
+    { "id": "deployed_scheduled_visibility", "status": "passed", "evidence": "Read-only production audit found the recorded ga4_mock Overview, KPI, Benchmark, and Ad Comparison scheduled report rows all sent on 2026-08-28. They ran on the immediately preceding runtime whose Reports dependencies are byte-identical to 4be16c54. An unrelated invalid myGA4 test campaign failed closed and is excluded. This is operational send evidence, not a new inbox-content or attachment-value claim." },
     { "id": "scheduler_snapshot_truthfulness", "status": "passed", "evidence": "Failed attempts created no snapshot and did not advance lastSentAt. The successful Gmail attempt created sent event c70003528033, snapshot 9a3783c922ad with matching report/campaign/platform/type, and advanced lastSentAt to 2026-08-15T15:47:22.678Z." },
     { "id": "provider_confirmed_delivery", "status": "passed", "evidence": "Mailgun audit c0bf19e4ee47 recorded mailgun-api success=true, deliveryStatus=delivered, provider response, and deliveredAt 2026-08-15T15:47:22.173Z." },
     { "id": "recipient_inbox_receipt", "status": "passed", "evidence": "The user confirmed receipt at the configured Gmail inbox and confirmed that the attached PDF opens." },
     { "id": "production_database_integrity", "status": "passed", "evidence": "Read-only exact-current audit found 10 active GA4 reports, six scheduled, zero active orphan reports, zero tenant mismatches, and zero invalid active schedules. Historical orphan/mismatched artifacts remain preserved and fail closed; the direct report-type mismatch route returned HTTP 404." },
-    { "id": "dependency_hashes", "status": "passed", "evidence": "All protected dependency hashes match the exact revalidated working-tree boundary. The exact-b8c73621 machine gate, current-version suite, TypeScript check, and production build passed." }
+    { "id": "dependency_hashes", "status": "passed", "evidence": "All protected dependency hashes match the exact revalidated boundary. The exact-4be16c54 machine gate, 1,659-test current-version suite, TypeScript check, and production build passed." }
   ]
 }

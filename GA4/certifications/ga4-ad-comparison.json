@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "b8c7362121593502955d41e522d32396a963fdcc",
-  "certifiedSha": "b8c7362121593502955d41e522d32396a963fdcc",
+  "lastReviewedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
+  "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
   "invalidationReason": null,
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -36,7 +36,7 @@
     {
       "path": "GA4/AD_COMPARISON_PRODUCTION_READINESS.md",
       "role": "controlling readiness status",
-      "sha256": "907437cea02977615eb79aecb9e2ff8cd15ba7c7bd09e1ebdc68f0ade7d28bcd"
+      "sha256": "44b5f50271b13eb5855bd897936fe69f70b5143f2cb058f4e44e57d27e4cf239"
     },
     {
       "path": "GA4-MANUAL-TEST-PLAN.md",
@@ -51,7 +51,7 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "e777d1ad761efdd3973ec982a5e0c89cdb8bcd74a61ae67e78d0fb949a5f4b5f"
+      "sha256": "dd804f36d3d47a0358e708b3389a5cf2b74a001e6ac9b371e3c8413bddf6e74b"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
@@ -96,7 +96,7 @@
     {
       "path": "shared/schema.ts",
       "role": "persistence contract",
-      "sha256": "72aaf81f747c2dd4766435125bc62e2fa83228d1ca30f53b61a7a08e3c196e9b"
+      "sha256": "973f7cbe8a862c55519c201202dfd28aa7af5c46c500546f4153461fe308b192"
     },
     {
       "path": "server/analytics.ts",
@@ -106,7 +106,7 @@
     {
       "path": "server/auto-refresh-scheduler.ts",
       "role": "imported-source refresh",
-      "sha256": "9c2988f24f9c428eeea639f9a5078b0b1dbc42fa6e4534078d6d98f6046244eb"
+      "sha256": "16aaa367a4f748450b9c71cd6c0592e060630195df7d2184f73386c38b1adf3c"
     },
     {
       "path": "server/ga4-ad-comparison-certification-gate.ts",
@@ -126,12 +126,12 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "8924798dc702eee952767fcd44248685987f330f909c8cb674fdf375635963ad"
+      "sha256": "9899cd6c3342687c635c389ed520d181402a7c9b2f7d7c129a580e193180fc0d"
     },
     {
       "path": "server/storage.ts",
       "role": "storage and destructive boundary",
-      "sha256": "ffd115b83cc2c2d6c7a503197a7103936c1a5cea1ad56a745b7b8c75dfd95424"
+      "sha256": "553fd9495ae02b76d93538f5573070ccc1691830cf10918f371baadf02e114d8"
     },
     {
       "path": "server/utils/data-transformation.ts",
@@ -209,31 +209,31 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "TypeScript passed for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
+      "evidence": "TypeScript passed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "Production Vite and server esbuild completed successfully for certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc."
+      "evidence": "Production Vite and server esbuild completed successfully for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
     },
     {
       "id": "authenticated_production_parity",
-      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=b8c7362121593502955d41e522d32396a963fdcc npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
+      "command": "GA4_AD_COMPARISON_EXPECTED_SHA=4be16c54c550a45dbf3104313c820ea47b453604 npx tsx --env-file=.env scripts/ga4-ad-comparison-live-readonly.ts",
       "status": "passed",
-      "evidence": "Authenticated read-only validation passed on deployed b8c73621: saved 2026-07-02 boundary through completed 2026-08-20, 50 inclusive days, exact property/filter, three saved campaigns, five exact active materialized source rows, and UI parity; the database transaction was rolled back."
+      "evidence": "Authenticated read-only validation passed on deployed 4be16c54: saved 2026-07-02 boundary through completed 2026-08-27, 57 inclusive days, exact property/filter, three saved campaigns, five exact active materialized source rows, and UI parity; the database transaction was rolled back."
     }
   ],
   "externalGates": [
     {
       "id": "deployed_revision",
       "status": "passed",
-      "evidence": "Production /api/health returned exact certified runtime boundary b8c7362121593502955d41e522d32396a963fdcc on 2026-08-21. The only runtime change from 12789c1e is the established campaign-access guard on /api/campaigns/:id/outcome-totals; owner access returned HTTP 200 and unauthenticated access failed closed with HTTP 401."
+      "evidence": "Production /api/health returned exact certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604 on 2026-08-28. Authenticated read-only endpoint and rendered-tab parity passed for the recorded campaign/property/filter boundary."
     },
     {
       "id": "live_ga4_provider",
       "status": "passed",
-      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-20, 50 inclusive days, exact property 542352127, and the exact saved three-campaign filter."
+      "evidence": "Authenticated cumulative endpoint returned saved start 2026-07-02 through completed end 2026-08-27, 57 inclusive days, exact property 542352127, and the exact saved three-campaign filter."
     },
     {
       "id": "production_source_inventory",
@@ -243,12 +243,12 @@
     {
       "id": "live_tab_parity",
       "status": "passed",
-      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-20 window labels, all three saved campaigns, the import-to-date revenue label, and every active imported source label."
+      "evidence": "Rendered live tab showed exact 2026-07-02 and 2026-08-27 window labels, all three saved campaigns, the import-to-date revenue label, and every active imported source label."
     },
     {
       "id": "tab_boundary_revision",
       "status": "passed",
-      "evidence": "Every changed dependency through deployed b8c73621 was audited. The exact cumulative Ad Comparison endpoint and renderer passed authenticated read-only parity, TypeScript, production build, the machine gate, and the complete current-version suite with zero blocking failures."
+      "evidence": "Every recorded dependency through deployed 4be16c54 was audited. The cumulative endpoint and renderer passed authenticated read-only parity, TypeScript, production build, the machine gate, and the 1,659-test current-version suite with zero blocking failures."
     }
   ]
 }

@@ -5,25 +5,20 @@
 ## Controlling Current Status
 
 **Status: PRODUCTION_READY for certified runtime boundary
-`b8c7362121593502955d41e522d32396a963fdcc` and the recorded
-dependency/configuration boundary. Relative to `12789c1e`, the runtime changes
-only the established campaign-access guard on outcome totals.
+`4be16c54c550a45dbf3104313c820ea47b453604` and the recorded
+dependency/configuration boundary.
 The defined live-tab section is included in the final combined GA4
 certification.**
 
-The current revalidation audited every dependency changed since the prior
-machine record. `ga4-metrics.tsx` changes only the separate Overview/KPI/
-Benchmark cumulative consumer, `routes-oauth.ts` changes Campaign DeepDive
-exact-date financial comparisons and the Benchmark validator,
-`storage.ts` changes Campaign DeepDive snapshot selection, and
-`reporting-timezone.ts` adds a Campaign DeepDive comparison helper. None changes
-the isolated Ad Comparison query, `ga4-breakdown?window=import-to-date` route,
-saved import boundary, exact property/filter scope, native aggregation/ranking,
-or imported-source provenance renderer.
+The current revalidation audited every recorded dependency changed since the
+prior machine record. The exact Ad Comparison query, cumulative route, saved
+import boundary, property/filter scope, native aggregation/ranking, and
+imported-source provenance renderer passed their protected regressions and
+authenticated production parity checks.
 
 The current-version boundary, TypeScript, and production build pass.
 Authenticated exact-SHA validation proves property `542352127`, the saved
-three-campaign filter, the `2026-07-02` through `2026-08-20` completed-day
+three-campaign filter, the `2026-07-02` through `2026-08-27` completed-day
 window, all reviewed provider aggregates, all five materialized revenue sources,
 and rendered UI parity. The validation database transaction was read-only and
 rolled back with zero application mutations. Prior `PRODUCTION_READY` records are historical only.

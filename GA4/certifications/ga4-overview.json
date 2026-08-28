@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
-  "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
-  "deployedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
+  "lastReviewedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
+  "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
+  "deployedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
-    "certifiedSha": "b8c7362121593502955d41e522d32396a963fdcc",
-    "deployedSha": "b8c7362121593502955d41e522d32396a963fdcc"
+    "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
+    "deployedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920"
   },
   "configurationBoundary": {
     "platformType": "google_analytics",
@@ -46,12 +46,12 @@
   },
   "dependencies": [
     { "path": "AGENTS.md", "role": "repository accuracy and anti-overclaim contract", "sha256": "3547f1141b24069a323aebc95478af5a832c62870e1cdcc9573b105f642b522e" },
-    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "a34e62a3ac46d5d8e1b9d187fb1f27c0ad1b609a050fc6da0465a1272416055d" },
+    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "3ea8fae2ab55e934bb0cd83f54353866df2565f552d7c9509fff266b9eae2aec" },
     { "path": "PRODUCTION_READINESS.md", "role": "production-readiness contract", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 validation workflow", "sha256": "3c41bf02990f5d19109e2eaa5de4d36865426eb0ebc6826e2bcfc7c0e816fd50" },
-    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "e777d1ad761efdd3973ec982a5e0c89cdb8bcd74a61ae67e78d0fb949a5f4b5f" },
+    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "dd804f36d3d47a0358e708b3389a5cf2b74a001e6ac9b371e3c8413bddf6e74b" },
     { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": "69674266ea977be0ff039327d3c706897a5ac02ba61874ef9a4a785c73da6fca" },
-    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "b33bdc47c5a53e541f2b0035cd8b1780852dbf871cca512a9cc829259a363715" },
+    { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "63b1462deffacd9b1fb9f71bb869d02183f2dae472c65aecd6ec60fc62722c40" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md", "role": "Overview evidence ledger", "sha256": "9567f00aedb4ae5e222e1abe34d85992959f57820d4cafa9e3934250dc3b3373" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md", "role": "Overview history ledger", "sha256": "f6afa29b5bd85bd08f641875d82bf1058fd311816d4902aef111ef5edf762ef1" },
     { "path": "GA4/FINANCIAL_SOURCES.md", "role": "financial source contract", "sha256": "8d1da2cffaa1bc953c1c985884cff2a9e670ad0195073c901b505d5c4b07ed7d" },
@@ -62,10 +62,10 @@
     { "path": "client/src/components/AddSpendWizardModal.tsx", "role": "spend source lifecycle UI", "sha256": "4cf32aafeae10b936f1caf2f3d17848f5af12f1f49d764df5af578e49502c1c5" },
     { "path": "client/src/components/HubSpotRevenueWizard.tsx", "role": "HubSpot source input boundary", "sha256": "41b004fb6d4e76302b21c09a1f001d4428cc79abd97162f071a879d20bbf8a6e" },
     { "path": "client/src/components/ShopifyRevenueWizard.tsx", "role": "Shopify source input boundary", "sha256": "3bcebff7db14d62dddac2b84e6db00b92bd76a044f2fc26890914c5fc85493ab" },
-    { "path": "shared/schema.ts", "role": "shared persistence contracts", "sha256": "dd24b52088b2f918dce539e05b6c3808b6f9f5ab5ed2dac09cf25c037696045e" },
+    { "path": "shared/schema.ts", "role": "shared persistence contracts", "sha256": "973f7cbe8a862c55519c201202dfd28aa7af5c46c500546f4153461fe308b192" },
     { "path": "shared/ga4-financial-source.ts", "role": "financial-source semantics", "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3" },
-    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": "85c65c5270a04af81ed9276b44e9586b7ccac722e7f511d92763930e03593da2" },
-    { "path": "server/storage.ts", "role": "Overview storage and lifecycle paths", "sha256": "ac70ef5066e48e2d85b85e94669ab9e26650a60aea114b94ef7606d28680c1eb" },
+    { "path": "server/routes-oauth.ts", "role": "Overview API and auth paths", "sha256": "9899cd6c3342687c635c389ed520d181402a7c9b2f7d7c129a580e193180fc0d" },
+    { "path": "server/storage.ts", "role": "Overview storage and lifecycle paths", "sha256": "553fd9495ae02b76d93538f5573070ccc1691830cf10918f371baadf02e114d8" },
     { "path": "server/analytics.ts", "role": "GA4 provider query path", "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1" },
     { "path": "server/ga4-daily-scheduler.ts", "role": "GA4 daily refresh path", "sha256": "ffb75ded46ca998919aef91198306d625e2a4a13b0687b111bccdfef9b2ab03d" },
     { "path": "server/auto-refresh-scheduler.ts", "role": "imported-source refresh path", "sha256": "16aaa367a4f748450b9c71cd6c0592e060630195df7d2184f73386c38b1adf3c" },
@@ -97,15 +97,15 @@
     { "path": "server/latest-day-spend-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "e6890007ef914907a6c40b015e6f192d885234a3e6355742275de28a67976529" },
     { "path": "server/ga4-kpi-alert-contract-regression.test.ts", "role": "Commit 6 source, sufficiency, last-good, and cross-consumer alert contract regression", "sha256": "4ed0bcdeb3b52b135135fe52539f73759954b85024fb96a8e9a3ed939e5dbac8" },
     { "path": "server/campaign-current-value-financial-source-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "ec3a63e1015cd65a0760b4c5a59be68bc673a0b4b36533d623593deffda9a249" },
-    { "path": "server/outcome-totals-ga4-fallback-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "d2319ac532efc4fc74674993105cdd939d9210e43977b7439c98ae5498d32a87" },
-    { "path": "server/performance-summary-scheduler-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "8974c55f20d38c052394aabe30519f8c51e63814b8a0bcaf8628e69f595af3ef" },
-    { "path": "server/trend-analysis-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "6c6c1dee0d210668954a73765849d8041ad796770a7fa6c4744e0f2eafddd12a" },
+    { "path": "server/outcome-totals-ga4-fallback-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "a4fb91c23cc6a5d119df1fd838e0105c2ef08a41248768077f8eac823243e934" },
+    { "path": "server/performance-summary-scheduler-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "6dcc8d733e45b10c8949ae23684f9b713b783b145d905a4831c94db1b0adb97a" },
+    { "path": "server/trend-analysis-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "eb4c4997eeadff3c37cef2213f11e2411324af73163de712997614d2023554d0" },
     { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "ec1cc8ab3ab1b55f4f911e1218b068e6148dec69d50cfff0c1ea130ce65a3ad7" },
     { "path": "server/hubspot-revenue-ga4-overview-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "a07500edd20bcf8b686a9979ae6a0a8e9130396d15af3041071d6da93318560b" },
     { "path": "server/shopify-revenue-regression.test.ts", "role": "Overview focused regression evidence", "sha256": "6938c1b4f165fc1b966332e6cca22b89ea6bbcfcbd5dff7114c6b8a9dc9d4c99" },
     { "path": "server/google-sheets-revenue-validation.test.ts", "role": "Overview focused regression evidence", "sha256": "f9c24d9ceb7ef5bd6445d5604826d7c0e3e66db62b93c50ca6f173c27c50334a" },
     { "path": "server/ga4-benchmark-safety-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": "c54fc852a0cee9261f4696018be06f9788debe1ddac4c4af70557b7d8e89a0e4" },
-    { "path": "server/ga4-benchmark-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": "8eb344b6464b45dc95ee50ff5ce6a3dba0aaaaa7d8ff2eb3b30a1a159b59a52a" },
+    { "path": "server/ga4-benchmark-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": "8ea8d75310eab58b10cff3e41fee5d1d9a84fe70567e99281f8737fd6a69a389" },
     { "path": "server/campaign-scheduler-current-value-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": "7a9cf525ebb588e2f62394a18080eb012567f1bfb16f43ed138acdc4ece73e6b" },
     { "path": "server/ga4-kpi-custom-preservation-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": "91718d3a2638bd04d34fd7a3253eb28eb8bb4f95db1d717af1bbf250d447a321" },
     { "path": "server/ga4-kpi-financial-window-regression.test.ts", "role": "post-certification affected-dependency evidence", "sha256": "4b3003913e93eb57110ad3ddb959e47add2f19a9e9ad8cdb6481364fe2d1bedd" },
@@ -145,47 +145,47 @@
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "The complete exact-cdb2b88a current-version run passed all Overview regressions within 1,524 passing tests; 45 declared future-platform failures remained visible and zero blocking failures remained."
+      "evidence": "The exact-4be16c54 current-version run executed 1,659 tests: 1,624 passed, 35 declared future-platform failures remained visible, and zero blocking failures remained."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "The complete exact-cdb2b88a current-version run exercised the recorded shared dependencies and passed 1,524 tests with zero blocking current-version failures."
+      "evidence": "The exact-4be16c54 current-version run exercised the recorded shared dependencies and completed with 1,624 passing tests and zero blocking failures."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed for certified runtime boundary cdb2b88aa702758ae56170a9b59f427fde5ff920."
+      "evidence": "npm run check passed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed for certified runtime boundary cdb2b88aa702758ae56170a9b59f427fde5ff920."
+      "evidence": "The production Vite and server esbuild completed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary cdb2b88aa702758ae56170a9b59f427fde5ff920 on 2026-08-23. Normal UTC schedules were restored to Financial 18:30 and GA4 22:00 after the controlled timer validation."
+      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604 on 2026-08-28. Production health reported Financial 18:30 UTC and GA4 22:00 UTC with startup refresh disabled."
     },
     {
       "id": "authenticated_ui_api_source_parity",
       "status": "passed",
-      "evidence": "Authenticated exact-cdb2b88a read-only KPI, Benchmark, Ad Comparison, and Insights validators reconciled the Overview-originated cumulative boundary and financial totals for property 542352127 without application-data mutation."
+      "evidence": "Authenticated exact-4be16c54 read-only KPI, Benchmark, Ad Comparison, and Insights validators reconciled property 542352127 through completed day 2026-08-27, including Revenue 72,766.69, Spend 2,699.75, and 251 financial conversions, without application-data mutation."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
       "status": "passed",
-      "evidence": "Exact-cdb2b88a timer validation ran target GA4 at 07:35 UTC and Financial refresh at 07:45 UTC on 2026-08-23. The target campaign recomputed all 8 KPIs and 2 Benchmarks without target failure; Financial then wrote exactly one 2026-08-22 snapshot with no duplicate or write failure. Normal schedules were restored. The 17 unrelated failing campaigns remain excluded from this target-scoped claim."
+      "evidence": "Exact-cdb2b88a timer validation ran target GA4 at 07:35 UTC and Financial refresh at 07:45 UTC on 2026-08-23. The target campaign recomputed all 8 KPIs and 2 Benchmarks, then wrote exactly one 2026-08-22 financial snapshot. This target evidence carries to 4be16c54 only across byte-identical GA4 daily scheduler, KPI/Benchmark job, auto-refresh, and financial snapshot-writer dependencies; no exact-4be16c54 timer firing or global all-campaign scheduler-health claim is made."
     },
     {
       "id": "production_data_integrity",
       "status": "passed",
-      "evidence": "Exact-cdb2b88a read-only validators made zero application-data mutations. The authorized timer run persisted one exact 2026-08-22 financial_daily snapshot: revenue 72,766.69, spend 2,699.75, conversions 251, USD, cumulative from 2026-07-02, with no duplicate."
+      "evidence": "Exact-4be16c54 validators made zero application-data mutations. The prior authorized target timer run persisted one 2026-08-22 financial_daily snapshot with Revenue 72,766.69, Spend 2,699.75, 251 financial conversions, USD, and cumulative start 2026-07-02; the current validation did not rewrite or duplicate it."
     }
   ]
 }

@@ -41,6 +41,7 @@ import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefresh
 import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefreshPipeline } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
+import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
 import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-snapshot-observation";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
@@ -75,6 +76,22 @@ const escapeOAuthPopupHtml = (value: unknown): string => String(value ?? "")
   .replace(/'/g, "&#39;");
 
 const REPORT_SCHEDULE_FREQUENCIES = new Set(["daily", "weekly", "monthly", "quarterly"]);
+
+type CampaignOutcomeTotalsReader = (campaignId: string, dateRange: string) => Promise<any>;
+let campaignOutcomeTotalsReader: CampaignOutcomeTotalsReader | null = null;
+
+export async function readCertifiedCampaignPerformanceSummary(campaignId: string, dateRange = "90days"): Promise<any> {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  if (!normalizedCampaignId || !campaignOutcomeTotalsReader) {
+    throw new Error("Certified Campaign DeepDive aggregate reader is unavailable");
+  }
+  const outcomeTotals = await campaignOutcomeTotalsReader(normalizedCampaignId, dateRange);
+  const performanceSummary = outcomeTotals?.performanceSummary;
+  if (outcomeTotals?.success !== true || performanceSummary?.version !== "performance_summary_aggregate_v3") {
+    throw new Error("Certified Campaign DeepDive aggregate is unavailable");
+  }
+  return performanceSummary;
+}
 
 export function isValidReportScheduleFrequency(value: string): boolean {
   return REPORT_SCHEDULE_FREQUENCIES.has(value);
@@ -14821,6 +14838,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ success: false, error: error?.message || "Failed to compute outcome totals" });
     }
   });
+  const campaignOutcomeTotalsRoute = (app as any)?._router?.stack?.find((layer: any) =>
+    layer?.route?.path === "/api/campaigns/:id/outcome-totals" && layer?.route?.methods?.get === true
+  );
+  const campaignOutcomeTotalsHandler = campaignOutcomeTotalsRoute?.route?.stack?.at(-1)?.handle;
+  if (typeof campaignOutcomeTotalsHandler !== "function") {
+    throw new Error("Certified Campaign DeepDive aggregate handler registration failed");
+  }
+  campaignOutcomeTotalsReader = async (campaignId: string, dateRange: string) => {
+    let statusCode = 200;
+    let responseBody: any = null;
+    let responded = false;
+    const internalResponse: any = {
+      status(code: number) {
+        statusCode = code;
+        return internalResponse;
+      },
+      json(body: any) {
+        responseBody = body;
+        responded = true;
+        return internalResponse;
+      },
+    };
+    await campaignOutcomeTotalsHandler({ params: { id: campaignId }, query: { dateRange } }, internalResponse);
+    if (!responded || statusCode >= 400) {
+      throw new Error(responseBody?.error || "Failed to compute certified Campaign DeepDive aggregate");
+    }
+    return responseBody;
+  };
 
   // New route: Get all GA4 connections for a campaign
   app.get("/api/campaigns/:id/ga4-connections", async (req, res) => {
@@ -28108,6 +28153,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platform Reports routes
+  // Generate a one-off Campaign DeepDive report without creating a report or snapshot row.
+  app.post("/api/campaigns/:id/custom-report-pdf", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "").trim();
+      const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!okCampaign) return;
+
+      const body = (req.body || {}) as any;
+      const reportName = String(body?.name || "").trim();
+      const configuredReportType = String(body?.reportType || "").trim().toLowerCase();
+      const selectedSections = Array.isArray(body?.selectedSections)
+        ? Array.from(new Set<string>(body.selectedSections.map((value: unknown) => String(value || "").trim()).filter(Boolean)))
+        : [];
+      const selectedMetrics = Array.isArray(body?.selectedMetrics)
+        ? Array.from(new Set<string>(body.selectedMetrics.map((value: unknown) => String(value || "").trim().toLowerCase()).filter(Boolean)))
+        : [];
+      const allowedSections = new Set([
+        "performance-summary:overview", "performance-summary:health", "performance-summary:changes", "performance-summary:insights",
+        "financial-analysis:overview", "financial-analysis:roi-roas", "financial-analysis:costs", "financial-analysis:budget", "financial-analysis:insights",
+        "platform-comparison:overview", "platform-comparison:performance", "platform-comparison:cost-analysis", "platform-comparison:insights",
+        "trend-analysis:overview", "executive-summary:overview", "metrics", "kpis", "benchmarks",
+      ]);
+      const allowedMetrics = new Set(["users", "sessions", "conversions", "revenue", "cvr", "impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"]);
+      const allowedReportTypes = new Set(["performance-summary", "financial-analysis", "platform-comparison", "trend-analysis", "executive-summary", "custom"]);
+      const sectionTypeMatches = configuredReportType === "custom"
+        ? selectedSections.every((section) => ["metrics", "kpis", "benchmarks"].includes(section))
+        : selectedSections.every((section) => section.startsWith(`${configuredReportType}:`));
+      if (!reportName || !allowedReportTypes.has(configuredReportType) || selectedSections.length === 0 || !selectedSections.every((section) => allowedSections.has(section)) || !sectionTypeMatches || !selectedMetrics.every((metric) => allowedMetrics.has(metric))) {
+        return res.status(400).json({ success: false, error: "Invalid Custom Report configuration" });
+      }
+      if (configuredReportType === "custom" && selectedSections.includes("metrics") && selectedMetrics.length === 0) {
+        return res.status(400).json({ success: false, error: "At least one metric is required for the selected metrics section" });
+      }
+
+      const campaign = await storage.getCampaign(campaignId).catch(() => null);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+      const now = new Date();
+      const windowEndDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const windowStartDate = new Date(windowEndDate.getTime());
+      windowStartDate.setUTCDate(windowStartDate.getUTCDate() - 29);
+      const windowStart = windowStartDate.toISOString().slice(0, 10);
+      const windowEnd = windowEndDate.toISOString().slice(0, 10);
+      const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
+      const pdf = await buildPdfAttachmentForReport({
+        report: {
+          campaignId,
+          name: reportName,
+          platformType: "campaign_deepdive",
+          reportType: "custom",
+          configuration: { reportType: configuredReportType, selectedSections, selectedMetrics, createdFrom: "campaign-deepdive-custom-report" },
+        },
+        windowStart,
+        windowEnd,
+        campaignName: String((campaign as any)?.name || "") || null,
+        isTest: true,
+      });
+      if (!pdf) return res.status(422).json({ success: false, error: "Custom Report source-backed PDF output unavailable" });
+
+      const safeName = reportName.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}_${windowEnd}.pdf"`);
+      res.send(pdf);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || "Failed to generate Custom Report PDF" });
+    }
+  });
+
   // Get platform reports
   app.get("/api/platforms/:platformType/reports", async (req, res) => {
     try {
@@ -28547,7 +28660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const sourceBackedReportPlatform = String(payload.platformType || "").trim().toLowerCase();
-      if (sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration") {
+      if (sourceBackedReportPlatform === "campaign_deepdive" || sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration") {
         const { buildPdfAttachmentForReport, preflightGA4ReportKPIConsumers } = await import("./report-scheduler.js");
         const ga4Preflight = await preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true });
         if (!ga4Preflight.ok) {
@@ -28564,8 +28677,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isTest: true,
         });
         if (!buf) {
-          const label = sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
+          const label = sourceBackedReportPlatform === "campaign_deepdive" ? "Custom Report" : sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
           return res.status(422).json({ success: false, error: `${label} source-backed PDF output unavailable; snapshot not created` });
+        }
+        if (sourceBackedReportPlatform === "campaign_deepdive") {
+          const pdfArtifact = createReportPdfArtifact(buf);
+          if (!pdfArtifact) return res.status(422).json({ success: false, error: "Custom Report PDF artifact is invalid; snapshot not created" });
+          (payload as any).pdfArtifact = pdfArtifact;
         }
       }
 
@@ -28652,6 +28770,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const windowStart = String((row as any).windowStart || (row as any).window_start || payload?.windowStart || "");
       const windowEnd = String((row as any).windowEnd || (row as any).window_end || payload?.windowEnd || "");
+      if (snapshotPlatform === "campaign_deepdive") {
+        const immutablePdf = readReportPdfArtifact(payload);
+        if (!immutablePdf) return res.status(422).json({ success: false, error: "Immutable Custom Report PDF artifact unavailable" });
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="mimosaas_report_${snapshotId}.pdf"`);
+        return res.send(immutablePdf);
+      }
       const { buildPdfAttachmentForReport, preflightGA4ReportKPIConsumers } = await import("./report-scheduler.js");
       const ga4Preflight = await preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true });
       if (!ga4Preflight.ok) {

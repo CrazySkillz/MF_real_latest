@@ -12,6 +12,7 @@ import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBe
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -236,12 +237,13 @@ function customIntegrationSourceScopeMatchesReport(rowScope: any, reportScope: a
 
 function platformRequiresSourceBackedReportOutput(platformType: any): boolean {
   const normalized = String(platformType || "").trim().toLowerCase();
+  if (normalized === "campaign_deepdive") return true;
   return normalized === "google_analytics" || normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets" || normalized === "custom-integration" || normalized === "custom_integration";
 }
 
 function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
   const normalized = String(platformType || "").trim().toLowerCase();
-  const label = normalized === "google_analytics" ? "GA4" : normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : normalized === "custom-integration" || normalized === "custom_integration" ? "Custom Integration" : "Instagram";
+  const label = normalized === "campaign_deepdive" ? "Custom Report" : normalized === "google_analytics" ? "GA4" : normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : normalized === "custom-integration" || normalized === "custom_integration" ? "Custom Integration" : "Instagram";
   return `${label} source-backed PDF output unavailable`;
 }
 
@@ -1110,15 +1112,26 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
     section === "performance-summary:health" ||
     section === "benchmarks"
   );
-  const [campaignMetrics, campaign, kpis, benchmarks, executiveKpis, executiveBenchmarks] = await Promise.all([
-    aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis }).catch(() => null),
+  const allowIsolatedTestAggregate = process.env.NODE_ENV === "test";
+  const certifiedPerformanceSummaryPromise = allowIsolatedTestAggregate
+    ? Promise.resolve(null)
+    : import("./routes-oauth.js").then(({ readCertifiedCampaignPerformanceSummary }) =>
+        readCertifiedCampaignPerformanceSummary(campaignId, "90days")
+      );
+  const [certifiedPerformanceSummary, campaignMetrics, campaign, kpis, benchmarks, executiveKpis, executiveBenchmarks] = await Promise.all([
+    certifiedPerformanceSummaryPromise,
+    needsTrendAnalysis || allowIsolatedTestAggregate
+      ? aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis }).catch(() => null)
+      : Promise.resolve(null),
     storage.getCampaign(campaignId).catch(() => null),
     needsKpiRows ? storage.getPlatformKPIs("google_analytics", campaignId).catch(() => []) : Promise.resolve([]),
     needsBenchmarkRows ? storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []) : Promise.resolve([]),
     needsExecutiveSummary ? storage.getCampaignKPIs(campaignId).catch(() => []) : Promise.resolve([]),
     needsExecutiveSummary ? storage.getCampaignBenchmarks(campaignId).catch(() => []) : Promise.resolve([]),
   ]);
-  const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary || null;
+  const performanceSummary = certifiedPerformanceSummary
+    || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.performanceSummary : null);
+  if (!performanceSummary) throw new Error("Certified Campaign DeepDive aggregate is unavailable");
   const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;
   const aggregateSources = Array.isArray(performanceSummary?.sources)
     ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
@@ -1203,6 +1216,22 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     return `Unavailable${reason ? ` - ${reason}` : ""}`;
   };
   const executiveCurrentValueWindow = performanceSummary?.currentValueWindow;
+  const isCampaignDeepDiveCustomReportComposition = String(report?.platformType || "").trim().toLowerCase() === "campaign_deepdive"
+    && String(report?.reportType || "").trim().toLowerCase() === "custom";
+  const hasCertifiedCustomReportMetricWindow = performanceSummary?.version === "performance_summary_aggregate_v3"
+    && executiveCurrentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(executiveCurrentValueWindow?.startDate || ""))
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(executiveCurrentValueWindow?.endDate || ""))
+    && executiveCurrentValueWindow.startDate <= executiveCurrentValueWindow.endDate
+    && executiveCurrentValueWindow?.dataThroughDate === executiveCurrentValueWindow?.endDate
+    && Boolean(executiveCurrentValueWindow?.reportingTimeZone);
+  const customReportWindowLabel = reportType === "trend-analysis"
+    ? trendWindowStart && trendWindowEnd
+      ? `Trend window: ${trendWindowStart} to ${trendWindowEnd}.`
+      : "Trend window: Unavailable."
+    : hasCertifiedCustomReportMetricWindow
+      ? `Metric window: ${executiveCurrentValueWindow.startDate} to ${executiveCurrentValueWindow.endDate} (${executiveCurrentValueWindow.reportingTimeZone}).`
+      : "Metric window: Unavailable.";
   const executiveAllSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const executiveGA4Source = executiveAllSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
   const executiveHasAuthoritativeGA4Window = performanceSummary?.version === "performance_summary_aggregate_v3"
@@ -1502,7 +1531,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     ? "Metric basis: cumulative connected-source traffic through the latest completed reporting day; financial values are campaign-to-date."
     : isExecutiveSummaryReport
       ? executiveMetricBasis
-      : `Window: ${windowStart} to ${windowEnd}`);
+      : isCampaignDeepDiveCustomReportComposition
+        ? customReportWindowLabel
+        : `Window: ${windowStart} to ${windowEnd}`);
   addText(`Generated: ${new Date().toLocaleString()}`);
   y += 4;
   addText("Included sections", { size: 14, bold: true });
@@ -2570,7 +2601,10 @@ export async function checkScheduledReports(): Promise<void> {
         isTest: false,
       });
       console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
-      if (platformRequiresSourceBackedReportOutput(snapshotPlatformType) && !pdfBuffer) {
+      const customReportPdfArtifact = snapshotPlatformType === "campaign_deepdive" && pdfBuffer
+        ? createReportPdfArtifact(pdfBuffer)
+        : null;
+      if (platformRequiresSourceBackedReportOutput(snapshotPlatformType) && (!pdfBuffer || (snapshotPlatformType === "campaign_deepdive" && !customReportPdfArtifact))) {
         const error = `${sourceBackedReportOutputUnavailableMessage(snapshotPlatformType)}; skipped scheduled report`;
         console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         await db
@@ -2580,6 +2614,7 @@ export async function checkScheduledReports(): Promise<void> {
           .catch(() => { });
         continue;
       }
+      if (customReportPdfArtifact) (snapshotPayload as any).pdfArtifact = customReportPdfArtifact;
 
       // Send email with retry mechanism (with PDF attachment when possible)
       let sent = await sendReportEmailWithRetry(report, recipients, {

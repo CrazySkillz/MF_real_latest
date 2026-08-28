@@ -92,7 +92,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("setOriginalReportFormSignature(getReportFormSignature(nextValues));");
     expect(reports).toContain("reportStorage.updateReport(editingReportId, reportPayload);");
     expect(reports).toContain('{editingReportId ? "Update Report" : scheduleEnabled ? "Schedule Report" : "Download Report"}');
-    expect(reports).toContain("disabled={!isReportFormValid || !isReportFormChanged}");
+    expect(reports).toContain("disabled={!isReportFormValid || !isReportFormChanged || reportSavePending}");
     expect(reports).toContain("onClick={() => openEditReport(report)}");
     expect(reports).toContain("onOpenAutoFocus={(event) => {");
     expect(reports).toContain("if (editingReportId) event.preventDefault();");
@@ -139,7 +139,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain('variant={!editingReportId && scheduleEnabled ? "link" : "default"}');
     expect(reports).toContain("const downloadReportPdf = async (report: StoredReport) => {");
     expect(reports).toContain("const { jsPDF } = await import('jspdf');");
-    const campaignDownload = reports.indexOf("await downloadReportPdf({", reports.indexOf("} else if (scheduleEnabled)"));
+    const campaignDownload = reports.indexOf("await downloadCampaignReportPdf({", reports.indexOf("} else if (scheduleEnabled)"));
     const standaloneStorage = reports.indexOf("const savedReport = reportStorage.addReport", campaignDownload);
     expect(campaignDownload).toBeGreaterThan(-1);
     expect(standaloneStorage).toBeGreaterThan(campaignDownload);
@@ -152,24 +152,29 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('addSourceList();');
   });
 
-  it("regenerates latest report downloads from freshly refetched campaign inputs", () => {
+  it("uses the scheduled server renderer for Campaign Custom Report downloads", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
+    const directPdfRoute = routes.slice(
+      routes.indexOf('app.post("/api/campaigns/:id/custom-report-pdf"'),
+      routes.indexOf("// Get platform reports"),
+    );
 
-    expect(reports).toContain("refetch: refetchCampaignOutcomeTotals");
-    expect(reports).toContain("refetch: refetchCampaignExecutiveSummary");
-    expect(reports).toContain("refetch: refetchCampaignFinancialContext");
-    expect(reports).toContain("refetch: refetchCampaignKpis");
-    expect(reports).toContain("refetch: refetchCampaignBenchmarks");
-    expect(reports).toContain("const reportCampaignId = report.campaignId || campaignContextId;");
-    expect(reports).toContain("const shouldRefreshCurrentCampaignContext = !!reportCampaignId && reportCampaignId === campaignContextId;");
-    expect(reports).toContain("await Promise.all([");
-    expect(reports).toContain("refetchCampaignOutcomeTotals()");
-    expect(reports).toContain("fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/outcome-totals?dateRange=90days`).then((data) => ({ data }))");
-    expect(reports).toContain("fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/executive-summary`).then((data) => ({ data }))");
-    expect(reports).toContain("const latestCampaignOutcomeTotals = latestOutcomeTotalsResult?.data ?? campaignOutcomeTotals;");
-    expect(reports).toContain("const customReportPerformanceSummary = latestCampaignOutcomeTotals?.performanceSummary;");
-    expect(reports).toContain("const campaignKpis: any[] = Array.isArray(latestKpisResult?.data) ? latestKpisResult.data : liveCampaignKpis;");
-    expect(reports).toContain("const campaignBenchmarks: any[] = Array.isArray(latestBenchmarksResult?.data) ? latestBenchmarksResult.data : liveCampaignBenchmarks;");
+    expect(reports).toContain("const downloadCampaignReportPdf = async (report: StoredReport) => {");
+    expect(reports).toContain("if (report.backendReportId) {");
+    expect(reports).toContain("/snapshots`");
+    expect(reports).toContain("`/api/report-snapshots/${encodeURIComponent(snapshotId)}/pdf`");
+    expect(reports).toContain("`/api/campaigns/${encodeURIComponent(reportCampaignId)}/custom-report-pdf`");
+    expect(reports).toContain('if (!signature.startsWith("%PDF-")) throw new Error("Generated report PDF is invalid");');
+    expect(reports).toContain("const isCampaignDeepDiveDownloadReport = (report: StoredReport) =>");
+    expect(reports).toContain("if ((report.campaignId || campaignContextId) && isCampaignDeepDiveDownloadReport(report)) await downloadCampaignReportPdf(report);");
+    expect(reports).toContain("else await downloadReportPdf(report);");
+    expect(directPdfRoute).toContain("await ensureCampaignAccess(req as any, res as any, campaignId)");
+    expect(directPdfRoute).toContain('platformType: "campaign_deepdive"');
+    expect(directPdfRoute).toContain("buildPdfAttachmentForReport");
+    expect(directPdfRoute).toContain("Custom Report source-backed PDF output unavailable");
+    expect(directPdfRoute).not.toContain("createPlatformReport");
+    expect(directPdfRoute).not.toContain("reportSnapshots");
   });
 
   it("shows campaign schedules directly while preserving standalone report tabs", () => {
@@ -190,7 +195,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("storedScheduledReports.map((report) => (");
     const scheduledTab = reports.slice(reports.indexOf('<TabsContent value="scheduled"'), reports.indexOf('<TabsContent value="all"'));
     expect(scheduledTab).toContain("onClick={() => openEditReport(report)}");
-    expect(scheduledTab).toContain("onClick={() => downloadReportPdf(report)}");
+    expect(scheduledTab).toContain("onClick={() => downloadLatestReport(report)}");
     expect(scheduledTab).toContain("Download latest report");
     expect(scheduledTab).not.toContain("Download last sent report");
     expect(scheduledTab).toContain('report.status === "Paused" ? resumeScheduledReport(report) : pauseScheduledReport(report)');
@@ -243,6 +248,11 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(reports).toContain("const [reportPendingDelete, setReportPendingDelete] = useState<StoredReport | null>(null);");
     expect(reports).toContain("onClick={() => setReportPendingDelete(report)}");
+    expect(reports).toContain("const localReportMirror = reportStorage.getReports().find((report) =>");
+    expect(reports).toContain("report.backendReportId === reportPendingDelete.backendReportId");
+    expect(reports).toContain("report.campaignId === reportPendingDelete.campaignId");
+    expect(reports).toContain("String(report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM) === String(reportPendingDelete.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM)");
+    expect(reports).toContain("if (localReportMirror) reportStorage.deleteReport(localReportMirror.id);");
     expect(reports).toContain("reportStorage.deleteReport(reportPendingDelete.id);");
     expect(reports).toContain("reportPendingDelete.backendReportId");
     expect(reports).toContain('method: "DELETE"');
@@ -252,6 +262,55 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Campaign connected-source data");
     expect(reports).toContain("customReportSources.map((source: any) => (");
     expect(reports).not.toContain("Selectable metrics:");
+    const failedBackendDelete = reports.indexOf('if (!response.ok) throw new Error("Failed to delete scheduled report");');
+    const localMirrorCleanup = reports.indexOf("const localReportMirror", failedBackendDelete);
+    expect(localMirrorCleanup).toBeGreaterThan(failedBackendDelete);
+  });
+
+  it("shows report lifecycle action errors in the report library", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const lifecycleStart = reports.indexOf("const deletePendingReport = async () => {");
+    const lifecycleEnd = reports.indexOf("const localVisibleReports", lifecycleStart);
+    const lifecycleHandlers = reports.slice(lifecycleStart, lifecycleEnd);
+
+    expect(reports).toContain('const [reportActionError, setReportActionError] = useState("");');
+    expect(reports).toContain('<div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">');
+    expect(reports).toContain("{reportActionError}");
+    expect(lifecycleHandlers).toContain('setReportActionError(error?.message || "Failed to delete report");');
+    expect(lifecycleHandlers).toContain('setReportActionError(error?.message || "Failed to pause scheduled report");');
+    expect(lifecycleHandlers).toContain('setReportActionError(error?.message || "Failed to resume scheduled report");');
+    expect(lifecycleHandlers).not.toContain("setReportSaveError");
+  });
+
+  it("shows stored-report download failures in the report library", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const downloadLatestReport = async (report: StoredReport) => {");
+    expect(reports).toContain("if ((report.campaignId || campaignContextId) && isCampaignDeepDiveDownloadReport(report)) await downloadCampaignReportPdf(report);");
+    expect(reports).toContain("else await downloadReportPdf(report);");
+    expect(reports).toContain('setReportActionError(error?.message || "Failed to download report");');
+    expect(reports.match(/onClick=\{\(\) => downloadLatestReport\(report\)\}/g)).toHaveLength(3);
+    expect(reports).not.toContain("onClick={() => downloadReportPdf(report)}");
+  });
+
+  it("prevents duplicate report create and update submissions", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const saveStart = reports.indexOf("const saveReport = async () => {");
+    const firstBackendSave = reports.indexOf("await saveBackendScheduledReport", saveStart);
+    const failedSave = reports.indexOf('setReportSaveError(error?.message || "Failed to save report");', firstBackendSave);
+    const failedSaveUnlock = reports.indexOf("reportSaveInProgress.current = false;", failedSave);
+    const successfulSaveClose = reports.indexOf("setShowCreateDialog(false);", failedSaveUnlock);
+    const successfulSaveUnlock = reports.indexOf("reportSaveInProgress.current = false;", successfulSaveClose);
+
+    expect(reports).toContain('import { useState, useEffect, useRef } from "react";');
+    expect(reports).toContain("const reportSaveInProgress = useRef(false);");
+    expect(reports).toContain("const [reportSavePending, setReportSavePending] = useState(false);");
+    expect(reports).toContain("if (reportSaveInProgress.current) return;");
+    expect(reports.indexOf("reportSaveInProgress.current = true;", saveStart)).toBeLessThan(firstBackendSave);
+    expect(failedSaveUnlock).toBeGreaterThan(failedSave);
+    expect(successfulSaveUnlock).toBeGreaterThan(successfulSaveClose);
+    expect(reports).toContain("disabled={!isReportFormValid || !isReportFormChanged || reportSavePending}");
+    expect(reports).toContain("aria-busy={reportSavePending}");
   });
 
   it("wires Campaign DeepDive scheduled reports into backend scheduler records", () => {
@@ -266,8 +325,13 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('createdFrom: "campaign-deepdive-custom-report"');
     expect(reports).toContain("const backendReport = await saveBackendScheduledReport(reportPayload);");
     expect(reports).toContain("backendReportId: String(backendReport?.id || \"\")");
-    expect(reports).toContain('body: JSON.stringify({ scheduleEnabled: false, status: "paused" }),');
-    expect(reports).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType);");
+    expect(reports).toContain('reportPayload?: Omit<StoredReport, "id" | "generatedAt">');
+    expect(reports).toContain("const reportContentPayload = reportPayload ? buildBackendScheduledReportPayload(reportPayload) : null;");
+    expect(reports).toContain("name: reportContentPayload.name,");
+    expect(reports).toContain("description: reportContentPayload.description,");
+    expect(reports).toContain("reportType: reportContentPayload.reportType,");
+    expect(reports).toContain("configuration: reportContentPayload.configuration,");
+    expect(reports).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType, reportPayload);");
     expect(reports).toContain("const pauseScheduledReport = async (report: StoredReport) => {");
     expect(reports).toContain("if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId, report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM);");
     expect(reports).toContain('reportStorage.updateReport(report.id, { status: "Paused" });');
@@ -308,10 +372,12 @@ describe("campaign Custom Report regression guard", () => {
     expect(ga4).toContain('throw new Error("Invalid saved reports response")');
     expect(ga4).toContain("ga4ReportsError ? (");
     expect(reports).toContain("isError: backendScheduledReportsError");
+    expect(reports).toContain("isLoading: backendScheduledReportsLoading");
     expect(reports).toContain('throw new Error(json?.message || "Failed to load scheduled reports")');
     expect(reports).toContain('throw new Error("Invalid scheduled reports response")');
     expect(reports).toContain("backendScheduledReportsError && backendScheduledReports.length === 0 && campaignContextId");
-    expect(reports).toContain("storedScheduledReports.length === 0 && !backendScheduledReportsError");
+    expect(reports).toContain("storedScheduledReports.length === 0 && !backendScheduledReportsLoading && !backendScheduledReportsError");
+    expect(reports).not.toContain("Loading scheduled reports");
     expect(ga4).toContain("Reports unavailable");
     expect(reports).toContain("Reports unavailable");
   });
@@ -334,6 +400,30 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("Platform Performance Summary Cards");
     expect(scheduler).toContain("Trend metrics");
     expect(scheduler).toContain("Recommended Actions");
+  });
+
+  it("stores and serves the exact Campaign DeepDive PDF artifact without regeneration", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
+    const scheduledSend = scheduler.slice(
+      scheduler.indexOf("const pdfBuffer = await buildPdfAttachmentForReport"),
+      scheduler.indexOf("// Update metrics", scheduler.indexOf("const pdfBuffer = await buildPdfAttachmentForReport")),
+    );
+    const snapshotPdfRoute = routes.slice(
+      routes.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
+      routes.indexOf("// Get single benchmark"),
+    );
+
+    expect(scheduledSend).toContain('snapshotPlatformType === "campaign_deepdive"');
+    expect(scheduledSend).toContain("createReportPdfArtifact(pdfBuffer)");
+    expect(scheduledSend).toContain("(snapshotPayload as any).pdfArtifact = customReportPdfArtifact");
+    expect(scheduledSend.indexOf("createReportPdfArtifact(pdfBuffer)"))
+      .toBeLessThan(scheduledSend.indexOf("sendReportEmailWithRetry"));
+    expect(snapshotPdfRoute).toContain('snapshotPlatform === "campaign_deepdive"');
+    expect(snapshotPdfRoute).toContain("readReportPdfArtifact(payload)");
+    expect(snapshotPdfRoute).toContain("Immutable Custom Report PDF artifact unavailable");
+    expect(snapshotPdfRoute.indexOf("readReportPdfArtifact(payload)"))
+      .toBeLessThan(snapshotPdfRoute.indexOf('import("./report-scheduler.js")'));
   });
 
   it("keeps scheduled Budget & Financial PDFs aligned with campaign pacing metadata", () => {
@@ -370,14 +460,22 @@ describe("campaign Custom Report regression guard", () => {
 
   it("loads latest aggregate context for scheduled Campaign DeepDive PDFs", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
 
     expect(scheduler).toContain("async function buildCampaignDeepDiveReportContext");
-    expect(scheduler).toContain("aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis })");
+    expect(scheduler).toContain('import("./routes-oauth.js").then(({ readCertifiedCampaignPerformanceSummary }) =>');
+    expect(scheduler).toContain('readCertifiedCampaignPerformanceSummary(campaignId, "90days")');
+    expect(scheduler).toContain("const performanceSummary = certifiedPerformanceSummary");
     expect(scheduler).toContain("storage.getCampaign(campaignId)");
-    expect(scheduler).toContain("const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary || null;");
     expect(scheduler).toContain("const aggregateSources = Array.isArray(performanceSummary?.sources)");
     expect(scheduler).toContain("const reportContext = campaignId");
     expect(scheduler).toContain("const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
+    expect(routes).toContain('layer?.route?.path === "/api/campaigns/:id/outcome-totals"');
+    expect(routes).toContain("const campaignOutcomeTotalsHandler = campaignOutcomeTotalsRoute?.route?.stack?.at(-1)?.handle");
+    expect(routes).toContain("campaignOutcomeTotalsReader = async");
+    expect(routes).toContain("await campaignOutcomeTotalsHandler({ params: { id: campaignId }, query: { dateRange } }, internalResponse)");
+    expect(routes).toContain('app.get("/api/campaigns/:id/outcome-totals", requireCampaignAccessParamId, async (req, res) => {');
+    expect(routes).toContain('performanceSummary?.version !== "performance_summary_aggregate_v3"');
   });
 
   it("keeps scheduled report LinkedIn values tied to an active Connected Platforms source", () => {

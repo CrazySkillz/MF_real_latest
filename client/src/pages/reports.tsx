@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -119,6 +119,10 @@ const normalizeTrendReportSections = (value: unknown): string[] => {
 
 const getCampaignReportTabs = (type: string) =>
   campaignDeepDiveReportTypes.find((reportType) => reportType.key === type)?.tabs || [];
+
+const isCampaignDeepDiveDownloadReport = (report: StoredReport) =>
+  String(report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM) === CAMPAIGN_DEEPDIVE_REPORT_PLATFORM
+  && (report.type === "custom" || campaignDeepDiveReportTypes.some((reportType) => reportType.key === report.type));
 
 const getReportTabLabel = (type: string, key: string) =>
   getCampaignReportTabs(type).find((tab) => tab.key === key)?.label
@@ -360,6 +364,9 @@ export default function Reports() {
   const [originalReportFormSignature, setOriginalReportFormSignature] = useState("");
   const [reportPendingDelete, setReportPendingDelete] = useState<StoredReport | null>(null);
   const [reportSaveError, setReportSaveError] = useState("");
+  const [reportActionError, setReportActionError] = useState("");
+  const reportSaveInProgress = useRef(false);
+  const [reportSavePending, setReportSavePending] = useState(false);
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -414,7 +421,7 @@ export default function Reports() {
     enabled: !!campaignContextId,
   });
 
-  const { data: backendScheduledReports = [], isError: backendScheduledReportsError, refetch: refetchBackendScheduledReports } = useQuery<any[]>({
+  const { data: backendScheduledReports = [], isLoading: backendScheduledReportsLoading, isError: backendScheduledReportsError, refetch: refetchBackendScheduledReports } = useQuery<any[]>({
     queryKey: [`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports`, campaignContextId],
     queryFn: async () => {
       const response = await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports?campaignId=${encodeURIComponent(campaignContextId)}`, { credentials: "include" });
@@ -738,12 +745,26 @@ export default function Reports() {
     return response.json();
   };
 
-  const disableBackendScheduledReport = async (backendReportId: string, backendPlatformType = CAMPAIGN_DEEPDIVE_REPORT_PLATFORM) => {
+  const disableBackendScheduledReport = async (
+    backendReportId: string,
+    backendPlatformType = CAMPAIGN_DEEPDIVE_REPORT_PLATFORM,
+    reportPayload?: Omit<StoredReport, "id" | "generatedAt">,
+  ) => {
+    const reportContentPayload = reportPayload ? buildBackendScheduledReportPayload(reportPayload) : null;
     const response = await fetch(`/api/platforms/${backendPlatformType}/reports/${encodeURIComponent(backendReportId)}`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduleEnabled: false, status: "paused" }),
+      body: JSON.stringify({
+        ...(reportContentPayload ? {
+          name: reportContentPayload.name,
+          description: reportContentPayload.description,
+          reportType: reportContentPayload.reportType,
+          configuration: reportContentPayload.configuration,
+        } : {}),
+        scheduleEnabled: false,
+        status: "paused",
+      }),
     });
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null);
@@ -804,6 +825,9 @@ export default function Reports() {
   };
 
   const saveReport = async () => {
+    if (reportSaveInProgress.current) return;
+    reportSaveInProgress.current = true;
+    setReportSavePending(true);
     setReportSaveError("");
     const reportPayload = buildReportPayload(scheduleEnabled ? "Scheduled" : "Generated");
 
@@ -823,7 +847,7 @@ export default function Reports() {
             backendPlatformType,
           });
         } else {
-          if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType);
+          if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType, reportPayload);
           reportStorage.updateReport(editingReportId, reportPayload);
         }
       } else if (scheduleEnabled) {
@@ -836,7 +860,7 @@ export default function Reports() {
         });
       } else {
         if (campaignContextId) {
-          await downloadReportPdf({
+          await downloadCampaignReportPdf({
             ...reportPayload,
             id: `download_${Date.now()}`,
             generatedAt: new Date(),
@@ -851,20 +875,25 @@ export default function Reports() {
       }
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to save report");
+      reportSaveInProgress.current = false;
+      setReportSavePending(false);
       return;
     }
-    
+
     // Refresh the reports list
     const allReports = reportStorage.getReports();
     setAllStoredReports(allReports);
     if (campaignContextId) refetchBackendScheduledReports();
-    
+
     setShowCreateDialog(false);
     resetForm();
+    reportSaveInProgress.current = false;
+    setReportSavePending(false);
   };
 
   const deletePendingReport = async () => {
     if (!reportPendingDelete) return;
+    setReportActionError("");
     try {
       if (reportPendingDelete.backendReportId) {
         const response = await fetch(`/api/platforms/${reportPendingDelete.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports/${encodeURIComponent(reportPendingDelete.backendReportId)}`, {
@@ -872,32 +901,38 @@ export default function Reports() {
           credentials: "include",
         });
         if (!response.ok) throw new Error("Failed to delete scheduled report");
+        const localReportMirror = reportStorage.getReports().find((report) =>
+          report.backendReportId === reportPendingDelete.backendReportId
+          && report.campaignId === reportPendingDelete.campaignId
+          && String(report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM) === String(reportPendingDelete.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM)
+        );
+        if (localReportMirror) reportStorage.deleteReport(localReportMirror.id);
       }
       reportStorage.deleteReport(reportPendingDelete.id);
       setAllStoredReports(reportStorage.getReports());
       if (campaignContextId) refetchBackendScheduledReports();
       setReportPendingDelete(null);
     } catch (error: any) {
-      setReportSaveError(error?.message || "Failed to delete report");
+      setReportActionError(error?.message || "Failed to delete report");
     }
   };
 
   const pauseScheduledReport = async (report: StoredReport) => {
-    setReportSaveError("");
+    setReportActionError("");
     try {
       if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId, report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM);
       reportStorage.updateReport(report.id, { status: "Paused" });
       setAllStoredReports(reportStorage.getReports());
       if (campaignContextId) refetchBackendScheduledReports();
     } catch (error: any) {
-      setReportSaveError(error?.message || "Failed to pause scheduled report");
+      setReportActionError(error?.message || "Failed to pause scheduled report");
     }
   };
 
   const resumeScheduledReport = async (report: StoredReport) => {
-    setReportSaveError("");
+    setReportActionError("");
     if (!report.schedule) {
-      setReportSaveError("Cannot resume report because schedule details are missing.");
+      setReportActionError("Cannot resume report because schedule details are missing.");
       return;
     }
     try {
@@ -928,7 +963,7 @@ export default function Reports() {
       setAllStoredReports(reportStorage.getReports());
       if (campaignContextId) refetchBackendScheduledReports();
     } catch (error: any) {
-      setReportSaveError(error?.message || "Failed to resume scheduled report");
+      setReportActionError(error?.message || "Failed to resume scheduled report");
     }
   };
 
@@ -1059,6 +1094,57 @@ export default function Reports() {
         )}
       </div>
     );
+  };
+
+  const downloadCampaignReportPdf = async (report: StoredReport) => {
+    const reportCampaignId = report.campaignId || campaignContextId;
+    if (!reportCampaignId) throw new Error("Campaign is required to generate this report");
+
+    let pdfResponse: Response;
+    if (report.backendReportId) {
+      const platformType = report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM;
+      const snapshotResponse = await fetch(`/api/platforms/${platformType}/reports/${encodeURIComponent(report.backendReportId)}/snapshots`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const snapshotBody = await snapshotResponse.json().catch(() => null);
+      if (!snapshotResponse.ok) throw new Error(snapshotBody?.error || snapshotBody?.message || "Failed to generate report snapshot");
+      const snapshotId = String(snapshotBody?.snapshot?.id || "").trim();
+      if (!snapshotId) throw new Error("Generated report snapshot is unavailable");
+      pdfResponse = await fetch(`/api/report-snapshots/${encodeURIComponent(snapshotId)}/pdf`, { credentials: "include" });
+    } else {
+      pdfResponse = await fetch(`/api/campaigns/${encodeURIComponent(reportCampaignId)}/custom-report-pdf`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: report.name,
+          reportType: report.type,
+          selectedSections: normalizeTrendReportSections(report.selectedSections),
+          selectedMetrics: Array.isArray(report.selectedMetrics) ? report.selectedMetrics : [],
+        }),
+      });
+    }
+
+    if (!pdfResponse.ok) {
+      const errorBody = await pdfResponse.json().catch(() => null);
+      throw new Error(errorBody?.error || errorBody?.message || "Failed to download report");
+    }
+    const pdfBlob = await pdfResponse.blob();
+    const signature = new TextDecoder().decode(await pdfBlob.slice(0, 5).arrayBuffer());
+    if (!signature.startsWith("%PDF-")) throw new Error("Generated report PDF is invalid");
+    const objectUrl = URL.createObjectURL(pdfBlob);
+    try {
+      const link = document.createElement("a");
+      const safeName = report.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
+      link.href = objectUrl;
+      link.download = `${safeName}_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   };
 
   const downloadReportPdf = async (report: StoredReport) => {
@@ -2067,6 +2153,16 @@ export default function Reports() {
     doc.save(`${safeName}_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
+  const downloadLatestReport = async (report: StoredReport) => {
+    setReportActionError("");
+    try {
+      if ((report.campaignId || campaignContextId) && isCampaignDeepDiveDownloadReport(report)) await downloadCampaignReportPdf(report);
+      else await downloadReportPdf(report);
+    } catch (error: any) {
+      setReportActionError(error?.message || "Failed to download report");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -2409,7 +2505,8 @@ export default function Reports() {
                       <div className="flex items-center space-x-3">
                         <Button 
                           onClick={saveReport}
-                          disabled={!isReportFormValid || !isReportFormChanged}
+                          disabled={!isReportFormValid || !isReportFormChanged || reportSavePending}
+                          aria-busy={reportSavePending}
                         >
                           {editingReportId ? "Update Report" : scheduleEnabled ? "Schedule Report" : "Download Report"}
                         </Button>
@@ -2421,6 +2518,11 @@ export default function Reports() {
             </div>
 
             {/* Reports Tabs */}
+            {reportActionError && (
+              <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {reportActionError}
+              </div>
+            )}
             {backendScheduledReportsError && backendScheduledReports.length === 0 && campaignContextId && (
               <Card className="border-border">
                 <CardContent className="py-6 text-center">
@@ -2440,7 +2542,7 @@ export default function Reports() {
 
               <TabsContent value="scheduled" className="space-y-6">
                 <div className="grid gap-6">
-                  {storedScheduledReports.length === 0 && !backendScheduledReportsError ? (
+                  {storedScheduledReports.length === 0 && !backendScheduledReportsLoading && !backendScheduledReportsError ? (
                     <Card>
                       <CardContent className="py-12">
                         <div className="text-center text-muted-foreground/70">
@@ -2507,7 +2609,7 @@ export default function Reports() {
                           
                           <div className="flex items-center justify-between pt-4 border-t">
                             <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                              <Button variant="outline" size="sm" onClick={() => downloadLatestReport(report)}>
                                 <Download className="w-4 h-4 mr-2" />
                                 Download latest report
                               </Button>
@@ -2696,7 +2798,7 @@ export default function Reports() {
                                     >
                                       <Edit className="w-4 h-4" />
                                     </Button>
-                                    <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                                    <Button variant="outline" size="sm" onClick={() => downloadLatestReport(report)}>
                                       <Download className="w-4 h-4 mr-2" />
                                       Download latest report
                                     </Button>
@@ -2765,7 +2867,7 @@ export default function Reports() {
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                              <Button variant="outline" size="sm" onClick={() => downloadLatestReport(report)}>
                                 <Download className="w-4 h-4 mr-2" />
                                 Download latest report
                               </Button>

@@ -515,6 +515,8 @@ export default function FinancialAnalysis() {
   const overviewSpendMetric = getOverviewMetric("spend", totalSpend);
   const overviewRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);
   const overviewConversionsMetric = getOverviewMetric("conversions", totalConversions);
+  const overviewClicksMetric = getOverviewMetric("clicks", totalClicks);
+  const overviewSessionsMetric = getOverviewMetric("sessions", 0);
   const overviewCpcMetric = getOverviewMetric("cpc", cpc);
   const overviewCpaMetric = getOverviewMetric("cpa", cpa);
   const overviewCpmMetric = getOverviewMetric("cpm", cpm);
@@ -699,6 +701,14 @@ export default function FinancialAnalysis() {
     { label: "CTR", metric: campaignToDateEfficiencyMetric(overviewCtrMetric, "CTR"), value: formatOverviewPercentage(overviewCtrMetric) },
   ].filter((item) => item.metric.available);
   const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, "CVR");
+  const conversionEfficiencyCvrInputs = aggregateMetricSources("cvr");
+  const conversionEfficiencyDescription = conversionEfficiencyCvrInputs.includes("sessions")
+    && overviewConversionsMetric.available && overviewSessionsMetric.available
+      ? `${formatNumber(overviewConversionsMetric.value)} conversions from ${formatNumber(overviewSessionsMetric.value)} sessions in the cumulative reporting window.`
+    : conversionEfficiencyCvrInputs.includes("clicks")
+      && overviewConversionsMetric.available && overviewClicksMetric.available
+        ? `${formatNumber(overviewConversionsMetric.value)} conversions from ${formatNumber(overviewClicksMetric.value)} clicks in the cumulative reporting window.`
+        : "CVR uses compatible cumulative conversion and traffic inputs.";
   const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];
 
   // Calculate comparison metrics
@@ -901,7 +911,7 @@ export default function FinancialAnalysis() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <h3 id="conversion-efficiency-heading" className="font-semibold">Conversion Efficiency</h3>
-                        <p className="text-sm text-muted-foreground">CVR shows how effectively campaign sessions or clicks become conversions.</p>
+                        <p className="text-sm text-muted-foreground">{conversionEfficiencyDescription}</p>
                         {conversionEfficiencySourceLabels.length > 0 && (
                           <p className="mt-1 text-xs text-muted-foreground">Source: {conversionEfficiencySourceLabels.join(", ")}</p>
                         )}

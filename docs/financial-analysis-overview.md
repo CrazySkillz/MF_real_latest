@@ -52,8 +52,10 @@ import boundary through the latest completed reporting day.
 - `Profit = Total Revenue - Total Spend`; it is unavailable unless both inputs are
   compatible and available.
 - `CVR` appears as the compact `Conversion Efficiency` subsection only when available.
-  Its source labels come from connected main sources that provide conversions plus
-  sessions or clicks.
+  Its explanation names the actual aggregate denominator and displayed inputs: web
+  analytics shows cumulative conversions and sessions, while a compatible non-web
+  source shows cumulative conversions and clicks. Its source labels come from the
+  connected main sources that supplied those inputs.
 - Missing inputs render `Unavailable`; they are never displayed as zero.
 
 ### Budget & Pacing

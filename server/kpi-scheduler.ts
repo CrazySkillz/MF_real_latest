@@ -234,11 +234,23 @@ export async function checkWeeklyReminders(): Promise<void> {
  * Check performance alerts for all active KPIs
  */
 export async function checkPerformanceAlerts(): Promise<void> {
+  await checkPerformanceAlertsForScope();
+}
+
+export async function checkGA4PerformanceAlertsForCampaign(campaignId: string): Promise<void> {
+  const requestedCampaignId = String(campaignId || "").trim();
+  if (!requestedCampaignId) throw new Error("Campaign ID is required");
+  await checkPerformanceAlertsForScope(requestedCampaignId);
+}
+
+async function checkPerformanceAlertsForScope(campaignId?: string): Promise<void> {
   console.log('[KPI Scheduler] Checking performance alerts...');
 
   try {
-    const activeKPIsRaw = await db.select()
-      .from(kpis);
+    const requestedCampaignId = String(campaignId || "").trim();
+    const activeKPIsRaw = requestedCampaignId
+      ? await db.select().from(kpis).where(and(eq(kpis.campaignId, requestedCampaignId), eq(kpis.platformType, "google_analytics")))
+      : await db.select().from(kpis);
 
     const activeKPIs = activeKPIsRaw;
     const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(activeKPIsRaw);
@@ -280,6 +292,7 @@ export async function checkPerformanceAlerts(): Promise<void> {
     }
   } catch (error) {
     console.error('[KPI Scheduler] Error checking performance alerts:', error);
+    if (campaignId) throw error;
   }
 }
 

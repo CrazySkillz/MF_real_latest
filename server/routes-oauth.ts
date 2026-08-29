@@ -36,7 +36,7 @@ import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { db } from "./db";
 import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
-import { checkPerformanceAlerts } from "./kpi-scheduler";
+import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation } from "./auto-refresh-scheduler";
 import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefreshPipeline } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
@@ -8694,6 +8694,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: error?.message || "Failed to run GA4 daily scheduler validation",
         schedulerStatus: getGA4DailySchedulerStatus(),
       });
+    }
+  });
+
+  // Owner-guarded, campaign-scoped refresh and in-app GA4 alert reconciliation.
+  app.post("/api/campaigns/:id/ga4-notifications/reconcile", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "").trim();
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
+      const refreshStatus = getGA4DailySchedulerStatus();
+      if (refreshStatus.lastRunStatus === "skipped") {
+        return res.status(409).json({ success: false, message: "GA4 refresh already in progress" });
+      }
+      await checkGA4PerformanceAlertsForCampaign(campaignId);
+      const { checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("./benchmark-notifications.js");
+      await checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId);
+
+      res.json({ success: true, campaignId });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error?.message || "Failed to reconcile GA4 notifications" });
     }
   });
 

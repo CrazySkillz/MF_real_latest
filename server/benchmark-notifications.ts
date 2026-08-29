@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -84,13 +84,23 @@ function buildBenchmarkActionUrl(b: any): string {
  * - Prevents duplicates for the same benchmark within the same day
  */
 export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
+  return checkBenchmarkPerformanceAlertsForScope();
+}
+
+export async function checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId: string): Promise<number> {
+  const requestedCampaignId = String(campaignId || "").trim();
+  if (!requestedCampaignId) throw new Error("Campaign ID is required");
+  return checkBenchmarkPerformanceAlertsForScope(requestedCampaignId);
+}
+
+async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string): Promise<number> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const items = await db
-    .select()
-    .from(benchmarks)
-    .where(eq(benchmarks.status, "active"));
+  const requestedCampaignId = String(campaignId || "").trim();
+  const items = await db.select().from(benchmarks).where(requestedCampaignId
+    ? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics"))
+    : eq(benchmarks.status, "active"));
 
   // Pull all performance-alert notifications once and do metadata matching in-memory (cheap at current scale).
   const existingAlerts = await db

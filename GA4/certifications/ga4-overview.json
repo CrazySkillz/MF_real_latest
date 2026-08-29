@@ -49,7 +49,7 @@
     { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics boundary", "sha256": "3ea8fae2ab55e934bb0cd83f54353866df2565f552d7c9509fff266b9eae2aec" },
     { "path": "PRODUCTION_READINESS.md", "role": "production-readiness contract", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
     { "path": "GA4_DEVELOPMENT_WORKFLOW.md", "role": "GA4 validation workflow", "sha256": "3c41bf02990f5d19109e2eaa5de4d36865426eb0ebc6826e2bcfc7c0e816fd50" },
-    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "54c7ed9f190f475cf6ed1fbcdbe189545e284b53034229fcdfc5487a9656a223" },
+    { "path": "GA4/README.md", "role": "GA4 status index", "sha256": "21bc7fd5bab9989509ab88ede0d706f685b5bc3e0bd83eeb899c91c934690ae7" },
     { "path": "GA4/OVERVIEW.md", "role": "Overview product contract", "sha256": "69674266ea977be0ff039327d3c706897a5ac02ba61874ef9a4a785c73da6fca" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md", "role": "controlling Overview readiness decision", "sha256": "63b1462deffacd9b1fb9f71bb869d02183f2dae472c65aecd6ec60fc62722c40" },
     { "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md", "role": "Overview evidence ledger", "sha256": "9567f00aedb4ae5e222e1abe34d85992959f57820d4cafa9e3934250dc3b3373" },
@@ -139,7 +139,7 @@
       "id": "certification_integrity",
       "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
       "status": "passed",
-      "evidence": "The fail-closed Overview certification regression and standalone checker pass with the final PRODUCTION_READY record and locked dependency hashes."
+      "evidence": "The fail-closed Overview certification regression and standalone checker pass with the final PRODUCTION_READY record and locked dependency hashes. The 94f1096f synchronization changes only shared README text for KPI/Reports; the Overview status scope and certified runtime remain 4be16c54."
     },
     {
       "id": "focused_overview_regressions",

@@ -51,7 +51,7 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "54c7ed9f190f475cf6ed1fbcdbe189545e284b53034229fcdfc5487a9656a223"
+      "sha256": "21bc7fd5bab9989509ab88ede0d706f685b5bc3e0bd83eeb899c91c934690ae7"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
@@ -179,7 +179,7 @@
       "id": "certification_gate",
       "command": "vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
       "status": "passed",
-      "evidence": "10/10 gate tests passed and the repository checker accepted the current positive PRODUCTION_READY envelope with the normalized dependency boundary."
+      "evidence": "10/10 gate tests passed and the repository checker accepted the current positive PRODUCTION_READY envelope with the normalized dependency boundary. The 94f1096f synchronization changes only shared README text for KPI/Reports; the Ad Comparison status scope and certified runtime remain 4be16c54."
     },
     {
       "id": "focused_real_paths",

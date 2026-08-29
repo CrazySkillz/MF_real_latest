@@ -61,7 +61,7 @@
                          {
                              "path":  "GA4/README.md",
                              "role":  "GA4 status index",
-                             "sha256":  "54c7ed9f190f475cf6ed1fbcdbe189545e284b53034229fcdfc5487a9656a223"
+                             "sha256":  "21bc7fd5bab9989509ab88ede0d706f685b5bc3e0bd83eeb899c91c934690ae7"
                          },
                          {
                              "path":  "GA4/FINANCIAL_SOURCES.md",
@@ -498,7 +498,7 @@
                           {
                               "id":  "machine_gate",
                               "status":  "passed",
-                              "evidence":  "The fail-closed machine checker passes for the final PRODUCTION_READY record and rejects contradictory status mirrors or changed dependency hashes."
+                              "evidence":  "The fail-closed machine checker passes for the final PRODUCTION_READY record and rejects contradictory status mirrors or changed dependency hashes. The 94f1096f synchronization changes only shared README text for KPI/Reports; the Insights status scope and certified runtime remain 4be16c54."
                           }
                       ],
     "externalGates":  [

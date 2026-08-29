@@ -500,7 +500,7 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);");
+    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !isError && !selectedNotification);");
     expect(notificationsPage).toContain('data-testid="selected-notification-missing-alert"');
     expect(notificationsPage).toContain("Selected alert is no longer active");
     expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
@@ -550,8 +550,22 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("{isLoading ? null : filteredNotifications.length === 0 ? (");
+    expect(notificationsPage).toContain("{isLoading || (isError && notifications.length === 0) ? null : filteredNotifications.length === 0 ? (");
     expect(notificationsPage).not.toContain("Loading notifications...");
+  });
+
+  it("does not present a Notifications query failure as an empty alert list", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("isLoading, isError, isFetching, refetch");
+    expect(notificationsPage).toContain('data-testid="notifications-load-error"');
+    expect(notificationsPage).toContain("Notifications could not be loaded");
+    expect(notificationsPage).toContain("Your alerts may still exist. Try loading them again.");
+    expect(notificationsPage).toContain("onClick={() => void refetch()}");
+    expect(notificationsPage).toContain("selectedNotificationId && !isLoading && !isError && !selectedNotification");
   });
 
   it("does not render read-state header controls on the Notifications page", () => {

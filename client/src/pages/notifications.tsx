@@ -32,7 +32,7 @@ export default function Notifications() {
   const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";
   const { clients } = useClient();
 
-  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+  const { data: notifications = [], isLoading, isError, isFetching, refetch } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     staleTime: 0,
     refetchOnMount: "always",
@@ -145,7 +145,7 @@ export default function Notifications() {
   const selectedNotification = selectedNotificationId
     ? notifications.find((notification) => String(notification.id) === selectedNotificationId)
     : undefined;
-  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);
+  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !isError && !selectedNotification);
   const selectedNotificationVisible = selectedNotificationId
     ? paginatedNotifications.some((notification) => String(notification.id) === selectedNotificationId)
     : false;
@@ -375,8 +375,27 @@ export default function Notifications() {
               </Card>
             )}
 
+            {isError && (
+              <Card className="mb-6 border-red-200 bg-red-50/60" data-testid="notifications-load-error">
+                <CardContent className="py-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Notifications could not be loaded</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Your alerts may still exist. Try loading them again.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+                      Try again
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Notifications List */}
-            {isLoading ? null : filteredNotifications.length === 0 ? (
+            {isLoading || (isError && notifications.length === 0) ? null : filteredNotifications.length === 0 ? (
               <Card>
                 <CardContent className="py-12">
                   <div className="text-center">

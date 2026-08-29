@@ -4971,13 +4971,12 @@ export default function CampaignDetail() {
     }
   ];
 
-  // Show ALL platforms, but only connected ones will have the blue badge and analytics button
-  // The platform cards will show connection status and allow users to connect from the campaign detail page
-  const platformMetrics = allPlatformMetrics;
+  // Campaign Overview is GA4-first; other main-platform cards will return in a later product version.
+  const platformMetrics = allPlatformMetrics.filter(({ platform }) => platform === "Google Analytics");
   
   devLog('[Campaign Detail] Connected platform IDs:', connectedPlatformIds);
   devLog('[Campaign Detail] Connected platform names:', connectedPlatformNames);
-  devLog('[Campaign Detail] Showing all platforms, connected count:', platformMetrics.filter(p => p.connected).length);
+  devLog('[Campaign Detail] Showing Campaign Overview platforms, connected count:', platformMetrics.filter(p => p.connected).length);
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {

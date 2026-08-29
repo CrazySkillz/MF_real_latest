@@ -181,6 +181,11 @@ const platforms = [
   }
 ];
 
+const GA4_FIRST_CREATE_CAMPAIGN_PLATFORM_IDS = new Set(["google-analytics"]);
+const isCreateCampaignPlatformEnabled = (platformId: string) =>
+  GA4_FIRST_CREATE_CAMPAIGN_PLATFORM_IDS.has(platformId);
+const createCampaignPlatforms = platforms.filter(({ id }) => isCreateCampaignPlatformEnabled(id));
+
 const SIMULATED_INSTAGRAM_AD_ACCOUNTS = [
   { id: "act_instagram_test", name: "Test Instagram Ad Account" },
   { id: "act_instagram_growth", name: "Growth Campaigns Account" },
@@ -219,6 +224,7 @@ export default function Campaigns() {
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
   const [connectedPlatformsInDialog, setConnectedPlatformsInDialog] = useState<string[]>([]);
+  const createCampaignConnectedPlatforms = connectedPlatformsInDialog.filter(isCreateCampaignPlatformEnabled);
   const [ga4CampaignFilterForNewCampaign, setGa4CampaignFilterForNewCampaign] = useState<string>("");
 
   // GA4 wizard state (for Step 4: Configure)
@@ -524,6 +530,12 @@ export default function Campaigns() {
 
   const handleConnectorsComplete = async (selectedPlatforms: string[]) => {
     if (!campaignData || !draftCampaignId) return;
+
+    selectedPlatforms = selectedPlatforms.filter(isCreateCampaignPlatformEnabled);
+    if (selectedPlatforms.length === 0) {
+      toast({ title: "Platform required", description: "Connect an available platform before creating this campaign.", variant: "destructive" });
+      return;
+    }
 
     console.log('🚀 handleConnectorsComplete called with platforms:', selectedPlatforms);
     console.log('🚀 Current connectedPlatformsInDialog:', connectedPlatformsInDialog);
@@ -1312,7 +1324,7 @@ export default function Campaigns() {
                     /* Step 2: Select Platform */
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
-                        {platforms.map((platform) => {
+                        {createCampaignPlatforms.map((platform) => {
                           const Icon = platform.icon;
                           const isConnected = connectedPlatformsInDialog.includes(platform.id);
                           const isComingSoon = ['twitter'].includes(platform.id);
@@ -1358,7 +1370,7 @@ export default function Campaigns() {
                         <Button type="button" variant="outline" onClick={() => setWizardStep(1)}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back
                         </Button>
-                        {connectedPlatformsInDialog.length > 0 && (
+                        {createCampaignConnectedPlatforms.length > 0 && (
                           <Button type="button" className="ml-auto" onClick={handleContinuePlatformSetup}>
                             Continue
                           </Button>
@@ -1833,9 +1845,9 @@ export default function Campaigns() {
                         )}
                         <div className="border-t pt-3">
                           <div className="text-sm text-muted-foreground mb-2">Selected Platforms</div>
-                          {connectedPlatformsInDialog.length > 0 ? (
+                          {createCampaignConnectedPlatforms.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
-                              {connectedPlatformsInDialog.map(id => {
+                              {createCampaignConnectedPlatforms.map(id => {
                                 const p = platforms.find(pl => pl.id === id);
                                 if (!p) return null;
                                 const Icon = p.icon;
@@ -1880,8 +1892,8 @@ export default function Campaigns() {
                         <Button
                           type="button"
                           className="flex-1"
-                          onClick={() => handleConnectorsComplete(connectedPlatformsInDialog)}
-                          disabled={createCampaignMutation.isPending || connectedPlatformsInDialog.length === 0}
+                          onClick={() => handleConnectorsComplete(createCampaignConnectedPlatforms)}
+                          disabled={createCampaignMutation.isPending || createCampaignConnectedPlatforms.length === 0}
                         >
                           {createCampaignMutation.isPending ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>

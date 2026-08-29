@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
@@ -74,6 +74,8 @@ const performanceSummary = {
 
 describe("scheduled Performance Summary PDF", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
     vi.clearAllMocks();
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
@@ -119,6 +121,8 @@ describe("scheduled Performance Summary PDF", () => {
     });
     aggregateCampaignMetricsMock.mockResolvedValue({ detailedMetrics: { performanceSummary } });
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it("normalizes legacy tabs into one consolidated UI-equivalent body", async () => {
     const buffer = await buildPdfAttachmentForReport({

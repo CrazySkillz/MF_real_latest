@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
@@ -93,6 +93,8 @@ const report = (reportType: string, selectedSections: string[]) => ({
 
 describe("scheduled Campaign DeepDive UI value parity", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
     vi.clearAllMocks();
     storageMock.getCampaign.mockResolvedValue({
@@ -173,6 +175,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       },
     });
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it("uses cumulative UI traffic, current financial totals, and the default 30-day Trend comparison", async () => {
     await buildPdfAttachmentForReport({

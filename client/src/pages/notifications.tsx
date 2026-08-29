@@ -258,6 +258,7 @@ export default function Notifications() {
   };
   return (
     <div className="min-h-screen bg-background">
+      <style>{`body[data-scroll-locked]:has([data-notifications-filter-select]) { margin-right: 0 !important; }`}</style>
       <Navigation />
       
       <div className="flex">
@@ -295,7 +296,7 @@ export default function Notifications() {
                       <SelectTrigger data-testid="select-priority-filter">
                         <SelectValue placeholder="All priorities" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-notifications-filter-select>
                         <SelectItem value="all">All Priorities</SelectItem>
                         <SelectItem value="urgent">Urgent</SelectItem>
                         <SelectItem value="high">High</SelectItem>
@@ -310,7 +311,7 @@ export default function Notifications() {
                       <SelectTrigger data-testid="select-client-filter">
                         <SelectValue placeholder="All clients" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-notifications-filter-select>
                         <SelectItem value="all">All Clients</SelectItem>
                         {uniqueClientIds.map((clientId) => (
                           <SelectItem key={clientId} value={clientId || ""}>
@@ -327,7 +328,7 @@ export default function Notifications() {
                       <SelectTrigger data-testid="select-campaign-filter">
                         <SelectValue placeholder="All campaigns" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-notifications-filter-select>
                         <SelectItem value="all">All Campaigns</SelectItem>
                         {uniqueCampaignOptions.map((campaign) => (
                           <SelectItem key={campaign.id} value={campaign.id}>
@@ -344,7 +345,7 @@ export default function Notifications() {
                       <SelectTrigger data-testid="select-date-filter">
                         <SelectValue placeholder="All dates" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-notifications-filter-select>
                         <SelectItem value="all">All Dates</SelectItem>
                         <SelectItem value="today">Today</SelectItem>
                         <SelectItem value="yesterday">Yesterday</SelectItem>

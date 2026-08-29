@@ -4,6 +4,13 @@ import { join } from "path";
 import { resolveStoredGA4TrafficFreshness } from "./utils/ga4-alert-current-value";
 
 describe("notification visibility regression guard", () => {
+  it("keeps Notifications filter dropdowns from shifting the page scrollbar gutter", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "notifications.tsx"), "utf-8");
+
+    expect(page).toContain("body[data-scroll-locked]:has([data-notifications-filter-select]) { margin-right: 0 !important; }");
+    expect((page.match(/<SelectContent data-notifications-filter-select>/g) || []).length).toBe(4);
+  });
+
   it("fails closed when Notifications re-evaluate a KPI from stale stored GA4 traffic", () => {
     const freshness = resolveStoredGA4TrafficFreshness({
       rows: [{ date: "2026-08-12", updatedAt: "2026-08-15T07:18:25.626Z" }],

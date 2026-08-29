@@ -1,8 +1,8 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
-import { checkPerformanceAlerts } from "./kpi-scheduler";
-import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
+import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
+import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
@@ -352,6 +352,16 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     if (refreshFailure) throw new Error(refreshFailure);
 
     if (!campaignId && !opts.suppressAlerts) {
+      for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
+        const providerCoverageThroughDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
+        if (!providerCoverageThroughDate) continue;
+        try {
+          await checkGA4PerformanceAlertsForCampaign(processedCampaignId, providerCoverageThroughDate);
+          await checkGA4BenchmarkPerformanceAlertsForCampaign(processedCampaignId, providerCoverageThroughDate);
+        } catch (e: any) {
+          console.warn(`[GA4 Daily] Campaign-scoped alert check failed for ${processedCampaignId}:`, e?.message || e);
+        }
+      }
       try {
         await checkPerformanceAlerts();
       } catch (e: any) {

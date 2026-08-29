@@ -119,7 +119,7 @@ export async function createKPIReminder(kpi: KPI): Promise<void> {
  * Create a performance alert notification
  * Triggered when current value breaches alert threshold
  */
-export async function createKPIAlert(kpi: KPI): Promise<void> {
+export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroughDate?: string } = {}): Promise<void> {
   if (!shouldTriggerAlert(kpi)) {
     await resolveKPIAlerts(String(kpi.id), 'cleared');
     return;
@@ -179,10 +179,14 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     ? `Current value: ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)}`
     : `Current value: ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)}. Alert threshold value: ${formatAlertDisplayValue(alertThreshold, kpi.unit)}`;
   const actionUrl = buildKPIActionUrl(kpi);
+  const providerCoverageThroughDate = /^\d{4}-\d{2}-\d{2}$/.test(String(options.providerCoverageThroughDate || ""))
+    ? String(options.providerCoverageThroughDate)
+    : null;
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'performance-alert',
     actionUrl,
+    ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
     ...(windowKey ? { windowKey } : {}),
   });
   const nextTitle = `⚠️ KPI Alert: ${kpi.name}`;
@@ -273,6 +277,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
             kpiId: kpi.id,
             alertType: 'performance-alert',
             actionUrl,
+            ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
             ...(windowKey ? { windowKey } : {}),
           }),
         } as any);

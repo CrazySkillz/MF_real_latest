@@ -6,7 +6,7 @@ import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, inse
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
-import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 import { getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
@@ -6766,14 +6766,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     validationReadOnly
       ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false })
       : resolveNotificationAlertRow(row);
-  const resolveNotificationKPIAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
-    validationReadOnly
-      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true })
+  const resolveNotificationKPIAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> => {
+    const providerCoverageThroughDate = String(row?.__providerCoverageThroughDate || "") || undefined;
+    if (validationReadOnly) return providerCoverageThroughDate
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
+      : resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true });
+    return providerCoverageThroughDate
+      ? resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
       : resolveNotificationKPIAlertRow(row);
-  const resolveNotificationBenchmarkAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
-    validationReadOnly
-      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true })
+  };
+  const resolveNotificationBenchmarkAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> => {
+    const providerCoverageThroughDate = String(row?.__providerCoverageThroughDate || "") || undefined;
+    if (validationReadOnly) return providerCoverageThroughDate
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
+      : resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true });
+    return providerCoverageThroughDate
+      ? resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
       : resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true });
+  };
   const isResolvedAlertRowBreached = (resolved: any): boolean =>
     isAlertDecisionBreached(resolved);
   const isLatestGA4NotificationKPI = async (kpi: any): Promise<boolean> => {
@@ -6883,6 +6893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
               if (!isPerformanceAlert) return n;
               if (!(await isLatestGA4NotificationKPI(kpi))) return null;
+              (kpi as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;
               const resolvedKpi = await resolveNotificationKPIAlertRowForRequest(kpi, validationReadOnly);
               if (!isResolvedAlertRowBreached(resolvedKpi)) return null;
               return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");
@@ -6892,6 +6903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
               if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
               if (!isPerformanceAlert) return n;
+              (benchmark as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;
               const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);
               if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;
               return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");
@@ -6928,6 +6940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
           if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
           if (!(await isLatestGA4NotificationKPI(kpi))) return null;
+          (kpi as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;
           const resolvedKpi = await resolveNotificationKPIAlertRowForRequest(kpi, validationReadOnly);
           return isResolvedAlertRowBreached(resolvedKpi)
             ? enrichPerformanceAlertNotification(n, resolvedKpi, "kpi")
@@ -6936,6 +6949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (meta?.benchmarkId) {
           const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
           if (!benchmark || String((benchmark as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
+          (benchmark as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;
           const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);
           return isResolvedAlertRowBreached(resolvedBenchmark)
             ? enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark")
@@ -8702,17 +8716,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.id || "").trim();
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      const providerCoverageThroughDate = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone).endDate;
 
       await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
       const refreshStatus = getGA4DailySchedulerStatus();
       if (refreshStatus.lastRunStatus === "skipped") {
         return res.status(409).json({ success: false, message: "GA4 refresh already in progress" });
       }
-      await checkGA4PerformanceAlertsForCampaign(campaignId);
+      await checkGA4PerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);
       const { checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("./benchmark-notifications.js");
-      await checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId);
+      await checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);
 
       res.json({ success: true, campaignId });
     } catch (error: any) {

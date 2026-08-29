@@ -51,6 +51,7 @@ type StoredGA4TrafficFreshnessInput = {
   dataThroughDate: string;
   now?: Date;
   schedulerConfig?: { reportingTimeZone: string; hour: number; minute: number };
+  providerCoverageThroughDate?: string | null;
 };
 
 const addDateOnlyDays = (value: string, days: number): string | null => {
@@ -103,7 +104,7 @@ export function resolveStoredGA4TrafficFreshness(input: StoredGA4TrafficFreshnes
     expectedRefreshAt: getExpectedDailyRefreshAt(input.dataThroughDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute),
     lastCompletedRefreshAt,
     oldestDueMissingDailyDate,
-    providerCoverageThroughDate: null,
+    providerCoverageThroughDate: input.providerCoverageThroughDate || null,
     now,
   });
 }
@@ -118,7 +119,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
 }>(
   row: T,
   cache?: Map<string, Promise<any>>,
-  options: { allowCredentialRefresh?: boolean; requireCurrentTrafficFreshness?: boolean } = {},
+  options: { allowCredentialRefresh?: boolean; requireCurrentTrafficFreshness?: boolean; providerCoverageThroughDate?: string | null } = {},
 ): Promise<T & Record<string, any>> {
   const resolved = await resolveCampaignCurrentValueForAlert(row, cache);
   if (!isGA4Platform((resolved as any)?.platformType)) return resolved as T & Record<string, any>;
@@ -163,6 +164,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       rows: trafficRows,
       startDate,
       dataThroughDate: endDate,
+      providerCoverageThroughDate: options.providerCoverageThroughDate,
     }).refreshIsStale) {
       return blockAlertDecision(resolved, "stale");
     }

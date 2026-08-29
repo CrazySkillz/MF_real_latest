@@ -237,28 +237,30 @@ export async function checkPerformanceAlerts(): Promise<void> {
   await checkPerformanceAlertsForScope();
 }
 
-export async function checkGA4PerformanceAlertsForCampaign(campaignId: string): Promise<void> {
+export async function checkGA4PerformanceAlertsForCampaign(campaignId: string, providerCoverageThroughDate: string): Promise<void> {
   const requestedCampaignId = String(campaignId || "").trim();
   if (!requestedCampaignId) throw new Error("Campaign ID is required");
-  await checkPerformanceAlertsForScope(requestedCampaignId);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(providerCoverageThroughDate)) throw new Error("GA4 provider coverage date is required");
+  await checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
 }
 
-async function checkPerformanceAlertsForScope(campaignId?: string): Promise<void> {
+async function checkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string): Promise<void> {
   console.log('[KPI Scheduler] Checking performance alerts...');
 
   try {
     const requestedCampaignId = String(campaignId || "").trim();
-    const activeKPIsRaw = requestedCampaignId
-      ? await db.select().from(kpis).where(and(eq(kpis.campaignId, requestedCampaignId), eq(kpis.platformType, "google_analytics")))
-      : await db.select().from(kpis);
-
+    const activeKPIsRaw = await db.select()
+      .from(kpis);
     const activeKPIs = activeKPIsRaw;
-    const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(activeKPIsRaw);
+    const scopedActiveKPIs = requestedCampaignId
+      ? activeKPIs.filter((kpi: any) => String(kpi?.campaignId || "") === requestedCampaignId && String(kpi?.platformType || "") === "google_analytics")
+      : activeKPIs;
+    const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(scopedActiveKPIs);
 
     console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 
     const campaignMetricCache = new Map<string, Promise<any>>();
-    for (const rawKpi of activeKPIs) {
+    for (const rawKpi of scopedActiveKPIs) {
       if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) {
         await resolveKPIAlerts(String((rawKpi as any).id), 'superseded');
         continue;
@@ -284,7 +286,8 @@ async function checkPerformanceAlertsForScope(campaignId?: string): Promise<void
       
       if (shouldTriggerAlert(kpi)) {
         console.log(`[KPI Scheduler] ✅ TRIGGERING ALERT for: ${kpi.name}`);
-        await createKPIAlert(kpi);
+        if (providerCoverageThroughDate) await createKPIAlert(kpi, { providerCoverageThroughDate });
+        else await createKPIAlert(kpi);
       } else {
         console.log(`[KPI Scheduler] ❌ No alert needed for: ${kpi.name}`);
         await resolveKPIAlerts(String(kpi.id), 'cleared');

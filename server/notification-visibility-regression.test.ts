@@ -27,8 +27,23 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
     expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true })");
-    expect(routesFile).toContain("{ allowCredentialRefresh: false, requireCurrentTrafficFreshness: true }");
+    expect(routesFile).toContain("allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate");
+    expect(routesFile).toContain("(benchmark as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;");
     expect(routesFile).toContain("const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);");
+  });
+
+  it("accepts exact provider coverage without inventing rows for sparse GA4 days", () => {
+    const freshness = resolveStoredGA4TrafficFreshness({
+      rows: [{ date: "2026-08-10", updatedAt: "2026-08-29T14:09:00.000Z" }],
+      startDate: "2026-07-30",
+      dataThroughDate: "2026-08-28",
+      providerCoverageThroughDate: "2026-08-28",
+      now: new Date("2026-08-29T14:10:00.000Z"),
+      schedulerConfig: { reportingTimeZone: "UTC", hour: 22, minute: 0 },
+    });
+
+    expect(freshness.refreshIsStale).toBe(false);
+    expect(freshness.providerCoverageThroughDate).toBe("2026-08-28");
   });
 
   it("hides resolved alert notifications from visible notification lists", () => {

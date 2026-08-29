@@ -87,13 +87,14 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
   return checkBenchmarkPerformanceAlertsForScope();
 }
 
-export async function checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId: string): Promise<number> {
+export async function checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId: string, providerCoverageThroughDate: string): Promise<number> {
   const requestedCampaignId = String(campaignId || "").trim();
   if (!requestedCampaignId) throw new Error("Campaign ID is required");
-  return checkBenchmarkPerformanceAlertsForScope(requestedCampaignId);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(providerCoverageThroughDate)) throw new Error("GA4 provider coverage date is required");
+  return checkBenchmarkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
 }
 
-async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string): Promise<number> {
+async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string): Promise<number> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -200,6 +201,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string): Pro
       alertType: "benchmark-alert",
       actionUrl,
       ...(windowKey ? { windowKey } : {}),
+      ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
     });
     const nextTitle = `⚠️ Benchmark Alert: ${b.name}`;
     const nextMessage = `Current value: ${formatAlertDisplayValue(currentValue, b.unit)}. Alert threshold value: ${formatAlertDisplayValue(thresholdValue, b.unit)}`;
@@ -274,6 +276,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string): Pro
               alertType: "benchmark-alert",
               actionUrl,
               ...(windowKey ? { windowKey } : {}),
+              ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
             }),
           } as any);
         } catch {

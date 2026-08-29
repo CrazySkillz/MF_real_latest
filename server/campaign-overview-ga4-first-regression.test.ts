@@ -12,6 +12,11 @@ describe("Campaign Overview GA4-first Connected Platforms", () => {
     expect(campaignDetail).toContain(
       'const platformMetrics = allPlatformMetrics.filter(({ platform }) => platform === "Google Analytics");',
     );
+    expect(campaignDetail).toContain(
+      '<h2 className="text-xl font-semibold text-foreground mb-2">Connected Platform</h2>',
+    );
+    expect(campaignDetail).toContain('<div className="grid gap-4 items-start">');
+    expect(campaignDetail).toContain("{[platformMetrics].map((columnPlatforms, columnIndex) => (");
     expect(campaignDetail).toContain("sourceItemsByPlatform(platform.platform).length > 0");
     expect(campaignDetail).toContain("Revenue & Spend Sources");
   });

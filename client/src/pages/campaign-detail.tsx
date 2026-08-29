@@ -5651,18 +5651,15 @@ export default function CampaignDetail() {
                 </CardContent>
               </Card>
 
-              {/* Connected Platforms */}
+              {/* Connected Platform */}
               <div className="space-y-6 fade-in">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-2">Connected Platforms</h2>
+                  <h2 className="text-xl font-semibold text-foreground mb-2">Connected Platform</h2>
                   <p className="text-muted-foreground/70">Platform performance and connection status</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 items-start">
-                  {[
-                    platformMetrics.filter((platform) => ["Google Analytics", "Google Sheets"].includes(platform.platform)),
-                    platformMetrics.filter((platform) => !["Google Analytics", "Google Sheets"].includes(platform.platform)),
-                  ].map((columnPlatforms, columnIndex) => (
+                <div className="grid gap-4 items-start">
+                  {[platformMetrics].map((columnPlatforms, columnIndex) => (
                     <div key={columnIndex} className="space-y-4">
               {columnPlatforms.map((platform, index) => (
                 (() => {

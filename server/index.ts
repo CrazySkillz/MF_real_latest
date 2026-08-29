@@ -318,6 +318,14 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS metadata TEXT;
           `);
 
+          // Standalone Shopify refresh failures are not Notifications. This exact-kind cleanup
+          // preserves KPI, Benchmark, and every unrelated notification row.
+          await db.execute(sql`
+            DELETE FROM notifications
+            WHERE metadata IS NOT NULL
+              AND metadata::text ~ '"kind"[[:space:]]*:[[:space:]]*"shopify_revenue_refresh_failure"';
+          `);
+
           // Migration: Email audit events (production-grade observability for alert/report/test sends)
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS email_alert_events (

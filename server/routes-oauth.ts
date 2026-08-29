@@ -6712,6 +6712,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const notificationMetadata = (value: any) => {
     try { return typeof value === "string" && value ? JSON.parse(value) : (value || {}); } catch { return {}; }
   };
+  const isStandaloneShopifyRefreshFailureNotification = (n: any): boolean =>
+    notificationMetadata(n?.metadata)?.kind === SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND;
   const notificationActionUrl = (row: any, itemType: "kpi" | "benchmark"): string => {
     const campaignId = String(row?.campaignId || "").trim();
     const id = String(row?.id || "").trim();
@@ -6869,7 +6871,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
           .where(eq((campaigns as any).ownerId, actorId))
           .orderBy(desc((notifications as any).createdAt));
-        const visible = rows.map((r: any) => r.n).filter((n: any) => !isNotificationDismissed(n));
+        const visible = rows.map((r: any) => r.n).filter((n: any) =>
+          !isNotificationDismissed(n) && !isStandaloneShopifyRefreshFailureNotification(n));
         const scopedRows = await Promise.all(visible.map(async (n: any) => {
           try {
             const meta = notificationMetadata(n.metadata);
@@ -6915,7 +6918,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
       const fallbackRows = await Promise.all((Array.isArray(allNotifications) ? allNotifications : []).map(async (n: any) => {
-        if (!ownedIds.includes(String((n as any)?.campaignId || "")) || isNotificationDismissed(n)) return null;
+        if (!ownedIds.includes(String((n as any)?.campaignId || ""))
+          || isNotificationDismissed(n)
+          || isStandaloneShopifyRefreshFailureNotification(n)) return null;
         const meta = notificationMetadata((n as any)?.metadata);
         const isPerformanceAlert = isPerformanceAlertNotification(n, meta);
         if (!isPerformanceAlert) return n;
@@ -22999,6 +23004,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to trigger KPI alerts manually (requires authenticated user)
   app.post("/api/kpis/test-alerts", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+        return res.status(404).json({ success: false, message: "Not found" });
+      }
+
       const actorId = getActorId(req);
       if (!actorId) return res.status(401).json({ success: false, error: "Authentication required" });
 

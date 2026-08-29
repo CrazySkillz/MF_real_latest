@@ -9,7 +9,7 @@ export default function Navigation() {
   const [location, setLocation] = useLocation();
   const isNotificationsPage = location === "/notifications" || location.startsWith("/notifications?");
 
-  // Fetch visible notifications to show active KPI/Benchmark or source-failure state.
+  // Fetch visible notifications to show active KPI/Benchmark breach state.
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     staleTime: 0,
@@ -34,18 +34,7 @@ export default function Navigation() {
     const itemType = String(metadata?.itemType || "").toLowerCase();
     return itemType === "kpi" || itemType === "benchmark" || Boolean(metadata?.kpiId || metadata?.benchmarkId);
   });
-  const hasActiveShopifyRefreshFailure = notifications.some((notification) => {
-    let metadata: any = notification.metadata;
-    if (typeof metadata === "string") {
-      try {
-        metadata = metadata ? JSON.parse(metadata) : {};
-      } catch {
-        metadata = {};
-      }
-    }
-    return metadata?.kind === "shopify_revenue_refresh_failure" && !metadata?.resolvedAt && !metadata?.dismissedAt;
-  });
-  const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach || hasActiveShopifyRefreshFailure;
+  const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach;
 
   return (
     <nav className="bg-card border-b border-border/40 px-6 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">

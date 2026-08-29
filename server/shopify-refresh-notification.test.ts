@@ -1,55 +1,42 @@
-import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import {
-  buildShopifyRefreshFailureNotification,
-  findOpenShopifyRefreshFailureNotification,
-  parseShopifyRefreshNotificationMetadata,
-  resolveShopifyRefreshFailureNotification,
-} from './utils/shopify-refresh-notification';
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 
-describe('Shopify refresh failure notifications', () => {
-  it('builds a campaign/source-scoped non-secret last-good warning', () => {
-    const row = buildShopifyRefreshFailureNotification({
-      campaignId: 'campaign-1', campaignName: 'Campaign', sourceId: 'source-1',
-      refreshRunId: 'run-1', failureCode: 'HTTP_503', failedAt: '2026-07-14T10:00:00.000Z',
-    });
-    const metadata = parseShopifyRefreshNotificationMetadata(row.metadata);
+describe("Shopify exclusion from Notifications", () => {
+  it("does not create Shopify notification rows during auto-refresh", () => {
+    const scheduler = readFileSync("server/auto-refresh-scheduler.ts", "utf8");
+    const helper = readFileSync("server/utils/shopify-refresh-notification.ts", "utf8");
 
-    expect(row).toMatchObject({ type: 'error', priority: 'high', read: false, campaignId: 'campaign-1' });
-    expect(metadata).toMatchObject({
-      kind: 'shopify_revenue_refresh_failure', sourceId: 'source-1', refreshRunId: 'run-1',
-      failureCode: 'HTTP_503', lastGoodRetained: true,
-    });
-    expect(row.message).not.toMatch(/token|secret|shpat_/i);
+    expect(scheduler).not.toContain("shopify-refresh-notification");
+    expect(scheduler).not.toContain("syncShopifyRefreshFailureNotification");
+    expect(scheduler).not.toContain("storage.createNotification");
+    expect(helper).not.toContain("buildShopifyRefreshFailureNotification");
   });
 
-  it('deduplicates by campaign/source and stops treating a recovered alert as open', () => {
-    const first = { id: 'n1', ...buildShopifyRefreshFailureNotification({
-      campaignId: 'campaign-1', sourceId: 'source-1', failedAt: '2026-07-14T10:00:00.000Z',
-    }) };
-    const other = { id: 'n2', ...buildShopifyRefreshFailureNotification({
-      campaignId: 'campaign-2', sourceId: 'source-1', failedAt: '2026-07-14T10:00:00.000Z',
-    }) };
+  it("keeps Shopify rows out of the Notifications API and bell", () => {
+    const routes = readFileSync("server/routes-oauth.ts", "utf8");
+    const navigation = readFileSync("client/src/components/layout/navigation.tsx", "utf8");
 
-    expect(findOpenShopifyRefreshFailureNotification([other, first], 'campaign-1', 'source-1')?.id).toBe('n1');
-    const resolved = { ...first, ...resolveShopifyRefreshFailureNotification(first, '2026-07-14T11:00:00.000Z') };
-    expect(findOpenShopifyRefreshFailureNotification([resolved], 'campaign-1', 'source-1')).toBeUndefined();
+    expect(routes).toContain("isStandaloneShopifyRefreshFailureNotification");
+    expect(routes).toContain("!isNotificationDismissed(n) && !isStandaloneShopifyRefreshFailureNotification(n)");
+    expect(routes).toContain("|| isStandaloneShopifyRefreshFailureNotification(n)) return null;");
+    expect(navigation).not.toContain("hasActiveShopifyRefreshFailure");
+    expect(navigation).not.toContain('metadata?.kind === "shopify_revenue_refresh_failure"');
+    expect(navigation).toContain("const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach;");
   });
 
-  it('wires scheduler failure and recovery without changing reprocess success semantics', () => {
-    const scheduler = readFileSync('server/auto-refresh-scheduler.ts', 'utf8');
-    expect(scheduler).toContain('syncShopifyRefreshFailureNotification');
-    expect(scheduler).toContain('failureCode: String(result.json?.code || `HTTP_${result.status || 500}`)');
-    expect(scheduler).toContain('if (sourceId) await syncShopifyRefreshFailureNotification({ campaignId, sourceId, failed: false });');
-    expect(scheduler).toContain('return false;');
-    expect(scheduler).toContain('return true;');
-  });
+  it("deletes only the exact standalone Shopify notification kind", () => {
+    const index = readFileSync("server/index.ts", "utf8");
+    const migration = readFileSync("migrations/0016_remove_shopify_refresh_failure_notifications.sql", "utf8");
+    const exactKind = /"kind"\s*:\s*"shopify_revenue_refresh_failure"/;
 
-  it('shows an active Shopify refresh failure on the notification bell until resolved', () => {
-    const navigation = readFileSync('client/src/components/layout/navigation.tsx', 'utf8');
-    expect(navigation).toContain('metadata?.kind === "shopify_revenue_refresh_failure"');
-    expect(navigation).toContain('!metadata?.resolvedAt && !metadata?.dismissedAt');
-    expect(navigation).toContain('hasActiveKpiBenchmarkBreach || hasActiveShopifyRefreshFailure');
-    expect(navigation).toContain('{hasActiveNotificationAttention && (');
+    expect(exactKind.test('{"kind":"shopify_revenue_refresh_failure","sourceId":"source-1"}')).toBe(true);
+    expect(exactKind.test('{ "kind": "performance-alert", "kpiId": "kpi-1" }')).toBe(false);
+    expect(exactKind.test('{ "kind": "benchmark-alert", "benchmarkId": "benchmark-1" }')).toBe(false);
+    for (const source of [index, migration]) {
+      expect(source).toContain("DELETE FROM notifications");
+      expect(source).toContain("WHERE metadata IS NOT NULL");
+      expect(source).toContain("shopify_revenue_refresh_failure");
+      expect(source).not.toContain("DELETE FROM notifications;");
+    }
   });
 });

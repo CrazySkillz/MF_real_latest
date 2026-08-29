@@ -38,8 +38,9 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(routesFile).toContain("return !!meta?.dismissedAt || !!meta?.resolved;");
-    expect(routesFile).toContain("const visible = rows.map((r: any) => r.n).filter((n: any) => !isNotificationDismissed(n));");
-    expect(routesFile).toContain('if (!ownedIds.includes(String((n as any)?.campaignId || "")) || isNotificationDismissed(n)) return null;');
+    expect(routesFile).toContain("!isNotificationDismissed(n) && !isStandaloneShopifyRefreshFailureNotification(n)");
+    expect(routesFile).toContain("|| isNotificationDismissed(n)");
+    expect(routesFile).toContain("|| isStandaloneShopifyRefreshFailureNotification(n)) return null;");
   });
 
   it("hides orphaned or cross-campaign performance alert notifications", () => {
@@ -419,9 +420,9 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).toContain('if (notification.type !== "performance-alert") return false;');
     expect(navigationFile).toContain('const itemType = String(metadata?.itemType || "").toLowerCase();');
     expect(navigationFile).toContain('return itemType === "kpi" || itemType === "benchmark" || Boolean(metadata?.kpiId || metadata?.benchmarkId);');
-    expect(navigationFile).toContain("const hasActiveShopifyRefreshFailure = notifications.some((notification) => {");
-    expect(navigationFile).toContain('return metadata?.kind === "shopify_revenue_refresh_failure" && !metadata?.resolvedAt && !metadata?.dismissedAt;');
-    expect(navigationFile).toContain("const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach || hasActiveShopifyRefreshFailure;");
+    expect(navigationFile).not.toContain("hasActiveShopifyRefreshFailure");
+    expect(navigationFile).not.toContain('metadata?.kind === "shopify_revenue_refresh_failure"');
+    expect(navigationFile).toContain("const hasActiveNotificationAttention = hasActiveKpiBenchmarkBreach;");
     expect(navigationFile).toContain("{hasActiveNotificationAttention && (");
     expect(navigationFile).toContain('<span className="relative inline-flex">');
     expect(navigationFile).toContain('className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-background"');

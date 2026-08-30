@@ -11,6 +11,22 @@ describe("notification visibility regression guard", () => {
     expect((page.match(/<SelectContent data-notifications-filter-select>/g) || []).length).toBe(4);
   });
 
+  it("reconciles owned GA4 campaigns before claiming that no active alerts exist", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "notifications.tsx"), "utf-8");
+
+    expect(page).toContain('await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-notifications/reconcile`);');
+    expect(page).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+    expect(page).toContain("{(isError || isGA4ReconciliationError) && (");
+    expect(page).toContain("Current alerts could not be verified");
+    expect(page).toContain("((isError || isGA4ReconciliationError) && notifications.length === 0) ? null");
+  });
+
+  it("preserves one active GA4 KPI alert across a calendar-day rollover", () => {
+    const source = readFileSync(join(process.cwd(), "server", "kpi-notifications.ts"), "utf-8");
+
+    expect((source.match(/if \(usesSingleActiveAlert\) return String\(meta\.kpiId \|\| ''\) === String\(kpi\.id\);/g) || []).length).toBe(2);
+  });
+
   it("fails closed when Notifications re-evaluate a KPI from stale stored GA4 traffic", () => {
     const freshness = resolveStoredGA4TrafficFreshness({
       rows: [{ date: "2026-08-12", updatedAt: "2026-08-15T07:18:25.626Z" }],
@@ -522,7 +538,7 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !isError && !selectedNotification);");
+    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification);");
     expect(notificationsPage).toContain('data-testid="selected-notification-missing-alert"');
     expect(notificationsPage).toContain("Selected alert is no longer active");
     expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
@@ -572,7 +588,7 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("{isLoading || (isError && notifications.length === 0) ? null : filteredNotifications.length === 0 ? (");
+    expect(notificationsPage).toContain("{(isLoading || alertVerificationInProgress) && notifications.length === 0 ? (");
     expect(notificationsPage).not.toContain("Loading notifications...");
   });
 
@@ -584,10 +600,10 @@ describe("notification visibility regression guard", () => {
 
     expect(notificationsPage).toContain("isLoading, isError, isFetching, refetch");
     expect(notificationsPage).toContain('data-testid="notifications-load-error"');
-    expect(notificationsPage).toContain("Notifications could not be loaded");
-    expect(notificationsPage).toContain("Your alerts may still exist. Try loading them again.");
-    expect(notificationsPage).toContain("onClick={() => void refetch()}");
-    expect(notificationsPage).toContain("selectedNotificationId && !isLoading && !isError && !selectedNotification");
+    expect(notificationsPage).toContain("Current alerts could not be verified");
+    expect(notificationsPage).toContain("KPI and Benchmark breaches may still exist. Try checking them again.");
+    expect(notificationsPage).toContain("onClick={() => void (isError ? refetch() : reconcileGA4Alerts())}");
+    expect(notificationsPage).toContain("selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification");
   });
 
   it("does not render read-state header controls on the Notifications page", () => {

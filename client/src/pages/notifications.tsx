@@ -38,9 +38,42 @@ export default function Notifications() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
-  const { data: campaigns = [] } = useQuery<Campaign[]>({
+  const { data: campaigns = [], isLoading: campaignsLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
   });
+  const ga4CampaignIds = campaigns
+    .filter((campaign) => String(campaign.platform || "").split(",").some((platform) =>
+      ["google-analytics", "google_analytics", "ga4"].includes(platform.trim().toLowerCase())))
+    .map((campaign) => String(campaign.id || "").trim())
+    .filter(Boolean)
+    .sort();
+  const {
+    isFetching: isReconcilingGA4Alerts,
+    isError: isGA4ReconciliationError,
+    refetch: reconcileGA4Alerts,
+  } = useQuery({
+    queryKey: ["/api/notifications/ga4-reconciliation", ...ga4CampaignIds],
+    enabled: !campaignsLoading && ga4CampaignIds.length > 0,
+    staleTime: Infinity,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
+    retry: false,
+    queryFn: async () => {
+      let firstError: unknown = null;
+      for (const campaignId of ga4CampaignIds) {
+        try {
+          await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-notifications/reconcile`);
+        } catch (error) {
+          firstError ||= error;
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/notifications"], refetchType: "none" });
+      await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+      if (firstError) throw firstError;
+      return true;
+    },
+  });
+  const alertVerificationInProgress = campaignsLoading || isReconcilingGA4Alerts;
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
@@ -145,7 +178,7 @@ export default function Notifications() {
   const selectedNotification = selectedNotificationId
     ? notifications.find((notification) => String(notification.id) === selectedNotificationId)
     : undefined;
-  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !isError && !selectedNotification);
+  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification);
   const selectedNotificationVisible = selectedNotificationId
     ? paginatedNotifications.some((notification) => String(notification.id) === selectedNotificationId)
     : false;
@@ -376,18 +409,18 @@ export default function Notifications() {
               </Card>
             )}
 
-            {isError && (
+            {(isError || isGA4ReconciliationError) && (
               <Card className="mb-6 border-red-200 bg-red-50/60" data-testid="notifications-load-error">
                 <CardContent className="py-5">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                       <div>
-                        <h3 className="text-sm font-semibold text-foreground">Notifications could not be loaded</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Your alerts may still exist. Try loading them again.</p>
+                        <h3 className="text-sm font-semibold text-foreground">Current alerts could not be verified</h3>
+                        <p className="text-sm text-muted-foreground mt-1">KPI and Benchmark breaches may still exist. Try checking them again.</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+                    <Button variant="outline" size="sm" onClick={() => void (isError ? refetch() : reconcileGA4Alerts())} disabled={isFetching || isReconcilingGA4Alerts}>
                       Try again
                     </Button>
                   </div>
@@ -396,7 +429,17 @@ export default function Notifications() {
             )}
 
             {/* Notifications List */}
-            {isLoading || (isError && notifications.length === 0) ? null : filteredNotifications.length === 0 ? (
+            {(isLoading || alertVerificationInProgress) && notifications.length === 0 ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <Bell className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Checking active alerts</h3>
+                    <p className="text-muted-foreground/70">Verifying current KPI and Benchmark thresholds.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : ((isError || isGA4ReconciliationError) && notifications.length === 0) ? null : filteredNotifications.length === 0 ? (
               <Card>
                 <CardContent className="py-12">
                   <div className="text-center">

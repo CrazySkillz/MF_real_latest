@@ -224,6 +224,7 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
     if (!alert.metadata) return false;
     try {
       const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : alert.metadata;
+      if (usesSingleActiveAlert) return String(meta.kpiId || '') === String(kpi.id);
       const createdAt = new Date(alert.createdAt);
       if (windowKey) {
         return String(meta.kpiId || '') === String(kpi.id) && String(meta.windowKey || "") === windowKey;

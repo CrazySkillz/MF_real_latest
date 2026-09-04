@@ -8722,7 +8722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
       const refreshStatus = getGA4DailySchedulerStatus();
-      if (refreshStatus.lastRunStatus === "skipped") {
+      if (refreshStatus.lastRunStatus === "skipped" && refreshStatus.inProgress) {
         return res.status(409).json({ success: false, message: "GA4 refresh already in progress" });
       }
       await checkGA4PerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);

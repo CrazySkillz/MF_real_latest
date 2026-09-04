@@ -26,7 +26,7 @@ describe("GA4 campaign run-now notification reconciliation", () => {
 
     expect(refresh).toBeGreaterThan(-1);
     expect(route).toContain("await ensureCampaignAccess(req as any, res as any, campaignId)");
-    expect(route).toContain('refreshStatus.lastRunStatus === "skipped"');
+    expect(route).toContain('refreshStatus.lastRunStatus === "skipped" && refreshStatus.inProgress');
     expect(route).toContain("getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone).endDate");
     expect(kpi).toBeGreaterThan(refresh);
     expect(benchmark).toBeGreaterThan(kpi);

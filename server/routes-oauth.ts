@@ -8718,6 +8718,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.id || "").trim();
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
+      const [alertKPIs, alertBenchmarks] = await Promise.all([
+        storage.getPlatformKPIs("google_analytics", campaignId),
+        storage.getPlatformBenchmarks("google_analytics", campaignId),
+      ]);
+      const hasEnabledAlertRule = alertKPIs.some((row: any) => row?.alertsEnabled && row?.alertThreshold != null)
+        || alertBenchmarks.some((row: any) => row?.status === "active" && row?.alertsEnabled && row?.alertThreshold != null);
+      if (!hasEnabledAlertRule) return res.json({ success: true, campaignId });
       const providerCoverageThroughDate = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone).endDate;
 
       await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });

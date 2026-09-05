@@ -443,6 +443,16 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).not.toContain("/notifications?selected=");
   });
 
+  it("allows users without clients to open the Notifications empty state", () => {
+    const appFile = readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf-8");
+    const notificationsAllowance = appFile.indexOf('location === "/notifications"');
+    const noClientsRedirect = appFile.indexOf("if (clients.length === 0)");
+
+    expect(notificationsAllowance).toBeGreaterThan(-1);
+    expect(notificationsAllowance).toBeLessThan(noClientsRedirect);
+    expect(appFile).toContain('location.startsWith("/notifications?")');
+  });
+
   it("shows a dot-only top bar breach indicator without Notifications read-state highlighting", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),

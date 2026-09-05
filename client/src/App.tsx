@@ -98,7 +98,7 @@ function WelcomeGate({ children }: { children: React.ReactNode }) {
   }
 
   // Always allow Home, /clients, /welcome, and /auth routes through
-  const alwaysAllowed = location === "/" || location === "/clients" || location === "/welcome" || location.startsWith("/auth/");
+  const alwaysAllowed = location === "/" || location === "/clients" || location === "/welcome" || location === "/notifications" || location.startsWith("/notifications?") || location.startsWith("/auth/");
   if (alwaysAllowed) return <>{children}</>;
 
   // No clients → redirect to Home

@@ -89,6 +89,7 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
 - the target GA4 KPI/Benchmark card is initially highlighted and smoothly scrolled into view; a click outside that card removes only `highlight` from the URL and clears the highlight without mutating notification or breach state
 - the Notifications Filters section exposes Priority, Client, Campaign, and Date, without `Read state`, and selecting a filter does not shift the page scrollbar gutter
+- an authenticated user with no clients can open `/notifications` and see the normal empty state instead of being redirected to Home
 - before a zero-row state is described as having no active alerts, the page reconciles each owned GA4 campaign that has an enabled KPI/Benchmark alert rule and then refetches `/api/notifications`
 - while zero-row GA4 reconciliation is running, the page shows a verification-in-progress state; after loading/reconciliation stops, zero displayed rows use the normal `No active alerts found` state
 - the Notifications page does not render a separate alert-verification warning or retry banner
@@ -2059,7 +2060,7 @@ Not locally verifiable:
 
 ### Current Notifications Implementation Alignment (September 5, 2026)
 
-Status: current implementation-alignment evidence through repository commit `6afe467d6c0f627436bfd288b56f23be1efe46ac` plus the subsequent simplified empty-state behavior; this is not a new production-readiness certification.
+Status: current implementation-alignment evidence through deployed repository commit `fb756aca0124c0ac580258db40c6e8ad13f31914` plus the subsequent no-client Notifications route-gate correction; this is not a new production-readiness certification.
 
 This section supersedes current-behavior descriptions elsewhere in this tracker where they conflict with the implementation below. Earlier commit-specific sections remain historical evidence for those commits.
 
@@ -2073,6 +2074,7 @@ Current behavior contract:
 - a zero-row page shows `Checking active alerts` while loading/reconciliation is in progress
 - after loading/reconciliation stops, zero displayed rows show the normal `No active alerts found` state; the page does not render `Current alerts could not be verified` or a separate retry banner
 - filters are Priority, Client, Campaign, and Date; all four dropdowns use the Notifications-specific scroll-lock gutter guard so selection does not shift page content
+- the application route gate explicitly allows `/notifications` when the authenticated user has no clients, so the page can render its standard empty state
 - KPI/Benchmark cards render current and threshold values with the linked row's unit: percent, dollar, ratio, seconds, ISO currency, count, or another explicit unit
 - `View KPI` / `View Benchmark` initially highlights and smoothly scrolls to the target GA4 card; clicking outside that card removes only `highlight`, preserving the tab, other query parameters, and hash, without mutating notification or breach state
 - standalone Shopify refresh-failure notifications are not created by the refresh scheduler, are excluded from both database-backed and in-memory Notifications API paths, and do not drive the bell
@@ -2118,13 +2120,15 @@ Certification-boundary impact:
 
 - no file under `GA4/certifications/` is modified
 - the existing GA4 KPI and Benchmark certification records remain limited to their recorded exact-SHA boundaries
-- this source/document alignment makes the Notifications documentation current for commit `6afe467d`; it does not silently certify that later commit or broaden GA4/Campaign DeepDive certification scope
+- this source/document alignment describes current Notifications behavior; it does not silently certify the current revision or broaden GA4/Campaign DeepDive certification scope
 
 ## Target UX Manual Validation Checklist
 
 This checklist validates the current GA4-first triage journey. The top-bar bell opens `/notifications` from other pages, shows a small red dot with no number while a KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, and the page presents full-width active-alert cards without read-state controls. Cards show unit-aware current/threshold values and created date. Filters are Priority, Client, Campaign, and Date. `View KPI` / `View Benchmark` opens and smoothly highlights the correct GA4 card; a later click outside that card clears only the highlight. The page reconciles eligible owned GA4 campaigns before displaying its result, uses the normal `No active alerts found` state whenever no rows remain after loading/reconciliation, excludes standalone Shopify refresh-failure notifications, refreshes after client/campaign deletion, and hides financial KPI alerts when the live KPI no longer breaches.
 
 Use a disposable GA4 campaign with known values.
+
+Separately, sign in as an authenticated user with no clients, open Notifications, and confirm the page displays `No active alerts found` instead of redirecting to Home.
 
 1. Create a GA4 KPI with alerts enabled and a breached threshold.
 2. Confirm the bell shows a small red dot with no number at the bottom corner of the bell icon and the Notifications page active view shows one KPI alert.
@@ -2177,6 +2181,7 @@ Pass criteria:
 - the Notifications page does not render the `Active alerts` heading/current-view count above alert cards
 - the Notifications page does not render unread/read-state header text such as `All notifications are read` or `1 unread notifications`
 - the Notifications page does not render `Mark All as Read`
+- authenticated users with no clients can open Notifications and see `No active alerts found`
 - alert cards span the Notifications content width
 - the Notifications Filters section does not render a `Read state` filter
 - the Notifications Filters section renders Priority, Client, Campaign, and Date without shifting page content when a selection is made

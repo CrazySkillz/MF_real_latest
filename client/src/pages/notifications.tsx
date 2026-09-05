@@ -269,15 +269,27 @@ export default function Notifications() {
       return {};
     }
   };
-  const formatAlertDetailValue = (value: unknown) => {
+  const formatAlertDetailValue = (value: unknown, unitValue?: unknown) => {
     if (value === null || typeof value === "undefined" || value === "") return "-";
     const num = Number(String(value).replace(/,/g, ""));
-    return Number.isFinite(num)
-      ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(num)
-      : String(value);
+    if (!Number.isFinite(num)) return String(value);
+    const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(num);
+    const unit = String(unitValue || "").trim();
+    if (unit === "%") return `${formatted}%`;
+    if (unit === "$") return `$${formatted}`;
+    if (unit === "ratio" || unit === "x") return `${formatted}x`;
+    if (unit === "seconds") return `${formatted}s`;
+    if (/^[A-Z]{3}$/.test(unit)) {
+      try {
+        return new Intl.NumberFormat("en-US", { style: "currency", currency: unit, maximumFractionDigits: 4 }).format(num);
+      } catch {
+        return `${formatted} ${unit}`;
+      }
+    }
+    return unit && unit !== "count" ? `${formatted} ${unit}` : formatted;
   };
   const formatAlertThresholdValue = (metadata: any) => {
-    const value = formatAlertDetailValue(metadata?.thresholdValue);
+    const value = formatAlertDetailValue(metadata?.thresholdValue, metadata?.unit);
     const condition = String(metadata?.alertCondition || "below");
     if (value === "-") return value;
     if (condition === "above") return `above ${value}`;
@@ -507,7 +519,7 @@ export default function Notifications() {
                               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                                 <div>
                                   <span className="font-semibold text-foreground/80">Current value:</span>{" "}
-                                  {formatAlertDetailValue(metadata?.currentValue)}
+                                  {formatAlertDetailValue(metadata?.currentValue, metadata?.unit)}
                                 </div>
                                 <div>
                                   <span className="font-semibold text-foreground/80">Threshold value:</span>{" "}

@@ -6745,6 +6745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actionUrl: notificationActionUrl(row, itemType),
         currentValue: row?.currentValue,
         thresholdValue: row?.alertThreshold,
+        unit: row?.unit,
         alertCondition: row?.alertCondition || "below",
       }),
     };

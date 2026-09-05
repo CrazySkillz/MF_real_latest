@@ -653,6 +653,7 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("actionUrl: notificationActionUrl(row, itemType),");
     expect(routesFile).toContain("currentValue: row?.currentValue,");
     expect(routesFile).toContain("thresholdValue: row?.alertThreshold,");
+    expect(routesFile).toContain("unit: row?.unit,");
     expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');
   });
 
@@ -680,9 +681,10 @@ describe("notification visibility regression guard", () => {
 
     expect(notificationsPage).toContain("const metadata = getNotificationMetadata(notification);");
     expect(notificationsPage).toContain("Current value:");
-    expect(notificationsPage).toContain("{formatAlertDetailValue(metadata?.currentValue)}");
+    expect(notificationsPage).toContain("{formatAlertDetailValue(metadata?.currentValue, metadata?.unit)}");
     expect(notificationsPage).toContain("Threshold value:");
     expect(notificationsPage).toContain("{formatAlertThresholdValue(metadata)}");
+    expect(notificationsPage).toContain('if (unit === "%") return `${formatted}%`;');
     expect(notificationsPage).toContain("Created date:");
     expect(notificationsPage).toContain("{formatNotificationCreatedDate(notification.createdAt)}");
   });

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { resolveStoredGA4TrafficFreshness } from "./utils/ga4-alert-current-value";
-import { shouldShowAlertVerificationError } from "../client/src/lib/notification-alert-visibility";
 
 describe("notification visibility regression guard", () => {
   it("keeps Notifications filter dropdowns from shifting the page scrollbar gutter", () => {
@@ -12,21 +11,14 @@ describe("notification visibility regression guard", () => {
     expect((page.match(/<SelectContent data-notifications-filter-select>/g) || []).length).toBe(4);
   });
 
-  it("reconciles owned GA4 campaigns before claiming that no active alerts exist", () => {
+  it("reconciles owned GA4 campaigns before showing the normal empty state", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "notifications.tsx"), "utf-8");
 
     expect(page).toContain('await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-notifications/reconcile`);');
     expect(page).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
-    expect(page).toContain("const showAlertVerificationError = shouldShowAlertVerificationError(");
-    expect(page).toContain("{showAlertVerificationError && (");
-    expect(page).toContain("Current alerts could not be verified");
-    expect(page).toContain("((isError || isGA4ReconciliationError) && notifications.length === 0) ? null");
-  });
-
-  it("suppresses the verification banner when active alerts are already displayed", () => {
-    expect(shouldShowAlertVerificationError(3, false, true)).toBe(false);
-    expect(shouldShowAlertVerificationError(0, false, true)).toBe(true);
-    expect(shouldShowAlertVerificationError(3, true, false)).toBe(true);
+    expect(page).not.toContain("Current alerts could not be verified");
+    expect(page).not.toContain('data-testid="notifications-load-error"');
+    expect(page).toContain("No active alerts found");
   });
 
   it("preserves one active GA4 KPI alert across a calendar-day rollover", () => {
@@ -600,18 +592,17 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain("Loading notifications...");
   });
 
-  it("does not present a Notifications query failure as an empty alert list", () => {
+  it("uses the normal empty state instead of a verification warning", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("isLoading, isError, isFetching, refetch");
-    expect(notificationsPage).toContain('data-testid="notifications-load-error"');
-    expect(notificationsPage).toContain("const showAlertVerificationError = shouldShowAlertVerificationError(");
-    expect(notificationsPage).toContain("Current alerts could not be verified");
-    expect(notificationsPage).toContain("KPI and Benchmark breaches may still exist. Try checking them again.");
-    expect(notificationsPage).toContain("onClick={() => void (isError ? refetch() : reconcileGA4Alerts())}");
+    expect(notificationsPage).not.toContain('data-testid="notifications-load-error"');
+    expect(notificationsPage).not.toContain("Current alerts could not be verified");
+    expect(notificationsPage).not.toContain("KPI and Benchmark breaches may still exist. Try checking them again.");
+    expect(notificationsPage).toContain("No active alerts found");
+    expect(notificationsPage).not.toContain("((isError || isGA4ReconciliationError) && notifications.length === 0) ? null");
     expect(notificationsPage).toContain("selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification");
   });
 

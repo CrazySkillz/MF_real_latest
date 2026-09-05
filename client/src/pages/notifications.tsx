@@ -16,7 +16,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isToday, isYesterday } from "date-fns";
 import { useClient } from "@/lib/clientContext";
-import { shouldShowAlertVerificationError } from "@/lib/notification-alert-visibility";
 
 export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,7 +32,7 @@ export default function Notifications() {
   const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";
   const { clients } = useClient();
 
-  const { data: notifications = [], isLoading, isError, isFetching, refetch } = useQuery<Notification[]>({
+  const { data: notifications = [], isLoading, isError } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     staleTime: 0,
     refetchOnMount: "always",
@@ -51,7 +50,6 @@ export default function Notifications() {
   const {
     isFetching: isReconcilingGA4Alerts,
     isError: isGA4ReconciliationError,
-    refetch: reconcileGA4Alerts,
   } = useQuery({
     queryKey: ["/api/notifications/ga4-reconciliation", ...ga4CampaignIds],
     enabled: !campaignsLoading && ga4CampaignIds.length > 0,
@@ -75,11 +73,6 @@ export default function Notifications() {
     },
   });
   const alertVerificationInProgress = campaignsLoading || isReconcilingGA4Alerts;
-  const showAlertVerificationError = shouldShowAlertVerificationError(
-    notifications.length,
-    isError,
-    isGA4ReconciliationError,
-  );
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
@@ -427,25 +420,6 @@ export default function Notifications() {
               </Card>
             )}
 
-            {showAlertVerificationError && (
-              <Card className="mb-6 border-red-200 bg-red-50/60" data-testid="notifications-load-error">
-                <CardContent className="py-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">Current alerts could not be verified</h3>
-                        <p className="text-sm text-muted-foreground mt-1">KPI and Benchmark breaches may still exist. Try checking them again.</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => void (isError ? refetch() : reconcileGA4Alerts())} disabled={isFetching || isReconcilingGA4Alerts}>
-                      Try again
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Notifications List */}
             {(isLoading || alertVerificationInProgress) && notifications.length === 0 ? (
               <Card>
@@ -457,7 +431,7 @@ export default function Notifications() {
                   </div>
                 </CardContent>
               </Card>
-            ) : ((isError || isGA4ReconciliationError) && notifications.length === 0) ? null : filteredNotifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <Card>
                 <CardContent className="py-12">
                   <div className="text-center">

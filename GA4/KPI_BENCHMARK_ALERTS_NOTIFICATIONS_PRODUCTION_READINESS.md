@@ -20,7 +20,7 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 - GA4 KPI/Benchmark alerts and notifications were not production-ready at Commit 1; that statement is historical and does not describe the current GA4 KPI/Benchmark section status.
 - After Commits 2 through 8 in this file were implemented, their required validation passed, and final evidence was recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections became locally code-ready by this document's criteria.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
-- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, breach-only bell/Notifications visibility, GA4 financial notification source parity, and client/campaign delete notification refresh.
+- The post-Commit-8 implementation documented in `Current Notifications Implementation Alignment (September 5, 2026)` below includes changes through repository commit `6afe467d6c0f627436bfd288b56f23be1efe46ac` plus the subsequent simplified empty-state behavior. That section records current source and regression evidence; it does not reissue or extend an exact-SHA GA4 certification.
 - For the GA4 KPI whole-tab certification, the provider/deployed evidence recorded in `GA4/KPIS_PRODUCTION_READINESS.md` closes the current GA4 KPI provider gate: immediate KPI alert email receipt, scheduled report Mailgun HTTP API acceptance, scheduled report inbox receipt, and current KPI values in the received report were user-confirmed on June 29, 2026. This evidence does not certify any future source.
 - For the GA4 Benchmark whole-tab decision, `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is controlling. GA4 Benchmarks are **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. The `650ce59c` record remains historical supporting evidence. Scheduled Reports delivery and inbox receipt are separately certified by the Reports record, not by the Benchmark record.
 - Provider-side email delivery remains claim-specific for each future target environment: no response should claim real email delivery for a future Benchmark send, another platform, another source mix, or a changed provider configuration unless provider delivery events or actual inbox receipt are recorded for that target.
@@ -83,11 +83,16 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - the bell and Notifications page derive visible performance alerts from `/api/notifications`; an enabled KPI/Benchmark alert is not visible there unless the linked row is currently breached
 - the Notifications page Filters section does not expose `Read state`
 - Notification cards do not expose per-card read/unread envelope controls or `Dismiss` controls
-- Notification cards display `Current value`, `Threshold value`, and `Created date` for KPI/Benchmark alerts using the active notification response
+- Notification cards display `Current value`, `Threshold value`, and `Created date` for KPI/Benchmark alerts using the active notification response, and current/threshold values use the linked KPI/Benchmark unit
 - the Notifications page does not expose read-state UI: no unread subtitle, no `Mark All as Read`, no unread blue card highlight, and no read-state filtering
 - the Notifications page `View KPI` / `View Benchmark` action preserves the metadata action URL and opens the correct KPI/Benchmark tab/card
 - if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
-- the target KPI/Benchmark card remains visibly highlighted while the action URL contains `highlight`, and destination scrolling is smooth rather than instant/jumpy
+- the target GA4 KPI/Benchmark card is initially highlighted and smoothly scrolled into view; a click outside that card removes only `highlight` from the URL and clears the highlight without mutating notification or breach state
+- the Notifications Filters section exposes Priority, Client, Campaign, and Date, without `Read state`, and selecting a filter does not shift the page scrollbar gutter
+- before a zero-row state is described as having no active alerts, the page reconciles each owned GA4 campaign that has an enabled KPI/Benchmark alert rule and then refetches `/api/notifications`
+- while zero-row GA4 reconciliation is running, the page shows a verification-in-progress state; after loading/reconciliation stops, zero displayed rows use the normal `No active alerts found` state
+- the Notifications page does not render a separate alert-verification warning or retry banner
+- standalone Shopify refresh-failure rows are not created by auto-refresh, are excluded from the Notifications API and bell, and the targeted cleanup migration matches only metadata kind `shopify_revenue_refresh_failure`; this does not alter Shopify as a GA4 financial source
 - successful GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
 - successful client and campaign delete actions refresh `/api/notifications` so active Notifications do not keep stale KPI/Benchmark alerts for deleted campaigns
 - `Create KPI` remains disabled until `KPI Name` and `Target Value` are both non-empty
@@ -488,6 +493,10 @@ Template requirement:
 - action URL highlighting should be visual navigation feedback only; it must not mark alerts read, dismiss alerts, resolve breaches, or mutate KPI/Benchmark state
 - action URL target scrolling should be smooth and should not rely on a timer that removes the highlight before the user has reviewed the target card
 
+Current supersession:
+
+- commit `6afe467d` keeps the initial smooth GA4 target highlight but removes only the `highlight` query parameter when the user clicks outside the highlighted card; clicks inside the card retain it
+
 ### Commit `4562711e`: Bell To Notifications Center Flow
 
 Runtime behavior:
@@ -539,7 +548,7 @@ Template requirement:
 | Alert frequency UI | default shows only `Send email notifications`; when selected, `Email addresses *` is a full-width label/input row and `Alert Frequency` appears underneath | default shows only `Send email notifications`; when selected, `Email addresses *` is a full-width label/input row and `Alert Frequency` appears underneath | UI/source tests |
 | Bell alert click / triage entry | top-bar bell opens `/notifications`; active alert cards do not use read-state styling; selected row routes use canonical `selected` with legacy `highlight` compatibility | top-bar bell opens `/notifications`; active alert cards do not use read-state styling; selected row routes use canonical `selected` with legacy `highlight` compatibility | UX source tests and legacy compatibility tests |
 | Notifications row primary action | `View KPI` preserves metadata action URL and opens the correct KPI tab/card highlight | `View Benchmark` preserves metadata action URL and opens the correct Benchmark tab/card highlight | UI/source tests |
-| Query-only platform action URL | existing GA4 page reacts to `tab`/`highlight` search changes and keeps the target card highlighted while `highlight` is present | existing GA4 page reacts to `tab`/`highlight` search changes and keeps the target card highlighted while `highlight` is present | UI/source tests |
+| Query-only platform action URL | existing GA4 page reacts to `tab`/`highlight` search changes, initially highlights the target, and removes only `highlight` after an outside-card click | existing GA4 page reacts to `tab`/`highlight` search changes, initially highlights the target, and removes only `highlight` after an outside-card click | UI/source tests |
 
 ## Validation Status
 
@@ -1644,7 +1653,7 @@ Smallest safe fix:
 - route campaign-level KPI/Benchmark alerts to `/campaigns/:id?tab=kpis|benchmarks&highlight=:itemId#kpis|#benchmarks`
 - preserve URL hash in the Notifications page action handler
 - add URL-driven highlight and smooth scroll for campaign KPI/Benchmark cards
-- keep GA4 KPI/Benchmark target highlights visible while `highlight` remains in the URL and scroll smoothly to the target card
+- initially highlight and smoothly scroll to the GA4 KPI/Benchmark target, then remove only `highlight` and clear the visual highlight when the user clicks outside that card
 
 Files changed:
 
@@ -1673,6 +1682,7 @@ Proven locally:
 - campaign-level KPI/Benchmark alert links include the tab and target item id
 - GA4 and campaign-level target cards use the `highlight` query to apply visible card highlighting
 - target scrolling uses smooth behavior
+- GA4 target-card clicks retain the highlight, while outside-card clicks remove only `highlight` and preserve the remaining query string and hash
 
 Not locally verifiable:
 
@@ -1888,7 +1898,7 @@ Validation evidence:
 Proven locally:
 
 - the visible `Read state` filter is absent from the Notifications Filters section
-- the filter grid is now the three remaining filters: Priority, Client, and Date
+- the filter grid is now the four remaining filters: Priority, Client, Campaign, and Date
 - Notification cards no longer render the envelope read/unread control
 - Notification cards no longer render the `X Dismiss` control
 - `View KPI` / `View Benchmark` remains the explicit KPI/Benchmark navigation action
@@ -2047,9 +2057,72 @@ Not locally verifiable:
 
 - browser confirmation that all supported viewport sizes display the simplified card/header layout as intended
 
+### Current Notifications Implementation Alignment (September 5, 2026)
+
+Status: current implementation-alignment evidence through repository commit `6afe467d6c0f627436bfd288b56f23be1efe46ac` plus the subsequent simplified empty-state behavior; this is not a new production-readiness certification.
+
+This section supersedes current-behavior descriptions elsewhere in this tracker where they conflict with the implementation below. Earlier commit-specific sections remain historical evidence for those commits.
+
+Current behavior contract:
+
+- the current deployed product scope is GA4-first; the Notifications page reconciles owned GA4 campaigns and does not use unavailable campaign-level KPI/Benchmark UI as current GA4 acceptance evidence
+- on page load, the Notifications query uses `staleTime: 0` with mount/window-focus refetch, then each owned GA4 campaign with an enabled KPI or active Benchmark alert rule is reconciled through `POST /api/campaigns/:id/ga4-notifications/reconcile`
+- the reconciliation route uses `ensureCampaignAccess`, refreshes the campaign's GA4 daily pipeline with alert emission suppressed, and then evaluates current GA4 KPI and Benchmark breaches using the provider coverage boundary
+- campaigns without an enabled KPI/Benchmark alert rule are skipped without running the GA4 refresh pipeline
+- after all eligible campaigns have been attempted, the page refetches the exact `/api/notifications` query; one campaign failure does not prevent later owned campaigns from being attempted
+- a zero-row page shows `Checking active alerts` while loading/reconciliation is in progress
+- after loading/reconciliation stops, zero displayed rows show the normal `No active alerts found` state; the page does not render `Current alerts could not be verified` or a separate retry banner
+- filters are Priority, Client, Campaign, and Date; all four dropdowns use the Notifications-specific scroll-lock gutter guard so selection does not shift page content
+- KPI/Benchmark cards render current and threshold values with the linked row's unit: percent, dollar, ratio, seconds, ISO currency, count, or another explicit unit
+- `View KPI` / `View Benchmark` initially highlights and smoothly scrolls to the target GA4 card; clicking outside that card removes only `highlight`, preserving the tab, other query parameters, and hash, without mutating notification or breach state
+- standalone Shopify refresh-failure notifications are not created by the refresh scheduler, are excluded from both database-backed and in-memory Notifications API paths, and do not drive the bell
+- migration `0016_remove_shopify_refresh_failure_notifications.sql` deletes only rows whose metadata has exact kind `shopify_revenue_refresh_failure`; Shopify remains available as a GA4 financial source and its analytics values are not changed by this Notifications exclusion
+
+Files traced for this alignment:
+
+- `client/src/pages/notifications.tsx`
+- `client/src/App.tsx`
+- `client/src/lib/ga4-alert-highlight.ts`
+- `server/routes-oauth.ts`
+- `server/kpi-scheduler.ts`
+- `server/kpi-notifications.ts`
+- `server/benchmark-notifications.ts`
+- `server/utils/shopify-refresh-notification.ts`
+- `migrations/0016_remove_shopify_refresh_failure_notifications.sql`
+- `server/notification-visibility-regression.test.ts`
+- `server/notification-reconcile-route-proof.test.ts`
+- `server/ga4-notification-run-now-regression.test.ts`
+- `server/ga4-alert-highlight-dismissal-regression.test.ts`
+- `server/shopify-refresh-notification.test.ts`
+
+Evidence classification:
+
+Proven locally:
+
+- current source and focused regression guards cover owner-guarded GA4 reconciliation, no-rule skipping, exact notification refetch, the simplified zero-row empty state, four-filter campaign-aware filtering, dropdown gutter stability, unit rendering, standalone Shopify-notification exclusion, and outside-click GA4 highlight removal
+- the highlight-removal helper is limited to GA4 KPI/Benchmark tabs and preserves unrelated URL state
+- no GA4 metric formula, KPI/Benchmark threshold math, report value, attribution rule, aggregate, source provenance, or certification record is changed by this documentation alignment
+
+Partially reviewed:
+
+- the broader historical notification lifecycle and email/scheduler evidence remains recorded in earlier sections, but this documentation update does not rerun or reissue every historical certification gate
+- dormant campaign-level KPI/Benchmark link code remains a future/template path; it is not current GA4-first deployed UI evidence
+
+Unverified or blocked from local verification:
+
+- browser-rendered behavior across every supported viewport because Playwright was not authorized
+- the exact current production database contents and whether migration `0016` has run in the deployed database
+- provider availability, current production GA4 values, scheduler execution in the deployed environment, and real email acceptance/delivery
+
+Certification-boundary impact:
+
+- no file under `GA4/certifications/` is modified
+- the existing GA4 KPI and Benchmark certification records remain limited to their recorded exact-SHA boundaries
+- this source/document alignment makes the Notifications documentation current for commit `6afe467d`; it does not silently certify that later commit or broaden GA4/Campaign DeepDive certification scope
+
 ## Target UX Manual Validation Checklist
 
-This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list/card-target/filter/action/detail/header/delete-refresh/read-state adjustments. The top-bar bell now opens `/notifications` from other pages, shows a small red dot with no number at the bottom corner of the bell icon while any KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, alert cards span the Notifications content width, Notification cards show current value, threshold value, and created date, cards do not show an ambiguous timestamp line, card backgrounds are not clickable, Filters do not expose `Read state`, cards do not expose envelope or `Dismiss` controls, the Notifications page does not expose unread/read-state header text or actions, active alert cards do not use unread blue styling, selected alert rows use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links, `View KPI` / `View Benchmark` opens the correct highlighted target card with smooth scrolling, client/campaign deletion refreshes active Notifications so stale deleted-campaign alerts disappear, and GA4 financial KPI alerts disappear when the live KPI card no longer breaches.
+This checklist validates the current GA4-first triage journey. The top-bar bell opens `/notifications` from other pages, shows a small red dot with no number while a KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, and the page presents full-width active-alert cards without read-state controls. Cards show unit-aware current/threshold values and created date. Filters are Priority, Client, Campaign, and Date. `View KPI` / `View Benchmark` opens and smoothly highlights the correct GA4 card; a later click outside that card clears only the highlight. The page reconciles eligible owned GA4 campaigns before displaying its result, uses the normal `No active alerts found` state whenever no rows remain after loading/reconciliation, excludes standalone Shopify refresh-failure notifications, refreshes after client/campaign deletion, and hides financial KPI alerts when the live KPI no longer breaches.
 
 Use a disposable GA4 campaign with known values.
 
@@ -2061,15 +2134,15 @@ Use a disposable GA4 campaign with known values.
 6. Confirm the `Active alerts` heading/current-view count is not shown above the cards.
 7. Confirm the header does not show unread/read-state text such as `All notifications are read` or `1 unread notifications`.
 8. Confirm alert cards span the Notifications content width.
-9. Confirm the Filters section shows Priority, Client, and Date, with no `Read state` filter.
-10. Confirm alert cards show `Current value`, `Threshold value`, and `Created date`.
+9. Confirm the Filters section shows Priority, Client, Campaign, and Date, with no `Read state` filter, and confirm choosing each option does not shift the page content.
+10. Confirm alert cards show unit-aware `Current value`, unit-aware `Threshold value`, and `Created date`.
 11. Confirm alert cards do not show an ambiguous timestamp line such as `Today at 2:52 AM`.
 12. Click the blank/background area of a KPI/Benchmark alert card and confirm it does not navigate or select the card.
 13. Confirm the alert card does not show an envelope read/unread icon.
 14. Confirm the alert card does not show an `X Dismiss` button.
 15. Confirm newly created active alert cards do not show a blue vertical unread line or blue unread background.
 16. Confirm the page does not show a `Mark All as Read` action.
-17. Click `View KPI` on the row and confirm it preserves the metadata action URL, opens the correct KPI surface, scrolls smoothly, and keeps the exact KPI card highlighted.
+17. Click `View KPI` on the row and confirm it preserves the metadata action URL, opens the correct KPI surface, scrolls smoothly, and initially highlights the exact KPI card; click outside that card and confirm the highlight disappears without changing the KPI or alert.
 18. Update the KPI name, target, threshold, or current value while it remains breached.
 19. Confirm the Notifications page reflects the edited KPI alert details after the notification query refreshes.
 20. Update the KPI so it no longer breaches.
@@ -2078,7 +2151,7 @@ Use a disposable GA4 campaign with known values.
 23. Confirm exactly one active alert returns, the bell red dot returns with no number, and the alert is visible in the Notifications list.
 24. Delete the KPI and confirm the related active alert disappears from bell and Notifications without affecting unrelated alerts.
 25. Repeat the same view, edit/update, clear, re-breach, and delete flow for a GA4 Benchmark using `View Benchmark`.
-26. Repeat `View KPI` / `View Benchmark` for campaign-level KPI/Benchmark alerts and confirm the campaign `Campaign KPIs` / `Campaign Benchmarks` tab opens with the exact card highlighted and smooth scrolling.
+26. Do not use dormant campaign-level KPI/Benchmark link code as current GA4-first acceptance evidence; validate that path separately if the campaign-level UI is later enabled.
 27. Create or use a disposable campaign with active KPI/Benchmark alerts, then delete that campaign from the Campaigns page.
 28. Return to Notifications and confirm alerts for the deleted campaign are gone while unrelated alerts remain.
 29. Create or use a disposable client whose campaigns have active KPI/Benchmark alerts, then delete that client from Home.
@@ -2086,8 +2159,8 @@ Use a disposable GA4 campaign with known values.
 31. Confirm `Create KPI` is disabled until both `KPI Name` and `Target Value` contain non-empty values.
 32. Confirm `Create Benchmark` is disabled until both `Benchmark Name` and `Benchmark Value` contain non-empty values.
 33. Confirm the alert form layout: when `Send email notifications` is not selected, `Email addresses *` and `Alert Frequency` are hidden; when selected, `Email addresses *` spans the form width with the label next to the input and `Alert Frequency` appears underneath.
-34. Run or trigger the valid reconciliation path.
-35. Confirm exactly one new active alert appears.
+34. Open Notifications with an enabled breached GA4 alert and run or trigger the valid reconciliation path.
+35. Confirm exactly one active alert appears; if rows are initially absent, confirm the page shows `Checking active alerts` before reconciliation completes rather than a false `No active alerts` result.
 36. For a GA4 Revenue KPI whose card current value is above a `below` threshold, confirm no stale row appears in the bell or Notifications page after `/api/notifications` refetches.
 37. Enable email alerts with a safe recipient in a deployed environment.
 38. Follow the `Alert Email Scheduler Production-Readiness Plan` deployed validation steps before claiming executive-critical email delivery is production-ready.
@@ -2106,7 +2179,8 @@ Pass criteria:
 - the Notifications page does not render `Mark All as Read`
 - alert cards span the Notifications content width
 - the Notifications Filters section does not render a `Read state` filter
-- KPI/Benchmark alert cards display `Current value`, `Threshold value`, and `Created date`
+- the Notifications Filters section renders Priority, Client, Campaign, and Date without shifting page content when a selection is made
+- KPI/Benchmark alert cards display unit-aware `Current value`, unit-aware `Threshold value`, and `Created date`
 - alert cards do not show the ambiguous created-at timestamp
 - alert card backgrounds are not clickable; users navigate through the explicit `View KPI` / `View Benchmark` action only
 - alert cards do not use blue unread-state border/background styling
@@ -2115,9 +2189,10 @@ Pass criteria:
 - alert row selection remains transition-compatible through canonical `selected` routing
 - legacy `highlight` notification URLs remain transition-compatible until their removal is explicitly planned and regression-covered
 - Notifications row `View KPI` / `View Benchmark` actions open the correct campaign, tab, and item
-- query-only GA4 action URL changes update the visible tab/card highlight and keep the target highlighted while `highlight` remains present
-- campaign-level KPI/Benchmark action URLs open the campaign tab and exact highlighted card
+- query-only GA4 action URL changes update the visible tab/card highlight; a click inside the target retains it and a click outside removes only `highlight`
 - target-card scrolling is smooth rather than instant/jumpy
+- after loading/reconciliation stops, zero displayed rows show `No active alerts found` without a separate verification warning or retry banner
+- standalone Shopify refresh-failure notifications do not appear in Notifications or drive the bell
 - edited KPI/Benchmark alert details are reflected in active Notifications after refresh
 - deleted KPI/Benchmark active alerts disappear from active Notifications without hard-deleting unrelated alert history
 - deleting a campaign removes that campaign's KPI/Benchmark active alerts from Notifications after the notification query refreshes

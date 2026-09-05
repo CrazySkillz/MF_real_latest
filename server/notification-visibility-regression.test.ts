@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { resolveStoredGA4TrafficFreshness } from "./utils/ga4-alert-current-value";
+import { shouldShowAlertVerificationError } from "../client/src/lib/notification-alert-visibility";
 
 describe("notification visibility regression guard", () => {
   it("keeps Notifications filter dropdowns from shifting the page scrollbar gutter", () => {
@@ -16,9 +17,16 @@ describe("notification visibility regression guard", () => {
 
     expect(page).toContain('await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-notifications/reconcile`);');
     expect(page).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
-    expect(page).toContain("{(isError || isGA4ReconciliationError) && (");
+    expect(page).toContain("const showAlertVerificationError = shouldShowAlertVerificationError(");
+    expect(page).toContain("{showAlertVerificationError && (");
     expect(page).toContain("Current alerts could not be verified");
     expect(page).toContain("((isError || isGA4ReconciliationError) && notifications.length === 0) ? null");
+  });
+
+  it("suppresses the verification banner when active alerts are already displayed", () => {
+    expect(shouldShowAlertVerificationError(3, false, true)).toBe(false);
+    expect(shouldShowAlertVerificationError(0, false, true)).toBe(true);
+    expect(shouldShowAlertVerificationError(3, true, false)).toBe(true);
   });
 
   it("preserves one active GA4 KPI alert across a calendar-day rollover", () => {
@@ -600,6 +608,7 @@ describe("notification visibility regression guard", () => {
 
     expect(notificationsPage).toContain("isLoading, isError, isFetching, refetch");
     expect(notificationsPage).toContain('data-testid="notifications-load-error"');
+    expect(notificationsPage).toContain("const showAlertVerificationError = shouldShowAlertVerificationError(");
     expect(notificationsPage).toContain("Current alerts could not be verified");
     expect(notificationsPage).toContain("KPI and Benchmark breaches may still exist. Try checking them again.");
     expect(notificationsPage).toContain("onClick={() => void (isError ? refetch() : reconcileGA4Alerts())}");

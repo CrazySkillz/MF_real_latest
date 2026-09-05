@@ -16,6 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isToday, isYesterday } from "date-fns";
 import { useClient } from "@/lib/clientContext";
+import { shouldShowAlertVerificationError } from "@/lib/notification-alert-visibility";
 
 export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +75,11 @@ export default function Notifications() {
     },
   });
   const alertVerificationInProgress = campaignsLoading || isReconcilingGA4Alerts;
+  const showAlertVerificationError = shouldShowAlertVerificationError(
+    notifications.length,
+    isError,
+    isGA4ReconciliationError,
+  );
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
@@ -421,7 +427,7 @@ export default function Notifications() {
               </Card>
             )}
 
-            {(isError || isGA4ReconciliationError) && (
+            {showAlertVerificationError && (
               <Card className="mb-6 border-red-200 bg-red-50/60" data-testid="notifications-load-error">
                 <CardContent className="py-5">
                   <div className="flex items-center justify-between gap-4">

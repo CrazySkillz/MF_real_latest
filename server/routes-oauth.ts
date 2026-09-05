@@ -4026,30 +4026,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
   };
 
-  const scheduleGA4KpiCreatePostResponseProcessing = (campaignId: string, kpiId: string) => {
-    setImmediate(() => {
-      void (async () => {
-        let kpiAlertReconciled = false;
-        try {
-          const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
-          kpiAlertReconciled = refreshResult.kpiAlertReconciliationAttempted
-            && !refreshResult.alertReconciliationFailures.includes("kpi");
-        } catch (e: any) {
-          console.warn("[KPI Create] GA4 KPI refresh failed:", e?.message || e);
-        }
-        if (!kpiAlertReconciled) {
+  const scheduleGA4KpiCreatePostResponseProcessing = (campaignId: string, kpiId: string) =>
+    new Promise<void>((resolve) => {
+      setImmediate(() => {
+        void (async () => {
+          let kpiAlertReconciled = false;
           try {
-            await checkPerformanceAlerts();
+            const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+            kpiAlertReconciled = refreshResult.kpiAlertReconciliationAttempted
+              && !refreshResult.alertReconciliationFailures.includes("kpi");
           } catch (e: any) {
-            console.warn("[KPI Create] Alert check failed:", e?.message || e);
+            console.warn("[KPI Create] GA4 KPI refresh failed:", e?.message || e);
           }
-        }
-        await runImmediateKPIEmailAlertCheck(kpiId, "KPI Create");
-      })().catch((e) => {
-        console.warn("[KPI Create] Background processing failed:", (e as any)?.message || e);
+          if (!kpiAlertReconciled) {
+            try {
+              await checkPerformanceAlerts();
+            } catch (e: any) {
+              console.warn("[KPI Create] Alert check failed:", e?.message || e);
+            }
+          }
+          await runImmediateKPIEmailAlertCheck(kpiId, "KPI Create");
+        })()
+          .catch((e) => {
+            console.warn("[KPI Create] Background processing failed:", (e as any)?.message || e);
+          })
+          .finally(resolve);
       });
     });
-  };
 
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
@@ -27304,10 +27307,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : kpi;
 
       if (String(platformType || '').toLowerCase() === 'google_analytics') {
-        scheduleGA4KpiCreatePostResponseProcessing(
+        const postCreateProcessing = scheduleGA4KpiCreatePostResponseProcessing(
           String(validatedKPI.campaignId),
           String((kpi as any)?.id || ""),
         );
+        if (validatedKPI.alertsEnabled && validatedKPI.alertThreshold != null) {
+          await postCreateProcessing;
+        }
         return res.json(responseKpi || kpi);
       }
 

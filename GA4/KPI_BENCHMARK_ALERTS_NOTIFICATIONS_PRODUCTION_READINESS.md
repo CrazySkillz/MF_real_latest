@@ -2062,6 +2062,8 @@ Not locally verifiable:
 
 Status: exact implementation-alignment evidence through deployed repository commit `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. This evidence supports only the separately authorized GA4 KPI recertification at that SHA; the protected GA4 Benchmark certification remains unchanged.
 
+Post-certification finding: a newly created alert-enabled GA4 KPI could return before its scheduled reconciliation completed, while the create mutation did not refresh `/api/notifications`. The first Notifications fetch could therefore precede the alert row and require a browser refresh. The localized follow-up waits for the already-scheduled lifecycle only when the new KPI has an enabled alert threshold, then refreshes the existing Notifications query. Local regression validation is required, and the fix remains outside the exact `dc20c1e1` certification boundary until separately deployed and authorized for recertification.
+
 This section supersedes current-behavior descriptions elsewhere in this tracker where they conflict with the implementation below. Earlier commit-specific sections remain historical evidence for those commits.
 
 Current behavior contract:

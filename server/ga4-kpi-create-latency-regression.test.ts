@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("GA4 KPI create latency regression", () => {
-  it("returns a GA4 create after scheduling complete downstream processing", () => {
+  it("waits for scheduled downstream processing only when the created KPI has an alert rule", () => {
     const routes = read("server/routes-oauth.ts");
     const scheduleHelper = routes.slice(
       routes.indexOf("const scheduleGA4KpiCreatePostResponseProcessing"),
@@ -19,10 +19,14 @@ describe("GA4 KPI create latency regression", () => {
     expect(createRoute).toContain("const kpi = await storage.createKPI(validatedKPI);");
     expect(createRoute).toContain("if (String(platformType || '').toLowerCase() === 'google_analytics')");
     expect(createRoute).toContain("scheduleGA4KpiCreatePostResponseProcessing(");
+    expect(createRoute).toContain("if (validatedKPI.alertsEnabled && validatedKPI.alertThreshold != null)");
+    expect(createRoute).toContain("await postCreateProcessing;");
     expect(createRoute).toContain(ga4Return);
     expect(createRoute.indexOf("const kpi = await storage.createKPI(validatedKPI);"))
       .toBeLessThan(createRoute.indexOf(ga4Return));
     expect(createRoute.indexOf("scheduleGA4KpiCreatePostResponseProcessing("))
+      .toBeLessThan(createRoute.indexOf(ga4Return));
+    expect(createRoute.indexOf("await postCreateProcessing;"))
       .toBeLessThan(createRoute.indexOf(ga4Return));
     expect(createRoute.indexOf(ga4Return)).toBeLessThan(createRoute.indexOf("checkPerformanceAlerts().catch"));
     expect(createRoute).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
@@ -30,11 +34,12 @@ describe("GA4 KPI create latency regression", () => {
     expect(scheduleHelper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });");
     expect(scheduleHelper).toContain("await checkPerformanceAlerts();");
     expect(scheduleHelper).toContain('await runImmediateKPIEmailAlertCheck(kpiId, "KPI Create");');
+    expect(scheduleHelper).toContain(".finally(resolve);");
     expect(scheduleHelper.indexOf("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });"))
       .toBeLessThan(scheduleHelper.indexOf("await runImmediateKPIEmailAlertCheck"));
   });
 
-  it("closes the successful create UI before refreshing independent queries", () => {
+  it("closes the successful create UI before refreshing KPI and Notifications queries", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");
     const createMutation = client.slice(
       client.indexOf("const createKPIMutation"),
@@ -42,7 +47,8 @@ describe("GA4 KPI create latency regression", () => {
     );
 
     expect(createMutation).toContain(".invalidateQueries");
-    expect(createMutation).not.toContain("refreshNotificationQueries()");
+    expect(createMutation).toContain("refreshNotificationQueries()");
+    expect(createMutation).toContain('catch((error) => console.warn("KPI post-create refresh failed:", error))');
     expect(createMutation.indexOf("setShowKPIDialog(false);"))
       .toBeLessThan(createMutation.indexOf(".invalidateQueries"));
   });

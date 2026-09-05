@@ -6,6 +6,8 @@ Before using this document to answer an audit, review, or production-readiness q
 
 2026-09-05 revalidation: the authoritative machine record certifies deployed runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Review from the prior `94f1096f` boundary limits the runtime changes to GA4 KPI/Benchmark Notifications, campaign-scoped alert reconciliation, and post-refresh alert checks. KPI formulas, value producers, CRUD, cards, Tracker, aggregates, financial-source rules, and GA4 report rows are unchanged. Exact production health, the complete non-Playwright required regression inventory, TypeScript, and the production build passed. Current production checks confirmed alert rendering, empty/no-client behavior, ownership denial, lifecycle isolation, and successful manual scheduler recomputation of eight KPIs and two Benchmarks. Historical authenticated value/browser parity remains revision-bounded supporting evidence carried only through the reviewed unchanged paths; no new browser-automation or inbox-delivery claim is made. Older narrative SHA references below remain revision-specific history.
 
+Post-certification finding: the create-to-Notifications freshness path is unproven beyond `dc20c1e1` after confirming that a newly created alert-enabled GA4 KPI could require a browser refresh before its background reconciliation became visible. The localized follow-up is not covered by the existing machine certification and requires focused local validation plus deployed lifecycle confirmation before any later-boundary recertification.
+
 ## Purpose
 
 This file is the canonical production-readiness source of truth for the GA4 `KPIs` tab.

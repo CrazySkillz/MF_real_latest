@@ -783,9 +783,10 @@ export default function GA4Metrics() {
       setShowKPIDialog(false);
       kpiForm.reset();
       toast({ title: "KPI created successfully" });
-      void queryClient
-        .invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] })
-        .catch((error) => console.warn("KPI post-create refresh failed:", error));
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] }),
+        refreshNotificationQueries(),
+      ]).catch((error) => console.warn("KPI post-create refresh failed:", error));
     },
     onError: (error) => {
       console.error("KPI creation error:", error);

@@ -14,7 +14,7 @@ The authenticated KPI value/browser parity packet remains revision-bounded to `1
 
 The final evidence includes exact eight-row cards/Tracker/Notifications/Insights/browser-PDF parity and unchanged semantic persistence. Reports and post-scheduler evidence carries from byte-identical runtime `3c45aae7`; future provider availability and global all-campaign scheduler health remain excluded. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
-GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), schedules the complete downstream lifecycle, and returns immediately. The post-response task runs the authoritative campaign KPI/Benchmark recompute, progress/current-value propagation, campaign-derived refresh, alert reconciliation, and applicable notification delivery in the existing order. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths. The browser closes the modal and shows success as soon as the durable create returns, then refreshes the KPI cache without extending the create state.
+GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), and schedules the complete downstream lifecycle. When the new KPI has an enabled alert threshold, the response waits for that existing lifecycle through alert reconciliation so the browser can fetch the resulting notification; other creates return immediately while processing continues. The browser closes the modal before refreshing the KPI and Notifications caches. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths.
 
 ## KPI Tab Structure
 
@@ -241,7 +241,7 @@ Expected behavior:
 - email delivery is optional
 - `Email addresses *` and `Alert Frequency` should appear only after `Send email notifications` is selected
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
-- the GA4 create request does not block on alert evaluation; its scheduled post-response recompute evaluates the stored KPI, while later KPI updates retain their existing synchronous evaluation
+- a GA4 create with an enabled alert threshold waits for its scheduled recompute and alert reconciliation before returning; other creates remain non-blocking, while later KPI updates retain their existing synchronous evaluation
 - if a breached GA4 KPI has no active in-app notification row, the next GA4 KPI/Benchmark recompute or daily scheduler cycle should restore exactly one active bell / Notifications alert row
 - opening the bell, opening Notifications, or simply loading the GA4 page should not be relied on as the reconciliation trigger for restoring a missing GA4 in-app alert row
 - if the KPI unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
@@ -267,7 +267,7 @@ The executive snapshot tracker should also recompute whenever related inputs cha
 
 This includes:
 
-- immediately after a new KPI is persisted through its scheduled post-response recompute
+- immediately after a new KPI is persisted through its awaited or background scheduled recompute
 - when an existing KPI is edited
 - when a KPI is deleted
 - when KPI current values change after GA4, revenue, or spend updates

@@ -24,13 +24,13 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-- GA4 Overview is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-overview.json`, `4be16c54c550a45dbf3104313c820ea47b453604`. That record remains bounded to its campaign/property/source/configuration.
+- GA4 Overview is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-overview.json`, `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. That record remains bounded to its campaign/property/source/configuration.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
-- GA4 KPIs are **PRODUCTION_READY** only for exact certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` recorded in `GA4/certifications/ga4-kpis.json`.
+- GA4 KPIs are **PRODUCTION_READY** only for exact certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1` recorded in `GA4/certifications/ga4-kpis.json`.
 - GA4 Benchmarks remain **PRODUCTION_READY** for their locked certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Authenticated read-only supporting parity passed on `19f05537`, but the protected Benchmark certification record is not reissued here.
 - GA4 Ad Comparison remains **PRODUCTION_READY** at certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604` for its recorded property/filter/source boundary.
 - GA4 Reports is **PRODUCTION_READY** only for exact certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive remains excluded from that GA4 Reports certification.
@@ -38,7 +38,7 @@ Current GA4 tab production-readiness status:
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
 - Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
 - Certification integrity rule: GA4 readiness is valid only for the exact certified SHA/configuration/dependency boundary. A relevant upstream or downstream change automatically invalidates affected tabs. The Overview record is `GA4/certifications/ga4-overview.json` and its checker is `npm run check:ga4-overview-certification`; the KPI record and checker remain separate. Copied formulas and source-text guards are structural evidence only.
-- Exact-SHA reconciliation note (2026-08-29): Overview, Ad Comparison, and Insights remain certified at `4be16c54`; KPI and Reports are certified at `94f1096f`. Review proved the later `campaign-detail.tsx` delta is limited to the user-validated GA4-first Connected Platform presentation and the `report-scheduler.ts` delta is limited to the Campaign DeepDive Trend PDF branch excluded from GA4 Reports. Exact deployed health, the complete non-Playwright current-version boundary, focused regressions, TypeScript, and the production build passed. Authenticated KPI/Benchmark parity remains revision-bounded supporting evidence from `19f05537`; no new provider, inbox, or browser-automation claim is made. Benchmark certification remains locked separately at `12789c1e`.
+- Exact-SHA reconciliation note (2026-09-05): KPI and Overview are certified at deployed runtime `dc20c1e1`. Review limits the delta from their prior boundaries to Notifications and post-refresh alert reconciliation; KPI/Overview values, formulas, cards, aggregates, financial-source rules, and report renderers are unchanged. The exact required non-Playwright regression inventory, TypeScript, production build, production health, production Notifications checks, and manual scheduler recomputation passed. Historical authenticated value/browser evidence carries only through unchanged paths. No new browser-automation, natural-timer, inbox-delivery, or global scheduler-health claim is made. Benchmark remains locked at `12789c1e`; Ad Comparison and Insights remain at `4be16c54`; Reports remains at `94f1096f`.
 - Shopify Revenue status (2026-08-10): **clean-certified for exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the recorded Overview boundary**. Dormant OAuth, non-GA4 sources, future stores, and generalized provider behavior remain excluded.
 - Upload CSV Revenue status (2026-08-10): **clean-certified for exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` inside the recorded Overview boundary**. Unlisted CSV variants and an unconfigured future Google Sheets Revenue source remain excluded.
 - HubSpot Revenue status (2026-08-10): **clean-certified for exact enabled sources `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` inside the recorded Overview boundary**. Future mappings and unrelated historical rows remain excluded.
@@ -91,7 +91,7 @@ Important meaning:
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current section status: **PRODUCTION_READY** for certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`.
+  Concise canonical current-status index. Current section status: **PRODUCTION_READY** for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`
@@ -99,7 +99,7 @@ Important meaning:
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
-  Canonical whole-tab KPIs production-readiness source of truth. Current status: **PRODUCTION_READY** for certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`.
+  Canonical whole-tab KPIs production-readiness source of truth. Current status: **PRODUCTION_READY** for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`.
 - `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`
   KPI threshold/scoring policy template and historical slice record. Use it after `GA4/KPIS_PRODUCTION_READINESS.md` when refining KPI scoring for Meta, Google Ads, LinkedIn, Google Sheets, or another source; it is not whole-tab readiness proof by itself.
 - `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
@@ -206,7 +206,7 @@ These are now part of the GA4 template contract:
 - HubSpot and Shopify rows in the GA4 Overview `Revenue Sources` modal should show the saved mapped platform-campaign name under the source title when `campaignMappings` exist, falling back to the source type when no mapping is saved
 - Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
 - GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, disables `Create KPI` until `KPI Name` and `Target Value` are entered, and disables `Update KPI` in edit mode until at least one form value changes
-- GA4 KPI whole-tab status is `PRODUCTION_READY` for certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`.
+- GA4 KPI whole-tab status is `PRODUCTION_READY` for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is **PRODUCTION_READY** for locked certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; deployed `19f05537` read-only parity is supporting evidence, not a reissued protected certification. Reports remains separately certified by the Reports record.
 - GA4 `Ad Comparison` leader cards, chart, summary, and All Campaigns table use the same native initial-import-to-latest-completed-day campaign rows; source-to-date imported revenue remains separate provenance in Revenue Breakdown and cannot create or adjust ranked rows

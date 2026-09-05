@@ -14,16 +14,16 @@ This is the concise canonical index for the current GA4 Overview readiness decis
 
 Only evidence from the same deployed commit, production-data state, and documented scope can support certification. Every status must remain **proven**, **unproven**, or **requires external validation**.
 
-2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Exact production health, authenticated read-only KPI/Benchmark/Ad Comparison/Insights parity, the protected current-version boundary, TypeScript, and the production build passed. The validated financial inputs were Revenue `$72,766.69`, Spend `$2,699.75`, and `251` financial conversions; cumulative GA4 data ran through `2026-08-27`. Older narrative SHA references below are revision-specific history where they differ.
+2026-09-05 revalidation: the authoritative machine record certifies deployed runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Review from `4be16c54` found no change to Overview values, formulas, cards, source selection, aggregates, or renderers; changed shared dependencies are limited to Notifications and post-refresh alert checks. Exact production health, the complete required non-Playwright regression inventory, TypeScript, production build, and manual scheduler recomputation passed. Historical authenticated Summary/financial/source parity carries only through unchanged paths. No current browser-automation, natural-timer, or global scheduler-health claim is made. Older narrative SHA references remain revision-specific history.
 
 ## Current Decision — Stable Cross-Session Answer
 
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-**Current section status: PRODUCTION_READY.** The certified runtime boundary is `4be16c54c550a45dbf3104313c820ea47b453604` for the recorded campaign, live property `542352127`, USD source set, and persisted-data boundary. Authenticated read-only validation reconciled cumulative Summary values, native plus imported Revenue, Spend, exact source inventories, Campaign Breakdown consumers, and guarded outcome totals with unchanged semantic persistence. Reports and scheduler evidence remain separately bounded; unrelated invalid test campaigns prevent a global all-campaign scheduler-health claim.
+**Current section status: PRODUCTION_READY.** The certified runtime boundary is `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1` for the recorded campaign, live property `542352127`, USD source set, and persisted-data boundary. Authenticated read-only Summary, native/imported Revenue, Spend, source-inventory, Campaign Breakdown, and outcome-total evidence remains bounded to `4be16c54` and carries forward only because exact dependency review found those paths unchanged. Exact-current production health, required regressions, TypeScript, build, and manual eight-KPI/two-Benchmark recomputation passed. Reports remain separately bounded; no current browser-automation, natural timer, or global all-campaign scheduler-health claim is made.
 
-The prior clean certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remains historical evidence for its exact campaign/property/configuration/data boundary only.
+The immediately prior certification at `4be16c54c550a45dbf3104313c820ea47b453604` and the earlier certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remain historical evidence for their exact recorded boundaries only.
 
 <!-- /ga4-overview-current-status -->
 

@@ -48,34 +48,146 @@
     ]
   },
   "dependencies": [
-    { "path": "AGENTS.md", "role": "repository operating and anti-overclaim contract", "sha256": "3547f1141b24069a323aebc95478af5a832c62870e1cdcc9573b105f642b522e" },
-    { "path": "ARCHITECTURE_USER_JOURNEY.md", "role": "product journey and analytics-layer boundary", "sha256": "3ea8fae2ab55e934bb0cd83f54353866df2565f552d7c9509fff266b9eae2aec" },
-    { "path": "PRODUCTION_READINESS.md", "role": "repository production-readiness standard", "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815" },
-    { "path": "GA4/README.md", "role": "GA4 canonical reference index", "sha256": "21bc7fd5bab9989509ab88ede0d706f685b5bc3e0bd83eeb899c91c934690ae7" },
-    { "path": "GA4/REPORTS.md", "role": "Reports product contract", "sha256": "9a380e1458d0ac8235c7372e5f6b25b1cb230474b993282e19ff99bcd31f4817" },
-    { "path": "GA4/REPORTS_PRODUCTION_READINESS.md", "role": "Reports controlling readiness status", "sha256": "584a92fbf5ca13cdf4341e6a233c1f53e13a4d8d52a74b32a5ac4edf121acb6f" },
-    { "path": "GA4/REFRESH_AND_PROCESSING.md", "role": "refresh and processing contract", "sha256": "842f8b34bdad88d98ec55e43ea66fcce03af5febcc877bf4b38b6596aaa1272a" },
-    { "path": "client/src/pages/ga4-metrics.tsx", "role": "GA4 Reports tab UI and browser artifact consumer", "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1" },
-    { "path": "shared/schema.ts", "role": "shared report and persistence contracts", "sha256": "973f7cbe8a862c55519c201202dfd28aa7af5c46c500546f4153461fe308b192" },
-    { "path": "shared/ga4-financial-source.ts", "role": "GA4 financial-source semantics", "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3" },
-    { "path": "shared/ga4-kpi-consumer-state.ts", "role": "shared KPI consumer-state semantics", "sha256": "eaf5db47cbf04a675ec410dafceacbbdacdc742409b8d83a63f878a00ce0046a" },
-    { "path": "server/routes-oauth.ts", "role": "report API, access, CRUD, generation, and delivery routes", "sha256": "9899cd6c3342687c635c389ed520d181402a7c9b2f7d7c129a580e193180fc0d" },
-    { "path": "server/storage.ts", "role": "report and snapshot persistence boundary", "sha256": "553fd9495ae02b76d93538f5573070ccc1691830cf10918f371baadf02e114d8" },
-    { "path": "server/report-scheduler.ts", "role": "scheduled report discovery and processing", "sha256": "68f3ea46f1d0714287d21777df0f4dd1f04e80d255b9121bd18074335ff6146e" },
-    { "path": "server/ga4-scheduled-report-pdf.ts", "role": "server GA4 PDF rendering", "sha256": "80d7b99241946e0ab68e57f400ea8067e076e26560a51dd1c91e0adfc7c894e5" },
-    { "path": "server/ga4-kpi-benchmark-jobs.ts", "role": "report preflight KPI and benchmark processing", "sha256": "3d36266794159db236ea7605a6366c7c68a18de5d731b1a260b6a496c2825902" },
-    { "path": "server/analytics.ts", "role": "report analytics transformation boundary", "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1" },
-    { "path": "server/services/email-service.ts", "role": "report email composition and provider submission", "sha256": "5f3d80a20cf5fa81555e4ee59b4e59aefe5c6d54e39886317f101c73fb396788" },
-    { "path": "server/utils/mailgun-delivery.ts", "role": "provider delivery-event confirmation", "sha256": "e35f44bd4a6bd481c40c4009f83cdefb3c650e2e1442bc757611c22622e42da6" },
-    { "path": "server/utils/reporting-timezone.ts", "role": "report scheduling and reporting-timezone rules", "sha256": "d744c0b03b3ad1408b235296176a9b9a852c62fc04e69384f393dddbc819a442" },
-    { "path": "server/report-email-regression.test.ts", "role": "report scheduler and email regression evidence", "sha256": "80516763d67cc921ea8c62fa2294e2859ee8ec331d61c46a5bdaa532347e1668" },
-    { "path": "server/ga4-kpi-real-path-parity-regression.test.ts", "role": "production KPI path parity evidence", "sha256": "caae1533bd382a0d751490f6e3b650214e6b800e2c0306d2db52cefa82a9190d" },
-    { "path": "server/ga4-kpi-report-consumer-regression.test.ts", "role": "KPI report-consumer parity evidence", "sha256": "34294e886a0714df59de329c6ddfce2b603ccbebca614e11d367ffe5466568ec" },
-    { "path": "server/ga4-insights-report-parity-regression.test.ts", "role": "Insights and report parity evidence", "sha256": "ec1cc8ab3ab1b55f4f911e1218b068e6148dec69d50cfff0c1ea130ce65a3ad7" },
-    { "path": "server/ga4-reports-certification-gate.ts", "role": "machine certification and invalidation gate", "sha256": "826ceb8b050305ce3c204d5680dbb3692b2dc645abf32322c0d564a645e6df24" },
-    { "path": "server/ga4-reports-certification-gate.test.ts", "role": "machine gate regression evidence", "sha256": "3a82ab1f2c027589d7cceaf09b17c2ac86a75498b4a5ca33934f2fa5cbfbdcd6" },
-    { "path": "package.json", "role": "certification command and dependency configuration", "sha256": "b2de5c98e8d96d4a2a72e2c742345d9f76d2917df9f7006a490f10bb3dccfe31" },
-    { "path": "render.yaml", "role": "deployed scheduler and runtime configuration boundary", "sha256": "8cfcdc90e89555ffde031b9d0fc7ade309b999750e7ba3dd30bb63139cfc1a18" }
+    {
+      "path": "AGENTS.md",
+      "role": "repository operating and anti-overclaim contract",
+      "sha256": "3547f1141b24069a323aebc95478af5a832c62870e1cdcc9573b105f642b522e"
+    },
+    {
+      "path": "ARCHITECTURE_USER_JOURNEY.md",
+      "role": "product journey and analytics-layer boundary",
+      "sha256": "3ea8fae2ab55e934bb0cd83f54353866df2565f552d7c9509fff266b9eae2aec"
+    },
+    {
+      "path": "PRODUCTION_READINESS.md",
+      "role": "repository production-readiness standard",
+      "sha256": "3cae738bdd1c0f1010c115f540230e5a6ca4139f0daa0b7c2ce5adaf436c4815"
+    },
+    {
+      "path": "GA4/README.md",
+      "role": "GA4 canonical reference index",
+      "sha256": "7c5e0bf7e348136d9f76ea0b56f65a16552cd911b0f969f52f10660070158789"
+    },
+    {
+      "path": "GA4/REPORTS.md",
+      "role": "Reports product contract",
+      "sha256": "9a380e1458d0ac8235c7372e5f6b25b1cb230474b993282e19ff99bcd31f4817"
+    },
+    {
+      "path": "GA4/REPORTS_PRODUCTION_READINESS.md",
+      "role": "Reports controlling readiness status",
+      "sha256": "584a92fbf5ca13cdf4341e6a233c1f53e13a4d8d52a74b32a5ac4edf121acb6f"
+    },
+    {
+      "path": "GA4/REFRESH_AND_PROCESSING.md",
+      "role": "refresh and processing contract",
+      "sha256": "842f8b34bdad88d98ec55e43ea66fcce03af5febcc877bf4b38b6596aaa1272a"
+    },
+    {
+      "path": "client/src/pages/ga4-metrics.tsx",
+      "role": "GA4 Reports tab UI and browser artifact consumer",
+      "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1"
+    },
+    {
+      "path": "shared/schema.ts",
+      "role": "shared report and persistence contracts",
+      "sha256": "973f7cbe8a862c55519c201202dfd28aa7af5c46c500546f4153461fe308b192"
+    },
+    {
+      "path": "shared/ga4-financial-source.ts",
+      "role": "GA4 financial-source semantics",
+      "sha256": "d62d823446079a9fb7f958742521b02e5f9f1be8a1d7338a74f2b1498547bfc3"
+    },
+    {
+      "path": "shared/ga4-kpi-consumer-state.ts",
+      "role": "shared KPI consumer-state semantics",
+      "sha256": "eaf5db47cbf04a675ec410dafceacbbdacdc742409b8d83a63f878a00ce0046a"
+    },
+    {
+      "path": "server/routes-oauth.ts",
+      "role": "report API, access, CRUD, generation, and delivery routes",
+      "sha256": "abaee7b2d82b09848db1c255ad710533b7fe69ea90250c95af5c8971204c9527"
+    },
+    {
+      "path": "server/storage.ts",
+      "role": "report and snapshot persistence boundary",
+      "sha256": "553fd9495ae02b76d93538f5573070ccc1691830cf10918f371baadf02e114d8"
+    },
+    {
+      "path": "server/report-scheduler.ts",
+      "role": "scheduled report discovery and processing",
+      "sha256": "68f3ea46f1d0714287d21777df0f4dd1f04e80d255b9121bd18074335ff6146e"
+    },
+    {
+      "path": "server/ga4-scheduled-report-pdf.ts",
+      "role": "server GA4 PDF rendering",
+      "sha256": "80d7b99241946e0ab68e57f400ea8067e076e26560a51dd1c91e0adfc7c894e5"
+    },
+    {
+      "path": "server/ga4-kpi-benchmark-jobs.ts",
+      "role": "report preflight KPI and benchmark processing",
+      "sha256": "3d36266794159db236ea7605a6366c7c68a18de5d731b1a260b6a496c2825902"
+    },
+    {
+      "path": "server/analytics.ts",
+      "role": "report analytics transformation boundary",
+      "sha256": "a146403c6998f7a5b499951bcf7227f5e9a3ad343104a013244fadc1a6b3d0f1"
+    },
+    {
+      "path": "server/services/email-service.ts",
+      "role": "report email composition and provider submission",
+      "sha256": "5f3d80a20cf5fa81555e4ee59b4e59aefe5c6d54e39886317f101c73fb396788"
+    },
+    {
+      "path": "server/utils/mailgun-delivery.ts",
+      "role": "provider delivery-event confirmation",
+      "sha256": "e35f44bd4a6bd481c40c4009f83cdefb3c650e2e1442bc757611c22622e42da6"
+    },
+    {
+      "path": "server/utils/reporting-timezone.ts",
+      "role": "report scheduling and reporting-timezone rules",
+      "sha256": "d744c0b03b3ad1408b235296176a9b9a852c62fc04e69384f393dddbc819a442"
+    },
+    {
+      "path": "server/report-email-regression.test.ts",
+      "role": "report scheduler and email regression evidence",
+      "sha256": "80516763d67cc921ea8c62fa2294e2859ee8ec331d61c46a5bdaa532347e1668"
+    },
+    {
+      "path": "server/ga4-kpi-real-path-parity-regression.test.ts",
+      "role": "production KPI path parity evidence",
+      "sha256": "caae1533bd382a0d751490f6e3b650214e6b800e2c0306d2db52cefa82a9190d"
+    },
+    {
+      "path": "server/ga4-kpi-report-consumer-regression.test.ts",
+      "role": "KPI report-consumer parity evidence",
+      "sha256": "34294e886a0714df59de329c6ddfce2b603ccbebca614e11d367ffe5466568ec"
+    },
+    {
+      "path": "server/ga4-insights-report-parity-regression.test.ts",
+      "role": "Insights and report parity evidence",
+      "sha256": "ec1cc8ab3ab1b55f4f911e1218b068e6148dec69d50cfff0c1ea130ce65a3ad7"
+    },
+    {
+      "path": "server/ga4-reports-certification-gate.ts",
+      "role": "machine certification and invalidation gate",
+      "sha256": "826ceb8b050305ce3c204d5680dbb3692b2dc645abf32322c0d564a645e6df24"
+    },
+    {
+      "path": "server/ga4-reports-certification-gate.test.ts",
+      "role": "machine gate regression evidence",
+      "sha256": "3a82ab1f2c027589d7cceaf09b17c2ac86a75498b4a5ca33934f2fa5cbfbdcd6"
+    },
+    {
+      "path": "package.json",
+      "role": "certification command and dependency configuration",
+      "sha256": "b2de5c98e8d96d4a2a72e2c742345d9f76d2917df9f7006a490f10bb3dccfe31"
+    },
+    {
+      "path": "render.yaml",
+      "role": "deployed scheduler and runtime configuration boundary",
+      "sha256": "8cfcdc90e89555ffde031b9d0fc7ade309b999750e7ba3dd30bb63139cfc1a18"
+    }
   ],
   "statusDocument": {
     "path": "GA4/REPORTS_PRODUCTION_READINESS.md",
@@ -86,7 +198,7 @@
     {
       "id": "reports_certification_gate",
       "status": "passed",
-      "evidence": "The fail-closed Reports certification regression and standalone checker pass with the final PRODUCTION_READY record and locked dependency hashes."
+      "evidence": "The fail-closed Reports certification regression and standalone checker pass after September 5 hash synchronization. Exact routes diff review limits changed lines to Notifications reconciliation/visibility and production disabling of a test-only alert route; report APIs, renderers, scheduling, delivery, storage, and values are unchanged. Reports scope and certified SHA remain 94f1096f."
     },
     {
       "id": "focused_reports_regressions",
@@ -115,15 +227,55 @@
     }
   ],
   "externalGates": [
-    { "id": "exact_sha_deployment", "status": "passed", "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 94f1096f3d08c1443f27a032bc5a44c8468c1a7e on 2026-08-29." },
-    { "id": "upstream_section_certifications", "status": "passed", "evidence": "KPI is revalidated at exact deployed 94f1096f. Overview, Ad Comparison, and Insights remain certified at 4be16c54; their runtime and scopes are unchanged. Benchmark remains locked to 12789c1e, with exact-19f05537 authenticated parity retained only as supporting evidence. All five available fail-closed machine gates pass." },
-    { "id": "browser_server_pdf_value_parity", "status": "passed", "evidence": "Exact-19f05537 authenticated KPI and Benchmark browser-PDF rows remain revision-bounded supporting evidence, while the exact-94f1096f protected GA4 Reports regressions pass. The later scheduler delta is confined to the excluded Campaign DeepDive Trend branch; no new GA4 inbox or provider-delivery claim is made." },
-    { "id": "report_crud_tenant_isolation", "status": "passed", "evidence": "Current ownership/destructive regressions pass. The report access and CRUD code blocks are byte-identical to prior exact authenticated mutation/isolation evidence (hashes f84b0bc36858 and d8b44dc74b73), so no production mutation was repeated." },
-    { "id": "deployed_scheduled_visibility", "status": "passed", "evidence": "The prior read-only production audit found the recorded ga4_mock Overview, KPI, Benchmark, and Ad Comparison scheduled report rows all sent on 2026-08-28. Exact diff review from 19f05537 to 94f1096f confines the shared scheduler delta to the excluded Campaign DeepDive Trend branch; GA4 composition, delivery, persistence, and scheduling branches are unchanged. This remains bounded operational evidence, not a new inbox-content or attachment-value claim." },
-    { "id": "scheduler_snapshot_truthfulness", "status": "passed", "evidence": "Failed attempts created no snapshot and did not advance lastSentAt. The successful Gmail attempt created sent event c70003528033, snapshot 9a3783c922ad with matching report/campaign/platform/type, and advanced lastSentAt to 2026-08-15T15:47:22.678Z." },
-    { "id": "provider_confirmed_delivery", "status": "passed", "evidence": "Mailgun audit c0bf19e4ee47 recorded mailgun-api success=true, deliveryStatus=delivered, provider response, and deliveredAt 2026-08-15T15:47:22.173Z." },
-    { "id": "recipient_inbox_receipt", "status": "passed", "evidence": "The user confirmed receipt at the configured Gmail inbox and confirmed that the attached PDF opens." },
-    { "id": "production_database_integrity", "status": "passed", "evidence": "The prior read-only audit found 10 active GA4 reports, six scheduled, zero active orphan reports, zero tenant mismatches, and zero invalid active schedules. Storage, ownership, CRUD, and direct-route dependencies are byte-identical at 94f1096f; no new database mutation or broader integrity claim is made." },
-    { "id": "dependency_hashes", "status": "passed", "evidence": "All protected dependency hashes match the exact revalidated boundary. The exact-94f1096f machine gates, 1,661-test current-version suite, TypeScript check, and production build passed." }
+    {
+      "id": "exact_sha_deployment",
+      "status": "passed",
+      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 94f1096f3d08c1443f27a032bc5a44c8468c1a7e on 2026-08-29."
+    },
+    {
+      "id": "upstream_section_certifications",
+      "status": "passed",
+      "evidence": "KPI is revalidated at exact deployed 94f1096f. Overview, Ad Comparison, and Insights remain certified at 4be16c54; their runtime and scopes are unchanged. Benchmark remains locked to 12789c1e, with exact-19f05537 authenticated parity retained only as supporting evidence. All five available fail-closed machine gates pass."
+    },
+    {
+      "id": "browser_server_pdf_value_parity",
+      "status": "passed",
+      "evidence": "Exact-19f05537 authenticated KPI and Benchmark browser-PDF rows remain revision-bounded supporting evidence, while the exact-94f1096f protected GA4 Reports regressions pass. The later scheduler delta is confined to the excluded Campaign DeepDive Trend branch; no new GA4 inbox or provider-delivery claim is made."
+    },
+    {
+      "id": "report_crud_tenant_isolation",
+      "status": "passed",
+      "evidence": "Current ownership/destructive regressions pass. The report access and CRUD code blocks are byte-identical to prior exact authenticated mutation/isolation evidence (hashes f84b0bc36858 and d8b44dc74b73), so no production mutation was repeated."
+    },
+    {
+      "id": "deployed_scheduled_visibility",
+      "status": "passed",
+      "evidence": "The prior read-only production audit found the recorded ga4_mock Overview, KPI, Benchmark, and Ad Comparison scheduled report rows all sent on 2026-08-28. Exact diff review from 19f05537 to 94f1096f confines the shared scheduler delta to the excluded Campaign DeepDive Trend branch; GA4 composition, delivery, persistence, and scheduling branches are unchanged. This remains bounded operational evidence, not a new inbox-content or attachment-value claim."
+    },
+    {
+      "id": "scheduler_snapshot_truthfulness",
+      "status": "passed",
+      "evidence": "Failed attempts created no snapshot and did not advance lastSentAt. The successful Gmail attempt created sent event c70003528033, snapshot 9a3783c922ad with matching report/campaign/platform/type, and advanced lastSentAt to 2026-08-15T15:47:22.678Z."
+    },
+    {
+      "id": "provider_confirmed_delivery",
+      "status": "passed",
+      "evidence": "Mailgun audit c0bf19e4ee47 recorded mailgun-api success=true, deliveryStatus=delivered, provider response, and deliveredAt 2026-08-15T15:47:22.173Z."
+    },
+    {
+      "id": "recipient_inbox_receipt",
+      "status": "passed",
+      "evidence": "The user confirmed receipt at the configured Gmail inbox and confirmed that the attached PDF opens."
+    },
+    {
+      "id": "production_database_integrity",
+      "status": "passed",
+      "evidence": "The prior read-only audit found 10 active GA4 reports, six scheduled, zero active orphan reports, zero tenant mismatches, and zero invalid active schedules. Storage, ownership, CRUD, and direct-route dependencies are byte-identical at 94f1096f; no new database mutation or broader integrity claim is made."
+    },
+    {
+      "id": "dependency_hashes",
+      "status": "passed",
+      "evidence": "All protected dependency hashes match the exact revalidated boundary. The exact-94f1096f machine gates, 1,661-test current-version suite, TypeScript check, and production build passed."
+    }
   ]
 }

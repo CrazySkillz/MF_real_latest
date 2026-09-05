@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-08-29 revalidation: the authoritative machine record certifies deployed runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`. Review from the prior `19f05537` boundary proved the changed `campaign-detail.tsx` lines are limited to the user-validated GA4-first Connected Platform presentation and the changed `report-scheduler.ts` lines are limited to the Campaign DeepDive Trend PDF branch. KPI formulas, producers, CRUD, alerts, notifications, and GA4 report rows are unchanged. Exact production health, the complete non-Playwright current-version boundary, focused regressions, TypeScript, and the production build passed. Authenticated KPI/Benchmark parity remains revision-bounded supporting evidence from `19f05537`; no new provider or browser-automation claim is made. Older narrative SHA references below are revision-specific history where they differ.
+2026-09-05 revalidation: the authoritative machine record certifies deployed runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Review from the prior `94f1096f` boundary limits the runtime changes to GA4 KPI/Benchmark Notifications, campaign-scoped alert reconciliation, and post-refresh alert checks. KPI formulas, value producers, CRUD, cards, Tracker, aggregates, financial-source rules, and GA4 report rows are unchanged. Exact production health, the complete non-Playwright required regression inventory, TypeScript, and the production build passed. Current production checks confirmed alert rendering, empty/no-client behavior, ownership denial, lifecycle isolation, and successful manual scheduler recomputation of eight KPIs and two Benchmarks. Historical authenticated value/browser parity remains revision-bounded supporting evidence carried only through the reviewed unchanged paths; no new browser-automation or inbox-delivery claim is made. Older narrative SHA references below remain revision-specific history.
 
 ## Purpose
 
@@ -20,9 +20,9 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### August 29, 2026 exact-SHA revalidation decision (controlling)
+### September 5, 2026 exact-SHA revalidation decision (controlling)
 
-**Result: PRODUCTION_READY for certified KPI runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`.** Production health returned that exact SHA. The complete current-version boundary executed 1,661 tests with 1,626 passing, 35 declared future-platform failures visible and nonblocking, and zero blocking failures after certification-record refresh. Focused Campaign DeepDive and GA4 evidence passed 157/157, and TypeScript and the production build passed. The latest authenticated eight-card, Tracker, Notifications, Insights, browser-PDF, and persistence parity packet remains revision-bounded to `19f05537` and carries forward only because the reviewed later diffs do not alter those KPI paths. Reports and scheduler evidence remain separately bounded.
+**Result: PRODUCTION_READY for certified KPI runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`.** Production health returned that exact SHA. The complete KPI/Overview-required non-Playwright inventory passed 68 files / 770 tests on the clean revision; TypeScript and the production build passed. After all record synchronization, the exact-Git-content current-version classifier ran 1,677 tests with 1,642 passing, 35 declared deferred failures visible, and zero blocking failures. All five fail-closed GA4 certification gate files passed 46/46 and all five standalone checkers passed. Historical authenticated cards, Tracker, Insights, browser-PDF, provider, and persistence evidence carries only through unchanged dependencies. Exact-current production evidence covers Notifications and the manual scheduler/recompute path; it does not claim a new natural timer firing, browser automation, provider delivery, or global all-campaign scheduler health.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -860,7 +860,7 @@ Read in this order:
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`.
+Historical instruction, superseded: the former `1a93d8d8` release-candidate answer must not be reused. The controlling current answer is **PRODUCTION_READY** for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -1876,7 +1876,7 @@ The following remain external caveats after current certification:
 - future Mailgun/provider outages, provider event telemetry gaps, or recipient spam filtering
 - future source mixes, platform extensions, or code changes that have not gone through a new readiness pass
 
-These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`; authenticated KPI UI and browser-PDF parity remains revision-bounded to `19f05537` and carries forward only through the reviewed scoped diffs documented above. The GA4-first Connected Platform presentation and Campaign DeepDive-only Trend PDF change do not broaden historical timer, provider-acceptance, or inbox-receipt evidence.
+These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`; authenticated KPI UI and browser-PDF parity remains revision-bounded to `19f05537` and carries forward only through the reviewed unchanged paths documented above. The GA4-first presentation, excluded Campaign DeepDive PDF changes, and current Notifications reconciliation do not broaden historical timer, provider-acceptance, or inbox-receipt evidence.
 
 ## Future Platform Template
 

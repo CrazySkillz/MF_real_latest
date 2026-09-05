@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for certified runtime boundary `b8c7362121593502955d41e522d32396a963fdcc`. That runtime adds only the established campaign-access guard on `/api/campaigns/:id/outcome-totals` relative to `12789c1e`. Authenticated read-only Summary, financial, source, Campaign Breakdown, downstream parity, owner access, and unauthenticated denial passed. The process-wide scheduler's 17 excluded obsolete campaigns remain outside this boundary; no global all-campaign scheduler-health claim is made.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Review from `4be16c54` found no change to Overview values, formulas, cards, sources, aggregates, or renderers; shared runtime changes are limited to Notifications and post-refresh alert checks. Historical authenticated Summary/financial/source parity carries only through those unchanged paths. Exact-current production health and manual scheduler recomputation passed. No new browser-automation, natural-timer, or global all-campaign scheduler-health claim is made.
 
 <!-- /ga4-overview-current-status -->
 

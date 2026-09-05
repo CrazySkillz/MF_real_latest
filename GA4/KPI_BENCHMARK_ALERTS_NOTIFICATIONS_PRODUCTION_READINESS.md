@@ -20,7 +20,7 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 - GA4 KPI/Benchmark alerts and notifications were not production-ready at Commit 1; that statement is historical and does not describe the current GA4 KPI/Benchmark section status.
 - After Commits 2 through 8 in this file were implemented, their required validation passed, and final evidence was recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections became locally code-ready by this document's criteria.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
-- The post-Commit-8 implementation documented in `Current Notifications Implementation Alignment (September 5, 2026)` below includes changes through deployed repository commit `254b9b3b1df2398cec5a8825590fd5ac1e835d97` plus the subsequent truthful Notifications failure-state distinction. That section records current source and regression evidence; it does not reissue or extend an exact-SHA GA4 certification.
+- The post-Commit-8 implementation documented in `Current Notifications Implementation Alignment (September 5, 2026)` below is current through deployed repository commit `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Its exact source, regression, scheduler, and user-confirmed production evidence supports the separately authorized GA4 KPI recertification at that SHA. It does not reissue, broaden, or modify the locked GA4 Benchmark certification.
 - For the GA4 KPI whole-tab certification, the provider/deployed evidence recorded in `GA4/KPIS_PRODUCTION_READINESS.md` closes the current GA4 KPI provider gate: immediate KPI alert email receipt, scheduled report Mailgun HTTP API acceptance, scheduled report inbox receipt, and current KPI values in the received report were user-confirmed on June 29, 2026. This evidence does not certify any future source.
 - For the GA4 Benchmark whole-tab decision, `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is controlling. GA4 Benchmarks are **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. The `650ce59c` record remains historical supporting evidence. Scheduled Reports delivery and inbox receipt are separately certified by the Reports record, not by the Benchmark record.
 - Provider-side email delivery remains claim-specific for each future target environment: no response should claim real email delivery for a future Benchmark send, another platform, another source mix, or a changed provider configuration unless provider delivery events or actual inbox receipt are recorded for that target.
@@ -2060,7 +2060,7 @@ Not locally verifiable:
 
 ### Current Notifications Implementation Alignment (September 5, 2026)
 
-Status: current implementation-alignment evidence through deployed repository commit `254b9b3b1df2398cec5a8825590fd5ac1e835d97` plus the subsequent truthful Notifications failure-state distinction; this is not a new production-readiness certification.
+Status: exact implementation-alignment evidence through deployed repository commit `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. This evidence supports only the separately authorized GA4 KPI recertification at that SHA; the protected GA4 Benchmark certification remains unchanged.
 
 This section supersedes current-behavior descriptions elsewhere in this tracker where they conflict with the implementation below. Earlier commit-specific sections remain historical evidence for those commits.
 
@@ -2118,9 +2118,11 @@ Unverified or blocked from local verification:
 
 Certification-boundary impact:
 
-- no file under `GA4/certifications/` is modified
-- the existing GA4 KPI and Benchmark certification records remain limited to their recorded exact-SHA boundaries
-- this source/document alignment describes current Notifications behavior; it does not silently certify the current revision or broaden GA4/Campaign DeepDive certification scope
+- only KPI and Overview are recertified under the user's explicit exact-SHA authorization; their machine records are `GA4/certifications/ga4-kpis.json` and `GA4/certifications/ga4-overview.json`
+- Ad Comparison, Insights, and Reports receive only the established hash/evidence synchronization required by their shared `GA4/README.md` dependency; their certified SHAs, scopes, runtime code, and evidence boundaries are not reissued or broadened
+- all earlier KPI/Overview certification SHAs are retained as history
+- GA4 Benchmark, Reports, Insights, Ad Comparison, Campaign DeepDive, and every other protected certification retain their existing certified SHAs and scope boundaries; the explicitly identified shared-dependency hashes are synchronized without reissuing those certifications
+- this evidence does not broaden Notifications to Shopify or other platforms and does not change any KPI, Benchmark, Overview, report, attribution, aggregate, or financial value rule
 
 ## Target UX Manual Validation Checklist
 

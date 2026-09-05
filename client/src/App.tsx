@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -41,6 +41,7 @@ import WelcomePage from "@/pages/welcome";
 import ClientsPage from "@/pages/clients";
 import HomePage from "@/pages/home";
 import NotFound from "@/pages/not-found";
+import { dismissGA4AlertHighlightOnOutsideClick } from "@/lib/ga4-alert-highlight";
 
 function PageLoading() {
   return (
@@ -110,6 +111,19 @@ function WelcomeGate({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRouter() {
+  useEffect(() => {
+    const handlePageClick = (event: MouseEvent) => {
+      dismissGA4AlertHighlightOnOutsideClick(
+        event.target,
+        window.location.href,
+        (id) => document.getElementById(id),
+        (url) => window.history.replaceState(window.history.state, "", url),
+      );
+    };
+    document.addEventListener("click", handlePageClick, true);
+    return () => document.removeEventListener("click", handlePageClick, true);
+  }, []);
+
   return (
     <ClientProvider>
       <WelcomeGate>

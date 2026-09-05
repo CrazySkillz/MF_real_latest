@@ -431,6 +431,16 @@ export default function Notifications() {
                   </div>
                 </CardContent>
               </Card>
+            ) : (isError || isGA4ReconciliationError) ? (
+              <Card data-testid="notifications-unavailable">
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Notifications unavailable</h3>
+                    <p className="text-muted-foreground/70">Refresh the page to try again.</p>
+                  </div>
+                </CardContent>
+              </Card>
             ) : filteredNotifications.length === 0 ? (
               <Card>
                 <CardContent className="py-12">

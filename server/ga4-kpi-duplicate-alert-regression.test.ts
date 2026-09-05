@@ -84,7 +84,9 @@ describe("GA4 KPI duplicate alert latest-row behavior", () => {
     const alertMonitoring = readServerFile(join("services", "alert-monitoring.ts"));
     const notifications = readServerFile("kpi-notifications.ts");
 
-    expect(scheduler).toContain("const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(activeKPIsRaw);");
+    expect(scheduler).toContain("const scopedActiveKPIs = requestedCampaignId");
+    expect(scheduler).toContain("const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(scopedActiveKPIs);");
+    expect(scheduler).toContain("for (const rawKpi of scopedActiveKPIs) {");
     expectBefore(
       scheduler,
       "if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) {",

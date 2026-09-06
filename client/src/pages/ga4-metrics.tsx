@@ -773,8 +773,10 @@ export default function GA4Metrics() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create KPI");
+        const errorData = await response.json().catch(() => null);
+        const createError = new Error(errorData?.message || "Failed to create KPI");
+        (createError as any).code = errorData?.code;
+        throw createError;
       }
 
       return response.json();
@@ -788,10 +790,10 @@ export default function GA4Metrics() {
         refreshNotificationQueries(),
       ]).catch((error) => console.warn("KPI post-create refresh failed:", error));
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("KPI creation error:", error);
       toast({
-        title: "Failed to create KPI",
+        title: error?.code === "GA4_KPI_ACTIVE_METRIC_CONFLICT" ? "KPI already exists" : "Failed to create KPI",
         description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });

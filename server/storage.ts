@@ -8,6 +8,8 @@ import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationCompl
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
+import { createActiveCanonicalGA4KPI, isActiveGA4KPI } from "./utils/ga4-kpi-create-guard";
+import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -4367,6 +4369,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createKPI(kpiData: InsertKPI): Promise<KPI> {
+    const campaignId = String(kpiData.campaignId || "").trim();
+    const isCanonicalActiveGA4KPI = String(kpiData.platformType || "").trim().toLowerCase() === "google_analytics"
+      && Boolean(campaignId)
+      && isActiveGA4KPI(kpiData)
+      && Boolean(resolveGA4KpiMetricIdentity(kpiData.metric, kpiData.name));
+    if (isCanonicalActiveGA4KPI) {
+      return createActiveCanonicalGA4KPI(kpiData, {
+        withTransaction: (run) => db.transaction(run),
+        lockCampaign: async (tx: any, id) => {
+          const rows = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, id)).for("update");
+          return rows.length === 1;
+        },
+        listCampaignGA4KPIs: (tx: any, id) => tx.select({
+          id: kpis.id,
+          campaignId: kpis.campaignId,
+          platformType: kpis.platformType,
+          metric: kpis.metric,
+          name: kpis.name,
+          status: kpis.status,
+        }).from(kpis).where(and(eq(kpis.platformType, "google_analytics"), eq(kpis.campaignId, id))),
+        insert: async (tx: any, input) => {
+          const [kpi] = await tx.insert(kpis).values(input).returning();
+          return kpi;
+        },
+      });
+    }
     const [kpi] = await db
       .insert(kpis)
       .values(kpiData)

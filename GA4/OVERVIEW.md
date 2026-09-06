@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: PRODUCTION_READY -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Review from `4be16c54` found no change to Overview values, formulas, cards, sources, aggregates, or renderers; shared runtime changes are limited to Notifications and post-refresh alert checks. Historical authenticated Summary/financial/source parity carries only through those unchanged paths. Exact-current production health and manual scheduler recomputation passed. No new browser-automation, natural-timer, or global all-campaign scheduler-health claim is made.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **PRODUCTION_READY** for certified runtime boundary `a58ff3a4f7d961b0919371623ab54dcb4a45cb3e`. Review from `4be16c54` found no change to Overview values, formulas, cards, sources, aggregates, or renderers; shared runtime changes are limited to Notifications, post-refresh alert checks, and the alert-enabled KPI-create freshness correction. Historical authenticated Summary/financial/source parity carries only through those unchanged paths. Exact-current production health and manual scheduler recomputation passed. No new browser-automation, natural-timer, or global all-campaign scheduler-health claim is made.
 
 <!-- /ga4-overview-current-status -->
 

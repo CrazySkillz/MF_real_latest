@@ -8,9 +8,9 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-As of September 5, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Changes since `94f1096f` are limited to GA4 KPI/Benchmark Notifications, campaign-scoped alert reconciliation, and post-refresh alert checks. KPI formulas, value producers, CRUD, cards, Tracker, aggregates, financial-source rules, and GA4 report rows are unchanged.
+As of September 5, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `a58ff3a4f7d961b0919371623ab54dcb4a45cb3e`. Changes since `94f1096f` are limited to GA4 KPI/Benchmark Notifications, campaign-scoped alert reconciliation, post-refresh alert checks, and the alert-enabled KPI-create freshness correction. KPI formulas, value producers, CRUD, cards, Tracker, aggregates, financial-source rules, and GA4 report rows are unchanged.
 
-The authenticated KPI value/browser parity packet remains revision-bounded to `19f05537` and carries to `dc20c1e1` only through reviewed unchanged value, card, Tracker, Insights, PDF, provider, and persistence paths. Exact-current production evidence covers Notifications behavior and successful manual scheduler recomputation; no new browser-automation, natural-timer, provider-delivery, or inbox-receipt claim is made.
+The authenticated KPI value/browser parity packet remains revision-bounded to `19f05537` and carries to `a58ff3a4` only through reviewed unchanged value, card, Tracker, Insights, PDF, provider, and persistence paths. Exact-current production evidence covers Notifications behavior, immediate post-create alert visibility without a browser refresh, and successful manual scheduler recomputation; no new browser-automation, natural-timer, provider-delivery, or inbox-receipt claim is made.
 
 The final evidence includes exact eight-row cards/Tracker/Notifications/Insights/browser-PDF parity and unchanged semantic persistence. Reports and post-scheduler evidence carries from byte-identical runtime `3c45aae7`; future provider availability and global all-campaign scheduler health remain excluded. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
@@ -290,6 +290,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPI tab is production-ready for certified runtime boundary `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
+The GA4 KPI tab is production-ready for certified runtime boundary `a58ff3a4f7d961b0919371623ab54dcb4a45cb3e`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
 
 The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

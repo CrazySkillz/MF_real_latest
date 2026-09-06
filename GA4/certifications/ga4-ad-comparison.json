@@ -51,7 +51,7 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 documentation status index",
-      "sha256": "7c5e0bf7e348136d9f76ea0b56f65a16552cd911b0f969f52f10660070158789"
+      "sha256": "098f227f3b9f2cbbe67f6f27737f20269d498d1a8e0c38791ec5701174005e23"
     },
     {
       "path": "GA4/REFRESH_AND_PROCESSING.md",
@@ -81,7 +81,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "live tab data producer",
-      "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1"
+      "sha256": "4d7acf1e39b9d24e57ab5735965d47613e9cb84e388417e2547514ed03b8552d"
     },
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
@@ -126,7 +126,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "API and auth boundary",
-      "sha256": "abaee7b2d82b09848db1c255ad710533b7fe69ea90250c95af5c8971204c9527"
+      "sha256": "f219f703a58c2707a5897d7aaefb92e88660960f075437722b55d3324b2549c1"
     },
     {
       "path": "server/storage.ts",
@@ -179,7 +179,7 @@
       "id": "certification_gate",
       "command": "vitest run --pool forks server/ga4-ad-comparison-certification-gate.test.ts && npm run check:ga4-ad-comparison-certification",
       "status": "passed",
-      "evidence": "10/10 gate tests and the repository checker pass after September 5 hash synchronization. Exact diff review limits changed shared runtime lines to Notifications, Shopify refresh-failure notification removal, and GA4 post-refresh alert checks; Ad Comparison queries, values, sources, UI, and reports are unchanged. Its scope and certified SHA remain 4be16c54."
+      "evidence": "10/10 gate tests and the repository checker pass after September 5 a58ff3a4 hash synchronization. Exact diff review limits changed shared runtime lines to the alert-enabled KPI-create wait and existing Notifications-query refresh; Ad Comparison queries, values, sources, UI, and reports are unchanged. Its scope and certified SHA remain 4be16c54."
     },
     {
       "id": "focused_real_paths",

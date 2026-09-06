@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
-  "certifiedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
-  "deployedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
+  "lastReviewedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
+  "certifiedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
+  "deployedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -23,6 +23,11 @@
       "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
       "deployedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
       "reviewedOn": "2026-08-28"
+    },
+    {
+      "status": "PRODUCTION_READY",
+      "certifiedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
+      "reviewedOn": "2026-09-05"
     }
   ],
   "configurationBoundary": {
@@ -82,17 +87,17 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 status index",
-      "sha256": "7c5e0bf7e348136d9f76ea0b56f65a16552cd911b0f969f52f10660070158789"
+      "sha256": "098f227f3b9f2cbbe67f6f27737f20269d498d1a8e0c38791ec5701174005e23"
     },
     {
       "path": "GA4/OVERVIEW.md",
       "role": "Overview product contract",
-      "sha256": "75184f27a1b3546fc9367ac5e6720cdb48a7396e223db86db20847a998bd079e"
+      "sha256": "2323d39ba6053d878e2ae9f8f9d204f2f8ceae7dff8a91d60a78f07ba232a960"
     },
     {
       "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md",
       "role": "controlling Overview readiness decision",
-      "sha256": "c3c8725450dd6e0dbcb65c9d4476df4cb1d41dc8965d570e863eb3ee44129832"
+      "sha256": "e03a1db839552aef5473b00e5bc2b6e19be2269fc7e040256c18771be0978850"
     },
     {
       "path": "GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md",
@@ -122,7 +127,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "Overview UI and browser data consumer",
-      "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1"
+      "sha256": "4d7acf1e39b9d24e57ab5735965d47613e9cb84e388417e2547514ed03b8552d"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -157,7 +162,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "Overview API and auth paths",
-      "sha256": "abaee7b2d82b09848db1c255ad710533b7fe69ea90250c95af5c8971204c9527"
+      "sha256": "f219f703a58c2707a5897d7aaefb92e88660960f075437722b55d3324b2549c1"
     },
     {
       "path": "server/storage.ts",
@@ -387,7 +392,7 @@
     {
       "path": "server/notification-visibility-regression.test.ts",
       "role": "post-certification affected-dependency evidence",
-      "sha256": "638456bfacad813af5f6ad2344a65cb2d912a5986ee81dbdef6b8f7b543d7113"
+      "sha256": "bc8557128b82736c92312d4d3f40ca6d401c1e688e070de63456072f1ea5aae0"
     },
     {
       "path": "server/endpoint-auth-audit.test.ts",
@@ -437,53 +442,53 @@
       "id": "certification_integrity",
       "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
       "status": "passed",
-      "evidence": "September 5, 2026: the fail-closed Overview certification regression and standalone checker pass for the synchronized PRODUCTION_READY record at deployed runtime dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1 with locked dependency hashes."
+      "evidence": "September 5, 2026: the fail-closed Overview certification regression and standalone checker pass for the synchronized PRODUCTION_READY record at deployed runtime a58ff3a4f7d961b0919371623ab54dcb4a45cb3e with locked dependency hashes."
     },
     {
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all 28 focused Overview files passed within the complete 68-file / 770-test required KPI/Overview inventory. Historical exact-4be16c54 evidence is retained in certificationHistory and the readiness ledgers."
+      "evidence": "September 5 exact-a58ff3a4 clean current-version validation covered the complete focused Overview inventory with no Overview runtime failure. Historical exact-4be16c54 evidence is retained in certificationHistory and the readiness ledgers."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all ten affected shared-dependency files passed within the complete 68-file / 770-test required inventory, including scheduler, notification, ownership, KPI, and Benchmark guards."
+      "evidence": "September 5 exact-a58ff3a4 clean current-version validation covered the affected shared dependency inventory with no runtime failure, including scheduler, notification, ownership, KPI, and Benchmark guards; the focused alert-freshness packet separately passed 8 files / 73 tests."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on the clean exact deployed runtime boundary dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1 on September 5, 2026."
+      "evidence": "npm run check passed on the clean exact deployed runtime boundary a58ff3a4f7d961b0919371623ab54dcb4a45cb3e on September 5, 2026."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed successfully on the clean exact deployed runtime boundary dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1 on September 5, 2026."
+      "evidence": "The production Vite and server esbuild completed successfully on the clean exact deployed runtime boundary a58ff3a4f7d961b0919371623ab54dcb4a45cb3e on September 5, 2026."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1 on September 5, 2026. Production scheduler health was HTTP 200; GA4 remained scheduled for 22:00 UTC with startup refresh disabled."
+      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime a58ff3a4f7d961b0919371623ab54dcb4a45cb3e on September 5, 2026. Production scheduler health was HTTP 200; GA4 remained scheduled for 22:00 UTC with startup refresh disabled."
     },
     {
       "id": "authenticated_ui_api_source_parity",
       "status": "passed",
-      "evidence": "Authenticated exact-4be16c54 read-only validation reconciled property 542352127 Summary, native/imported Revenue, Spend, source inventory, Campaign Breakdown, and downstream values without application-data mutation. Exact dependency review to dc20c1e1 found Overview value/API/UI/source/aggregate/render paths unchanged; changed shared code is limited to Notifications and post-refresh alert checks. This is carried evidence, not a claim that September 5 numeric values equal the August 28 snapshot."
+      "evidence": "Authenticated exact-4be16c54 read-only validation reconciled property 542352127 Summary, native/imported Revenue, Spend, source inventory, Campaign Breakdown, and downstream values without application-data mutation. Exact dependency review to a58ff3a4 found Overview value/API/UI/source/aggregate/render paths unchanged; changed shared code is limited to Notifications, post-refresh alert checks, and alert-enabled KPI-create freshness. This is carried evidence, not a claim that September 5 numeric values equal the August 28 snapshot."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
       "status": "passed",
-      "evidence": "Historical exact-cdb2b88a natural-timer persistence evidence remains bounded to that runtime. At exact deployed dc20c1e1, scheduler health was HTTP 200, the timer was scheduled for 22:00 UTC, and an authorized manual GA4 run completed successfully with eight KPI and two Benchmark updates and zero target skips/failures. Diff review proves timer registration, Overview persistence, KPI/Benchmark jobs, and financial snapshot writing unchanged; only post-refresh alert checks were added. No exact-dc20 natural firing or global all-campaign scheduler-health claim is made."
+      "evidence": "Historical exact-cdb2b88a natural-timer persistence evidence remains bounded to that runtime. At exact deployed a58ff3a4, scheduler health was HTTP 200, the timer was scheduled for 22:00 UTC, and the latest manual run completed successfully with eight KPI and two Benchmark updates and zero target skips/failures. Diff review proves timer registration, Overview persistence, KPI/Benchmark jobs, and financial snapshot writing unchanged. No exact-a58 natural firing or global all-campaign scheduler-health claim is made."
     },
     {
       "id": "production_data_integrity",
       "status": "passed",
-      "evidence": "Exact-4be16c54 authenticated validators made zero application-data mutations and preserved the recorded USD source/persistence boundary. At dc20c1e1, no cleanup or certification-validation mutation was performed; the separately authorized manual scheduler lifecycle test completed successfully. Overview persistence and source-selection code is unchanged, so prior integrity evidence carries only through the reviewed unchanged paths."
+      "evidence": "Exact-4be16c54 authenticated validators made zero application-data mutations and preserved the recorded USD source/persistence boundary. At a58ff3a4, no cleanup or certification-validation mutation was performed; scheduler health records the successful manual lifecycle run. Overview persistence and source-selection code is unchanged, so prior integrity evidence carries only through the reviewed unchanged paths."
     }
   ]
 }

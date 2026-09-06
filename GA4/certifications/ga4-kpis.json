@@ -3,8 +3,8 @@
   "sectionId": "ga4-kpis",
   "contractSha256": "7446c4a5848d8a70ed5cdf00d815b4655fed21eaf8d6038996f76c9a8411e42e",
   "status": "PRODUCTION_READY",
-  "lastReviewedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
-  "certifiedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
+  "lastReviewedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
+  "certifiedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
   "invalidationReason": null,
   "previousCertification": {
     "status": "PRODUCTION_READY",
@@ -20,6 +20,11 @@
       "status": "PRODUCTION_READY",
       "certifiedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
       "reviewedOn": "2026-08-29"
+    },
+    {
+      "status": "PRODUCTION_READY",
+      "certifiedSha": "dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1",
+      "reviewedOn": "2026-09-05"
     }
   ],
   "configurationBoundary": {
@@ -79,17 +84,17 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 status index and cross-tab contract",
-      "sha256": "7c5e0bf7e348136d9f76ea0b56f65a16552cd911b0f969f52f10660070158789"
+      "sha256": "098f227f3b9f2cbbe67f6f27737f20269d498d1a8e0c38791ec5701174005e23"
     },
     {
       "path": "GA4/OVERVIEW.md",
       "role": "upstream GA4 metric and financial card contract",
-      "sha256": "75184f27a1b3546fc9367ac5e6720cdb48a7396e223db86db20847a998bd079e"
+      "sha256": "e3cd01cf9cee41644e9c6eb1a1c6b6790ac2c8ee09bc807ab31a50cd54d56a06"
     },
     {
       "path": "GA4/OVERVIEW_PRODUCTION_READINESS.md",
       "role": "upstream Overview readiness boundary",
-      "sha256": "c3c8725450dd6e0dbcb65c9d4476df4cb1d41dc8965d570e863eb3ee44129832"
+      "sha256": "b3e6c777e79ee2d90f8702012cb85c28a552bb617a7bf6d516a6f6c97fdaf8b2"
     },
     {
       "path": "GA4/FINANCIAL_SOURCES.md",
@@ -109,22 +114,22 @@
     {
       "path": "GA4/KPIS.md",
       "role": "functional KPI contract and status document",
-      "sha256": "ffd5130a84112aff06cc2fb754b27d2f198f2b081ee2992e863ae57f14762364"
+      "sha256": "c390d13a8d52c23bf2cd5036e3e7d84950c36677402208a1eca2d26690618d2a"
     },
     {
       "path": "GA4/KPIS_PRODUCTION_READINESS.md",
       "role": "canonical KPI readiness decision and status document",
-      "sha256": "a837c1de0d124ecdf95d35ce0fb3ea86c2e6f097b9b8f983124026b82ff8f563"
+      "sha256": "c4c46a494618cda3920a9586f7f8b208781bbcdafd8dda26d3def64f667db8c1"
     },
     {
       "path": "GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md",
       "role": "threshold and sufficiency policy",
-      "sha256": "0f332779b3e3cfad81c70dd9dffc8b5ac0a658c5abcac46fb495de574994f716"
+      "sha256": "80af1e85c021c4fc64dc7eb47e01e3a89345246fd230e2f0d8aa21549df431b0"
     },
     {
       "path": "GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md",
       "role": "alert notification and email lifecycle contract",
-      "sha256": "6242178d616f71a491cf76008e7cc9679b184a0cc386b435234b9d2ec04dfdca"
+      "sha256": "16e91454f2b2d2f662f0ea3178c79f766758179b48e740f284780c3abdb7024b"
     },
     {
       "path": "GA4/BENCHMARKS.md",
@@ -199,7 +204,7 @@
     {
       "path": "server/ga4-kpi-certification-gate.test.ts",
       "role": "certification checker regression coverage",
-      "sha256": "9383e3fbb6254821beba7da6f3342abe2639da7300be9154966f322764b6622a"
+      "sha256": "26553c95c27997bbfd3aa384ee3a318e0c5287d4453886f8bb5ec28c78055449"
     },
     {
       "path": "server/ga4-kpi-real-path-parity-regression.test.ts",
@@ -244,7 +249,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "live values, KPI UI, tracker, CRUD, Insights, and browser PDF",
-      "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1"
+      "sha256": "4d7acf1e39b9d24e57ab5735965d47613e9cb84e388417e2547514ed03b8552d"
     },
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -284,7 +289,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "KPI API, lifecycle, notification, report, and downstream routes",
-      "sha256": "abaee7b2d82b09848db1c255ad710533b7fe69ea90250c95af5c8971204c9527"
+      "sha256": "f219f703a58c2707a5897d7aaefb92e88660960f075437722b55d3324b2549c1"
     },
     {
       "path": "server/storage.ts",
@@ -504,7 +509,7 @@
     {
       "path": "server/ga4-kpi-create-latency-regression.test.ts",
       "role": "KPI create duplicate-work and fail-closed fallback regression",
-      "sha256": "1abe9318557e72a4e73451509e45fa961a255ead2f9aaf7cfcb552fbd3a5808e"
+      "sha256": "04abd3241524af1697013361059ecb6b5c9c54be95cc5547a31a6e10e6ccc325"
     },
     {
       "path": "server/ga4-cross-tab-consistency.test.ts",
@@ -569,7 +574,7 @@
     {
       "path": "server/notification-visibility-regression.test.ts",
       "role": "notification and bell regression",
-      "sha256": "638456bfacad813af5f6ad2344a65cb2d912a5986ee81dbdef6b8f7b543d7113"
+      "sha256": "bc8557128b82736c92312d4d3f40ca6d401c1e688e070de63456072f1ea5aae0"
     },
     {
       "path": "server/alert-email-regression.test.ts",
@@ -654,91 +659,91 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "September 5, 2026: the fail-closed KPI certification regression and standalone checker pass for the synchronized PRODUCTION_READY record at deployed runtime dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1, with unchanged contract inventory and locked dependency hashes."
+      "evidence": "September 5, 2026: the fail-closed KPI certification regression and standalone checker pass for the synchronized PRODUCTION_READY record at deployed runtime a58ff3a4f7d961b0919371623ab54dcb4a45cb3e, with unchanged contract inventory and locked dependency hashes."
     },
     {
       "id": "deployed_read_only_validator_contract",
       "command": "npm test -- server/ga4-kpi-live-readonly-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: this file passed 6/6 within the complete 68-file / 770-test required KPI/Overview inventory. The historical deployed validator contract remains unchanged and covers exact-SHA health, actor/campaign scope, mutation blocking, cards, Tracker, Notifications, Insights, browser PDF, stored values, scheduler evidence capture, and semantic persistence comparison."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: this file passed 6/6 within the complete 68-file / 770-test required KPI/Overview inventory. The historical deployed validator contract remains unchanged and covers exact-SHA health, actor/campaign scope, mutation blocking, cards, Tracker, Notifications, Insights, browser PDF, stored values, scheduler evidence capture, and semantic persistence comparison."
     },
     {
       "id": "kpi_core_regressions",
       "command": "npm test -- server/ga4-kpi-financial-window-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-damaged-data-cleanup-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-financial-rules.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all ten core files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all ten core files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
     },
     {
       "id": "real_path_cross_consumer_parity",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: 1 file / 34 tests passed. Notification parity retained the deterministic reporting clock and authoritative date-dimension Engagement Rate."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: 1 file / 34 tests passed. Notification parity retained the deterministic reporting clock and authoritative date-dimension Engagement Rate."
     },
     {
       "id": "metric_identity_contract",
       "command": "npm test -- server/ga4-kpi-metric-identity-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all three metric-identity files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all three metric-identity files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
     },
     {
       "id": "authoritative_reporting_window",
       "command": "npm test -- server/ga4-kpi-reporting-window-regression.test.ts server/ga4-kpi-engaged-sessions-persistence-regression.test.ts server/ga4-filter.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all three reporting-window files passed within the complete 68-file / 770-test required inventory, including explicit end-date and weighted daily-row coverage. The prior Commit 14A packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all three reporting-window files passed within the complete 68-file / 770-test required inventory, including explicit end-date and weighted daily-row coverage. The prior Commit 14A packet remains historical evidence."
     },
     {
       "id": "financial_source_failure_contract",
       "command": "npm test -- server/campaign-current-value-financial-source-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-financial-source-parity.test.ts server/ga4-kpi-financial-window-regression.test.ts server/campaign-current-value-calculation-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all five financial-source failure files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all five financial-source failure files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
     },
     {
       "id": "commit_5_validation_closure",
       "command": "npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all nine closure files passed within the complete 68-file / 770-test required inventory; notification visibility passed 42/42. The deployed b91d0968 result remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all nine closure files passed within the complete 68-file / 770-test required inventory; notification visibility passed 42/42. The deployed b91d0968 result remains historical evidence."
     },
     {
       "id": "alert_notification_contract",
       "command": "npm test -- server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-regression.test.ts server/alert-email-scheduler-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/alert-email-audit-regression.test.ts server/alert-email-retry-regression.test.ts server/alert-email-idempotency-regression.test.ts server/alert-email-delivery-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-benchmark-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all 14 alert/notification files passed within the complete 68-file / 770-test required inventory, including 42 notification-visibility tests and 16 protected Benchmark regressions. The earlier Commit 12 packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all 14 alert/notification files passed within the complete 68-file / 770-test required inventory, including 42 notification-visibility tests and 16 protected Benchmark regressions. The earlier Commit 12 packet remains historical evidence."
     },
     {
       "id": "ui_browser_consumer_states",
       "command": "npm test -- server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/custom-report-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/notification-visibility-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all ten required consumer-state files passed within the complete 68-file / 770-test inventory. Historical deployed UI evidence remains bounded to 9f474ce1; exact-current Notifications behavior was user-confirmed without Playwright."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all ten required consumer-state files passed within the complete 68-file / 770-test inventory. Historical deployed UI evidence remains bounded to 9f474ce1; exact-current Notifications behavior was user-confirmed without Playwright."
     },
     {
       "id": "recompute_report_proof",
       "command": "npm test -- server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/report-email-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all eight recompute/report files passed within the complete 68-file / 770-test required inventory. There remains no separate GA4 manual-send endpoint; the prior August 3 packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all eight recompute/report files passed within the complete 68-file / 770-test required inventory. There remains no separate GA4 manual-send endpoint; the prior August 3 packet remains historical evidence."
     },
     {
       "id": "persistence_destructive_safety",
       "command": "npm test -- server/ga4-kpi-persistence-destructive-safety.test.ts server/campaign-delete-cascade-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all four persistence/destructive-safety files passed within the complete 68-file / 770-test required inventory. Prior read-only numeric(18,2) and orphan-row evidence remains historical."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all four persistence/destructive-safety files passed within the complete 68-file / 770-test required inventory. Prior read-only numeric(18,2) and orphan-row evidence remains historical."
     },
     {
       "id": "commit_10_ga4_closure_guards",
       "command": "npm test -- server/ga4-benchmark-provider-validation-regression.test.ts server/ga4-reporting-timezone-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all three closure-guard files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all three closure-guard files passed within the complete 68-file / 770-test required inventory. The prior August 3 packet remains historical evidence."
     },
     {
       "id": "kpi_create_latency",
       "command": "npm test -- server/ga4-kpi-create-latency-regression.test.ts server/notification-visibility-regression.test.ts server/ga4-kpi-alert-contract-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-real-path-parity-regression.test.ts server/ga4-kpi-regression.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 clean validation: all seven listed latency/propagation files passed within the complete 68-file / 770-test required inventory. The August 5 durable-create evidence remains historical."
+      "evidence": "September 5 exact-a58ff3a4 clean validation: all seven listed latency/propagation files passed within the focused 8-file / 73-test alert-freshness packet. Alert-enabled creates wait for the existing post-create reconciliation before the unchanged response, the browser closes before best-effort KPI/Notifications refresh, and non-alert creates retain the background path."
     },
     {
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
       "status": "passed",
-      "evidence": "September 5 exact-dc20c1e1 pre-synchronization run exposed the expected stale certification gates and Windows CRLF-sensitive source-text assertions. After all record synchronization, the exact-Git-content classifier reran all 1,677 tests: 1,642 passed, 35 declared deferred failures remained visible, and zero blocking current-version failures remained. Campaign DeepDive records and files were not changed."
+      "evidence": "September 5 exact-a58ff3a4 pre-synchronization execution found only the expected stale KPI/Overview certification records as blocking failures and one stale shared Ad Comparison hash guard as a visible deferred failure. After record synchronization, the exact-Git-content classifier reran all 1,677 tests: 1,642 passed, 35 declared deferred failures remained visible, and zero blocking current-version failures remained. Campaign DeepDive records and files were not changed."
     },
     {
       "id": "deferred_release_suites",
@@ -756,45 +761,45 @@
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on the clean exact deployed runtime boundary dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1 on September 5, 2026."
+      "evidence": "npm run check passed on the clean exact deployed runtime boundary a58ff3a4f7d961b0919371623ab54dcb4a45cb3e on September 5, 2026."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "npm run build completed successfully on the clean exact deployed runtime boundary dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1 on September 5, 2026."
+      "evidence": "npm run build completed successfully on the clean exact deployed runtime boundary a58ff3a4f7d961b0919371623ab54dcb4a45cb3e on September 5, 2026."
     }
   ],
   "externalGates": [
     {
       "id": "target_data_inventory",
       "status": "passed",
-      "evidence": "Authenticated exact-19f05537 inventory found eight actor-owned campaign-scoped google_analytics KPI rows and reconciled values, targets, windows, states, alert pulses, and semantic persistence. It carries to dc20c1e1 only through exact review proving KPI formulas, producers, card/Tracker values, sources, and persistence paths unchanged; the exact-current manual scheduler run updated the same eight KPI IDs with zero skips or failures."
+      "evidence": "Authenticated exact-19f05537 inventory found eight actor-owned campaign-scoped google_analytics KPI rows and reconciled values, targets, windows, states, alert pulses, and semantic persistence. It carries to a58ff3a4 only through exact review proving KPI formulas, producers, card/Tracker values, sources, and persistence paths unchanged; exact-current scheduler health records a successful manual run updating the same eight KPI IDs and two Benchmark IDs with zero skips or failures."
     },
     {
       "id": "deployed_state_matrix",
       "status": "passed",
-      "evidence": "Authenticated exact-19f05537 validation matched all eight cards, Tracker, Notifications, KPI-derived Insights, browser-PDF rows, and persisted values. Card, Tracker, Insights, PDF, and value paths are unchanged at dc20c1e1. Exact-current user validation covered active Notifications, empty/no-client behavior, ownership denial, lifecycle isolation, units, filtering stability, and highlight clearing. No exact-current browser-automation claim is made."
+      "evidence": "Authenticated exact-19f05537 validation matched all eight cards, Tracker, Notifications, KPI-derived Insights, browser-PDF rows, and persisted values. Card, Tracker, Insights, PDF, and value paths are unchanged at a58ff3a4. Exact-current production health returned a58ff3a4, and the user confirmed a newly created breached alert-enabled KPI appeared in Notifications without a browser refresh. Earlier current-day validation covered empty/no-client behavior, ownership denial, lifecycle isolation, units, filtering stability, and highlight clearing. No exact-current browser-automation claim is made."
     },
     {
       "id": "timer_scheduler",
       "status": "passed",
-      "evidence": "Historical exact-cdb2b88a natural-timer evidence remains bounded to that runtime. At exact deployed dc20c1e1, production scheduler health was HTTP 200, the timer was scheduled for 22:00 UTC, and an authorized manual run completed successfully with eight KPI and two Benchmark updates and zero target skips/failures. Diff review proves timer registration and core recomputation unchanged; no exact-dc20 natural firing or global all-campaign scheduler-health claim is made."
+      "evidence": "Historical exact-cdb2b88a natural-timer evidence remains bounded to that runtime. At exact deployed a58ff3a4, production scheduler health was HTTP 200, the timer was scheduled for 22:00 UTC, and the latest manual run completed successfully with eight KPI and two Benchmark updates and zero target skips/failures. Diff review proves timer registration and core recomputation unchanged; no exact-a58 natural firing or global all-campaign scheduler-health claim is made."
     },
     {
       "id": "provider_and_token",
       "status": "passed",
-      "evidence": "All exact-19f05537 authenticated validator inputs returned successfully without unsafe GET or credential-refresh mutation. Provider, auth, KPI-value resolver, and token dependencies are unchanged at dc20c1e1; exact-current changes only pass successful provider coverage into alert freshness. No new provider-availability or token-state claim is made."
+      "evidence": "All exact-19f05537 authenticated validator inputs returned successfully without unsafe GET or credential-refresh mutation. Provider, auth, KPI-value resolver, and token dependencies are unchanged at a58ff3a4; the exact-current change only waits for the existing alert-enabled create lifecycle and refreshes existing browser queries. No new provider-availability or token-state claim is made."
     },
     {
       "id": "alert_email_delivery",
       "status": "passed",
-      "evidence": "Provider-confirmed KPI alert delivery and inbox receipt remain historical bounded evidence for the configured Mailgun environment. Exact-dc20c1e1 alert/email regressions passed and email delivery code is unchanged. No new email, provider-acceptance, inbox-receipt, or future-delivery claim is made."
+      "evidence": "Provider-confirmed KPI alert delivery and inbox receipt remain historical bounded evidence for the configured Mailgun environment. Exact-a58ff3a4 alert/email regressions passed and email delivery code is unchanged. No new email, provider-acceptance, inbox-receipt, or future-delivery claim is made."
     },
     {
       "id": "browser_and_report_parity",
       "status": "passed",
-      "evidence": "Every exact-19f05537 browser-PDF KPI row matched name, cumulative window, current value, target, and state for all eight KPIs. This remains revision-bounded supporting evidence at dc20c1e1 because KPI rows and GA4 PDF/report renderers are unchanged. Reports certification remains separately locked at 94f1096f; no Playwright or new report-parity claim is made."
+      "evidence": "Every exact-19f05537 browser-PDF KPI row matched name, cumulative window, current value, target, and state for all eight KPIs. This remains revision-bounded supporting evidence at a58ff3a4 because KPI values and GA4 PDF/report renderers are unchanged. Reports certification remains separately locked at 94f1096f; no Playwright or new report-parity claim is made."
     }
   ]
 }

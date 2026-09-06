@@ -92,9 +92,9 @@ describe("GA4 KPI certification integrity gate", () => {
     const thresholdStatus = thresholds.slice(0, thresholds.indexOf("## Purpose"));
 
     expect(readmeKpiEntry).toContain("Current status: **PRODUCTION_READY**");
-    expect(readmeKpiEntry).toContain("dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1");
+    expect(readmeKpiEntry).toContain("a58ff3a4f7d961b0919371623ab54dcb4a45cb3e");
     expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY**");
-    expect(thresholdStatus).toContain("dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1");
+    expect(thresholdStatus).toContain("a58ff3a4f7d961b0919371623ab54dcb4a45cb3e");
     expect(thresholdStatus).not.toContain("machine record remains `UNVERIFIED`");
   });
 

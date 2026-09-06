@@ -66,7 +66,7 @@
     {
       "path": "GA4/README.md",
       "role": "GA4 canonical reference index",
-      "sha256": "7c5e0bf7e348136d9f76ea0b56f65a16552cd911b0f969f52f10660070158789"
+      "sha256": "098f227f3b9f2cbbe67f6f27737f20269d498d1a8e0c38791ec5701174005e23"
     },
     {
       "path": "GA4/REPORTS.md",
@@ -86,7 +86,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "role": "GA4 Reports tab UI and browser artifact consumer",
-      "sha256": "0b7dab9f2a0d4e6f161e981e08d688a9d5471393a7ec58992d9d3bdbc2cd6db1"
+      "sha256": "4d7acf1e39b9d24e57ab5735965d47613e9cb84e388417e2547514ed03b8552d"
     },
     {
       "path": "shared/schema.ts",
@@ -106,7 +106,7 @@
     {
       "path": "server/routes-oauth.ts",
       "role": "report API, access, CRUD, generation, and delivery routes",
-      "sha256": "abaee7b2d82b09848db1c255ad710533b7fe69ea90250c95af5c8971204c9527"
+      "sha256": "f219f703a58c2707a5897d7aaefb92e88660960f075437722b55d3324b2549c1"
     },
     {
       "path": "server/storage.ts",
@@ -198,7 +198,7 @@
     {
       "id": "reports_certification_gate",
       "status": "passed",
-      "evidence": "The fail-closed Reports certification regression and standalone checker pass after September 5 hash synchronization. Exact routes diff review limits changed lines to Notifications reconciliation/visibility and production disabling of a test-only alert route; report APIs, renderers, scheduling, delivery, storage, and values are unchanged. Reports scope and certified SHA remain 94f1096f."
+      "evidence": "The fail-closed Reports certification regression and standalone checker pass after September 5 a58ff3a4 hash synchronization. Exact diff review limits changed shared runtime lines to the alert-enabled KPI-create wait and existing Notifications-query refresh; report APIs, renderers, scheduling, delivery, storage, and values are unchanged. Reports scope and certified SHA remain 94f1096f."
     },
     {
       "id": "focused_reports_regressions",

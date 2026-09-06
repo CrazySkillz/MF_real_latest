@@ -22,9 +22,9 @@ Current GA4 tab production-readiness status:
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
 <!-- ga4-overview-current-status -->
-<!-- ga4-overview-certification-status: PRODUCTION_READY -->
+<!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- GA4 Overview is **PRODUCTION_READY** only for exact certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018` recorded in `GA4/certifications/ga4-overview.json`. The KPI-create-only runtime delta leaves Overview calculations unchanged, and the exact-current authenticated `ga4_mock` scheduler run passed.
+- GA4 Overview is **UNVERIFIED** for current deployed runtime `e492f46308768b2cf92c513c7572576d5632e44e`. The earlier `bf078b0375def8146e1f51e5d2c2246c3c350018` certification remains historical evidence only because later commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary. Exact-current Overview external validation is incomplete.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
@@ -92,7 +92,7 @@ Important meaning:
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current section status: **PRODUCTION_READY** for certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`.
+  Concise canonical current-status index. Current section status: **UNVERIFIED** for deployed runtime `e492f46308768b2cf92c513c7572576d5632e44e`; the earlier certification remains historical evidence only.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`

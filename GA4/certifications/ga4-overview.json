@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
-  "certifiedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
-  "deployedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "e492f46308768b2cf92c513c7572576d5632e44e",
+  "certifiedSha": null,
+  "deployedSha": "e492f46308768b2cf92c513c7572576d5632e44e",
+  "invalidationReason": "Post-bf078b03 commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary. Exact-current authenticated Overview parity, scheduler/provider behavior, and production-data integrity must be revalidated before re-certification.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
@@ -34,6 +34,12 @@
       "certifiedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
       "deployedSha": "a58ff3a4f7d961b0919371623ab54dcb4a45cb3e",
       "reviewedOn": "2026-09-05"
+    },
+    {
+      "status": "PRODUCTION_READY",
+      "certifiedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
+      "deployedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
+      "reviewedOn": "2026-09-06"
     }
   ],
   "configurationBoundary": {
@@ -448,7 +454,7 @@
       "id": "certification_integrity",
       "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
       "status": "passed",
-      "evidence": "September 6: the KPI and Overview certification packet and standalone Overview checker passed for the synchronized PRODUCTION_READY record at deployed runtime bf078b0375def8146e1f51e5d2c2246c3c350018."
+      "evidence": "September 6: the Overview gate and standalone checker pass with the record fail-closed as UNVERIFIED for deployed runtime e492f46308768b2cf92c513c7572576d5632e44e."
     },
     {
       "id": "focused_overview_regressions",
@@ -479,22 +485,22 @@
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime bf078b0375def8146e1f51e5d2c2246c3c350018 on September 6, 2026. Production /health/scheduler was HTTP 200 and GA4 remained scheduled for 22:00 UTC with startup refresh disabled."
+      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime e492f46308768b2cf92c513c7572576d5632e44e on September 6, 2026."
     },
     {
       "id": "authenticated_ui_api_source_parity",
-      "status": "passed",
-      "evidence": "Authenticated exact-4be16c54 read-only validation remains revision-bounded supporting evidence. Exact diff review from a58ff3a4 to bf078b03 found only KPI create uniqueness and conflict presentation changes in shared runtime files; Overview value/API/source/aggregate/render paths are unchanged. The exact-current ga4_mock run additionally confirmed the configured property and non-stale daily refresh, not historical numeric-value equality."
+      "status": "pending",
+      "evidence": "Historical authenticated parity remains revision-bounded. Exact-e492f463 authenticated Overview UI/API/source parity has not been completed."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
-      "status": "passed",
-      "evidence": "Historical exact-cdb2b88a natural-timer evidence remains revision-bounded. At exact deployed bf078b03, an authenticated campaign-scoped manual run targeted existing ga4_mock and live property 542352127, completed successfully at 2026-09-06T08:08:11.505Z, refreshed daily data through 2026-09-05, and updated all eight KPIs and both Benchmarks with zero skips or failures. No exact-bf078b03 natural firing or global all-campaign scheduler-health claim is made."
+      "status": "pending",
+      "evidence": "Historical scheduler evidence remains revision-bounded. Exact-e492f463 target persistence has not been revalidated after the shared dependency changes."
     },
     {
       "id": "production_data_integrity",
-      "status": "passed",
-      "evidence": "The September 6 duplicate inventory used an explicit read-only transaction, found zero active canonical KPI duplicate groups, and performed no cleanup. A separate read-only boundary check proved ga4_mock campaign/client ownership and active primary property 542352127 before the guarded campaign-scoped refresh. That refresh performed only the documented daily replacement and existing KPI/Benchmark recompute for ga4_mock, then evaluated the existing financial-snapshot write gate; it did not reconnect, replace a source, create a KPI/Benchmark, write a financial snapshot, or touch another campaign."
+      "status": "pending",
+      "evidence": "The exact-e492f463 KPI duplicate inventory is clean but does not prove the broader Overview source and persisted-data boundary. Exact-current Overview production-data integrity remains pending."
     }
   ]
 }

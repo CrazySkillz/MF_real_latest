@@ -21,9 +21,9 @@ Only evidence from the same deployed commit, production-data state, and document
 ## Current Decision — Stable Cross-Session Answer
 
 <!-- ga4-overview-current-status -->
-<!-- ga4-overview-certification-status: PRODUCTION_READY -->
+<!-- ga4-overview-certification-status: UNVERIFIED -->
 
-**Current section status: PRODUCTION_READY.** The certified runtime boundary is `bf078b0375def8146e1f51e5d2c2246c3c350018` for the recorded campaign, property, source, and persisted-data boundary. Exact dependency review found no Overview value-path change; local regressions, TypeScript, build, deployment health, and the exact-current `ga4_mock` eight-KPI/two-Benchmark recompute passed. Reports remain separately bounded; no current browser-automation, natural timer, provider-availability, or global all-campaign scheduler-health claim is made.
+**Current section status: UNVERIFIED.** The current deployed runtime is `e492f46308768b2cf92c513c7572576d5632e44e`. The earlier certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018` remains historical evidence only. Later commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary, so exact-current authenticated Overview parity, scheduler/provider behavior, and production-data integrity must be revalidated before certification can be restored. This fail-closed correction changes no runtime analytics behavior.
 
 The immediately prior certification at `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`, the earlier certification at `4be16c54c550a45dbf3104313c820ea47b453604`, and the earlier certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remain historical evidence for their exact recorded boundaries only.
 

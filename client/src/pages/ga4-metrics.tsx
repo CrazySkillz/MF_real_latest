@@ -7364,6 +7364,7 @@ export default function GA4Metrics() {
                         </DialogTrigger>
                         {/* Avoid forcing extreme z-index here; it can cause Radix Select menus to render behind the modal. */}
                         <DialogContent
+                          data-ga4-kpi-benchmark-editor-dialog
                           className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6"
                           onCloseAutoFocus={(event) => {
                             if (!benchmarkEditFocusRestoreRef.current) return;
@@ -9176,6 +9177,7 @@ export default function GA4Metrics() {
         }}
       >
         <DialogContent
+          data-ga4-kpi-benchmark-editor-dialog
           className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border"
           onOpenAutoFocus={(event) => {
             if (editingKPI) event.preventDefault();

@@ -59,7 +59,7 @@ export default function CreateClientModal({ isOpen, onClose }: CreateClientModal
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent data-create-client-dialog className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
             <Building2 className="w-5 h-5" />

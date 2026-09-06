@@ -75,6 +75,10 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-create-client-dialog]) {
+    margin-right: 0 !important;
+  }
+
   body[data-scroll-locked]:has([data-ga4-kpi-benchmark-editor-dialog]) {
     margin-right: 0 !important;
   }

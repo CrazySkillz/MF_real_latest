@@ -77,6 +77,47 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  it.each(["roas", "revenue"])("overlaps independent source reads for %s without returning before they finish", async (metric) => {
+    const delayed = (value: any, ms: number) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+    storageMock.getCampaign.mockImplementation(() => delayed(campaign, 100));
+    storageMock.getGA4Connections.mockImplementation(() => delayed([connection], 100));
+    storageMock.getGA4DailyMetrics.mockImplementation(() => delayed([sourceRow], 100));
+    storageMock.getGA4Connection.mockImplementation(() => delayed(connection, 100));
+    storageMock.getRevenueTotalForRange.mockImplementation(() => delayed({ totalRevenue: 0, sourceIds: [] }, 300));
+    storageMock.getSpendTotalForRange.mockImplementation(() => delayed({ totalSpend: 100, sourceIds: ["spend-source"] }, 300));
+    let completed = false;
+    const pending = resolveAlertCurrentValueForDecision(row(metric)).then((result) => { completed = true; return result; });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(1);
+    expect(storageMock.getGA4Connection).toHaveBeenCalledTimes(1);
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(1);
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(299);
+    expect(completed).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(completed).toBe(true);
+    expect(await pending).toMatchObject({ currentValue: "0", __alertDecisionEligible: true });
+  });
+
+  it("handles an early financial-read rejection while daily facts are still pending", async () => {
+    storageMock.getGA4DailyMetrics.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve([sourceRow]), 100)));
+    storageMock.getRevenueTotalForRange.mockRejectedValue(new Error("source read failed"));
+    const pending = resolveAlertCurrentValueForDecision(row("revenue"));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await pending).toMatchObject({ currentValue: "99", __alertDecisionEligible: false, __alertDecisionReason: "unavailable" });
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it.each(["campaign", "connection"])("does not start source reads when %s scope is unavailable", async (missing) => {
+    if (missing === "campaign") storageMock.getCampaign.mockResolvedValue(undefined);
+    else storageMock.getGA4Connections.mockRejectedValue(new Error("connection unavailable"));
+    expect(await resolveAlertCurrentValueForDecision(row("revenue"))).toMatchObject({ __alertDecisionEligible: false, __alertDecisionReason: "unavailable" });
+    expect(storageMock.getGA4DailyMetrics).not.toHaveBeenCalled();
+    expect(storageMock.getRevenueTotalForRange).not.toHaveBeenCalled();
+    expect(storageMock.getSpendTotalForRange).not.toHaveBeenCalled();
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
   const enableProvider = () => {
     const oauth = { ...connection, method: "access_token", accessToken: "access-token" };
     storageMock.getGA4Connections.mockResolvedValue([oauth]);
@@ -86,6 +127,34 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     });
     return oauth;
   };
+
+  it.each([
+    ["sessions", "20"], ["Total Sessions", "20"], ["users", "12"], ["totalUsers", "12"],
+    ["pageviews", "40"], ["conversions", "5"], ["totalConversions", "5"],
+    ["conversionRate", "25"], ["engagement_rate", "50"],
+  ])("does not wait for unused financial reads for %s", async (metric, expected) => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...sourceRow, sessions: 20, users: 12,
+      pageviews: 40, conversions: 5, engagedSessions: 10, engagementRate: 0.5 }]);
+    storageMock.getRevenueTotalForRange.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ totalRevenue: 1000, sourceIds: [] }), 1000)));
+    storageMock.getGA4Connection.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(connection), 1000)));
+    let result: any;
+    const pending = resolveAlertCurrentValueForDecision(row(metric)).then((value) => { result = value; });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(result).toMatchObject({ currentValue: expected, __alertDecisionEligible: true });
+    await pending;
+    expect(storageMock.getRevenueTotalForRange).not.toHaveBeenCalled();
+    expect(storageMock.getGA4Connection).not.toHaveBeenCalled();
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it.each(["CPA", "ROAS", "ROI", "Cost Per Acquisition"])("preserves legacy spend sufficiency for a traffic rule named %s", async (name) => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...sourceRow, sessions: 20, conversions: 5 }]);
+    const trafficRule = { ...row("sessions"), name };
+    expect(await resolveAlertCurrentValueForDecision(trafficRule)).toMatchObject({ currentValue: "20", __alertDecisionEligible: true });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [] });
+    expect(await resolveAlertCurrentValueForDecision(trafficRule)).toMatchObject({ currentValue: "20", __alertDecisionEligible: false, __alertDecisionReason: "insufficient_spend" });
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(2);
+  });
 
   it("shares one native provider read across financial rules in one check without sharing rule state", async () => {
     enableProvider();

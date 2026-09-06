@@ -130,8 +130,10 @@ export async function resolveAlertCurrentValueForDecision<T extends {
   if (!metric) return resolved as T & Record<string, any>;
 
   try {
-    const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
-    const connections = await storage.getGA4Connections(campaignId).catch(() => null as any);
+    const [campaign, connections] = await Promise.all([
+      storage.getCampaign(campaignId).catch(() => undefined as any),
+      storage.getGA4Connections(campaignId).catch(() => null as any),
+    ]);
     const primary = (Array.isArray(connections) ? connections : []).find((connection: any) => connection?.isPrimary)
       || (Array.isArray(connections) ? connections : [])[0];
     const propertyId = String(primary?.propertyId || "").trim();
@@ -147,7 +149,21 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const endDate = reportingWindow.endDate;
     const financialStartDate = campaignStartDate(campaign);
     const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
-    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate).catch(() => null as any);
+    const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
+    // Independent reads share the same resolved campaign/window; do not serialize their network waits.
+    const financialWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };
+    const spendSourceStartDate = "1900-01-01";
+    const financialInputsPromise = Promise.allSettled([
+      usesFinancialSource
+        ? storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")
+        : Promise.resolve(null),
+      storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
+    ]);
+    const [rows, connection] = await Promise.all([
+      storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate).catch(() => null as any),
+      !usesFinancialSource || isYesopMockProperty(propertyId) ? Promise.resolve(null)
+        : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
+    ]);
     const sourceRows = Array.isArray(rows) ? rows : [];
     const trafficRows = sourceRows.filter((sourceRow: any) => {
       const date = String(sourceRow?.date || "");
@@ -158,7 +174,6 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     let ga4Inputs = toInputs(trafficTotals);
     let hasGA4SourceInput = trafficRows.length > 0;
     let hasAuthoritativeEngagementInput = trafficRows.length > 0;
-    const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
     const usesTrafficSource = metric === "cpa" || !usesFinancialSource;
     if (options.requireCurrentTrafficFreshness && usesTrafficSource && resolveStoredGA4TrafficFreshness({
       rows: trafficRows,
@@ -201,7 +216,6 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       hasGA4SourceInput = true;
       hasAuthoritativeEngagementInput = true;
     } else {
-      const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
       if (usesFinancialSource && connection?.method === "access_token" && connection?.accessToken) {
         const attempt = (token: string, fromDate: string) => {
           const args: Parameters<typeof ga4Service.getTotalsWithRevenue> = [
@@ -272,12 +286,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
     } : null;
 
-    const financialWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };
-    const spendSourceStartDate = "1900-01-01";
-    const [importedRevenueResult, spendResult] = await Promise.allSettled([
-      storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
-      storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
-    ]);
+    const [importedRevenueResult, spendResult] = await financialInputsPromise;
     const importedRevenueValue = importedRevenueResult.status === "fulfilled"
       ? parseGA4FinancialNumber((importedRevenueResult.value as any)?.totalRevenue)
       : null;

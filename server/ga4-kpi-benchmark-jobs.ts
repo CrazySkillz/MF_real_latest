@@ -535,7 +535,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       };
 
       // 1) KPI progress points (daily)
-      for (const kpi of Array.isArray(kpis) ? kpis : []) {
+      let kpiHistories: PromiseSettledResult<any[]>[] = [];
+      for (let index = 0; index < (Array.isArray(kpis) ? kpis.length : 0); index++) {
+        const kpi = kpis[index];
+        // Read up to four independent histories together; retain the existing sequential writes.
+        if (index % 4 === 0) kpiHistories = await Promise.allSettled(kpis.slice(index, index + 4).map(async (item) => {
+          const metric = resolveGA4KpiMetricIdentity(item?.metric, item?.name);
+          return item?.id && metric && inputsForMetric(metric) ? storage.getKPIProgress(String(item.id)) : [];
+        }));
         const kpiId = String((kpi as any)?.id || "");
         if (!kpiId) continue;
 
@@ -552,7 +559,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
         const valueNum = computeKpiValue(metricOrName, metricInputs);
         try {
-          const existing = await storage.getKPIProgress(kpiId);
+          const historyResult = kpiHistories[index % 4];
+          if (historyResult.status === "rejected") throw historyResult.reason;
+          const existing = historyResult.value;
           const existingPts = filterGA4InsightsHistoryByScope(Array.isArray(existing) ? existing : [], historyScopeMarker)
             .map((p: any) => ({
               id: String(p?.id || ""),
@@ -600,7 +609,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
 
       // 2) Benchmark history points (daily)
-      for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
+      let benchmarkHistories: PromiseSettledResult<any[]>[] = [];
+      for (let index = 0; index < (Array.isArray(benchmarks) ? benchmarks.length : 0); index++) {
+        const b = benchmarks[index];
+        if (index % 4 === 0) benchmarkHistories = await Promise.allSettled(benchmarks.slice(index, index + 4).map(async (item) => {
+          const metric = resolveGA4KpiMetricIdentity(item?.metric, item?.name);
+          return item?.id && metric && benchmarkInputsForMetric(metric)
+            ? benchmarkStorage.getBenchmarkHistory(String(item.id)) : [];
+        }));
         const benchmarkId = String((b as any)?.id || "");
         if (!benchmarkId) continue;
         const metricKey = resolveGA4KpiMetricIdentity((b as any)?.metric, (b as any)?.name);
@@ -618,7 +634,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
           if (!updated) throw new Error("Benchmark current-value update did not change a row");
 
-          const history = await benchmarkStorage.getBenchmarkHistory(benchmarkId);
+          const historyResult = benchmarkHistories[index % 4];
+          if (historyResult.status === "rejected") throw historyResult.reason;
+          const history = historyResult.value;
           const hist = filterGA4InsightsHistoryByScope(Array.isArray(history) ? history : [], historyScopeMarker);
           const already = hist.some((h: any) => isoDateUTC(new Date((h as any)?.recordedAt || 0)) === date);
           if (hasExactDailyRow && !already) {

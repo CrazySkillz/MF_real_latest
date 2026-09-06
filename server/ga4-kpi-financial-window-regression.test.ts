@@ -37,8 +37,8 @@ vi.mock("./analytics", () => ({ ga4Service: ga4ServiceMock }));
 vi.mock("./utils/campaign-current-values", () => ({
   refreshCampaignCurrentValuesForCampaign: refreshCampaignCurrentValuesForCampaignMock,
 }));
-vi.mock("./kpi-scheduler.js", () => ({ checkPerformanceAlerts: checkPerformanceAlertsMock }));
-vi.mock("./benchmark-notifications.js", () => ({ checkBenchmarkPerformanceAlerts: checkBenchmarkPerformanceAlertsMock }));
+vi.mock("./kpi-scheduler.js", () => ({ checkGA4PerformanceAlertsForCampaign: checkPerformanceAlertsMock }));
+vi.mock("./benchmark-notifications.js", () => ({ checkGA4BenchmarkPerformanceAlertsForCampaign: checkBenchmarkPerformanceAlertsMock }));
 
 import {
   getGA4KPIFinancialSourceWindow,
@@ -146,7 +146,7 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "6.5" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roi", { currentValue: "550" });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "10" });
-    expect(checkPerformanceAlertsMock).toHaveBeenCalledTimes(1);
+    expect(checkPerformanceAlertsMock).toHaveBeenCalledExactlyOnceWith("campaign-1", "2026-06-27");
   });
 
   it("updates Benchmark current values and skips same-date history even when the target date is not latest", async () => {

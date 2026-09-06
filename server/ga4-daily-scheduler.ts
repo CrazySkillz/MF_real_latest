@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
-import { isYesopMockProperty, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
@@ -214,13 +214,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
     reportingDatesByCampaign[currentCampaignId] = reportingWindow.endDate;
     let failed = false;
     for (const connection of activeConnections) {
-      const propertyId = String(connection.propertyId);
       try {
-        if (isYesopMockProperty(propertyId)) {
-          propertyIdsProcessed.push(propertyId);
-          console.log(`[GA4 Daily] Deterministic demo property ${propertyId} requires no provider refresh`);
-          continue;
-        }
         const series = await ga4Service.getTimeSeriesData(
           currentCampaignId,
           storage,
@@ -263,8 +257,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         propertyIdsProcessed.push(String(connection.propertyId));
       } catch (e: any) {
         failed = true;
-        propertyIdsFailed.push(propertyId);
-        console.warn(`[GA4 Daily] Refresh failed for campaign ${currentCampaignId}, property ${propertyId}:`, e?.message || e);
+        propertyIdsFailed.push(String(connection.propertyId));
+        console.warn(`[GA4 Daily] Refresh failed for campaign ${currentCampaignId}, property ${String(connection.propertyId)}:`, e?.message || e);
       }
     }
     if (failed) campaignIdsFailed.push(currentCampaignId);

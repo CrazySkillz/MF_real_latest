@@ -176,26 +176,6 @@ describe("GA4 daily scheduler timing", () => {
     expect(replace.mock.calls.map((call) => call[1])).toEqual(["properties/active-1", "properties/active-2"]);
   });
 
-  it("keeps the explicit yesop demo property off the live provider path", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-demo", reportingTimeZone: "UTC" }] as any);
-    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "yesop", isActive: true }] as any);
-    const provider = vi.spyOn(ga4Service, "getTimeSeriesData");
-    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow");
-
-    const result = await refreshAllGA4DailyMetrics();
-
-    expect(result).toMatchObject({
-      campaignIdsProcessed: ["campaign-demo"],
-      campaignIdsFailed: [],
-      propertyIdsProcessed: ["yesop"],
-      propertyIdsFailed: [],
-      rowsUpserted: 0,
-    });
-    expect(getGA4DailyRefreshFailure(result, "campaign-demo")).toBeNull();
-    expect(provider).not.toHaveBeenCalled();
-    expect(replace).not.toHaveBeenCalled();
-  });
-
   it("preserves last-good storage when any provider daily value is invalid", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC" }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "properties/active", isActive: true }] as any);

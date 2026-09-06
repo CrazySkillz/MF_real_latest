@@ -7254,8 +7254,8 @@ export default function GA4Metrics() {
                                               const absStr = formatPct(abs).replace("%", "");
 
                                               return p.effectiveDeltaPct > 0
-                                                ? `${absStr}% above target (outside ${toleranceLabel})`
-                                                : `${absStr}% below target (outside ${toleranceLabel})`;
+                                                ? `${absStr}% above target`
+                                                : `${absStr}% below target`;
                                             })()}
                                           </div>
                                         )}

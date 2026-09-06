@@ -41,7 +41,7 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).toContain("better than {kpiTracker.toleranceSummary}");
     expect(ga4MetricsFile).toContain("within {kpiTracker.toleranceSummary}");
     expect(ga4MetricsFile).toContain("outside {kpiTracker.toleranceSummary}");
-    expect(ga4MetricsFile).toContain("outside ${toleranceLabel}");
+    expect(ga4MetricsFile).not.toContain("(outside ${toleranceLabel})");
   });
 
   it("keeps KPI card status text aligned with metric-aware bands", () => {
@@ -52,7 +52,7 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
 
     expect(ga4MetricsFile).toContain('if (p.band === "near") return `On track (within ${toleranceLabel})`;');
     expect(ga4MetricsFile.indexOf('if (p.band === "near") return `On track (within ${toleranceLabel})`;')).toBeLessThan(
-      ga4MetricsFile.indexOf('`${absStr}% below target (outside ${toleranceLabel})`')
+      ga4MetricsFile.indexOf('`${absStr}% below target`')
     );
   });
 

@@ -1116,7 +1116,7 @@ export default function Campaigns() {
               </Button>
 
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
-                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-xl" : "sm:max-w-2xl"} max-h-[90vh] overflow-hidden flex flex-col`}>
+                <DialogContent data-create-campaign-dialog className={`${wizardStep === 1 ? "sm:max-w-xl" : "sm:max-w-2xl"} max-h-[90vh] overflow-hidden flex flex-col`}>
                   <DialogHeader className="pb-4 shrink-0">
                     <DialogTitle>
                       {wizardStep === 1 ? "Create New Campaign" :

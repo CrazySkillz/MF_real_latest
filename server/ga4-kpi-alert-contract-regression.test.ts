@@ -209,16 +209,18 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(await cached).toBe(1000);
   });
 
-  it.each([0, -10])("retains valid native %s without caching imported sources or rule state", async (nativeRevenue) => {
+  it.each([0, -10])("retains valid native %s and reloads changed imported sources on the next check", async (nativeRevenue) => {
     enableProvider();
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: nativeRevenue, conversions: 10 } });
     const cache = new Map<string, Promise<any>>();
     const first = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, sourceIds: ["imported"] });
-    const second = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    const sameCheck = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    expect(sameCheck.currentValue).toBe(String(nativeRevenue));
+    const second = await resolveAlertCurrentValueForDecision(row("revenue"), new Map());
     expect(first.currentValue).toBe(String(nativeRevenue));
     expect(second.currentValue).toBe(String(nativeRevenue + 50));
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(2);
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(2);
   });
 
@@ -229,6 +231,105 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     await resolveAlertCurrentValueForDecision(row("revenue"));
     await resolveAlertCurrentValueForDecision(row("revenue"));
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(4);
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(4);
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(4);
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(4);
+  });
+
+  it("shares stored inputs across KPI/Benchmark metrics and aliases without sharing decisions", async () => {
+    enableProvider();
+    const metrics = ["revenue", "Total Revenue", "roas", "roi", "cpa", "sessions"];
+    const uncached = [];
+    for (const metric of metrics) uncached.push(await resolveAlertCurrentValueForDecision(row(metric)));
+    for (const mock of Object.values(storageMock)) mock.mockClear();
+    const cache = new Map<string, Promise<any>>();
+    const cached = [];
+    for (const metric of metrics) cached.push(await resolveAlertCurrentValueForDecision(row(metric), cache));
+    expect(cached).toEqual(uncached);
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(1);
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(1);
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(1);
+    expect(storageMock.getCampaign).toHaveBeenCalledTimes(metrics.length);
+    expect(storageMock.getGA4Connections).toHaveBeenCalledTimes(metrics.length);
+  });
+
+  it("shares in-flight stored reads while waiting for their completion", async () => {
+    storageMock.getSpendTotalForRange.mockImplementation(() => new Promise(resolve =>
+      setTimeout(() => resolve({ totalSpend: 100, sourceIds: ["spend-source"] }), 1000)));
+    const cache = new Map<string, Promise<any>>();
+    let completed = false;
+    const pending = Promise.all(["sessions", "conversions"].map(metric =>
+      resolveAlertCurrentValueForDecision(row(metric), cache))).then(result => { completed = true; return result; });
+    await vi.advanceTimersByTimeAsync(999);
+    expect(completed).toBe(false);
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect((await pending).every(result => result.__alertDecisionEligible)).toBe(true);
+  });
+
+  it("removes repeated stored-source wait time from a sequential financial check", async () => {
+    storageMock.getSpendTotalForRange.mockImplementation(() => new Promise(resolve =>
+      setTimeout(() => resolve({ totalSpend: 100, sourceIds: ["spend-source"] }), 300)));
+    const run = async (cache?: Map<string, Promise<any>>) => {
+      const start = Date.now();
+      for (const metric of ["revenue", "roas", "roi", "cpa"]) await resolveAlertCurrentValueForDecision(row(metric), cache);
+      return Date.now() - start;
+    };
+    const uncached = run();
+    await vi.runAllTimersAsync();
+    expect(await uncached).toBe(1200);
+    const cached = run(new Map());
+    await vi.runAllTimersAsync();
+    expect(await cached).toBe(300);
+  });
+
+  it("does not use cached sources after the campaign disappears", async () => {
+    const cache = new Map<string, Promise<any>>();
+    await resolveAlertCurrentValueForDecision(row("roi"), cache);
+    storageMock.getCampaign.mockResolvedValue(undefined);
+    expect(await resolveAlertCurrentValueForDecision(row("roi"), cache)).toMatchObject({
+      __alertDecisionEligible: false, __alertDecisionReason: "unavailable",
+    });
+  });
+
+  it.each(["getGA4DailyMetrics", "getRevenueTotalForRange", "getSpendTotalForRange"] as const)(
+    "retries rejected %s reads within the same check", async (method) => {
+      const cache = new Map<string, Promise<any>>();
+      storageMock[method].mockRejectedValueOnce(new Error("temporary failure"));
+      const first = await resolveAlertCurrentValueForDecision(row("roi"), cache);
+      expect(first.__alertDecisionEligible).toBe(false);
+      const second = await resolveAlertCurrentValueForDecision(row("roi"), cache);
+      expect(second.__alertDecisionEligible).toBe(true);
+      expect(storageMock[method]).toHaveBeenCalledTimes(2);
+    });
+
+  it.each(["daily", "revenue", "spend"])("does not retain unusable %s reads", async (kind) => {
+    const cache = new Map<string, Promise<any>>();
+    const method = kind === "daily" ? storageMock.getGA4DailyMetrics
+      : kind === "revenue" ? storageMock.getRevenueTotalForRange : storageMock.getSpendTotalForRange;
+    method.mockResolvedValueOnce(kind === "daily" ? [] : { totalRevenue: "invalid", totalSpend: "invalid", sourceIds: [] });
+    await resolveAlertCurrentValueForDecision(row("roi"), cache);
+    expect((await resolveAlertCurrentValueForDecision(row("roi"), cache)).__alertDecisionEligible).toBe(true);
+    expect(method).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["campaign", "property", "filter", "currency", "timezone", "end"])("isolates stored inputs for changed %s", async (changed) => {
+    const cache = new Map<string, Promise<any>>();
+    await resolveAlertCurrentValueForDecision(row("roi"), cache);
+    const next = row("roi");
+    if (changed === "campaign") {
+      next.campaignId = "another-owner-campaign";
+      storageMock.getCampaign.mockResolvedValue({ ...campaign, id: next.campaignId, ownerId: "another-owner" });
+    }
+    if (changed === "property") storageMock.getGA4Connections.mockResolvedValue([{ ...connection, propertyId: "456" }]);
+    if (changed === "filter") storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "another" });
+    if (changed === "currency") storageMock.getCampaign.mockResolvedValue({ ...campaign, currency: "EUR" });
+    if (changed === "timezone") storageMock.getCampaign.mockResolvedValue({ ...campaign, reportingTimeZone: "Europe/Amsterdam" });
+    if (changed === "end") vi.setSystemTime(new Date("2026-08-02T12:00:00Z"));
+    await resolveAlertCurrentValueForDecision(next, cache);
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(2);
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(2);
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(2);
   });
 
   it.each(["campaign", "property", "token", "filter", "currency", "start", "end"])("keeps changed %s scope independent", async (changed) => {

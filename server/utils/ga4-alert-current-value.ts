@@ -150,17 +150,39 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const financialStartDate = campaignStartDate(campaign);
     const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
     const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
+    // Share successful stored-source reads only within this alert check. Keep scope and credentials fresh.
+    const readSource = <T>(kind: string, args: unknown[], read: () => Promise<T>, usable: (value: T) => boolean): Promise<T> => {
+      const key = JSON.stringify(["ga4-alert-stored-source", campaignId, propertyId,
+        campaign.ga4CampaignFilter, campaign.reportingTimeZone, campaign.currency, kind, ...args]);
+      const cached = cache?.get(key);
+      if (cached) return cached;
+      const pending = read().then((value) => {
+        if (!usable(value)) cache?.delete(key);
+        return value;
+      }, (error) => {
+        cache?.delete(key);
+        throw error;
+      });
+      cache?.set(key, pending);
+      return pending;
+    };
     // Independent reads share the same resolved campaign/window; do not serialize their network waits.
     const financialWindow = { startDate: "1900-01-01", endDate: reportingWindow.endDate };
     const spendSourceStartDate = "1900-01-01";
     const financialInputsPromise = Promise.allSettled([
       usesFinancialSource
-        ? storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")
+        ? readSource("revenue", [financialWindow.startDate, financialWindow.endDate],
+          () => storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4"),
+          (value) => parseGA4FinancialNumber(value?.totalRevenue) !== null && Array.isArray(value?.sourceIds))
         : Promise.resolve(null),
-      storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
+      readSource("spend", [spendSourceStartDate, financialWindow.endDate],
+        () => storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
+        (value) => parseGA4FinancialNumber(value?.totalSpend) !== null && Array.isArray(value?.sourceIds)),
     ]);
     const [rows, connection] = await Promise.all([
-      storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate).catch(() => null as any),
+      readSource("daily", [sourceStartDate, endDate],
+        () => storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate),
+        (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
       !usesFinancialSource || isYesopMockProperty(propertyId) ? Promise.resolve(null)
         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
     ]);

@@ -8,13 +8,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-As of September 5, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `a58ff3a4f7d961b0919371623ab54dcb4a45cb3e`. Changes since `94f1096f` are limited to GA4 KPI/Benchmark Notifications, campaign-scoped alert reconciliation, post-refresh alert checks, and the alert-enabled KPI-create freshness correction. KPI formulas, value producers, CRUD, cards, Tracker, aggregates, financial-source rules, and GA4 report rows are unchanged.
+As of September 6, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`. The runtime prevents concurrent or alias-equivalent active GA4 KPI duplicates within one campaign while keeping different campaigns and owners independent. KPI formulas, values, thresholds, cards, Tracker, aggregates, financial-source rules, Benchmark behavior, Notifications semantics, and GA4 report rows were not changed.
 
-The authenticated KPI value/browser parity packet remains revision-bounded to `19f05537` and carries to `a58ff3a4` only through reviewed unchanged value, card, Tracker, Insights, PDF, provider, and persistence paths. Exact-current production evidence covers Notifications behavior, immediate post-create alert visibility without a browser refresh, and successful manual scheduler recomputation; no new browser-automation, natural-timer, provider-delivery, or inbox-receipt claim is made.
+Historical authenticated KPI value/browser parity remains revision-bounded supporting evidence only. Exact-current evidence covers production health, duplicate conflict handling, alias equivalence, campaign isolation, the UI conflict message, a zero-duplicate read-only inventory, and an authenticated campaign-scoped refresh of existing `ga4_mock` on live property `542352127` that updated all eight KPIs and both Benchmarks with zero skips or failures. No new browser-automation, natural-timer, provider-delivery, or inbox-receipt claim is made.
 
 The final evidence includes exact eight-row cards/Tracker/Notifications/Insights/browser-PDF parity and unchanged semantic persistence. Reports and post-scheduler evidence carries from byte-identical runtime `3c45aae7`; future provider availability and global all-campaign scheduler health remain excluded. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
-GA4 KPI creation validates campaign access and input, persists the submitted KPI (including the visible Current Value), and schedules the complete downstream lifecycle. When the new KPI has an enabled alert threshold, the response waits for that existing lifecycle through alert reconciliation so the browser can fetch the resulting notification; other creates return immediately while processing continues. The browser closes the modal before refreshing the KPI and Notifications caches. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths.
+GA4 KPI creation validates campaign access and input, then serializes canonical active KPI creation by campaign. Standard and legacy metric aliases share one canonical identity, so one campaign can have only one active GA4 KPI for that metric while different campaigns remain independent. Exact `inactive` rows and physically deleted rows do not block creation. A conflict returns HTTP `409` with `GA4_KPI_ACTIVE_METRIC_CONFLICT`; the browser shows `KPI already exists`. When a new KPI has an enabled alert threshold, the response waits for the existing downstream lifecycle through alert reconciliation so the browser can fetch the resulting notification; other creates return immediately while processing continues. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths.
 
 ## KPI Tab Structure
 
@@ -290,6 +290,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPI tab is production-ready for certified runtime boundary `a58ff3a4f7d961b0919371623ab54dcb4a45cb3e`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
+The GA4 KPI tab is production-ready for certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
 
 The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

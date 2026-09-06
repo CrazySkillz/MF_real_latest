@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 export const GA4_KPI_CERTIFICATION_RECORD =
   "GA4/certifications/ga4-kpis.json";
 export const GA4_KPI_CERTIFICATION_CONTRACT_SHA256 =
-  "7446c4a5848d8a70ed5cdf00d815b4655fed21eaf8d6038996f76c9a8411e42e";
+  "1184d9e927a63f50770b981ec62c29144cbcfeb2e91fcfcd5b0ab368917529d0";
 
 type CertificationStatus = "UNVERIFIED" | "PRODUCTION_READY";
 type EvidenceStatus = "passed" | "failed" | "pending" | "not_applicable";
@@ -331,7 +331,9 @@ function repositoryContext(root: string): GateContext {
     exists: (path) => existsSync(resolve(path)),
     readText: (path) => readFileSync(resolve(path), "utf8"),
     sha256: (path) =>
-      createHash("sha256").update(readFileSync(resolve(path))).digest("hex"),
+      createHash("sha256")
+        .update(readFileSync(resolve(path), "utf8").replace(/\r\n?/g, "\n"))
+        .digest("hex"),
     gitCommitExists: (sha) => gitSucceeds(["cat-file", "-e", sha + "^{commit}"]),
     gitCommitIsAncestor: (sha) =>
       gitSucceeds(["merge-base", "--is-ancestor", sha, "HEAD"]),

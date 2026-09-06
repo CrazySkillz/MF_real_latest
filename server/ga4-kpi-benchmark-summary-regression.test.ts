@@ -110,7 +110,8 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(kpisDoc).toContain("Metric-aware threshold policy:");
     expect(kpisDoc).toContain("performance tracker status-card copy should stay readable for mixed KPI types");
     expect(kpisDoc).toContain("each KPI's tolerance");
-    expect(kpisDoc).toContain("outside 5% tolerance");
+    expect(kpisDoc).toContain("individual KPI cards should show only the concise target delta");
+    expect(kpisDoc).not.toContain("individual KPI cards should show only the row-level tolerance percentage");
     expect(kpisDoc).not.toContain("41 users");
     expect(kpisDoc).not.toContain("41 count");
     expect(kpisDoc).toContain("count KPIs such as `Conversions`, `Users`, and `Sessions` use count-aware tolerance");

@@ -6,15 +6,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of September 6, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`. The runtime prevents concurrent or alias-equivalent active GA4 KPI duplicates within one campaign while keeping different campaigns and owners independent. KPI formulas, values, thresholds, cards, Tracker, aggregates, financial-source rules, Benchmark behavior, Notifications semantics, and GA4 report rows were not changed.
+As of September 6, 2026, the GA4 KPIs tab is **UNVERIFIED** for the current deployed runtime `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96`. The last certified runtime boundary remains historical evidence only because later changes touched KPI/Benchmark save processing, alert and notification behavior, email behavior, and KPI browser presentation.
 
-Historical authenticated KPI value/browser parity remains revision-bounded supporting evidence only. Exact-current evidence covers production health, duplicate conflict handling, alias equivalence, campaign isolation, the UI conflict message, a zero-duplicate read-only inventory, and an authenticated campaign-scoped refresh of existing `ga4_mock` on live property `542352127` that updated all eight KPIs and both Benchmarks with zero skips or failures. No new browser-automation, natural-timer, provider-delivery, or inbox-receipt claim is made.
+Current production health and local focused checks pass, but the exact-current full certification packet, deployed alert lifecycle, scheduler/provider run, duplicate inventory, and browser/report parity gates have not all been rerun. No clean certification claim is made.
 
-The final evidence includes exact eight-row cards/Tracker/Notifications/Insights/browser-PDF parity and unchanged semantic persistence. Reports and post-scheduler evidence carries from byte-identical runtime `3c45aae7`; future provider availability and global all-campaign scheduler health remain excluded. Exact evidence and exclusions are in `GA4/KPIS_PRODUCTION_READINESS.md`.
-
-GA4 KPI creation validates campaign access and input, then serializes canonical active KPI creation by campaign. Standard and legacy metric aliases share one canonical identity, so one campaign can have only one active GA4 KPI for that metric while different campaigns remain independent. Exact `inactive` rows and physically deleted rows do not block creation. A conflict returns HTTP `409` with `GA4_KPI_ACTIVE_METRIC_CONFLICT`; the browser shows `KPI already exists`. When a new KPI has an enabled alert threshold, the response waits for the existing downstream lifecycle through alert reconciliation so the browser can fetch the resulting notification; other creates return immediately while processing continues. Manual refresh, source refresh, and scheduler paths remain recovery/reprocessing paths.
+The functional contract below remains authoritative; exact certification evidence and open gates are tracked in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 ## KPI Tab Structure
 
@@ -49,7 +47,7 @@ Important meaning:
 
 - KPI card progress bars and the KPI executive snapshot should use the same status-color scheme
 - visual status should not drift from the underlying KPI band classification
-- performance tracker status-card copy should stay readable for mixed KPI types: use plain language such as `each KPI's tolerance` in the compact cards and avoid exposing implementation details such as derived count amounts or per-metric tolerance lists; individual KPI cards should show only the row-level tolerance percentage, such as `outside 5% tolerance`
+- performance tracker status-card copy should stay readable for mixed KPI types: use plain language such as `each KPI's tolerance` in the compact cards and avoid exposing implementation details such as derived count amounts or per-metric tolerance lists; individual KPI cards should show only the concise target delta, such as `6.2% below target`, while the metric-aware tolerance continues to determine the status band
 
 ## KPI Creation Journey
 
@@ -290,6 +288,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPI tab is production-ready for certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`. Historical Commit 14A/14B evidence remains revision-specific supporting history and does not broaden the current boundary.
+The GA4 KPI tab is unverified for current deployed runtime `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96`. The earlier certified boundary remains revision-specific supporting history and does not carry across later dependency changes.
 
 The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

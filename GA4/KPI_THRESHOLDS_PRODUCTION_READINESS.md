@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `KPIs` tab is production-ready.
 > Use `GA4/KPIS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY** for certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`; use `GA4/KPIS_PRODUCTION_READINESS.md` for the controlling evidence and exclusions. Threshold behavior itself was not changed. Historical threshold evidence cannot broaden the current boundary.
+> Current durable whole-tab answer: GA4 KPIs are **UNVERIFIED** for current deployed runtime `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96`; use `GA4/KPIS_PRODUCTION_READINESS.md` for the controlling evidence and open gates. Threshold behavior itself was not changed. Historical threshold evidence cannot broaden the current boundary.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The confusion came from having three KPI files with overlapping readiness langua
 - `GA4/KPIS_PRODUCTION_READINESS.md` is the canonical whole-tab production-readiness source of truth.
 - this file is only the historical threshold/scoring slice record.
 
-This file must not override, narrow, or reopen the durable whole-tab production-ready answer in `GA4/KPIS_PRODUCTION_READINESS.md`.
+This file must not override the durable whole-tab status in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 ## How To Reuse This Threshold Slice For A New Source
 

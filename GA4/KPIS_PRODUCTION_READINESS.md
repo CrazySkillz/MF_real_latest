@@ -22,11 +22,11 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### September 6, 2026 exact-SHA decision (controlling)
+### September 6, 2026 post-certification decision (controlling)
 
-**Result: PRODUCTION_READY for certified KPI runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018`.** The duplicate-create boundary is implemented, regression-covered, deployed, and user-verified. Production health returned the exact SHA. The exact `ga4_mock` campaign/property boundary was confirmed read-only, then its authenticated campaign-scoped refresh completed successfully with eight KPI and two Benchmark updates and zero skips or failures. The temporary out-of-scope scheduler change is excluded and reverted. No natural-timer, browser-automation, provider-delivery, inbox-delivery, or global all-campaign scheduler-health claim is made.
+**Result: UNVERIFIED for current deployed runtime `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96`.** The prior certified boundary remains historical evidence only. Later commits changed KPI/Benchmark save processing, source-read reuse, alert and notification scheduling, immediate email breach-episode behavior, email subject copy, and KPI browser presentation. Production health and focused tests pass, but exact-current certification, full-suite, deployed scheduler/provider, alert delivery, duplicate-inventory, and browser/report parity evidence is incomplete. No production-ready claim is made.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -1880,7 +1880,7 @@ The following remain external caveats after current certification:
 - future Mailgun/provider outages, provider event telemetry gaps, or recipient spam filtering
 - future source mixes, platform extensions, or code changes that have not gone through a new readiness pass
 
-These external, manual, or deployed-runtime caveats do not block the certification at runtime boundary `a58ff3a4f7d961b0919371623ab54dcb4a45cb3e`; authenticated KPI UI and browser-PDF parity remains revision-bounded to `19f05537` and carries forward only through the reviewed unchanged paths documented above. The GA4-first presentation, excluded Campaign DeepDive PDF changes, and current Notifications reconciliation do not broaden historical timer, provider-acceptance, or inbox-receipt evidence.
+These external, manual, and deployed-runtime gates block re-certification of the current `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96` boundary. Historical authenticated KPI UI, browser-PDF, timer, provider-acceptance, and inbox-receipt evidence remains revision-bounded and must not be carried across changed paths without an exact-current review.
 
 ## Future Platform Template
 

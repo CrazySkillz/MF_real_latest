@@ -82,7 +82,7 @@ const context = (content = dependencyContent) => ({
 });
 
 describe("GA4 KPI certification integrity gate", () => {
-  it("keeps secondary KPI summaries aligned to the current production certification", () => {
+  it("keeps secondary KPI summaries aligned to the current fail-closed status", () => {
     const readme = readFileSync(resolve(process.cwd(), "GA4/README.md"), "utf8");
     const thresholds = readFileSync(resolve(process.cwd(), "GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md"), "utf8");
     const readmeKpiEntry = readme.slice(
@@ -91,11 +91,11 @@ describe("GA4 KPI certification integrity gate", () => {
     );
     const thresholdStatus = thresholds.slice(0, thresholds.indexOf("## Purpose"));
 
-    expect(readmeKpiEntry).toContain("Current status: **PRODUCTION_READY**");
-    expect(readmeKpiEntry).toContain("bf078b0375def8146e1f51e5d2c2246c3c350018");
-    expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY**");
-    expect(thresholdStatus).toContain("bf078b0375def8146e1f51e5d2c2246c3c350018");
-    expect(thresholdStatus).not.toContain("machine record remains `UNVERIFIED`");
+    expect(readmeKpiEntry).toContain("Current status: **UNVERIFIED**");
+    expect(readmeKpiEntry).toContain("abf07bec54b9a86c0c72d3d4169f6147cf6aaa96");
+    expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **UNVERIFIED**");
+    expect(thresholdStatus).toContain("abf07bec54b9a86c0c72d3d4169f6147cf6aaa96");
+    expect(thresholdStatus).not.toContain("Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY**");
   });
 
   it("accepts a complete UNVERIFIED record with pending evidence", () => {
@@ -235,7 +235,7 @@ describe("GA4 KPI certification integrity gate", () => {
     expect(result).toEqual({ ok: true, errors: [] });
   });
 
-  it("accepts the repository's current certified record", () => {
+  it("accepts the repository's current fail-closed record", () => {
     expect(runGA4KpiCertificationGate()).toEqual({ ok: true, errors: [] });
   });
 });

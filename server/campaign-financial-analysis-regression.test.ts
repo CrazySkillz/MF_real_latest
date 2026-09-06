@@ -339,7 +339,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
-    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8").replace(/\r\n/g, "\n");
     const overviewStart = page.indexOf('<TabsContent value="overview"');
     const overviewEnd = page.indexOf('<TabsContent value="roi-roas"', overviewStart);
     const overview = page.slice(overviewStart, overviewEnd);

@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
   "contractSha256": "1184d9e927a63f50770b981ec62c29144cbcfeb2e91fcfcd5b0ab368917529d0",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
-  "certifiedSha": "bf078b0375def8146e1f51e5d2c2246c3c350018",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "abf07bec54b9a86c0c72d3d4169f6147cf6aaa96",
+  "certifiedSha": null,
+  "invalidationReason": "Post-bf078b03 runtime changes affect KPI/Benchmark save and recompute reads, alert/notification/email behavior, and KPI browser presentation. Exact-current full-suite and deployed external evidence must be completed before re-certification.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "19f055372abe8aee789dd4205eba5decef5f39a5"
@@ -679,8 +679,8 @@
     {
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
-      "status": "passed",
-      "evidence": "September 6: the expanded fail-closed contract records canonical create uniqueness and duplicate inventory dependencies at certified deployed runtime bf078b0375def8146e1f51e5d2c2246c3c350018. The KPI and Overview certification packet and standalone checkers passed after exact dependency synchronization."
+      "status": "pending",
+      "evidence": "The exact-abf07bec checker rejected the stale bf078b03 dependency snapshot. This fail-closed UNVERIFIED transition must be committed before the exact-current certification checker is rerun."
     },
     {
       "id": "deployed_read_only_validator_contract",
@@ -769,8 +769,8 @@
     {
       "id": "current_version_release_suite",
       "command": "npm run test:current-version",
-      "status": "passed",
-      "evidence": "September 6 post-synchronization execution ran all 1,685 tests: 1,640 passed, 45 declared deferred failures remained visible, and zero blocking current-version failures remained. No deferred identity was hidden or promoted."
+      "status": "failed",
+      "evidence": "The exact deployed abf07bec run executed 1,766 tests: 1,714 passed and 52 failed, with four blocking failures. Two were stale KPI/Overview certification records and two were Windows newline-sensitive guards; the newline guards are corrected locally and pass 30/30, but an exact clean committed-boundary rerun remains pending."
     },
     {
       "id": "deferred_release_suites",
@@ -800,33 +800,33 @@
   "externalGates": [
     {
       "id": "target_data_inventory",
-      "status": "passed",
-      "evidence": "September 6 final read-only duplicate inventory against the configured production database found 16 GA4 KPI rows, all 16 active and canonical, zero duplicate groups, zero excess rows, and no cleanup need. No KPI record was deleted or rewritten. Historical exact-19f05537 value/state inventory remains revision-bounded supporting evidence only."
+      "status": "pending",
+      "evidence": "The bf078b03 read-only duplicate inventory remains historical. An exact-current read-only inventory is required before re-certification; no cleanup is authorized."
     },
     {
       "id": "deployed_state_matrix",
-      "status": "passed",
-      "evidence": "Production /api/health returned exact runtime bf078b0375def8146e1f51e5d2c2246c3c350018. After the requested production checklist, the user confirmed verification complete for concurrent duplicate rejection, canonical alias handling, the user-facing conflict message, and same-metric creation in another campaign. Historical card, Tracker, Notifications, Insights, PDF, and persisted-value parity remains revision-bounded supporting evidence; no Playwright or new browser-automation claim is made."
+      "status": "pending",
+      "evidence": "Production health returns exact runtime abf07bec54b9a86c0c72d3d4169f6147cf6aaa96. Exact-current KPI card, Tracker, alert/notification, and report-consumer validation remains pending; no Playwright claim is made."
     },
     {
       "id": "timer_scheduler",
-      "status": "passed",
-      "evidence": "At exact deployed bf078b0375def8146e1f51e5d2c2246c3c350018, the authenticated campaign-scoped manual run targeted only existing ga4_mock campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458 and live property 542352127. It completed successfully at 2026-09-06T08:08:11.505Z, refreshed data through 2026-09-05, and updated all eight existing KPI IDs and both Benchmark IDs with zero skips or failures. Global alerts were suppressed. Historical natural-timer evidence remains revision-bounded; no exact-bf078b03 natural firing or global all-campaign scheduler-health claim is made."
+      "status": "pending",
+      "evidence": "The bf078b03 ga4_mock campaign-scoped run is historical. Post-certification batching and source-read changes require a new exact-current campaign-scoped scheduler/recompute result before re-certification."
     },
     {
       "id": "provider_and_token",
-      "status": "passed",
-      "evidence": "The exact-bf078b03 authenticated ga4_mock run successfully used active numeric property 542352127 and returned current non-stale daily data through 2026-09-05, proving the configured token was usable for that bounded run. Provider request shape, KPI value resolution, and authentication code are unchanged. No future provider-availability or token-state claim is made."
+      "status": "pending",
+      "evidence": "The bf078b03 provider/token result is historical. Exact-current authenticated ga4_mock provider and KPI value-resolution evidence is required before re-certification."
     },
     {
       "id": "alert_email_delivery",
-      "status": "passed",
-      "evidence": "Provider-confirmed KPI alert delivery and inbox receipt remain historical bounded evidence for the configured Mailgun environment. Alert/email code is unchanged at bf078b03, and the exact-current ga4_mock validation suppressed the global alert sweep. No new email, provider-acceptance, inbox-receipt, or future-delivery claim is made."
+      "status": "pending",
+      "evidence": "Immediate email breach-episode behavior and subject copy changed after bf078b03. Exact-current provider acceptance/delivery and inbox evidence is required for the changed path before re-certification."
     },
     {
       "id": "browser_and_report_parity",
-      "status": "passed",
-      "evidence": "Every exact-19f05537 browser-PDF KPI row matched name, cumulative window, current value, target, and state for all eight KPIs. This remains revision-bounded supporting evidence at bf078b03 because KPI values and GA4 PDF/report renderers are unchanged. Reports certification remains separately locked at 94f1096f; no Playwright or new report-parity claim is made."
+      "status": "pending",
+      "evidence": "Historical browser/PDF parity remains revision-bounded. KPI browser presentation changed after bf078b03, so exact-current card and unchanged report-consumer parity review is pending; Reports certification remains separate and no Playwright claim is made."
     }
   ]
 }

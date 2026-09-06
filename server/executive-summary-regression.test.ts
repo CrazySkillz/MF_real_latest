@@ -231,7 +231,7 @@ describe("campaign Executive Summary regression guard", () => {
   });
 
   it("uses campaign-to-date GA4 financial totals while retaining cumulative property traffic", () => {
-    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8").replace(/\r\n/g, "\n");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/attribution-overview"', routeStart);
     const route = routes.slice(routeStart, routeEnd);

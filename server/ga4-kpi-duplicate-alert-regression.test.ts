@@ -90,7 +90,7 @@ describe("GA4 KPI duplicate alert latest-row behavior", () => {
     expectBefore(
       scheduler,
       "if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) {",
-      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);"
+      "await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache)"
     );
     expect(scheduler).toContain("await resolveKPIAlerts(String((rawKpi as any).id), 'superseded');");
 

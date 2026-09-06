@@ -9,7 +9,7 @@ describe("campaign alert current-value regression guard", () => {
 
     expect(scheduler).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(scheduler).toContain("const campaignMetricCache = new Map");
-    expect(scheduler).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);");
+    expect(scheduler).toMatch(/const kpi = rawKpi.alertsEnabled && rawKpi.alertThreshold != null\s*\? await resolveAlertCurrentValueForDecision\(rawKpi, campaignMetricCache\)\s*: rawKpi;/);
     expect(scheduler).toContain("shouldTriggerAlert(kpi)");
     expect(scheduler).toContain("await createKPIAlert(kpi)");
     expect(kpiNotifications).toContain('import { isAlertDecisionBreached } from "./utils/alert-decision";');
@@ -22,7 +22,7 @@ describe("campaign alert current-value regression guard", () => {
     expect(notifications).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(notifications).toContain('import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";');
     expect(notifications).toContain("const campaignMetricCache = new Map");
-    expect(notifications).toContain("const b = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);");
+    expect(notifications).toMatch(/const b = rawBenchmark.alertsEnabled && rawBenchmark.alertThreshold != null\s*\? await resolveAlertCurrentValueForDecision\(rawBenchmark, campaignMetricCache\)\s*: rawBenchmark;/);
     expect(notifications).toContain("if (!isAlertDecisionBreached(b)) {");
     expect(notifications).toContain("const currentRaw = b.currentValue;");
     expect(notifications).toContain("currentValue: currentRaw");

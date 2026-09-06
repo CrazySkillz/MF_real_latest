@@ -265,7 +265,9 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
         await resolveKPIAlerts(String((rawKpi as any).id), 'superseded');
         continue;
       }
-      const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);
+      const kpi = rawKpi.alertsEnabled && rawKpi.alertThreshold != null
+        ? await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache)
+        : rawKpi;
       const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
       const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
       if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined") {

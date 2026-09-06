@@ -114,7 +114,9 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
   const campaignMetricCache = new Map<string, Promise<any>>();
 
   for (const rawBenchmark of items as any[]) {
-    const b = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);
+    const b = rawBenchmark.alertsEnabled && rawBenchmark.alertThreshold != null
+      ? await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache)
+      : rawBenchmark;
     const thresholdRaw = b.alertThreshold;
     const currentRaw = b.currentValue;
     const platformType = String((b?.platformType || "")).trim().toLowerCase();

@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -309,6 +309,13 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
 export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared"): Promise<void> {
   const id = String(benchmarkId || "").trim();
   if (!id) return;
+  if (reason === "cleared") {
+    await db.update(benchmarks).set({ lastAlertSent: null }).where(and(
+      eq(benchmarks.id, id),
+      eq(benchmarks.alertFrequency, "immediate"),
+      isNotNull(benchmarks.lastAlertSent),
+    ));
+  }
   const existingAlerts = await db
     .select()
     .from(notifications)

@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import type { KPI, InsertNotification, Notification as AppNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { parseAlertNumber } from "./utils/alert-evaluation";
@@ -308,6 +308,13 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
 export async function resolveKPIAlerts(kpiId: string, reason: 'cleared' | 'superseded' = 'cleared'): Promise<void> {
   const id = String(kpiId || '').trim();
   if (!id) return;
+  if (reason === 'cleared') {
+    await db.update(kpis).set({ lastAlertSent: null }).where(and(
+      eq(kpis.id, id),
+      eq(kpis.alertFrequency, 'immediate'),
+      isNotNull(kpis.lastAlertSent),
+    ));
+  }
   const existingAlerts = await db.select()
     .from(notifications)
     .where(eq(notifications.type, 'performance-alert'));

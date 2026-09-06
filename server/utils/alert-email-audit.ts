@@ -183,10 +183,15 @@ export function getAlertEmailFrequencyWindowStart(
   return new Date(Math.floor(now.getTime() / windowMs) * windowMs);
 }
 
+export function buildImmediateAlertEpisodeDedupeToken(episodeKey: string): string {
+  return `episode-${createHash("sha1").update(episodeKey).digest("hex").slice(0, 16)}`;
+}
+
 export function buildAlertEmailDedupeKey(args: {
   itemType: AlertEmailItemType;
   itemId: string;
   frequency: unknown;
+  immediateEpisodeKey?: string;
   recipients?: string[];
   sender?: string;
   now?: Date;
@@ -201,7 +206,11 @@ export function buildAlertEmailDedupeKey(args: {
   const sender = String(args.sender || "").trim().toLowerCase();
   const scope = [sender, recipients.join(",")].filter(Boolean).join("|");
   const scopeSuffix = scope ? `:${createHash("sha1").update(scope).digest("hex").slice(0, 12)}` : "";
-  return `alert-email:${itemType}:${itemId}:${frequency}:${windowStart.toISOString()}${scopeSuffix}`;
+  const immediateEpisodeKey = frequency === "immediate" ? String(args.immediateEpisodeKey || "").trim() : "";
+  const sendWindow = immediateEpisodeKey
+    ? buildImmediateAlertEpisodeDedupeToken(immediateEpisodeKey)
+    : windowStart.toISOString();
+  return `alert-email:${itemType}:${itemId}:${frequency}:${sendWindow}${scopeSuffix}`;
 }
 
 async function insertAlertEmailClaimRow(values: AlertEmailClaimInsertValues): Promise<{ id: string } | null> {
@@ -249,6 +258,7 @@ export async function claimAlertEmailSend(
     itemType: AlertEmailItemType;
     itemId: string;
     frequency: unknown;
+    immediateEpisodeKey?: string;
     recipients: string[];
     sender?: string;
     subject: string;
@@ -265,6 +275,7 @@ export async function claimAlertEmailSend(
     itemType: args.itemType,
     itemId: args.itemId,
     frequency,
+    immediateEpisodeKey: args.immediateEpisodeKey,
     recipients: args.recipients,
     sender: args.sender,
     now,

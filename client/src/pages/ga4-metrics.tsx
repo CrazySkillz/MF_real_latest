@@ -7679,7 +7679,7 @@ export default function GA4Metrics() {
                                           >
                                             <SelectTrigger><SelectValue /></SelectTrigger>
                                             <SelectContent className="z-[10000]">
-                                              <SelectItem value="immediate">Immediate</SelectItem>
+                                              <SelectItem value="immediate">Immediate (once per breach)</SelectItem>
                                               <SelectItem value="daily">Daily</SelectItem>
                                               <SelectItem value="weekly">Weekly</SelectItem>
                                             </SelectContent>
@@ -9518,7 +9518,7 @@ export default function GA4Metrics() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="immediate">Immediate</SelectItem>
+                                <SelectItem value="immediate">Immediate (once per breach)</SelectItem>
                                 <SelectItem value="daily">Daily</SelectItem>
                                 <SelectItem value="weekly">Weekly</SelectItem>
                               </SelectContent>

@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   buildAlertEmailDedupeKey,
+  buildImmediateAlertEpisodeDedupeToken,
   claimAlertEmailSend,
   getAlertEmailFrequencyWindowStart,
   getAlertEmailScheduleConfig,
@@ -41,6 +42,27 @@ describe("alert email idempotency regression guard", () => {
       frequency: "immediate",
       now,
     })).toBe("alert-email:kpi:kpi-1:immediate:2026-06-25T10:00:00.000Z");
+  });
+
+  it("keeps Immediate on one dedupe key for the same breach episode and re-arms for a new episode", () => {
+    const base = {
+      itemType: "kpi" as const,
+      itemId: "kpi-1",
+      frequency: "immediate",
+      immediateEpisodeKey: "active:notification-1",
+    };
+    const first = buildAlertEmailDedupeKey({ ...base, now: new Date("2026-06-25T10:34:12.000Z") });
+    const hoursLater = buildAlertEmailDedupeKey({ ...base, now: new Date("2026-06-25T18:00:00.000Z") });
+    const nextBreach = buildAlertEmailDedupeKey({
+      ...base,
+      immediateEpisodeKey: "active:notification-2",
+      now: new Date("2026-06-25T18:00:00.000Z"),
+    });
+
+    expect(first).toBe(hoursLater);
+    expect(first).toContain(":immediate:episode-");
+    expect(first).toContain(buildImmediateAlertEpisodeDedupeToken("active:notification-1"));
+    expect(nextBreach).not.toBe(first);
   });
 
   it("honors optional local timezone schedule metadata for KPI alert emails", () => {
@@ -119,6 +141,29 @@ describe("alert email idempotency regression guard", () => {
     expect(duplicate.reason).toBe("duplicate");
   });
 
+  it("race-safely permits only one Immediate claim for the same breach episode", async () => {
+    const insertClaim = inMemoryClaimInsert();
+    const base = {
+      itemType: "kpi" as const,
+      itemId: "kpi-1",
+      frequency: "immediate",
+      immediateEpisodeKey: "active:notification-1",
+      recipients: ["exec@example.com"],
+      subject: "Alert email send claim: Revenue",
+      campaignId: "campaign-1",
+      campaignName: "Campaign One",
+    };
+
+    const results = await Promise.all([
+      claimAlertEmailSend({ ...base, now: new Date("2026-06-25T10:34:12.000Z") }, insertClaim),
+      claimAlertEmailSend({ ...base, now: new Date("2026-06-25T11:00:00.000Z") }, insertClaim),
+    ]);
+
+    expect(results.filter((result) => result.claimed)).toHaveLength(1);
+    expect(results.filter((result) => !result.claimed)).toHaveLength(1);
+    expect(results[0].dedupeKey).toBe(results[1].dedupeKey);
+  });
+
   it("allows one Benchmark send claim and skips a duplicate in the same frequency window", async () => {
     const insertClaim = inMemoryClaimInsert();
     const args = {
@@ -178,7 +223,7 @@ describe("alert email idempotency regression guard", () => {
   it("claims before provider sends and keeps lastAlertSent as a compatibility mirror", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
 
-    expect(alertMonitoring).toContain('claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim');
+    expect(alertMonitoring).toContain('buildImmediateAlertEpisodeDedupeToken, claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim');
     expect(alertMonitoring.match(/await this\.claimAlertEmailWindow\(/g) || []).toHaveLength(4);
     expect(alertMonitoring.match(/auditEventId: claim\.auditEventId/g) || []).toHaveLength(4);
     expect(alertMonitoring.match(/dedupeKey: claim\.dedupeKey/g) || []).toHaveLength(4);

@@ -1,12 +1,12 @@
 import { db } from "../db";
-import { campaigns, clients, kpis, benchmarks, kpiAlerts, emailAlertEvents } from "../../shared/schema.js";
+import { campaigns, clients, kpis, benchmarks, kpiAlerts, emailAlertEvents, notifications } from "../../shared/schema.js";
 import { eq, and, sql, lte } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
 import { resolveAlertCurrentValueForDecision } from "../utils/ga4-alert-current-value";
 import { isAlertDecisionBreached } from "../utils/alert-decision";
 import { getGA4KPIDuplicateKey, getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "../utils/ga4-kpi-alert-dedupe";
-import { ALERT_EMAIL_MAX_ATTEMPTS, claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim } from "../utils/alert-email-audit";
+import { ALERT_EMAIL_MAX_ATTEMPTS, buildImmediateAlertEpisodeDedupeToken, claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim } from "../utils/alert-email-audit";
 
 interface AlertCheck {
   id: string;
@@ -92,10 +92,16 @@ class AlertMonitoringService {
     campaignId: unknown;
     campaignName: string;
   }): Promise<AlertEmailSendClaim | null> {
+    const isImmediate = String(args.frequency || "").trim().toLowerCase() === "immediate";
+    const immediateEpisodeKey = isImmediate
+      ? await this.getImmediateAlertEpisodeKey(args.itemType, args.itemId, args.campaignId)
+      : undefined;
+    if (isImmediate && !immediateEpisodeKey) return null;
     const claim = await claimAlertEmailSend({
       itemType: args.itemType,
       itemId: String(args.itemId || ""),
       frequency: args.frequency,
+      immediateEpisodeKey: immediateEpisodeKey || undefined,
       recipients: args.recipients,
       subject: `Alert email send claim: ${String(args.itemName || args.itemType)}`,
       campaignId: String(args.campaignId || "").trim() || undefined,
@@ -103,6 +109,35 @@ class AlertMonitoringService {
       sender: String(process.env.EMAIL_FROM_ADDRESS || '').trim() || 'alerts@mimo.app',
     });
     return claim.claimed ? claim : null;
+  }
+
+  private async getImmediateAlertEpisodeKey(itemType: "kpi" | "benchmark", itemId: unknown, campaignId: unknown): Promise<string | null> {
+    const id = String(itemId || "").trim();
+    const scopedCampaignId = String(campaignId || "").trim();
+    if (!id || !scopedCampaignId) return null;
+    let rows: any[];
+    try {
+      rows = await db.select({ id: notifications.id, metadata: notifications.metadata, createdAt: notifications.createdAt })
+        .from(notifications)
+        .where(and(eq(notifications.type, "performance-alert"), eq(notifications.campaignId, scopedCampaignId)));
+    } catch {
+      return null;
+    }
+    const metadataId = itemType === "kpi" ? "kpiId" : "benchmarkId";
+    const matching = rows.flatMap((row: any) => {
+      try {
+        const metadata = typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata;
+        return String(metadata?.[metadataId] || "") === id ? [{ ...row, metadata }] : [];
+      } catch {
+        return [];
+      }
+    });
+    const active = matching.filter((row: any) => !row.metadata?.resolved)
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+    if (active?.id) return `active:${String(active.id)}`;
+    const lastClear = matching.filter((row: any) => row.metadata?.resolvedReason === "cleared" && row.metadata?.resolvedAt)
+      .sort((a: any, b: any) => new Date(b.metadata.resolvedAt).getTime() - new Date(a.metadata.resolvedAt).getTime())[0];
+    return lastClear?.id ? `cleared:${String(lastClear.id)}:${String(lastClear.metadata.resolvedAt)}` : "initial";
   }
 
   async sendImmediateKPIAlertIfNeeded(kpiId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
@@ -115,6 +150,7 @@ class AlertMonitoringService {
     if (!isAlertDecisionBreached(kpi)) return false;
 
     const frequency = (kpi.alertFrequency || 'daily') as any;
+    if (!retryClaim && frequency === 'immediate' && kpi.lastAlertSent) return false;
     if (!retryClaim && !isAlertEmailScheduleDue((kpi as any).calculationConfig, frequency)) return false;
 
     const currentValue = this.parseAlertNumber(kpi.currentValue);
@@ -182,6 +218,7 @@ class AlertMonitoringService {
     if (!isAlertDecisionBreached(benchmark)) return false;
 
     const frequency = (benchmark.alertFrequency || 'daily') as any;
+    if (!retryClaim && frequency === 'immediate' && benchmark.lastAlertSent) return false;
 
     const currentValue = this.parseAlertNumber(benchmark.currentValue);
     const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
@@ -322,6 +359,16 @@ class AlertMonitoringService {
         continue;
       }
 
+      const claimedEpisodeToken = dedupeKey.match(/:immediate:(episode-[0-9a-f]{16})(?::|$)/)?.[1];
+      if (claimedEpisodeToken) {
+        const currentEpisodeKey = await this.getImmediateAlertEpisodeKey(entityType, entityId, row?.campaignId);
+        if (!currentEpisodeKey) continue;
+        if (buildImmediateAlertEpisodeDedupeToken(currentEpisodeKey) !== claimedEpisodeToken) {
+          await this.markAlertEmailRetrySkipped(row, "retry skipped: breach episode ended");
+          continue;
+        }
+      }
+
       const stillSendable = entityType === "kpi"
         ? await this.isKPIAlertRetryStillSendable(entityId)
         : await this.isBenchmarkAlertRetryStillSendable(entityId);
@@ -371,8 +418,8 @@ class AlertMonitoringService {
         if (!isAlertDecisionBreached(kpi)) continue;
 
         const frequency = (kpi.alertFrequency || 'daily') as any;
+        if (frequency === 'immediate' && kpi.lastAlertSent) continue;
         const frequencyHours =
-          frequency === 'immediate' ? 1 : // at most once per hour to avoid spam
           frequency === 'weekly' ? 24 * 7 :
           24;
 
@@ -476,8 +523,8 @@ class AlertMonitoringService {
         if (!isAlertDecisionBreached(benchmark)) continue;
 
         const frequency = (benchmark.alertFrequency || 'daily') as any;
+        if (frequency === 'immediate' && benchmark.lastAlertSent) continue;
         const frequencyHours =
-          frequency === 'immediate' ? 1 :
           frequency === 'weekly' ? 24 * 7 :
           24;
 

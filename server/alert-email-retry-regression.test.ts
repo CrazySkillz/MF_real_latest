@@ -84,6 +84,19 @@ describe("alert email retry regression guard", () => {
     expect(retryProcessor).toContain("await this.sendImmediateBenchmarkAlertIfNeeded(entityId, retryClaim)");
   });
 
+  it("does not carry an Immediate retry into a later breach episode", () => {
+    const alertMonitoring = source("server/services/alert-monitoring.ts");
+    const retryProcessor = sliceBetween(
+      alertMonitoring,
+      "async processDueAlertEmailRetries",
+      "// Check all KPIs for alerts"
+    );
+
+    expect(retryProcessor).toContain(":immediate:(episode-[0-9a-f]{16})");
+    expect(retryProcessor).toContain("buildImmediateAlertEpisodeDedupeToken(currentEpisodeKey) !== claimedEpisodeToken");
+    expect(retryProcessor).toContain('"retry skipped: breach episode ended"');
+  });
+
   it("suppresses retries when KPI or Benchmark alerts are no longer sendable", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
     const kpiGate = sliceBetween(

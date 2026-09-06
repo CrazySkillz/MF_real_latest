@@ -5,6 +5,7 @@ import { join } from "path";
 const EMAIL_SERVICE_FILE = join(__dirname, "services", "email-service.ts");
 const ALERT_MONITORING_FILE = join(__dirname, "services", "alert-monitoring.ts");
 const ROUTES_FILE = join(__dirname, "routes-oauth.ts");
+const GA4_METRICS_FILE = join(__dirname, "..", "client", "src", "pages", "ga4-metrics.tsx");
 
 function readEmailService(): string {
   return readFileSync(EMAIL_SERVICE_FILE, "utf-8");
@@ -60,7 +61,7 @@ describe("alert email regression guard", () => {
     expect(source.match(/if \(!isAlertDecisionBreached\((kpi|benchmark)\)\) (return false|continue);/g)).toHaveLength(6);
   });
 
-  it("keeps invalid values fail-closed and uses audit claims, not lastAlertSent, for immediate sends", () => {
+  it("keeps invalid values fail-closed and suppresses repeated successful Immediate sends", () => {
     const source = readAlertMonitoring();
     const kpiImmediate = source.slice(source.indexOf("async sendImmediateKPIAlertIfNeeded"), source.indexOf("async sendImmediateBenchmarkAlertIfNeeded"));
     const benchmarkImmediate = source.slice(source.indexOf("async sendImmediateBenchmarkAlertIfNeeded"), source.indexOf("private async markAlertEmailRetrySkipped"));
@@ -69,6 +70,11 @@ describe("alert email regression guard", () => {
     expect(source).toContain("if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) continue;");
     expect(kpiImmediate).not.toContain("shouldThrottleAlert(kpi.lastAlertSent");
     expect(benchmarkImmediate).not.toContain("shouldThrottleAlert(benchmark.lastAlertSent");
+    expect(kpiImmediate).toContain("if (!retryClaim && frequency === 'immediate' && kpi.lastAlertSent) return false;");
+    expect(benchmarkImmediate).toContain("if (!retryClaim && frequency === 'immediate' && benchmark.lastAlertSent) return false;");
+    expect(source).toContain("if (frequency === 'immediate' && kpi.lastAlertSent) continue;");
+    expect(source).toContain("if (frequency === 'immediate' && benchmark.lastAlertSent) continue;");
+    expect(source).not.toContain("frequency === 'immediate' ? 1");
     expect(source).toContain("if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) {");
     expect(source).toContain("if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) {");
     const parseIndex = kpiImmediate.indexOf("const currentValue = this.parseAlertNumber(kpi.currentValue);");
@@ -77,6 +83,30 @@ describe("alert email regression guard", () => {
     expect(parseIndex).toBeGreaterThan(-1);
     expect(claimIndex).toBeGreaterThan(parseIndex);
     expect(sendIndex).toBeGreaterThan(claimIndex);
+  });
+
+  it("uses a campaign-scoped breach episode and re-arms Immediate only after recovery", () => {
+    const source = readAlertMonitoring();
+    const kpiNotifications = readFileSync(join(__dirname, "kpi-notifications.ts"), "utf-8");
+    const benchmarkNotifications = readFileSync(join(__dirname, "benchmark-notifications.ts"), "utf-8");
+
+    expect(source).toContain('eq(notifications.campaignId, scopedCampaignId)');
+    expect(source).toContain('const metadataId = itemType === "kpi" ? "kpiId" : "benchmarkId";');
+    expect(source).toContain('row.metadata?.resolvedReason === "cleared"');
+    expect(source).toContain('immediateEpisodeKey: immediateEpisodeKey || undefined,');
+    for (const notificationsSource of [kpiNotifications, benchmarkNotifications]) {
+      expect(notificationsSource).toContain("isNotNull(");
+      expect(notificationsSource).toContain("lastAlertSent: null");
+      expect(notificationsSource).toContain("reason ===");
+      expect(notificationsSource).toContain("alertFrequency");
+      expect(notificationsSource).toContain("immediate");
+    }
+  });
+
+  it("explains the Immediate frequency in both GA4 KPI and Benchmark editors", () => {
+    const source = readFileSync(GA4_METRICS_FILE, "utf-8");
+
+    expect(source.match(/<SelectItem value="immediate">Immediate \(once per breach\)<\/SelectItem>/g) || []).toHaveLength(2);
   });
 
   it("honors scheduled KPI alert email delivery metadata before sending", () => {

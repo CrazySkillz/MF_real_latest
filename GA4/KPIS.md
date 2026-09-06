@@ -222,7 +222,7 @@ Default form behavior:
 Alert frequency meaning:
 
 - `Immediate`
-  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. The first post-create recompute or a later update evaluates a new breach. Later reminder emails can repeat at most once per hour.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. The first post-create recompute or a later update evaluates a new breach. Email sends once for that breach and re-arms only after the KPI recovers and breaches again.
 - `Daily`
   Bell + Notifications keep one active in-app alert record while the breach remains unresolved. The first post-create recompute or a later update evaluates a new breach. Later reminder emails can repeat at most once per day.
 - `Weekly`

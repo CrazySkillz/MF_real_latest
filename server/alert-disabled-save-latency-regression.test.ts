@@ -7,14 +7,18 @@ const mocks = vi.hoisted(() => ({
   clearKPI: vi.fn(),
   createKPI: vi.fn(),
   updateNotification: vi.fn(),
+  updateRule: vi.fn(),
 }));
 vi.mock("./db", async () => {
   const { kpis, benchmarks, notifications } = await import("../shared/schema");
-  return { db: { select: () => ({ from: (table: any) => {
-    if (![kpis, benchmarks, notifications].includes(table)) throw new Error("Unexpected table");
-    const rows = table === notifications ? mocks.alerts : mocks.rows;
-    return Object.assign(Promise.resolve(rows), { where: () => Promise.resolve(rows) });
-  } }) } };
+  return { db: {
+    select: () => ({ from: (table: any) => {
+      if (![kpis, benchmarks, notifications].includes(table)) throw new Error("Unexpected table");
+      const rows = table === notifications ? mocks.alerts : mocks.rows;
+      return Object.assign(Promise.resolve(rows), { where: () => Promise.resolve(rows) });
+    } }),
+    update: (table: any) => ({ set: (values: any) => ({ where: async (condition: any) => mocks.updateRule(table, values, condition) }) }),
+  } };
 });
 vi.mock("./storage", () => ({ storage: { updateNotification: mocks.updateNotification } }));
 vi.mock("./utils/ga4-alert-current-value", () => ({ resolveAlertCurrentValueForDecision: mocks.resolve }));
@@ -52,6 +56,8 @@ describe.each([
     expect(mocks.resolve).not.toHaveBeenCalled();
     if (kind === "KPI") expect(mocks.clearKPI).toHaveBeenCalledWith("rule", "cleared");
     else {
+      expect(mocks.updateRule).toHaveBeenCalledTimes(1);
+      expect(mocks.updateRule.mock.calls[0][1]).toEqual({ lastAlertSent: null });
       expect(mocks.updateNotification).toHaveBeenCalledTimes(1);
       const [id, update] = mocks.updateNotification.mock.calls[0];
       expect(id).toBe("old-alert");

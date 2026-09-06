@@ -200,7 +200,7 @@ Default form behavior:
 Alert frequency meaning:
 
 - `Immediate`
-  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per hour.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Email sends once for that breach and re-arms only after the Benchmark recovers and breaches again.
 - `Daily`
   Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per day.
 - `Weekly`

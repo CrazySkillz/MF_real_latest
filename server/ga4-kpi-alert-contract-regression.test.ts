@@ -77,6 +77,124 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  const enableProvider = () => {
+    const oauth = { ...connection, method: "access_token", accessToken: "access-token" };
+    storageMock.getGA4Connections.mockResolvedValue([oauth]);
+    storageMock.getGA4Connection.mockResolvedValue(oauth);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      totals: { users: 100, sessions: 200, pageviews: 300, conversions: 10, revenue: 1000 },
+    });
+    return oauth;
+  };
+
+  it("shares one native provider read across financial rules in one check without sharing rule state", async () => {
+    enableProvider();
+    const cache = new Map<string, Promise<any>>();
+    const metrics = ["revenue", "roas", "roi", "cpa"];
+    const results = [];
+    for (const metric of metrics) results.push(await resolveAlertCurrentValueForDecision(row(metric), cache));
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
+    expect(results.map((result) => result.currentValue)).toEqual(["1000", "10", "900", "10"]);
+    expect(results.map((result) => result.id)).toEqual(metrics.map((metric) => `kpi-${metric}`));
+    expect(results.every((result) => result.__alertDecisionEligible === true)).toBe(true);
+    const differentThreshold = await resolveAlertCurrentValueForDecision({ ...row("revenue"), id: "benchmark", alertThreshold: "2000" }, cache);
+    expect(isAlertDecisionBreached(results[0])).toBe(false);
+    expect(isAlertDecisionBreached(differentThreshold)).toBe(true);
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares an in-flight read but still waits for authoritative provider completion", async () => {
+    enableProvider();
+    const cache = new Map<string, Promise<any>>();
+    ga4ServiceMock.getTotalsWithRevenue.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return { totals: { revenue: 1000, conversions: 10 } };
+    });
+    let completed = false;
+    const pending = Promise.all(["revenue", "roas", "roi", "cpa"].map((metric) =>
+      resolveAlertCurrentValueForDecision(row(metric), cache))).then(() => { completed = true; });
+    await vi.advanceTimersByTimeAsync(999);
+    expect(completed).toBe(false);
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await pending;
+    expect(completed).toBe(true);
+  });
+
+  it("removes repeated provider wait time from a sequential four-rule check", async () => {
+    enableProvider();
+    ga4ServiceMock.getTotalsWithRevenue.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return { totals: { revenue: 1000, conversions: 10 } };
+    });
+    const run = async (cache?: Map<string, Promise<any>>) => {
+      const started = Date.now();
+      for (const metric of ["revenue", "roas", "roi", "cpa"]) await resolveAlertCurrentValueForDecision(row(metric), cache);
+      return Date.now() - started;
+    };
+    const uncached = run();
+    await vi.runAllTimersAsync();
+    expect(await uncached).toBe(4000);
+    const cached = run(new Map());
+    await vi.runAllTimersAsync();
+    expect(await cached).toBe(1000);
+  });
+
+  it.each([0, -10])("retains valid native %s without caching imported sources or rule state", async (nativeRevenue) => {
+    enableProvider();
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: nativeRevenue, conversions: 10 } });
+    const cache = new Map<string, Promise<any>>();
+    const first = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, sourceIds: ["imported"] });
+    const second = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    expect(first.currentValue).toBe(String(nativeRevenue));
+    expect(second.currentValue).toBe(String(nativeRevenue + 50));
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not reuse native reads across checks or calls without an explicit cache", async () => {
+    enableProvider();
+    await resolveAlertCurrentValueForDecision(row("revenue"), new Map());
+    await resolveAlertCurrentValueForDecision(row("revenue"), new Map());
+    await resolveAlertCurrentValueForDecision(row("revenue"));
+    await resolveAlertCurrentValueForDecision(row("revenue"));
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(4);
+  });
+
+  it.each(["campaign", "property", "token", "filter", "currency", "start", "end"])("keeps changed %s scope independent", async (changed) => {
+    const oauth = enableProvider();
+    const cache = new Map<string, Promise<any>>();
+    await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    const next = row("revenue");
+    if (changed === "campaign") {
+      next.campaignId = "another-owner-campaign";
+      storageMock.getCampaign.mockResolvedValue({ ...campaign, id: next.campaignId, userId: "another-owner" });
+    }
+    if (changed === "property" || changed === "token") {
+      const nextConnection = { ...oauth, [changed === "property" ? "propertyId" : "accessToken"]: "different" };
+      storageMock.getGA4Connections.mockResolvedValue([nextConnection]);
+      storageMock.getGA4Connection.mockResolvedValue(nextConnection);
+    }
+    if (changed === "filter") storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "other_campaign" });
+    if (changed === "currency") storageMock.getCampaign.mockResolvedValue({ ...campaign, currency: "EUR" });
+    if (changed === "start") storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: "2026-06-01" });
+    if (changed === "end") vi.setSystemTime(new Date("2026-08-02T12:00:00Z"));
+    await resolveAlertCurrentValueForDecision(next, cache);
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["error", "invalid"])("does not retain a failed %s provider result for the next rule", async (failure) => {
+    enableProvider();
+    const cache = new Map<string, Promise<any>>();
+    if (failure === "error") ga4ServiceMock.getTotalsWithRevenue.mockRejectedValueOnce(new Error("503 unavailable"));
+    else ga4ServiceMock.getTotalsWithRevenue.mockResolvedValueOnce({ totals: { revenue: "invalid" } });
+    await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    const next = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
+    expect(next.currentValue).toBe("1000");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps authoritative zero alert-eligible for counts and revenue", async () => {
     const users = await resolveAlertCurrentValueForDecision(row("users"));
     const revenue = await resolveAlertCurrentValueForDecision(row("revenue"));
@@ -222,7 +340,8 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
       });
     ga4ServiceMock.refreshAccessToken.mockResolvedValue({ access_token: "new-access-token", expires_in: 3600 });
 
-    const normal = await resolveAlertCurrentValueForDecision(row("revenue"));
+    const cache = new Map<string, Promise<any>>();
+    const normal = await resolveAlertCurrentValueForDecision(row("revenue"), cache);
 
     expect(normal).toMatchObject({ currentValue: "2", __alertDecisionEligible: true });
     expect(ga4ServiceMock.refreshAccessToken).toHaveBeenCalledTimes(1);
@@ -234,7 +353,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
 
     const readOnly = await resolveAlertCurrentValueForDecision(
       row("revenue"),
-      undefined,
+      cache,
       { allowCredentialRefresh: false },
     );
 

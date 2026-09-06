@@ -203,15 +203,29 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     } else {
       const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
       if (usesFinancialSource && connection?.method === "access_token" && connection?.accessToken) {
-        const attempt = (token: string, fromDate: string) =>
-          ga4Service.getTotalsWithRevenue(
+        const attempt = (token: string, fromDate: string) => {
+          const args: Parameters<typeof ga4Service.getTotalsWithRevenue> = [
             String(connection.propertyId || propertyId),
             token,
             fromDate,
             endDate,
             parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
             String((campaign as any)?.currency || "USD").trim().toUpperCase(),
-          );
+          ];
+          // Reuse only identical native reads within this caller's alert check, never across saves.
+          const key = JSON.stringify(["ga4-alert-native-totals", campaignId, ...args]);
+          const cached = cache?.get(key);
+          if (cached) return cached;
+          const pending = ga4Service.getTotalsWithRevenue(...args).then((result) => {
+            if (!isGA4FinancialTotalsCandidate(result?.totals)) cache?.delete(key);
+            return result;
+          }, (error) => {
+            cache?.delete(key);
+            throw error;
+          });
+          cache?.set(key, pending);
+          return pending;
+        };
         const assignProviderInputs = async (token: string) => {
           const candidate = (await attempt(token, financialStartDate))?.totals;
           providerFinancialCandidate = isGA4FinancialTotalsCandidate(candidate) ? candidate : null;

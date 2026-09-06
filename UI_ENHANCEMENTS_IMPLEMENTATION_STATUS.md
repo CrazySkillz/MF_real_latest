@@ -26,6 +26,25 @@
    - **Status:** ✅ Implemented
    - Shows tooltip about using same campaign name across data sources
 
+4. **Home Create Client Modal Layout Stability**
+   - **Location:** `client/src/components/modals/create-client-modal.tsx`, `client/src/index.css`
+   - **Status:** Implemented and production-verified at `3f3ea3b235368e0cfa059a7158c987d4343dbd5a`
+   - The modal has the scoped `data-create-client-dialog` marker.
+   - While that dialog owns Radix scroll lock, CSS suppresses only the redundant body `margin-right` compensation because the root scrollbar gutter is already reserved.
+   - Body overflow locking, modal scrolling, focus trapping, Escape handling, overlay dismissal, accessibility, animations, modal width, and responsive layouts remain unchanged.
+   - Opening and closing through Cancel, close, Escape, overlay dismissal, or successful submission must not move the underlying Home page horizontally or vertically.
+   - `server/create-client-modal-layout-regression.test.ts` guards the scoped marker and prevents a global scroll-lock override; the deployed Home flow was manually confirmed on September 6, 2026.
+
+5. **Campaign Management New Campaign Modal Layout Stability**
+   - **Location:** `client/src/pages/campaigns.tsx`, `client/src/index.css`
+   - **Status:** Implemented and production-verified at `80f0c28ee8d84c45b22ee61a2b4868a26ee32c92`
+   - Root cause: Radix `react-remove-scroll` added body `margin-right` compensation while the root scrollbar gutter was already reserved, causing redundant horizontal compensation on the underlying Campaign Management page.
+   - The New Campaign wizard has the scoped `data-create-campaign-dialog` marker. While that dialog owns Radix scroll lock, CSS suppresses only its redundant body `margin-right` compensation; no global scroll-lock override was added.
+   - The existing responsive `sm:max-w-xl`/`sm:max-w-2xl` sizing, `90vh` height boundary, internal scrolling, focus trapping, Escape handling, overlay dismissal, accessibility, animations, and wizard navigation remain unchanged.
+   - Opening, closing, advancing, going Back, cancelling, submitting, pressing Escape, or dismissing through the overlay must not move the underlying Campaign Management page horizontally or vertically.
+   - `server/create-campaign-modal-layout-regression.test.ts` guards the scoped marker, responsive/internal-scroll classes, and absence of a global body compensation override. TypeScript, the production build, and the focused Create Campaign and neighboring modal regression suite passed before deployment.
+   - Production verification was reported complete after deployment on September 6, 2026. This UI-only change does not alter or recertify analytics, connectors, calculations, attribution, provenance, Notifications, Reports, or Campaign DeepDive sections.
+
 ### ❌ NOT Implemented (Need to Add)
 
 #### 1. Enhanced Conversion Value Field Help Text

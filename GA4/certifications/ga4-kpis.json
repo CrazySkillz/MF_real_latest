@@ -135,7 +135,7 @@
     {
       "path": "GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md",
       "role": "alert notification and email lifecycle contract",
-      "sha256": "15fee12620614d866132749a09c545cf8e5d6eb7d631db43c6f2dec034b94c62"
+      "sha256": "dddd0794d8391e3481c90604f6e33fb6f763f34f403db18d3997aae83bc1f700"
     },
     {
       "path": "GA4/BENCHMARKS.md",

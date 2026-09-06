@@ -2059,7 +2059,7 @@ Not locally verifiable:
 
 ### Current Notifications Implementation Alignment (September 5, 2026)
 
-Status: alert/notification implementation-alignment evidence remains unchanged through deployed runtime `bf078b0375def8146e1f51e5d2c2246c3c350018`. The duplicate-create correction does not change alert/notification semantics, and exact-current `ga4_mock` scheduler validation supports KPI/Overview recertification. The protected GA4 Benchmark certification remains unchanged.
+Status: alert/notification implementation-alignment evidence remains unchanged through deployed runtime `762886a9f4b4b91e3699a0de35efccfe59b53cd7`. The duplicate-create correction does not change alert/notification semantics, and exact-current `ga4_mock` scheduler validation supports KPI/Overview recertification. The protected GA4 Benchmark certification remains unchanged.
 
 Post-certification finding closed at `a58ff3a4`: a newly created alert-enabled GA4 KPI could return before its scheduled reconciliation completed, while the create mutation did not refresh `/api/notifications`. The localized fix waits for the already-scheduled lifecycle only when the new KPI has an enabled alert threshold, then refreshes the existing KPI and Notifications queries after closing the modal. The exact-commit focused packet passed 8 files / 73 tests, the complete pre-synchronization current-version run found only stale certification-record blockers, TypeScript and the production build passed, production health returned exact `a58ff3a4`, and the user confirmed the resulting breached alert appeared without a browser refresh. No alert math, KPI value, Benchmark behavior, scheduler algorithm, email behavior, or response shape changed.
 

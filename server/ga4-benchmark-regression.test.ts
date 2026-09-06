@@ -161,8 +161,8 @@ describe("GA4 Benchmark regression guard", () => {
 
     expect(routesFile).toContain('const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");');
     expect(routesFile).toContain("await checkBenchmarkPerformanceAlerts();");
-    expect(ga4JobsFile).toContain('const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");');
-    expect(ga4JobsFile).toContain("await checkBenchmarkPerformanceAlerts();");
+    expect(ga4JobsFile).toContain('const { checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("./benchmark-notifications.js");');
+    expect(ga4JobsFile).toContain("await checkGA4BenchmarkPerformanceAlertsForCampaign(String(opts.campaignId), reportedDate);");
   });
 
   it("keeps downstream Benchmark status surfaces on the shared threshold policy", () => {
@@ -296,7 +296,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(mutationsSection).toContain('fetch(`/api/benchmarks/${benchmarkId}`');
     expect(mutationsSection).toContain('fetch(`/api/platforms/google_analytics/benchmarks/${benchmarkId}`');
     expect(mutationsSection).toContain('platformType: "google_analytics"');
-    expect((mutationsSection.match(/await refreshNotificationQueries\(\);/g) || []).length).toBe(3);
+    expect((mutationsSection.match(/refreshNotificationQueries\(\)/g) || []).length).toBe(3);
 
     expect(tabSection).toContain("Some Benchmarks are Blocked");
     expect(tabSection).toContain("Some Benchmarks Need More Data");

@@ -32,7 +32,7 @@ describe("GA4 KPI create latency regression", () => {
     expect(createRoute).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
     expect(scheduleHelper).toContain("setImmediate(() => {");
     expect(scheduleHelper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });");
-    expect(scheduleHelper).toContain("await checkPerformanceAlerts();");
+    expect(scheduleHelper).toContain("await reconcileGA4KPIAlertsAfterMutation(campaignId);");
     expect(scheduleHelper).toContain('await runImmediateKPIEmailAlertCheck(kpiId, "KPI Create");');
     expect(scheduleHelper).toContain(".finally(resolve);");
     expect(scheduleHelper.indexOf("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });"))

@@ -666,15 +666,15 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   if (opts?.campaignId && processed > 0 && kpiIdsSkipped.size === 0 && kpiIdsFailed.size === 0 && benchmarkIdsSkipped.size === 0 && benchmarkIdsFailed.size === 0 && campaignIdsSkipped.size === 0 && campaignIdsFailed.size === 0 && !opts?.suppressAlerts) {
     try {
       kpiAlertReconciliationAttempted = true;
-      const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
-      await checkPerformanceAlerts();
+      const { checkGA4PerformanceAlertsForCampaign } = await import("./kpi-scheduler.js");
+      await checkGA4PerformanceAlertsForCampaign(String(opts.campaignId), reportedDate);
     } catch (e: any) {
       alertReconciliationFailures.push("kpi");
       console.warn("[GA4 KPI/Benchmarks] KPI alert reconciliation failed:", e?.message || e);
     }
     try {
-      const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
-      await checkBenchmarkPerformanceAlerts();
+      const { checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("./benchmark-notifications.js");
+      await checkGA4BenchmarkPerformanceAlertsForCampaign(String(opts.campaignId), reportedDate);
     } catch (e: any) {
       alertReconciliationFailures.push("benchmark");
       console.warn("[GA4 KPI/Benchmarks] Benchmark alert reconciliation failed:", e?.message || e);

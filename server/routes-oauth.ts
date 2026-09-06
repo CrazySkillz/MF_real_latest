@@ -156,6 +156,29 @@ async function runImmediateBenchmarkEmailAlertCheck(benchmarkId: unknown, logPre
   }
 }
 
+async function reconcileGA4KPIAlertsAfterMutation(campaignId: string): Promise<void> {
+  const campaign = await storage.getCampaign(campaignId);
+  if (!campaign) throw new Error("Campaign not found");
+  const providerCoverageThroughDate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate;
+  await checkGA4PerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);
+}
+
+async function reconcileBenchmarkAlertsAfterMutation(benchmark: any, campaign: any, logPrefix: string): Promise<void> {
+  try {
+    const { checkBenchmarkPerformanceAlerts, checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("./benchmark-notifications.js");
+    const campaignId = String(benchmark?.campaignId || "").trim();
+    if (String(benchmark?.platformType || "").trim().toLowerCase() === "google_analytics" && campaignId) {
+      campaign ||= await storage.getCampaign(campaignId);
+      const providerCoverageThroughDate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate;
+      await checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);
+    } else {
+      await checkBenchmarkPerformanceAlerts();
+    }
+  } catch (e: any) {
+    console.warn(`[${logPrefix}] Alert check failed:`, e?.message || e);
+  }
+}
+
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
   if (values.length === 0) return 'unknown';
@@ -4041,7 +4064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if (!kpiAlertReconciled) {
             try {
-              await checkPerformanceAlerts();
+              await reconcileGA4KPIAlertsAfterMutation(campaignId);
             } catch (e: any) {
               console.warn("[KPI Create] Alert check failed:", e?.message || e);
             }
@@ -27390,19 +27413,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : updatedKPI;
 
       // Re-check alerts after update (threshold or value may have changed)
+      let ga4KpiAlertReconciled = false;
       if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics' && (okKpi as any)?.campaignId) {
         try {
           const { runGA4DailyKPIAndBenchmarkJobs } = await import("./ga4-kpi-benchmark-jobs.js");
-          await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String((okKpi as any).campaignId) });
+          const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String((okKpi as any).campaignId) });
+          ga4KpiAlertReconciled = refreshResult.kpiAlertReconciliationAttempted
+            && !refreshResult.alertReconciliationFailures.includes("kpi");
         } catch (e: any) {
           console.warn("[KPI Update] GA4 KPI refresh failed:", (e as any)?.message || e);
         }
       }
       if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics') {
-        try {
-          await checkPerformanceAlerts();
-        } catch (e: any) {
-          console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e);
+        if (!ga4KpiAlertReconciled) {
+          try {
+            await reconcileGA4KPIAlertsAfterMutation(String((okKpi as any).campaignId));
+          } catch (e: any) {
+            console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e);
+          }
         }
       } else {
         checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
@@ -28902,10 +28930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const benchmark = await storage.createBenchmark(validatedData);
 
       // Check alerts immediately so breached thresholds create notifications right away
-      try {
-        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
-        await checkBenchmarkPerformanceAlerts();
-      } catch (e: any) { console.warn("[Benchmark Create] Alert check failed:", (e as any)?.message || e); }
+      await reconcileBenchmarkAlertsAfterMutation(benchmark, ok, "Benchmark Create");
       await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Benchmark Create");
 
       res.status(201).json(benchmark);
@@ -28948,10 +28973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
-      try {
-        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
-        await checkBenchmarkPerformanceAlerts();
-      } catch (e: any) { console.warn("[Benchmark Update] Alert check failed:", (e as any)?.message || e); }
+      await reconcileBenchmarkAlertsAfterMutation(benchmark, undefined, "Benchmark Update");
       await runImmediateBenchmarkEmailAlertCheck(id, "Benchmark Update");
 
       res.json(benchmark);

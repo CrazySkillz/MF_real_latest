@@ -259,8 +259,9 @@ describe("notification visibility regression guard", () => {
     expect(kpiCreateRoute).toContain("return res.json(responseKpi || kpi);");
     expect(kpiCreateRoute.indexOf("scheduleGA4KpiCreatePostResponseProcessing(")).toBeLessThan(kpiCreateRoute.indexOf("return res.json(responseKpi || kpi);"));
     expect(kpiUpdateRoute).toContain("if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics')");
-    expect(kpiUpdateRoute).toContain("await checkPerformanceAlerts();");
-    expect(kpiUpdateRoute.indexOf("await checkPerformanceAlerts();")).toBeLessThan(kpiUpdateRoute.indexOf("res.json(responseKPI || updatedKPI);"));
+    expect(kpiUpdateRoute).toContain("if (!ga4KpiAlertReconciled)");
+    expect(kpiUpdateRoute).toContain("await reconcileGA4KPIAlertsAfterMutation");
+    expect(kpiUpdateRoute.indexOf("await reconcileGA4KPIAlertsAfterMutation")).toBeLessThan(kpiUpdateRoute.indexOf("res.json(responseKPI || updatedKPI);"));
 
     const benchmarkCreateStart = routesFile.indexOf('app.post("/api/benchmarks"');
     const benchmarkCreateEnd = routesFile.indexOf('app.put("/api/benchmarks/:id"', benchmarkCreateStart);
@@ -268,10 +269,10 @@ describe("notification visibility regression guard", () => {
     const benchmarkCreateRoute = routesFile.slice(benchmarkCreateStart, benchmarkCreateEnd);
     const benchmarkUpdateRoute = routesFile.slice(benchmarkCreateEnd, benchmarkUpdateEnd);
 
-    expect(benchmarkCreateRoute).toContain("await checkBenchmarkPerformanceAlerts();");
-    expect(benchmarkCreateRoute.indexOf("await checkBenchmarkPerformanceAlerts();")).toBeLessThan(benchmarkCreateRoute.indexOf("res.status(201).json(benchmark);"));
-    expect(benchmarkUpdateRoute).toContain("await checkBenchmarkPerformanceAlerts();");
-    expect(benchmarkUpdateRoute.indexOf("await checkBenchmarkPerformanceAlerts();")).toBeLessThan(benchmarkUpdateRoute.indexOf("res.json(benchmark);"));
+    expect(benchmarkCreateRoute).toContain('await reconcileBenchmarkAlertsAfterMutation(benchmark, ok, "Benchmark Create");');
+    expect(benchmarkCreateRoute.indexOf("await reconcileBenchmarkAlertsAfterMutation")).toBeLessThan(benchmarkCreateRoute.indexOf("res.status(201).json(benchmark);"));
+    expect(benchmarkUpdateRoute).toContain('await reconcileBenchmarkAlertsAfterMutation(benchmark, undefined, "Benchmark Update");');
+    expect(benchmarkUpdateRoute.indexOf("await reconcileBenchmarkAlertsAfterMutation")).toBeLessThan(benchmarkUpdateRoute.indexOf("res.json(benchmark);"));
   });
 
   it("refreshes notifications after GA4 KPI update/delete and Benchmark mutations", () => {

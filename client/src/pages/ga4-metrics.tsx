@@ -817,14 +817,16 @@ export default function GA4Metrics() {
       if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to update KPI");
       return json;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
-      await refreshNotificationQueries();
+    onSuccess: () => {
       setShowKPIDialog(false);
       setEditingKPI(null);
       setKpiEditInitialValues(null);
       kpiForm.reset();
       toast({ title: "KPI updated successfully" });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] }),
+        refreshNotificationQueries(),
+      ]).catch((error) => console.warn("KPI post-update refresh failed:", error));
     },
     onError: (error: any) => {
       toast({
@@ -1031,9 +1033,7 @@ export default function GA4Metrics() {
       if (!response.ok) throw new Error("Failed to create benchmark");
       return response.json();
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
-      await refreshNotificationQueries();
+    onSuccess: () => {
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
       setBenchmarkEditInitialValues(null);
@@ -1058,6 +1058,10 @@ export default function GA4Metrics() {
         emailRecipients: "",
       });
       toast({ title: "Benchmark created successfully" });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] }),
+        refreshNotificationQueries(),
+      ]).catch((error) => console.warn("Benchmark post-create refresh failed:", error));
     },
     onError: (error) => {
       toast({ title: "Failed to create benchmark", description: error.message, variant: "destructive" });
@@ -1081,9 +1085,7 @@ export default function GA4Metrics() {
       if (!response.ok) throw new Error("Failed to update benchmark");
       return response.json();
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
-      await refreshNotificationQueries();
+    onSuccess: () => {
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
       setBenchmarkEditInitialValues(null);
@@ -1108,6 +1110,10 @@ export default function GA4Metrics() {
         emailRecipients: "",
       });
       toast({ title: "Benchmark updated successfully" });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] }),
+        refreshNotificationQueries(),
+      ]).catch((error) => console.warn("Benchmark post-update refresh failed:", error));
     },
     onError: (error) => {
       toast({ title: "Failed to update benchmark", description: error.message, variant: "destructive" });

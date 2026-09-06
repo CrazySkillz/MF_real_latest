@@ -8,7 +8,7 @@ const readServer = (relativePath: string) =>
   readFileSync(join(process.cwd(), "server", ...relativePath.split("/")), "utf-8");
 
 describe("GA4 30-day production scope regression guard", () => {
-  it("exposes only the 30-day saved window in both GA4 setup flows", () => {
+  it("keeps both GA4 setup flows fixed to 30 days without a non-choice button in the campaign wizard", () => {
     const connectionFlow = readClient("components/GA4ConnectionFlow.tsx");
     const campaignsPage = readClient("pages/campaigns.tsx");
 
@@ -19,8 +19,9 @@ describe("GA4 30-day production scope regression guard", () => {
 
     expect(campaignsPage).toContain("useState<number>(30)");
     expect(campaignsPage).toContain("setWizardLookbackDays(30)");
-    expect(campaignsPage).toContain("[30].map((days) =>");
+    expect(campaignsPage).not.toContain("[30].map((days) =>");
     expect(campaignsPage).not.toContain("[30, 60, 90].map((days) =>");
+    expect(campaignsPage).toContain("This release imports the last 30 completed days.");
     expect(campaignsPage).toContain("lookbackDays: wizardLookbackDays");
   });
 

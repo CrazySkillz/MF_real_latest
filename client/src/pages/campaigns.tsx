@@ -1716,19 +1716,6 @@ export default function Campaigns() {
                           </div>
                           <div className="space-y-2">
                             <Label>Import historical data</Label>
-                            <div className="flex gap-2">
-                              {[30].map((days) => (
-                                <Button
-                                  key={days}
-                                  type="button"
-                                  variant={wizardLookbackDays === days ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setWizardLookbackDays(days)}
-                                >
-                                  {days} days
-                                </Button>
-                              ))}
-                            </div>
                             <p className="text-xs text-muted-foreground">This release imports the last 30 completed days.</p>
                           </div>
                           <div className="flex gap-2 pt-2">

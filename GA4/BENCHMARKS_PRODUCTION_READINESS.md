@@ -16,7 +16,9 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-August 21, 2026 controlling assessment: GA4 Benchmarks is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. Evidence-only commit `e175ac5c` was subsequently deployed and confirmed without changing production runtime code. Authenticated read-only validation covered two campaign inventories and four Benchmarks with exact provider, persisted, scheduler-candidate, UI, card, Tracker, Insights, notification, and browser-PDF parity; stale traffic values and the no-property campaign failed closed, with zero application mutation attempts.
+September 6, 2026 controlling assessment: GA4 Benchmarks is **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary. The exact-current complete suite had `1,718` passes, `48` visible deferred future-platform failures, and zero blockers; the focused KPI/Benchmark packet passed `28` files / `310` tests; TypeScript and the production build passed. Authenticated production validation reconciled both active Benchmarks with live provider inputs, exercised one scoped temporary Benchmark through create/update/delete and immediate breach delivery, preserved all existing rows, and left only the normal immutable alert audit event.
+
+The exact deployed manual daily run updated both Benchmarks and all eight campaign KPIs with zero skipped or failed rows and no cross-campaign updates. The production timer remained armed for 22:00 UTC; no exact-`a96ba06e` natural timer firing or global all-campaign scheduler-health claim is made. Mailgun recorded provider-confirmed delivery with the required `Benchmark threshold` subject; inbox receipt is not claimed. Browser evidence is limited to the deployed bundle contract and exact-current static regressions because Playwright was prohibited; Reports and rendered-PDF behavior remain separately certified. Alert-enabled Benchmark create/update measured `5.1s`/`6.0s`, so no general save-latency SLO is certified.
 
 The prior clean certification remains historical evidence for exact deployed runtime SHA `650ce59c4b0d14a21a198e8a2effd0c3a6d1fccd` only. Later dependency-boundary changes invalidated carrying that active status forward. This review found and fixed two current runtime defects: direct Benchmark browser consumers did not fail stale persisted traffic closed unless the Insights-only trends request exposed staleness, and Benchmark notification enrichment did not require current traffic freshness. The failing guards were added before runtime edits; the post-fix focused gate passed `16` files and `185` tests, followed by successful TypeScript and production builds.
 
@@ -317,7 +319,7 @@ Certification rule:
 
 ## Current Future-Chat Answer
 
-Answer that GA4 Benchmarks is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`. State that the bounded `85f5233e` natural run updated both Benchmarks and all 22 underlying scheduler-written daily rows without later app repair and carries forward across byte-identical scheduler/job files, while the process-wide run failed for 17 excluded obsolete campaigns. Reports generation/delivery remains separately certified.
+Answer that GA4 Benchmarks is **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1`. State that the exact-current manual run updated both `ga4_mock` Benchmarks with zero skips/failures and that historical natural-timer evidence remains supporting history only; no exact-current natural firing or global scheduler-health claim is made. Reports generation/delivery remains separately certified.
 
 Do not reopen closed current-scope GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified Benchmark scope.
 
@@ -341,7 +343,7 @@ Read in this order:
 10. `Not Locally Verifiable / External Caveats`
 11. `Future Platform Template`
 
-Answer from `Current Status`: GA4 Benchmarks is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only deployment `e175ac5c` does not change runtime code. Treat `3d762260`, `d6656e11`, `c6487555`, and `650ce59c` as historical revision-specific evidence only. KPI fixes and Reports evidence are dependencies/supporting context, not independent Benchmark proof.
+Answer from `Current Status`: GA4 Benchmarks is **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1`. Treat earlier certified boundaries as historical revision-specific evidence only. KPI and Reports evidence is supporting context only where the exact-current Benchmark trace explicitly covers the shared path.
 
 ## Future Source Reading Order
 
@@ -634,7 +636,7 @@ Coverage rule:
 
 Known doc caveat:
 
-- Historical passages below record earlier closed-beta checkpoints. They do not override the controlling current status: GA4 Benchmarks is **PRODUCTION_READY** for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`, and evidence-only deployment `e175ac5c` does not change runtime code. `3d762260`, `d6656e11`, `c6487555`, and `650ce59c` remain historical revision-specific evidence. Future-platform readiness remains unverified.
+- Historical passages below record earlier closed-beta checkpoints. They do not override the controlling current status: GA4 Benchmarks is **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1`. Earlier boundaries remain historical revision-specific evidence, and future-platform readiness remains unverified.
 
 ## Historical Current Commit Queue (Commits 0-7)
 

@@ -22,11 +22,15 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### September 6, 2026 post-certification decision (controlling)
+### September 6, 2026 exact-current certification decision (controlling)
 
-**Result: UNVERIFIED for current deployed runtime `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96`.** The prior certified boundary remains historical evidence only. Later commits changed KPI/Benchmark save processing, source-read reuse, alert and notification scheduling, immediate email breach-episode behavior, email subject copy, and KPI browser presentation. Production health and focused tests pass, but exact-current certification, full-suite, deployed scheduler/provider, alert delivery, duplicate-inventory, and browser/report parity evidence is incomplete. No production-ready claim is made.
+**Result: PRODUCTION_READY for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary.** Exact-current evidence passed: the complete current-version run had `1,718` passes, `48` visible deferred future-platform failures, and zero blocking failures; the focused KPI/Benchmark packet passed `28` files / `310` tests; TypeScript and the production build passed. Authenticated production validation reconciled all eight existing KPI values and both live Benchmark provider comparisons, passed ten analytics endpoints and ownership denials, and found zero active canonical KPI duplicate groups across all 16 active GA4 KPI rows, so cleanup is not needed.
+
+The exact deployed manual daily run updated all eight `ga4_mock` KPIs and both Benchmarks with zero skipped or failed rows and no cross-campaign updates. The production timer remained armed for 22:00 UTC; no exact-`a96ba06e` natural timer firing is claimed. A scoped temporary custom KPI and Benchmark each passed create, update, immediate breach handling, and delete without changing existing rows. Mailgun recorded provider-confirmed delivery for exactly two alerts with the required `KPI threshold` and `Benchmark threshold` subjects; inbox receipt is not claimed. Normal audit events were retained and all temporary rows and visible temporary notifications were removed.
+
+Browser evidence is deliberately non-Playwright: the deployed bundle contains the current conflict, modal-stability, and `Immediate (once per breach)` contracts, backed by the exact-current UI/static regression packet. Reports remain separately certified, and no new rendered-browser or PDF parity claim is made. The alert-enabled lifecycle timings included synchronous alert reconciliation/provider work (KPI create/update `21.8s`/`16.6s`; Benchmark create/update `5.1s`/`6.0s`), so this certification makes no general save-latency SLO claim. Future provider availability, inbox placement, new source mixes, and later dependency changes remain outside this revision-specific certification.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -1880,7 +1884,7 @@ The following remain external caveats after current certification:
 - future Mailgun/provider outages, provider event telemetry gaps, or recipient spam filtering
 - future source mixes, platform extensions, or code changes that have not gone through a new readiness pass
 
-These external, manual, and deployed-runtime gates block re-certification of the current `abf07bec54b9a86c0c72d3d4169f6147cf6aaa96` boundary. Historical authenticated KPI UI, browser-PDF, timer, provider-acceptance, and inbox-receipt evidence remains revision-bounded and must not be carried across changed paths without an exact-current review.
+These are future external caveats, not unresolved gates for the exact `a96ba06e21c9344c1767c960e702ac4a647dc5f1` boundary certified above. Historical browser-PDF, natural-timer, and inbox-receipt evidence remains revision-bounded and is not promoted into an exact-current claim; any later dependency or configuration change requires a new exact-current review.
 
 ## Future Platform Template
 

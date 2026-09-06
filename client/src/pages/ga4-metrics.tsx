@@ -7159,7 +7159,6 @@ export default function GA4Metrics() {
                                                   {kpi.description}
                                                 </p>
                                               ) : null}
-                                              <p className="text-xs text-muted-foreground mt-1">Window: {getGA4KpiReportingWindowLabel(kpi?.metric, kpi?.name)}</p>
                                               {!consumerState.eligible ? (
                                                 <Badge variant="outline" className="mt-2 text-xs">{consumerState.label}</Badge>
                                               ) : null}

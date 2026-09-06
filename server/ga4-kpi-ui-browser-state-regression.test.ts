@@ -101,7 +101,7 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(pdf).toContain('kpiTracker.scored > 0 ? `${Number(kpiTracker.avgPct || 0).toFixed(1)}%` : "—"');
     expect(cards).toContain("kpi.alertsEnabled && consumerState.eligible");
     expect(cards).toContain('const hasAlertThreshold = kpi.alertThreshold !== null && typeof kpi.alertThreshold !== "undefined"');
-    expect(cards).toContain("Window: {getGA4KpiReportingWindowLabel(kpi?.metric, kpi?.name)}");
+    expect(cards).not.toContain("Window: {getGA4KpiReportingWindowLabel(kpi?.metric, kpi?.name)}");
     expect(cards).toContain('kpiTracker.scored > 0 ? `${kpiTracker.avgPct.toFixed(1)}%` : "—"');
   });
 });

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { emailService } from "./services/email-service";
 
 const EMAIL_SERVICE_FILE = join(__dirname, "services", "email-service.ts");
 const ALERT_MONITORING_FILE = join(__dirname, "services", "alert-monitoring.ts");
@@ -20,10 +21,14 @@ function readRoutes(): string {
 }
 
 describe("alert email regression guard", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("keeps KPI and Benchmark alert emails unbranded by the old header", () => {
     const source = readEmailService();
 
     expect(source).toContain('const alertTypeLabel = data.type === "kpi" ? "KPI" : "Benchmark";');
+    expect(source).toContain('const subject = `⚠️ Alert: ${data.name} has ${conditionText} ${alertTypeLabel} threshold`;');
+    expect(source).not.toContain('has ${conditionText} threshold`');
     expect(source).toContain("Review this ${alertTypeLabel} in your MimoSaaS dashboard");
     expect(source).toContain("campaignName: campaigns.name");
     expect(source).toContain("<p><strong>Campaign:</strong> ${campaignName}</p>");
@@ -47,6 +52,23 @@ describe("alert email regression guard", () => {
     expect(source).toContain("if (!authLikeFailure || attempt === regionsToTry.length - 1)");
     expect(source).toContain("Mailgun ${candidateRegion} API rejected the request; trying ${regionsToTry[attempt + 1]} region before failing.");
     expect(source).toContain("Mailgun ${candidateRegion} API ${response.status}: ${errorText}");
+  });
+
+  it.each([
+    ["kpi", "KPI"],
+    ["benchmark", "Benchmark"],
+  ] as const)("identifies %s threshold alerts in the email subject", async (type, label) => {
+    const sendEmail = vi.spyOn(emailService as any, "sendEmail").mockResolvedValue(true);
+
+    await emailService.sendAlertEmail(["exec@example.com"], {
+      type,
+      name: "Engagement Rate",
+      currentValue: 4,
+      thresholdValue: 5,
+      condition: "below",
+    });
+
+    expect(sendEmail.mock.calls[0][0].subject).toBe(`⚠️ Alert: Engagement Rate has fallen below ${label} threshold`);
   });
   it("uses resolved campaign current values for immediate and scheduled email alert checks", () => {
     const source = readAlertMonitoring();

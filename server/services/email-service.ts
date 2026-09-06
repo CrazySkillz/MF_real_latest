@@ -347,7 +347,8 @@ class EmailService {
       equals: 'reached',
     }[data.condition];
 
-    const subject = `⚠️ Alert: ${data.name} has ${conditionText} threshold`;
+    const alertTypeLabel = data.type === "kpi" ? "KPI" : "Benchmark";
+    const subject = `⚠️ Alert: ${data.name} has ${conditionText} ${alertTypeLabel} threshold`;
     const summaryLine = this.buildAlertSummary(data);
     let clientName = "";
     let campaignName = data.campaignName || auditContext?.campaignName || "";
@@ -365,8 +366,6 @@ class EmailService {
         clientName = "";
       }
     }
-    const alertTypeLabel = data.type === "kpi" ? "KPI" : "Benchmark";
-    
     const html = `
       <!DOCTYPE html>
       <html>

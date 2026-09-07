@@ -24,7 +24,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- GA4 Overview is **UNVERIFIED** for the current candidate. Campaign Breakdown now keeps traffic on the fixed import-to-date window, obtains exact native per-campaign revenue from campaign start through the latest completed day, verifies that native sum against the GA4 Revenue card, and then adds only exact campaign-mapped imported revenue. Focused local validation passes; exact deployment and authenticated value/UI/PDF parity remain pending.
+- GA4 Overview remains **UNVERIFIED** overall. Campaign Breakdown is validated at deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e`: authenticated API/UI/browser-PDF parity confirmed 1,505 Sessions, 1,507 Users, 193 Conversions, `$65,362.20` native GA4 revenue, `$16,799.99` exact mapped imports, and `$82,162.19` displayed revenue. Landing Pages, Conversion Events, Revenue, Spend, and the natural scheduler gate retain their separate validation status.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
@@ -32,7 +32,7 @@ Current GA4 tab production-readiness status:
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
 - GA4 KPIs and Benchmarks are **UNVERIFIED** for the current candidate because shared Overview dependencies changed; the `a96ba06e21c9344c1767c960e702ac4a647dc5f1` certifications are historical until exact-current evidence is rerun.
 - GA4 Ad Comparison is **UNVERIFIED** for the current candidate because shared analytics, route, and browser dependencies changed; the `4be16c54c550a45dbf3104313c820ea47b453604` certification is historical until exact-current evidence is rerun.
-- GA4 Reports is **PRODUCTION_READY** only for exact certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive remains excluded from that GA4 Reports certification.
+- GA4 Reports is **UNVERIFIED** for the current candidate. The deployed browser Overview Campaign Breakdown artifact passed at `08d7abe5`; exact-current scheduled/server artifact parity remains pending. The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification is historical only. Campaign DeepDive remains excluded.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
 - Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
@@ -91,7 +91,7 @@ Important meaning:
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current section status: **UNVERIFIED** for deployed runtime `340da6d5831f77fb88d125a55aaec78c189c4c3d` only until the exact-current natural daily-timer run is observed; every other current gate is recorded as passed.
+  Concise canonical current-status index. Current section status: **UNVERIFIED**. Campaign Breakdown is validated for deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e`; remaining Overview value families and the natural scheduler gate retain their separate validation status.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`

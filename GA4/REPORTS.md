@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Current status: GA4 Reports is `UNVERIFIED` for the current candidate because browser and scheduled Overview report table windows changed from rolling lookback to the fixed initial-import-to-latest-completed-day boundary. The prior `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification remains historical evidence only. The exact evidence and open deployed-parity gate live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Current status: GA4 Reports is `UNVERIFIED` for the current candidate. The browser-generated Overview Campaign Breakdown passed exact deployed value parity at runtime `08d7abe5`; exact-current scheduled/server Campaign Breakdown artifact parity remains pending. The prior `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification remains historical evidence only. The exact evidence and open gate live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section remains
 `PRODUCTION_READY`. Local browser/scheduled output guards pass, and the deployed
 revision and direct-consumer parity gates in

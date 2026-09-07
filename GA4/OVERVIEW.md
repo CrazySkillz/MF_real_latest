@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **UNVERIFIED** for the current candidate. Campaign Breakdown native revenue now uses an exact campaign-start-to-latest-completed-day per-campaign query, reconciles to the GA4 Revenue card, and then adds exact mapped imports; traffic metrics retain the fixed import-to-date boundary. Focused local validation passes, while exact deployment and authenticated value/UI/PDF parity remain pending.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** overall, but Campaign Breakdown is validated for deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e` and the recorded property/configuration. Its fixed `2026-07-02` through `2026-09-06` traffic rows total 1,505 Sessions, 1,507 Users, and 193 Conversions. Native revenue for `2026-06-24` through `2026-09-06` reconciles to the `$65,362.20` GA4 Revenue card; exact mapped imports add `$16,799.99`, producing displayed row revenue of `$20,415.39`, `$43,035.20`, and `$18,711.60` (`$82,162.19` total). Authenticated API, rendered UI, and downloaded browser-PDF parity passed. Remaining Overview tables, financial paths, and the natural scheduler gate retain their separate validation status.
 
 <!-- /ga4-overview-current-status -->
 

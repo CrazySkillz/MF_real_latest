@@ -21,7 +21,7 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: UNVERIFIED -->
 ## Current Controlling Answer
 
-September 7, 2026 decision: GA4 Reports is **UNVERIFIED** for the current candidate. Browser and scheduled Overview Campaign Breakdown output now uses Summary-aligned import-to-date traffic plus exact campaign-to-date native GA4 revenue and exact campaign-mapped imports. Focused tests pass locally, but deployed browser/server numerical parity and an exact-current artifact check have not been completed.
+September 7, 2026 decision: GA4 Reports is **UNVERIFIED** for the current candidate. At deployed runtime `08d7abe5`, the downloaded browser Overview PDF matched Campaign Breakdown traffic and displayed revenue exactly: 1,505 Sessions, 1,507 Users, 193 Conversions, and `$82,162.19` Revenue across the three saved campaigns. Exact-current scheduled/server Campaign Breakdown artifact parity remains pending.
 
 The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` production-ready decision remains historical evidence only. Campaign DeepDive remains outside this GA4 Reports boundary, and unchanged CRUD, scheduler, snapshot, and delivery evidence does not certify the changed report values.
 
@@ -184,7 +184,7 @@ This inventory is complete for the current Reports surfaces, but completion of t
 | Campaign DeepDive scheduled-report list and ad hoc download path | Backend `campaign_deepdive` scheduled rows render directly; unscheduled creation generates an in-memory PDF without a browser or backend library row | Failed backend list stays distinct from a legitimate empty result; an ad hoc download does not create a card | Excluded from the GA4 Reports certification boundary |
 | Report composition | Saved report type, selected sections, selected KPI IDs, selected Benchmark IDs, and Campaign DeepDive selected metrics | Empty Custom KPI/Benchmark selection stays empty and cannot expand to every row | Proven through the actual scheduled GA4 PDF path and focused negative regression |
 | Schedule metadata | Frequency, recurrence day, local time, IANA timezone, recipients, paused/active state | Unsupported frequency/timezone/time/day/quarter values fail before persistence | Proven by create/update guards, direct validator cases, deployed CRUD, and natural scheduler execution |
-| Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, cumulative tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Cumulative table-window behavior is locally covered; deployed numerical parity is unverified for the current candidate. |
+| Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, cumulative tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Campaign Breakdown passed deployed numerical and parsed-artifact parity at `08d7abe5`; other Overview subsections retain their separate validation status. |
 | Browser GA4 KPI, Benchmark, Ad Comparison, Insights, and Custom PDF values | Current page-consumed rows and selected-section renderers | Unselected sections are omitted; selected unavailable inputs fail or stay explicitly unavailable according to the section contract | Proven on the exact deployed SHA across all five standard types and one selected Custom composition |
 | Server GA4 scheduled, test-send, manual-snapshot, and direct-snapshot PDFs | Campaign/property/filter-scoped server payload, exact report preflight, shared GA4 PDF builder | Selected KPI/Benchmark read/recompute failure blocks output; generic GA4 fallback is refused | The cumulative Overview table-window change is locally covered; exact-current deployed artifact parity is unverified. |
 | Campaign DeepDive browser and scheduled PDFs | Campaign context, performanceSummary, optional Executive Summary, KPI rows, Benchmark rows, and Trend Analysis aggregate | Only selected sections are loaded/rendered; unavailable metrics are not invented | Excluded from the GA4 Reports certification boundary |
@@ -228,7 +228,7 @@ This inventory is complete for the current Reports surfaces, but completion of t
 
 ## Protected Overview And Insights Boundary
 
-- The current candidate intentionally changes only the live Overview detail-table query windows and their browser/server report equivalents to the fixed cumulative boundary.
+- The current runtime keeps Overview detail-table traffic/conversion metrics on the fixed cumulative boundary and gives Campaign Breakdown a separate exact campaign-to-date native-revenue query before exact mapped imports are added. Browser Campaign Breakdown artifact parity passed at `08d7abe5`; scheduled/server artifact parity remains pending.
 - The separate rolling Insights breakdown request, Insights renderer, formulas, storage, and scheduler behavior remain unchanged and are covered by the adjacent regression packet.
 - server/routes-oauth.ts is a shared certification dependency. The localized Reports schedule-route changes do not alter Overview/Insights behavior, but dependency-hash rules still require the affected certification gates to be rerun before any prior certification is carried forward to a new revision.
 
@@ -944,7 +944,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that GA4 Reports is **UNVERIFIED** for the current cumulative Overview-table candidate. Runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` remains a historical certification only; deployed browser/server artifact parity must be rerun.
+Answer that GA4 Reports is **UNVERIFIED** for the current Overview-table runtime. Browser Overview Campaign Breakdown artifact parity passed at `08d7abe5`, but exact-current scheduled/server artifact parity remains pending. Runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` remains a historical certification only.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

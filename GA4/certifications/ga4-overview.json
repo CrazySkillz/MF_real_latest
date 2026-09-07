@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "340da6d5831f77fb88d125a55aaec78c189c4c3d",
+  "lastReviewedSha": "08d7abe535c9ea4f57f57d8cbdbb072fba64052e",
   "certifiedSha": null,
-  "deployedSha": "340da6d5831f77fb88d125a55aaec78c189c4c3d",
-  "invalidationReason": "The current candidate changes Campaign Breakdown native revenue to a separate exact campaign-start-to-latest-completed-day per-campaign query, verifies it against the GA4 Revenue card, and then adds exact mapped imports. Focused local validation passes; exact deployment and authenticated API/UI/PDF value parity remain pending.",
+  "deployedSha": "08d7abe535c9ea4f57f57d8cbdbb072fba64052e",
+  "invalidationReason": "Campaign Breakdown is deployed and validated for the recorded property/configuration at 08d7abe535c9ea4f57f57d8cbdbb072fba64052e, including authenticated API/UI/browser-PDF parity. Overview remains UNVERIFIED while Landing Pages, Conversion Events, Revenue, Spend, and the natural scheduler gate retain their separate validation status.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
@@ -459,43 +459,43 @@
       "id": "certification_integrity",
       "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
       "status": "passed",
-      "evidence": "September 7: the Overview gate test and standalone checker pass with the record fail-closed as UNVERIFIED for deployed runtime 340da6d5831f77fb88d125a55aaec78c189c4c3d."
+      "evidence": "September 7: the Overview standalone checker passes with the record fail-closed as UNVERIFIED and Campaign Breakdown evidence bounded to deployed runtime 08d7abe535c9ea4f57f57d8cbdbb072fba64052e."
     },
     {
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "September 7 exact-current focused validation passed 34 files / 433 tests covering Overview values, cumulative windows, source lifecycle, scheduler, browser/server report propagation, KPI/Benchmark inputs, alerts, and notifications."
+      "evidence": "September 7: the exact deployed 08d7abe5 code passed the complete current-version suite with 1,727 passing tests and zero blocking failures; the previously recorded 34-file / 433-test packet remains supporting historical evidence."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "September 7 the exact-current 34-file / 433-test packet included affected KPI/Benchmark, scheduler, report, alert, and notification consumers with no failure. The full current-version suite also had zero blocking failures; its 47 failures were explicitly deferred future-platform tests outside this boundary."
+      "evidence": "September 7: the exact deployed 08d7abe5 code passed the full current-version suite with zero blocking failures; its 47 visible failures were explicitly deferred future-platform tests outside this boundary."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed on September 7, 2026 for deployed runtime 340da6d5 plus the production audit tooling."
+      "evidence": "npm run check passed on September 7, 2026 for the exact deployed 08d7abe5 code."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed successfully on September 7, 2026 for deployed runtime 340da6d5 plus the production audit tooling."
+      "evidence": "The local production build passed for the Campaign Breakdown implementation, and Render built and deployed exact runtime 08d7abe5 successfully on September 7, 2026."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 340da6d5831f77fb88d125a55aaec78c189c4c3d on September 7, 2026."
+      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 08d7abe535c9ea4f57f57d8cbdbb072fba64052e on September 7, 2026."
     },
     {
       "id": "authenticated_ui_api_source_parity",
-      "status": "passed",
-      "evidence": "The exact-current authenticated audit reconciled persisted facts, live APIs, every visible card/table/source modal, access denial, and the parsed browser Overview PDF for the recorded campaign/property/source boundary; direct database checks ran inside a read-only transaction."
+      "status": "pending",
+      "evidence": "At runtime 08d7abe5, Campaign Breakdown passed authenticated API/UI/browser-PDF parity for the recorded campaign/property: 1,505 Sessions, 1,507 Users, 193 Conversions, $65,362.20 native revenue, $16,799.99 exact mapped imports, and $82,162.19 displayed revenue. The remaining Overview value families retain their separate validation status."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",

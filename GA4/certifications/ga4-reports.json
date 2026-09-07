@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-reports",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
+  "lastReviewedSha": "08d7abe535c9ea4f57f57d8cbdbb072fba64052e",
   "certifiedSha": null,
   "deployedSha": null,
-  "invalidationReason": "The current candidate changes browser and scheduled Overview Campaign Breakdown to Summary-aligned import-to-date traffic plus exact campaign-to-date native GA4 revenue and exact campaign-mapped imports. Focused local validation passes, but deployed browser/server numerical and artifact parity have not been rerun.",
+  "invalidationReason": "The browser-generated Overview Campaign Breakdown passed deployed numerical and parsed-artifact parity at 08d7abe5. GA4 Reports remains UNVERIFIED because exact-current scheduled/server Campaign Breakdown artifact parity has not been rerun.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
@@ -203,12 +203,12 @@
     {
       "id": "focused_reports_regressions",
       "status": "pending",
-      "evidence": "The current candidate passed the report-email, custom-window, Overview-table, and adjacent focused packets, but the complete protected GA4 Reports regression inventory has not been rerun at an exact candidate SHA."
+      "evidence": "The exact deployed 08d7abe5 code passed the full current-version suite with zero blocking failures, but the independent complete GA4 Reports certification inventory remains to be re-established."
     },
     {
       "id": "protected_overview_insights_regressions",
       "status": "pending",
-      "evidence": "The current candidate passed 10 focused files / 149 tests including the isolated rolling Insights and cumulative Overview table boundaries, but the complete protected current-version inventory remains pending."
+      "evidence": "The exact deployed 08d7abe5 code passed the complete current-version suite with 1,727 passing tests and zero blocking failures; independent Reports certification remains pending."
     },
     {
       "id": "typescript",
@@ -223,14 +223,14 @@
     {
       "id": "complete_numerical_failure_matrix",
       "status": "pending",
-      "evidence": "Historical negative evidence remains useful, but the changed cumulative Overview table values still require exact-current deployed browser/server numerical parity."
+      "evidence": "Historical negative evidence remains useful. Browser Campaign Breakdown numerical/artifact parity passed at 08d7abe5; exact-current scheduled/server numerical parity remains pending."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
-      "status": "pending",
-      "evidence": "The current cumulative Overview-table candidate is not committed or deployed. The prior 94f1096f deployment remains historical evidence only."
+      "status": "passed",
+      "evidence": "Production /api/health returned exact deployed runtime 08d7abe535c9ea4f57f57d8cbdbb072fba64052e on September 7, 2026. The prior 94f1096f certification remains historical evidence only."
     },
     {
       "id": "upstream_section_certifications",
@@ -240,7 +240,7 @@
     {
       "id": "browser_server_pdf_value_parity",
       "status": "pending",
-      "evidence": "Local guards prove both renderers request the cumulative Overview table window, but exact-current deployed browser/server numerical and artifact parity has not been captured."
+      "evidence": "Browser Overview Campaign Breakdown numerical and parsed-artifact parity passed at 08d7abe5. Exact-current scheduled/server Campaign Breakdown artifact parity remains pending."
     },
     {
       "id": "report_crud_tenant_isolation",

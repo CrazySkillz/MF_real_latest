@@ -1155,7 +1155,15 @@ export class GoogleAnalytics4Service {
     }
     const pageLocationFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
     const totalsOnly = (report: any) => report?.ok
-      ? { ok: true, rowCount: report.rowCount, totals: report.totals }
+      ? {
+          ok: true,
+          rowCount: report.rowCount,
+          totals: report.totals,
+          rowSums: Object.keys(report.totals || {}).reduce((out: Record<string, number>, metric) => {
+            out[metric] = (report.rows || []).reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[metric]) || 0), 0);
+            return out;
+          }, {}),
+        }
       : report;
     const pageLocationTrafficByCampaign: Record<string, any> = {};
     for (const campaign of this.normalizeCampaignFilter(campaignFilter)) {

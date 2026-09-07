@@ -1953,7 +1953,7 @@ export default function GA4Metrics() {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?${activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : ""}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : "&overviewCampaignBreakdown=1"}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
@@ -6528,7 +6528,7 @@ export default function GA4Metrics() {
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground/70">
-                              No landing page data available yet for this property/campaign selection.
+                              GA4 did not provide session-scoped landing-page attribution for this campaign selection.
                             </div>
                           )}
                         </CardContent>

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-ad-comparison",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
-  "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "be3b51058b82c3632b68f269e637d777dd12d051",
+  "certifiedSha": null,
+  "invalidationReason": "The GA4 Overview table-accuracy correction changed shared analytics, route, and browser dependencies after the certified Ad Comparison boundary. Ad Comparison behavior is not intentionally changed, but exact-current regression and deployed parity evidence have not been rerun.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",

@@ -1,14 +1,14 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
+<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
 
 ## Controlling Current Status
 
-**Status: PRODUCTION_READY for certified runtime boundary
-`4be16c54c550a45dbf3104313c820ea47b453604` and the recorded
-dependency/configuration boundary.
-The defined live-tab section is included in the final combined GA4
-certification.**
+**Status: UNVERIFIED for the current candidate.** The prior
+`4be16c54c550a45dbf3104313c820ea47b453604` certification is historical.
+The GA4 Overview table-accuracy correction changed shared analytics, route,
+and browser dependencies; Ad Comparison behavior is not intentionally changed,
+but exact-current regression and deployed parity evidence have not been rerun.
 
 The current revalidation audited every recorded dependency changed since the
 prior machine record. The exact Ad Comparison query, cumulative route, saved

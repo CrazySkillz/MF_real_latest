@@ -19,7 +19,7 @@ Current GA4 tab production-readiness status:
 
 <!-- /ga4-insights-current-status -->
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
@@ -30,9 +30,8 @@ Current GA4 tab production-readiness status:
 
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
-- GA4 KPIs are **PRODUCTION_READY** for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary. Exact-current tests, production parity, scoped lifecycle, duplicate inventory, manual scheduler recomputation, ownership isolation, and provider-confirmed alert delivery passed. See `GA4/certifications/ga4-kpis.json` for limitations.
-- GA4 Benchmarks are **PRODUCTION_READY** for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the same recorded boundary. Reports remain separately certified.
-- GA4 Ad Comparison remains **PRODUCTION_READY** at certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604` for its recorded property/filter/source boundary.
+- GA4 KPIs and Benchmarks are **UNVERIFIED** for the current candidate because shared Overview dependencies changed; the `a96ba06e21c9344c1767c960e702ac4a647dc5f1` certifications are historical until exact-current evidence is rerun.
+- GA4 Ad Comparison is **UNVERIFIED** for the current candidate because shared analytics, route, and browser dependencies changed; the `4be16c54c550a45dbf3104313c820ea47b453604` certification is historical until exact-current evidence is rerun.
 - GA4 Reports is **PRODUCTION_READY** only for exact certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` recorded in `GA4/certifications/ga4-reports.json`. Campaign DeepDive remains excluded from that GA4 Reports certification.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.

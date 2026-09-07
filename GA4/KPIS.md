@@ -6,9 +6,9 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-As of September 6, 2026, the GA4 KPIs tab is **PRODUCTION_READY** for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary.
+The GA4 KPIs tab is **UNVERIFIED** for the current candidate because the Overview table-accuracy correction changed shared dependencies. The September 6, 2026 certification for `a96ba06e21c9344c1767c960e702ac4a647dc5f1` is historical until exact-current KPI evidence is rerun.
 
 The exact-current full-suite blocker check, focused regressions, production value/provider parity, duplicate inventory, scoped lifecycle, manual scheduler run, ownership isolation, and provider-confirmed alert delivery passed. No exact-current natural timer, inbox receipt, Playwright, rendered-PDF, future-provider, or general save-latency SLO claim is made.
 

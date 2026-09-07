@@ -22,11 +22,11 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### September 6, 2026 exact-current certification decision (controlling)
+### September 7, 2026 current decision (controlling)
 
-**Result: PRODUCTION_READY for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary.** Exact-current evidence passed: the complete current-version run had `1,718` passes, `48` visible deferred future-platform failures, and zero blocking failures; the focused KPI/Benchmark packet passed `28` files / `310` tests; TypeScript and the production build passed. Authenticated production validation reconciled all eight existing KPI values and both live Benchmark provider comparisons, passed ten analytics endpoints and ownership denials, and found zero active canonical KPI duplicate groups across all 16 active GA4 KPI rows, so cleanup is not needed.
+**Result: UNVERIFIED for the current candidate.** The Overview table-accuracy correction changed shared analytics, route, browser, and scheduled-report dependencies. KPI behavior is not intentionally changed, but the September 6, 2026 evidence applies only to historical runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1`; exact-current KPI certification evidence has not been rerun.
 
 The exact deployed manual daily run updated all eight `ga4_mock` KPIs and both Benchmarks with zero skipped or failed rows and no cross-campaign updates. The production timer remained armed for 22:00 UTC; no exact-`a96ba06e` natural timer firing is claimed. A scoped temporary custom KPI and Benchmark each passed create, update, immediate breach handling, and delete without changing existing rows. Mailgun recorded provider-confirmed delivery for exactly two alerts with the required `KPI threshold` and `Benchmark threshold` subjects; inbox receipt is not claimed. Normal audit events were retained and all temporary rows and visible temporary notifications were removed.
 

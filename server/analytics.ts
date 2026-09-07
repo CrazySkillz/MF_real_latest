@@ -121,6 +121,29 @@ export class GoogleAnalytics4Service {
     return { dimensionFilter: { orGroup: { expressions } } };
   }
 
+  private buildExactUtmCampaignPageLocationFilter(filter: CampaignFilter, fieldName = 'pageLocation') {
+    const values = this.normalizeCampaignFilter(filter);
+    if (values.length === 0) return null;
+    const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const expressions = values.flatMap((value) => {
+      const encoded = encodeURIComponent(value);
+      const plusEncoded = encoded.replace(/%20/g, '+');
+      return Array.from(new Set([value, encoded, plusEncoded])).map((candidate) => ({
+        filter: {
+          fieldName,
+          stringFilter: {
+            matchType: 'FULL_REGEXP',
+            value: `.*[?&]utm_campaign=${escapeRegex(candidate)}(?:[&#].*)?`,
+            caseSensitive: false,
+          },
+        },
+      }));
+    });
+    return expressions.length === 1
+      ? { dimensionFilter: expressions[0] }
+      : { dimensionFilter: { orGroup: { expressions } } };
+  }
+
   private extractUrlSearchParam(value: string, param: string) {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -156,7 +179,7 @@ export class GoogleAnalytics4Service {
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
     rows: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }>;
     totals: { sessions: number; users: number; conversions: number; revenue: number };
-    meta: { usersAreNonAdditive: boolean };
+    meta: { usersAreNonAdditive: boolean; sessionScopedAttributionAvailable: boolean };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) throw new Error('NO_GA4_CONNECTION');
@@ -326,17 +349,12 @@ export class GoogleAnalytics4Service {
     };
 
     const tryFetch = async (accessToken: string) => {
-      const res = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
-      if (!pageLocationCampaignFilter) return res;
-      if (!isEmptyResult(res)) return supplementFromConversionFallback(accessToken, res);
-      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, limit, 'sessions').catch(() => null);
-      if (!utmRes || isEmptyResult(utmRes)) return res;
-      return supplementFromConversionFallback(accessToken, utmRes);
+      return fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
     };
 
     try {
       const res = await tryFetch(String(connection.accessToken));
-      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true } };
+      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res) } };
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (isAuthErrorText(msg) && connection.refreshToken) {
@@ -351,7 +369,7 @@ export class GoogleAnalytics4Service {
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
         const res = await tryFetch(refresh.access_token);
-        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true } };
+        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res) } };
       }
       throw e;
     }
@@ -463,6 +481,21 @@ export class GoogleAnalytics4Service {
       Number(row?.conversions || 0) > 0 || Number(row?.revenue || 0) > 0;
     const hasConversionRevenueRows = (res: any) =>
       Array.isArray(res?.rows) && res.rows.some(rowHasConversionRevenue);
+    const hasConversionRows = (res: any) =>
+      Array.isArray(res?.rows) && res.rows.some((row: any) => Number(row?.conversions || 0) > 0);
+    const conversionRowsOnly = (res: any) => {
+      const rows = (Array.isArray(res?.rows) ? res.rows : []).filter((row: any) => Number(row?.conversions || 0) > 0);
+      return {
+        ...res,
+        rows,
+        totals: {
+          conversions: rows.reduce((sum: number, row: any) => sum + (Number(row?.conversions) || 0), 0),
+          eventCount: rows.reduce((sum: number, row: any) => sum + (Number(row?.eventCount) || 0), 0),
+          users: rows.reduce((sum: number, row: any) => sum + (Number(row?.users) || 0), 0),
+          revenue: Number(rows.reduce((sum: number, row: any) => sum + (Number(row?.revenue) || 0), 0).toFixed(2)),
+        },
+      };
+    };
     const hasMissingConversionRevenueEventRows = (res: any) =>
       Array.isArray(res?.rows) && res.rows.some((r: any) =>
         (Number(r?.eventCount || 0) > 0 || Number(r?.users || 0) > 0) && !rowHasConversionRevenue(r)
@@ -503,14 +536,15 @@ export class GoogleAnalytics4Service {
 
     const tryFetch = async (accessToken: string) => {
       const res = await fetchRows(accessToken, campaignDimensionFilter);
-      if (!pageLocationCampaignFilter) return res;
-      if (!isEmptyResult(res) && !hasMissingConversionRevenueEventRows(res)) return res;
-      const utmRes = !isEmptyResult(res)
-        ? await fetchRows(accessToken, pageLocationCampaignFilter, 10000).catch(() => null)
-        : await fetchRows(accessToken, pageLocationCampaignFilter).catch(() => null);
-      if (!utmRes || isEmptyResult(utmRes)) return res;
-      if (!isEmptyResult(res)) return supplementMissingConversionRows(res, utmRes);
-      return utmRes;
+      if (hasConversionRows(res) || !campaignFilter) return conversionRowsOnly(res);
+      for (const dimension of ['firstUserCampaignName', 'firstUserManualCampaignName']) {
+        const fallback = await fetchRows(
+          accessToken,
+          this.buildCampaignDimensionFilter(campaignFilter, dimension),
+        ).catch(() => null);
+        if (fallback && hasConversionRows(fallback)) return conversionRowsOnly(fallback);
+      }
+      return conversionRowsOnly(res);
     };
 
     try {
@@ -1200,6 +1234,7 @@ export class GoogleAnalytics4Service {
     disableTokenRefresh = false,
     preferLandingUtmCoverage = false,
     currencyCode?: string,
+    preferOverviewCampaignTotals = false,
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
@@ -1209,6 +1244,7 @@ export class GoogleAnalytics4Service {
       dimensions: string[];
       rowCount: number;
       sessionsDerivedFromUsers: boolean;
+      overviewCampaignAttribution?: Record<string, string | number | boolean>;
       insightsLandingCoverage?: Record<string, string | number | boolean>;
     };
   }> {
@@ -1615,6 +1651,69 @@ export class GoogleAnalytics4Service {
       throw lastError;
     }
 
+    let overviewCampaignAttribution: Record<string, string | number | boolean> | undefined;
+    if (preferOverviewCampaignTotals && pageLocationCampaignFilter) {
+      const standardSessions = reportMetricTotal(data, 0);
+      const standardConversions = reportMetricTotal(data, 2);
+      const standardRevenue = reportMetricTotal(data, 3);
+      const rebuiltRows: any[] = [];
+      let rebuiltRevenueMetric = chosenRevenueMetric;
+      for (const campaignName of this.normalizeCampaignFilter(campaignFilter)) {
+        const traffic = await fetchReport(
+          'totalRevenue',
+          [],
+          undefined,
+          this.buildExactUtmCampaignPageLocationFilter(campaignName),
+          endDate || 'yesterday',
+          [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
+        );
+        const financial = await fetchWithRevenueFallback(
+          [{ name: 'campaignName' }],
+          this.buildCampaignDimensionFilter(campaignName, 'campaignName'),
+        );
+        rebuiltRevenueMetric = financial.revenueMetric;
+        rebuiltRows.push({
+          dimensionValues: [{ value: campaignName }],
+          metricValues: [
+            { value: String(reportMetricTotal(traffic, 0)) },
+            { value: String(reportMetricTotal(traffic, 1)) },
+            { value: String(reportMetricTotal(financial.data, 2)) },
+            { value: String(reportMetricTotal(financial.data, 3)) },
+            { value: String(reportMetricTotal(traffic, 2)) },
+          ],
+        });
+      }
+      const rebuiltTotals = [0, 0, 0, 0, 0];
+      for (const row of rebuiltRows) {
+        row.metricValues.forEach((metric: any, index: number) => {
+          rebuiltTotals[index] += Number(metric?.value) || 0;
+        });
+      }
+      overviewCampaignAttribution = {
+        attempted: true,
+        selected: false,
+        standardSessions,
+        rebuiltSessions: rebuiltTotals[0],
+        standardConversions,
+        rebuiltConversions: rebuiltTotals[2],
+        standardRevenue: Number(standardRevenue.toFixed(2)),
+        rebuiltRevenue: Number(rebuiltTotals[3].toFixed(2)),
+      };
+      if (rebuiltTotals[0] > standardSessions) {
+        if (rebuiltTotals[2] !== standardConversions || Math.abs(rebuiltTotals[3] - standardRevenue) >= 0.01) {
+          throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
+        }
+        data = {
+          rows: rebuiltRows,
+          rowCount: rebuiltRows.length,
+          totals: [{ metricValues: rebuiltTotals.map((value) => ({ value: String(value) })) }],
+        };
+        chosenDims = [{ name: 'campaignName' }];
+        chosenRevenueMetric = rebuiltRevenueMetric;
+        overviewCampaignAttribution.selected = true;
+      }
+    }
+
     let insightsLandingCoverage: Record<string, string | number | boolean> | undefined;
     if (preferLandingUtmCoverage && pageLocationCampaignFilter) {
       insightsLandingCoverage = { attempted: true, selected: false, reason: 'not-evaluated' };
@@ -1865,6 +1964,7 @@ export class GoogleAnalytics4Service {
         dimensions: chosenDims.map((d: any) => d.name),
         rowCount: rows.length,
         sessionsDerivedFromUsers: false,
+        ...(overviewCampaignAttribution ? { overviewCampaignAttribution } : {}),
         ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
       },
     };

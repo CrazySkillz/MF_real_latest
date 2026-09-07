@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
   "contractSha256": "ed87d326cfd7aa6a82ba00e1129f087fa2c2c2f35cf24aeb5ee85de1fc90c41c",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "a96ba06e21c9344c1767c960e702ac4a647dc5f1",
-  "certifiedSha": "a96ba06e21c9344c1767c960e702ac4a647dc5f1",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "be3b51058b82c3632b68f269e637d777dd12d051",
+  "certifiedSha": null,
+  "invalidationReason": "The GA4 Overview table-accuracy correction changed shared analytics, route, browser, and scheduled-report dependencies after the certified KPI boundary. KPI behavior is not intentionally changed, but exact-current certification evidence has not been rerun.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "19f055372abe8aee789dd4205eba5decef5f39a5"

@@ -493,7 +493,7 @@ async function buildGA4ReportPayload(report: any) {
 
   const [metrics, breakdown, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, adComparisonRevenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
-    ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, false, campaignCurrency, true).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     adComparisonRequirements.included && adComparisonWindow
       ? ga4Service.getAcquisitionBreakdown(campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter, adComparisonWindow.endDate)
           .catch((e) => { logPartFailure("ad comparison breakdown", e); return { rows: [] }; })

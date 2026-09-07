@@ -12824,6 +12824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
       const dimensionDiagnosticsRequested = debug && validationReadOnly && String(req.query.dimensionDiagnostics || '').trim() === '1';
       const insightsChannelAttribution = String(req.query.insightsChannelAttribution || '').trim() === '1';
+      const overviewCampaignBreakdown = windowMode === 'import-to-date' && String(req.query.overviewCampaignBreakdown || '').trim() === '1';
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
@@ -12902,17 +12903,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const providerStartDate = importToDateWindow?.startDate || completedDayWindow?.startDate || ga4DateRange;
       const providerEndDate = importToDateWindow?.endDate || completedDayWindow?.endDate;
-      const result = await ga4Service.getAcquisitionBreakdown(
-        campaignId,
-        storage,
-        providerStartDate,
-        resolvedPropertyId,
-        limit,
-        campaignFilter,
-        providerEndDate,
-        validationReadOnly,
-        insightsChannelAttribution,
-      );
+      const result = overviewCampaignBreakdown
+        ? await ga4Service.getAcquisitionBreakdown(
+            campaignId, storage, providerStartDate, resolvedPropertyId, limit, campaignFilter,
+            providerEndDate, validationReadOnly, insightsChannelAttribution,
+            String((campaign as any)?.currency || ''), true,
+          )
+        : await ga4Service.getAcquisitionBreakdown(
+            campaignId, storage, providerStartDate, resolvedPropertyId, limit, campaignFilter,
+            providerEndDate, validationReadOnly, insightsChannelAttribution,
+          );
       const dimensionDiagnostics = dimensionDiagnosticsRequested
         ? await ga4Service.getOverviewDimensionDiagnostics(
             campaignId,

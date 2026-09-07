@@ -27,6 +27,8 @@ Only evidence from the same deployed commit, production-data state, and document
 
 2026-09-07 correction: the three Overview detail-table queries were still using a rolling completed-day lookback even though the product lifecycle defines the 30-day value as the initial historical import only. The current candidate changes Campaign Breakdown, Landing Pages, Conversion Events, and their scheduled-report equivalents to the fixed initial-import boundary through the latest completed day. Ten focused files / 149 tests, TypeScript, and the production build pass locally. This candidate remains **UNVERIFIED** until deployed authenticated parity is completed.
 
+2026-09-07 table-accuracy follow-up: production read-only evidence found that campaign dimensions represented only the 193 conversion-bearing sessions, `pageLocation` rows were being mislabeled as Landing Pages, and Conversion Events showed `page_view` with zero conversions. The candidate now isolates exact per-campaign UTM traffic for Campaign Breakdown, requires conversion/revenue reconciliation before selecting it, returns only true session landing-page rows, and returns only nonzero-conversion events through a provider-compatible campaign dimension. This remains **UNVERIFIED** until the corrected runtime is deployed and its visible/API values are revalidated.
+
 The immediately prior certification at `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`, the earlier certification at `4be16c54c550a45dbf3104313c820ea47b453604`, and the earlier certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remain historical evidence for their exact recorded boundaries only.
 
 <!-- /ga4-overview-current-status -->

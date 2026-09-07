@@ -1715,8 +1715,8 @@ export default function Campaigns() {
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label>Import historical data</Label>
-                            <p className="text-xs text-muted-foreground">This release imports the last 30 completed days.</p>
+                            <Label>Historical data</Label>
+                            <p className="text-xs text-muted-foreground">Includes the last 30 completed days automatically.</p>
                           </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)}>

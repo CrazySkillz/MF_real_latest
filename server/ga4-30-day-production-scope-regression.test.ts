@@ -21,7 +21,9 @@ describe("GA4 30-day production scope regression guard", () => {
     expect(campaignsPage).toContain("setWizardLookbackDays(30)");
     expect(campaignsPage).not.toContain("[30].map((days) =>");
     expect(campaignsPage).not.toContain("[30, 60, 90].map((days) =>");
-    expect(campaignsPage).toContain("This release imports the last 30 completed days.");
+    expect(campaignsPage).toContain("<Label>Historical data</Label>");
+    expect(campaignsPage).not.toContain("<Label>Import historical data</Label>");
+    expect(campaignsPage).toContain("Includes the last 30 completed days automatically.");
     expect(campaignsPage).toContain("lookbackDays: wizardLookbackDays");
   });
 

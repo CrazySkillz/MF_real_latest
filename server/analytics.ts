@@ -1058,6 +1058,111 @@ export class GoogleAnalytics4Service {
   }
 
   /**
+   * Read-only diagnostics for proving which fixed GA4 campaign dimensions carry
+   * the selected campaign's traffic and conversion events. No token refresh or
+   * persistence is performed from this path.
+   */
+  async getOverviewDimensionDiagnostics(
+    campaignId: string,
+    storage: any,
+    dateRange: string,
+    propertyId: string | undefined,
+    campaignFilter: CampaignFilter,
+    endDate: string,
+    currencyCode?: string,
+  ) {
+    const connection = await storage.getGA4Connection(campaignId, propertyId);
+    if (!connection) throw new Error('NO_GA4_CONNECTION');
+    if (!connection.accessToken) {
+      const tokenExpiredError = new Error('TOKEN_EXPIRED');
+      (tokenExpiredError as any).isTokenExpired = true;
+      throw tokenExpiredError;
+    }
+    if (this.normalizeCampaignFilter(campaignFilter).length === 0) {
+      throw new Error('GA4_CAMPAIGN_SCOPE_REQUIRED');
+    }
+
+    const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
+    const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
+    const campaignDimensions = [
+      'sessionCampaignName',
+      'sessionManualCampaignName',
+      'campaignName',
+      'manualCampaignName',
+      'firstUserCampaignName',
+      'firstUserManualCampaignName',
+    ];
+    const trafficMetrics = ['sessions', 'totalUsers', 'conversions', 'totalRevenue', 'engagedSessions'];
+    const eventMetrics = ['conversions', 'eventCount', 'totalUsers', 'totalRevenue'];
+
+    const run = async (dimensions: string[], metrics: string[], scopeFilter: any) => {
+      try {
+        const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${connection.accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dateRanges: [{ startDate: dateRange, endDate }],
+            ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
+            dimensions: dimensions.map((name) => ({ name })),
+            ...(scopeFilter || {}),
+            metrics: metrics.map((name) => ({ name })),
+            metricAggregations: ['TOTAL'],
+            limit: 1000,
+          }),
+        });
+        if (!response.ok) return { ok: false, status: response.status };
+        const json: any = await response.json();
+        const observedCurrency = String(json?.metadata?.currencyCode || '').trim().toUpperCase();
+        if (requestedCurrencyCode && observedCurrency !== requestedCurrencyCode) {
+          return { ok: false, status: 'currency-mismatch' };
+        }
+        const rows = (Array.isArray(json?.rows) ? json.rows : []).map((row: any) => ({
+          dimensions: dimensions.reduce((out: Record<string, string>, name, index) => {
+            out[name] = String(row?.dimensionValues?.[index]?.value || '');
+            return out;
+          }, {}),
+          metrics: metrics.reduce((out: Record<string, number>, name, index) => {
+            out[name] = Number(row?.metricValues?.[index]?.value) || 0;
+            return out;
+          }, {}),
+        }));
+        const aggregate = Array.isArray(json?.totals?.[0]?.metricValues)
+          ? json.totals[0].metricValues
+          : [];
+        return {
+          ok: true,
+          rowCount: Number(json?.rowCount) || rows.length,
+          totals: metrics.reduce((out: Record<string, number>, name, index) => {
+            const aggregateValue = Number(aggregate[index]?.value);
+            out[name] = Number.isFinite(aggregateValue)
+              ? aggregateValue
+              : rows.reduce((sum: number, row: any) => sum + row.metrics[name], 0);
+            return out;
+          }, {}),
+          rows,
+        };
+      } catch {
+        return { ok: false, status: 'request-failed' };
+      }
+    };
+
+    const traffic: Record<string, any> = {};
+    const conversionEvents: Record<string, any> = {};
+    for (const dimension of campaignDimensions) {
+      const filter = this.buildCampaignDimensionFilter(campaignFilter, dimension);
+      traffic[dimension] = await run([dimension], trafficMetrics, filter);
+      conversionEvents[dimension] = await run(['eventName'], eventMetrics, filter);
+    }
+    const pageLocationFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+    return {
+      traffic,
+      conversionEvents,
+      pageLocationTraffic: await run([], trafficMetrics, pageLocationFilter),
+      landingPages: await run(['landingPagePlusQueryString'], trafficMetrics, pageLocationFilter),
+    };
+  }
+
+  /**
    * Fetches an acquisition-style breakdown matching common marketing tables:
    * Date, Channel, Source, Medium, Campaign, Device, Country, Sessions, Conversions, Revenue.
    *

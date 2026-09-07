@@ -12822,6 +12822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
       const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
+      const dimensionDiagnosticsRequested = debug && validationReadOnly && String(req.query.dimensionDiagnostics || '').trim() === '1';
       const insightsChannelAttribution = String(req.query.insightsChannelAttribution || '').trim() === '1';
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
@@ -12912,6 +12913,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validationReadOnly,
         insightsChannelAttribution,
       );
+      const dimensionDiagnostics = dimensionDiagnosticsRequested
+        ? await ga4Service.getOverviewDimensionDiagnostics(
+            campaignId,
+            storage,
+            providerStartDate,
+            resolvedPropertyId,
+            campaignFilter,
+            providerEndDate || 'yesterday',
+            String((campaign as any)?.currency || ''),
+          )
+        : undefined;
 
       res.json({
         success: true,
@@ -12922,7 +12934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totals: result.totals,
         rows: result.rows,
         ...(validationReadOnly ? { validationReadOnly: true } : {}),
-        ...(debug ? { meta: result.meta } : {}),
+        ...(debug ? { meta: { ...result.meta, ...(dimensionDiagnostics ? { dimensionDiagnostics } : {}) } } : {}),
         lastUpdated: new Date().toISOString(),
       });
     } catch (error: any) {

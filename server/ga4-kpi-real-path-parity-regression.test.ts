@@ -658,6 +658,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("keeps Overview traffic import-to-date while replacing native row revenue with exact campaign-to-date GA4 revenue", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2026-06-24T00:00:00.000Z" });
     ga4ServiceMock.getAcquisitionBreakdown
       .mockResolvedValueOnce({
         rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 100 }],
@@ -679,14 +680,14 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       validationReadOnly: true,
       totals: { sessions: 100, users: 80, conversions: 5, revenue: 150 },
       rows: [{ campaign: "parity_campaign", sessions: 100, users: 80, conversions: 5, revenue: 150 }],
-      revenueWindow: { source: "ga4", startDate: "2026-07-01", revenueMetric: "totalRevenue" },
+      revenueWindow: { source: "ga4", startDate: "2026-06-24", revenueMetric: "totalRevenue" },
     });
     expect(body.revenueWindow.endDate).toBe(body.endDate);
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
       2,
       campaign.id,
       storageMock,
-      "2026-07-01",
+      "2026-06-24",
       connection.propertyId,
       2000,
       campaign.ga4CampaignFilter,

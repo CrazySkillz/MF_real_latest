@@ -12915,7 +12915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
       let nativeRevenueWindow: { source: 'ga4'; startDate: string; endDate: string; revenueMetric: string } | undefined;
       if (overviewCampaignBreakdown && providerEndDate) {
-        const revenueStartDate = toISODateUTC((campaign as any)?.startDate)
+        const revenueStartDate = ((campaign as any)?.startDate ? toISODateUTC((campaign as any).startDate) : null)
           || toISODateUTC((campaign as any)?.createdAt)
           || '2000-01-01';
         const revenueResult = revenueStartDate <= providerEndDate

@@ -167,7 +167,10 @@ try {
   const entries = await Promise.all(Object.entries(paths).map(async ([name, path]) => [name, await api(page, path)] as const));
   const responses: Record<string, any> = Object.fromEntries(entries);
   for (const [name, response] of Object.entries(responses).filter(([name]) => !name.endsWith('Pipeline'))) {
-    assert(response.ok && response.body?.success !== false, `${name} endpoint failed (${response.status})`);
+    assert(
+      response.ok && response.body?.success !== false,
+      `${name} endpoint failed (${response.status}): ${JSON.stringify(response.body)}`,
+    );
   }
   exact(isolationInventory.rowCount, 1, 'cross-owner isolation fixture');
   const otherCampaign = isolationInventory.rows[0];

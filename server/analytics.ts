@@ -168,9 +168,9 @@ export class GoogleAnalytics4Service {
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
-    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter, 'landingPagePlusQueryString');
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
-    const pageLocationDims = [{ name: 'pageLocation' }];
+    const pageLocationDims = [{ name: 'landingPagePlusQueryString' }];
 
     const run = async (
       accessToken: string,
@@ -381,6 +381,7 @@ export class GoogleAnalytics4Service {
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+    const campaignNameFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
     const run = async (
@@ -503,6 +504,10 @@ export class GoogleAnalytics4Service {
 
     const tryFetch = async (accessToken: string) => {
       const res = await fetchRows(accessToken, campaignDimensionFilter);
+      if (!hasConversionRevenueRows(res) && campaignNameFilter) {
+        const campaignResult = await fetchRows(accessToken, campaignNameFilter, 10000).catch(() => null);
+        if (campaignResult && hasConversionRevenueRows(campaignResult)) return campaignResult;
+      }
       if (!pageLocationCampaignFilter) return res;
       if (!isEmptyResult(res) && !hasMissingConversionRevenueEventRows(res)) return res;
       const utmRes = !isEmptyResult(res)
@@ -1367,9 +1372,9 @@ export class GoogleAnalytics4Service {
     ];
     const pageLocationCore = [
       { name: 'date' },
-      { name: 'pageLocation' },
+      { name: 'landingPagePlusQueryString' },
     ];
-    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter, 'landingPagePlusQueryString');
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
       const names = dims.map((d) => String(d?.name || ''));
@@ -1505,13 +1510,14 @@ export class GoogleAnalytics4Service {
         const standardDateIndex = indexOfAny(standardDimNames, ['date']);
         const standardSourceIndex = indexOfAny(standardDimNames, ['sessionSource', 'source', 'firstUserSource']);
         const standardMediumIndex = indexOfAny(standardDimNames, ['sessionMedium', 'medium', 'firstUserMedium']);
+        const standardCampaignIndex = indexOfAny(standardDimNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
         const conversionByKey = new Map<string, { conversions: number; revenue: number }>();
-        const keyFor = (date: string, source: string, medium: string) =>
-          [date, source, medium].map((value) => String(value || '').trim().toLowerCase()).join('|');
+        const keyFor = (date: string, source: string, medium: string, campaign: string) =>
+          [date, source, medium, campaign].map((value) => String(value || '').trim().toLowerCase()).join('|');
         for (const row of Array.isArray(data?.rows) ? data.rows : []) {
           const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
           const metrics = Array.isArray(row?.metricValues) ? row.metricValues : [];
-          const key = keyFor(getDim(dims, standardDateIndex), getDim(dims, standardSourceIndex), getDim(dims, standardMediumIndex));
+          const key = keyFor(getDim(dims, standardDateIndex), getDim(dims, standardSourceIndex), getDim(dims, standardMediumIndex), getDim(dims, standardCampaignIndex));
           const current = conversionByKey.get(key) || { conversions: 0, revenue: 0 };
           conversionByKey.set(key, {
             conversions: current.conversions + (Number(metrics[2]?.value) || 0),
@@ -1524,14 +1530,14 @@ export class GoogleAnalytics4Service {
           const source = this.extractUrlSearchParam(landingPage, 'utm_source');
           const medium = this.extractUrlSearchParam(landingPage, 'utm_medium');
           const campaign = this.extractUrlSearchParam(landingPage, 'utm_campaign');
-          if (source && medium) channelsByKey.set(keyFor('', source, medium), { source, medium, campaign });
+          if (source && medium && campaign) channelsByKey.set(keyFor('', source, medium, campaign), { source, medium, campaign });
         }
         const utmValueExpression = (param: string, value: string) => {
           const encoded = encodeURIComponent(value);
           const plusEncoded = encoded.replace(/%20/g, '+');
           const expressions = Array.from(new Set([value, encoded, plusEncoded])).map((candidate) => ({
             filter: {
-              fieldName: 'pageLocation',
+              fieldName: 'landingPagePlusQueryString',
               stringFilter: { matchType: 'CONTAINS', value: `utm_${param}=${candidate}`, caseSensitive: false },
             },
           }));
@@ -1547,6 +1553,7 @@ export class GoogleAnalytics4Service {
               pageLocationCampaignFilter.dimensionFilter,
               utmValueExpression('source', channel.source),
               utmValueExpression('medium', channel.medium),
+              utmValueExpression('campaign', channel.campaign),
             ] } } },
             endDate || 'yesterday',
             [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
@@ -1556,7 +1563,7 @@ export class GoogleAnalytics4Service {
         for (const { channel, report } of channelReports) {
           for (const row of Array.isArray(report?.rows) ? report.rows : []) {
             const date = String(row?.dimensionValues?.[0]?.value || '');
-            const key = keyFor(date, channel.source, channel.medium);
+            const key = keyFor(date, channel.source, channel.medium, channel.campaign);
             trafficByKey.set(key, {
               date,
               ...channel,

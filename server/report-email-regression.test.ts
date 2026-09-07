@@ -150,7 +150,7 @@ describe("scheduled report email regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+      "Cumulative live GA4 campaign-attributed rows through the latest completed day; Users are non-additive. Revenue includes exact campaign-matched source-to-date imports.",
     );
   });
 

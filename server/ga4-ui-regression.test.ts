@@ -138,6 +138,10 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain('const dateRange = "90days";');
     expect(ga4Metrics.match(/window: 'import-to-date'/g)).toHaveLength(2);
     expect(ga4Metrics).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
+    expect(ga4Metrics.match(/&insightsChannelAttribution=1/g)).toHaveLength(1);
+    expect(readServer("ga4-scheduled-report-pdf.ts")).toContain(
+      "getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, true)",
+    );
     expect(ga4Metrics).not.toContain("campaignStartDateISO");
     expect(ga4Metrics).not.toContain("params.set('startDate'");
     expect(landingRoute).toContain("const ga4DateRange = importToDateWindow?.startDate || explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');");
@@ -158,7 +162,7 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain(
-      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+      "Cumulative live GA4 campaign-attributed rows through the latest completed day; Users are non-additive. Revenue includes exact campaign-matched source-to-date imports.",
     );
   });
 
@@ -641,7 +645,7 @@ describe("GA4 UI regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+      "Cumulative live GA4 campaign-attributed rows through the latest completed day; Users are non-additive. Revenue includes exact campaign-matched source-to-date imports.",
     );
   });
 

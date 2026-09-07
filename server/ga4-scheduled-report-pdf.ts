@@ -493,7 +493,7 @@ async function buildGA4ReportPayload(report: any) {
 
   const [metrics, breakdown, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, adComparisonRevenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
-    ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, true).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     adComparisonRequirements.included && adComparisonWindow
       ? ga4Service.getAcquisitionBreakdown(campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter, adComparisonWindow.endDate)
           .catch((e) => { logPartFailure("ad comparison breakdown", e); return { rows: [] }; })
@@ -1182,7 +1182,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ]),
         [52, 22, 20, 28, 26, 36],
         COLORS.overview,
-        "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+        "Cumulative live GA4 campaign-attributed rows through the latest completed day; Users are non-additive. Revenue includes exact campaign-matched source-to-date imports.",
       );
     }
     if (includeLandingPages) {

@@ -1953,7 +1953,7 @@ export default function GA4Metrics() {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?${activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : ""}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        )}&insightsChannelAttribution=1${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
@@ -3404,7 +3404,7 @@ export default function GA4Metrics() {
             fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
           ]),
           [52, 22, 20, 28, 26, 36],
-          "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+          "Cumulative live GA4 campaign-attributed rows through the latest completed day; Users are non-additive. Revenue includes exact campaign-matched source-to-date imports.",
         );
       }
 
@@ -6393,7 +6393,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative live GA4 campaign-attributed rows through the latest completed day; Users are non-additive. Revenue includes exact campaign-matched source-to-date imports.</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

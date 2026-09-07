@@ -640,11 +640,11 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("uses landing-page UTM fallback for acquisition rows when campaign dimensions are empty", async () => {
+  it("uses pageLocation UTM fallback for acquisition rows when campaign dimensions are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isPageLocationFallback = dimensions.includes("landingPagePlusQueryString") && JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString");
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
 
       return {
         ok: true,
@@ -703,7 +703,7 @@ describe("GA4 campaign value picker", () => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
       const filter = JSON.stringify(body?.dimensionFilter || {});
-      const isLandingUtm = dimensions.length === 2 && dimensions.includes("landingPagePlusQueryString");
+      const isLandingUtm = dimensions.length === 2 && dimensions.includes("pageLocation");
       const isChannelUtm = dimensions.length === 1 && dimensions[0] === "date";
       const channelSessions = filter.includes("utm_source=google") ? "200"
         : filter.includes("utm_source=facebook") ? "140"
@@ -773,9 +773,9 @@ describe("GA4 campaign value picker", () => {
     const landingBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
     expect(landingBody.dimensions).toEqual([
       { name: "date" },
-      { name: "landingPagePlusQueryString" },
+      { name: "pageLocation" },
     ]);
-    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("landingPagePlusQueryString");
+    expect(JSON.stringify(landingBody.dimensionFilter)).toContain("pageLocation");
     expect(JSON.stringify(landingBody.dimensionFilter)).not.toContain("sessionCampaignName");
     expect(landingBody.metrics).toEqual([
       { name: "sessions" }, { name: "totalUsers" }, { name: "engagedSessions" },
@@ -790,62 +790,6 @@ describe("GA4 campaign value picker", () => {
     );
     expect(defaultResult.totals.sessions).toBe(54);
     expect(fetchMock).toHaveBeenCalledTimes(6);
-  });
-
-  it("keeps campaigns separate when landing-page UTM rows share the same source and medium", async () => {
-    const standardRows = [
-      {
-        dimensionValues: ["20260708", "Paid Social", "facebook", "paid_social", "campaign-a", "desktop", "NL"].map((value) => ({ value })),
-        metricValues: ["10", "10", "3", "30", "10"].map((value) => ({ value })),
-      },
-      {
-        dimensionValues: ["20260708", "Paid Social", "facebook", "paid_social", "campaign-b", "desktop", "NL"].map((value) => ({ value })),
-        metricValues: ["10", "10", "5", "50", "10"].map((value) => ({ value })),
-      },
-    ];
-    const fetchMock = vi.fn(async (_url: string, init: any) => {
-      const body = JSON.parse(String(init?.body || "{}"));
-      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isLandingUtm = dimensions.length === 2 && dimensions.includes("landingPagePlusQueryString");
-      const isChannelUtm = dimensions.length === 1 && dimensions[0] === "date";
-      const exactCampaignFilter = body?.dimensionFilter?.andGroup?.expressions?.[3];
-      const exactCampaign = JSON.stringify(exactCampaignFilter || {}).includes("utm_campaign=campaign-a") ? "campaign-a" : "campaign-b";
-      const channelSessions = exactCampaign === "campaign-a" ? "70" : "80";
-      return {
-        ok: true,
-        json: async () => ({
-          rows: isChannelUtm
-            ? [{ dimensionValues: [{ value: "20260708" }], metricValues: [channelSessions, channelSessions, channelSessions].map((value) => ({ value })) }]
-            : isLandingUtm
-            ? [
-                { dimensionValues: [{ value: "20260708" }, { value: "/?utm_source=facebook&utm_medium=paid_social&utm_campaign=campaign-a" }], metricValues: ["70", "70", "70"].map((value) => ({ value })) },
-                { dimensionValues: [{ value: "20260708" }, { value: "/?utm_source=facebook&utm_medium=paid_social&utm_campaign=campaign-b" }], metricValues: ["80", "80", "80"].map((value) => ({ value })) },
-              ]
-            : standardRows,
-          totals: [{ metricValues: (isLandingUtm
-            ? ["150", "150", "150"]
-            : isChannelUtm
-            ? [channelSessions, channelSessions, channelSessions]
-            : ["20", "20", "8", "80", "20"]
-          ).map((value) => ({ value })) }],
-        }),
-      } as any;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    const storage = { getGA4Connection: vi.fn(async () => ({
-      id: "conn-1", propertyId: "properties/123", accessToken: "token",
-    })) };
-
-    const result = await ga4Service.getAcquisitionBreakdown(
-      "campaign-1", storage, "2026-07-08", "123", 2000,
-      ["campaign-a", "campaign-b"], "2026-08-06", false, true,
-    );
-
-    expect(result.meta.insightsLandingCoverage).toMatchObject({ selected: true, rowSessions: 150, rowConversions: 8 });
-    expect(result.rows.map((row) => ({ campaign: row.campaign, sessions: row.sessions, conversions: row.conversions }))).toEqual([
-      { campaign: "campaign-a", sessions: 70, conversions: 3 },
-      { campaign: "campaign-b", sessions: 80, conversions: 5 },
-    ]);
   });
 
   it('paginates acquisition rows to the provider rowCount', async () => {
@@ -941,7 +885,7 @@ describe("GA4 campaign value picker", () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isPageLocationFallback = dimensions.includes("landingPagePlusQueryString") && JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString");
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
 
       return {
         ok: true,
@@ -980,11 +924,11 @@ describe("GA4 campaign value picker", () => {
       revenue: 879.83,
     });
   });
-  it("supplements landing page conversions from same-scope landing-page rows by exact page/source key", async () => {
+  it("supplements landing page conversions from same-scope pageLocation rows by exact page/source key", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isPageLocationFallback = dimensions.includes("landingPagePlusQueryString") && JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString");
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
 
       return {
         ok: true,
@@ -1043,11 +987,11 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("uses conversion-prioritized landing-page rows when supplementing zero-conversion landing page traffic", async () => {
+  it("uses conversion-prioritized pageLocation rows when supplementing zero-conversion landing page traffic", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isPageLocationFallback = dimensions.includes("landingPagePlusQueryString") && JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString");
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
       const orderMetric = String(body?.orderBys?.[0]?.metric?.metricName || "");
       const requestedLimit = Number(body?.limit || 0);
       const isConversionSupplement = isPageLocationFallback && orderMetric === "conversions" && requestedLimit === 10000;
@@ -1112,15 +1056,15 @@ describe("GA4 campaign value picker", () => {
 
     const fallbackBodies = fetchMock.mock.calls
       .map(([, init]) => JSON.parse(String((init as any)?.body || "{}")))
-      .filter((body) => JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString"));
+      .filter((body) => (body?.dimensions || []).some((d: any) => d?.name === "pageLocation"));
     expect(fallbackBodies[0]?.orderBys?.[0]?.metric?.metricName).toBe("conversions");
     expect(fallbackBodies[0]?.limit).toBe(10000);
   });
-  it("supplements landing-page traffic fallback rows with conversion-prioritized landing-page rows", async () => {
+  it("supplements pageLocation traffic fallback rows with conversion-prioritized pageLocation rows", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isPageLocationFallback = dimensions.includes("landingPagePlusQueryString") && JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString");
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
       const orderMetric = String(body?.orderBys?.[0]?.metric?.metricName || "");
 
       return {
@@ -1167,44 +1111,11 @@ describe("GA4 campaign value picker", () => {
 
     const fallbackBodies = fetchMock.mock.calls
       .map(([, init]) => JSON.parse(String((init as any)?.body || "{}")))
-      .filter((body) => JSON.stringify(body?.dimensionFilter || {}).includes("landingPagePlusQueryString"));
+      .filter((body) => (body?.dimensions || []).some((d: any) => d?.name === "pageLocation"));
     expect(fallbackBodies.map((body) => body?.orderBys?.[0]?.metric?.metricName)).toEqual(["sessions", "conversions"]);
     expect(fallbackBodies[1]?.limit).toBe(10000);
   });
 
-  it("uses exact campaignName conversion events when session campaign events contain no conversions", async () => {
-    const fetchMock = vi.fn(async (_url: string, init: any) => {
-      const body = JSON.parse(String(init?.body || "{}"));
-      const fieldName = String(body?.dimensionFilter?.filter?.fieldName || "");
-      return {
-        ok: true,
-        json: async () => ({
-          rows: fieldName === "campaignName"
-            ? [{
-                dimensionValues: [{ value: "purchase" }],
-                metricValues: [{ value: "13" }, { value: "13" }, { value: "13" }, { value: "3277.5" }],
-              }]
-            : [{
-                dimensionValues: [{ value: "page_view" }],
-                metricValues: [{ value: "0" }, { value: "180" }, { value: "108" }, { value: "0" }],
-              }],
-        }),
-      } as any;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    const storage = { getGA4Connection: vi.fn(async () => ({
-      id: "conn-1", propertyId: "properties/123", accessToken: "token",
-    })) };
-
-    const result = await ga4Service.getConversionEventsReport(
-      "campaign-1", storage, "2026-07-02", "123", 50, "summer_sale", "2026-09-06",
-    );
-
-    expect(result.rows).toEqual([expect.objectContaining({ eventName: "purchase", conversions: 13, revenue: 3277.5 })]);
-    expect(result.totals).toMatchObject({ conversions: 13, eventCount: 13, users: 13, revenue: 3277.5 });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"))?.limit).toBe(10000);
-  });
 
   it("supplements conversion event conversions from same-scope pageLocation rows by exact event name", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {

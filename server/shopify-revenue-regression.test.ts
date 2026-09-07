@@ -286,7 +286,8 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('shouldPreserveShopifyDevelopmentStoreLastGood({');
     expect(routes).toContain("schedulerRefresh: internalAutoRefresh && platformCtx === 'ga4'");
     expect(routes).toContain('developmentStoreTestOrdersIncluded,');
-    expect(wizard).toContain('Shopify development-store test orders are included for validation. This is test revenue.');
+    expect(wizard).not.toContain('Shopify development-store test orders are included for validation. This is test revenue.');
+    expect(wizard).not.toContain("Confirm the Shopify preview above. Refresh from Shopify atomically replaces only this source's records and preserves the last-good records if replacement fails.");
   });
 
   it("keeps Shopify save portable across campaign and mapping variants", () => {

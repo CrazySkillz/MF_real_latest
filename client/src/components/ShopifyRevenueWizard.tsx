@@ -102,7 +102,7 @@ export function ShopifyRevenueWizard(props: {
     setSelectedValues(Array.isArray(initialMappingConfig.selectedValues) ? initialMappingConfig.selectedValues.map(String) : []);
     setCampaignDisplayName(String(initialMappingConfig.campaignDisplayName || ""));
     setCampaignMappings(Array.isArray(initialMappingConfig.campaignMappings) ? initialMappingConfig.campaignMappings : []);
-    setStep("review");
+    setStep("campaign-field");
   }, [mode, initialMappingConfig]);
 
   // Per-platform-campaign mapping (crosswalk enhancement)

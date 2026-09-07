@@ -113,6 +113,8 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).toContain('sourceId?: string;');
     expect(wizard).toContain('const editSourceId = mode === "edit" ? String(sourceId || initialMappingConfig?.sourceId || "").trim() : "";');
     expect(wizard).toContain("...(editSourceId ? { sourceId: editSourceId } : {})");
+    expect(wizard).toContain('setCampaignMappings(Array.isArray(initialMappingConfig.campaignMappings) ? initialMappingConfig.campaignMappings : []);\n    setStep("campaign-field");');
+    expect(wizard).not.toContain('setCampaignMappings(Array.isArray(initialMappingConfig.campaignMappings) ? initialMappingConfig.campaignMappings : []);\n    setStep("review");');
     expect(routes).toContain('sourceId: z.string().trim().optional()');
     expect(routes).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
     expect(routes).toContain('if (requestedSourceId && !existingShopify) {');

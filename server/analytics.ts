@@ -1154,10 +1154,23 @@ export class GoogleAnalytics4Service {
       conversionEvents[dimension] = await run(['eventName'], eventMetrics, filter);
     }
     const pageLocationFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+    const totalsOnly = (report: any) => report?.ok
+      ? { ok: true, rowCount: report.rowCount, totals: report.totals }
+      : report;
+    const pageLocationTrafficByCampaign: Record<string, any> = {};
+    for (const campaign of this.normalizeCampaignFilter(campaignFilter)) {
+      pageLocationTrafficByCampaign[campaign] = totalsOnly(await run(
+        ['date'],
+        trafficMetrics,
+        this.buildUtmCampaignPageLocationFilter(campaign),
+      ));
+    }
     return {
       traffic,
       conversionEvents,
       pageLocationTraffic: await run([], trafficMetrics, pageLocationFilter),
+      pageLocationTrafficByDate: totalsOnly(await run(['date'], trafficMetrics, pageLocationFilter)),
+      pageLocationTrafficByCampaign,
       landingPages: await run(['landingPagePlusQueryString'], trafficMetrics, pageLocationFilter),
     };
   }

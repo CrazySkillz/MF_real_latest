@@ -1176,6 +1176,30 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBodies[0]?.limit).toBe(10000);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("passes explicit cumulative start and end dates to Overview row reports", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ rows: [] }),
+    }) as any);
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+      })),
+    };
+
+    await ga4Service.getLandingPagesReport("campaign-1", storage, "2026-07-02", "123", 50, undefined, "2026-08-04");
+    await ga4Service.getConversionEventsReport("campaign-1", storage, "2026-07-02", "123", 50, undefined, "2026-08-04");
+
+    const requestBodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
+    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies.every((body) => JSON.stringify(body.dateRanges) === JSON.stringify([
+      { startDate: "2026-07-02", endDate: "2026-08-04" },
+    ]))).toBe(true);
+  });
 });
 
 

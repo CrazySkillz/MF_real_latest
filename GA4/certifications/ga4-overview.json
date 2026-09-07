@@ -5,7 +5,7 @@
   "lastReviewedSha": "e492f46308768b2cf92c513c7572576d5632e44e",
   "certifiedSha": null,
   "deployedSha": "e492f46308768b2cf92c513c7572576d5632e44e",
-  "invalidationReason": "Post-bf078b03 commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary. Exact-current authenticated Overview parity, scheduler/provider behavior, and production-data integrity must be revalidated before re-certification.",
+  "invalidationReason": "Post-bf078b03 commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary. The current candidate also corrects Campaign Breakdown, Landing Pages, and Conversion Events from rolling lookback to the fixed initial-import-to-latest-completed-day window. Exact-current authenticated Overview parity, scheduler/provider behavior, and production-data integrity must be revalidated before re-certification.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
@@ -48,7 +48,7 @@
     "includedSurfaces": [
       "Overview Summary cards and completed-day traffic values",
       "Revenue and Financial cards, Revenue Sources, Spend Sources, and Revenue Breakdown",
-      "Campaign Breakdown and browser Overview report",
+      "Campaign Breakdown, Landing Pages, Conversion Events, and browser Overview report",
       "scheduler-backed GA4 daily persistence and imported-source refresh paths that feed Overview",
       "Overview-originated value propagation covered by the recorded regression packet"
     ],
@@ -67,7 +67,7 @@
     "windowRules": [
       "initial import is the 30 completed GA4 reporting days preceding setup in the campaign reporting timezone",
       "later completed reporting days append without dropping the oldest imported day",
-      "Summary uses scheduler-backed persisted daily values; Campaign Breakdown keeps independent 30-completed-day GA4 rows and explicitly adds only exact campaign-matched source-to-date imported revenue"
+      "Summary uses scheduler-backed persisted daily values; Campaign Breakdown, Landing Pages, and Conversion Events use the fixed initial-import boundary through the latest completed day, while Campaign Breakdown explicitly adds only exact campaign-matched source-to-date imported revenue"
     ],
     "ownershipRules": [
       "all reads and mutations require actor and campaign access",

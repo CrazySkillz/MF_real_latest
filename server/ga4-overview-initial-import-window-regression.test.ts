@@ -40,7 +40,7 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(((correctedTotals.conversions / correctedTotals.sessions) * 100).toFixed(1)).toBe('12.7');
   });
 
-  it('keeps rolling Overview detail consumers separate while routing cumulative values to Summary and Ad Comparison', () => {
+  it('routes all Overview tables through the fixed initial-import boundary', () => {
     const route = read('server/routes-oauth.ts');
     const page = read('client/src/pages/ga4-metrics.tsx');
     const scheduledReport = read('server/ga4-scheduled-report-pdf.ts');
@@ -51,9 +51,17 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(route).toContain('importStartDate: existingConnection.importStartDate');
     expect(page).toContain('overviewSummaryTotals');
     expect(page).toContain('Imported GA4 data, updated daily');
-    expect(page).toContain('window=import-to-date');
+    expect(page).toContain('"ga4-landing-pages", "import-to-date"');
+    expect(page).toContain('"ga4-conversion-events", "import-to-date"');
+    expect(page).toContain('window: \'import-to-date\'');
+    expect(page).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
+    expect(page).toContain('previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId');
     expect(page).toContain('campaignBreakdownAgg={adComparisonBreakdownAgg}');
+    expect(route.match(/if \(windowMode === 'import-to-date'\)/g)).toHaveLength(3);
+    expect(route.match(/resolveGA4ImportToDateWindow\(/g)?.length).toBeGreaterThanOrEqual(5);
     expect(scheduledReport).toContain('overviewStartDate');
+    expect(scheduledReport).toContain('getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd)');
+    expect(scheduledReport).toContain('getConversionEventsReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd)');
     expect(scheduledReport).not.toContain('(connection as any)?.connectedAt');
   });
 });

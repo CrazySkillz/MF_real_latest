@@ -12613,6 +12613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const dateRange = String(req.query.dateRange || '90days');
+      const windowMode = String(req.query.window || '').trim().toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
@@ -12622,13 +12623,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use current campaign's ga4CampaignFilter only (not cross-client)
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
+      let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
+      let resolvedPropertyId = propertyId;
+      if (windowMode === 'import-to-date') {
+        const connection = await storage.getGA4Connection(campaignId, propertyId);
+        if (!connection) return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+        importToDateWindow = resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone);
+        if (!importToDateWindow) return res.status(409).json({ success: false, error: 'GA4_IMPORT_WINDOW_UNAVAILABLE' });
+        resolvedPropertyId = String((connection as any).propertyId);
+      }
       const explicitStartDate = req.query.startDate ? String(req.query.startDate) : null;
-      const ga4DateRange = explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');
+      const ga4DateRange = importToDateWindow?.startDate || explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const simulationDateRange = importToDateWindow ? `${importToDateWindow.days}days` : dateRange;
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: simulationDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
 
         const pages = [
           '/',
@@ -12677,8 +12688,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return res.json({
           success: true,
-          propertyId: requestedPropertyId || 'yesop',
+          propertyId: resolvedPropertyId || requestedPropertyId || 'yesop',
           dateRange,
+          ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
           rows: rows.slice(0, limit),
           totals: { sessions: totalSessions, users: totalUsers, conversions: totalConversions, revenue: Number(totalRevenue.toFixed(2)) },
           revenueMetric: 'totalRevenue',
@@ -12687,8 +12699,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
-      res.json({ success: true, dateRange, ...result, lastUpdated: new Date().toISOString() });
+      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate);
+      res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
       console.error('[GA4 Landing Pages] Error:', error);
       if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
@@ -12708,6 +12720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const dateRange = String(req.query.dateRange || '90days');
+      const windowMode = String(req.query.window || '').trim().toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
@@ -12717,13 +12730,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use current campaign's ga4CampaignFilter only (not cross-client)
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
+      let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
+      let resolvedPropertyId = propertyId;
+      if (windowMode === 'import-to-date') {
+        const connection = await storage.getGA4Connection(campaignId, propertyId);
+        if (!connection) return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
+        importToDateWindow = resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone);
+        if (!importToDateWindow) return res.status(409).json({ success: false, error: 'GA4_IMPORT_WINDOW_UNAVAILABLE' });
+        resolvedPropertyId = String((connection as any).propertyId);
+      }
       const explicitStartDate = req.query.startDate ? String(req.query.startDate) : null;
-      const ga4DateRange = explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');
+      const ga4DateRange = importToDateWindow?.startDate || explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const simulationDateRange = importToDateWindow ? `${importToDateWindow.days}days` : dateRange;
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange: simulationDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
 
         const events = [
           { name: 'purchase', weight: 1.0 },
@@ -12762,8 +12785,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return res.json({
           success: true,
-          propertyId: requestedPropertyId || 'yesop',
+          propertyId: resolvedPropertyId || requestedPropertyId || 'yesop',
           dateRange,
+          ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
           rows: rows.slice(0, limit),
           totals: { conversions: totalConversions, eventCount: eventCountSum, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
           revenueMetric: 'totalRevenue',
@@ -12772,8 +12796,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await ga4Service.getConversionEventsReport(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
-      res.json({ success: true, dateRange, ...result, lastUpdated: new Date().toISOString() });
+      const result = await ga4Service.getConversionEventsReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate);
+      res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
       console.error('[GA4 Conversion Events] Error:', error);
       if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {

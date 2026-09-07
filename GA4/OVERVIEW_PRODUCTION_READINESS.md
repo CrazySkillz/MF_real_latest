@@ -25,6 +25,8 @@ Only evidence from the same deployed commit, production-data state, and document
 
 **Current section status: UNVERIFIED.** The current deployed runtime is `e492f46308768b2cf92c513c7572576d5632e44e`. The earlier certified runtime boundary `bf078b0375def8146e1f51e5d2c2246c3c350018` remains historical evidence only. Later commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary, so exact-current authenticated Overview parity, scheduler/provider behavior, and production-data integrity must be revalidated before certification can be restored. This fail-closed correction changes no runtime analytics behavior.
 
+2026-09-07 correction: the three Overview detail-table queries were still using a rolling completed-day lookback even though the product lifecycle defines the 30-day value as the initial historical import only. The current candidate changes Campaign Breakdown, Landing Pages, Conversion Events, and their scheduled-report equivalents to the fixed initial-import boundary through the latest completed day. Ten focused files / 149 tests, TypeScript, and the production build pass locally. This candidate remains **UNVERIFIED** until deployed authenticated parity is completed.
+
 The immediately prior certification at `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1`, the earlier certification at `4be16c54c550a45dbf3104313c820ea47b453604`, and the earlier certification at `ee22f0e470826f1cb247115497c9a15229d0142d` remain historical evidence for their exact recorded boundaries only.
 
 <!-- /ga4-overview-current-status -->
@@ -52,7 +54,7 @@ The initial production target is:
 - subsequent completed reporting days appended by the existing daily pipeline without dropping the oldest imported day
 - exact selected property and saved campaign-value scope
 - scheduler-backed persisted daily Summary values
-- independent Campaign Breakdown detail
+- cumulative Campaign Breakdown, Landing Pages, and Conversion Events detail from the same fixed initial-import boundary through the latest completed day
 - separately labeled campaign-to-date financial values
 
 Future 60/90-day options are outside this release and require later implementation and validation.

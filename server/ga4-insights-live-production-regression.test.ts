@@ -13,7 +13,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('new URLSearchParams(search).get("readOnly") === "1"');
     expect(page).toContain('insightsValidationReadOnly ? "&readOnly=1" : ""');
     expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(2);
-    expect(page).toContain('"ga4-breakdown", dateRange, selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
+    expect(page).toContain('"ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
+    expect(page).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
     expect(page).toContain('selectedGA4PropertyId, insightsDailyReadOnly]');
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');

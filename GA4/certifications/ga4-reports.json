@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-reports",
-  "status": "PRODUCTION_READY",
+  "status": "UNVERIFIED",
   "lastReviewedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
-  "certifiedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
-  "deployedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
-  "invalidationReason": null,
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "The current candidate changes browser and scheduled Overview report Campaign Breakdown, Landing Pages, and Conversion Events from a rolling lookback to the fixed initial-import-to-latest-completed-day window. Local regressions, TypeScript, and build pass, but deployed browser/server numerical and artifact parity have not been rerun.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
-    "certifiedSha": "19f055372abe8aee789dd4205eba5decef5f39a5",
-    "deployedSha": "19f055372abe8aee789dd4205eba5decef5f39a5"
+    "certifiedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
+    "deployedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e"
   },
   "configurationBoundary": {
     "scope": "GA4 Reports tab and GA4 report delivery surfaces",
@@ -197,50 +197,50 @@
   "requiredTests": [
     {
       "id": "reports_certification_gate",
-      "status": "passed",
-      "evidence": "The fail-closed Reports certification regression and standalone checker pass after September 5 a58ff3a4 hash synchronization. Exact diff review limits changed shared runtime lines to the alert-enabled KPI-create wait and existing Notifications-query refresh; report APIs, renderers, scheduling, delivery, storage, and values are unchanged. Reports scope and certified SHA remain 94f1096f."
+      "status": "pending",
+      "evidence": "The Reports machine record is fail-closed as UNVERIFIED for the current cumulative Overview-table candidate. Exact dependency hashes and an exact candidate SHA must be synchronized only after the implementation is committed."
     },
     {
       "id": "focused_reports_regressions",
-      "status": "passed",
-      "evidence": "The exact-94f1096f current-version suite passed all protected GA4 Reports regressions, and the machine Reports gate passed after synchronized certification-record refresh."
+      "status": "pending",
+      "evidence": "The current candidate passed the report-email, custom-window, Overview-table, and adjacent focused packets, but the complete protected GA4 Reports regression inventory has not been rerun at an exact candidate SHA."
     },
     {
       "id": "protected_overview_insights_regressions",
-      "status": "passed",
-      "evidence": "The exact-94f1096f current-version run executed 1,661 tests: 1,626 passed, 35 declared deferred future-platform failures remained visible, and zero blocking current-version failures remained after synchronized certification-record refresh."
+      "status": "pending",
+      "evidence": "The current candidate passed 10 focused files / 149 tests including the isolated rolling Insights and cumulative Overview table boundaries, but the complete protected current-version inventory remains pending."
     },
     {
       "id": "typescript",
       "status": "passed",
-      "evidence": "npm run check passed for certified runtime boundary 94f1096f3d08c1443f27a032bc5a44c8468c1a7e."
+      "evidence": "npm run check passed locally for the current cumulative Overview-table candidate on 2026-09-07."
     },
     {
       "id": "production_build",
       "status": "passed",
-      "evidence": "npm run build passed for certified runtime boundary 94f1096f3d08c1443f27a032bc5a44c8468c1a7e."
+      "evidence": "npm run build passed locally for the current cumulative Overview-table candidate on 2026-09-07."
     },
     {
       "id": "complete_numerical_failure_matrix",
-      "status": "passed",
-      "evidence": "Deterministic negative regressions cover unavailable materialized revenue, missing cumulative boundaries, mixed-window disclosure, and fail-closed direct snapshot mismatches. Exact-19f05537 authenticated KPI/Benchmark browser-PDF parity remains revision-bounded supporting evidence; exact diff review confines the later scheduler change to the Campaign DeepDive Trend branch excluded from this GA4 Reports certification."
+      "status": "pending",
+      "evidence": "Historical negative evidence remains useful, but the changed cumulative Overview table values still require exact-current deployed browser/server numerical parity."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
-      "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact certified runtime boundary 94f1096f3d08c1443f27a032bc5a44c8468c1a7e on 2026-08-29."
+      "status": "pending",
+      "evidence": "The current cumulative Overview-table candidate is not committed or deployed. The prior 94f1096f deployment remains historical evidence only."
     },
     {
       "id": "upstream_section_certifications",
-      "status": "passed",
-      "evidence": "KPI is revalidated at exact deployed 94f1096f. Overview, Ad Comparison, and Insights remain certified at 4be16c54; their runtime and scopes are unchanged. Benchmark remains locked to 12789c1e, with exact-19f05537 authenticated parity retained only as supporting evidence. All five available fail-closed machine gates pass."
+      "status": "pending",
+      "evidence": "GA4 Overview is UNVERIFIED for the current cumulative table candidate. Ad Comparison and Insights are unchanged, but they cannot restore Reports certification by reference."
     },
     {
       "id": "browser_server_pdf_value_parity",
-      "status": "passed",
-      "evidence": "Exact-19f05537 authenticated KPI and Benchmark browser-PDF rows remain revision-bounded supporting evidence, while the exact-94f1096f protected GA4 Reports regressions pass. The later scheduler delta is confined to the excluded Campaign DeepDive Trend branch; no new GA4 inbox or provider-delivery claim is made."
+      "status": "pending",
+      "evidence": "Local guards prove both renderers request the cumulative Overview table window, but exact-current deployed browser/server numerical and artifact parity has not been captured."
     },
     {
       "id": "report_crud_tenant_isolation",
@@ -274,8 +274,8 @@
     },
     {
       "id": "dependency_hashes",
-      "status": "passed",
-      "evidence": "All protected dependency hashes match the exact revalidated boundary. The exact-94f1096f machine gates, 1,661-test current-version suite, TypeScript check, and production build passed."
+      "status": "pending",
+      "evidence": "Current candidate dependencies changed and must be synchronized only after an exact commit is available."
     }
   ]
 }

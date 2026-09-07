@@ -149,7 +149,8 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     propertyId?: string,
     limit: number = 50,
-    campaignFilter?: CampaignFilter
+    campaignFilter?: CampaignFilter,
+    endDate = 'yesterday'
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
@@ -180,7 +181,7 @@ export class GoogleAnalytics4Service {
       orderMetric: 'sessions' | 'conversions' = 'sessions'
     ) => {
       const requestBody = {
-        dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
+        dateRanges: [{ startDate: dateRange, endDate }],
         dimensions,
         ...(scopeFilter ? scopeFilter : {}),
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
@@ -362,7 +363,8 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     propertyId?: string,
     limit: number = 50,
-    campaignFilter?: CampaignFilter
+    campaignFilter?: CampaignFilter,
+    endDate = 'yesterday'
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
@@ -391,7 +393,7 @@ export class GoogleAnalytics4Service {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
+          dateRanges: [{ startDate: dateRange, endDate }],
           dimensions: [{ name: 'eventName' }],
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],

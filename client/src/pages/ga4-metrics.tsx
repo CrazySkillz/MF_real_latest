@@ -1935,9 +1935,15 @@ export default function GA4Metrics() {
     isError: breakdownError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly],
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData: any, previousQuery: any) => {
+      const previousKey = previousQuery?.queryKey;
+      const currentWindow = activeTab === "insights" ? dateRange : "import-to-date";
+      return previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId
+        ? previousData
+        : undefined;
+    },
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -1945,7 +1951,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-breakdown?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
+        `/api/campaigns/${campaignId}/ga4-breakdown?${activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
         )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : ""}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
@@ -1986,7 +1992,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId],
     enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -1995,7 +2001,7 @@ export default function GA4Metrics() {
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
-        dateRange: String(dateRange),
+        window: 'import-to-date',
         limit: '50',
       });
       const resp = await fetch(
@@ -2010,7 +2016,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId],
     enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -2019,7 +2025,7 @@ export default function GA4Metrics() {
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
-        dateRange: String(dateRange),
+        window: 'import-to-date',
         limit: '50',
       });
       const resp = await fetch(
@@ -3398,7 +3404,7 @@ export default function GA4Metrics() {
             fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
           ]),
           [52, 22, 20, 28, 26, 36],
-          `GA4 metrics: last ${GA4_DAILY_LOOKBACK_DAYS} completed days; Revenue includes exact campaign-matched source-to-date imports.`,
+          "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
         );
       }
 
@@ -6387,7 +6393,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
-                        <p className="text-sm text-muted-foreground/70">GA4 metrics: last {GA4_DAILY_LOOKBACK_DAYS} completed days; Revenue includes exact campaign-matched source-to-date imports.</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -6456,7 +6462,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days for this GA4 property and campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -6533,7 +6539,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
-                        <p className="text-sm text-muted-foreground/70">Last {GA4_DAILY_LOOKBACK_DAYS} completed days for this GA4 property and campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

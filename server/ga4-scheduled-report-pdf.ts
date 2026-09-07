@@ -465,9 +465,6 @@ async function buildGA4ReportPayload(report: any) {
   if (adComparisonRequirements.included && !adComparisonWindow) {
     throw new Error('GA4_AD_COMPARISON_IMPORT_WINDOW_UNAVAILABLE');
   }
-  const acquisitionRange = adComparisonRequirements.included
-    ? '30daysAgo'
-    : reportLookbackRange;
   const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);
   const financialStartDate = toISODateUTC((campaign as any)?.startDate)
     || toISODateUTC((campaign as any)?.createdAt)
@@ -496,13 +493,13 @@ async function buildGA4ReportPayload(report: any) {
 
   const [metrics, breakdown, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, adComparisonRevenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
-    ga4Service.getAcquisitionBreakdown(campaignId, storage, acquisitionRange, propertyId, 2000, campaignFilter).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     adComparisonRequirements.included && adComparisonWindow
       ? ga4Service.getAcquisitionBreakdown(campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter, adComparisonWindow.endDate)
           .catch((e) => { logPartFailure("ad comparison breakdown", e); return { rows: [] }; })
       : Promise.resolve({ rows: [] }),
-    ga4Service.getLandingPagesReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
-    ga4Service.getConversionEventsReport(campaignId, storage, dailyStart, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
+    ga4Service.getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
+    ga4Service.getConversionEventsReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
     ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
     storage.getRevenueSources(campaignId, "ga4").catch((e) => { logPartFailure("revenue sources", e); return [] as any[]; }),
     storage.getSpendSources(campaignId, "ga4").catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
@@ -1185,7 +1182,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ]),
         [52, 22, 20, 28, 26, 36],
         COLORS.overview,
-        `GA4 metrics: last ${lookbackDays} completed days; Revenue includes exact campaign-matched source-to-date imports.`,
+        "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
       );
     }
     if (includeLandingPages) {

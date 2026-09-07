@@ -8,6 +8,10 @@ Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for
 
 The earlier entries below preserve the status that was true at their recorded point in time, including then-current `unverified` statements. They are historical and cannot override Current Commit 23 or the controlling current-status document.
 
+## 2026-09-07 Cumulative Overview Table Correction
+
+The product contract was clarified: the supported 30-day setting establishes the initial historical-import boundary only. Campaign Breakdown, Landing Pages, and Conversion Events must then accumulate through the latest completed day and must not remain rolling 30-day views. The current candidate updates the browser queries, the two row-report service end dates, and scheduled-report equivalents while retaining the separate rolling Insights analysis request. Ten focused files / 149 tests, TypeScript, and the production build pass locally; deployed authenticated parity remains open, so the controlling Overview status remains **UNVERIFIED**.
+
 ## Historical Commit Queue
 
 Current Commit 0 is this documentation-only baseline. It lowers the status, records the dynamic inventories, and makes no runtime or data change.

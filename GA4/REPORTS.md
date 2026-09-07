@@ -4,7 +4,7 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Current status: GA4 Reports is `PRODUCTION_READY` for certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`. The only shared scheduler delta from the preceding `19f05537` boundary is isolated to the Campaign DeepDive Trend PDF branch, which remains excluded from GA4 Reports certification. Protected regressions and the complete non-Playwright current-version boundary passed; authenticated browser-PDF, provider-delivery, and inbox evidence remains revision-bounded and is not broadened. The exact evidence and exclusions live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Current status: GA4 Reports is `UNVERIFIED` for the current candidate because browser and scheduled Overview report table windows changed from rolling lookback to the fixed initial-import-to-latest-completed-day boundary. The prior `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification remains historical evidence only. The exact evidence and open deployed-parity gate live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
 Ad Comparison report-output note: the GA4 Ad Comparison section remains
 `PRODUCTION_READY`. Local browser/scheduled output guards pass, and the deployed
 revision and direct-consumer parity gates in
@@ -87,6 +87,7 @@ Current standard-template output rule:
 - scheduled/server Overview output must apply the same subsection-aware fail-closed rule: optional unselected section failures may retain bounded fallbacks, but a failed required selected Overview input aborts PDF generation and therefore prevents send/snapshot success
 - in `Overview` report output, `Campaign Breakdown` should use the column label `Revenue` because it can include exact campaign-matched imported revenue
 - in `Overview` report output, `Landing Pages` and `Conversion Events` should omit revenue
+- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` in browser and server Overview reports use the fixed initial-import boundary through the latest completed day, never a rolling 30-day display window
 - `KPIs` should follow the live KPI order
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
@@ -305,6 +306,7 @@ Important meaning:
   `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights -> Reports`
 - reports are an output view of the latest refreshed GA4 campaign state
 - GA4 report Summary, KPI, and Benchmark traffic values use the saved initial-import boundary through the latest completed reporting day; the configured import depth is not converted into a rolling report window
+- GA4 report Overview detail tables use that same fixed initial-import-to-latest-completed-day boundary; the separate Insights analysis window remains independent
 - scheduled/server-generated GA4 reports must prove that cumulative boundary from the saved connection and fail closed when it cannot be established
 - direct/browser and scheduled/server consumers must not substitute a narrower configured-lookback or rolling total for the cumulative current value
 - editing a report changes report configuration, scheduling, and delivery settings; it does not directly edit stored campaign metrics
@@ -312,9 +314,9 @@ Important meaning:
 
 ## Current-State Note
 
-The current GA4 Reports fix packet is release-candidate ready. Final combined GA4 certification, current-revision delivery/inbox proof, production database integrity, and complete browser/server numerical parity remain separate gates and are not implied by this status.
+The current GA4 Reports candidate is locally validated but remains unverified until the changed cumulative Overview table values are checked in deployed browser and server artifacts.
 
-Aligned and production-ready:
+Historically aligned at the prior certified boundary; unchanged mechanics remain locally covered:
 
 - ad hoc GA4 downloads are rendered client-side from live GA4 page state
 - once the tab inputs are refreshed, on-demand GA4 downloads reflect the refreshed values

@@ -18,18 +18,12 @@ Use this file when asked whether GA4 Reports is robust, accurate, logical, produ
 This file defines whether that implementation is production-ready, what has been proven, what remains not locally verifiable, and how to replicate the Reports pattern for future platforms.
 
 <!-- ga4-reports-current-status -->
-<!-- ga4-reports-certification-status: PRODUCTION_READY -->
+<!-- ga4-reports-certification-status: UNVERIFIED -->
 ## Current Controlling Answer
 
-August 29, 2026 final decision: GA4 Reports is **PRODUCTION_READY** for certified GA4 Reports runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`. Campaign DeepDive remains outside the GA4 Reports certification boundary.
+September 7, 2026 decision: GA4 Reports is **UNVERIFIED** for the current candidate. Browser and scheduled Overview report Campaign Breakdown, Landing Pages, and Conversion Events now use the fixed initial-import boundary through the latest completed day instead of a rolling lookback. Ten focused files / 149 tests, TypeScript, and the production build pass locally, but deployed browser/server numerical parity and an exact-current artifact check have not been completed.
 
-The current Reports consumers resolve one authoritative cumulative initial-import boundary and fail closed when that boundary cannot be proven. The complete current-version boundary exposed one stale legacy Shopify test fixture; adding its exact 30-day/import-start boundary restored all seven focused report-consumer tests without changing runtime code.
-
-Final evidence includes the complete current-version suite, TypeScript, production build, exact `94f1096f` health, deterministic cumulative/fail-closed GA4 report tests, and exact diff review proving the later scheduler change is confined to the excluded Campaign DeepDive Trend branch. Authenticated guarded outcome totals and browser KPI/Benchmark PDF parity remain revision-bounded to `19f05537`. Earlier provider delivery, inbox receipt, truthful snapshot, and schedule-restoration evidence remains revision-bounded historical support.
-
-The production database audit found no active orphan report, tenant mismatch, or invalid active schedule. Historical orphan/mismatched artifacts remain preserved rather than rewritten and are fail-closed by current access/type guards. The unavailable-materialized-revenue negative branch remains proven by deterministic regression coverage rather than production-data mutation.
-
-The final combined GA4 certification is complete for the recorded boundary. Future provider availability, future recipient behavior, Campaign DeepDive, non-GA4 reports, and unbounded historical-data cleanup remain excluded.
+The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` production-ready decision remains historical evidence only. Campaign DeepDive remains outside this GA4 Reports boundary, and unchanged CRUD, scheduler, snapshot, and delivery evidence does not certify the changed report values.
 
 <!-- /ga4-reports-current-status -->
 
@@ -190,9 +184,9 @@ This inventory is complete for the current Reports surfaces, but completion of t
 | Campaign DeepDive scheduled-report list and ad hoc download path | Backend `campaign_deepdive` scheduled rows render directly; unscheduled creation generates an in-memory PDF without a browser or backend library row | Failed backend list stays distinct from a legitimate empty result; an ad hoc download does not create a card | Excluded from the GA4 Reports certification boundary |
 | Report composition | Saved report type, selected sections, selected KPI IDs, selected Benchmark IDs, and Campaign DeepDive selected metrics | Empty Custom KPI/Benchmark selection stays empty and cannot expand to every row | Proven through the actual scheduled GA4 PDF path and focused negative regression |
 | Schedule metadata | Frequency, recurrence day, local time, IANA timezone, recipients, paused/active state | Unsupported frequency/timezone/time/day/quarter values fail before persistence | Proven by create/update guards, direct validator cases, deployed CRUD, and natural scheduler execution |
-| Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Proven on the exact deployed SHA by user-confirmed UI/PDF parity plus fail-closed guards |
+| Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, cumulative tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | Cumulative table-window behavior is locally covered; deployed numerical parity is unverified for the current candidate. |
 | Browser GA4 KPI, Benchmark, Ad Comparison, Insights, and Custom PDF values | Current page-consumed rows and selected-section renderers | Unselected sections are omitted; selected unavailable inputs fail or stay explicitly unavailable according to the section contract | Proven on the exact deployed SHA across all five standard types and one selected Custom composition |
-| Server GA4 scheduled, test-send, manual-snapshot, and direct-snapshot PDFs | Campaign/property/filter-scoped server payload, exact report preflight, shared GA4 PDF builder | Selected KPI/Benchmark read/recompute failure blocks output; generic GA4 fallback is refused | Proven through actual KPI/Benchmark production paths, direct-snapshot parity, emailed Ad parity, and scheduler execution |
+| Server GA4 scheduled, test-send, manual-snapshot, and direct-snapshot PDFs | Campaign/property/filter-scoped server payload, exact report preflight, shared GA4 PDF builder | Selected KPI/Benchmark read/recompute failure blocks output; generic GA4 fallback is refused | The cumulative Overview table-window change is locally covered; exact-current deployed artifact parity is unverified. |
 | Campaign DeepDive browser and scheduled PDFs | Campaign context, performanceSummary, optional Executive Summary, KPI rows, Benchmark rows, and Trend Analysis aggregate | Only selected sections are loaded/rendered; unavailable metrics are not invented | Excluded from the GA4 Reports certification boundary |
 | Test-send result | Email provider audit plus Mailgun delivery events when available | Non-Mailgun acceptance is reported as accepted/unconfirmed; Mailgun is called delivered only after a delivered event | Proven by regression guards, provider-confirmed delivery, inbox receipt, and attachment parity |
 | Scheduled send event, snapshot, and last-sent values | report_send_events keyed by report and scheduled slot; report_snapshots and lastSentAt only after send success | Missing campaign, missing recipients, preflight/PDF failure, pending delivery, and failed delivery do not create a sent snapshot | Proven by code/regression, production integrity audit, and the exact-SHA natural 2026-08-11 send |
@@ -234,8 +228,8 @@ This inventory is complete for the current Reports surfaces, but completion of t
 
 ## Protected Overview And Insights Boundary
 
-- No live Overview or live Insights renderer, query, formula, storage path, or scheduler behavior is changed by the Reports documentation and machine-gate work.
-- Reports-owned parity tests may mention Insights, but they do not change the certified live Insights runtime.
+- The current candidate intentionally changes only the live Overview detail-table query windows and their browser/server report equivalents to the fixed cumulative boundary.
+- The separate rolling Insights breakdown request, Insights renderer, formulas, storage, and scheduler behavior remain unchanged and are covered by the adjacent regression packet.
 - server/routes-oauth.ts is a shared certification dependency. The localized Reports schedule-route changes do not alter Overview/Insights behavior, but dependency-hash rules still require the affected certification gates to be rerun before any prior certification is carried forward to a new revision.
 
 ## Historical Section Evidence Map
@@ -950,7 +944,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer that GA4 Reports is **PRODUCTION_READY** for certified runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e`. Historical send evidence remains bounded operational evidence; Campaign DeepDive and future provider/recipient behavior remain excluded from the GA4 Reports certification.
+Answer that GA4 Reports is **UNVERIFIED** for the current cumulative Overview-table candidate. Runtime boundary `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` remains a historical certification only; deployed browser/server artifact parity must be rerun.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

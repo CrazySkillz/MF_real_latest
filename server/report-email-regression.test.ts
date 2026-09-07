@@ -141,7 +141,7 @@ describe("scheduled report email regression guard", () => {
     expect(source).not.toContain(".filter((source: any) => source?.revenue != null)");
   });
 
-  it("discloses the mixed Campaign Breakdown window in scheduled GA4 Reports", () => {
+  it("discloses the cumulative Campaign Breakdown window in scheduled GA4 Reports", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
     const breakdownStart = source.indexOf("if (includeCampaignBreakdown)");
     const breakdownEnd = source.indexOf("if (includeLandingPages)", breakdownStart);
@@ -150,7 +150,7 @@ describe("scheduled report email regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "GA4 metrics: last ${lookbackDays} completed days; Revenue includes exact campaign-matched source-to-date imports.",
+      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
     );
   });
 

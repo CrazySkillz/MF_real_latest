@@ -321,6 +321,43 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
   return true;
 }
 
+type RevenueSourceRefreshValidationResult = {
+  success: boolean;
+  reason?: string;
+  campaignId: string;
+  sourceId: string;
+  platformContext?: string;
+};
+
+export async function runHubSpotRevenueSourceRefreshForValidation(campaignId: string, sourceId: string): Promise<RevenueSourceRefreshValidationResult> {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  const normalizedSourceId = String(sourceId || "").trim();
+  if (!normalizedCampaignId || !normalizedSourceId) {
+    return { success: false, reason: "invalid_request", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+  }
+
+  const sources = await storage.getRevenueSources(normalizedCampaignId, "ga4").catch(() => [] as any[]);
+  const source = (Array.isArray(sources) ? sources : []).find((s: any) =>
+    s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "hubspot" && String(s.id || "") === normalizedSourceId
+  );
+  if (!source) {
+    return { success: false, reason: "source_not_found", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+  }
+
+  const cfgRaw = safeJsonParse(source?.mappingConfig);
+  const savedPlatformContext = String(cfgRaw?.platformContext || source.platformContext || "ga4").trim().toLowerCase();
+  if (savedPlatformContext !== "ga4") {
+    return { success: false, reason: "source_not_found", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
+  }
+  const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: "ga4" } : null;
+  if (!mappingConfig?.selectedValues?.length) {
+    return { success: false, reason: "missing_hubspot_revenue_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: "ga4" };
+  }
+
+  const success = await reprocessHubSpot(normalizedCampaignId, mappingConfig, normalizedSourceId);
+  return { success, reason: success ? undefined : "reprocess_failed", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: "ga4" };
+}
+
 async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<ReprocessResult> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return { success: false, error: "missing_connection_id" };

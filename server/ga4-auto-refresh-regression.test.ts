@@ -299,6 +299,21 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(routes).not.toContain('app.post("/api/campaigns/:id/auto-refresh/run-now"');
   });
 
+  it("exposes a campaign/source-scoped HubSpot scheduler validation trigger", () => {
+    const scheduler = schedulerFile();
+    const routes = routesFile();
+
+    expect(scheduler).toContain("export async function runHubSpotRevenueSourceRefreshForValidation");
+    expect(scheduler).toContain('storage.getRevenueSources(normalizedCampaignId, "ga4")');
+    expect(scheduler).toContain('String(s.sourceType || "").toLowerCase() === "hubspot"');
+    expect(scheduler).toContain('String(s.id || "") === normalizedSourceId');
+    expect(scheduler).toContain('if (savedPlatformContext !== "ga4")');
+    expect(scheduler).toContain("reprocessHubSpot(normalizedCampaignId, mappingConfig, normalizedSourceId)");
+    expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now", importRateLimiter, requireCampaignAccessParamId');
+    expect(routes).toContain("runHubSpotRevenueSourceRefreshForValidation(campaignId, sourceId)");
+    expect(routes).not.toContain('app.post("/api/campaigns/:id/auto-refresh/run-now"');
+  });
+
   it("keeps ad-platform spend scoped to saved campaign IDs and logs provider-specific failures", () => {
     const content = schedulerFile();
 

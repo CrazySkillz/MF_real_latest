@@ -344,6 +344,7 @@ CRM auto-reprocess rule:
 - the scheduler may use an internal same-process authorization path for its own loopback requests
 - internal scheduler self-calls should use same-process loopback so the internal auto-refresh token is accepted by campaign access checks
 - public HubSpot and Salesforce save-mapping endpoints must still require normal user authentication and campaign access
+- GA4 HubSpot has a non-UI, campaign-access-guarded validation route that resolves one exact active GA4 HubSpot revenue `sourceId` and invokes the same scheduler reprocess function immediately; it does not run the global daily cycle or prove the natural timer
 - refreshed CRM revenue should update materialized revenue records and recomputed campaign financial state
 - if an auto-reprocess self-call returns `404 revenue source not found` for a stable HubSpot, Salesforce, or Shopify source ID, the scheduler should skip that stale source and log it as a stale-source skip; it must not create a replacement source, retry as add mode, or report the skip as a successful refresh
 - ad-platform spend auto-refresh must reprocess by stable spend source ID when a source already exists; for LinkedIn spend this means the scheduler passes the active `linkedin_api` source ID and the process endpoint updates only that source instead of creating a replacement row

@@ -38,7 +38,7 @@ import { db } from "./db";
 import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
-import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation } from "./auto-refresh-scheduler";
+import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
 import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefreshPipeline } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
@@ -21928,6 +21928,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('[Google Sheets Refresh] Error:', error);
       res.status(500).json({ success: false, error: 'Failed to refresh Google Sheets data' });
+    }
+  });
+
+  // GA4 campaign/source-scoped validation trigger for the HubSpot scheduler reprocess path.
+  app.post("/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
+    const campaignId = String(req.params.id || "").trim();
+    const sourceId = String(req.params.sourceId || "").trim();
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const result = await runHubSpotRevenueSourceRefreshForValidation(campaignId, sourceId);
+      if (!result.success) {
+        const status = result.reason === "source_not_found" ? 404 : result.reason === "invalid_request" || result.reason === "missing_hubspot_revenue_mapping" ? 400 : 502;
+        return res.status(status).json({ success: false, certificationStatus: "validation_output_only", campaignId, sourceId, result });
+      }
+      res.json({
+        success: true,
+        certificationStatus: "validation_output_only",
+        productionReadinessNote: "This route runs only the deployed scheduler HubSpot revenue source reprocess function for one authorized campaign/source. It is not production-readiness certification by itself.",
+        limitations: [
+          "Requires campaign access and an active HubSpot revenue source matching the requested source ID.",
+          "Does not run the full daily auto-refresh cycle, other providers, emails, reports, or unrelated campaigns; the existing campaign-scoped downstream recompute still runs.",
+          "A successful response proves the manual validation trigger ran; endpoint and UI totals must still be captured after the run.",
+        ],
+        campaignId,
+        sourceId,
+        trigger: "manual_validation",
+        result,
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, certificationStatus: "validation_output_only", error: error?.message || "Failed to run HubSpot revenue refresh validation", campaignId, sourceId });
     }
   });
 

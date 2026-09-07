@@ -426,7 +426,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(runner).toContain("hubspotProvenance: hubspotProvenance");
   });
 
-  it("keeps HubSpot GA4 revenue refresh/reprocess scheduler-only, not a user-facing source action", () => {
+  it("keeps HubSpot refresh out of the UI while exposing a guarded source-scoped scheduler validation trigger", () => {
     const client = ga4MetricsFile();
     const routes = routesFile();
     const scheduler = schedulerFile();
@@ -459,17 +459,20 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueSourcesDialog).not.toMatch(/>\s*(?:Refresh|Reprocess|Sync)\s*</);
 
     expect(sourceScopedRunNowRoutes).toEqual([
+      'app.post("/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now"',
       'app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"',
       'app.post("/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now"',
     ]);
     expect(routes).toContain('app.post("/api/campaigns/:id/hubspot/save-mappings"');
-    expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now');
+    expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now", importRateLimiter, requireCampaignAccessParamId');
+    expect(routes).toContain("runHubSpotRevenueSourceRefreshForValidation(campaignId, sourceId)");
     expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot-reprocess/run-now');
     expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot/run-now');
 
     expect(scheduler).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
     expect(scheduler).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body)');
     expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
+    expect(scheduler).toContain("export async function runHubSpotRevenueSourceRefreshForValidation");
   });
 
   it("exposes a read-only HubSpot provider propagation comparison runner", () => {

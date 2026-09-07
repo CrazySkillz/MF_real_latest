@@ -136,6 +136,9 @@ describe("scheduled report email regression guard", () => {
     expect(guardSection).toContain('!revenueBreakdownSourceIds.has(String(source?.id || ""))');
     expect(guardSection).toContain('!adComparisonRevenueBreakdownSourceIds.has(String(source?.id || ""))');
     expect(guardSection).toContain("overviewRequirements.revenue && overviewMaterializedRevenueUnavailable");
+    expect(guardSection).toContain('overviewRequirements.campaignBreakdown && (');
+    expect(guardSection).toContain('failedParts.has("campaign revenue breakdown")');
+    expect(guardSection).toContain("overviewMaterializedRevenueUnavailable");
     expect(guardSection).toContain("adComparisonRequirements.revenueBreakdown && adComparisonMaterializedRevenueUnavailable");
     expect(source).not.toContain("formatMoney(Number(source?.revenue || 0))");
     expect(source).not.toContain(".filter((source: any) => source?.revenue != null)");
@@ -150,7 +153,7 @@ describe("scheduled report email regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+      "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
     );
   });
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
+import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4HistoricalImportStartDate } from './utils/reporting-timezone';
 
 const root = process.cwd();
@@ -22,6 +22,25 @@ describe('GA4 Overview initial historical import boundary', () => {
     const afterZeroActivityDay = [...importedRows];
     expect(summarizeGA4TrafficRows(importedRows).sessions).toBe(887);
     expect(summarizeGA4TrafficRows(afterZeroActivityDay).sessions).toBe(887);
+  });
+
+  it('keeps traffic on the import boundary while replacing revenue with exact native campaign-to-date values', () => {
+    const rows = mergeGA4OverviewCampaignRevenueRows(
+      [
+        { campaign: 'paid', sessions: 626, users: 627, conversions: 57, revenue: 13641.60 },
+        { campaign: 'retargeting', sessions: 471, users: 473, conversions: 79, revenue: 17866.50 },
+      ],
+      [
+        { campaign: 'paid', sessions: 800, users: 801, conversions: 80, revenue: 25000.10 },
+        { campaign: 'retargeting', sessions: 600, users: 602, conversions: 90, revenue: 40362.10 },
+      ],
+      ['paid', 'retargeting'],
+    );
+    expect(rows).toEqual([
+      expect.objectContaining({ campaign: 'paid', sessions: 626, users: 627, conversions: 57, revenue: 25000.10 }),
+      expect.objectContaining({ campaign: 'retargeting', sessions: 471, users: 473, conversions: 79, revenue: 40362.10 }),
+    ]);
+    expect(rows.reduce((sum, row) => sum + row.revenue, 0)).toBe(65362.20);
   });
 
   it('does not use a legacy OAuth connection date as the historical import boundary', () => {
@@ -59,6 +78,10 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(page).toContain('campaignBreakdownAgg={adComparisonBreakdownAgg}');
     expect(route.match(/if \(windowMode === 'import-to-date'\)/g)).toHaveLength(3);
     expect(route.match(/resolveGA4ImportToDateWindow\(/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(route).toContain('revenueWindow: nativeRevenueWindow');
+    expect(route).toContain("throw new Error('GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED')");
+    expect(page).toContain('campaignBreakdownRevenueVerified');
+    expect(page).toContain('Math.abs(Number((ga4Breakdown as any)?.totals?.revenue || 0) - Number((ga4ToDateResp as any)?.totals?.revenue || 0)) < 0.01');
     expect(scheduledReport).toContain('overviewStartDate');
     expect(scheduledReport).toContain('getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd)');
     expect(scheduledReport).toContain('getConversionEventsReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd)');

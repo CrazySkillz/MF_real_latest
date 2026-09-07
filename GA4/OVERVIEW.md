@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** for deployed runtime `340da6d5831f77fb88d125a55aaec78c189c4c3d` only until an exact-current natural `22:00 UTC` daily-timer run is observed. Exact-current authenticated database/API/UI/source/PDF parity, ownership denial, the focused 34-file / 433-test packet, TypeScript, and the production build pass for the recorded configuration; direct database checks used a read-only transaction. This is deliberately not a production-ready claim before the remaining external timer gate closes.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **UNVERIFIED** for the current candidate. Campaign Breakdown native revenue now uses an exact campaign-start-to-latest-completed-day per-campaign query, reconciles to the GA4 Revenue card, and then adds exact mapped imports; traffic metrics retain the fixed import-to-date boundary. Focused local validation passes, while exact deployment and authenticated value/UI/PDF parity remain pending.
 
 <!-- /ga4-overview-current-status -->
 
@@ -73,8 +73,8 @@ Important clarification:
 - Summary starts with those 30 completed historical days and appends later completed-day facts; it must not discard the oldest imported day merely because the calendar advances
 - the cards remain computed from current persisted facts for that fixed import boundary through the latest completed day; they are not frozen UI values
 - the GA4 daily scheduler persists completed-day daily facts, but it is not the only Overview fetch path
-- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are live GA4 Data API views for the selected property and saved campaign scope, queried cumulatively from the fixed initial-import boundary through the latest completed day; they are not populated by allocating persisted daily totals into rows
-- when GA4 campaign dimensions expose only conversion-bearing sessions, Overview Campaign Breakdown may use each exact saved `pageLocation` `utm_campaign` scope for Sessions, Users, and Engaged Sessions, while retaining exact `campaignName` Conversions and native Revenue; the fallback is accepted only when combined Conversions and Revenue reconcile to the standard scoped query, and no proportional allocation is allowed
+- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are live GA4 Data API views for the selected property and saved campaign scope. Their traffic/conversion metrics use the fixed initial-import boundary through the latest completed day; Campaign Breakdown native Revenue separately uses the campaign start through that same completed day so it reconciles to the GA4 Revenue card
+- when GA4 campaign dimensions expose only conversion-bearing sessions, Overview Campaign Breakdown may use each exact saved `pageLocation` `utm_campaign` scope for Sessions, Users, and Engaged Sessions while retaining exact `campaignName` Conversions. Native campaign-to-date Revenue must be queried per exact saved campaign and reconcile to the GA4 Revenue card; no proportional allocation is allowed
 - Landing Pages uses only GA4's session-scoped `landingPagePlusQueryString` result; ordinary `pageLocation` rows must never be relabeled as landing pages, and missing session-scoped attribution renders an unavailable/empty state
 - Conversion Events renders only event rows with nonzero GA4 Conversions; when `sessionCampaignName` is empty it may use the compatible exact `firstUserCampaignName` or `firstUserManualCampaignName` scope, but it must never substitute zero-conversion page-view traffic
 - new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; page load/window focus can refetch immediately, and the to-date/breakdown queries also refetch periodically while the page is open
@@ -308,13 +308,13 @@ Columns:
 Important clarification:
 
 - the visible column label is `Revenue`, not `GA4 Revenue`, because the value can include exact campaign-matched imported revenue
-- the visible subtitle states `Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.`
-- `Campaign Breakdown` revenue starts with GA4 revenue attributed to each GA4 campaign row
-- Campaign Breakdown row `Sessions`, `Users`, `Conversions`, and GA4-native `Revenue` remain the raw GA4 breakdown row values returned for the selected property and saved campaign scope; they are not scaled to Summary card totals
+- the visible subtitle states `Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.`
+- `Campaign Breakdown` revenue starts with exact GA4 campaign-to-date revenue attributed to each saved GA4 campaign row; the native row sum must reconcile to the GA4 Revenue card before rendering
+- Campaign Breakdown row `Sessions`, `Users`, and `Conversions` retain the fixed import-to-date GA4 values and reconcile to Summary; native `Revenue` uses the separate campaign-start-to-latest-completed-day GA4 query and is not scaled or allocated
 - exact campaign-matched imported revenue may be added only when a source saves real campaign-value mappings that match a GA4 campaign row
 - the imported campaign-matched amount is source-to-date and is added only by exact saved campaign mapping
 - it is not a proportional allocation of imported external revenue
-- campaign financial cards and campaign-breakdown revenue should not be treated as interchangeable numbers
+- when every imported source amount is exactly campaign-mapped, displayed Campaign Breakdown Revenue reconciles to Total Revenue; otherwise unmatched imported revenue remains outside the campaign rows
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one campaign row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 

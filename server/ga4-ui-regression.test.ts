@@ -158,7 +158,7 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain(
-      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+      "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
     );
   });
 
@@ -324,6 +324,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Landing page data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Conversion event data is unavailable. Refresh the page to try again.");
     expect(ga4Metrics).toContain("Campaign breakdown is unavailable. Refresh the page to try again.");
+    expect(ga4Metrics).toContain("const campaignBreakdownImportedRevenueUnavailable =");
+    expect(ga4Metrics).toContain("campaignBreakdownImportedRevenueUnavailable ||");
     expect(ga4Metrics).toContain("const renderFinancialValue = (loading: boolean, available: boolean, value: string, unavailableLabel = \"Unavailable\")");
     expect(ga4Metrics).toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))");
     expect(ga4Metrics).toContain('if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");');
@@ -627,6 +629,7 @@ describe("GA4 UI regression guard", () => {
     expect(guardSection).toContain("const materializedRevenueUnavailable = revenueDisplaySources.some(");
     expect(guardSection).toContain('source?.materializedRevenueStatus === "unavailable" || source?.revenue == null');
     expect(guardSection).toContain('if (needsRevenue && materializedRevenueUnavailable) unavailable.push("Revenue");');
+    expect(guardSection).toContain('if (needsCampaignBreakdown && campaignBreakdownUnavailable) unavailable.push("Campaign Breakdown");');
     expect(guardSection).toContain("if (needsRevenueBreakdown && materializedRevenueUnavailable) unavailable.push('Imported revenue provenance');");
     expect(ga4Metrics).not.toContain("s.revenue != null ? s.revenue : rev");
     expect(ga4Metrics).not.toContain(".filter((source: any) => source.revenue != null)");
@@ -641,7 +644,7 @@ describe("GA4 UI regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+      "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
     );
   });
 

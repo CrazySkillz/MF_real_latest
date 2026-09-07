@@ -21,7 +21,7 @@ This file defines whether that implementation is production-ready, what has been
 <!-- ga4-reports-certification-status: UNVERIFIED -->
 ## Current Controlling Answer
 
-September 7, 2026 decision: GA4 Reports is **UNVERIFIED** for the current candidate. Browser and scheduled Overview report Campaign Breakdown, Landing Pages, and Conversion Events now use the fixed initial-import boundary through the latest completed day instead of a rolling lookback. Ten focused files / 149 tests, TypeScript, and the production build pass locally, but deployed browser/server numerical parity and an exact-current artifact check have not been completed.
+September 7, 2026 decision: GA4 Reports is **UNVERIFIED** for the current candidate. Browser and scheduled Overview Campaign Breakdown output now uses Summary-aligned import-to-date traffic plus exact campaign-to-date native GA4 revenue and exact campaign-mapped imports. Focused tests pass locally, but deployed browser/server numerical parity and an exact-current artifact check have not been completed.
 
 The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` production-ready decision remains historical evidence only. Campaign DeepDive remains outside this GA4 Reports boundary, and unchanged CRUD, scheduler, snapshot, and delivery evidence does not certify the changed report values.
 

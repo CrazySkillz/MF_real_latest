@@ -87,7 +87,7 @@ Current standard-template output rule:
 - scheduled/server Overview output must apply the same subsection-aware fail-closed rule: optional unselected section failures may retain bounded fallbacks, but a failed required selected Overview input aborts PDF generation and therefore prevents send/snapshot success
 - in `Overview` report output, `Campaign Breakdown` should use the column label `Revenue` because it can include exact campaign-matched imported revenue
 - in `Overview` report output, `Landing Pages` and `Conversion Events` should omit revenue
-- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` in browser and server Overview reports use the fixed initial-import boundary through the latest completed day, never a rolling 30-day display window
+- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` traffic/conversion metrics in browser and server Overview reports use the fixed initial-import boundary through the latest completed day, never a rolling 30-day display window; Campaign Breakdown native Revenue separately uses campaign start through the same completed day and then adds exact mapped imports
 - `KPIs` should follow the live KPI order
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order

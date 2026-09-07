@@ -47,7 +47,7 @@ import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative
 import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-snapshot-observation";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { addDerivedGA4EngagedSessions, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { addDerivedGA4EngagedSessions, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import {
   getGA4KpiMetricDependencies,
   isGA4FinancialKpiMetricIdentity,
@@ -12903,7 +12903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const providerStartDate = importToDateWindow?.startDate || completedDayWindow?.startDate || ga4DateRange;
       const providerEndDate = importToDateWindow?.endDate || completedDayWindow?.endDate;
-      const result = overviewCampaignBreakdown
+      let result = overviewCampaignBreakdown
         ? await ga4Service.getAcquisitionBreakdown(
             campaignId, storage, providerStartDate, resolvedPropertyId, limit, campaignFilter,
             providerEndDate, validationReadOnly, insightsChannelAttribution,
@@ -12913,6 +12913,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             campaignId, storage, providerStartDate, resolvedPropertyId, limit, campaignFilter,
             providerEndDate, validationReadOnly, insightsChannelAttribution,
           );
+      let nativeRevenueWindow: { source: 'ga4'; startDate: string; endDate: string; revenueMetric: string } | undefined;
+      if (overviewCampaignBreakdown && providerEndDate) {
+        const revenueStartDate = toISODateUTC((campaign as any)?.startDate)
+          || toISODateUTC((campaign as any)?.createdAt)
+          || '2000-01-01';
+        const revenueResult = revenueStartDate <= providerEndDate
+          ? await ga4Service.getAcquisitionBreakdown(
+              campaignId, storage, revenueStartDate, resolvedPropertyId, limit, campaignFilter,
+              providerEndDate, validationReadOnly, false,
+              String((campaign as any)?.currency || ''), true,
+            )
+          : { rows: [], totals: { revenue: 0 }, meta: { revenueMetric: '' } } as any;
+        const selectedCampaignNames = (Array.isArray(campaignFilter) ? campaignFilter : campaignFilter ? [campaignFilter] : [])
+          .map((name) => String(name || '').trim()).filter(Boolean);
+        const rows = mergeGA4OverviewCampaignRevenueRows(result.rows, revenueResult.rows, selectedCampaignNames);
+        const rowRevenue = Number(rows.reduce((sum, row) => sum + Number(row?.revenue || 0), 0).toFixed(2));
+        const providerRevenue = Number(Number(revenueResult.totals?.revenue || 0).toFixed(2));
+        if (Math.abs(rowRevenue - providerRevenue) >= 0.01) {
+          throw new Error('GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED');
+        }
+        result = { ...result, rows, totals: { ...result.totals, revenue: providerRevenue } };
+        nativeRevenueWindow = { source: 'ga4', startDate: revenueStartDate, endDate: providerEndDate, revenueMetric: String(revenueResult.meta?.revenueMetric || '') };
+      }
       const dimensionDiagnostics = dimensionDiagnosticsRequested
         ? await ga4Service.getOverviewDimensionDiagnostics(
             campaignId,
@@ -12933,6 +12956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
         totals: result.totals,
         rows: result.rows,
+        ...(nativeRevenueWindow ? { revenueWindow: nativeRevenueWindow } : {}),
         ...(validationReadOnly ? { validationReadOnly: true } : {}),
         ...(debug ? { meta: { ...result.meta, ...(dimensionDiagnostics ? { dimensionDiagnostics } : {}) } } : {}),
         lastUpdated: new Date().toISOString(),

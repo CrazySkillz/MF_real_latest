@@ -5,7 +5,7 @@
   "lastReviewedSha": "340da6d5831f77fb88d125a55aaec78c189c4c3d",
   "certifiedSha": null,
   "deployedSha": "340da6d5831f77fb88d125a55aaec78c189c4c3d",
-  "invalidationReason": "Exact-current authenticated persisted-data/API/UI/source/PDF parity, ownership denial, production-data integrity, focused regressions, TypeScript, and production build pass. The section remains fail-closed only until the exact-current natural 22:00 UTC daily-timer run is observed.",
+  "invalidationReason": "The current candidate changes Campaign Breakdown native revenue to a separate exact campaign-start-to-latest-completed-day per-campaign query, verifies it against the GA4 Revenue card, and then adds exact mapped imports. Focused local validation passes; exact deployment and authenticated API/UI/PDF value parity remain pending.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
@@ -67,7 +67,7 @@
     "windowRules": [
       "initial import is the 30 completed GA4 reporting days preceding setup in the campaign reporting timezone",
       "later completed reporting days append without dropping the oldest imported day",
-      "Summary uses scheduler-backed persisted daily values; Campaign Breakdown, Landing Pages, and Conversion Events use the fixed initial-import boundary through the latest completed day, while Campaign Breakdown explicitly adds only exact campaign-matched source-to-date imported revenue"
+      "Summary and Campaign Breakdown traffic use the fixed initial-import boundary through the latest completed day; Campaign Breakdown native revenue separately uses campaign start through that completed day, must reconcile to the GA4 Revenue card, and then adds only exact campaign-mapped source-to-date imported revenue; Landing Pages and Conversion Events retain the fixed import-to-date boundary"
     ],
     "ownershipRules": [
       "all reads and mutations require actor and campaign access",

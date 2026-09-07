@@ -203,8 +203,6 @@ try {
     exact(total(campaignRows, metric), Number(summary?.[metric]), `Campaign Breakdown/Summary ${metric} reconciliation`);
     exact(Number(responses.breakdown.body?.totals?.[metric]), Number(summary?.[metric]), `Campaign aggregate/Summary ${metric} reconciliation`);
   }
-  exact(total(campaignRows, 'revenue'), round2(summary?.revenue), 'Campaign Breakdown/Summary native revenue reconciliation');
-  exact(round2(responses.breakdown.body?.totals?.revenue), round2(summary?.revenue), 'Campaign aggregate/Summary native revenue reconciliation');
   exact(responses.breakdown.body?.meta?.overviewCampaignAttribution?.selected, true, 'Overview campaign attribution guard');
 
   const revenueSources = Array.isArray(responses.revenueSources.body?.sources) ? responses.revenueSources.body.sources : [];
@@ -215,6 +213,11 @@ try {
   const nativeRevenue = round2(responses.native.body?.totals?.revenue);
   const financialConversions = Number(responses.native.body?.totals?.conversions || 0);
   const financialRevenue = round2(nativeRevenue + importedRevenue);
+  exact(responses.breakdown.body?.revenueWindow?.source, 'ga4', 'Campaign Breakdown native revenue source');
+  exact(responses.breakdown.body?.revenueWindow?.startDate, responses.native.body?.startDate, 'Campaign Breakdown native revenue start date');
+  exact(responses.breakdown.body?.revenueWindow?.endDate, responses.native.body?.endDate, 'Campaign Breakdown native revenue end date');
+  exact(total(campaignRows, 'revenue'), nativeRevenue, 'Campaign Breakdown/GA4 Revenue native reconciliation');
+  exact(round2(responses.breakdown.body?.totals?.revenue), nativeRevenue, 'Campaign aggregate/GA4 Revenue native reconciliation');
   const financialSpend = round2(responses.spendBreakdown.body?.totalSpend ?? responses.spendTotal.body?.spendToDate);
   exact(total(revenueRows, 'revenue'), importedRevenue, 'Revenue breakdown/total reconciliation');
   exact(round2(responses.revenueBreakdown.body?.totalRevenue), importedRevenue, 'Revenue aggregate/total reconciliation');
@@ -277,6 +280,8 @@ try {
       matchedImportedRevenue.set(campaignName, (matchedImportedRevenue.get(campaignName) || 0) + amount);
     }
   }
+  exact(round2(Array.from(matchedImportedRevenue.values()).reduce((sum, amount) => sum + amount, 0)), importedRevenue, 'Campaign Breakdown mapped imported revenue reconciliation');
+  exact(round2(total(campaignRows, 'revenue') + importedRevenue), financialRevenue, 'Campaign Breakdown displayed/Total Revenue reconciliation');
 
   const landingRows = Array.isArray(responses.landing.body?.rows) ? responses.landing.body.rows : [];
   exact(responses.landing.body?.meta?.sessionScopedAttributionAvailable, landingRows.length > 0, 'Landing attribution state');
@@ -408,7 +413,11 @@ try {
     expectedDisplay.Sessions, expectedDisplay.Users, expectedDisplay.Conversions,
     financialRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     financialSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    ...campaignRows.map((row: any) => String(row.campaign)), ...conversionRows.map((row: any) => String(row.eventName))]) {
+    ...campaignRows.flatMap((row: any) => [
+      String(row.campaign),
+      round2(Number(row.revenue) + Number(matchedImportedRevenue.get(String(row.campaign)) || 0))
+        .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    ]), ...conversionRows.map((row: any) => String(row.eventName))]) {
     assert(reportText.includes(expected), `Downloaded Overview report is missing ${expected}`);
   }
 
@@ -424,6 +433,8 @@ try {
     window: expectedWindow,
     summary,
     financials: {
+      nativeWindow: { startDate: responses.native.body?.startDate, endDate: responses.native.body?.endDate },
+      importedWindow: { startDate: responses.revenueTotal.body?.startDate, endDate: responses.revenueTotal.body?.endDate },
       nativeRevenue, importedRevenue, totalRevenue: financialRevenue, totalSpend: financialSpend,
       profit: round2(financialRevenue - financialSpend),
       roas: financialSpend > 0 ? round2(financialRevenue / financialSpend) : null,
@@ -437,7 +448,15 @@ try {
     },
     persistedDailyIntegrity: persisted,
     productionDataIntegrity: damage,
-    campaignRows: campaignRows.map((row: any) => ({ campaign: row.campaign, sessions: row.sessions, users: row.users, conversions: row.conversions, revenue: round2(row.revenue) })),
+    campaignRows: campaignRows.map((row: any) => ({
+      campaign: row.campaign,
+      sessions: row.sessions,
+      users: row.users,
+      conversions: row.conversions,
+      nativeRevenue: round2(row.revenue),
+      importedRevenue: round2(matchedImportedRevenue.get(String(row.campaign)) || 0),
+      displayedRevenue: round2(Number(row.revenue) + Number(matchedImportedRevenue.get(String(row.campaign)) || 0)),
+    })),
     landingRows,
     conversionRows,
     pipeline: {

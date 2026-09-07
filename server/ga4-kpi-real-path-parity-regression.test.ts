@@ -657,6 +657,59 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
+  it("keeps Overview traffic import-to-date while replacing native row revenue with exact campaign-to-date GA4 revenue", async () => {
+    ga4ServiceMock.getAcquisitionBreakdown
+      .mockResolvedValueOnce({
+        rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 100 }],
+        totals: { ...dailyRow, revenue: 100 },
+        meta: { revenueMetric: "totalRevenue" },
+      })
+      .mockResolvedValueOnce({
+        rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }],
+        totals: { ...dailyRow, revenue: 150 },
+        meta: { revenueMetric: "totalRevenue" },
+      });
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      validationReadOnly: true,
+      totals: { sessions: 100, users: 80, conversions: 5, revenue: 150 },
+      rows: [{ campaign: "parity_campaign", sessions: 100, users: 80, conversions: 5, revenue: 150 }],
+      revenueWindow: { source: "ga4", startDate: "2026-07-01", revenueMetric: "totalRevenue" },
+    });
+    expect(body.revenueWindow.endDate).toBe(body.endDate);
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
+      2,
+      campaign.id,
+      storageMock,
+      "2026-07-01",
+      connection.propertyId,
+      2000,
+      campaign.ga4CampaignFilter,
+      body.endDate,
+      true,
+      false,
+      "USD",
+      true,
+    );
+  });
+
+  it("fails Overview Campaign Breakdown closed when native campaign rows do not reconcile", async () => {
+    ga4ServiceMock.getAcquisitionBreakdown
+      .mockResolvedValueOnce({ rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 100 }], totals: { ...dailyRow, revenue: 100 }, meta: {} })
+      .mockResolvedValueOnce({ rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 149 }], totals: { ...dailyRow, revenue: 150 }, meta: { revenueMetric: "totalRevenue" } });
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ success: false, error: "GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED" });
+  });
+
   it("uses the same recomputed revenue for actual alert truth and notification enrichment", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     const revenueKpi = kpiRows.find((row) => row.metric === "totalRevenue")!;

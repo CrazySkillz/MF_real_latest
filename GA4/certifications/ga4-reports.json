@@ -5,7 +5,7 @@
   "lastReviewedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",
   "certifiedSha": null,
   "deployedSha": null,
-  "invalidationReason": "The current candidate changes browser and scheduled Overview report Campaign Breakdown, Landing Pages, and Conversion Events from a rolling lookback to the fixed initial-import-to-latest-completed-day window. Local regressions, TypeScript, and build pass, but deployed browser/server numerical and artifact parity have not been rerun.",
+  "invalidationReason": "The current candidate changes browser and scheduled Overview Campaign Breakdown to Summary-aligned import-to-date traffic plus exact campaign-to-date native GA4 revenue and exact campaign-mapped imports. Focused local validation passes, but deployed browser/server numerical and artifact parity have not been rerun.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "94f1096f3d08c1443f27a032bc5a44c8468c1a7e",

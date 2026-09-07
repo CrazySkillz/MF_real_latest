@@ -2750,9 +2750,22 @@ export default function GA4Metrics() {
     (hubspotPipelineProxyError && hubspotPipelineProxyData !== undefined) ||
     (salesforcePipelineProxyError && salesforcePipelineProxyData !== undefined)
   );
+  const campaignRevenueWindow = (ga4Breakdown as any)?.revenueWindow;
+  const campaignBreakdownRevenueVerified = (ga4Breakdown as any)?.isSimulated === true || (
+    campaignRevenueWindow?.source === "ga4" &&
+    String(campaignRevenueWindow?.startDate || "") === String((ga4ToDateResp as any)?.startDate || "") &&
+    String(campaignRevenueWindow?.endDate || "") === String((ga4ToDateResp as any)?.endDate || "") &&
+    Math.abs(Number((ga4Breakdown as any)?.totals?.revenue || 0) - Number((ga4ToDateResp as any)?.totals?.revenue || 0)) < 0.01
+  );
+  const campaignBreakdownImportedRevenueUnavailable =
+    (revenueSourcesError && revenueSourcesResp === undefined) ||
+    (revenueBreakdownError && revenueBreakdownResp === undefined) ||
+    revenueDisplaySources.some((source: any) => source?.materializedRevenueStatus === "unavailable" || source?.revenue == null);
   const campaignBreakdownUnavailable =
     !ga4ConnectionUsable ||
     breakdownPlaceholder ||
+    !campaignBreakdownRevenueVerified ||
+    campaignBreakdownImportedRevenueUnavailable ||
     (breakdownError && ga4Breakdown === undefined);
   const adComparisonBreakdownUnavailable =
     !ga4ConnectionUsable ||
@@ -3404,7 +3417,7 @@ export default function GA4Metrics() {
             fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
           ]),
           [52, 22, 20, 28, 26, 36],
-          "Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.",
+          "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
         );
       }
 
@@ -6393,11 +6406,11 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day; Revenue includes exact campaign-matched source-to-date imports.</p>
+                        <p className="text-sm text-muted-foreground/70">Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
-                          {breakdownLoading && ga4Breakdown === undefined ? (
+                          {(breakdownLoading || ga4ToDateLoading) && (ga4Breakdown === undefined || ga4ToDateResp === undefined) ? (
                             <div className="h-32 bg-muted rounded animate-pulse" />
                           ) : campaignBreakdownUnavailable ? (
                             <div className="text-sm text-destructive">

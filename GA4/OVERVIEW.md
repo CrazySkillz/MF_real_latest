@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview is **UNVERIFIED** for current deployed runtime `e492f46308768b2cf92c513c7572576d5632e44e`. The earlier `bf078b0375def8146e1f51e5d2c2246c3c350018` certification remains historical evidence only because later changes touched shared dependencies inside the Overview certification boundary. No Overview runtime behavior is changed by this fail-closed status correction.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** for deployed runtime `340da6d5831f77fb88d125a55aaec78c189c4c3d` only until an exact-current natural `22:00 UTC` daily-timer run is observed. Exact-current authenticated database/API/UI/source/PDF parity, ownership denial, the focused 34-file / 433-test packet, TypeScript, and the production build pass for the recorded configuration; direct database checks used a read-only transaction. This is deliberately not a production-ready claim before the remaining external timer gate closes.
 
 <!-- /ga4-overview-current-status -->
 

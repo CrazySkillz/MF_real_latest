@@ -40,7 +40,7 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: **GA4 Overview is PRODUCTION_READY for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the exact campaign/property/source boundary recorded in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.** Evidence-only deployment `e175ac5c` does not change production runtime code. Current authenticated financial cards and source lists reconciled at native GA4 revenue `$55,966.70 USD`, five imported sources totaling `$16,799.99 USD`, and Total Revenue `$72,766.69 USD`. The exact source inventory, currency boundary, and natural scheduler target-persistence check passed; no global scheduler-health claim is made because 17 excluded obsolete campaigns still fail. Google Ads, future source configurations, and unrecorded future report delivery remain excluded. No cleanup was performed.
+Production-readiness note: **GA4 Overview is currently UNVERIFIED pending the exact-current natural daily-timer observation.** At deployed runtime `340da6d5`, authenticated storage/API/UI/modal/PDF parity passed at native GA4 revenue `$65,362.20 USD`, five imported sources totaling `$16,799.99 USD`, Total Revenue `$82,162.19 USD`, and four Spend sources totaling `$2,699.75 USD`. Source-level aggregate-versus-attributed grain selection reconciled without double counting; currency, ownership, orphan, and duplicate-key checks passed. This is configuration-bounded evidence, not a production-ready claim. No cleanup was performed.
 
 Campaign DeepDive financial provenance rule:
 

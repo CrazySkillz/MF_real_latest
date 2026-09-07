@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-overview",
   "status": "UNVERIFIED",
-  "lastReviewedSha": "e492f46308768b2cf92c513c7572576d5632e44e",
+  "lastReviewedSha": "340da6d5831f77fb88d125a55aaec78c189c4c3d",
   "certifiedSha": null,
-  "deployedSha": "e492f46308768b2cf92c513c7572576d5632e44e",
-  "invalidationReason": "Post-bf078b03 commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary. The current candidate also corrects Campaign Breakdown, Landing Pages, and Conversion Events from rolling lookback to the fixed initial-import-to-latest-completed-day window. Exact-current authenticated Overview parity, scheduler/provider behavior, and production-data integrity must be revalidated before re-certification.",
+  "deployedSha": "340da6d5831f77fb88d125a55aaec78c189c4c3d",
+  "invalidationReason": "Exact-current authenticated persisted-data/API/UI/source/PDF parity, ownership denial, production-data integrity, focused regressions, TypeScript, and production build pass. The section remains fail-closed only until the exact-current natural 22:00 UTC daily-timer run is observed.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "cdb2b88aa702758ae56170a9b59f427fde5ff920",
@@ -130,6 +130,11 @@
       "path": "GA4/REFRESH_AND_PROCESSING.md",
       "role": "refresh and scheduler contract",
       "sha256": "842f8b34bdad88d98ec55e43ea66fcce03af5febcc877bf4b38b6596aaa1272a"
+    },
+    {
+      "path": "scripts/ga4-overview-complete-audit.ts",
+      "role": "exact-current authenticated production audit with read-only direct database checks",
+      "sha256": null
     },
     {
       "path": "client/public/ga4-overview-validation-runner.js",
@@ -454,53 +459,53 @@
       "id": "certification_integrity",
       "command": "vitest run --pool forks server/ga4-overview-certification-gate.test.ts && npm run check:ga4-overview-certification",
       "status": "passed",
-      "evidence": "September 6: the Overview gate and standalone checker pass with the record fail-closed as UNVERIFIED for deployed runtime e492f46308768b2cf92c513c7572576d5632e44e."
+      "evidence": "September 7: the Overview gate test and standalone checker pass with the record fail-closed as UNVERIFIED for deployed runtime 340da6d5831f77fb88d125a55aaec78c189c4c3d."
     },
     {
       "id": "focused_overview_regressions",
       "command": "vitest run --pool forks server/ga4-30-day-production-scope-regression.test.ts server/ga4-overview-initial-import-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-financial-source-parity.test.ts server/ga4-spend-scope-regression.test.ts server/overview-revenue-currency-total-regression.test.ts server/overview-revenue-materialization-regression.test.ts server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/ga4-primary-connection-scope-regression.test.ts server/ga4-reconnect-classification.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-overview-retained-source-reconciliation.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/campaign-current-value-financial-source-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/trend-analysis-overview-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/shopify-revenue-regression.test.ts server/google-sheets-revenue-validation.test.ts",
       "status": "passed",
-      "evidence": "September 5 exact-a58ff3a4 clean current-version validation covered the complete focused Overview inventory with no Overview runtime failure. Historical exact-4be16c54 evidence is retained in certificationHistory and the readiness ledgers."
+      "evidence": "September 7 exact-current focused validation passed 34 files / 433 tests covering Overview values, cumulative windows, source lifecycle, scheduler, browser/server report propagation, KPI/Benchmark inputs, alerts, and notifications."
     },
     {
       "id": "affected_shared_dependencies",
       "command": "vitest run --pool forks server/ga4-benchmark-safety-regression.test.ts server/ga4-benchmark-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-reporting-window-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-scheduler-observability-regression.test.ts server/notification-visibility-regression.test.ts server/endpoint-auth-audit.test.ts",
       "status": "passed",
-      "evidence": "September 6 exact-code validation passed the 9-file / 127-test KPI uniqueness and adjacent packet, followed by 18/18 focused scheduler-restoration and duplicate-create tests at deployed bf078b03. Exact diff review found no Overview value, formula, source, aggregate, scheduler implementation, or renderer change."
+      "evidence": "September 7 the exact-current 34-file / 433-test packet included affected KPI/Benchmark, scheduler, report, alert, and notification consumers with no failure. The full current-version suite also had zero blocking failures; its 47 failures were explicitly deferred future-platform tests outside this boundary."
     },
     {
       "id": "typescript",
       "command": "npm run check",
       "status": "passed",
-      "evidence": "npm run check passed for certified runtime bf078b0375def8146e1f51e5d2c2246c3c350018 with the synchronized certification packet on September 6, 2026."
+      "evidence": "npm run check passed on September 7, 2026 for deployed runtime 340da6d5 plus the production audit tooling."
     },
     {
       "id": "production_build",
       "command": "npm run build",
       "status": "passed",
-      "evidence": "The production Vite and server esbuild completed successfully for certified runtime bf078b0375def8146e1f51e5d2c2246c3c350018 with the synchronized certification packet on September 6, 2026."
+      "evidence": "The production Vite and server esbuild completed successfully on September 7, 2026 for deployed runtime 340da6d5 plus the production audit tooling."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
       "status": "passed",
-      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime e492f46308768b2cf92c513c7572576d5632e44e on September 6, 2026."
+      "evidence": "Production /api/health returned HTTP 200 with exact deployed runtime 340da6d5831f77fb88d125a55aaec78c189c4c3d on September 7, 2026."
     },
     {
       "id": "authenticated_ui_api_source_parity",
-      "status": "pending",
-      "evidence": "Historical authenticated parity remains revision-bounded. Exact-e492f463 authenticated Overview UI/API/source parity has not been completed."
+      "status": "passed",
+      "evidence": "The exact-current authenticated audit reconciled persisted facts, live APIs, every visible card/table/source modal, access denial, and the parsed browser Overview PDF for the recorded campaign/property/source boundary; direct database checks ran inside a read-only transaction."
     },
     {
       "id": "natural_daily_scheduler_target_persistence",
       "status": "pending",
-      "evidence": "Historical scheduler evidence remains revision-bounded. Exact-e492f463 target persistence has not been revalidated after the shared dependency changes."
+      "evidence": "Production health reports the exact-current daily timer started and scheduled for 22:00 UTC, but that natural run has not yet fired on this deployment. Manual path evidence does not substitute for this gate."
     },
     {
       "id": "production_data_integrity",
-      "status": "pending",
-      "evidence": "The exact-e492f463 KPI duplicate inventory is clean but does not prove the broader Overview source and persisted-data boundary. Exact-current Overview production-data integrity remains pending."
+      "status": "passed",
+      "evidence": "A read-only transaction found unique persisted GA4 dates, zero simulated rows, zero cross-campaign or wrong-currency source records, zero revenue/spend orphans, and zero duplicate external revenue keys; source-level canonical totals matched the APIs and rendered modals."
     }
   ]
 }

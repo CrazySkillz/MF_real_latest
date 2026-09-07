@@ -19,6 +19,7 @@ export const GA4_OVERVIEW_REQUIRED_DEPENDENCIES = [
   "GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md",
   "GA4/FINANCIAL_SOURCES.md",
   "GA4/REFRESH_AND_PROCESSING.md",
+  "scripts/ga4-overview-complete-audit.ts",
   "client/public/ga4-overview-validation-runner.js",
   "client/src/pages/ga4-metrics.tsx",
   "client/src/components/AddRevenueWizardModal.tsx",

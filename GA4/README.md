@@ -24,7 +24,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- GA4 Overview is **UNVERIFIED** for current deployed runtime `e492f46308768b2cf92c513c7572576d5632e44e`. The earlier `bf078b0375def8146e1f51e5d2c2246c3c350018` certification remains historical evidence only because later commits changed shared KPI/Benchmark save, alert, notification, and browser dependencies inside the Overview certification boundary. Exact-current Overview external validation is incomplete.
+- GA4 Overview remains **UNVERIFIED** for deployed runtime `340da6d5831f77fb88d125a55aaec78c189c4c3d` only until an exact-current natural `22:00 UTC` daily-timer run is observed. The complete authenticated audit passed for the recorded campaign/property, with direct database checks executed in a read-only transaction: persisted facts, live APIs, Summary, financial cards, all three detail tables, source modals, access denial, production-data integrity, and the downloaded Overview PDF reconciled. The exact-current focused packet passed 34 files / 433 tests, TypeScript, and the production build. This is not yet a production-ready claim.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
@@ -91,7 +91,7 @@ Important meaning:
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current section status: **UNVERIFIED** for deployed runtime `e492f46308768b2cf92c513c7572576d5632e44e`; the earlier certification remains historical evidence only.
+  Concise canonical current-status index. Current section status: **UNVERIFIED** for deployed runtime `340da6d5831f77fb88d125a55aaec78c189c4c3d` only until the exact-current natural daily-timer run is observed; every other current gate is recorded as passed.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`

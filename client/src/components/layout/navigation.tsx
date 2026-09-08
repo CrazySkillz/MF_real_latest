@@ -45,7 +45,7 @@ export default function Navigation() {
             alt="MimoSaaS Marketing Analytics"
             width={273}
             height={172}
-            className="h-14 w-auto object-contain"
+            className="h-20 w-auto object-contain"
           />
         </div>
 

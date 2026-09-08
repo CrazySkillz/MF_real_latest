@@ -198,7 +198,7 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain("const watchedKpiFormValues = kpiForm.watch();");
     expect(ga4MetricsFile).toContain("const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));");
     expect(ga4MetricsFile).toContain("const isKpiCreateRequiredFieldsMissing = !editingKPI && (!String(watchedKpiFormValues.name || \"\").trim() || !String(watchedKpiFormValues.targetValue || \"\").trim());");
-    expect(ga4MetricsFile).toContain("const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged || isKpiCreateRequiredFieldsMissing;");
+    expect(ga4MetricsFile).toContain("const isKpiSubmitDisabled = isAnalyticsSavePending || isKpiEditUnchanged || isKpiCreateRequiredFieldsMissing;");
     expect(editStart).toBeGreaterThan(-1);
     expect(editEnd).toBeGreaterThan(editStart);
     expect(editSection).toContain("const editValues: KPIFormData = {");
@@ -224,7 +224,7 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain("const areBenchmarkFormValuesEqual = (current: Record<string, unknown>, initial: Record<string, unknown>) =>");
     expect(ga4MetricsFile).toContain("const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));");
     expect(ga4MetricsFile).toContain("const isBenchmarkCreateRequiredFieldsMissing = !editingBenchmark && (!String(newBenchmark.name || \"\").trim() || !String(newBenchmark.benchmarkValue || \"\").trim());");
-    expect(ga4MetricsFile).toContain("const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;");
+    expect(ga4MetricsFile).toContain("const isBenchmarkSubmitDisabled = isAnalyticsSavePending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;");
     expect(editStart).toBeGreaterThan(-1);
     expect(editEnd).toBeGreaterThan(editStart);
     expect(editSection).toContain("const editValues = {");

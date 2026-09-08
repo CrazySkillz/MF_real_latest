@@ -272,6 +272,8 @@ export default function GA4Metrics() {
   const search = useSearch();
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
+  const currentCampaignIdRef = useRef(campaignId);
+  currentCampaignIdRef.current = campaignId;
   const { clients } = useClient();
   const initialSearchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const initialTabParam = initialSearchParams.get("tab");
@@ -735,6 +737,10 @@ export default function GA4Metrics() {
 
   // Create KPI mutation
   const createKPIMutation = useMutation({
+    onMutate: () => {
+      setShowKPIDialog(false);
+      return { campaignId };
+    },
     mutationFn: async (data: KPIFormData) => {
       // Store an initial snapshot currentValue, matching the GA4 Overview source model.
       let calculatedValue = "0.00";
@@ -790,7 +796,8 @@ export default function GA4Metrics() {
         refreshNotificationQueries(),
       ]).catch((error) => console.warn("KPI post-create refresh failed:", error));
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      if (context?.campaignId === currentCampaignIdRef.current) setShowKPIDialog(true);
       console.error("KPI creation error:", error);
       toast({
         title: error?.code === "GA4_KPI_ACTIVE_METRIC_CONFLICT" ? "KPI already exists" : "Failed to create KPI",
@@ -801,6 +808,10 @@ export default function GA4Metrics() {
   });
 
   const updateKPIMutation = useMutation({
+    onMutate: () => {
+      setShowKPIDialog(false);
+      return { campaignId };
+    },
     mutationFn: async (payload: { kpiId: string; data: KPIFormData }) => {
       const resp = await fetch(`/api/platforms/google_analytics/kpis/${encodeURIComponent(payload.kpiId)}`, {
         method: "PATCH",
@@ -828,7 +839,8 @@ export default function GA4Metrics() {
         refreshNotificationQueries(),
       ]).catch((error) => console.warn("KPI post-update refresh failed:", error));
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      if (context?.campaignId === currentCampaignIdRef.current) setShowKPIDialog(true);
       toast({
         title: "Failed to update KPI",
         description: error?.message || "An unexpected error occurred",
@@ -1014,6 +1026,10 @@ export default function GA4Metrics() {
 
   // Benchmark mutations
   const createBenchmarkMutation = useMutation({
+    onMutate: () => {
+      setShowCreateBenchmark(false);
+      return { campaignId };
+    },
     mutationFn: async (benchmarkData: any) => {
       const response = await fetch("/api/benchmarks", {
         method: "POST",
@@ -1063,12 +1079,17 @@ export default function GA4Metrics() {
         refreshNotificationQueries(),
       ]).catch((error) => console.warn("Benchmark post-create refresh failed:", error));
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.campaignId === currentCampaignIdRef.current) setShowCreateBenchmark(true);
       toast({ title: "Failed to create benchmark", description: error.message, variant: "destructive" });
     },
   });
 
   const updateBenchmarkMutation = useMutation({
+    onMutate: () => {
+      setShowCreateBenchmark(false);
+      return { campaignId };
+    },
     mutationFn: async ({ benchmarkId, data }: { benchmarkId: string; data: any }) => {
       const response = await fetch(`/api/benchmarks/${benchmarkId}`, {
         method: "PUT",
@@ -1115,7 +1136,8 @@ export default function GA4Metrics() {
         refreshNotificationQueries(),
       ]).catch((error) => console.warn("Benchmark post-update refresh failed:", error));
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.campaignId === currentCampaignIdRef.current) setShowCreateBenchmark(true);
       toast({ title: "Failed to update benchmark", description: error.message, variant: "destructive" });
     },
   });
@@ -5783,10 +5805,11 @@ export default function GA4Metrics() {
   const watchedKpiFormValues = kpiForm.watch();
   const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));
   const isKpiCreateRequiredFieldsMissing = !editingKPI && (!String(watchedKpiFormValues.name || "").trim() || !String(watchedKpiFormValues.targetValue || "").trim());
-  const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged || isKpiCreateRequiredFieldsMissing;
+  const isAnalyticsSavePending = createKPIMutation.isPending || updateKPIMutation.isPending || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending;
+  const isKpiSubmitDisabled = isAnalyticsSavePending || isKpiEditUnchanged || isKpiCreateRequiredFieldsMissing;
   const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));
   const isBenchmarkCreateRequiredFieldsMissing = !editingBenchmark && (!String(newBenchmark.name || "").trim() || !String(newBenchmark.benchmarkValue || "").trim());
-  const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;
+  const isBenchmarkSubmitDisabled = isAnalyticsSavePending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;
   const ga4ReportFormSignature = getGA4ReportFormSignature(ga4ReportForm);
   const isGA4ReportEditUnchanged = Boolean(editingGA4ReportId) && (!ga4ReportEditInitialSignature || ga4ReportFormSignature === ga4ReportEditInitialSignature);
   const isGA4ReportSubmitDisabled = !ga4ReportForm.name
@@ -5931,6 +5954,11 @@ export default function GA4Metrics() {
 
         <main className="flex-1 p-8">
           {/* Header */}
+          {isAnalyticsSavePending && (
+            <div role="status" aria-live="polite" className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+              Saving changes… You can keep viewing this page. Confirmation will appear when saving finishes.
+            </div>
+          )}
           <div className="mb-8">
             <Link href={`/campaigns/${campaignId}`}>
               <Button variant="ghost" size="sm" className="mb-3">
@@ -6937,7 +6965,7 @@ export default function GA4Metrics() {
                           KPI current values use the initial import boundary through the latest completed reporting day. Unverified items are excluded from scoring.
                         </p>
                       </div>
-                      <Button size="sm" onClick={openCreateKPI}>
+                      <Button size="sm" onClick={openCreateKPI} disabled={isAnalyticsSavePending}>
                         <Plus className="w-4 h-4 mr-2" />
                         Create KPI
                       </Button>
@@ -7214,6 +7242,7 @@ export default function GA4Metrics() {
                                               }}
                                               title="Edit KPI"
                                               aria-label="Edit KPI"
+                                              disabled={isAnalyticsSavePending}
                                             >
                                               <Edit className="w-4 h-4" />
                                             </Button>
@@ -7222,7 +7251,7 @@ export default function GA4Metrics() {
                                               size="icon"
                                               onClick={() => onDeleteKPI(kpi.id)}
                                               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                              disabled={deleteKPIMutation.isPending}
+                                              disabled={deleteKPIMutation.isPending || isAnalyticsSavePending}
                                               title="Delete KPI"
                                               aria-label="Delete KPI"
                                             >
@@ -7371,6 +7400,7 @@ export default function GA4Metrics() {
                         <DialogTrigger asChild>
                           <Button
                             className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            disabled={isAnalyticsSavePending}
                             onClick={() => {
                               setEditingBenchmark(null);
                               setBenchmarkEditInitialValues(null);
@@ -7951,6 +7981,7 @@ export default function GA4Metrics() {
                                           className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                           title="Edit Benchmark"
                                           aria-label="Edit Benchmark"
+                                          disabled={isAnalyticsSavePending}
                                         >
                                           <Edit className="w-4 h-4" />
                                         </Button>
@@ -7962,6 +7993,7 @@ export default function GA4Metrics() {
                                               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                                               title="Delete Benchmark"
                                               aria-label="Delete Benchmark"
+                                              disabled={isAnalyticsSavePending}
                                             >
                                               <Trash2 className="w-4 h-4" />
                                             </Button>

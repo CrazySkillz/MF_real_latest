@@ -39,22 +39,14 @@ export default function Navigation() {
   return (
     <nav className="bg-card border-b border-border/40 px-6 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
-              <i className="fas fa-chart-line text-white text-sm"></i>
-            </div>
-            <span
-              className="text-2xl font-bold tracking-tight"
-              style={{
-                background: 'linear-gradient(135deg, hsl(24, 95%, 53%), hsl(15, 90%, 45%))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              MimoSaaS
-            </span>
-          </div>
+        <div className="flex items-center">
+          <img
+            src="/logo_fff8f3_bg_orange_fill.jpg"
+            alt="MimoSaaS Marketing Analytics"
+            width={273}
+            height={172}
+            className="h-14 w-auto object-contain"
+          />
         </div>
 
         <div className="flex items-center space-x-4">

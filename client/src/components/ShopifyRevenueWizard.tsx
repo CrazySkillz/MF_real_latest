@@ -1046,7 +1046,7 @@ export function ShopifyRevenueWizard(props: {
                 (step === "crosswalk" && selectedValues.length === 0) ||
                 (step === "review" && isRepair && (previewLoading || !!previewError || !preview?.repairConfirmation))
               }>
-                {step === "review" ? (isSaving ? "Processing..." : isRepair ? "Refresh from Shopify" : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
+                {step === "review" ? (isSaving ? "Processing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

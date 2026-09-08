@@ -77,7 +77,7 @@ describe('controlled Shopify repair', () => {
   it('exposes one confirmed repair action and automatically reruns inventory', () => {
     const wizard = readFileSync(join(__dirname, '..', 'client', 'src', 'components', 'ShopifyRevenueWizard.tsx'), 'utf8');
     expect(wizard).toContain('const isRepair = mode === "edit" && !hasEditChanges;');
-    expect(wizard).toContain('Refresh from Shopify');
+    expect(wizard).toContain('mode === "edit" ? "Update revenue" : "Import revenue"');
     expect(wizard).not.toContain('Repair from Shopify');
     expect(wizard).toContain('title: "Shopify revenue refreshed"');
     expect(wizard).not.toContain('Shopify revenue repaired');

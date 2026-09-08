@@ -357,6 +357,7 @@ Shopify auto-reprocess rule:
 
 - saved Shopify revenue mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
 - Shopify auto-reprocess should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId`
+- GA4 Shopify has a non-UI, campaign-access-guarded validation route that resolves one exact active GA4 Shopify revenue `sourceId` and invokes the same scheduler reprocess function immediately; it does not run the global daily cycle or prove the natural timer
 - refreshed Shopify revenue should update the existing source's materialized order-date revenue records and recomputed campaign financial state
 - Shopify `Tags` attribution should match exact individual Shopify order tags during manual edit and scheduled refresh
 - Shopify certification boundary (2026-07-15): GA4 Overview Shopify Revenue is production-ready and clean-certified for the currently enabled Admin API token scope. The canonical evidence in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` covers stable refresh identity, transactional rematerialization and last-good retention, failure visibility, connected deployed refresh, exact cleanup, and final owner-scoped clean inventory. Dormant OAuth is excluded; future scheduler/provider events are operational monitoring and reopen only a specifically contradicted path.

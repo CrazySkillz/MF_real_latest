@@ -476,6 +476,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(sourceScopedRunNowRoutes).toEqual([
       'app.post("/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now"',
+      'app.post("/api/campaigns/:id/revenue-sources/:sourceId/shopify-refresh/run-now"',
       'app.post("/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now"',
       'app.post("/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now"',
     ]);

@@ -161,20 +161,22 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain("...tiktokRev.map((s: any) => ({ ...s, platformContext: 'tiktok' }))");
   });
 
-  it("traces Shopify refresh applicability to scheduler only", () => {
+  it("keeps Shopify refresh out of the UI while exposing a guarded source-scoped scheduler validation trigger", () => {
     const ga4Metrics = read(GA4_METRICS_FILE);
     const routes = read(ROUTES_FILE);
     const scheduler = read(AUTO_REFRESH_SCHEDULER_FILE);
 
-    expect(routes).not.toContain('shopify-refresh/run-now');
+    expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/shopify-refresh/run-now", importRateLimiter, requireCampaignAccessParamId');
     expect(routes).not.toContain('shopify-reprocess/run-now');
-    expect(routes).not.toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/shopify');
+    expect(routes).toContain('runShopifyRevenueSourceRefreshForValidation(campaignId, sourceId)');
     expect(ga4Metrics).not.toContain('shopify-refresh/run-now');
     expect(ga4Metrics).not.toContain('shopify-reprocess/run-now');
     expect(scheduler).toContain('async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>');
     expect(scheduler).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
     expect(scheduler).toContain('const shopCfg = shopCfgRaw ? { ...shopCfgRaw, platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx } : null;');
     expect(scheduler).toContain('reprocessShopify(campaignId, shopCfg, String(shopifySource.id))');
+    expect(scheduler).toContain('export async function runShopifyRevenueSourceRefreshForValidation');
+    expect(scheduler).toContain('reprocessShopify(normalizedCampaignId, mappingConfig, normalizedSourceId)');
     expect(scheduler).toContain('const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);');
     expect(scheduler).toContain('if (isStaleRevenueSourceReprocess(result)) {');
   });

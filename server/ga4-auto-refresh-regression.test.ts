@@ -314,6 +314,21 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(routes).not.toContain('app.post("/api/campaigns/:id/auto-refresh/run-now"');
   });
 
+  it("exposes a campaign/source-scoped Shopify scheduler validation trigger", () => {
+    const scheduler = schedulerFile();
+    const routes = routesFile();
+
+    expect(scheduler).toContain("export async function runShopifyRevenueSourceRefreshForValidation");
+    expect(scheduler).toContain('storage.getRevenueSources(normalizedCampaignId, "ga4")');
+    expect(scheduler).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
+    expect(scheduler).toContain('String(s.id || "") === normalizedSourceId');
+    expect(scheduler).toContain('refreshRunId: randomUUID()');
+    expect(scheduler).toContain("reprocessShopify(normalizedCampaignId, mappingConfig, normalizedSourceId)");
+    expect(routes).toContain('app.post("/api/campaigns/:id/revenue-sources/:sourceId/shopify-refresh/run-now", importRateLimiter, requireCampaignAccessParamId');
+    expect(routes).toContain("runShopifyRevenueSourceRefreshForValidation(campaignId, sourceId)");
+    expect(routes).not.toContain('app.post("/api/campaigns/:id/auto-refresh/run-now"');
+  });
+
   it("keeps ad-platform spend scoped to saved campaign IDs and logs provider-specific failures", () => {
     const content = schedulerFile();
 

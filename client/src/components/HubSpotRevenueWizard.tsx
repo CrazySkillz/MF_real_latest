@@ -189,8 +189,8 @@ export function HubSpotRevenueWizard(props: {
     setPipelineStageId(nextPipelineStageId);
     setPipelineStageLabel(nextPipelineStageLabel);
     if (cfg.dateField) setDateField(String(cfg.dateField));
-    // Edit mode: jump to review so user sees current settings at a glance
-    setStep("review");
+    // Edit mode: start at Source with the saved settings prefilled.
+    setStep("value-source");
     if (nextRevenueClassification === "onsite_in_ga4" || nextRevenueClassification === "offsite_not_in_ga4") {
       setRevenueClassification(nextRevenueClassification);
     }

@@ -124,6 +124,22 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
     expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
   });
+
+  it("starts HubSpot edit mode at Source with saved settings prefilled", () => {
+    const wizard = hubspotWizardFile();
+    const editPrefill = sliceBetween(
+      wizard,
+      "// Edit mode: prefill from the saved mappingConfig",
+      "    const url = isGA4 ?"
+    );
+
+    expect(editPrefill).toContain('if (mode !== "edit") return;');
+    expect(editPrefill).toContain("setCampaignProperty(nextCampaignProperty);");
+    expect(editPrefill).toContain("setSelectedValues(nextSelectedValues);");
+    expect(editPrefill).toContain('setStep("value-source");');
+    expect(editPrefill).not.toContain('setStep("review");');
+  });
+
   it("hides zero Pipeline Proxy summary in unchanged HubSpot edit review", () => {
     const wizard = hubspotWizardFile();
     const visibilityBlock = sliceBetween(

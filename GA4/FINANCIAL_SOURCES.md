@@ -355,6 +355,7 @@ Important meaning:
 - HubSpot is a CRM mapping workflow
 - the user maps HubSpot deal revenue into this campaign rather than typing a single value
 - adding a new HubSpot source should create an additional source; editing an existing HubSpot source should update only that selected source
+- HubSpot revenue edit mode should open at the first `Source` step with the saved settings prefilled; it must not jump directly to `Review Settings`
 - the HubSpot `Date field` is logically necessary in the current model because it decides which HubSpot deal date property is used when including/reporting revenue
 - `Close Date` is the default for finance-style won-revenue reporting
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals

@@ -138,7 +138,7 @@ This inventory was derived from current render code, query code, API routes, sto
 
 | Family | New GA4 setup exposure | Readiness consequence |
 | --- | --- | --- |
-| Shopify Revenue | visible | Exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` is clean-certified inside the recorded Overview boundary; future stores and dormant OAuth are excluded. |
+| Shopify Revenue | visible | Current readiness is unverified after a same-UTC-day order exposed a Total Revenue/source-provenance window mismatch. The exact enabled source's earlier certification remains historical bounded evidence; future stores and dormant OAuth are excluded. |
 | HubSpot Revenue | visible | Exact enabled source IDs `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` are clean-certified inside the recorded Overview boundary; future mappings are excluded. |
 | Google Sheets Revenue | visible and deployed | Current Commit 21 restored the chooser and scoped process API through the existing atomic source/record path. No Google Sheets Revenue source is configured in the release-candidate target; a future source requires its own provider/lifecycle evidence. |
 | CSV Revenue | visible | Exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` is clean-certified inside the recorded Overview boundary; unlisted CSV variants are excluded. |

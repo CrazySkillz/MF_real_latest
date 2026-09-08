@@ -2,13 +2,17 @@
 
 ## Status
 
-**Current status: CLEAN-CERTIFIED AND PRODUCTION-READY for enabled GA4 Shopify
-source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside certified Overview runtime
-boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`,
-campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, and
-USD. Dormant OAuth, non-GA4 Shopify sources, future stores, and future provider
-behavior are excluded. Evidence-only deployment `e175ac5c` does not change
-production runtime code.**
+**Current status: UNVERIFIED for the current working revision. The historical
+clean-certification for source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` remains
+bounded evidence only and does not cover same-UTC-day order visibility.**
+
+On 2026-09-08, a Shopify edit preview correctly found two matched orders and
+`US$105.89`, but the GA4 Total Revenue read and Revenue Breakdown still stopped
+at the latest completed reporting day, leaving the live card and source modal at
+`$99.99`. The local correction restores the documented current-UTC-day window
+for default imported-revenue totals and provenance while retaining the
+completed-day cap for explicit historical `endDate` comparisons. Deployed
+card/source parity is still required before restoring a readiness claim.
 
 Current review traced add, edit, exact-attribution preview,
 explicit refresh, scheduler refresh, exact-source delete, full disconnect,
@@ -509,7 +513,7 @@ No campaign deletion, connected-store cleanup, unrelated source cleanup, or prov
 
 | Existing claim/evidence | Fresh result |
 |---|---|
-| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Now independently established for the currently enabled documented scope.** Prior statements remain non-evidence; the conclusion rests on the fresh lifecycle trace, regression gate, deployed exact-source repair, transactional cleanup, and final owner-scoped all-pass inventory retained here. |
+| `Shopify Admin API token GA4 Overview revenue is production-ready and clean-certified` | **Historical bounded evidence only.** A same-UTC-day order exposed an untested Total Revenue/source-provenance window mismatch; current readiness remains unverified pending deployed parity after the local correction. |
 | Admin token ownership guard | **Proven for the certified deployed Admin API connection**, with canonical Shopify-host enforcement before token forwarding; hostile-host/cross-shop negative cases remain executable local evidence rather than unsafe production injections. |
 | Paginated reads prevent truncation | **Proven for the current code path.** Executable multi-page, repeated-cursor, same-shop Link, page-limit, deduplication, older-window scope, and bounded 429 retry cases pass; the latest live page/request/retry counts are persisted for deployed verification. |
 | Materialization fails closed | **Now proven locally for traced GA4 Shopify boundaries.** Durable replacement rolls back on tested persistence failures; malformed successful payloads, repeated cursors, and unclassifiable matched orders fail before writes. Complete empty results intentionally replace revenue with zero. Post-commit recompute failure remains separate. |

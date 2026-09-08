@@ -282,7 +282,7 @@ Executive-UX note:
 
 ## Revenue Source 1: Shopify Journey
 
-Exact-source status: the enabled GA4 Shopify source is **clean-certified inside the historically certified Overview boundary** and supports the current whole-tab release candidate without broadening it. It retained source ID `3a68fcce-fffd-4dbf-ab03-7a63e46c5372`, verified USD provenance, and `$99.99` after provider and scheduler validation. Dormant OAuth, non-GA4 Shopify sources, and future store configurations remain excluded.
+Exact-source status: the enabled GA4 Shopify source is **unverified for the current candidate** pending deployed same-UTC-day Total Revenue/source parity. Its earlier `$99.99` provider and scheduler validation remains historical bounded evidence. Dormant OAuth, non-GA4 Shopify sources, and future store configurations remain excluded.
 
 The user journey is:
 
@@ -300,7 +300,7 @@ The user journey is:
 
 Current implemented refresh behavior:
 
-- the user-facing action is `Refresh from Shopify`; the older `Repair from Shopify` wording is not current UI behavior
+- the user-facing edit action is `Update revenue`; the older `Refresh from Shopify` and `Repair from Shopify` wording is not current UI behavior
 - refresh atomically replaces only the exact source's records and retains the last-good records when provider validation or replacement fails
 - provider pagination/requests and the post-commit recompute wait are bounded, so the wizard cannot wait indefinitely on `Processing...`
 - verified Partner development stores may include eligible test orders only for validation; the Review step labels that revenue as test data, while the compact Revenue Sources row omits operational test/freshness labels and refresh timestamps

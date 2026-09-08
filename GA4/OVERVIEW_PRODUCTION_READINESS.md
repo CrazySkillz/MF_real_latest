@@ -123,6 +123,6 @@ The previous documented initial-30-day-import scope was clean-certified because,
 
 The three enabled HubSpot Revenue sources are **clean-certified inside this exact Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; broader future HubSpot configurations are not inferred.
 
-For the previous exact-SHA Overview boundary, the enabled Shopify Revenue source was **clean-certified inside that exact boundary** under `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`. A zero-match preview remains authoritative only for the provider order set and mapping fingerprint shown at preview time.
+The enabled Shopify Revenue source is **unverified for the current candidate** under `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` after a same-UTC-day order exposed a card/source date-window mismatch. The previous exact-SHA evidence remains historical only. A zero-match preview remains authoritative only for the provider order set and mapping fingerprint shown at preview time.
 
 For the previous exact-SHA Overview boundary, the enabled Upload CSV Revenue source was **clean-certified inside that exact boundary** under `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. An unconfigured future Google Sheets Revenue source and unlisted CSV variants remain outside that certification.

@@ -3263,10 +3263,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
       const startDate = "1900-01-01";
-      const endDate = platformContext === "ga4"
+      const currentUtcDate = new Date().toISOString().slice(0, 10);
+      const latestCompletedEndDate = platformContext === "ga4"
         ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
-        : new Date().toISOString().slice(0, 10);
-      const latestCompletedEndDate = endDate;
+        : currentUtcDate;
       const requestedEndDate = String(req.query.endDate || "").trim();
       const parsedEndDate = new Date(`${requestedEndDate}T00:00:00.000Z`);
       if (requestedEndDate && (!/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate)
@@ -3274,7 +3274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         || requestedEndDate < startDate || requestedEndDate > latestCompletedEndDate)) {
         return res.status(400).json({ success: false, error: "endDate must be a completed reporting date in YYYY-MM-DD format" });
       }
-      const resolvedEndDate = requestedEndDate || latestCompletedEndDate;
+      const resolvedEndDate = requestedEndDate || currentUtcDate;
 
       const [totals, sources] = await Promise.all([
         storage.getRevenueTotalForRange(campaignId, startDate, resolvedEndDate, platformContext),
@@ -3299,9 +3299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
       const startDate = "1900-01-01";
-      const endDate = platformContext === "ga4"
-        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
-        : new Date().toISOString().slice(0, 10);
+      const endDate = new Date().toISOString().slice(0, 10);
 
       const [sources, sourceDefinitions] = await Promise.all([
         storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any),

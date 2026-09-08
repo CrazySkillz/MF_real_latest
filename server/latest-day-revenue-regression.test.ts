@@ -237,7 +237,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))');
   });
 
-  it("Total Revenue source provenance is not narrowed by campaign pacing metadata", () => {
+  it("Total Revenue and source provenance include current-day imported revenue without weakening historical comparisons", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
@@ -260,11 +260,13 @@ describe("Latest Day Revenue regression guard", () => {
     expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.startDate)");
     expect(revenueToDateRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
     expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
-    for (const route of [revenueToDateRoute, revenueBreakdownRoute]) {
-      expect(route).toContain('const endDate = platformContext === "ga4"');
-      expect(route).toContain('getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate');
-      expect(route).toContain(': new Date().toISOString().slice(0, 10);');
-    }
+    expect(revenueToDateRoute).toContain('const currentUtcDate = new Date().toISOString().slice(0, 10);');
+    expect(revenueToDateRoute).toContain('const latestCompletedEndDate = platformContext === "ga4"');
+    expect(revenueToDateRoute).toContain('getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate');
+    expect(revenueToDateRoute).toContain('const resolvedEndDate = requestedEndDate || currentUtcDate;');
+    expect(revenueToDateRoute).toContain('requestedEndDate > latestCompletedEndDate');
+    expect(revenueBreakdownRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
+    expect(revenueBreakdownRoute).not.toContain('getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate');
   });
 
   it("Total Spend source provenance is not narrowed by campaign pacing metadata", () => {

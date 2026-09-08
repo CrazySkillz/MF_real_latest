@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
 import {
+  fetchShopifyOrderCustomerJourneyUtms,
   getShopifyApiVersion,
   isShopifyPartnerDevelopmentStore,
   normalizeShopifyDomain,
@@ -128,6 +129,73 @@ describe('Shopify provider hardening', () => {
       shopDomain: 'store.myshopify.com', accessToken: 'secret', endpoint: 'https://evil.example/admin/api/2026-07/orders.json',
       fetchImpl: vi.fn(),
     })).rejects.toThrow('escaped the connected shop boundary');
+  });
+
+  it('reads first-visit Customer Journey UTMs for the requested Shopify orders', async () => {
+    const orderId = 'gid://shopify/Order/123';
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      data: {
+        nodes: [{
+          id: orderId,
+          customerJourneySummary: {
+            ready: true,
+            firstVisit: {
+              landingPage: '/products/example',
+              utmParameters: { campaign: 'brand_search_q1', source: 'google', medium: 'cpc' },
+            },
+          },
+        }],
+      },
+    }), { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } }));
+
+    const result = await fetchShopifyOrderCustomerJourneyUtms({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07', orderIds: [orderId], fetchImpl,
+    });
+
+    expect(result.get(orderId)).toEqual({
+      ready: true,
+      landingSite: '/products/example',
+      utm_campaign: 'brand_search_q1',
+      utm_source: 'google',
+      utm_medium: 'cpc',
+    });
+    const request = fetchImpl.mock.calls[0];
+    expect(request[1]).toEqual(expect.objectContaining({ method: 'POST' }));
+    expect(String(request[1]?.body)).toContain('customerJourneySummary');
+    expect(String(request[1]?.body)).toContain('firstVisit');
+    expect(String(request[1]?.body)).toContain('utmParameters');
+  });
+
+  it('batches Customer Journey reads without truncating requested orders', async () => {
+    const orderIds = Array.from({ length: 51 }, (_, index) => `gid://shopify/Order/${index + 1}`);
+    const fetchImpl = vi.fn(async (_url: any, init: any) => {
+      const requestedIds = JSON.parse(String(init.body)).variables.ids;
+      return new Response(JSON.stringify({
+        data: {
+          nodes: requestedIds.map((id: string) => ({ id, customerJourneySummary: null })),
+        },
+      }), { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } });
+    });
+
+    const result = await fetchShopifyOrderCustomerJourneyUtms({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07', orderIds, fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(result.size).toBe(51);
+  });
+
+  it('fails closed for incomplete or mismatched Customer Journey responses', async () => {
+    const orderId = 'gid://shopify/Order/123';
+    const responseHeaders = { 'X-Shopify-API-Version': '2026-07' };
+    await expect(fetchShopifyOrderCustomerJourneyUtms({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07', orderIds: [orderId],
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ errors: [{ message: 'query failed' }] }), { status: 200, headers: responseHeaders })),
+    })).rejects.toThrow('query failed');
+    await expect(fetchShopifyOrderCustomerJourneyUtms({
+      shopDomain: 'store.myshopify.com', accessToken: 'secret', apiVersion: '2026-07', orderIds: [orderId],
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ data: { nodes: [{ id: 'gid://shopify/Order/456' }] } }), { status: 200, headers: responseHeaders })),
+    })).rejects.toThrow('order mismatch');
   });
 
   it('verifies development stores from Shopify plan authority', async () => {

@@ -280,6 +280,35 @@ describe("Shopify revenue regression guard", () => {
     }
   });
 
+  it("refreshes Shopify UTM attribution from Customer Journey data without stale browser responses", () => {
+    const routes = read(ROUTES_FILE);
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+    const previewRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/orders/preview"',
+      'app.get("/api/shopify/:campaignId/orders/unique-values"',
+    );
+    const uniqueValuesRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/orders/unique-values"',
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+    );
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    expect(routes).toContain('const journeys = await fetchShopifyOrderCustomerJourneyUtms({ shopDomain, accessToken, apiVersion, orderIds: ids });');
+    expect(routes).toContain("throw new Error(`Shopify customer journey attribution is still processing for ${customerJourneyPendingCount} order(s)`)");
+    expect(previewRoute).toContain("attributionFields: ['utm_campaign', 'utm_source', 'utm_medium']");
+    expect(uniqueValuesRoute).toContain('attributionFields: [field]');
+    expect(saveRoute).toContain('attributionFields: [field]');
+    expect(previewRoute).toContain('res.setHeader("Cache-Control", "no-store")');
+    expect(uniqueValuesRoute).toContain('res.setHeader("Cache-Control", "no-store")');
+    expect(wizard).toContain('{ credentials: "include", cache: "no-store" }');
+  });
+
   it('isolates test-order revenue to Shopify-verified development stores', () => {
     const routes = read(ROUTES_FILE);
     const wizard = read(SHOPIFY_WIZARD_FILE);

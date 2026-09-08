@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
+import { deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 
 const order = (overrides: Record<string, unknown> = {}) => ({
   test: false,
@@ -94,6 +94,39 @@ describe('Shopify confirmed-revenue policy', () => {
       { code: ' SECOND ' },
       { code: '' },
     ] })).toEqual(['FIRST', 'SECOND']);
+  });
+
+  it('uses Customer Journey UTMs only when existing order attribution is absent', () => {
+    const customerJourney = {
+      ready: true,
+      landingSite: '/products/example',
+      utm_campaign: 'journey_campaign',
+      utm_source: 'journey_source',
+      utm_medium: 'journey_medium',
+    };
+    expect(getShopifyOrderUtm({
+      landing_site: '/?utm_campaign=landing_campaign&utm_source=landing_source&utm_medium=landing_medium',
+      note_attributes: [{ name: 'utm_campaign', value: 'note_campaign' }],
+      __metricMindCustomerJourneyUtm: customerJourney,
+    })).toMatchObject({
+      utm_campaign: 'landing_campaign',
+      utm_source: 'landing_source',
+      utm_medium: 'landing_medium',
+    });
+    expect(getShopifyOrderUtm({
+      landing_site: '/products/example',
+      note_attributes: [{ name: 'utm_campaign', value: 'note_campaign' }],
+      __metricMindCustomerJourneyUtm: customerJourney,
+    }).utm_campaign).toBe('note_campaign');
+    expect(getShopifyOrderUtm({
+      landing_site: '/products/example',
+      note_attributes: [],
+      __metricMindCustomerJourneyUtm: customerJourney,
+    })).toMatchObject({
+      utm_campaign: 'journey_campaign',
+      utm_source: 'journey_source',
+      utm_medium: 'journey_medium',
+    });
   });
 
   it('deduplicates by order ID and retains the newest provider state', () => {

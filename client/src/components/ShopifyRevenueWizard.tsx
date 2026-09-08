@@ -423,7 +423,7 @@ export function ShopifyRevenueWizard(props: {
         `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}&days=${encodeURIComponent(
           String(days)
         )}&limit=300`,
-        { credentials: "include" }
+        { credentials: "include", cache: "no-store" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {

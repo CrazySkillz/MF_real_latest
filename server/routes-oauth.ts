@@ -9,8 +9,8 @@ import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { GA4_KPI_ACTIVE_METRIC_CONFLICT } from "./utils/ga4-kpi-create-guard";
-import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
-import { getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
+import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -33891,6 +33891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     createdAtMin: string;
     maxPages?: number;
     audit?: Record<string, any>;
+    attributionFields?: string[];
   }) => {
     const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000, audit } = args;
     const base = `https://${shopDomain}`;
@@ -33963,6 +33964,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const deduplicatedOrders = deduplicateShopifyOrders(orders);
+    const requestedUtmFields = Array.from(new Set((args.attributionFields || []).filter(field =>
+      field === 'utm_campaign' || field === 'utm_source' || field === 'utm_medium'
+    ))) as Array<'utm_campaign' | 'utm_source' | 'utm_medium'>;
+    const journeyCandidates = requestedUtmFields.length === 0 ? [] : deduplicatedOrders.filter(order => {
+      const current = getShopifyOrderUtm(order);
+      return requestedUtmFields.some(field => !current[field]);
+    });
+    let customerJourneyReadyCount = 0;
+    let customerJourneyPendingCount = 0;
+    if (journeyCandidates.length > 0) {
+      const ids = journeyCandidates.map(order => String(order?.admin_graphql_api_id || `gid://shopify/Order/${order?.id}`));
+      const journeys = await fetchShopifyOrderCustomerJourneyUtms({ shopDomain, accessToken, apiVersion, orderIds: ids });
+      for (let index = 0; index < journeyCandidates.length; index++) {
+        const journey = journeys.get(ids[index]);
+        if (!journey) throw new Error('Shopify customer journey attribution response is incomplete');
+        if (journey.ready === false) customerJourneyPendingCount++;
+        else customerJourneyReadyCount++;
+        journeyCandidates[index].__metricMindCustomerJourneyUtm = journey;
+      }
+      if (customerJourneyPendingCount > 0) {
+        if (audit) Object.assign(audit, { customerJourneyCandidateCount: journeyCandidates.length, customerJourneyReadyCount, customerJourneyPendingCount });
+        throw new Error(`Shopify customer journey attribution is still processing for ${customerJourneyPendingCount} order(s)`);
+      }
+    }
     let developmentStoreTestOrdersIncluded = false;
     let developmentStoreVerification = 'not_needed';
     if (deduplicatedOrders.some((order: any) => order?.test === true)) {
@@ -33984,6 +34009,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       rawOrderCount: orders.length,
       deduplicatedOrderCount: deduplicatedOrders.length,
       duplicateOrderCount: orders.length - deduplicatedOrders.length,
+      customerJourneyCandidateCount: journeyCandidates.length,
+      customerJourneyReadyCount,
+      customerJourneyPendingCount,
       developmentStoreTestOrdersIncluded,
       developmentStoreVerification,
       ordering: 'created_at asc',
@@ -34000,54 +34028,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const shopifyRequiresProtectedCustomerDataApproval = (err: any): boolean => {
     const msg = String(err?.message || "");
     return msg.toLowerCase().includes("not approved to access rest endpoints with protected customer data");
-  };
-
-  const parseUtm = (urlOrPath: string | null | undefined) => {
-    const s = String(urlOrPath || "").trim();
-    if (!s) return {};
-    try {
-      // landing_site can be a path like "/?utm_campaign=..." or a full URL.
-      const u = s.startsWith("http") ? new URL(s) : new URL(s.startsWith("/") ? `https://dummy.local${s}` : `https://dummy.local/${s}`);
-      const p = u.searchParams;
-      return {
-        utm_campaign: p.get("utm_campaign") || "",
-        utm_source: p.get("utm_source") || "",
-        utm_medium: p.get("utm_medium") || "",
-      };
-    } catch {
-      return {};
-    }
-  };
-
-  // Many Shopify setups store UTMs on the Order as note_attributes (shown as "Additional details" in the UI),
-  // not in landing_site / landing_site_ref. Support both.
-  const getUtmFromNoteAttributes = (order: any, key: 'utm_campaign' | 'utm_source' | 'utm_medium' | 'utm_content' | 'utm_term'): string => {
-    const attrs = Array.isArray(order?.note_attributes) ? order.note_attributes : [];
-    if (!attrs || attrs.length === 0) return "";
-    const canon = (s: any) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-    const want = canon(key);
-    const suffix = want.replace(/^utm_/, ""); // campaign/source/medium/content/term
-    for (const a of attrs) {
-      const name = canon((a as any)?.name);
-      const val = String((a as any)?.value ?? "").trim();
-      if (!val) continue;
-      if (name === want) return val;
-      // Accept variants like utm_tracking.campaign → utm_tracking_campaign
-      if (name.includes("utm") && name.endsWith(`_${suffix}`)) return val;
-    }
-    return "";
-  };
-
-  const getUtmFromOrder = (order: any) => {
-    const parsed = parseUtm(order?.landing_site || order?.landing_site_ref || "");
-    const p: any = parsed || {};
-    return {
-      utm_campaign: String(p.utm_campaign || "") || getUtmFromNoteAttributes(order, "utm_campaign"),
-      utm_source: String(p.utm_source || "") || getUtmFromNoteAttributes(order, "utm_source"),
-      utm_medium: String(p.utm_medium || "") || getUtmFromNoteAttributes(order, "utm_medium"),
-      utm_content: String((p as any).utm_content || "") || getUtmFromNoteAttributes(order, "utm_content"),
-      utm_term: String((p as any).utm_term || "") || getUtmFromNoteAttributes(order, "utm_term"),
-    };
   };
 
   const getShopifyOrderTags = (order: any): string[] => {
@@ -34114,11 +34094,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken: conn.accessToken,
         apiVersion,
         createdAtMin,
+        attributionFields: [field],
       });
 
       // Match orders
       const getFieldValue = (o: any): string => {
-        const utm = getUtmFromOrder(o);
+        const utm = getShopifyOrderUtm(o);
         if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");
@@ -34379,6 +34360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/shopify/:campaignId/orders/preview", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.campaignId || "");
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
@@ -34396,6 +34378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken: conn.accessToken,
         apiVersion,
         createdAtMin,
+        attributionFields: ['utm_campaign', 'utm_source', 'utm_medium'],
       });
 
       const availableColumns = [
@@ -34415,7 +34398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = selectedColumns.filter((h) => availableColumns.includes(h));
 
       const rows = orders.slice(0, limit).map((o) => {
-        const utm = getUtmFromOrder(o);
+        const utm = getShopifyOrderUtm(o);
         const discountCodes = Array.isArray(o?.discount_codes)
           ? o.discount_codes.map((d: any) => d?.code).filter(Boolean).join(", ")
           : "";
@@ -34455,6 +34438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/shopify/:campaignId/orders/unique-values", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.campaignId || "");
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
@@ -34470,10 +34454,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken: conn.accessToken,
         apiVersion,
         createdAtMin,
+        attributionFields: [field],
       });
 
       const getValue = (o: any): string => {
-        const utm = getUtmFromOrder(o);
+        const utm = getShopifyOrderUtm(o);
         if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");
@@ -34671,6 +34656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         apiVersion,
         createdAtMin,
         audit: providerQueryAudit,
+        attributionFields: [field],
       });
       const orders = orderBatch.orders;
       const developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded;
@@ -34685,7 +34671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const getFieldValue = (o: any): string => {
-        const utm = getUtmFromOrder(o);
+        const utm = getShopifyOrderUtm(o);
         if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");

@@ -17,6 +17,60 @@ export type ShopifyRepairConfirmation = {
   providerFingerprint: string;
 };
 
+export type ShopifyOrderUtm = {
+  utm_campaign: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_content: string;
+  utm_term: string;
+};
+
+const parseShopifyUtm = (urlOrPath: unknown): Partial<ShopifyOrderUtm> => {
+  const value = String(urlOrPath || '').trim();
+  if (!value) return {};
+  try {
+    const url = value.startsWith('http')
+      ? new URL(value)
+      : new URL(value.startsWith('/') ? `https://dummy.local${value}` : `https://dummy.local/${value}`);
+    return {
+      utm_campaign: url.searchParams.get('utm_campaign') || '',
+      utm_source: url.searchParams.get('utm_source') || '',
+      utm_medium: url.searchParams.get('utm_medium') || '',
+    };
+  } catch {
+    return {};
+  }
+};
+
+const getShopifyUtmFromNoteAttributes = (order: any, key: keyof ShopifyOrderUtm): string => {
+  const attributes = Array.isArray(order?.note_attributes) ? order.note_attributes : [];
+  const canonicalize = (input: unknown) => String(input || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const wanted = canonicalize(key);
+  const suffix = wanted.replace(/^utm_/, '');
+  for (const attribute of attributes) {
+    const name = canonicalize(attribute?.name);
+    const value = String(attribute?.value ?? '').trim();
+    if (value && (name === wanted || (name.includes('utm') && name.endsWith(`_${suffix}`)))) return value;
+  }
+  return '';
+};
+
+export const getShopifyOrderUtm = (order: any): ShopifyOrderUtm => {
+  const landing = parseShopifyUtm(order?.landing_site || order?.landing_site_ref || '');
+  const journey = order?.__metricMindCustomerJourneyUtm || {};
+  const journeyLanding = parseShopifyUtm(journey?.landingSite || '');
+  const resolve = (key: keyof ShopifyOrderUtm): string => String(landing[key] || '')
+    || getShopifyUtmFromNoteAttributes(order, key)
+    || String(journey[key] || journeyLanding[key] || '');
+  return {
+    utm_campaign: resolve('utm_campaign'),
+    utm_source: resolve('utm_source'),
+    utm_medium: resolve('utm_medium'),
+    utm_content: getShopifyUtmFromNoteAttributes(order, 'utm_content'),
+    utm_term: getShopifyUtmFromNoteAttributes(order, 'utm_term'),
+  };
+};
+
 export const shouldPreserveShopifyDevelopmentStoreLastGood = (input: {
   schedulerRefresh: boolean;
   previouslyIncludedTestOrders: unknown;

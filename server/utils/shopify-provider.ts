@@ -144,6 +144,74 @@ export async function shopifyAdminFetch(args: {
   }
 }
 
+export type ShopifyCustomerJourneyUtm = {
+  ready: boolean | null;
+  landingSite: string;
+  utm_campaign: string;
+  utm_source: string;
+  utm_medium: string;
+};
+
+export async function fetchShopifyOrderCustomerJourneyUtms(args: {
+  shopDomain: string;
+  accessToken: string;
+  apiVersion: string;
+  orderIds: string[];
+  fetchImpl?: typeof fetch;
+}): Promise<Map<string, ShopifyCustomerJourneyUtm>> {
+  const ids = Array.from(new Set(args.orderIds.map(id => String(id || '').trim()).filter(Boolean)));
+  if (ids.some(id => !/^gid:\/\/shopify\/Order\/\d+$/.test(id))) throw new Error('Invalid Shopify order GraphQL ID');
+
+  const results = new Map<string, ShopifyCustomerJourneyUtm>();
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    const batch = ids.slice(offset, offset + 50);
+    const response = await shopifyAdminFetch({
+      shopDomain: args.shopDomain,
+      accessToken: args.accessToken,
+      endpoint: `/admin/api/${getShopifyApiVersion(args.apiVersion)}/graphql.json`,
+      method: 'POST',
+      fetchImpl: args.fetchImpl,
+      body: JSON.stringify({
+        query: `query MetricMindOrderJourneyUtm($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ... on Order {
+              id
+              customerJourneySummary {
+                ready
+                firstVisit {
+                  landingPage
+                  utmParameters { campaign source medium }
+                }
+              }
+            }
+          }
+        }`,
+        variables: { ids: batch },
+      }),
+    });
+    const json: any = await response.json().catch(() => ({}));
+    if (!response.ok || json?.errors || !Array.isArray(json?.data?.nodes) || json.data.nodes.length !== batch.length) {
+      const message = Array.isArray(json?.errors) ? json.errors.map((error: any) => String(error?.message || '')).filter(Boolean).join('; ') : '';
+      throw new Error(message || 'Shopify customer journey attribution response is incomplete');
+    }
+    for (let index = 0; index < batch.length; index++) {
+      const node = json.data.nodes[index];
+      if (!node || String(node.id || '') !== batch[index]) throw new Error('Shopify customer journey attribution order mismatch');
+      const summary = node.customerJourneySummary || null;
+      const visit = summary?.firstVisit || null;
+      const utm = visit?.utmParameters || {};
+      results.set(batch[index], {
+        ready: typeof summary?.ready === 'boolean' ? summary.ready : null,
+        landingSite: String(visit?.landingPage || ''),
+        utm_campaign: String(utm?.campaign || ''),
+        utm_source: String(utm?.source || ''),
+        utm_medium: String(utm?.medium || ''),
+      });
+    }
+  }
+  return results;
+}
+
 export async function isShopifyPartnerDevelopmentStore(args: {
   shopDomain: string;
   accessToken: string;

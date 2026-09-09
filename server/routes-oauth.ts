@@ -17208,26 +17208,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `SELECT Id, ${field} ` +
           `FROM Opportunity ` +
           // Use IsWon instead of StageName. Stage labels vary per org.
-          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
-          `LIMIT 2000`;
-        let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-        let pages = 0;
-        while (nextUrl && pages < 10 && counts.size < limit) {
-          const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || 'Failed to load unique values' });
-          }
-          const recs = Array.isArray(json?.records) ? json.records : [];
-          for (const rec of recs) {
-            const raw = readField(rec, field);
-            const v = raw === undefined || raw === null ? '' : String(raw).trim();
-            if (!v) continue;
-            counts.set(v, (counts.get(v) || 0) + 1);
-            if (counts.size >= limit) break;
-          }
-          nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-          pages += 1;
+          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null`;
+        const recs = await fetchCompleteSalesforceQuery({
+          initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
+          instanceUrl,
+          accessToken,
+          fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+        });
+        for (const rec of recs) {
+          const raw = readField(rec, field);
+          const v = raw === undefined || raw === null ? '' : String(raw).trim();
+          if (!v) continue;
+          counts.set(v, (counts.get(v) || 0) + 1);
         }
       }
 
@@ -17254,23 +17246,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const soqlPipelineScan =
             `SELECT Id, ${field} ` +
             `FROM Opportunity ` +
-            `WHERE StageName = '${escapedStage}' AND ${field} != null ` +
-            `LIMIT 2000`;
-          let nextPipelineUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipelineScan)}`;
-          let pipelinePages = 0;
-          while (nextPipelineUrl && pipelinePages < 10) {
-            const resp = await fetch(nextPipelineUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-            const json: any = await resp.json().catch(() => ({}));
-            if (!resp.ok) break;
-            const recs = Array.isArray(json?.records) ? json.records : [];
-            for (const rec of recs) {
-              const raw = readField(rec, field);
-              const v = raw === undefined || raw === null ? '' : String(raw).trim();
-              if (!v) continue;
-              counts.set(v, (counts.get(v) || 0) + 1);
-            }
-            nextPipelineUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-            pipelinePages += 1;
+            `WHERE StageName = '${escapedStage}' AND ${field} != null`;
+          const recs = await fetchCompleteSalesforceQuery({
+            initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipelineScan)}`,
+            instanceUrl,
+            accessToken,
+            fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+          });
+          for (const rec of recs) {
+            const raw = readField(rec, field);
+            const v = raw === undefined || raw === null ? '' : String(raw).trim();
+            if (!v) continue;
+            counts.set(v, (counts.get(v) || 0) + 1);
           }
         }
       }
@@ -17283,7 +17270,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, field, values });
     } catch (error: any) {
       console.error('[Salesforce Unique Values] Error:', error);
-      res.status(500).json({ error: error.message || 'Failed to load unique values' });
+      const boundedQueryFailure = error?.code === SALESFORCE_PAGINATION_ERROR_CODE || error?.code === SALESFORCE_RESULT_LIMIT_ERROR_CODE;
+      res.status(boundedQueryFailure ? 413 : Number(error?.status || 500)).json({
+        error: error.message || 'Failed to load unique values',
+        ...(boundedQueryFailure ? { code: error.code } : {}),
+      });
     }
   });
 

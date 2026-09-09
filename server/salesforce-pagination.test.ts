@@ -109,6 +109,18 @@ describe('Salesforce bounded query pagination', () => {
     expect(saveRoute.indexOf('const fetched = await fetchOppRecords(true);')).toBeLessThan(saveRoute.indexOf('await storage.replaceGa4SalesforceRevenueSourceWithRecords'));
   });
 
+  it('uses complete bounded fallback scans for Salesforce campaign choices', () => {
+    const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
+    const uniqueValuesStart = routes.indexOf('// Salesforce Opportunity unique values for a field');
+    const previewStart = routes.indexOf('// Salesforce Opportunity preview', uniqueValuesStart);
+    const uniqueValuesRoute = routes.slice(uniqueValuesStart, previewStart);
+
+    expect(uniqueValuesRoute.match(/fetchCompleteSalesforceQuery\(\{/g)).toHaveLength(2);
+    expect(uniqueValuesRoute).not.toContain('LIMIT 2000');
+    expect(uniqueValuesRoute).not.toContain('nextRecordsUrl');
+    expect(uniqueValuesRoute).toContain('boundedQueryFailure ? 413 : Number(error?.status || 500)');
+  });
+
   it('uses complete bounded Pipeline Proxy totals while keeping preview rows sampled', () => {
     const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
     const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');

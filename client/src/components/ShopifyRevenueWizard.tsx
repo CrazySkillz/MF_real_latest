@@ -250,21 +250,13 @@ export function ShopifyRevenueWizard(props: {
     );
   };
 
-  const fetchStatus = async (applyExistingConnection = true) => {
+  const fetchStatus = async () => {
     const resp = await fetch(`/api/shopify/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Shopify connection");
     const isConnected = !!json?.connected;
     const canUseOauth = json?.oauthAvailable === true;
     setOauthAvailable(canUseOauth);
-    if (!applyExistingConnection && isConnected) {
-      setConnected(false);
-      setShopName(null);
-      setOrderWindow(null);
-      setConnectMethod(canUseOauth ? "oauth" : "token");
-      setShopDomain("");
-      return false;
-    }
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
     setOrderWindow(isConnected && json?.orderWindow ? json.orderWindow as ShopifyOrderWindowStatus : null);
@@ -485,7 +477,7 @@ export function ShopifyRevenueWizard(props: {
     let mounted = true;
     void (async () => {
       try {
-        await fetchStatus(mode === "edit");
+        await fetchStatus();
       } catch {
         // ignore
       } finally {

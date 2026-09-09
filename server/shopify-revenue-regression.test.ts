@@ -386,13 +386,19 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('authType = "token";');
   });
 
-  it("always shows both Shopify connection methods and blocks unconfigured OAuth safely", () => {
+  it("reuses an existing Shopify connection and blocks unconfigured OAuth safely", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
     const routes = read(ROUTES_FILE);
+    const mountStatus = wizard.slice(
+      wizard.indexOf("// Load connection status once on mount"),
+      wizard.indexOf("// Fetch crosswalk values only when entering crosswalk."),
+    );
 
     expect(wizard).toContain('if (mode !== "edit") return "";');
-    expect(wizard).toContain("const fetchStatus = async (applyExistingConnection = true) =>");
-    expect(wizard).toContain('await fetchStatus(mode === "edit");');
+    expect(wizard).toContain("const fetchStatus = async () =>");
+    expect(mountStatus).toContain("await fetchStatus();");
+    expect(mountStatus).not.toContain('mode === "edit"');
+    expect(wizard).not.toContain("!applyExistingConnection && isConnected");
     expect(wizard).toContain('const [oauthAvailable, setOauthAvailable] = useState(false);');
     expect(wizard).toContain('setConnectMethod(canUseOauth ? "oauth" : "token");');
     expect(wizard).toContain('<RadioGroupItem id="shopify-method-oauth" value="oauth" />');

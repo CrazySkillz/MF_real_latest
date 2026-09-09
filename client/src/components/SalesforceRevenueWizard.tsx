@@ -157,8 +157,7 @@ export function SalesforceRevenueWizard(props: {
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<string[][]>([]);
   const [pipelinePreviewError, setPipelinePreviewError] = useState<string | null>(null);
-  const [pipelinePreviewHeaders, setPipelinePreviewHeaders] = useState<string[]>([]);
-  const [pipelinePreviewRows, setPipelinePreviewRows] = useState<string[][]>([]);
+  const [pipelinePreviewTotalToDate, setPipelinePreviewTotalToDate] = useState<number | null>(null);
   const [previewCampaignCurrency, setPreviewCampaignCurrency] = useState<string | null>(null);
   const [previewDetectedCurrency, setPreviewDetectedCurrency] = useState<string | null>(null);
   const [previewTotalRevenue, setPreviewTotalRevenue] = useState<number | null>(null);
@@ -352,8 +351,7 @@ export function SalesforceRevenueWizard(props: {
     setPreviewCampaignCurrency(null);
     setPreviewDetectedCurrency(null);
     setPreviewCurrencyMismatch(false);
-    setPipelinePreviewHeaders([]);
-    setPipelinePreviewRows([]);
+    setPipelinePreviewTotalToDate(null);
     setPreviewError(null);
     setPipelinePreviewError(null);
     // Edit mode: jump to review so user sees current settings with preview
@@ -792,16 +790,10 @@ export function SalesforceRevenueWizard(props: {
 
   const reviewPipelineProxyAmount = useMemo(() => {
     if (!pipelineEnabled) return null;
-    if (pipelinePreviewHeaders.length > 0) {
-      const amtIdx = pipelinePreviewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
-      if (amtIdx >= 0) {
-        return pipelinePreviewRows.reduce((acc, row) => acc + (Number(String(row[amtIdx] || "").replace(/[^0-9.\-]/g, "")) || 0), 0);
-      }
-      return 0;
-    }
+    if (previewKey === reviewPreviewKey && pipelinePreviewTotalToDate != null) return pipelinePreviewTotalToDate;
     const stored = Number(initialMappingConfig?.pipelineTotalToDate);
     return Number.isFinite(stored) ? stored : null;
-  }, [pipelineEnabled, pipelinePreviewHeaders, pipelinePreviewRows, revenueField, initialMappingConfig]);
+  }, [initialMappingConfig, pipelineEnabled, pipelinePreviewTotalToDate, previewKey, reviewPreviewKey]);
 
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);
@@ -851,16 +843,13 @@ export function SalesforceRevenueWizard(props: {
       const pp = json?.pipelinePreview || null;
       if (pp?.error) {
         setPipelinePreviewError(String(pp.error));
-        setPipelinePreviewHeaders([]);
-        setPipelinePreviewRows([]);
+        setPipelinePreviewTotalToDate(null);
       } else if (pp && Array.isArray(pp?.headers) && Array.isArray(pp?.rows)) {
         setPipelinePreviewError(null);
-        setPipelinePreviewHeaders(pp.headers);
-        setPipelinePreviewRows(pp.rows);
+        setPipelinePreviewTotalToDate(Number.isFinite(Number(pp?.totalToDate)) ? Number(pp.totalToDate) : null);
       } else {
         setPipelinePreviewError(null);
-        setPipelinePreviewHeaders([]);
-        setPipelinePreviewRows([]);
+        setPipelinePreviewTotalToDate(null);
       }
       setPreviewCampaignCurrency(json?.campaignCurrency ? String(json.campaignCurrency) : null);
       setPreviewDetectedCurrency(json?.detectedCurrency ? String(json.detectedCurrency) : null);
@@ -874,8 +863,7 @@ export function SalesforceRevenueWizard(props: {
       setPreviewTotalRevenue(null);
       setPreviewKey(null);
       setPipelinePreviewError(null);
-      setPipelinePreviewHeaders([]);
-      setPipelinePreviewRows([]);
+      setPipelinePreviewTotalToDate(null);
       setPreviewCampaignCurrency(null);
       setPreviewDetectedCurrency(null);
       setPreviewCurrencyMismatch(false);
@@ -1584,6 +1572,7 @@ export function SalesforceRevenueWizard(props: {
               )}
 
               {previewError && <div className="text-sm text-red-600">{previewError}</div>}
+              {pipelinePreviewError && <div className="text-sm text-red-600">{pipelinePreviewError}</div>}
               {saveError && <div className="text-sm text-red-600">{saveError}</div>}
             </div>
           )}
@@ -1618,6 +1607,7 @@ export function SalesforceRevenueWizard(props: {
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
                   (step === "review" && (previewLoading || previewKey !== reviewPreviewKey || !previewCampaignCurrency || effectiveCurrencyUnknown || effectiveCurrencyMismatch)) ||
+                  (step === "review" && pipelineEnabled && (pipelinePreviewError !== null || pipelinePreviewTotalToDate === null)) ||
                   (step === "review" && mode === "edit" && !canUpdateRevenue)
                 }
               >

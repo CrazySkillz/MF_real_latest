@@ -108,4 +108,39 @@ describe('Salesforce bounded query pagination', () => {
     expect(saveRoute.slice(0, saveRoute.indexOf('const fetched = await fetchOppRecords(true);'))).not.toContain('`LIMIT 2000`;');
     expect(saveRoute.indexOf('const fetched = await fetchOppRecords(true);')).toBeLessThan(saveRoute.indexOf('await storage.replaceGa4SalesforceRevenueSourceWithRecords'));
   });
+
+  it('uses complete bounded Pipeline Proxy totals while keeping preview rows sampled', () => {
+    const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
+    const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');
+    const previewStart = routes.indexOf('// Salesforce Opportunity preview (before processing revenue metrics)');
+    const saveStart = routes.indexOf('app.post("/api/campaigns/:id/salesforce/save-mappings"');
+    const pipelineStart = routes.indexOf('// Salesforce pipeline proxy status', saveStart);
+    const hubspotStart = routes.indexOf('// HubSpot deals properties', pipelineStart);
+    const previewRoute = routes.slice(previewStart, saveStart);
+    const saveRoute = routes.slice(saveStart, pipelineStart);
+    const pipelineRoute = routes.slice(pipelineStart, hubspotStart);
+    const savePipeline = saveRoute.slice(
+      saveRoute.indexOf('// Best-effort: compute an exec-facing pipeline proxy'),
+      saveRoute.indexOf('pipelineProxyFields = {'),
+    );
+
+    expect(previewRoute).toContain('const pipelineTotalToDate = pRecords.reduce');
+    expect(previewRoute).toContain('pRecords.slice(0, rowLimit)');
+    expect(previewRoute).toContain('totalRecordCount: pRecords.length');
+    expect(previewRoute).toContain('totalToDate: Number(pipelineTotalToDate.toFixed(2))');
+    expect(savePipeline).toContain('fetchCompleteSalesforceQuery({');
+    expect(savePipeline).not.toContain('LIMIT 2000');
+    expect(pipelineRoute.match(/fetchCompleteSalesforceQuery\(\{/g)).toHaveLength(2);
+    expect(pipelineRoute).not.toContain('LIMIT 2000');
+    expect(pipelineRoute).not.toContain('nextRecordsUrl');
+    expect(pipelineRoute).toContain('const pipelineSelected = Array.from(new Set(selected));');
+    expect(pipelineRoute).not.toContain('runStageScan');
+    expect(pipelineRoute).not.toContain('matchSelectedCampaignValue');
+
+    expect(wizard).toContain('setPipelinePreviewTotalToDate(Number.isFinite(Number(pp?.totalToDate)) ? Number(pp.totalToDate) : null)');
+    expect(wizard).toContain('previewKey === reviewPreviewKey && pipelinePreviewTotalToDate != null');
+    expect(wizard).toContain('pipelinePreviewError !== null || pipelinePreviewTotalToDate === null');
+    expect(wizard).toContain('{pipelinePreviewError && <div className="text-sm text-red-600">{pipelinePreviewError}</div>}');
+    expect(wizard).not.toContain('pipelinePreviewRows.reduce');
+  });
 });

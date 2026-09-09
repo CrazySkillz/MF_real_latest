@@ -17411,17 +17411,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `SELECT ${headers.join(', ')} ` +
             `FROM Opportunity ` +
             `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
-            `ORDER BY CloseDate DESC ` +
-            `LIMIT ${rowLimit}`;
+            `ORDER BY CloseDate DESC`;
           const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            const msg = String(json?.[0]?.message || json?.message || 'Failed to load Salesforce pipeline preview');
-            return { ok: false, headers, error: msg };
+          try {
+            const records = await fetchCompleteSalesforceQuery({
+              initialUrl: url,
+              instanceUrl,
+              accessToken,
+              fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+            });
+            return { ok: true, headers, records };
+          } catch (error: any) {
+            return { ok: false, headers, error: error?.message || 'Failed to load Salesforce pipeline preview' };
           }
-          const records = Array.isArray(json?.records) ? json.records : [];
-          return { ok: true, headers, records };
         };
 
         let p = await runPipeline(true);
@@ -17431,11 +17433,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (p.ok) {
           const pHeaders = p.headers;
           const pRecords = p.records || [];
-          const pRows = pRecords.map((r: any) => pHeaders.map((h: string) => String(readField(r, h) ?? '')));
+          const pipelineTotalToDate = pRecords.reduce((sum: number, record: any) => {
+            const raw = readField(record, revenue);
+            const value = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
+            return Number.isFinite(value) ? sum + value : sum;
+          }, 0);
+          const pRows = pRecords.slice(0, rowLimit).map((r: any) => pHeaders.map((h: string) => String(readField(r, h) ?? '')));
           pipelinePreview = {
             headers: pHeaders,
             rows: pRows,
             rowCount: pRows.length,
+            totalRecordCount: pRecords.length,
+            totalToDate: Number(pipelineTotalToDate.toFixed(2)),
           };
         } else {
           pipelinePreview = { error: p.error || 'Failed to load pipeline preview' };
@@ -17881,30 +17890,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const soql =
                 `SELECT Id, ${attribField}, ${revenue}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
                 `FROM Opportunity ` +
-                `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
-                `LIMIT 2000`;
-              let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-              let pages = 0;
-              while (next && pages < 10) {
-                const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
-                const json: any = await resp.json().catch(() => ({}));
-                if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
-                const recs = Array.isArray(json?.records) ? json.records : [];
-                for (const rec of recs) {
-                  const rRaw = readField(rec, revenue);
-                  const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
-                  if (Number.isFinite(amt)) {
-                    pipelineToDate += amt;
-                    const campaignValue = String(readField(rec, attribField) || "").trim();
-                    if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
-                  }
-                  if (includeCurrency) {
-                    const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
-                    if (c) pipelineCurrencies.add(c);
-                  }
+                `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted})`;
+              const recs = await fetchCompleteSalesforceQuery({
+                initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
+                instanceUrl,
+                accessToken,
+                fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+              });
+              for (const rec of recs) {
+                const rRaw = readField(rec, revenue);
+                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
+                if (Number.isFinite(amt)) {
+                  pipelineToDate += amt;
+                  const campaignValue = String(readField(rec, attribField) || "").trim();
+                  if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
                 }
-                next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-                pages += 1;
+                if (includeCurrency) {
+                  const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
+                  if (c) pipelineCurrencies.add(c);
+                }
               }
             };
 
@@ -18213,9 +18217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const version = process.env.SALESFORCE_API_VERSION || "v59.0";
       const attribField = String(cfg.campaignField || "").trim();
       const selected: string[] = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
-      const camp = await storage.getCampaign(campaignId).catch(() => null as any);
-      const ga4CampaignValues = getGA4CampaignFilterValues((camp as any)?.ga4CampaignFilter);
-      const pipelineSelected = Array.from(new Set([...selected, ...ga4CampaignValues]));
+      const pipelineSelected = Array.from(new Set(selected));
       const revenueField = String(cfg.revenueField || "Amount").trim() || "Amount";
       const stageName = String(cfg.pipelineStageName || "").trim();
       console.log("[Salesforce Pipeline Proxy][Trace] start", {
@@ -18223,7 +18225,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignField: attribField,
         revenueField,
         selectedValues: selected,
-        ga4CampaignValues,
         pipelineSelected,
         pipelineStageName: stageName,
         pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
@@ -18233,7 +18234,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignId,
           hasCampaignField: !!attribField,
           selectedValuesCount: selected.length,
-          ga4CampaignValuesCount: ga4CampaignValues.length,
           pipelineSelectedCount: pipelineSelected.length,
           hasStageName: !!stageName,
         });
@@ -18255,7 +18255,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currencies = new Set<string>();
       const pipelineValueRevenueTotals = new Map<string, number>();
       let directRecordCount = 0;
-      let stageScanRecordCount = 0;
       let matchedRecordCount = 0;
       const readField = (rec: any, path: string): any => {
         if (!rec || !path) return undefined;
@@ -18268,23 +18267,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return cur;
       };
-      const normalizeCampaignValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const selectedByKey = new Map(pipelineSelected.map((value) => [normalizeCampaignValue(value), value]));
-      const matchSelectedCampaignValue = (raw: any): string | null => {
-        const key = normalizeCampaignValue(raw);
-        if (!key) return null;
-        if (selectedByKey.has(key)) return selectedByKey.get(key) || null;
-        for (const [selectedKey, selectedValue] of Array.from(selectedByKey.entries())) {
-          if (selectedKey && key.includes(selectedKey)) return selectedValue;
-        }
-        return null;
-      };
       const addPipelineRecord = (rec: any, includeCurrency: boolean): void => {
         const rRaw = readField(rec, revenueField);
         const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
         if (Number.isFinite(amt)) {
           totalToDate += amt;
-          const campaignValue = matchSelectedCampaignValue(readField(rec, attribField)) || matchSelectedCampaignValue(rec?.Name);
+          const campaignValue = String(readField(rec, attribField) || "").trim();
           if (campaignValue) {
             matchedRecordCount += 1;
             pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
@@ -18297,47 +18285,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const runQuery = async (includeCurrency: boolean): Promise<void> => {
-        const fields = Array.from(new Set(["Id", "Name", attribField, revenueField, ...(includeCurrency ? ["CurrencyIsoCode"] : [])]));
+        const fields = Array.from(new Set(["Id", attribField, revenueField, ...(includeCurrency ? ["CurrencyIsoCode"] : [])]));
         const soql =
           `SELECT ${fields.join(", ")} ` +
           `FROM Opportunity ` +
-          `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
-          `LIMIT 2000`;
-        let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-        let pages = 0;
-        while (next && pages < 10) {
-          const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
-          const recs = Array.isArray(json?.records) ? json.records : [];
-          directRecordCount += recs.length;
-          for (const rec of recs) {
-            addPipelineRecord(rec, includeCurrency);
-          }
-          next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-          pages += 1;
-        }
-      };
-      const runStageScan = async (includeCurrency: boolean): Promise<void> => {
-        const fields = Array.from(new Set(["Id", "Name", attribField, revenueField, ...(includeCurrency ? ["CurrencyIsoCode"] : [])]));
-        const soql =
-          `SELECT ${fields.join(", ")} ` +
-          `FROM Opportunity ` +
-          `WHERE StageName = '${escapedStage}' ` +
-          `LIMIT 2000`;
-        let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-        let pages = 0;
-        while (next && pages < 10) {
-          const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
-          const recs = Array.isArray(json?.records) ? json.records : [];
-          stageScanRecordCount += recs.length;
-          for (const rec of recs) {
-            if (matchSelectedCampaignValue(readField(rec, attribField)) || matchSelectedCampaignValue(rec?.Name)) addPipelineRecord(rec, includeCurrency);
-          }
-          next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-          pages += 1;
+          `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted})`;
+        const recs = await fetchCompleteSalesforceQuery({
+          initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
+          instanceUrl,
+          accessToken,
+          fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+        });
+        directRecordCount += recs.length;
+        for (const rec of recs) {
+          addPipelineRecord(rec, includeCurrency);
         }
       };
 
@@ -18351,16 +18312,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw e;
         }
       }
-      if (totalToDate <= 0 && pipelineValueRevenueTotals.size === 0) {
-        try {
-          await runStageScan(currencies.size > 0);
-        } catch (e: any) {
-          const msg = String(e?.message || "").toLowerCase();
-          if (msg.includes("no such column") && msg.includes("currencyisocode")) await runStageScan(false);
-          else throw e;
-        }
-      }
-
       const lastUpdatedAt = new Date().toISOString();
       let warning: string | null = cfg.pipelineWarning ? String(cfg.pipelineWarning) : null;
       let currency: string | null = currencies.size === 1 ? Array.from(currencies)[0] : null;
@@ -18375,7 +18326,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pipelineStageName: stageName,
         pipelineSelected,
         directRecordCount,
-        stageScanRecordCount,
         matchedRecordCount,
         computedTotal: Number(Number(totalToDate || 0).toFixed(2)),
         campaignValueTotals: Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
@@ -18417,25 +18367,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const soql =
                 `SELECT ${confirmedFields.join(", ")} ` +
                 `FROM Opportunity ` +
-                `WHERE IsWon = true AND ${dateField} = LAST_N_DAYS:${days} AND ${attribField} IN (${confirmedQuoted}) ` +
-                `LIMIT 2000`;
-              let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-              let pages = 0;
-              while (next && pages < 10) {
-                const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
-                const json: any = await resp.json().catch(() => ({}));
-                if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
-                const recs = Array.isArray(json?.records) ? json.records : [];
-                for (const rec of recs) {
-                  const campaignValue = String(readField(rec, attribField) || "").trim();
-                  const rawRevenue = readField(rec, revenueField);
-                  const revenue = rawRevenue === undefined || rawRevenue === null ? NaN : Number(String(rawRevenue).replace(/[^0-9.\-]/g, ""));
-                  if (campaignValue && Number.isFinite(revenue)) {
-                    confirmedTotals.set(campaignValue, (confirmedTotals.get(campaignValue) || 0) + revenue);
-                  }
+                `WHERE IsWon = true AND ${dateField} = LAST_N_DAYS:${days} AND ${attribField} IN (${confirmedQuoted})`;
+              const recs = await fetchCompleteSalesforceQuery({
+                initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
+                instanceUrl,
+                accessToken,
+                fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+              });
+              for (const rec of recs) {
+                const campaignValue = String(readField(rec, attribField) || "").trim();
+                const rawRevenue = readField(rec, revenueField);
+                const revenue = rawRevenue === undefined || rawRevenue === null ? NaN : Number(String(rawRevenue).replace(/[^0-9.\-]/g, ""));
+                if (campaignValue && Number.isFinite(revenue)) {
+                  confirmedTotals.set(campaignValue, (confirmedTotals.get(campaignValue) || 0) + revenue);
                 }
-                next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-                pages += 1;
               }
               confirmedCampaignTotals = Array.from(confirmedTotals.entries()).map(([campaignValue, revenue]) => ({
                 campaignValue,

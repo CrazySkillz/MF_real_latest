@@ -63,6 +63,7 @@ import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
+import { fetchCompleteSalesforceQuery, SALESFORCE_PAGINATION_ERROR_CODE, SALESFORCE_RESULT_LIMIT_ERROR_CODE } from "./utils/salesforce-pagination";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
 const serializeOAuthPopupJson = (value: unknown): string => (JSON.stringify(value) ?? "null")
@@ -2914,10 +2915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const MAX_CSV_ROWS_PREVIEW = 5_000; // header + sample rows (keeps preview fast)
   const MAX_CSV_ROWS_PROCESS = 50_000; // hard cap for processing (prevents runaway memory/CPU)
   const MAX_HUBSPOT_RESULTS = 5_000;
-  const MAX_SALESFORCE_RESULTS = 5_000;
   const MAX_SELECTED_VALUES = 200; // caps IN filters (prevents runaway queries)
   const MAX_CRM_REVIEW_BREAKDOWN_ROWS = 200;
-  const MAX_SALESFORCE_PAGES = 10; // paging guardrail for large orgs
 
   const countLinesUpTo = (text: string, limit: number): number => {
     const s = String(text || "");
@@ -17360,29 +17359,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `SELECT ${baseFields.join(', ')} ` +
           `FROM Opportunity ` +
           `WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
-          `ORDER BY ${dateFieldChoice} DESC ` +
-          `LIMIT 2000`;
+          `ORDER BY ${dateFieldChoice} DESC`;
         return { soql, headers: baseFields };
       };
 
-      const tryQuery = async (includeCurrency: boolean): Promise<{ ok: boolean; headers: string[]; records?: any[]; error?: string }> => {
+      const tryQuery = async (includeCurrency: boolean): Promise<{ ok: boolean; headers: string[]; records?: any[]; error?: string; code?: string }> => {
         const { soql, headers } = buildSoql(includeCurrency);
         const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-        const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-        const json: any = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
-          const msg = String(json?.[0]?.message || json?.message || 'Failed to load Salesforce preview');
-          return { ok: false, headers, error: msg };
+        try {
+          const records = await fetchCompleteSalesforceQuery({
+            initialUrl: url,
+            instanceUrl,
+            accessToken,
+            fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+          });
+          return { ok: true, headers, records };
+        } catch (error: any) {
+          return { ok: false, headers, error: error?.message || 'Failed to load Salesforce preview', code: error?.code };
         }
-        const records = Array.isArray(json?.records) ? json.records : [];
-        return { ok: true, headers, records };
       };
 
       let result = await tryQuery(true);
       if (!result.ok && String(result.error || '').toLowerCase().includes('currencyisocode')) {
         result = await tryQuery(false);
       }
-      if (!result.ok) return res.status(400).json({ error: result.error || 'Failed to load Salesforce preview' });
+      if (!result.ok) {
+        const boundedQueryFailure = result.code === SALESFORCE_PAGINATION_ERROR_CODE || result.code === SALESFORCE_RESULT_LIMIT_ERROR_CODE;
+        return res.status(boundedQueryFailure ? 413 : 400).json({
+          error: result.error || 'Failed to load Salesforce preview',
+          ...(boundedQueryFailure ? { code: result.code } : {}),
+        });
+      }
 
       const headers = result.headers;
       const records = result.records || [];
@@ -17581,41 +17588,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
         `SELECT Id, ${attribField}, ${dateFieldChoice}, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
-        `WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
-        `LIMIT 2000`;
+        `WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted})`;
 
       const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {
         const soql = buildSoql(includeCurrency);
-        let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-        const all: any[] = [];
-        let pages = 0;
-        while (nextUrl && pages < MAX_SALESFORCE_PAGES) {
-          const resp = await fetchWithTimeout(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            const msg = String(json?.[0]?.message || json?.message || '');
-            const isInvalidCurrencyIsoCodeField =
-              includeCurrency &&
-              msg.toLowerCase().includes('no such column') &&
-              msg.toLowerCase().includes('currencyisocode');
-            if (isInvalidCurrencyIsoCodeField) {
-              // Retry without CurrencyIsoCode
-              return await fetchOppRecords(false);
-            }
-            return res.status(resp.status).json({ error: msg || 'Failed to load opportunities' }) as any;
-          }
-          const recs = Array.isArray(json?.records) ? json.records : [];
-          all.push(...recs);
-          if (all.length >= MAX_SALESFORCE_RESULTS) {
-            return res.status(413).json({
-              error: `Too many matching Salesforce opportunities (>${MAX_SALESFORCE_RESULTS.toLocaleString()}). Please narrow your filter or reduce the date range.`,
-              code: "SALESFORCE_TOO_MANY_RESULTS",
-            }) as any;
-          }
-          nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
-          pages += 1;
+        try {
+          const records = await fetchCompleteSalesforceQuery({
+            initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
+            instanceUrl,
+            accessToken,
+            fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+          });
+          return { records, includeCurrency };
+        } catch (error: any) {
+          const msg = String(error?.message || '');
+          const isInvalidCurrencyIsoCodeField = includeCurrency && msg.toLowerCase().includes('no such column') && msg.toLowerCase().includes('currencyisocode');
+          if (isInvalidCurrencyIsoCodeField) return await fetchOppRecords(false);
+          const boundedQueryFailure = error?.code === SALESFORCE_PAGINATION_ERROR_CODE || error?.code === SALESFORCE_RESULT_LIMIT_ERROR_CODE;
+          return res.status(boundedQueryFailure ? 413 : Number(error?.status || 500)).json({
+            error: msg || 'Failed to load opportunities',
+            ...(boundedQueryFailure ? { code: error.code } : {}),
+          }) as any;
         }
-        return { records: all, includeCurrency };
       };
 
       let totalRevenue = 0;

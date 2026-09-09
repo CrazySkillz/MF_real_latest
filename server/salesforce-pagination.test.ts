@@ -143,4 +143,15 @@ describe('Salesforce bounded query pagination', () => {
     expect(wizard).toContain('{pipelinePreviewError && <div className="text-sm text-red-600">{pipelinePreviewError}</div>}');
     expect(wizard).not.toContain('pipelinePreviewRows.reduce');
   });
+
+  it('keeps on-demand confirmed revenue recovery aligned with the saved won rule', () => {
+    const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
+    const pipelineStart = routes.indexOf('// Salesforce pipeline proxy status');
+    const hubspotStart = routes.indexOf('// HubSpot deals properties', pipelineStart);
+    const pipelineRoute = routes.slice(pipelineStart, hubspotStart);
+
+    expect(pipelineRoute).toContain("const confirmedWonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;");
+    expect(pipelineRoute).toContain('`WHERE ${confirmedWonClause} AND ${dateField} = LAST_N_DAYS:${days} AND ${attribField} IN (${confirmedQuoted})`;');
+    expect(pipelineRoute).not.toContain('`WHERE IsWon = true AND ${dateField}');
+  });
 });

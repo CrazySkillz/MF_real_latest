@@ -18364,10 +18364,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const days = Math.min(Math.max(parseInt(String(sourceCfg.days || cfg.days || 90), 10) || 90, 1), 3650);
               const confirmedQuoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
               const confirmedFields = Array.from(new Set(["Id", attribField, revenueField]));
+              const confirmedWonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;
               const soql =
                 `SELECT ${confirmedFields.join(", ")} ` +
                 `FROM Opportunity ` +
-                `WHERE IsWon = true AND ${dateField} = LAST_N_DAYS:${days} AND ${attribField} IN (${confirmedQuoted})`;
+                `WHERE ${confirmedWonClause} AND ${dateField} = LAST_N_DAYS:${days} AND ${attribField} IN (${confirmedQuoted})`;
               const recs = await fetchCompleteSalesforceQuery({
                 initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
                 instanceUrl,

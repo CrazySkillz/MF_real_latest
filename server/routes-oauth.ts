@@ -64,6 +64,7 @@ import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationErro
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 import { fetchCompleteSalesforceQuery, SALESFORCE_PAGINATION_ERROR_CODE, SALESFORCE_RESULT_LIMIT_ERROR_CODE } from "./utils/salesforce-pagination";
+import { detectSalesforceCurrency, validateSalesforceRevenueCurrency } from "./utils/salesforceCurrency";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
 const serializeOAuthPopupJson = (value: unknown): string => (JSON.stringify(value) ?? "null")
@@ -17448,7 +17449,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-      const { detectSalesforceCurrency } = await import('./utils/salesforceCurrency');
       // Always compute debug steps; only return them when requested or when currency is unknown.
       const curResult = await detectSalesforceCurrency({
         accessToken,
@@ -17620,76 +17620,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueByDateAndCampaign = new Map<string, number>();
       const campaignValueRevenueTotals = new Map<string, number>();
 
-      // Best-effort: if the org doesn't expose CurrencyIsoCode (no multi-currency), attempt to read org default currency.
-      const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
-        try {
-          const trySoql = async (objectName: string, fieldName: string): Promise<string | null> => {
-            const soql = `SELECT ${fieldName} FROM ${objectName} LIMIT 1`;
-            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-            const resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-            const json: any = await resp.json().catch(() => ({}));
-            if (!resp.ok) return null;
-            const rec = Array.isArray(json?.records) ? json.records[0] : null;
-            const raw = rec?.[fieldName];
-            const cur = raw ? String(raw).trim().toUpperCase() : null;
-            return cur || null;
-          };
-
-          // Org currency is exposed inconsistently across orgs; try the common places.
-          return (
-            (await trySoql('Organization', 'DefaultCurrencyIsoCode')) ||
-            (await trySoql('Organization', 'CurrencyIsoCode')) ||
-            (await trySoql('CompanyInfo', 'CurrencyIsoCode')) ||
-            (await trySoql('CompanyInfo', 'DefaultCurrencyIsoCode'))
-          );
-        } catch {
-          return null;
-        }
-      };
-
-      // Additional fallback: corporate currency via CurrencyType (often available even when Organization/User are restricted).
-      const fetchCorporateCurrencyIsoCode = async (): Promise<string | null> => {
-        try {
-          const soql = `SELECT IsoCode FROM CurrencyType WHERE IsCorporate = true LIMIT 1`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) return null;
-          const rec = Array.isArray(json?.records) ? json.records[0] : null;
-          const cur = rec?.IsoCode ? String(rec.IsoCode).trim().toUpperCase() : null;
-          return cur || null;
-        } catch {
-          return null;
-        }
-      };
-
-      // Fallback: query the connected user's CurrencyIsoCode (userinfo often returns user_id as a URL; extract the User Id).
-      const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
-        try {
-          const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-          const uiResp = await fetchWithTimeout(`${authBase}/services/oauth2/userinfo`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          const uiJson: any = await uiResp.json().catch(() => ({}));
-          if (!uiResp.ok) return null;
-          const userIdRaw = uiJson?.user_id || uiJson?.userId || null;
-          if (!userIdRaw) return null;
-          const userIdStr = String(userIdRaw);
-          const userId = userIdStr.includes('/') ? userIdStr.split('/').filter(Boolean).slice(-1)[0] : userIdStr;
-          if (!userId) return null;
-          const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) return null;
-          const rec = Array.isArray(json?.records) ? json.records[0] : null;
-          const cur = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim().toUpperCase() : null;
-          return cur || null;
-        } catch {
-          return null;
-        }
-      };
-
       const fetched = await fetchOppRecords(true);
       // If fetchOppRecords returned an Express response (error), stop here.
       if (!fetched || typeof (fetched as any).includeCurrency !== 'boolean') return;
@@ -17731,40 +17661,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Only enforce currency homogeneity when CurrencyIsoCode exists in the org.
-      if (currencies.size > 1) {
-        return res.status(400).json({
-          error: `Multiple currencies found for the selected opportunities (${Array.from(currencies).join(', ')}). Please filter Salesforce records to a single currency.`,
-          currencies: Array.from(currencies),
-        });
-      }
-      if (!includeCurrency && currencies.size === 0) {
-        const orgCur = await fetchOrgDefaultCurrency();
-        if (orgCur) currencies.add(orgCur);
-        if (!orgCur) {
-          const corpCur = await fetchCorporateCurrencyIsoCode();
-          if (corpCur) currencies.add(corpCur);
-        }
-        if (currencies.size === 0) {
-          const userCur = await fetchUserCurrencyIsoCode();
-          if (userCur) currencies.add(userCur);
-        }
-      }
-
-      // Enterprise accuracy: never silently assume Salesforce currency equals campaign currency.
-      // If we can determine Salesforce currency and it differs from the campaign currency, fail fast with a clear message.
-      // UI may provide an explicit override when Salesforce currency cannot be detected from the API response.
       const overrideCur = salesforceCurrencyOverride ? String(salesforceCurrencyOverride).trim().toUpperCase() : '';
-      const sfCurFromApi = currencies.size === 1 ? Array.from(currencies)[0].toUpperCase() : '';
-      // Keep override support for backwards compatibility, but the UI no longer depends on it.
-      const sfCurrency = sfCurFromApi || overrideCur;
-      if (sfCurrency && campaignCurrency && sfCurrency !== campaignCurrency) {
-        return res.status(400).json({
-          error: `Currency mismatch: Salesforce Opportunities are in ${sfCurrency}, but this campaign is set to ${campaignCurrency}. Please align currencies (change campaign currency or import Opportunities in the campaign currency).`,
-          salesforceCurrency: sfCurrency,
-          campaignCurrency,
-        });
+      const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+      const currencyDetection = await detectSalesforceCurrency({
+        accessToken,
+        instanceUrl,
+        apiVersion: version,
+        authBase,
+        currenciesFromRecords: currencies,
+        fetchImpl: ((url, options) => fetchWithTimeout(String(url), options)) as typeof fetch,
+      });
+      const currencyValidation = validateSalesforceRevenueCurrency({
+        currencies: currencyDetection.detectedCurrencies,
+        campaignCurrency,
+        overrideCurrency: overrideCur,
+      });
+      if (!currencyValidation.ok) {
+        return res.status(400).json(currencyValidation);
       }
+      const sfCurrency = currencyValidation.currency;
 
       // If Salesforce is being used as a LinkedIn conversion-value source, compute and persist conversion value directly
       // (do NOT derive it from revenue/conversions, and do not materialize revenue records).
@@ -17803,7 +17718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             valueSource: 'conversion_value',
             days: rangeDays,
             dateField: dateFieldChoice,
-            currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+            currency: sfCurrency,
             revenueClassification: rc,
             lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           };
@@ -17817,7 +17732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sourceType: "salesforce",
             platformContext: platformCtx,
             displayName: `Salesforce (Opportunities)`,
-            currency: campaignCurrency,
+            currency: sfCurrency,
             mappingConfig: JSON.stringify({
               provider: "salesforce",
               platformContext: platformCtx,
@@ -17848,7 +17763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValue: convValue,
           totalRevenue: Number(totalRevenue.toFixed(2)),
           totalConversions: 0,
-          currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          currency: sfCurrency,
           sessionId: latestSession?.id || null,
         });
       }
@@ -17915,7 +17830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValueField: null,
           valueSource: 'revenue',
           days: rangeDays,
-          currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          currency: sfCurrency,
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           pipelineEnabled: !!pipelineEnabled,
@@ -18021,7 +17936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it.
-      const cur = campaignCurrency;
+      const cur = sfCurrency;
       let materializedRecordCount = 0;
 
       const normalizedMapping = {
@@ -18161,7 +18076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversionValue: calculatedConversionValue ?? 0,
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalConversions: totalConversions ?? 0,
-        currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        currency: sfCurrency,
         materializedRecordCount,
         materializedDates,
         unmatchedSelectedValues,

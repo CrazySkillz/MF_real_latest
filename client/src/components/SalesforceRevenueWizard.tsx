@@ -349,6 +349,9 @@ export function SalesforceRevenueWizard(props: {
     setPreviewRows([]);
     setPreviewTotalRevenue(null);
     setPreviewKey(null);
+    setPreviewCampaignCurrency(null);
+    setPreviewDetectedCurrency(null);
+    setPreviewCurrencyMismatch(false);
     setPipelinePreviewHeaders([]);
     setPipelinePreviewRows([]);
     setPreviewError(null);
@@ -888,10 +891,12 @@ export function SalesforceRevenueWizard(props: {
   }, [previewDetectedCurrency]);
 
   const effectiveCurrencyMismatch = useMemo(() => {
+    if (previewKey !== reviewPreviewKey) return false;
     if (!previewCampaignCurrency) return false;
     if (!effectiveSalesforceCurrency) return false;
     return String(previewCampaignCurrency).toUpperCase() !== String(effectiveSalesforceCurrency).toUpperCase();
-  }, [previewCampaignCurrency, effectiveSalesforceCurrency]);
+  }, [previewCampaignCurrency, effectiveSalesforceCurrency, previewKey, reviewPreviewKey]);
+  const effectiveCurrencyUnknown = previewKey === reviewPreviewKey && !!previewCampaignCurrency && !effectiveSalesforceCurrency;
 
   const save = async () => {
     setIsSaving(true);
@@ -1572,6 +1577,11 @@ export function SalesforceRevenueWizard(props: {
                   Currency mismatch: campaign <strong>{previewCampaignCurrency}</strong> · Salesforce <strong>{effectiveSalesforceCurrency}</strong> — please align currencies before saving.
                 </div>
               )}
+              {effectiveCurrencyUnknown && (
+                <div className="text-xs text-amber-700">
+                  Salesforce currency could not be verified. Confirm the Salesforce organization currency before saving.
+                </div>
+              )}
 
               {previewError && <div className="text-sm text-red-600">{previewError}</div>}
               {saveError && <div className="text-sm text-red-600">{saveError}</div>}
@@ -1607,7 +1617,7 @@ export function SalesforceRevenueWizard(props: {
                   (step === "crosswalk" && selectedValues.length === 0) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
-                  (step === "review" && effectiveCurrencyMismatch) ||
+                  (step === "review" && (previewLoading || previewKey !== reviewPreviewKey || !previewCampaignCurrency || effectiveCurrencyUnknown || effectiveCurrencyMismatch)) ||
                   (step === "review" && mode === "edit" && !canUpdateRevenue)
                 }
               >

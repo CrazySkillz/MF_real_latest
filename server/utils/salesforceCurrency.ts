@@ -20,12 +20,54 @@ export type DetectSalesforceCurrencyResult = {
   debugSteps?: DebugStep[];
 };
 
+export type SalesforceRevenueCurrencyValidation =
+  | { ok: true; currency: string }
+  | { ok: false; code: string; error: string; currencies?: string[]; salesforceCurrency?: string; campaignCurrency: string };
+
 const DEFAULT_AUTH_BASE = 'https://login.salesforce.com';
 const SANDBOX_AUTH_BASE = 'https://test.salesforce.com';
 
 function normCurrency(v: unknown): string | null {
   const s = String(v ?? '').trim().toUpperCase();
   return s ? s : null;
+}
+
+export function validateSalesforceRevenueCurrency(args: {
+  currencies: Iterable<unknown>;
+  campaignCurrency: unknown;
+  overrideCurrency?: unknown;
+}): SalesforceRevenueCurrencyValidation {
+  const campaignCurrency = normCurrency(args.campaignCurrency) || '';
+  const currencies = Array.from(new Set(Array.from(args.currencies).map(normCurrency).filter(Boolean) as string[]));
+  if (currencies.length > 1) {
+    return {
+      ok: false,
+      code: 'SALESFORCE_MULTIPLE_CURRENCIES',
+      error: `Multiple currencies found for the selected opportunities (${currencies.join(', ')}). Please filter Salesforce records to a single currency.`,
+      currencies,
+      campaignCurrency,
+    };
+  }
+
+  const salesforceCurrency = currencies[0] || normCurrency(args.overrideCurrency);
+  if (!salesforceCurrency) {
+    return {
+      ok: false,
+      code: 'SALESFORCE_CURRENCY_UNDETERMINED',
+      error: 'Unable to determine Salesforce currency. Confirm the Salesforce organization currency and try again.',
+      campaignCurrency,
+    };
+  }
+  if (!campaignCurrency || salesforceCurrency !== campaignCurrency) {
+    return {
+      ok: false,
+      code: 'SALESFORCE_CURRENCY_MISMATCH',
+      error: `Currency mismatch: Salesforce Opportunities are in ${salesforceCurrency}, but this campaign is set to ${campaignCurrency || 'an unknown currency'}. Please align currencies (change campaign currency or import Opportunities in the campaign currency).`,
+      salesforceCurrency,
+      campaignCurrency,
+    };
+  }
+  return { ok: true, currency: salesforceCurrency };
 }
 
 async function soqlQuery(fetchImpl: typeof fetch, args: { instanceUrl: string; apiVersion: string; accessToken: string; soql: string }) {

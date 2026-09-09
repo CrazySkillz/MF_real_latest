@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectSalesforceCurrency } from "./salesforceCurrency";
+import { detectSalesforceCurrency, validateSalesforceRevenueCurrency } from "./salesforceCurrency";
 
 function makeFetch(routes: Record<string, { status: number; body: any }>) {
   return (async (url: any) => {
@@ -156,6 +156,40 @@ describe("detectSalesforceCurrency", () => {
     });
 
     expect(res.detectedCurrency).toBe("USD");
+  });
+});
+
+describe("validateSalesforceRevenueCurrency", () => {
+  it("accepts a single Salesforce currency matching the campaign", () => {
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(["usd"]), campaignCurrency: "USD" }))
+      .toEqual({ ok: true, currency: "USD" });
+  });
+
+  it("rejects unknown Salesforce currency", () => {
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(), campaignCurrency: "USD" }))
+      .toMatchObject({ ok: false, code: "SALESFORCE_CURRENCY_UNDETERMINED" });
+  });
+
+  it("rejects mixed Salesforce currencies", () => {
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(["USD", "EUR"]), campaignCurrency: "USD" }))
+      .toMatchObject({ ok: false, code: "SALESFORCE_MULTIPLE_CURRENCIES", currencies: ["USD", "EUR"] });
+  });
+
+  it("rejects a Salesforce currency that differs from the campaign", () => {
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(["EUR"]), campaignCurrency: "USD" }))
+      .toMatchObject({ ok: false, code: "SALESFORCE_CURRENCY_MISMATCH", salesforceCurrency: "EUR", campaignCurrency: "USD" });
+  });
+
+  it("keeps the explicit backwards-compatible override fail-closed against campaign currency", () => {
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(), campaignCurrency: "USD", overrideCurrency: "USD" }))
+      .toEqual({ ok: true, currency: "USD" });
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(), campaignCurrency: "USD", overrideCurrency: "EUR" }))
+      .toMatchObject({ ok: false, code: "SALESFORCE_CURRENCY_MISMATCH" });
+  });
+
+  it("keeps the provider-detected currency authoritative over an override", () => {
+    expect(validateSalesforceRevenueCurrency({ currencies: new Set(["USD"]), campaignCurrency: "USD", overrideCurrency: "EUR" }))
+      .toEqual({ ok: true, currency: "USD" });
   });
 });
 

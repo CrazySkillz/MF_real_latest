@@ -589,6 +589,19 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).not.toContain('order${Number(row.orderCount) === 1 ? "" : "s"}');
   });
 
+  it("shows each selected Shopify-to-GA4 campaign mapping in Review", () => {
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+    const review = routeSection(
+      wizard,
+      '{step === "review" && (\n            <div className="space-y-3 text-sm text-foreground/80">',
+      '{step === "complete" && (\n            <div className="space-y-3">',
+    );
+
+    expect(review).toContain("GA4 campaign mapping:");
+    expect(review).toContain("selectedValues.map((value)");
+    expect(review).toContain('mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "No campaign mapping"');
+  });
+
   it("uses exact mapped revenue in the LinkedIn campaign breakdown", () => {
     const routes = read(ROUTES_FILE);
     const linkedinAnalytics = read(LINKEDIN_ANALYTICS_FILE);

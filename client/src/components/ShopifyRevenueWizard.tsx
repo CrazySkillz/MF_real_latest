@@ -979,6 +979,17 @@ export function ShopifyRevenueWizard(props: {
                 <strong>Shopify campaign{selectedValues.length === 1 ? "" : "s"}:</strong>{" "}
                 {selectedValues.length === 0 ? "—" : selectedValues.length <= 3 ? selectedValues.join(", ") : `${selectedValues.slice(0, 3).join(", ")} + ${selectedValues.length - 3} more`}
               </div>
+              {isGA4 && selectedValues.length > 0 && (
+                <div>
+                  <strong>GA4 campaign mapping:</strong>
+                  <div className="mt-1 space-y-1">
+                    {selectedValues.map((value) => {
+                      const mapping = campaignMappings.find((item) => String(item.crmValue || "").trim() === value);
+                      return <div key={value}>{value} → {mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "No campaign mapping"}</div>;
+                    })}
+                  </div>
+                </div>
+              )}
               <div>
                 <strong>Revenue metric:</strong> Current total price after adjustments
               </div>

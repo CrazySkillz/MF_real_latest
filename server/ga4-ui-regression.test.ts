@@ -258,6 +258,9 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateOverviewTotals)");
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
     expect(ga4Metrics).toContain("const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;");
+    expect(ga4Metrics).toContain("const ga4NativeRevenueContributes = ga4HasRevenueMetric && ga4RevenueForFinancials !== 0;");
+    expect(ga4Metrics).toContain("const revenueSourcesCount = revenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");
+    expect(ga4Metrics).toContain("{ga4NativeRevenueContributes && (");
     expect(ga4Metrics.indexOf("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);")).toBeLessThan(
       ga4Metrics.indexOf("const revenueMetricAvailable = useMemo(() => {")
     );

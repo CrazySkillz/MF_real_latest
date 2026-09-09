@@ -2607,6 +2607,7 @@ export default function GA4Metrics() {
     : ga4ToDateResp !== undefined || (!ga4DailyPlaceholder && ga4DailyRows.length > 0) || (!breakdownPlaceholder && hasBreakdownOverviewResponse);
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;
+  const ga4NativeRevenueContributes = ga4HasRevenueMetric && ga4RevenueForFinancials !== 0;
 
   const revenueMetricAvailable = useMemo(() => {
     // Revenue-dependent KPIs, Benchmarks, and Insights must follow the same GA4
@@ -2732,7 +2733,7 @@ export default function GA4Metrics() {
   }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
-  const revenueSourcesCount = revenueDisplaySources.length + (ga4HasRevenueMetric ? 1 : 0);
+  const revenueSourcesCount = revenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
   const hasPipelineProxy = !!pipelineProxyData?.success;
   const pipelineProxyConfigured = configuredPipelineSourceTypes.size > 0;
@@ -6704,7 +6705,7 @@ export default function GA4Metrics() {
                         {revenueSourcesUnavailable && (
                           <div className="text-sm text-destructive">Revenue sources are unavailable. Refresh the page to try again.</div>
                         )}
-                        {ga4HasRevenueMetric && (
+                        {ga4NativeRevenueContributes && (
                           <div className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
                             <div>
                               <p className="font-medium text-foreground">GA4 Revenue</p>

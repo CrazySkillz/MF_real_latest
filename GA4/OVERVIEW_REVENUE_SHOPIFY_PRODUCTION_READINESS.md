@@ -123,7 +123,7 @@ The functional and readiness docs for Reports, KPI, Benchmark, notifications, sc
 - destructive cleanup of production data
 - real provider, dormant OAuth, inbox, and deployed-database assertions that cannot be proven from local code
 
-The wizard now presents OAuth only when the server confirms a client ID, client secret, redirect URI, and required scopes. Otherwise it presents only the supported Admin API token path. Dormant, incompletely configured OAuth is excluded from the visible production scope; if OAuth is configured later, its provider callback becomes an external validation gate before that path can inherit certification.
+The wizard now always presents both OAuth and Admin API token radio options so the connection methods do not disappear based on deployment state. OAuth remains fail-closed: when the server does not confirm a client ID, client secret, redirect URI, and required scopes, the UI shows that OAuth is unavailable and disables its connect action. If OAuth is configured later, its provider callback becomes an external validation gate before that path can inherit certification.
 
 ## Provider And Query Contract
 
@@ -210,7 +210,7 @@ Findings:
 - **Partially proven:** HMAC comparison is timing-safe, but exact encoding parity with Shopify is not covered by a callback fixture test.
 - **Partially proven:** token exchange now matches Shopify's documented form encoding, but no real exchange packet exists.
 - OAuth uses the same transactional connection replacement and rollback boundary as Admin-token connect.
-- OAuth is not presented when its server configuration is incomplete, so the current Admin-token-only deployment does not advertise this unverified path.
+- OAuth remains visibly distinguishable from the Admin-token path when its server configuration is incomplete, but its connect action is disabled with an explicit unavailable message so the unverified provider path cannot run accidentally.
 
 ### Campaign ownership and isolation
 

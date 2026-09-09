@@ -254,7 +254,7 @@ export function ShopifyRevenueWizard(props: {
     }
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
-    if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "oauth" && canUseOauth ? "oauth" : "token");
+    if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "oauth" ? "oauth" : "token");
     else setConnectMethod(canUseOauth ? "oauth" : "token");
     const serverDomain = isConnected ? String(json?.shopDomain || "") : "";
     setShopDomain((prev) => prev || serverDomain);
@@ -741,14 +741,10 @@ export function ShopifyRevenueWizard(props: {
                   <div>
                     Connect your Shopify store to import orders and map revenue to this campaign.
                   </div>
-                  <div>
-                    {oauthAvailable
-                      ? "Use OAuth or an Admin API token with order-reading access."
-                      : "Connect with an Admin API token that has order-reading access."}
-                  </div>
+                  <div>Choose OAuth or an Admin API token with order-reading access.</div>
                 </div>
 
-                {oauthAvailable ? <div className="space-y-2">
+                <div className="space-y-2">
                   <Label>Connection method</Label>
                   <RadioGroup value={connectMethod} onValueChange={(v: any) => setConnectMethod(v)} className="space-y-2">
                     <div className="flex items-start gap-2">
@@ -764,12 +760,12 @@ export function ShopifyRevenueWizard(props: {
                       </label>
                     </div>
                   </RadioGroup>
-                </div> : (
-                  <div className="space-y-1">
-                    <Label>Connection method</Label>
-                    <div className="text-sm font-medium">Admin API token</div>
-                  </div>
-                )}
+                  {connectMethod === "oauth" && !oauthAvailable && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
+                      OAuth is not configured for this deployment. Complete the Shopify OAuth setup before connecting.
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div className="space-y-1">
@@ -786,15 +782,15 @@ export function ShopifyRevenueWizard(props: {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => void (oauthAvailable && connectMethod === "oauth" ? openOAuthWindow() : connectWithToken())}
-                      disabled={isConnecting}
+                      onClick={() => void (connectMethod === "oauth" ? openOAuthWindow() : connectWithToken())}
+                      disabled={isConnecting || (connectMethod === "oauth" && !oauthAvailable)}
                     >
                       {isConnecting ? "Connecting…" : (connected ? "Reconnect / Change store" : "Connect Shopify")}
                     </Button>
                   </div>
                 </div>
 
-                {(!oauthAvailable || connectMethod === "token") && (
+                {connectMethod === "token" && (
                   <div className="space-y-1">
                     <Label htmlFor="shopify-admin-token">Admin API token (required)</Label>
                     <Input

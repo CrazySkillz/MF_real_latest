@@ -386,7 +386,7 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('authType = "token";');
   });
 
-  it("shows OAuth only when the server confirms a complete OAuth configuration", () => {
+  it("always shows both Shopify connection methods and blocks unconfigured OAuth safely", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
     const routes = read(ROUTES_FILE);
 
@@ -395,8 +395,14 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).toContain('await fetchStatus(mode === "edit");');
     expect(wizard).toContain('const [oauthAvailable, setOauthAvailable] = useState(false);');
     expect(wizard).toContain('setConnectMethod(canUseOauth ? "oauth" : "token");');
-    expect(wizard).toContain('{oauthAvailable ? <div className="space-y-2">');
-    expect(wizard).toContain('oauthAvailable && connectMethod === "oauth" ? openOAuthWindow() : connectWithToken()');
+    expect(wizard).toContain('<RadioGroupItem id="shopify-method-oauth" value="oauth" />');
+    expect(wizard).toContain('<RadioGroupItem id="shopify-method-token" value="token" />');
+    expect(wizard).not.toContain('{oauthAvailable ? <div className="space-y-2">');
+    expect(wizard).toContain('connectMethod === "oauth" ? openOAuthWindow() : connectWithToken()');
+    expect(wizard).toContain('disabled={isConnecting || (connectMethod === "oauth" && !oauthAvailable)}');
+    expect(wizard).toContain('OAuth is not configured for this deployment. Complete the Shopify OAuth setup before connecting.');
+    expect(wizard).toContain('{connectMethod === "token" && (');
+    expect(wizard).toContain('String(json?.authType || "").toLowerCase() === "oauth" ? "oauth" : "token"');
     expect(routes).toContain('const isShopifyOauthAvailable = (): boolean =>');
     expect(routes).toContain('oauthAvailable: isShopifyOauthAvailable()');
     expect(wizard).not.toContain("Shopify doesn’t store LinkedIn campaign ids directly by default");

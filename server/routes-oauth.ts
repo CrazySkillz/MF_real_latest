@@ -10,7 +10,7 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWind
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { GA4_KPI_ACTIVE_METRIC_CONFLICT } from "./utils/ga4-kpi-create-guard";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
-import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -11166,7 +11166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tokenResp = await fetch(`https://${shop}/admin/oauth/access_token`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-        body: new URLSearchParams({ client_id: clientId, client_secret: secret, code }),
+        body: new URLSearchParams({ client_id: clientId, client_secret: secret, code, expiring: "1" }),
       });
       const tokenJson: any = await tokenResp.json().catch(() => ({}));
       if (!tokenResp.ok || !tokenJson?.access_token) {
@@ -11179,7 +11179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: String(msg),
         });
       }
-      const accessToken = String(tokenJson.access_token);
+      const offlineToken = parseShopifyExpiringOfflineToken(tokenJson);
+      const accessToken = offlineToken.accessToken;
       // Shopify returns the granted scopes as a comma-separated string in the token exchange response.
       // Store this so we can debug scope issues even when /oauth/access_scopes.json is not supported.
       const grantedScopesRaw = tokenJson?.scope ? String(tokenJson.scope) : "";
@@ -11200,6 +11201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         grantedScopesList,
         requestedApiVersion: apiVersion,
         effectiveApiVersion,
+        accessTokenExpiresAt: offlineToken.accessTokenExpiresAt,
+        refreshTokenExpiresAt: offlineToken.refreshTokenExpiresAt,
+        tokenUpdatedAt: new Date().toISOString(),
         connectedAt: new Date().toISOString(),
       });
       const created = await storage.replaceShopifyConnection({
@@ -11207,6 +11211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shopDomain: shop,
         shopName,
         accessToken,
+        refreshToken: offlineToken.refreshToken,
         isActive: true,
         mappingConfig,
       } as any);
@@ -34035,12 +34040,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .filter(Boolean);
   };
 
+  const shopifyOauthTokenRefreshes = new Map<string, Promise<any>>();
   const getShopifyConnectionForCampaign = async (campaignId: string) => {
     const conn: any = await storage.getShopifyConnection(campaignId);
     if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
       throw new Error("No active Shopify connection found for this campaign.");
     }
-    return conn as any;
+    let config: any = {};
+    try { config = conn.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : {}; } catch { config = {}; }
+    if (String(config?.authType || '').toLowerCase() !== 'oauth') return conn;
+
+    const expiresAt = Date.parse(String(config?.accessTokenExpiresAt || ''));
+    if (Number.isFinite(expiresAt) && expiresAt > Date.now() + 5 * 60 * 1000) return conn;
+    const connectionId = String(conn.id || '');
+    if (!connectionId) throw new Error('Shopify OAuth connection identity is missing');
+    const inFlight = shopifyOauthTokenRefreshes.get(connectionId);
+    if (inFlight) return await inFlight;
+
+    const refreshPromise = (async () => {
+      const latest: any = await storage.getShopifyConnection(campaignId);
+      if (!latest || String(latest.id || '') !== connectionId || !latest.isActive
+        || String(latest.shopDomain || '') !== String(conn.shopDomain || '')) {
+        throw new Error('Shopify OAuth connection changed during token refresh');
+      }
+      let latestConfig: any = {};
+      try { latestConfig = latest.mappingConfig ? JSON.parse(String(latest.mappingConfig)) : {}; } catch { latestConfig = {}; }
+      const latestExpiresAt = Date.parse(String(latestConfig?.accessTokenExpiresAt || ''));
+      if (Number.isFinite(latestExpiresAt) && latestExpiresAt > Date.now() + 5 * 60 * 1000) return latest;
+
+      const clientId = String(process.env.SHOPIFY_CLIENT_ID || '').trim();
+      const clientSecret = String(process.env.SHOPIFY_CLIENT_SECRET || '').trim();
+      if (!clientId || !clientSecret) throw new Error('Shopify OAuth credentials are not configured');
+      if (!latest.refreshToken) {
+        throw new Error('This Shopify OAuth connection must be reconnected once to enable renewable access.');
+      }
+      const refreshExpiresAt = Date.parse(String(latestConfig?.refreshTokenExpiresAt || ''));
+      if (Number.isFinite(refreshExpiresAt) && refreshExpiresAt <= Date.now()) {
+        throw new Error('Shopify OAuth refresh token expired. Reconnect Shopify.');
+      }
+
+      let token;
+      try {
+        token = await refreshShopifyOfflineAccessToken({
+          shopDomain: latest.shopDomain,
+          clientId,
+          clientSecret,
+          refreshToken: latest.refreshToken,
+        });
+      } catch (error: any) {
+        console.error('[Shopify OAuth] Token renewal failed', { connectionId, status: error?.status || null });
+        throw new Error('Shopify OAuth credentials could not be renewed. Reconnect Shopify.');
+      }
+
+      const grantedScopesRaw = token.scope || String(latestConfig?.grantedScopes || '');
+      const grantedScopesList = grantedScopesRaw
+        ? grantedScopesRaw.split(',').map((scope: string) => scope.trim()).filter(Boolean)
+        : Array.isArray(latestConfig?.grantedScopesList) ? latestConfig.grantedScopesList.map(String) : [];
+      requireShopifyOrderScope(grantedScopesList);
+      const nextConfig = {
+        ...latestConfig,
+        authType: 'oauth',
+        grantedScopes: grantedScopesRaw,
+        grantedScopesList,
+        accessTokenExpiresAt: token.accessTokenExpiresAt,
+        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+        tokenUpdatedAt: new Date().toISOString(),
+      };
+      const updated: any = await storage.updateShopifyConnection(connectionId, {
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+        mappingConfig: JSON.stringify(nextConfig),
+      } as any);
+      if (!updated?.accessToken || !updated?.refreshToken) throw new Error('Failed to persist renewed Shopify OAuth credentials');
+      return updated;
+    })();
+    shopifyOauthTokenRefreshes.set(connectionId, refreshPromise);
+    try {
+      return await refreshPromise;
+    } finally {
+      if (shopifyOauthTokenRefreshes.get(connectionId) === refreshPromise) shopifyOauthTokenRefreshes.delete(connectionId);
+    }
   };
 
   /**
@@ -34884,6 +34963,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(Array.isArray(existingConnConfig?.grantedScopesList)
             ? { grantedScopesList: existingConnConfig.grantedScopesList }
             : {}),
+          ...(existingConnConfig?.accessTokenExpiresAt ? { accessTokenExpiresAt: existingConnConfig.accessTokenExpiresAt } : {}),
+          ...(existingConnConfig?.refreshTokenExpiresAt ? { refreshTokenExpiresAt: existingConnConfig.refreshTokenExpiresAt } : {}),
+          ...(existingConnConfig?.tokenUpdatedAt ? { tokenUpdatedAt: existingConnConfig.tokenUpdatedAt } : {}),
           ...(existingConnConfig?.connectedAt ? { connectedAt: existingConnConfig.connectedAt } : {}),
           objectType: "orders",
           platformContext: platformCtx,

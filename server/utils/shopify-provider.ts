@@ -67,6 +67,74 @@ export function validateShopifyOauthState(
   if (stored.shopDomain !== expected.shopDomain) throw new Error('OAuth shop mismatch');
 }
 
+export type ShopifyExpiringOfflineToken = {
+  accessToken: string;
+  refreshToken: string;
+  scope: string;
+  accessTokenExpiresAt: string;
+  refreshTokenExpiresAt: string;
+};
+
+export function parseShopifyExpiringOfflineToken(payload: any, issuedAt = Date.now()): ShopifyExpiringOfflineToken {
+  const accessToken = String(payload?.access_token || '').trim();
+  const refreshToken = String(payload?.refresh_token || '').trim();
+  const expiresIn = Number(payload?.expires_in);
+  const refreshTokenExpiresIn = Number(payload?.refresh_token_expires_in);
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn) || expiresIn <= 0
+    || !Number.isFinite(refreshTokenExpiresIn) || refreshTokenExpiresIn <= 0) {
+    throw new Error('Shopify returned an incomplete expiring offline token');
+  }
+  return {
+    accessToken,
+    refreshToken,
+    scope: String(payload?.scope || '').trim(),
+    accessTokenExpiresAt: new Date(issuedAt + expiresIn * 1000).toISOString(),
+    refreshTokenExpiresAt: new Date(issuedAt + refreshTokenExpiresIn * 1000).toISOString(),
+  };
+}
+
+async function requestShopifyExpiringOfflineToken(args: {
+  shopDomain: string;
+  body: URLSearchParams;
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+}): Promise<ShopifyExpiringOfflineToken> {
+  const shopDomain = normalizeShopifyDomain(args.shopDomain);
+  if (!shopDomain) throw new Error('Invalid Shopify shop domain');
+  const response = await (args.fetchImpl || fetch)(`https://${shopDomain}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: args.body,
+    signal: AbortSignal.timeout(30000),
+  });
+  const json: any = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error: any = new Error(String(json?.error_description || json?.error || `Shopify token request failed (HTTP ${response.status})`));
+    error.status = response.status;
+    throw error;
+  }
+  return parseShopifyExpiringOfflineToken(json, (args.now || Date.now)());
+}
+
+export async function refreshShopifyOfflineAccessToken(args: {
+  shopDomain: string;
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+}): Promise<ShopifyExpiringOfflineToken> {
+  return requestShopifyExpiringOfflineToken({
+    ...args,
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: args.clientId,
+      client_secret: args.clientSecret,
+      refresh_token: args.refreshToken,
+    }),
+  });
+}
+
 const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 export async function shopifyAdminFetch(args: {

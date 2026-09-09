@@ -40,18 +40,35 @@ const mocks = vi.hoisted(() => {
       throw error;
     }
   });
-  return { original, state, tx, db: { transaction } };
+  const db = {
+    transaction,
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({ where: vi.fn(async () => state.connections) })),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn((values: any) => ({
+        where: vi.fn(() => ({
+          returning: vi.fn(async () => {
+            state.connections = state.connections.map(connection => ({ ...connection, ...values }));
+            return state.connections;
+          }),
+        })),
+      })),
+    })),
+  };
+  return { original, state, tx, db };
 });
 
 vi.mock('./db', () => ({ db: mocks.db, pool: null }));
 
 import { DatabaseStorage } from './storage';
 
-const replace = (shopDomain = 'new.myshopify.com') => new DatabaseStorage().replaceShopifyConnection({
+const replace = (shopDomain = 'new.myshopify.com', refreshToken?: string) => new DatabaseStorage().replaceShopifyConnection({
   campaignId: 'campaign-1',
   shopDomain,
   shopName: 'New store',
   accessToken: 'new-token',
+  ...(refreshToken ? { refreshToken } : {}),
   isActive: true,
   mappingConfig: '{"authType":"token"}',
 } as any);
@@ -93,5 +110,33 @@ describe('Shopify connection replacement transaction', () => {
     await expect(replace('OLD.MYSHOPIFY.COM')).resolves.toMatchObject({ id: 'new-connection' });
     expect(mocks.state.connections[0].isActive).toBe(false);
     expect(mocks.state.connections[1].isActive).toBe(true);
+  });
+
+  it('encrypts an OAuth refresh token without adding an undeclared plaintext column', async () => {
+    mocks.state.failInsert = false;
+    await expect(replace('new.myshopify.com', 'new-refresh-token')).resolves.toMatchObject({
+      accessToken: 'new-token', refreshToken: 'new-refresh-token',
+    });
+    expect(mocks.state.connections[1].refreshToken).toBeUndefined();
+    expect(mocks.state.connections[1].encryptedTokens?.refreshToken).toBeTruthy();
+  });
+
+  it('rotates the OAuth access and refresh token together', async () => {
+    mocks.state.failInsert = false;
+    const created = await replace('new.myshopify.com', 'old-refresh-token');
+    mocks.state.connections = [mocks.state.connections[1]];
+
+    await expect(new DatabaseStorage().updateShopifyConnection(created.id, {
+      accessToken: 'rotated-access-token',
+      refreshToken: 'rotated-refresh-token',
+      mappingConfig: '{"authType":"oauth","accessTokenExpiresAt":"2026-09-10T00:00:00.000Z"}',
+    } as any)).resolves.toMatchObject({
+      accessToken: 'rotated-access-token',
+      refreshToken: 'rotated-refresh-token',
+    });
+    expect(mocks.state.connections[0].accessToken).toBeNull();
+    expect(mocks.state.connections[0].refreshToken).toBeUndefined();
+    expect(mocks.state.connections[0].encryptedTokens?.accessToken).toBeTruthy();
+    expect(mocks.state.connections[0].encryptedTokens?.refreshToken).toBeTruthy();
   });
 });

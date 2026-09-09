@@ -137,7 +137,7 @@ Important meaning:
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md` states the current decision and active gates; its evidence and history companion ledgers preserve the detailed record
 - `GA4/FINANCIAL_SOURCES.md` explains the underlying revenue/spend source system that feeds Overview and other GA4 tabs
 - HubSpot-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; H10d is historical, and the three exact enabled source IDs are clean-certified inside the recorded Overview boundary.
-- Shopify-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`; current readiness is unverified pending deployed same-day card/source parity, while dormant OAuth, non-GA4 sources, and future stores remain excluded.
+- Shopify-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`; current readiness is unverified pending deployed same-day card/source parity and the corrected OAuth expiring-token provider read/renewal gates, while non-GA4 sources and future stores remain excluded.
 
 Why this file is separate:
 

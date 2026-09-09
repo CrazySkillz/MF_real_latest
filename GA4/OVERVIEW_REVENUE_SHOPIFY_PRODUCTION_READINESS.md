@@ -14,6 +14,17 @@ for default imported-revenue totals and provenance while retaining the
 completed-day cap for explicit historical `endDate` comparisons. Deployed
 card/source parity is still required before restoring a readiness claim.
 
+On 2026-09-09, a real OAuth authorization completed and persisted the expected
+shop, `authType = oauth`, and `read_orders` scope. The subsequent provider read
+first exposed the protected-customer-data gate and, after that configuration
+was selected, Shopify rejected the stored non-expiring offline token. The
+current local correction requests expiring offline tokens, stores the returned
+access/refresh pair encrypted with their provider lifetimes, and rotates the
+pair before access-token expiry. The previously issued legacy token is not
+silently migrated because Shopify documents that operation as irreversible;
+that connection must be explicitly reauthorized once after deployment. A
+successful deployed provider read and a later deployed renewal remain required.
+
 Current review traced add, edit, exact-attribution preview,
 explicit refresh, scheduler refresh, exact-source delete, full disconnect,
 currency parity, totals, and no-cleanup inventory behavior. Deployed validation
@@ -42,7 +53,7 @@ The current honest answer is:
 
 - Shopify Revenue's documented local lifecycle and downstream matrix remains implemented and locally regression-covered, including the new bounded-wait guards.
 - The Admin API token path has historical bounded deployed evidence, including an exact-source provider-authoritative zero-match refresh.
-- The bounded-wait, `Refresh from Shopify`, development-store validation, stable-source scheduler refresh, and USD total paths are deployed and certified for the exact enabled source; dormant OAuth and other platforms' Shopify sources remain outside this scope.
+- The bounded-wait, `Refresh from Shopify`, development-store validation, stable-source scheduler refresh, and USD total paths have bounded evidence for the exact enabled Admin-token source. OAuth authorization has now been exercised, but expiring-token persistence, provider read, and renewal remain unverified until the current correction is deployed and tested; other platforms' Shopify sources remain outside this scope.
 - The inspected production source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` was inconsistent before repair. Shopify then returned zero current matches for the unchanged `utm_campaign = brand_search_q1` mapping, the user confirmed the scoped transactional repair, and the automatic post-repair inventory returned `shopifyLocalPersistencePass: true`. The exact expanded post-repair entity/finding packet was not retained in this audit record, so no broader production-data-health claim is made.
 - The first deployed Current Commit 9 inventory returned `crossCampaignPass: true` but `localPass: false` with three reported campaigns and three open scheduler failures. Exact source reads then proved two reports/alerts belonged to non-GA4 Shopify sources (`linkedin` and `meta`), which Current Commit 9.3 excluded without mutation. The exact GA4 test boundary was cleaned transactionally with `status: 200`, `success: true`, `cleanupApplied: true`, and `recomputeFailures: []`.
 - The independent post-cleanup owner-scoped inventory returned `ownerScopedBatchComplete: true`, `shopifyLocalPersistencePass: true`, `crossCampaignOrderOverlapPass: true`, `shopifyReadinessCandidatePass: true`, `openRefreshFailureCount: 0`, and `failedCampaigns: []`.
@@ -121,9 +132,9 @@ The functional and readiness docs for Reports, KPI, Benchmark, notifications, sc
 - HubSpot, Salesforce, Google Sheets, Upload CSV, spend sources, and other source families as evidence
 - LinkedIn/Meta/Google Ads/Instagram/TikTok Shopify revenue behavior except where shared code creates a GA4 risk
 - destructive cleanup of production data
-- real provider, dormant OAuth, inbox, and deployed-database assertions that cannot be proven from local code
+- deployed OAuth token rotation/provider reads, inbox, and deployed-database assertions that cannot be proven from local code
 
-The wizard now always presents both OAuth and Admin API token radio options so the connection methods do not disappear based on deployment state. OAuth remains fail-closed: when the server does not confirm a client ID, client secret, redirect URI, and an order-reading scope, the UI shows that OAuth is unavailable and disables its connect action. OAuth configuration, authorization, and callback persistence require `read_orders` (or implied `write_orders`) but not `read_all_orders`; the separate provider-window guard still rejects any order read older than 60 days without `read_all_orders`. A real provider callback remains an external validation gate before that path can inherit certification.
+The wizard always presents both OAuth and Admin API token radio options so the connection methods do not disappear based on deployment state. OAuth remains fail-closed: when the server does not confirm a client ID, client secret, redirect URI, and an order-reading scope, the UI shows that OAuth is unavailable and disables its connect action. OAuth configuration, authorization, and callback persistence require `read_orders` (or implied `write_orders`) but not `read_all_orders`; the separate provider-window guard still rejects any order read older than 60 days without `read_all_orders`. The real callback is now evidenced, but the corrected expiring-token persistence/read/renewal path remains an external validation gate before OAuth can inherit certification.
 
 ## Provider And Query Contract
 
@@ -173,6 +184,7 @@ Official Shopify references used to validate provider semantics:
 - [Order resource](https://shopify.dev/docs/api/admin-rest/latest/resources/order): `status=any` includes all statuses; financial statuses include pending, authorized, partially paid, paid, partially refunded, refunded, and voided; `updated_at_min` is available.
 - [REST cursor pagination](https://shopify.dev/docs/api/admin-rest/usage/pagination): Link URLs must be followed unchanged, and Shopify recommends ordering a created-time range query by `created_at`.
 - [OAuth authorization-code grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant): callback validation includes nonce/session binding, valid HMAC, a validated `*.myshopify.com` hostname, and confirmation that required scopes were granted.
+- [Expiring offline token migration](https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens): authorization-code exchanges request `expiring=1`; access/refresh tokens and provider lifetimes must be stored, every refresh rotates the pair, and legacy cycling is irreversible.
 
 ## Authentication And Connection Boundaries
 
@@ -200,15 +212,16 @@ Current behavior:
 - OAuth start checks campaign access.
 - An in-memory nonce maps campaign ID, shop domain, initiating Clerk session ID, and creation time.
 - The callback consumes the nonce once and verifies campaign, canonical shop, initiating session, ten-minute TTL, and Shopify HMAC before exchanging the code.
-- Token exchange is form-encoded and the returned scope list must include `read_orders` or implied `write_orders` access. OAuth connection itself does not require `read_all_orders`; historical provider reads beyond 60 days remain separately guarded and fail closed without it.
-- The resulting token is stored through the same encrypted connection storage.
+- Token exchange is form-encoded with `expiring=1`; the response must contain an access token, refresh token, and both provider lifetime fields, and the returned scope list must include `read_orders` or implied `write_orders` access. OAuth connection itself does not require `read_all_orders`; historical provider reads beyond 60 days remain separately guarded and fail closed without it.
+- The access/refresh pair is stored through the same encrypted connection storage. Only non-secret expiry timestamps and scope metadata are stored in the mapping configuration.
+- OAuth reads renew the pair five minutes before access-token expiry, persist both rotated tokens together, and coalesce concurrent refreshes within one server process. An expired refresh token or legacy connection without a refresh token fails closed with an explicit reconnect requirement.
 
 Findings:
 
-- **Unproven provider path:** no current real OAuth connection/save packet exists.
-- Session, TTL, shop, campaign, scope, and one-time state wiring are proven locally by pure negative tests plus static route guards. Multi-instance routing and a real browser/provider callback remain unverified.
+- A real browser/provider callback and persisted OAuth connection are evidenced from 2026-09-09. The subsequent order read did not succeed: Shopify rejected the legacy non-expiring token after the protected-customer-data configuration issue was exposed.
+- Session, TTL, shop, campaign, scope, and one-time state wiring are proven locally by pure negative tests plus static route guards. Multi-instance callback and refresh coordination remain unverified.
 - **Partially proven:** HMAC comparison is timing-safe, but exact encoding parity with Shopify is not covered by a callback fixture test.
-- **Partially proven:** token exchange now matches Shopify's documented form encoding, but no real exchange packet exists.
+- **Partially proven:** the corrected exchange requests Shopify's documented expiring offline token and local tests cover response validation, encrypted pair persistence, and refresh rotation. A deployed expiring-token response, successful provider read, and subsequent renewal packet do not yet exist.
 - OAuth uses the same transactional connection replacement and rollback boundary as Admin-token connect.
 - OAuth remains visibly distinguishable from the Admin-token path when its server configuration is incomplete, but its connect action is disabled with an explicit unavailable message so the unverified provider path cannot run accidentally.
 
@@ -342,7 +355,7 @@ A structurally valid, completely paginated empty result is treated as authoritat
 | Lifecycle path | Current evidence | Status |
 |---|---|---|
 | Admin token connect | Campaign guard; canonical-host, scope, version, encryption-config and rollback tests; exact-store reconnect and provider read on 2026-07-14 | Proven for the inspected store/configuration; other stores and protected-data/scope changes remain unverified |
-| OAuth connect | Session/TTL/host/scope validators and current route trace | Dormant/excluded when configuration is incomplete; becomes an external provider gate if enabled |
+| OAuth connect | Session/TTL/host/scope validators, real callback/persistence evidence, and local expiring-token lifecycle tests | Callback completed; corrected expiring-token provider read and later renewal remain external gates |
 | Add/import | Provider-backed Admin-token connection; executable query, policy, date, currency, and transaction tests | Proven locally and bounded for the inspected store; latest provider audit must pass after deployment |
 | Edit/update | Explicit stable `sourceId`; transactional replacement and order-policy tests; confirmed zero-match repair of the exact damaged source | Proven for stable identity, atomic replacement, order-state convergence policy, and the inspected repair |
 | Delete/deactivate | Campaign/context-scoped transactional source+record delete | Proven locally for the source delete boundary; deployed packet was one campaign only |
@@ -447,7 +460,7 @@ What it does not prove:
 - real-provider duplicate IDs or later order edits
 - real rate-limit behavior or real pagination completeness; local bounded retry behavior is executable-tested
 - deployed currency/store behavior; no currency conversion is implemented or claimed
-- real OAuth callback/provider behavior; local session/TTL/hostname/scope validation is covered
+- deployed expiring-token provider read and renewal behavior; the real callback/persistence plus local session/TTL/hostname/scope/token-lifecycle paths are covered
 - deployed scheduler mutation and failure retention
 - Shopify-specific damaged-data health outside the one repaired campaign; that campaign's reported post-repair local invariant result is recorded separately below
 - full Campaign Breakdown, Ad Comparison, Campaign DeepDive, report variant, snapshot, alert-email, and notification lifecycle matrix
@@ -524,7 +537,7 @@ No campaign deletion, connected-store cleanup, unrelated source cleanup, or prov
 | Delivered report email closes report path | **One packet only.** It does not prove other variants/sends, snapshots, scheduler failure behavior, or current code after later shared-file changes. |
 | Second-campaign portability proves isolation | **Proven locally by the owner-scoped batch boundary.** Cross-campaign overlap uses store plus order identity, and equal IDs from different stores remain isolated. |
 | Clean source-damage inventory | **Proven for the complete owner-scoped GA4 boundary.** The first deployed response failed closed. Current Commit 9.3 excluded the proven LinkedIn/Meta sources, cleaned only the exact GA4 test boundary, and the post-cleanup response returned every required pass value, zero open refresh failures, and no failed campaigns. |
-| OAuth can remain excluded | **Yes until externally validated.** The wizard always shows OAuth, disables its action when server configuration is incomplete, and treats order-read access as sufficient to connect. A real callback, persisted OAuth connection, and in-scope provider read remain external gates. |
+| OAuth can remain excluded | **Yes until the corrected provider path is externally validated.** The wizard always shows OAuth, disables its action when server configuration is incomplete, and treats order-read access as sufficient to connect. The callback and persisted connection are evidenced; an expiring-token provider read and later renewal remain external gates. |
 | Normal wall-clock scheduling is optional | **Scheduler timing alone can remain external**, but source freshness, persisted run/failure identity, provider mutation, and last-good behavior are not optional for strict readiness. |
 
 ### Stale documents reconciled by Current Commit 8
@@ -552,6 +565,7 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 - canonical `*.myshopify.com` validation and same-store pagination-Link enforcement
 - OAuth campaign/shop/session/TTL/scope validators and one-time callback state consumption by current route trace
 - OAuth order-read validation at availability, authorization, and callback boundaries; the Admin API token path retains its visible-workflow scope guard, and `read_all_orders` remains required before order windows older than 60 days
+- OAuth expiring-token response validation, encrypted access/refresh-pair persistence, provider-lifetime storage, pre-expiry refresh, and rotated-pair persistence
 - transactional connection replacement with forced-insert rollback retention
 - supported requested/effective API-version enforcement on successful versioned responses
 - bounded two-attempt `429` retry with exact safe `Retry-After` handling
@@ -586,7 +600,7 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 
 ### Partially proven or excluded
 
-- OAuth HMAC/callback/token-exchange behavior until a real configured OAuth connection is completed
+- OAuth HMAC encoding parity, multi-instance refresh coordination, deployed expiring-token provider read, and deployed refresh-token rotation
 
 ### Unproven or broken within the enabled documented scope
 
@@ -596,7 +610,7 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 
 - deployment encryption-secret quality
 - current Shopify app scopes/protected-customer-data approval
-- dormant OAuth callback and token durability
+- OAuth token durability beyond the local lifecycle tests and pending deployed read/renewal evidence
 - provider conditions absent from the current production store, such as a live greater-than-250-order page or an actual 429; executable negative tests and persisted live counters cover the code path without manufacturing provider data
 - historical raw refund/cancellation/order-change lineage before the latest persisted state audit
 - current/future report provider acceptance and inbox delivery
@@ -974,4 +988,4 @@ The required certification conditions are satisfied:
 - Current Commit 9.3 is deployed and its response confirms successful cleanup of only the one documented GA4 campaign/source/connection set, with no recompute failure
 - the one-call owner-scoped batch returned `ownerScopedBatchComplete`, `shopifyLocalPersistencePass`, `crossCampaignOrderOverlapPass`, and `shopifyReadinessCandidatePass` as `true`, `openRefreshFailureCount` as `0`, and no failed campaigns
 
-Current exact-source evidence includes focused and adjacent regression validation, bounded provider requests, explicit provider-authoritative `Refresh from Shopify`, stable exact-source scheduler refresh, USD source/record parity, and `$99.99` source reconciliation. The current whole-tab certification retains that `$99.99` contribution inside Total Revenue `$72,766.69`; this does not broaden the Shopify source boundary. The user-facing action is `Refresh`, not `Repair`; backend atomic replacement and last-good retention are unchanged. No automatic cleanup is authorized. Dormant OAuth remains excluded.
+Current exact-source evidence includes focused and adjacent regression validation, bounded provider requests, explicit provider-authoritative `Refresh from Shopify`, stable exact-source scheduler refresh, USD source/record parity, and `$99.99` source reconciliation. The current whole-tab certification retains that `$99.99` contribution inside Total Revenue `$72,766.69`; this does not broaden the Shopify source boundary. The user-facing action is `Refresh`, not `Repair`; backend atomic replacement and last-good retention are unchanged. No automatic cleanup is authorized. OAuth remains excluded from certification pending the current working revision's deployed expiring-token provider read and later renewal gates.

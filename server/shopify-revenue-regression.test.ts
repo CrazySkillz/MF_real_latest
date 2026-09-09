@@ -435,6 +435,36 @@ describe("Shopify revenue regression guard", () => {
     expect(oauthStart).not.toContain("read_all_orders");
   });
 
+  it("uses renewable expiring offline tokens for Shopify OAuth without changing Admin token connections", () => {
+    const routes = read(ROUTES_FILE);
+    const oauthCallback = routeSection(
+      routes,
+      'app.get("/api/auth/shopify/callback"',
+      "// HubSpot OAuth callback",
+    );
+    const connectionResolver = routeSection(
+      routes,
+      "const shopifyOauthTokenRefreshes = new Map<string, Promise<any>>();",
+      "/**\n   * Auto-recalculate Shopify conversion value",
+    );
+    const adminConnect = routeSection(
+      routes,
+      'app.post("/api/shopify/connect"',
+      'app.get("/api/shopify/:campaignId/status"',
+    );
+
+    expect(oauthCallback).toContain('code, expiring: "1"');
+    expect(oauthCallback).toContain('parseShopifyExpiringOfflineToken(tokenJson)');
+    expect(oauthCallback).toContain('refreshToken: offlineToken.refreshToken');
+    expect(connectionResolver).toContain('refreshShopifyOfflineAccessToken({');
+    expect(connectionResolver).toContain('must be reconnected once to enable renewable access');
+    expect(connectionResolver).toContain('refreshToken: token.refreshToken');
+    expect(connectionResolver).toContain('accessTokenExpiresAt: token.accessTokenExpiresAt');
+    expect(connectionResolver).toContain('refreshTokenExpiresAt: token.refreshTokenExpiresAt');
+    expect(adminConnect).toContain('authType: "token"');
+    expect(adminConnect).not.toContain('refreshShopifyOfflineAccessToken');
+  });
+
   it("makes the required masked Admin API token input explicit and focuses it after invalid submission", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
 

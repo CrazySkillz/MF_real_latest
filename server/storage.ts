@@ -3046,7 +3046,10 @@ export class DatabaseStorage implements IStorage {
 
   async createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
     assertProductionTokenEncryptionConfigured();
-    const enc = buildEncryptedTokens({ accessToken: (connection as any).accessToken });
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+    });
     const connectionData: any = {
       ...connection,
       isActive: connection.isActive !== undefined ? connection.isActive : true,
@@ -3055,13 +3058,17 @@ export class DatabaseStorage implements IStorage {
       encryptedTokens: enc as any,
       mappingConfig: connection.mappingConfig || null,
     };
+    delete connectionData.refreshToken;
     const [created] = await db.insert(shopifyConnections).values(connectionData).returning();
     return hydrateDecryptedTokens(created) as any;
   }
 
   async replaceShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
     assertProductionTokenEncryptionConfigured();
-    const enc = buildEncryptedTokens({ accessToken: (connection as any).accessToken });
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+    });
     const connectionData: any = {
       ...connection,
       isActive: true,
@@ -3070,6 +3077,7 @@ export class DatabaseStorage implements IStorage {
       encryptedTokens: enc as any,
       mappingConfig: connection.mappingConfig || null,
     };
+    delete connectionData.refreshToken;
     return await db.transaction(async (tx: any) => {
       const activeSources = await tx
         .select({ id: revenueSources.id })
@@ -3113,14 +3121,17 @@ export class DatabaseStorage implements IStorage {
     if (!existing) return undefined;
 
     const tokenProvided = Object.prototype.hasOwnProperty.call(connection, "accessToken");
+    const refreshTokenProvided = Object.prototype.hasOwnProperty.call(connection, "refreshToken");
     const setObj: any = { ...connection };
-    if (tokenProvided || (existing as any).encryptedTokens) {
+    if (tokenProvided || refreshTokenProvided || (existing as any).encryptedTokens) {
       setObj.encryptedTokens = buildEncryptedTokens({
         accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
         prev: (existing as any).encryptedTokens,
       } as any);
       setObj.accessToken = null;
     }
+    delete setObj.refreshToken;
 
     const [updated] = await db
       .update(shopifyConnections)

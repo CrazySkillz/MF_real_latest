@@ -5,6 +5,8 @@ import {
   getShopifyApiVersion,
   isShopifyPartnerDevelopmentStore,
   normalizeShopifyDomain,
+  parseShopifyExpiringOfflineToken,
+  refreshShopifyOfflineAccessToken,
   requireShopifyOrderScope,
   requireShopifyOrderWindowScopes,
   requireShopifyRevenueScopes,
@@ -66,6 +68,33 @@ describe('Shopify provider hardening', () => {
     expect(() => validateShopifyOauthState(stored, { ...expected, sessionId: 'session-2' }, 1_500, 1_000)).toThrow('session mismatch');
     expect(() => validateShopifyOauthState(stored, { ...expected, shopDomain: 'other.myshopify.com' }, 1_500, 1_000)).toThrow('shop mismatch');
     expect(() => validateShopifyOauthState(stored, expected, 2_001, 1_000)).toThrow('Expired');
+  });
+
+  it('validates and timestamps Shopify expiring offline tokens', () => {
+    expect(parseShopifyExpiringOfflineToken({
+      access_token: 'access', refresh_token: 'refresh', scope: 'read_orders', expires_in: 3600, refresh_token_expires_in: 7200,
+    }, Date.parse('2026-09-09T10:00:00.000Z'))).toEqual({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      scope: 'read_orders',
+      accessTokenExpiresAt: '2026-09-09T11:00:00.000Z',
+      refreshTokenExpiresAt: '2026-09-09T12:00:00.000Z',
+    });
+    expect(() => parseShopifyExpiringOfflineToken({ access_token: 'access', expires_in: 3600 })).toThrow('incomplete expiring offline token');
+  });
+
+  it('uses Shopify refresh-token rotation', async () => {
+    const tokenResponse = {
+      access_token: 'new-access', refresh_token: 'new-refresh', scope: 'read_orders', expires_in: 3600, refresh_token_expires_in: 7200,
+    };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(tokenResponse), { status: 200 }));
+
+    await refreshShopifyOfflineAccessToken({
+      shopDomain: 'store.myshopify.com', clientId: 'client', clientSecret: 'secret', refreshToken: 'old-refresh', fetchImpl,
+    });
+    const refreshBody = new URLSearchParams(String((fetchImpl.mock.calls[0][1] as any).body));
+    expect(refreshBody.get('grant_type')).toBe('refresh_token');
+    expect(refreshBody.get('refresh_token')).toBe('old-refresh');
   });
 
   it('retries 429 twice using Retry-After and then succeeds', async () => {

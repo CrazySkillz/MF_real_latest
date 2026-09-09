@@ -10,7 +10,7 @@ pair renews successfully.**
 Current evidence recorded on 2026-09-09:
 
 - Production health returned `200` at deployed runtime
-  `41fa75f02a028444f14c033beeb6a79657b7141a`.
+  `4184aa6000f76006075f05dfff9e6b10862033eb`.
 - A fresh OAuth authorization completed for
   `linkedin-revenue.myshopify.com`. The deployed diagnostic reported
   `storedAuthType: oauth`, `storedGrantedScopes: read_orders`,
@@ -21,11 +21,14 @@ Current evidence recorded on 2026-09-09:
   preview, save, source contribution, Total Revenue propagation, edit/update
   without duplication, exact-source delete, reconnect preservation, and reload
   persistence. The final check returned the one expected matched order.
-- Working evidence commit
-  `5e18e34c738a03c7a8a805f037c724936b5fc8ef` changes regression coverage only.
-  TypeScript passed, and the complete 17-file Shopify/downstream gate passed
-  17/17 files and 186/186 tests. This is not evidence that unrelated repository
-  suites are all green.
+- Deployed commit `4184aa6000f76006075f05dfff9e6b10862033eb`
+  makes OAuth the immediate create-mode default and keeps edit-mode connection
+  selection hidden until the saved auth type resolves, preventing a provisional
+  Admin/OAuth jump. The user confirmed both deployed create and OAuth edit
+  behavior. No Shopify auth, provider, persistence, or revenue logic changed.
+  TypeScript and the production build passed, and the complete 17-file
+  Shopify/downstream gate passed 17/17 files and 186/186 tests. This is not
+  evidence that unrelated repository suites are all green.
 - The live auto-refresh scheduler reports `started: true`,
   `timerScheduled: true`, and `nextRunAt: 2026-09-09T22:30:00.000Z`, but
   `totalRuns: 0` and `lastRunStatus: idle`. The planned 00:35 Europe/Amsterdam
@@ -966,7 +969,7 @@ Deployed completion evidence on 2026-07-15:
 
 **Current decision: NOT YET CLEAN-CERTIFIED. RELEASE-CANDIDATE READY for the
 exact OAuth `read_orders` boundary at deployed runtime
-`41fa75f02a028444f14c033beeb6a79657b7141a`.**
+`4184aa6000f76006075f05dfff9e6b10862033eb`.**
 
 Satisfied current conditions:
 
@@ -975,8 +978,10 @@ Satisfied current conditions:
 - manual live add/import, exact attribution, preview/save, downstream totals,
   edit without duplication, delete, reconnect preservation, and reload
   persistence, ending with the one expected matched order
-- TypeScript plus the 17-file Shopify/downstream gate at working evidence commit
-  `5e18e34c738a03c7a8a805f037c724936b5fc8ef`: 186/186 tests passed
+- deployed create mode immediately selects OAuth and deployed edit mode shows
+  the saved OAuth method without a provisional Admin-token selection
+- TypeScript, production build, and the 17-file Shopify/downstream gate at
+  `4184aa6000f76006075f05dfff9e6b10862033eb`: 186/186 tests passed
 - deployed scheduler health confirms the timer is armed for
   `2026-09-09T22:30:00.000Z`
 

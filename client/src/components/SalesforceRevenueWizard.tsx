@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +23,7 @@ type UniqueValue = {
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 type ReviewOpportunityBreakdownRow = { id?: string; name: string; campaignValue?: string; amount: number };
 const MAX_SALESFORCE_SELECTED_VALUES = 200;
+const MAX_SALESFORCE_VALUE_SEARCH_LENGTH = 80;
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
@@ -130,6 +132,7 @@ export function SalesforceRevenueWizard(props: {
   const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [valuesError, setValuesError] = useState<string | null>(null);
+  const [valueSearch, setValueSearch] = useState("");
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
   const hasEditChanges = useMemo(() => {
@@ -309,6 +312,7 @@ export function SalesforceRevenueWizard(props: {
       setStages([]);
       setUniqueValues([]);
       setSelectedValues([]);
+      setValueSearch("");
       setCampaignDisplayName("");
       setCampaignMappings([]);
       setLastSaveResult(null);
@@ -337,6 +341,7 @@ export function SalesforceRevenueWizard(props: {
     setPipelineStageName(nextPipelineStageName);
     setPipelineStageLabel(nextPipelineStageLabel);
     setSelectedValues(nextSelectedValues);
+    setValueSearch("");
     setCampaignDisplayName(String((cfg as any).campaignDisplayName || ""));
     setCampaignMappings(Array.isArray((cfg as any).campaignMappings) ? (cfg as any).campaignMappings : []);
     // Synthesize uniqueValues from selectedValues so crosswalk checkboxes render
@@ -415,43 +420,33 @@ export function SalesforceRevenueWizard(props: {
     }
   };
 
-  const fetchUniqueValues = async (fieldName: string) => {
+  const fetchUniqueValues = async (fieldName: string, searchTerm = "") => {
+    const normalizedSearch = searchTerm.trim();
     setValuesLoading(true);
     setValuesError(null);
     try {
       const resp = await fetch(
         `/api/salesforce/${campaignId}/opportunities/unique-values?field=${encodeURIComponent(fieldName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300${pipelineEnabled && pipelineStageName ? `&pipelineStageName=${encodeURIComponent(pipelineStageName)}` : ""}`,
+        )}&limit=300${normalizedSearch ? `&search=${encodeURIComponent(normalizedSearch)}` : ""}${pipelineEnabled && pipelineStageName ? `&pipelineStageName=${encodeURIComponent(pipelineStageName)}` : ""}`,
         { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load values");
       const vals = Array.isArray(json?.values) ? json.values : [];
       const allowed = new Set(vals.map((v: any) => String(v.value)));
-      if (mode === "edit") {
-        // Preserve previously-saved selections even if they don't appear in the current lookback window.
-        // Add them to the list with count=0 so they remain visible + checked.
-        const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));
-        const merged = [
-          ...vals,
-          ...missing.map((v) => ({ value: String(v), count: 0 })),
-        ];
-        setUniqueValues(merged);
-        setSelectedValues((prev) => prev);
-      } else {
-        setUniqueValues(vals);
-        setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
-      }
+      // Searches and bounded result windows must never silently remove a user's selections.
+      const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));
+      setUniqueValues([
+        ...vals,
+        ...missing.map((v) => ({ value: String(v), count: 0 })),
+      ]);
       return vals;
     } catch (err: any) {
       const msg = err?.message || "Failed to load values";
-      // Only show error + wipe values if there's nothing to fall back to.
-      // Check selectedValues (stable, not affected by stale closure) — if the user has
-      // prefilled selections, synthesized values will render as fallback.
-      if (selectedValues.length === 0) {
-        setUniqueValues([]);
-        setValuesError(msg);
+      setValuesError(msg);
+      // Keep the last stable result list visible if a search or refresh fails.
+      if (uniqueValues.length === 0 && selectedValues.length === 0) {
         toast({ title: "Failed to Load Values", description: msg, variant: "destructive" });
       }
       return [];
@@ -808,6 +803,11 @@ export function SalesforceRevenueWizard(props: {
     const f = fields.find((x) => x.name === campaignField);
     return f?.label || campaignField || "Select an Opportunity field…";
   }, [campaignField, fields, fieldsLoading]);
+
+  const canSearchCampaignValues = useMemo(() => {
+    const fieldType = String(fields.find((field) => field.name === campaignField)?.type || "").toLowerCase();
+    return ["string", "textarea", "email", "phone", "url"].includes(fieldType);
+  }, [campaignField, fields]);
 
   const revenueFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === revenueField);
@@ -1250,8 +1250,12 @@ export function SalesforceRevenueWizard(props: {
                   value={campaignField}
                   onValueChange={(v) => {
                     setCampaignField(v);
+                    setSelectedValues([]);
+                    setUniqueValues([]);
+                    setValueSearch("");
                     setCampaignMappings([]);
                     setCampaignDisplayName("");
+                    crosswalkFetchedRef.current = false;
                   }}
                   disabled={!isConnected || statusLoading || fieldsLoading}
                 >
@@ -1328,16 +1332,61 @@ export function SalesforceRevenueWizard(props: {
                   Salesforce imports support up to {MAX_SALESFORCE_SELECTED_VALUES} selected values. Deselect a value before choosing another.
                 </div>
               )}
-              <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
-                {valuesLoading ? (
-                  <div className="text-sm text-muted-foreground">Loading values…</div>
-                ) : valuesError ? (
-                  <div className="text-sm text-red-600">
-                    {valuesError}{" "}
-                    <button className="underline" onClick={() => void fetchUniqueValues(campaignField)}>
-                      Retry
-                    </button>
+              {canSearchCampaignValues && (
+                <form
+                  className="space-y-1"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const normalizedSearch = valueSearch.trim();
+                    if (valuesLoading || normalizedSearch.length < 2) return;
+                    void fetchUniqueValues(campaignField, normalizedSearch);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={valueSearch}
+                      onChange={(event) => setValueSearch(event.target.value)}
+                      maxLength={MAX_SALESFORCE_VALUE_SEARCH_LENGTH}
+                      disabled={valuesLoading}
+                      placeholder="Search values by beginning…"
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={valuesLoading || valueSearch.trim().length < 2}
+                    >
+                      Search
+                    </Button>
+                    {valueSearch && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={valuesLoading}
+                        onClick={() => {
+                          setValueSearch("");
+                          void fetchUniqueValues(campaignField);
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    Enter at least 2 characters. Search matches the beginning of a Salesforce value.
+                  </div>
+                </form>
+              )}
+              {valuesError && (
+                <div className="text-sm text-red-600">
+                  {valuesError}{" "}
+                  <button type="button" className="underline" onClick={() => void fetchUniqueValues(campaignField, valueSearch)}>
+                    Retry
+                  </button>
+                </div>
+              )}
+              <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
+                {valuesLoading && uniqueValues.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Loading values…</div>
                 ) : uniqueValues.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No values found. Try increasing the lookback window, or confirm you're connected to the correct Salesforce org/user.
@@ -1352,7 +1401,7 @@ export function SalesforceRevenueWizard(props: {
                         <div key={value} className="flex items-start gap-2">
                           <Checkbox
                             checked={checked}
-                            disabled={!checked && selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES}
+                            disabled={valuesLoading || (!checked && selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES)}
                             onCheckedChange={(next) => {
                               setSelectedValues((prev) => {
                                 if (next) {
@@ -1394,6 +1443,7 @@ export function SalesforceRevenueWizard(props: {
                       setPipelineStageLabel(hit?.label || v);
                       crosswalkFetchedRef.current = false;
                       setUniqueValues([]);
+                      setValueSearch("");
                     }}
                     disabled={stagesLoading}
                   >

@@ -138,9 +138,21 @@ describe('Salesforce bounded query pagination', () => {
     const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');
 
     expect(wizard).toContain('const MAX_SALESFORCE_SELECTED_VALUES = 200;');
-    expect(wizard).toContain('disabled={!checked && selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES}');
+    expect(wizard).toContain('disabled={valuesLoading || (!checked && selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES)}');
     expect(wizard).toContain('prev.includes(value) || prev.length >= MAX_SALESFORCE_SELECTED_VALUES');
     expect(wizard).toContain('selectedValues.length === 0 || selectedValues.length > MAX_SALESFORCE_SELECTED_VALUES');
+  });
+
+  it('wires bounded prefix search without dropping selected Salesforce values', () => {
+    const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');
+
+    expect(wizard).toContain('const MAX_SALESFORCE_VALUE_SEARCH_LENGTH = 80;');
+    expect(wizard).toContain('`&search=${encodeURIComponent(normalizedSearch)}`');
+    expect(wizard).toContain('Search matches the beginning of a Salesforce value.');
+    expect(wizard).toContain('const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));');
+    expect(wizard).not.toContain('prev.filter((v) => allowed.has(v))');
+    expect(wizard).toContain('valuesLoading && uniqueValues.length === 0');
+    expect(wizard).toContain('fetchUniqueValues(campaignField, valueSearch)');
   });
 
   it('uses complete bounded Pipeline Proxy totals while keeping preview rows sampled', () => {

@@ -107,6 +107,10 @@ export function SalesforceRevenueWizard(props: {
   // Default to Opportunity "Name" (Opportunity Name) for linking deals to campaigns.
   // This is the most universally available field and matches the desired default behavior.
   const [campaignField, setCampaignField] = useState<string>("Name");
+  const campaignFieldUnavailable = useMemo(
+    () => fields.length > 0 && !!campaignField && !fields.some((field) => field.name === campaignField),
+    [campaignField, fields]
+  );
   const [revenueField, setRevenueField] = useState<string>("Amount");
   const [conversionValueField, setConversionValueField] = useState<string>("");
   const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
@@ -406,9 +410,11 @@ export function SalesforceRevenueWizard(props: {
 
       setFields(normalized);
 
-      // Default campaign field to Opportunity Name if it's available and nothing else is selected.
-      if (!campaignField || !normalized.some((x) => x.name === campaignField)) {
+      // Never silently remap saved selections to a different field while editing.
+      if (!campaignField || (mode === "connect" && !normalized.some((x) => x.name === campaignField))) {
         setCampaignField("Name");
+      } else if (!normalized.some((x) => x.name === campaignField)) {
+        setFieldsError(`Saved Salesforce field "${campaignField}" is no longer available. Select an available field before continuing.`);
       }
 
       if (normalized.length === 0) {
@@ -956,6 +962,10 @@ export function SalesforceRevenueWizard(props: {
         });
         return;
       }
+      if (campaignFieldUnavailable) {
+        toast({ title: "Salesforce field unavailable", description: "Select an available Opportunity field before continuing.", variant: "destructive" });
+        return;
+      }
       setStep(pipelineEnabled ? "pipeline" : "crosswalk");
       return;
     }
@@ -1250,6 +1260,7 @@ export function SalesforceRevenueWizard(props: {
                   value={campaignField}
                   onValueChange={(v) => {
                     setCampaignField(v);
+                    setFieldsError(null);
                     setSelectedValues([]);
                     setUniqueValues([]);
                     setValueSearch("");
@@ -1662,7 +1673,7 @@ export function SalesforceRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   stagesLoading ||
-                  (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit" && !initialMappingConfig) || fieldsLoading || (fields.length === 0 && mode !== "edit" && !initialMappingConfig) || !campaignField)) ||
+                  (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit" && !initialMappingConfig) || fieldsLoading || (fields.length === 0 && mode !== "edit" && !initialMappingConfig) || !campaignField || campaignFieldUnavailable)) ||
                   (step === "crosswalk" && (selectedValues.length === 0 || selectedValues.length > MAX_SALESFORCE_SELECTED_VALUES)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.

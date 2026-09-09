@@ -184,6 +184,16 @@ describe('Salesforce bounded query pagination', () => {
     expect(wizard).toContain('fetchUniqueValues(campaignField, valueSearch)');
   });
 
+  it('does not silently remap saved selections when a Salesforce field becomes unavailable', () => {
+    const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');
+
+    expect(wizard).toContain('const campaignFieldUnavailable = useMemo(');
+    expect(wizard).toContain('mode === "connect" && !normalized.some((x) => x.name === campaignField)');
+    expect(wizard).toContain('Saved Salesforce field "${campaignField}" is no longer available.');
+    expect(wizard).toContain('!campaignField || campaignFieldUnavailable');
+    expect(wizard).not.toContain('if (!campaignField || !normalized.some((x) => x.name === campaignField))');
+  });
+
   it('uses complete bounded Pipeline Proxy totals while keeping preview rows sampled', () => {
     const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
     const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');

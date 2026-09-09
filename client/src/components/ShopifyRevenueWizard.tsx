@@ -91,7 +91,7 @@ export function ShopifyRevenueWizard(props: {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
-  const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("token");
+  const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("oauth");
   const [oauthAvailable, setOauthAvailable] = useState(false);
   const [orderWindow, setOrderWindow] = useState<ShopifyOrderWindowStatus | null>(null);
   const requestDays = connectMethod === "oauth" ? undefined : days;
@@ -770,7 +770,11 @@ export function ShopifyRevenueWizard(props: {
 
                 <div className="space-y-2">
                   <Label>Connection method</Label>
-                  <RadioGroup value={connectMethod} onValueChange={(v: any) => setConnectMethod(v)} className="space-y-2">
+                  <RadioGroup
+                    value={connectMethod}
+                    onValueChange={(v: any) => setConnectMethod(v)}
+                    className={`space-y-2 ${mode === "edit" && statusLoading ? "invisible" : ""}`}
+                  >
                     <div className="flex items-start gap-2">
                       <RadioGroupItem id="shopify-method-oauth" value="oauth" />
                       <label htmlFor="shopify-method-oauth" className="text-sm font-medium leading-none cursor-pointer">
@@ -784,7 +788,7 @@ export function ShopifyRevenueWizard(props: {
                       </label>
                     </div>
                   </RadioGroup>
-                  {connectMethod === "oauth" && !oauthAvailable && (
+                  {connectMethod === "oauth" && !statusLoading && !oauthAvailable && (
                     <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
                       OAuth is not configured for this deployment. Complete the Shopify OAuth setup before connecting.
                     </div>

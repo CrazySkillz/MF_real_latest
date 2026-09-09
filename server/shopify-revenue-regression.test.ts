@@ -401,12 +401,15 @@ describe("Shopify revenue regression guard", () => {
     expect(mountStatus).not.toContain('mode === "edit"');
     expect(wizard).not.toContain("!applyExistingConnection && isConnected");
     expect(wizard).toContain('const [oauthAvailable, setOauthAvailable] = useState(false);');
+    expect(wizard).toContain('const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("oauth");');
     expect(wizard).toContain('setConnectMethod(canUseOauth ? "oauth" : "token");');
+    expect(wizard).toContain('mode === "edit" && statusLoading ? "invisible" : ""');
     expect(wizard).toContain('<RadioGroupItem id="shopify-method-oauth" value="oauth" />');
     expect(wizard).toContain('<RadioGroupItem id="shopify-method-token" value="token" />');
     expect(wizard).not.toContain('{oauthAvailable ? <div className="space-y-2">');
     expect(wizard).toContain('connectMethod === "oauth" ? openOAuthWindow() : connectWithToken()');
     expect(wizard).toContain('disabled={isConnecting || (connectMethod === "oauth" && !oauthAvailable)}');
+    expect(wizard).toContain('connectMethod === "oauth" && !statusLoading && !oauthAvailable');
     expect(wizard).toContain('OAuth is not configured for this deployment. Complete the Shopify OAuth setup before connecting.');
     expect(wizard).toContain('{connectMethod === "token" && (');
     expect(wizard).toContain('String(json?.authType || "").toLowerCase() === "oauth" ? "oauth" : "token"');

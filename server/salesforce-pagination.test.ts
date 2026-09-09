@@ -6,7 +6,7 @@ import {
   SALESFORCE_PAGINATION_ERROR_CODE,
   SALESFORCE_RESULT_LIMIT_ERROR_CODE,
 } from './utils/salesforce-pagination';
-import { escapeSalesforceSoqlLikePrefix, isSafeSalesforceFieldPath } from './utils/salesforce-query';
+import { escapeSalesforceSoqlLikePrefix, escapeSalesforceSoqlStringLiteral, isSafeSalesforceFieldPath } from './utils/salesforce-query';
 
 const instanceUrl = 'https://example.my.salesforce.com';
 const initialUrl = `${instanceUrl}/services/data/v59.0/query?q=test`;
@@ -22,6 +22,9 @@ describe('Salesforce bounded query pagination', () => {
     expect(isSafeSalesforceFieldPath('Campaign_Name__c')).toBe(true);
     expect(isSafeSalesforceFieldPath('Owner.Name')).toBe(true);
     expect(isSafeSalesforceFieldPath("Name FROM Account")).toBe(false);
+    expect(escapeSalesforceSoqlStringLiteral("'")).toBe("\\'");
+    expect(escapeSalesforceSoqlStringLiteral('\\')).toBe('\\\\');
+    expect(escapeSalesforceSoqlStringLiteral(String.raw`\'`)).toBe(String.raw`\\\'`);
     expect(escapeSalesforceSoqlLikePrefix("'")).toBe("\\'");
     expect(escapeSalesforceSoqlLikePrefix('\\')).toBe('\\\\');
     expect(escapeSalesforceSoqlLikePrefix('%_')).toBe('\\%\\_');
@@ -132,6 +135,32 @@ describe('Salesforce bounded query pagination', () => {
     expect(uniqueValuesRoute.match(/\$\{searchClause\}/g)).toHaveLength(4);
     expect(uniqueValuesRoute).toContain("search.length < 2 || search.length > MAX_SALESFORCE_VALUE_SEARCH_LENGTH");
     expect(uniqueValuesRoute).toContain("escapeSalesforceSoqlLikePrefix(search)}%'");
+    expect(uniqueValuesRoute).toContain('escapeSalesforceSoqlStringLiteral(pipelineStageName)');
+  });
+
+  it('validates fields and fully escapes Salesforce revenue query literals', () => {
+    const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
+    const connectedPreviewStart = routes.indexOf('app.get("/api/campaigns/:id/connected-data-sources/:sourceId/preview"');
+    const previewStart = routes.indexOf('// Salesforce Opportunity preview (before processing revenue metrics)');
+    const saveStart = routes.indexOf('app.post("/api/campaigns/:id/salesforce/save-mappings"');
+    const pipelineStart = routes.indexOf('// Salesforce pipeline proxy status', saveStart);
+    const hubspotStart = routes.indexOf('// HubSpot deals properties', pipelineStart);
+    const connectedPreviewRoute = routes.slice(connectedPreviewStart, previewStart);
+    const previewRoute = routes.slice(previewStart, saveStart);
+    const saveRoute = routes.slice(saveStart, pipelineStart);
+    const pipelineRoute = routes.slice(pipelineStart, hubspotStart);
+
+    expect(connectedPreviewRoute).toContain("(attribField && !isSafeSalesforceFieldPath(attribField)) || !isSafeSalesforceFieldPath(revenueField)");
+    expect(connectedPreviewRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(connectedPreviewRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
+    expect(connectedPreviewRoute).toContain('escapeSalesforceSoqlStringLiteral(String(v))');
+    expect(previewRoute).toContain('!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenue)');
+    expect(previewRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(previewRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
+    expect(saveRoute).toContain('convValueField && !isSafeSalesforceFieldPath(convValueField)');
+    expect(saveRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(saveRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
+    expect(pipelineRoute).toContain('!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenueField)');
+    expect(pipelineRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(pipelineRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
+    expect(`${previewRoute}${saveRoute}${pipelineRoute}`).not.toContain("replace(/'/g");
+    expect(`${previewRoute}${saveRoute}${pipelineRoute}`).toContain('escapeSalesforceSoqlStringLiteral');
   });
 
   it('keeps Salesforce selections within the save API limit', () => {

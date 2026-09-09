@@ -40,7 +40,7 @@ describe("Google Ads revenue Salesforce flow", () => {
     expect(route).toContain('sourceType: "salesforce"');
     expect(route).toContain("platformContext: platformCtx");
     expect(route).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByDate.size > 0 ? "selected_date_field_v1" : null');
-    expect(route).toContain("if (platformCtx === \"ga4\" && totalRevenue > 0 && materializedRecordCount <= 0)");
+    expect(route).toContain("if (platformCtx === 'ga4' && revenueRecordsToInsert.length === 0)");
   });
 
   it("materializes Google Ads Salesforce per-campaign revenue for exact IDs or explicit active campaign mappings", () => {

@@ -64,7 +64,7 @@ import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationErro
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 import { fetchCompleteSalesforceQuery, SALESFORCE_PAGINATION_ERROR_CODE, SALESFORCE_RESULT_LIMIT_ERROR_CODE } from "./utils/salesforce-pagination";
-import { escapeSalesforceSoqlLikePrefix, isSafeSalesforceFieldPath, MAX_SALESFORCE_VALUE_SEARCH_LENGTH } from "./utils/salesforce-query";
+import { escapeSalesforceSoqlLikePrefix, escapeSalesforceSoqlStringLiteral, isSafeSalesforceFieldPath, MAX_SALESFORCE_VALUE_SEARCH_LENGTH } from "./utils/salesforce-query";
 import { detectSalesforceCurrency, validateSalesforceRevenueCurrency } from "./utils/salesforceCurrency";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
@@ -16606,7 +16606,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Salesforce preview: show rows based on saved mappingConfig (if present), otherwise a generic Won sample.
-          const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
           const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
 
           let cfg: any = null;
@@ -16619,6 +16618,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const attribField = cfg?.campaignField ? String(cfg.campaignField) : null;
           const revenueField = cfg?.revenueField ? String(cfg.revenueField) : 'Amount';
           const selected = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
+          if ((attribField && !isSafeSalesforceFieldPath(attribField)) || !isSafeSalesforceFieldPath(revenueField)) {
+            return res.status(400).json({ error: 'Salesforce mapping contains an invalid field' });
+          }
+          const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
 
           const whereParts: string[] = [
             // Use IsWon instead of a hard-coded StageName label. Stage names are org-customizable.
@@ -16626,7 +16629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `CloseDate = LAST_N_DAYS:${rangeDays}`,
           ];
           if (attribField && selected.length > 0) {
-            const quoted = selected.map((v: string) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+            const quoted = selected.map((v: string) => `'${escapeSalesforceSoqlStringLiteral(String(v))}'`).join(',');
             whereParts.push(`${attribField} IN (${quoted})`);
           }
 
@@ -17231,7 +17234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (pipelineStageName) {
-        const escapedStage = pipelineStageName.replace(/'/g, "\\'");
+        const escapedStage = escapeSalesforceSoqlStringLiteral(pipelineStageName);
         const soqlPipeline =
           `SELECT ${field}, COUNT(Id) c ` +
           `FROM Opportunity ` +
@@ -17309,6 +17312,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!attribField) return res.status(400).json({ error: 'campaignField is required' });
       if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
       if (!revenue) return res.status(400).json({ error: 'revenueField is required' });
+      if (!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenue)) {
+        return res.status(400).json({ error: 'Invalid Salesforce field' });
+      }
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
@@ -17326,7 +17332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return cur;
       };
 
-      const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+      const quoted = selected.map((v) => `'${escapeSalesforceSoqlStringLiteral(String(v))}'`).join(',');
       const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;
 
       const baseHeaders = (includeCurrency: boolean) =>
@@ -17402,7 +17408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Optional pipeline preview: Opportunities currently in selected stage (not filtered to IsWon).
       let pipelinePreview: any = null;
       if (wantPipelinePreview) {
-        const escapedStage = pipelineStage.replace(/'/g, "\\'");
+        const escapedStage = escapeSalesforceSoqlStringLiteral(pipelineStage);
         const runPipeline = async (includeCurrency: boolean): Promise<{ ok: boolean; headers: string[]; records?: any[]; error?: string }> => {
           const headers = baseHeaders(includeCurrency);
           const soql =
@@ -17539,6 +17545,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const dateFieldChoice = body.data.dateField || "CloseDate";
+      if (!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenue) || (convValueField && !isSafeSalesforceFieldPath(convValueField))) {
+        return res.status(400).json({ error: "Invalid Salesforce field" });
+      }
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
       const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : platformContextRaw === "custom_integration" ? "custom_integration" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
@@ -17586,7 +17595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Query opportunities matching crosswalk values
-      const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+      const quoted = selected.map((v) => `'${escapeSalesforceSoqlStringLiteral(String(v))}'`).join(',');
       const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;
 
       // Some orgs (non-multi-currency) do not have CurrencyIsoCode on Opportunity.
@@ -17882,7 +17891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let pipelineToDate = 0;
             const pipelineCurrencies = new Set<string>();
             const pipelineValueRevenueTotals = new Map<string, number>();
-            const escapedStage = String(pipelineStageName).replace(/'/g, "\\'");
+            const escapedStage = escapeSalesforceSoqlStringLiteral(String(pipelineStageName));
 
             const runQuery = async (includeCurrency: boolean): Promise<void> => {
               const soql =
@@ -18085,7 +18094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const unmatchedSelectedDiagnostics: any[] = [];
       if (unmatchedSelectedValues.length > 0) {
         try {
-          const unmatchedQuoted = unmatchedSelectedValues.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
+          const unmatchedQuoted = unmatchedSelectedValues.map((v) => `'${escapeSalesforceSoqlStringLiteral(String(v))}'`).join(",");
           const soql =
             `SELECT Id, ${attribField}, StageName, IsWon, ${dateFieldChoice}, ${revenue} ` +
             `FROM Opportunity ` +
@@ -18211,13 +18220,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Recompute on-demand (best-effort) so UI isn't stuck with stale/wrong values.
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
-      const version = process.env.SALESFORCE_API_VERSION || "v59.0";
       const attribField = String(cfg.campaignField || "").trim();
       const selected: string[] = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const pipelineSelected = Array.from(new Set(selected));
       const revenueField = String(cfg.revenueField || "Amount").trim() || "Amount";
       const stageName = String(cfg.pipelineStageName || "").trim();
+      if (!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenueField)) {
+        return res.status(422).json({ success: false, error: "Salesforce mapping contains an invalid field. Re-save the Salesforce mappings." });
+      }
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || "v59.0";
       console.log("[Salesforce Pipeline Proxy][Trace] start", {
         campaignId,
         campaignField: attribField,
@@ -18247,8 +18259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const quoted = pipelineSelected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
-      const escapedStage = stageName.replace(/'/g, "\\'");
+      const quoted = pipelineSelected.map((v) => `'${escapeSalesforceSoqlStringLiteral(String(v))}'`).join(",");
+      const escapedStage = escapeSalesforceSoqlStringLiteral(stageName);
       let totalToDate = 0;
       const currencies = new Set<string>();
       const pipelineValueRevenueTotals = new Map<string, number>();
@@ -18359,8 +18371,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const confirmedTotals = new Map<string, number>();
               const dateField = String(sourceCfg.dateField || cfg.dateField || "CloseDate").trim() || "CloseDate";
+              if (!["CloseDate", "CreatedDate", "LastModifiedDate"].includes(dateField)) {
+                throw new Error("Salesforce mapping contains an invalid date field");
+              }
               const days = Math.min(Math.max(parseInt(String(sourceCfg.days || cfg.days || 90), 10) || 90, 1), 3650);
-              const confirmedQuoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
+              const confirmedQuoted = selected.map((v) => `'${escapeSalesforceSoqlStringLiteral(String(v))}'`).join(",");
               const confirmedFields = Array.from(new Set(["Id", attribField, revenueField]));
               const confirmedWonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;
               const soql =

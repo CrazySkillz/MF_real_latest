@@ -3,6 +3,7 @@ import { assertProductionTokenEncryptionConfigured } from './utils/tokenVault';
 import {
   fetchShopifyOrderCustomerJourneyUtms,
   getShopifyApiVersion,
+  hasShopifyAllOrdersScope,
   isShopifyPartnerDevelopmentStore,
   normalizeShopifyDomain,
   parseShopifyExpiringOfflineToken,
@@ -49,9 +50,11 @@ describe('Shopify provider hardening', () => {
     expect(() => requireShopifyOrderScope(['read_customers'])).toThrow('read_orders');
   });
 
-  it('requires all-order access for the visible Shopify revenue workflow', () => {
+  it('requires all-order access for the Admin-token lifetime revenue workflow', () => {
     expect(() => requireShopifyRevenueScopes(['read_orders', 'read_all_orders'])).not.toThrow();
     expect(() => requireShopifyRevenueScopes(['read_orders'])).toThrow('read_all_orders');
+    expect(hasShopifyAllOrdersScope(['READ_ALL_ORDERS'])).toBe(true);
+    expect(hasShopifyAllOrdersScope(['read_orders'])).toBe(false);
   });
 
   it('requires read_all_orders only when the requested window exceeds 60 days', () => {

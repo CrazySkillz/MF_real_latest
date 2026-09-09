@@ -314,7 +314,7 @@ describe("Shopify revenue regression guard", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
     expect(routes).toContain('developmentStoreTestOrdersIncluded = await isShopifyPartnerDevelopmentStore');
     expect(routes).toContain('developmentStoreVerification = \'failed_closed\'');
-    expect(routes).toContain('platformCtx === \'ga4\' && !verifiedDevelopmentStore');
+    expect(routes).toContain("platformCtx === 'ga4' && (!verifiedDevelopmentStore || oauthWithoutHistoricalAccess)");
     expect(routes).toContain('developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded');
     expect(routes).toContain('shouldPreserveShopifyDevelopmentStoreLastGood({');
     expect(routes).toContain("schedulerRefresh: internalAutoRefresh && platformCtx === 'ga4'");
@@ -433,6 +433,26 @@ describe("Shopify revenue regression guard", () => {
     expect(availability).toContain('process.env.SHOPIFY_SCOPES || "read_orders"');
     expect(oauthStart).toContain('process.env.SHOPIFY_SCOPES || "read_orders"');
     expect(oauthStart).not.toContain("read_all_orders");
+  });
+
+  it("limits OAuth value discovery without broadening or truncating the revenue calculation", () => {
+    const routes = read(ROUTES_FILE);
+    const uniqueValuesRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/orders/unique-values"',
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+    );
+    const saveRoute = routeSection(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"',
+    );
+
+    expect(uniqueValuesRoute).toContain('orderAccess.isOauth && !orderAccess.hasReadAllOrders ? Math.min(days, 59) : days');
+    expect(uniqueValuesRoute).toContain('discoveryWindowLimited: discoveryDays < days');
+    expect(saveRoute).toContain('const oauthWithoutHistoricalAccess = orderAccess.isOauth && !orderAccess.hasReadAllOrders;');
+    expect(saveRoute).toContain("platformCtx === 'ga4' && (!verifiedDevelopmentStore || oauthWithoutHistoricalAccess)");
+    expect(saveRoute).toContain('? campaignWindowStartAt\n        : fallbackCreatedAtMin');
   });
 
   it("uses renewable expiring offline tokens for Shopify OAuth without changing Admin token connections", () => {

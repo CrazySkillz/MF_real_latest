@@ -10,7 +10,7 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWind
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { GA4_KPI_ACTIVE_METRIC_CONFLICT } from "./utils/ga4-kpi-create-guard";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
-import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -34122,6 +34122,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  const getShopifyConnectionOrderAccess = (connection: any) => {
+    let config: any = {};
+    try { config = connection?.mappingConfig ? JSON.parse(String(connection.mappingConfig)) : {}; } catch { config = {}; }
+    const scopes = Array.isArray(config?.grantedScopesList)
+      ? config.grantedScopesList.map(String)
+      : String(config?.grantedScopes || '').split(',').map((scope) => scope.trim()).filter(Boolean);
+    return {
+      isOauth: String(config?.authType || '').toLowerCase() === 'oauth',
+      hasReadAllOrders: hasShopifyAllOrdersScope(scopes),
+    };
+  };
+
   /**
    * Auto-recalculate Shopify conversion value for LinkedIn revenue sources.
    * Called when loading LinkedIn analytics if Shopify CV is missing from mappingConfig.
@@ -34525,7 +34537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = getShopifyApiVersion();
-      const createdAtMin = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const orderAccess = getShopifyConnectionOrderAccess(conn);
+      const discoveryDays = orderAccess.isOauth && !orderAccess.hasReadAllOrders ? Math.min(days, 59) : days;
+      const createdAtMin = new Date(Date.now() - discoveryDays * 24 * 60 * 60 * 1000).toISOString();
       const { orders, developmentStoreTestOrdersIncluded } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
@@ -34575,6 +34589,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         debug: {
           ordersFetched: Array.isArray(orders) ? orders.length : 0,
           developmentStoreTestOrdersIncluded,
+          discoveryDays,
+          discoveryWindowLimited: discoveryDays < days,
           nonEmptyValues: values.length,
           sampleValues: sample,
         },
@@ -34722,7 +34738,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const verifiedDevelopmentStore = platformCtx === 'ga4'
         ? await isShopifyPartnerDevelopmentStore({ shopDomain: conn.shopDomain, accessToken: conn.accessToken, apiVersion }).catch(() => false)
         : false;
-      const providerOrderWindowStartAt = platformCtx === 'ga4' && !verifiedDevelopmentStore
+      const orderAccess = getShopifyConnectionOrderAccess(conn);
+      const oauthWithoutHistoricalAccess = orderAccess.isOauth && !orderAccess.hasReadAllOrders;
+      const providerOrderWindowStartAt = platformCtx === 'ga4' && (!verifiedDevelopmentStore || oauthWithoutHistoricalAccess)
         ? campaignWindowStartAt
         : fallbackCreatedAtMin;
       const createdAtMin = providerOrderWindowStartAt.toISOString();

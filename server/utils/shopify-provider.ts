@@ -24,6 +24,10 @@ export function hasRequiredShopifyOrderScope(scopes: Iterable<string>): boolean 
   return normalized.has('read_orders') || normalized.has('write_orders');
 }
 
+export function hasShopifyAllOrdersScope(scopes: Iterable<string>): boolean {
+  return Array.from(scopes, scope => String(scope || '').trim().toLowerCase()).includes('read_all_orders');
+}
+
 export function requireShopifyOrderScope(scopes: Iterable<string>): void {
   if (!hasRequiredShopifyOrderScope(scopes)) {
     throw new Error('Shopify access token is missing the required read_orders scope');
@@ -33,7 +37,7 @@ export function requireShopifyOrderScope(scopes: Iterable<string>): void {
 export function requireShopifyRevenueScopes(scopes: Iterable<string>): void {
   const normalized = Array.from(scopes, scope => String(scope || '').trim().toLowerCase());
   requireShopifyOrderScope(normalized);
-  if (!normalized.includes('read_all_orders')) {
+  if (!hasShopifyAllOrdersScope(normalized)) {
     throw new Error('Shopify access token is missing the required read_all_orders scope');
   }
 }
@@ -43,7 +47,7 @@ export function requireShopifyOrderWindowScopes(scopes: Iterable<string>, create
   requireShopifyOrderScope(normalized);
   const start = Date.parse(createdAtMin);
   if (!Number.isFinite(start)) throw new Error('Invalid Shopify order window start');
-  if (now - start > 60 * 24 * 60 * 60 * 1000 && !normalized.includes('read_all_orders')) {
+  if (now - start > 60 * 24 * 60 * 60 * 1000 && !hasShopifyAllOrdersScope(normalized)) {
     throw new Error('Shopify access token is missing read_all_orders for an order window older than 60 days');
   }
 }

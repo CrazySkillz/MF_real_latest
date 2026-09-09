@@ -64,6 +64,7 @@ import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationErro
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 import { fetchCompleteSalesforceQuery, SALESFORCE_PAGINATION_ERROR_CODE, SALESFORCE_RESULT_LIMIT_ERROR_CODE } from "./utils/salesforce-pagination";
+import { escapeSalesforceSoqlLikePrefix, isSafeSalesforceFieldPath, MAX_SALESFORCE_VALUE_SEARCH_LENGTH } from "./utils/salesforce-query";
 import { detectSalesforceCurrency, validateSalesforceRevenueCurrency } from "./utils/salesforceCurrency";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 
@@ -17157,11 +17158,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
       const pipelineStageName = String(req.query.pipelineStageName || '').trim();
+      const search = String(req.query.search || '').trim();
 
       if (!field) return res.status(400).json({ error: 'Missing field' });
+      if (!isSafeSalesforceFieldPath(field)) return res.status(400).json({ error: 'Invalid Salesforce field' });
+      if (search && (search.length < 2 || search.length > MAX_SALESFORCE_VALUE_SEARCH_LENGTH || /[\u0000-\u001f\u007f]/.test(search))) {
+        return res.status(400).json({ error: `Search must be 2-${MAX_SALESFORCE_VALUE_SEARCH_LENGTH} printable characters` });
+      }
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+      const searchClause = search ? ` AND ${field} LIKE '${escapeSalesforceSoqlLikePrefix(search)}%'` : '';
 
       const counts = new Map<string, number>();
 
@@ -17186,7 +17193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `SELECT ${field}, COUNT(Id) c ` +
         `FROM Opportunity ` +
         // Use IsWon instead of StageName. Stage labels vary per org.
-        `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
+        `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null${searchClause} ` +
         `GROUP BY ${field} ` +
         `ORDER BY COUNT(Id) DESC ` +
         `LIMIT ${Math.min(limit, 500)}`;
@@ -17208,7 +17215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `SELECT Id, ${field} ` +
           `FROM Opportunity ` +
           // Use IsWon instead of StageName. Stage labels vary per org.
-          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null`;
+          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null${searchClause}`;
         const recs = await fetchCompleteSalesforceQuery({
           initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
           instanceUrl,
@@ -17228,7 +17235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const soqlPipeline =
           `SELECT ${field}, COUNT(Id) c ` +
           `FROM Opportunity ` +
-          `WHERE StageName = '${escapedStage}' AND ${field} != null ` +
+          `WHERE StageName = '${escapedStage}' AND ${field} != null${searchClause} ` +
           `GROUP BY ${field} ` +
           `ORDER BY COUNT(Id) DESC ` +
           `LIMIT ${Math.min(limit, 500)}`;
@@ -17246,7 +17253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const soqlPipelineScan =
             `SELECT Id, ${field} ` +
             `FROM Opportunity ` +
-            `WHERE StageName = '${escapedStage}' AND ${field} != null`;
+            `WHERE StageName = '${escapedStage}' AND ${field} != null${searchClause}`;
           const recs = await fetchCompleteSalesforceQuery({
             initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipelineScan)}`,
             instanceUrl,
@@ -17267,7 +17274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
 
-      res.json({ success: true, field, values });
+      res.json({ success: true, field, search, values });
     } catch (error: any) {
       console.error('[Salesforce Unique Values] Error:', error);
       const boundedQueryFailure = error?.code === SALESFORCE_PAGINATION_ERROR_CODE || error?.code === SALESFORCE_RESULT_LIMIT_ERROR_CODE;

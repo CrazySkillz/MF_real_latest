@@ -6,6 +6,7 @@ import {
   SALESFORCE_PAGINATION_ERROR_CODE,
   SALESFORCE_RESULT_LIMIT_ERROR_CODE,
 } from './utils/salesforce-pagination';
+import { escapeSalesforceSoqlLikePrefix, isSafeSalesforceFieldPath } from './utils/salesforce-query';
 
 const instanceUrl = 'https://example.my.salesforce.com';
 const initialUrl = `${instanceUrl}/services/data/v59.0/query?q=test`;
@@ -17,6 +18,15 @@ const page = (body: any, status = 200) => ({
 }) as any;
 
 describe('Salesforce bounded query pagination', () => {
+  it('validates field paths and escapes Salesforce prefix-search literals', () => {
+    expect(isSafeSalesforceFieldPath('Campaign_Name__c')).toBe(true);
+    expect(isSafeSalesforceFieldPath('Owner.Name')).toBe(true);
+    expect(isSafeSalesforceFieldPath("Name FROM Account")).toBe(false);
+    expect(escapeSalesforceSoqlLikePrefix("'")).toBe("\\'");
+    expect(escapeSalesforceSoqlLikePrefix('\\')).toBe('\\\\');
+    expect(escapeSalesforceSoqlLikePrefix('%_')).toBe('\\%\\_');
+  });
+
   it('retrieves a result that crosses the Salesforce 2,000-record page boundary', async () => {
     const batches = [
       { records: Array.from({ length: 2_000 }, (_, id) => ({ id })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-1' },
@@ -119,6 +129,9 @@ describe('Salesforce bounded query pagination', () => {
     expect(uniqueValuesRoute).not.toContain('LIMIT 2000');
     expect(uniqueValuesRoute).not.toContain('nextRecordsUrl');
     expect(uniqueValuesRoute).toContain('boundedQueryFailure ? 413 : Number(error?.status || 500)');
+    expect(uniqueValuesRoute.match(/\$\{searchClause\}/g)).toHaveLength(4);
+    expect(uniqueValuesRoute).toContain("search.length < 2 || search.length > MAX_SALESFORCE_VALUE_SEARCH_LENGTH");
+    expect(uniqueValuesRoute).toContain("escapeSalesforceSoqlLikePrefix(search)}%'");
   });
 
   it('keeps Salesforce selections within the save API limit', () => {

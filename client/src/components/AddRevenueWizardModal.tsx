@@ -1724,7 +1724,7 @@ export function AddRevenueWizardModal(props: {
                         Shopify (Ecommerce)
                         {crmConnecting === "shopify" ? (
                           <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
-                        ) : crmStatus.shopify || crmHasSource.shopify ? (
+                        ) : crmOAuth.shopify ? (
                           <span className="ml-auto flex items-center gap-1">
                             <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
                             <AlertDialog>
@@ -1745,11 +1745,13 @@ export function AddRevenueWizardModal(props: {
                               </AlertDialogContent>
                             </AlertDialog>
                           </span>
+                        ) : crmHasSource.shopify ? (
+                          <span className="ml-auto text-xs font-normal text-amber-600 dark:text-amber-400">Reconnect required</span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
-                      <CardDescription>{crmStatus.shopify || crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."}</CardDescription>
+                      <CardDescription>{crmOAuth.shopify ? (crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connected to Shopify. Import order revenue.") : crmHasSource.shopify ? "Reconnect Shopify to refresh this revenue source." : "Connect Shopify to import order revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}

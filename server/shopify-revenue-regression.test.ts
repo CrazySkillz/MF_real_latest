@@ -128,11 +128,12 @@ describe("Shopify revenue regression guard", () => {
     );
   });
 
-  it("shows Shopify as connected when an active scoped Shopify revenue source exists", () => {
+  it("distinguishes Shopify connection status from imported source status", () => {
     const modal = read(REVENUE_MODAL_FILE);
 
-    expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? (');
-    expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."');
+    expect(modal).toContain(') : crmOAuth.shopify ? (');
+    expect(modal).toContain(') : crmHasSource.shopify ? (');
+    expect(modal).toContain('crmOAuth.shopify ? (crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connected to Shopify. Import order revenue.") : crmHasSource.shopify ? "Reconnect Shopify to refresh this revenue source." : "Connect Shopify to import order revenue."');
   });
 
   it("deletes Shopify revenue through the scoped GA4 Overview source route", () => {

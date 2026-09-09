@@ -10,7 +10,7 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWind
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { GA4_KPI_ACTIVE_METRIC_CONFLICT } from "./utils/ga4-kpi-create-guard";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
-import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -6700,10 +6700,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const isShopifyOauthAvailable = (): boolean => {
     const clientId = String(process.env.SHOPIFY_CLIENT_ID || "").trim();
     const clientSecret = String(process.env.SHOPIFY_CLIENT_SECRET || "").trim();
-    const scopes = String(process.env.SHOPIFY_SCOPES || "read_orders,read_all_orders").split(',');
+    const scopes = String(process.env.SHOPIFY_SCOPES || "read_orders").split(',');
     if (!clientId || !clientSecret || !getShopifyRedirectUri()) return false;
     try {
-      requireShopifyRevenueScopes(scopes);
+      requireShopifyOrderScope(scopes);
       return true;
     } catch {
       return false;
@@ -10776,7 +10776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       assertProductionTokenEncryptionConfigured();
 
       const clientId = process.env.SHOPIFY_CLIENT_ID || "";
-      const scopeRaw = String(process.env.SHOPIFY_SCOPES || "read_orders,read_all_orders");
+      const scopeRaw = String(process.env.SHOPIFY_SCOPES || "read_orders");
       const scope = scopeRaw.trim();
       if (!clientId) {
         return res.status(500).json({ message: "Shopify OAuth is not configured (missing SHOPIFY_CLIENT_ID)" });
@@ -10786,10 +10786,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!scope) {
         return res.status(500).json({
           message:
-            "Shopify OAuth is misconfigured: SHOPIFY_SCOPES is empty. Set SHOPIFY_SCOPES to 'read_orders,read_all_orders' and redeploy, then reconnect.",
+            "Shopify OAuth is misconfigured: SHOPIFY_SCOPES is empty. Set SHOPIFY_SCOPES to 'read_orders' and redeploy, then reconnect.",
         });
       }
-      requireShopifyRevenueScopes(scope.split(','));
+      requireShopifyOrderScope(scope.split(','));
 
       const redirectUri = getShopifyRedirectUri();
       if (!redirectUri) {
@@ -11184,7 +11184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store this so we can debug scope issues even when /oauth/access_scopes.json is not supported.
       const grantedScopesRaw = tokenJson?.scope ? String(tokenJson.scope) : "";
       const grantedScopesList = grantedScopesRaw.split(',').map((scope: string) => scope.trim()).filter(Boolean);
-      requireShopifyRevenueScopes(grantedScopesList);
+      requireShopifyOrderScope(grantedScopesList);
 
       // Fetch shop name
       const apiVersion = getShopifyApiVersion();

@@ -123,7 +123,7 @@ The functional and readiness docs for Reports, KPI, Benchmark, notifications, sc
 - destructive cleanup of production data
 - real provider, dormant OAuth, inbox, and deployed-database assertions that cannot be proven from local code
 
-The wizard now always presents both OAuth and Admin API token radio options so the connection methods do not disappear based on deployment state. OAuth remains fail-closed: when the server does not confirm a client ID, client secret, redirect URI, and required scopes, the UI shows that OAuth is unavailable and disables its connect action. If OAuth is configured later, its provider callback becomes an external validation gate before that path can inherit certification.
+The wizard now always presents both OAuth and Admin API token radio options so the connection methods do not disappear based on deployment state. OAuth remains fail-closed: when the server does not confirm a client ID, client secret, redirect URI, and an order-reading scope, the UI shows that OAuth is unavailable and disables its connect action. OAuth configuration, authorization, and callback persistence require `read_orders` (or implied `write_orders`) but not `read_all_orders`; the separate provider-window guard still rejects any order read older than 60 days without `read_all_orders`. A real provider callback remains an external validation gate before that path can inherit certification.
 
 ## Provider And Query Contract
 
@@ -200,7 +200,7 @@ Current behavior:
 - OAuth start checks campaign access.
 - An in-memory nonce maps campaign ID, shop domain, initiating Clerk session ID, and creation time.
 - The callback consumes the nonce once and verifies campaign, canonical shop, initiating session, ten-minute TTL, and Shopify HMAC before exchanging the code.
-- Token exchange is form-encoded and the returned scope list must include `read_orders` or implied `write_orders` access plus `read_all_orders`.
+- Token exchange is form-encoded and the returned scope list must include `read_orders` or implied `write_orders` access. OAuth connection itself does not require `read_all_orders`; historical provider reads beyond 60 days remain separately guarded and fail closed without it.
 - The resulting token is stored through the same encrypted connection storage.
 
 Findings:
@@ -430,7 +430,7 @@ What this proves:
 - all current Shopify order endpoints call the paginated reader
 - canonical store-host and same-store Link boundaries reject negative cases
 - OAuth state validation binds campaign, store, Clerk session, and TTL
-- order-read and `read_all_orders` scopes are required at connection time, with a second window-level `read_all_orders` guard before historical reads
+- OAuth requires order-read access at configuration, authorization, and callback time; the Admin API token path retains its existing visible-workflow scope requirement, and a separate window-level `read_all_orders` guard remains before historical reads
 - production encryption configuration fails closed when an explicit key is absent
 - connection replacement rolls back to the old active connection on forced insertion failure
 - supported/effective version mismatches and missing headers fail closed
@@ -524,7 +524,7 @@ No campaign deletion, connected-store cleanup, unrelated source cleanup, or prov
 | Delivered report email closes report path | **One packet only.** It does not prove other variants/sends, snapshots, scheduler failure behavior, or current code after later shared-file changes. |
 | Second-campaign portability proves isolation | **Proven locally by the owner-scoped batch boundary.** Cross-campaign overlap uses store plus order identity, and equal IDs from different stores remain isolated. |
 | Clean source-damage inventory | **Proven for the complete owner-scoped GA4 boundary.** The first deployed response failed closed. Current Commit 9.3 excluded the proven LinkedIn/Meta sources, cleaned only the exact GA4 test boundary, and the post-cleanup response returned every required pass value, zero open refresh failures, and no failed campaigns. |
-| OAuth can remain excluded | **Yes while unavailable.** The wizard suppresses OAuth unless the complete server configuration and required scopes are present. Enabling it later reopens its external callback gate. |
+| OAuth can remain excluded | **Yes until externally validated.** The wizard always shows OAuth, disables its action when server configuration is incomplete, and treats order-read access as sufficient to connect. A real callback, persisted OAuth connection, and in-scope provider read remain external gates. |
 | Normal wall-clock scheduling is optional | **Scheduler timing alone can remain external**, but source freshness, persisted run/failure identity, provider mutation, and last-good behavior are not optional for strict readiness. |
 
 ### Stale documents reconciled by Current Commit 8
@@ -551,7 +551,7 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 - production Shopify connection access fails closed without an explicit encryption key
 - canonical `*.myshopify.com` validation and same-store pagination-Link enforcement
 - OAuth campaign/shop/session/TTL/scope validators and one-time callback state consumption by current route trace
-- required order-read plus `read_all_orders` scopes at connect and again before historical reads
+- OAuth order-read validation at availability, authorization, and callback boundaries; the Admin API token path retains its visible-workflow scope guard, and `read_all_orders` remains required before order windows older than 60 days
 - transactional connection replacement with forced-insert rollback retention
 - supported requested/effective API-version enforcement on successful versioned responses
 - bounded two-attempt `429` retry with exact safe `Retry-After` handling
@@ -579,14 +579,14 @@ Historical packet detail remains in those ledgers for traceability, but it canno
 - one-request owner-scoped campaign inventory and store-plus-order cross-campaign overlap detection
 - latest provider page/request/retry/deduplication/order-state audit persistence and fail-closed inventory validation
 - scheduler failure notification deduplication, last-good messaging, recovery resolution, and active bell indicator
-- OAuth suppression when the complete server configuration is unavailable
+- OAuth availability fails closed when the client ID, client secret, redirect URI, or order-reading scope is unavailable
 - Campaign Breakdown, Ad Comparison, KPI/Benchmark, Campaign DeepDive/outcome totals, Reports/snapshots/PDF/email, notifications, and alerts through the current shared Shopify financial row
 - deployed exact transactional cleanup of the one confirmed GA4 test source/connection with zero recompute failures
 - complete post-cleanup owner-scoped GA4 inventory: local persistence, cross-campaign overlap, aggregate readiness, refresh-failure, and per-campaign gates all pass
 
 ### Partially proven or excluded
 
-- OAuth HMAC/callback/token-exchange behavior only if OAuth is configured and becomes visible
+- OAuth HMAC/callback/token-exchange behavior until a real configured OAuth connection is completed
 
 ### Unproven or broken within the enabled documented scope
 

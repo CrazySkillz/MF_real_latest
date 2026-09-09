@@ -408,6 +408,33 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).not.toContain("Shopify doesn’t store LinkedIn campaign ids directly by default");
   });
 
+  it("requires only order-read access to configure and complete Shopify OAuth", () => {
+    const routes = read(ROUTES_FILE);
+    const availability = routeSection(
+      routes,
+      "const isShopifyOauthAvailable = (): boolean => {",
+      "  // Build a Sheets A1 range prefix",
+    );
+    const oauthStart = routeSection(
+      routes,
+      'app.post("/api/auth/shopify/connect"',
+      "// Salesforce OAuth callback",
+    );
+    const oauthCallback = routeSection(
+      routes,
+      'app.get("/api/auth/shopify/callback"',
+      "// HubSpot OAuth callback",
+    );
+
+    for (const block of [availability, oauthStart, oauthCallback]) {
+      expect(block).toContain("requireShopifyOrderScope(");
+      expect(block).not.toContain("requireShopifyRevenueScopes(");
+    }
+    expect(availability).toContain('process.env.SHOPIFY_SCOPES || "read_orders"');
+    expect(oauthStart).toContain('process.env.SHOPIFY_SCOPES || "read_orders"');
+    expect(oauthStart).not.toContain("read_all_orders");
+  });
+
   it("makes the required masked Admin API token input explicit and focuses it after invalid submission", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
 

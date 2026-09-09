@@ -118,7 +118,7 @@ describe("source safety regression guards", () => {
     expect(route).toContain(accessGuard);
     expect(route.indexOf(accessGuard)).toBeGreaterThan(route.indexOf('if (!shop) return res.status(400).json({ message: "A valid *.myshopify.com shop domain is required" });'));
     expect(route).toContain('const sessionId = getSessionId(req);');
-    expect(route).toContain('requireShopifyRevenueScopes(scope.split(\',\'));');
+    expect(route).toContain('requireShopifyOrderScope(scope.split(\',\'));');
     expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("const clientId = process.env.SHOPIFY_CLIENT_ID"));
     expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("getShopifyRedirectUri()"));
     expect(route.indexOf(accessGuard)).toBeLessThan(route.indexOf("shopifyOauthStore.set"));

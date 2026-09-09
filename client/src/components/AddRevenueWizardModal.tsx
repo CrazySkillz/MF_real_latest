@@ -1690,7 +1690,7 @@ export function AddRevenueWizardModal(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
+      <DialogContent data-add-revenue-dialog className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
         <div className="flex flex-col h-full">
           <DialogHeader className="px-6 py-4 border-b">
             <div className="flex items-start justify-between gap-4">

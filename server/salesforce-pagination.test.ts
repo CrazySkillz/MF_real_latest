@@ -121,6 +121,15 @@ describe('Salesforce bounded query pagination', () => {
     expect(uniqueValuesRoute).toContain('boundedQueryFailure ? 413 : Number(error?.status || 500)');
   });
 
+  it('keeps Salesforce selections within the save API limit', () => {
+    const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');
+
+    expect(wizard).toContain('const MAX_SALESFORCE_SELECTED_VALUES = 200;');
+    expect(wizard).toContain('disabled={!checked && selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES}');
+    expect(wizard).toContain('prev.includes(value) || prev.length >= MAX_SALESFORCE_SELECTED_VALUES');
+    expect(wizard).toContain('selectedValues.length === 0 || selectedValues.length > MAX_SALESFORCE_SELECTED_VALUES');
+  });
+
   it('uses complete bounded Pipeline Proxy totals while keeping preview rows sampled', () => {
     const routes = readFileSync(join(process.cwd(), 'server', 'routes-oauth.ts'), 'utf8');
     const wizard = readFileSync(join(process.cwd(), 'client', 'src', 'components', 'SalesforceRevenueWizard.tsx'), 'utf8');

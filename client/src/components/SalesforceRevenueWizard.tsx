@@ -21,6 +21,7 @@ type UniqueValue = {
 
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 type ReviewOpportunityBreakdownRow = { id?: string; name: string; campaignValue?: string; amount: number };
+const MAX_SALESFORCE_SELECTED_VALUES = 200;
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
@@ -1319,9 +1320,14 @@ export function SalesforceRevenueWizard(props: {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
-                  Selected: <strong>{selectedValues.length}</strong>
+                  Selected: <strong>{selectedValues.length}</strong> / {MAX_SALESFORCE_SELECTED_VALUES}
                 </div>
               </div>
+              {selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES && (
+                <div className="text-xs text-amber-700">
+                  Salesforce imports support up to {MAX_SALESFORCE_SELECTED_VALUES} selected values. Deselect a value before choosing another.
+                </div>
+              )}
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-muted-foreground">Loading values…</div>
@@ -1346,9 +1352,13 @@ export function SalesforceRevenueWizard(props: {
                         <div key={value} className="flex items-start gap-2">
                           <Checkbox
                             checked={checked}
+                            disabled={!checked && selectedValues.length >= MAX_SALESFORCE_SELECTED_VALUES}
                             onCheckedChange={(next) => {
                               setSelectedValues((prev) => {
-                                if (next) return Array.from(new Set([...prev, value]));
+                                if (next) {
+                                  if (prev.includes(value) || prev.length >= MAX_SALESFORCE_SELECTED_VALUES) return prev;
+                                  return [...prev, value];
+                                }
                                 return prev.filter((x) => x !== value);
                               });
                             }}
@@ -1603,7 +1613,7 @@ export function SalesforceRevenueWizard(props: {
                   isSaving ||
                   stagesLoading ||
                   (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit" && !initialMappingConfig) || fieldsLoading || (fields.length === 0 && mode !== "edit" && !initialMappingConfig) || !campaignField)) ||
-                  (step === "crosswalk" && selectedValues.length === 0) ||
+                  (step === "crosswalk" && (selectedValues.length === 0 || selectedValues.length > MAX_SALESFORCE_SELECTED_VALUES)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
                   (step === "review" && (previewLoading || previewKey !== reviewPreviewKey || !previewCampaignCurrency || effectiveCurrencyUnknown || effectiveCurrencyMismatch)) ||

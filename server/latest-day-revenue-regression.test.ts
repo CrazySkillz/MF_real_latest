@@ -99,7 +99,7 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(clientFile).toContain("Selected: <strong>{selectedValues.length}</strong>");
-    expect(clientFile).toContain('(step === "crosswalk" && selectedValues.length === 0)');
+    expect(clientFile).toContain('(step === "crosswalk" && (selectedValues.length === 0 || selectedValues.length > MAX_SALESFORCE_SELECTED_VALUES))');
     expect(clientFile).toContain("selectedValues,");
     expect(clientFile).not.toContain("Map each Salesforce value to a LinkedIn campaign");
     expect(clientFile).not.toContain("/linkedin-campaigns");

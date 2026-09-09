@@ -8,9 +8,11 @@ import {
   normalizeShopifyDomain,
   parseShopifyExpiringOfflineToken,
   refreshShopifyOfflineAccessToken,
+  requireShopifyCampaignOrderWindow,
   requireShopifyOrderScope,
   requireShopifyOrderWindowScopes,
   requireShopifyRevenueScopes,
+  resolveShopifyCampaignOrderWindow,
   shopifyAdminFetch,
   validateShopifyOauthState,
 } from './utils/shopify-provider';
@@ -71,6 +73,19 @@ describe('Shopify provider hardening', () => {
     expect(() => validateShopifyOauthState(stored, { ...expected, sessionId: 'session-2' }, 1_500, 1_000)).toThrow('session mismatch');
     expect(() => validateShopifyOauthState(stored, { ...expected, shopDomain: 'other.myshopify.com' }, 1_500, 1_000)).toThrow('shop mismatch');
     expect(() => validateShopifyOauthState(stored, expected, 2_001, 1_000)).toThrow('Expired');
+  });
+
+  it('uses a fail-closed recent campaign window until OAuth has read_all_orders', () => {
+    const now = Date.parse('2026-09-09T13:00:00Z');
+    expect(resolveShopifyCampaignOrderWindow({
+      campaignStart: '2026-07-12', authType: 'oauth', scopes: ['read_orders'], now,
+    })).toMatchObject({ limited: true, eligible: true, refreshThrough: '2026-09-09T00:00:00.000Z' });
+    expect(() => requireShopifyCampaignOrderWindow({
+      campaignStart: '2026-07-11', authType: 'oauth', scopes: ['read_orders'], now,
+    })).toThrow('revenue was not changed');
+    expect(resolveShopifyCampaignOrderWindow({
+      campaignStart: '2025-01-01', authType: 'oauth', scopes: ['read_orders', 'read_all_orders'], now,
+    })).toMatchObject({ limited: false, eligible: true });
   });
 
   it('validates and timestamps Shopify expiring offline tokens', () => {

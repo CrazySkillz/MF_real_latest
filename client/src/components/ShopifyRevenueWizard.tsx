@@ -11,6 +11,15 @@ import { CheckCircle2, ClipboardCheck, DollarSign, Link2, Loader2, Target } from
 
 type Step = "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
 type UniqueValue = { value: string; count: number };
+type ShopifyOrderWindowStatus = {
+  mode: "recent" | "full";
+  providerLimitDays: number | null;
+  safetyWindowDays: number | null;
+  campaignStart: string;
+  cutoff: string;
+  refreshThrough: string;
+  eligible: boolean;
+};
 
 export function ShopifyRevenueWizard(props: {
   campaignId: string;
@@ -60,8 +69,8 @@ export function ShopifyRevenueWizard(props: {
     onStepChange?.(step);
   }, [step, onStepChange]);
 
-  // Treat Shopify revenue as "to date" (campaign lifetime-style) to avoid confusing windowing.
-  // We keep a long lookback under the hood but do not expose it in the UI.
+  // Full-access connections retain the established validation lookback. The server replaces this
+  // with the exact campaign window for OAuth and blocks inaccessible historical campaigns.
   const [days] = useState<number>(3650);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const revenueMetric = "current_total_price";
@@ -84,6 +93,8 @@ export function ShopifyRevenueWizard(props: {
   const [statusLoading, setStatusLoading] = useState(true);
   const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("token");
   const [oauthAvailable, setOauthAvailable] = useState(false);
+  const [orderWindow, setOrderWindow] = useState<ShopifyOrderWindowStatus | null>(null);
+  const requestDays = connectMethod === "oauth" ? undefined : days;
   const [adminToken, setAdminToken] = useState<string>("");
   const adminTokenInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,6 +135,7 @@ export function ShopifyRevenueWizard(props: {
 
   const editSourceId = mode === "edit" ? String(sourceId || initialMappingConfig?.sourceId || "").trim() : "";
   const isRepair = mode === "edit" && !hasEditChanges;
+  const orderWindowBlocked = connected && orderWindow?.mode === "recent" && !orderWindow.eligible;
   const unavailableSavedValues = useMemo(() => {
     if (mode !== "edit" || !initialMappingConfig || valuesLoadedField !== campaignField) return [];
     if (String(initialMappingConfig.campaignField || "utm_campaign") !== campaignField) return [];
@@ -248,12 +260,14 @@ export function ShopifyRevenueWizard(props: {
     if (!applyExistingConnection && isConnected) {
       setConnected(false);
       setShopName(null);
+      setOrderWindow(null);
       setConnectMethod(canUseOauth ? "oauth" : "token");
       setShopDomain("");
       return false;
     }
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
+    setOrderWindow(isConnected && json?.orderWindow ? json.orderWindow as ShopifyOrderWindowStatus : null);
     if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "oauth" ? "oauth" : "token");
     else setConnectMethod(canUseOauth ? "oauth" : "token");
     const serverDomain = isConnected ? String(json?.shopDomain || "") : "";
@@ -422,13 +436,23 @@ export function ShopifyRevenueWizard(props: {
     setValuesLoading(true);
     try {
       const resp = await fetch(
-        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}&days=${encodeURIComponent(
-          String(days)
-        )}&limit=300`,
+        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}${
+          requestDays ? `&days=${encodeURIComponent(String(requestDays))}` : ""
+        }&limit=300`,
         { credentials: "include", cache: "no-store" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
+        if (json?.code === "SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED") {
+          setUniqueValues([]);
+          await fetchStatus();
+          toast({
+            title: "Shopify historical access required",
+            description: json?.error || "This campaign is outside Shopify's recent-order access window. Revenue was not changed.",
+            variant: "destructive",
+          });
+          return;
+        }
         if (resp.status === 403) {
           const protectedDataBlocked = json?.code === "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED";
           toast({
@@ -480,7 +504,7 @@ export function ShopifyRevenueWizard(props: {
     if (uniqueValues.length > 0 && loadedValuesFieldRef.current === campaignField) return;
     void fetchUniqueValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, campaignField, days]);
+  }, [step, campaignField, requestDays]);
 
   // Persist domain edits so going Back preserves the typed store.
   useEffect(() => {
@@ -507,6 +531,14 @@ export function ShopifyRevenueWizard(props: {
     if (step === "campaign-field") {
       if (!connected) {
         toast({ title: "Connect Shopify", description: "Connect your Shopify store before continuing.", variant: "destructive" });
+        return;
+      }
+      if (orderWindowBlocked) {
+        toast({
+          title: "Shopify historical access required",
+          description: `This campaign started on ${orderWindow?.campaignStart}. Revenue remains unchanged while Shopify historical access is pending.`,
+          variant: "destructive",
+        });
         return;
       }
       if (loadedValuesFieldRef.current && loadedValuesFieldRef.current !== campaignField) {
@@ -546,7 +578,7 @@ export function ShopifyRevenueWizard(props: {
             campaignField,
             selectedValues,
             revenueMetric,
-            days,
+            ...(requestDays ? { days: requestDays } : {}),
             campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null,
             platformContext,
             valueSource: "revenue",
@@ -610,7 +642,7 @@ export function ShopifyRevenueWizard(props: {
             campaignField,
             selectedValues,
             revenueMetric,
-            days,
+            ...(requestDays ? { days: requestDays } : {}),
             platformContext,
             valueSource: "revenue",
             revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
@@ -635,7 +667,7 @@ export function ShopifyRevenueWizard(props: {
     if (step !== "review") return;
     void fetchPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, campaignField, revenueMetric, days, platformContext, editSourceId, selectedValues.join("|"), campaignDisplayName, selectedCampaignMappings]);
+  }, [step, campaignField, revenueMetric, requestDays, platformContext, editSourceId, selectedValues.join("|"), campaignDisplayName, selectedCampaignMappings]);
 
   return (
     <div className="space-y-6">
@@ -827,6 +859,16 @@ export function ShopifyRevenueWizard(props: {
                   </span>
                 </div>
 
+                {connected && orderWindow?.mode === "recent" && (
+                  <div className={`rounded-md border px-3 py-2 text-xs ${orderWindow.eligible
+                    ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                    : "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"}`} role="status">
+                    {orderWindow.eligible
+                      ? `Shopify currently provides recent-order access. This campaign will use its exact ${orderWindow.campaignStart}-to-today window and can refresh through ${orderWindow.refreshThrough} unless historical access is granted sooner.`
+                      : `Shopify currently provides recent-order access only. This campaign started on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary, so mapping and refresh are blocked without changing saved revenue.`}
+                  </div>
+                )}
+
                 {/* Non-shifting loading indicator (no text) */}
                 {statusLoading && (
                   <div className="absolute top-3 right-3 text-muted-foreground/70">
@@ -836,7 +878,7 @@ export function ShopifyRevenueWizard(props: {
               </div>
 
               <Label>Attribution key</Label>
-                <Select value={campaignField} onValueChange={(v) => {
+                <Select disabled={orderWindowBlocked} value={campaignField} onValueChange={(v) => {
                   setCampaignField(v);
                   setCampaignMappings([]);
                   setCampaignDisplayName("");
@@ -1049,8 +1091,9 @@ export function ShopifyRevenueWizard(props: {
               </Button>
               <Button onClick={() => void handleNext()} disabled={
                 valuesLoading || isSaving ||
+                (step === "campaign-field" && orderWindowBlocked) ||
                 (step === "crosswalk" && selectedValues.length === 0) ||
-                (step === "review" && isRepair && (previewLoading || !!previewError || !preview?.repairConfirmation))
+                (step === "review" && (previewLoading || !!previewError || (isRepair && !preview?.repairConfirmation)))
               }>
                 {step === "review" ? (isSaving ? "Processing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>

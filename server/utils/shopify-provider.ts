@@ -1,4 +1,6 @@
 export const DEFAULT_SHOPIFY_API_VERSION = '2026-07';
+export const SHOPIFY_RECENT_ORDER_WINDOW_DAYS = 59;
+export const SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE = 'SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED';
 
 const SUPPORTED_SHOPIFY_API_VERSIONS = new Set(['2025-10', '2026-01', '2026-04', '2026-07']);
 const SHOPIFY_HOST_PATTERN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
@@ -69,6 +71,45 @@ export function validateShopifyOauthState(
   if (!stored.createdAt || now - stored.createdAt > ttlMs || now < stored.createdAt) throw new Error('Expired OAuth state');
   if (!expected.sessionId || stored.sessionId !== expected.sessionId) throw new Error('OAuth session mismatch');
   if (stored.shopDomain !== expected.shopDomain) throw new Error('OAuth shop mismatch');
+}
+
+export function resolveShopifyCampaignOrderWindow(args: {
+  campaignStart: string | Date;
+  authType: string | null | undefined;
+  scopes: Iterable<string>;
+  now?: number;
+}) {
+  const campaignStart = args.campaignStart instanceof Date ? new Date(args.campaignStart) : new Date(args.campaignStart);
+  const now = new Date(args.now ?? Date.now());
+  if (!Number.isFinite(campaignStart.getTime())) throw new Error('Campaign has no valid Shopify reporting-window start');
+  if (!Number.isFinite(now.getTime())) throw new Error('Invalid Shopify order-window reference time');
+
+  const limited = String(args.authType || '').trim().toLowerCase() === 'oauth'
+    && !hasShopifyAllOrdersScope(args.scopes);
+  const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  cutoff.setUTCDate(cutoff.getUTCDate() - SHOPIFY_RECENT_ORDER_WINDOW_DAYS);
+  const refreshThrough = new Date(Date.UTC(campaignStart.getUTCFullYear(), campaignStart.getUTCMonth(), campaignStart.getUTCDate()));
+  refreshThrough.setUTCDate(refreshThrough.getUTCDate() + SHOPIFY_RECENT_ORDER_WINDOW_DAYS);
+
+  return {
+    campaignStartAt: campaignStart.toISOString(),
+    cutoffAt: cutoff.toISOString(),
+    refreshThrough: refreshThrough.toISOString(),
+    limited,
+    eligible: !limited || campaignStart.getTime() >= cutoff.getTime(),
+  };
+}
+
+export function requireShopifyCampaignOrderWindow(args: Parameters<typeof resolveShopifyCampaignOrderWindow>[0]) {
+  const window = resolveShopifyCampaignOrderWindow(args);
+  if (!window.eligible) {
+    const error: any = new Error(
+      `Shopify OAuth currently provides recent-order access only. This campaign started before ${window.cutoffAt.slice(0, 10)}, so revenue was not changed while read_all_orders approval is pending.`,
+    );
+    error.code = SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE;
+    throw error;
+  }
+  return window;
 }
 
 export type ShopifyExpiringOfflineToken = {

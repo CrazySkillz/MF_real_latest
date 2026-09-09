@@ -10,7 +10,7 @@ import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWind
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import { GA4_KPI_ACTIVE_METRIC_CONFLICT } from "./utils/ga4-kpi-create-guard";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
-import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
+import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -34131,7 +34131,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return {
       isOauth: String(config?.authType || '').toLowerCase() === 'oauth',
       hasReadAllOrders: hasShopifyAllOrdersScope(scopes),
+      scopes,
     };
+  };
+
+  const getShopifyCampaignWindowStartAt = (campaign: any): Date => {
+    const raw = campaign?.startDate || campaign?.createdAt || null;
+    const startAt = raw ? new Date(raw) : new Date(Number.NaN);
+    if (!Number.isFinite(startAt.getTime())) throw new Error('Campaign has no valid Shopify reporting-window start');
+    return startAt;
+  };
+
+  const getShopifyCampaignOrderWindow = (connection: any, campaign: any, now = Date.now()) => {
+    const orderAccess = getShopifyConnectionOrderAccess(connection);
+    return resolveShopifyCampaignOrderWindow({
+      campaignStart: getShopifyCampaignWindowStartAt(campaign),
+      authType: orderAccess.isOauth ? 'oauth' : 'token',
+      scopes: orderAccess.scopes,
+      now,
+    });
   };
 
   /**
@@ -34162,6 +34180,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         return { recalculated: false, conversionValue: null, orderCount: 0 };
       }
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return { recalculated: false, conversionValue: null, orderCount: 0 };
 
       // Get mapping config from Shopify connection or revenue source
       const connRaw = conn?.mappingConfig;
@@ -34177,7 +34197,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch orders from Shopify
       const apiVersion = getShopifyApiVersion();
-      const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
+      const orderAccess = getShopifyConnectionOrderAccess(conn);
+      const orderWindow = getShopifyCampaignOrderWindow(conn, campaign);
+      if (orderWindow.limited) requireShopifyCampaignOrderWindow({
+        campaignStart: orderWindow.campaignStartAt,
+        authType: 'oauth',
+        scopes: orderAccess.scopes,
+      });
+      const createdAtMin = orderAccess.isOauth
+        ? orderWindow.campaignStartAt
+        : new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
       const { orders, developmentStoreTestOrdersIncluded } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
@@ -34308,8 +34337,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/shopify/:campaignId/status", async (req, res) => {
     try {
       const campaignId = String(req.params.campaignId || "");
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const conn: any = await storage.getShopifyConnection(campaignId);
       const connected = !!(conn && conn.isActive && conn.accessToken && conn.shopDomain);
       let authType: string | null = null;
@@ -34332,12 +34361,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (error?.status === 404 || msg === "not found") authType = "token";
         }
       }
+      const orderAccess = connected ? getShopifyConnectionOrderAccess(conn) : null;
+      const orderWindow = connected ? resolveShopifyCampaignOrderWindow({
+        campaignStart: getShopifyCampaignWindowStartAt(campaign),
+        authType: authType || (orderAccess?.isOauth ? 'oauth' : 'token'),
+        scopes: orderAccess?.scopes || [],
+      }) : null;
       res.json({
         connected,
         shopDomain: connected ? conn.shopDomain : null,
         shopName: connected ? conn.shopName : null,
         authType: connected ? authType : null,
         oauthAvailable: isShopifyOauthAvailable(),
+        orderWindow: orderWindow ? {
+          mode: orderWindow.limited ? 'recent' : 'full',
+          providerLimitDays: orderWindow.limited ? 60 : null,
+          safetyWindowDays: orderWindow.limited ? SHOPIFY_RECENT_ORDER_WINDOW_DAYS : null,
+          campaignStart: orderWindow.campaignStartAt.slice(0, 10),
+          cutoff: orderWindow.cutoffAt.slice(0, 10),
+          refreshThrough: orderWindow.refreshThrough.slice(0, 10),
+          eligible: orderWindow.eligible,
+        } : null,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to check Shopify connection" });
@@ -34460,8 +34504,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = getShopifyApiVersion();
 
-      // Default: last 90 days
-      const createdAtMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const orderAccess = getShopifyConnectionOrderAccess(conn);
+      const previewDays = orderAccess.isOauth && !orderAccess.hasReadAllOrders ? SHOPIFY_RECENT_ORDER_WINDOW_DAYS : 90;
+      const createdAtMin = new Date(Date.now() - previewDays * 24 * 60 * 60 * 1000).toISOString();
       const { orders } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
@@ -34512,6 +34557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers,
         rows,
         rowCount: rows.length,
+        orderWindowDays: previewDays,
       });
     } catch (error: any) {
       console.error("[Shopify Preview] Error:", error);
@@ -34529,8 +34575,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.campaignId || "");
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const field = String(req.query.field || "").trim();
       const days = Math.min(Math.max(parseInt(String(req.query.days || "90"), 10) || 90, 1), 3650);
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || "300"), 10) || 300, 1), 500);
@@ -34538,8 +34584,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = getShopifyApiVersion();
       const orderAccess = getShopifyConnectionOrderAccess(conn);
-      const discoveryDays = orderAccess.isOauth && !orderAccess.hasReadAllOrders ? Math.min(days, 59) : days;
-      const createdAtMin = new Date(Date.now() - discoveryDays * 24 * 60 * 60 * 1000).toISOString();
+      const orderWindow = getShopifyCampaignOrderWindow(conn, campaign);
+      if (orderWindow.limited) requireShopifyCampaignOrderWindow({
+        campaignStart: orderWindow.campaignStartAt,
+        authType: 'oauth',
+        scopes: orderAccess.scopes,
+      });
+      const discoveryDays = orderAccess.isOauth ? SHOPIFY_RECENT_ORDER_WINDOW_DAYS : days;
+      const createdAtMin = orderAccess.isOauth
+        ? orderWindow.campaignStartAt
+        : new Date(Date.now() - discoveryDays * 24 * 60 * 60 * 1000).toISOString();
       const { orders, developmentStoreTestOrdersIncluded } = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
@@ -34590,13 +34644,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ordersFetched: Array.isArray(orders) ? orders.length : 0,
           developmentStoreTestOrdersIncluded,
           discoveryDays,
-          discoveryWindowLimited: discoveryDays < days,
+          discoveryWindowLimited: orderWindow.limited,
+          campaignWindowStart: orderWindow.campaignStartAt.slice(0, 10),
           nonEmptyValues: values.length,
           sampleValues: sample,
         },
       });
     } catch (error: any) {
       console.error("[Shopify Unique Values] Error:", error?.message, error?._shopifyText ? `Raw: ${error._shopifyText.slice(0, 500)}` : "");
+      if (error?.code === SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE) {
+        return res.status(409).json({ error: error.message, code: error.code });
+      }
       if (shopifyRequiresMerchantApproval(error)) {
         return res.status(403).json({
           error: "[Shopify] MetricMind needs merchant approval for the Shopify Orders scope (read_orders). Please approve the app's access in Shopify Admin and reconnect.",
@@ -34728,21 +34786,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = getShopifyApiVersion();
       const fallbackCreatedAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
-      const campaignStartAt = (camp as any)?.startDate ? new Date((camp as any).startDate) : null;
-      const campaignCreatedAt = new Date((camp as any)?.createdAt);
-      const hasValidCampaignStart = Boolean(campaignStartAt && Number.isFinite(campaignStartAt.getTime()));
-      const campaignWindowStartAt = hasValidCampaignStart ? campaignStartAt! : campaignCreatedAt;
-      if (platformCtx === 'ga4' && !Number.isFinite(campaignWindowStartAt.getTime())) {
-        throw new Error('Campaign has no valid Shopify reporting-window start');
-      }
+      const campaignWindowStartAt = getShopifyCampaignWindowStartAt(camp);
+      const orderAccess = getShopifyConnectionOrderAccess(conn);
+      const orderWindow = getShopifyCampaignOrderWindow(conn, camp);
+      if (orderWindow.limited) requireShopifyCampaignOrderWindow({
+        campaignStart: orderWindow.campaignStartAt,
+        authType: 'oauth',
+        scopes: orderAccess.scopes,
+      });
       const verifiedDevelopmentStore = platformCtx === 'ga4'
         ? await isShopifyPartnerDevelopmentStore({ shopDomain: conn.shopDomain, accessToken: conn.accessToken, apiVersion }).catch(() => false)
         : false;
-      const orderAccess = getShopifyConnectionOrderAccess(conn);
-      const oauthWithoutHistoricalAccess = orderAccess.isOauth && !orderAccess.hasReadAllOrders;
-      const providerOrderWindowStartAt = platformCtx === 'ga4' && (!verifiedDevelopmentStore || oauthWithoutHistoricalAccess)
+      const providerOrderWindowStartAt = orderAccess.isOauth
         ? campaignWindowStartAt
-        : fallbackCreatedAtMin;
+        : platformCtx === 'ga4' && !verifiedDevelopmentStore ? campaignWindowStartAt : fallbackCreatedAtMin;
       const createdAtMin = providerOrderWindowStartAt.toISOString();
       const providerQueryAudit: Record<string, any> = {};
       const orderBatch = await shopifyFetchAllOrders({
@@ -35252,7 +35309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("[Shopify Save Mappings] Error:", error);
       await persistRefreshFailure(error);
       const encryptionNotConfigured = error?.code === 'TOKEN_ENCRYPTION_KEY_NOT_CONFIGURED';
-      res.status(encryptionNotConfigured ? 503 : 500).json({
+      const campaignWindowExceeded = error?.code === SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE;
+      res.status(encryptionNotConfigured ? 503 : campaignWindowExceeded ? 409 : 500).json({
         ...(error?.code ? { code: String(error.code) } : {}),
         error: error.message || "Failed to process Shopify revenue metrics",
       });

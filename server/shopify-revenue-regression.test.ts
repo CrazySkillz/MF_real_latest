@@ -58,7 +58,7 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('const deduplicatedOrders = deduplicateShopifyOrders(orders);');
     expect(routes).toContain('return { orders: deduplicatedOrders, developmentStoreTestOrdersIncluded };');
     expect(saveRoute).toContain('getShopifyOrderReportingDateWithinWindow(order, ga4ReportingTimeZone, ga4StartDate, ga4EndDate)');
-    expect(saveRoute).toContain('const campaignWindowStartAt = hasValidCampaignStart ? campaignStartAt! : campaignCreatedAt;');
+    expect(saveRoute).toContain('const campaignWindowStartAt = getShopifyCampaignWindowStartAt(camp);');
     expect(saveRoute).toContain('externalId: String(order.id)');
     expect(saveRoute).toContain("materializationGranularity: 'order'");
     expect(saveRoute).toContain("orderDateBasis: 'created_at_campaign_reporting_timezone'");
@@ -314,7 +314,7 @@ describe("Shopify revenue regression guard", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
     expect(routes).toContain('developmentStoreTestOrdersIncluded = await isShopifyPartnerDevelopmentStore');
     expect(routes).toContain('developmentStoreVerification = \'failed_closed\'');
-    expect(routes).toContain("platformCtx === 'ga4' && (!verifiedDevelopmentStore || oauthWithoutHistoricalAccess)");
+    expect(routes).toContain("const providerOrderWindowStartAt = orderAccess.isOauth");
     expect(routes).toContain('developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded');
     expect(routes).toContain('shouldPreserveShopifyDevelopmentStoreLastGood({');
     expect(routes).toContain("schedulerRefresh: internalAutoRefresh && platformCtx === 'ga4'");
@@ -435,8 +435,14 @@ describe("Shopify revenue regression guard", () => {
     expect(oauthStart).not.toContain("read_all_orders");
   });
 
-  it("limits OAuth value discovery without broadening or truncating the revenue calculation", () => {
+  it("applies one fail-closed campaign window across basic OAuth discovery, save, and refresh", () => {
     const routes = read(ROUTES_FILE);
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+    const statusRoute = routeSection(
+      routes,
+      'app.get("/api/shopify/:campaignId/status"',
+      '/**\n   * Shopify diagnostics',
+    );
     const uniqueValuesRoute = routeSection(
       routes,
       'app.get("/api/shopify/:campaignId/orders/unique-values"',
@@ -448,11 +454,22 @@ describe("Shopify revenue regression guard", () => {
       'app.post("/api/campaigns/:id/chat"',
     );
 
-    expect(uniqueValuesRoute).toContain('orderAccess.isOauth && !orderAccess.hasReadAllOrders ? Math.min(days, 59) : days');
-    expect(uniqueValuesRoute).toContain('discoveryWindowLimited: discoveryDays < days');
-    expect(saveRoute).toContain('const oauthWithoutHistoricalAccess = orderAccess.isOauth && !orderAccess.hasReadAllOrders;');
-    expect(saveRoute).toContain("platformCtx === 'ga4' && (!verifiedDevelopmentStore || oauthWithoutHistoricalAccess)");
-    expect(saveRoute).toContain('? campaignWindowStartAt\n        : fallbackCreatedAtMin');
+    expect(statusRoute).toContain('mode: orderWindow.limited ? \'recent\' : \'full\'');
+    expect(statusRoute).toContain('eligible: orderWindow.eligible');
+    expect(uniqueValuesRoute).toContain('if (orderWindow.limited) requireShopifyCampaignOrderWindow({');
+    expect(uniqueValuesRoute).toContain('? orderWindow.campaignStartAt');
+    expect(uniqueValuesRoute).toContain('discoveryWindowLimited: orderWindow.limited');
+    expect(saveRoute).toContain('if (orderWindow.limited) requireShopifyCampaignOrderWindow({');
+    expect(saveRoute).toContain('const providerOrderWindowStartAt = orderAccess.isOauth');
+    expect(saveRoute.indexOf('requireShopifyCampaignOrderWindow({')).toBeLessThan(saveRoute.indexOf('const orderBatch = await shopifyFetchAllOrders({'));
+    expect(saveRoute.indexOf('const orderBatch = await shopifyFetchAllOrders({')).toBeLessThan(saveRoute.indexOf('await storage.replaceGa4ShopifyRevenueSourceWithRecords('));
+    expect(saveRoute.indexOf('const orderBatch = await shopifyFetchAllOrders({')).toBeLessThan(saveRoute.indexOf('await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));'));
+    expect(saveRoute).toContain("campaignWindowExceeded ? 409 : 500");
+    expect(wizard).toContain('Shopify currently provides recent-order access only.');
+    expect(wizard).toContain('const requestDays = connectMethod === "oauth" ? undefined : days;');
+    expect(wizard).toContain('...(requestDays ? { days: requestDays } : {})');
+    expect(wizard).toContain('(step === "campaign-field" && orderWindowBlocked)');
+    expect(wizard).toContain('(step === "review" && (previewLoading || !!previewError');
   });
 
   it("uses renewable expiring offline tokens for Shopify OAuth without changing Admin token connections", () => {

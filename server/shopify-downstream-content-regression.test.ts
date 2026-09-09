@@ -42,6 +42,7 @@ const ga4ServiceMock = vi.hoisted(() => ({
 
 const refreshCampaignCurrentValuesForCampaignMock = vi.hoisted(() => vi.fn());
 const resolveCampaignCurrentValueForAlertMock = vi.hoisted(() => vi.fn(async (row: any) => row));
+const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const getAuthMock = vi.hoisted(() => vi.fn(() => ({ userId: "user-1" })));
 
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -51,6 +52,7 @@ vi.mock("@clerk/express", () => ({ getAuth: getAuthMock }));
 vi.mock("./utils/campaign-current-values", () => ({
   refreshCampaignCurrentValuesForCampaign: refreshCampaignCurrentValuesForCampaignMock,
   resolveCampaignCurrentValueForAlert: resolveCampaignCurrentValueForAlertMock,
+  getCampaignMetricTotals: getCampaignMetricTotalsMock,
 }));
 vi.mock("./middleware/rateLimiter", () => {
   const passThrough = (_req: any, _res: any, next: any) => next();
@@ -165,6 +167,7 @@ function resetMocks() {
   refreshCampaignCurrentValuesForCampaignMock.mockReset();
   resolveCampaignCurrentValueForAlertMock.mockReset();
   resolveCampaignCurrentValueForAlertMock.mockImplementation(async (row: any) => row);
+  getCampaignMetricTotalsMock.mockReset();
   getAuthMock.mockReset();
   getAuthMock.mockReturnValue({ userId: "user-1" });
   pdfTextCalls.length = 0;
@@ -274,13 +277,19 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("Revenue KPI");
     expect(text).toContain("Revenue Benchmark");
     expect(text).toContain("299.98");
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledWith(
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
+      1,
       campaign.id,
       storageMock,
-      "30daysAgo",
+      "2026-07-02",
       "properties/123",
       2000,
-      expect.anything(),
+      "shopify_campaign",
+      "2026-07-04",
+      false,
+      false,
+      "USD",
+      true,
     );
     expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith(
       campaign.id,
@@ -302,6 +311,10 @@ describe("Shopify downstream value/content regression guard", () => {
           { campaign: "ad_email", sessions: 43, users: 43, conversions: 43, revenue: 8952.6 },
           { campaign: "ad_social", sessions: 40, users: 40, conversions: 40, revenue: 9476.6 },
         ],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 100 }],
+        totals: { revenue: 100 },
       });
 
     await buildGA4ScheduledPdfAttachment({
@@ -342,10 +355,15 @@ describe("Shopify downstream value/content regression guard", () => {
       1,
       campaign.id,
       storageMock,
-      "30daysAgo",
+      "2026-07-02",
       "properties/123",
       2000,
       undefined,
+      "2026-07-04",
+      false,
+      false,
+      "USD",
+      true,
     );
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
       2,
@@ -356,6 +374,20 @@ describe("Shopify downstream value/content regression guard", () => {
       2000,
       undefined,
       "2026-07-04",
+    );
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
+      3,
+      campaign.id,
+      storageMock,
+      "2026-06-01",
+      "properties/123",
+      2000,
+      undefined,
+      "2026-07-04",
+      false,
+      false,
+      "USD",
+      true,
     );
   });
 

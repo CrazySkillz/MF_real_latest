@@ -85,6 +85,7 @@ export function ShopifyRevenueWizard(props: {
   const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("token");
   const [oauthAvailable, setOauthAvailable] = useState(false);
   const [adminToken, setAdminToken] = useState<string>("");
+  const adminTokenInputRef = useRef<HTMLInputElement>(null);
 
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
@@ -377,6 +378,7 @@ export function ShopifyRevenueWizard(props: {
 
     const token = String(adminToken || "").trim();
     if (!token || !token.startsWith("shpat_")) {
+      adminTokenInputRef.current?.focus();
       toast({ title: "Enter an Admin API token", description: "Paste a token that starts with shpat_.", variant: "destructive" });
       return;
     }
@@ -794,15 +796,23 @@ export function ShopifyRevenueWizard(props: {
 
                 {(!oauthAvailable || connectMethod === "token") && (
                   <div className="space-y-1">
-                    <Label>Admin API token</Label>
+                    <Label htmlFor="shopify-admin-token">Admin API token (required)</Label>
                     <Input
+                      id="shopify-admin-token"
+                      ref={adminTokenInputRef}
                       type="password"
                       value={adminToken}
                       onChange={(e) => setAdminToken(e.target.value)}
                       placeholder="shpat_…"
                       autoCapitalize="none"
                       autoCorrect="off"
+                      autoComplete="off"
+                      className="border-2 border-primary/50 bg-background shadow-sm"
+                      required
                     />
+                    <div className="text-xs font-medium text-foreground">
+                      Paste the token into the highlighted field above. It stays masked.
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       Create this in Shopify Admin → Apps → Develop apps → your app → Admin API access token. Keep it secret.
                     </div>

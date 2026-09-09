@@ -402,6 +402,17 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).not.toContain("Shopify doesn’t store LinkedIn campaign ids directly by default");
   });
 
+  it("makes the required masked Admin API token input explicit and focuses it after invalid submission", () => {
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+
+    expect(wizard).toContain('adminTokenInputRef.current?.focus();');
+    expect(wizard).toContain('<Label htmlFor="shopify-admin-token">Admin API token (required)</Label>');
+    expect(wizard).toContain('ref={adminTokenInputRef}');
+    expect(wizard).toContain('className="border-2 border-primary/50 bg-background shadow-sm"');
+    expect(wizard).toContain('Paste the token into the highlighted field above. It stays masked.');
+    expect(wizard).toContain('type="password"');
+  });
+
   it("keeps the configured OAuth error path fail-closed", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
 

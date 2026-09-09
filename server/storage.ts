@@ -1824,6 +1824,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource> {
+    if (!records.length) throw new Error('Salesforce revenue requires at least one materialized record');
     return await db.transaction(async (tx: any) => {
       const sourceValues = { ...source, campaignId, sourceType: 'salesforce', platformContext: 'ga4', isActive: true } as any;
       let savedSource: RevenueSource | undefined;

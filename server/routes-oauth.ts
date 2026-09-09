@@ -17619,6 +17619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Per-LinkedIn-campaign revenue tracking: key is "date:urn"
       const revenueByDateAndCampaign = new Map<string, number>();
       const campaignValueRevenueTotals = new Map<string, number>();
+      let invalidRevenueAmountCount = 0;
+      let invalidRevenueDateCount = 0;
 
       const fetched = await fetchOppRecords(true);
       // If fetchOppRecords returned an Express response (error), stop here.
@@ -17627,14 +17629,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const matchedSelectedValues = new Set<string>();
       for (const rec of records) {
         const rRaw = readField(rec, revenue);
-        const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+        const normalizedRevenue = rRaw === undefined || rRaw === null ? '' : String(rRaw).replace(/[^0-9.\-]/g, '').trim();
+        const r = normalizedRevenue ? Number(normalizedRevenue) : NaN;
+        if (!Number.isFinite(r)) invalidRevenueAmountCount += 1;
         if (Number.isFinite(r)) totalRevenue += r;
         const campaignValue = String(readField(rec, attribField) || "").trim();
         if (campaignValue) matchedSelectedValues.add(campaignValue);
         if (Number.isFinite(r) && campaignValue) {
           campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
         }
-        const closeDate = rec?.[dateFieldChoice] ? String(rec[dateFieldChoice]).slice(0, 10) : '';
+        const closeDate = platformCtx === 'ga4'
+          ? normalizeStrictUtcDateKey(rec?.[dateFieldChoice]) || ''
+          : rec?.[dateFieldChoice] ? String(rec[dateFieldChoice]).slice(0, 10) : '';
+        if (platformCtx === 'ga4' && Number.isFinite(r) && !closeDate) invalidRevenueDateCount += 1;
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
 
@@ -17659,6 +17666,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : '';
           if (c) currencies.add(c);
         }
+      }
+
+      if (platformCtx === 'ga4' && invalidRevenueAmountCount > 0) {
+        return res.status(422).json({
+          error: `Salesforce returned ${invalidRevenueAmountCount} confirmed revenue opportunity record(s) without a valid ${revenue} value. Fix the opportunity revenue values before importing revenue.`,
+          code: 'SALESFORCE_INVALID_CONFIRMED_REVENUE_AMOUNTS',
+          invalidOpportunityCount: invalidRevenueAmountCount,
+        });
+      }
+      if (platformCtx === 'ga4' && invalidRevenueDateCount > 0) {
+        return res.status(422).json({
+          error: `Salesforce returned ${invalidRevenueDateCount} confirmed revenue opportunity record(s) without a valid ${dateFieldChoice} value. Fix the opportunity dates before importing revenue.`,
+          code: 'SALESFORCE_INVALID_CONFIRMED_REVENUE_DATES',
+          dateField: dateFieldChoice,
+          invalidOpportunityCount: invalidRevenueDateCount,
+        });
       }
 
       const overrideCur = salesforceCurrencyOverride ? String(salesforceCurrencyOverride).trim().toUpperCase() : '';
@@ -18025,8 +18048,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (platformCtx === 'ga4' && revenueRecordsToInsert.length === 0) {
+        if (records.length > 0) {
+          return res.status(422).json({
+            error: 'Salesforce confirmed revenue could not be materialized by date. No revenue changes were saved.',
+            code: 'SALESFORCE_REVENUE_MATERIALIZATION_MISMATCH',
+          });
+        }
+        revenueRecordsToInsert.push({
+          campaignId,
+          revenueSourceId: source.id,
+          date: yesterdayUTC(),
+          revenue: '0.00' as any,
+          currency: cur,
+          sourceType: 'salesforce',
+        });
+      }
+
       if (platformCtx === 'ga4') {
-        if (totalRevenue > 0 && revenueRecordsToInsert.length <= 0) {
+        if (revenueRecordsToInsert.length <= 0) {
           return res.status(500).json({ error: 'Salesforce revenue was fetched but no daily revenue records were materialized.' });
         }
         if (!sfConn || !salesforceConnectionMappingConfig) return res.status(404).json({ error: 'Salesforce connection not found.' });
@@ -18038,7 +18078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const inserted = await storage.createRevenueRecords(revenueRecordsToInsert);
         materializedRecordCount = Array.isArray(inserted) ? inserted.length : revenueRecordsToInsert.length;
       }
-      const materializedDates = Array.from(revenueByDate.keys()).sort();
+      const materializedDates = Array.from(new Set(revenueRecordsToInsert.map((record: any) => String(record?.date || '')).filter(Boolean))).sort();
       const unmatchedSelectedValues = selected.filter((value) => !matchedSelectedValues.has(value));
       const unmatchedSelectedDiagnostics: any[] = [];
       if (unmatchedSelectedValues.length > 0) {

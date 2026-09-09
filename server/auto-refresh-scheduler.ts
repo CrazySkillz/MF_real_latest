@@ -282,7 +282,8 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   const materializedDates = Array.isArray(result.json?.materializedDates) ? result.json.materializedDates.map(String) : [];
   const unmatchedSelectedValues = Array.isArray(result.json?.unmatchedSelectedValues) ? result.json.unmatchedSelectedValues.map(String) : [];
   const unmatchedSelectedDiagnostics = Array.isArray(result.json?.unmatchedSelectedDiagnostics) ? result.json.unmatchedSelectedDiagnostics : [];
-  if (totalRevenue > 0 && materializedRecordCount <= 0) {
+  const isGa4RevenueSource = String(mappingConfig.platformContext || 'ga4').trim().toLowerCase() === 'ga4';
+  if (isGa4RevenueSource && materializedRecordCount <= 0) {
     console.error(`[Auto Refresh] Salesforce reprocess produced no materialized revenue records for campaign ${campaignId}`);
     return false;
   }

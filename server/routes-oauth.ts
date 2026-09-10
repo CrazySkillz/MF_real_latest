@@ -18215,7 +18215,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cached = Number(cfg.pipelineTotalToDate || 0);
       const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
       const cachedValueTotals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
-      if (Number.isFinite(cached) && cached > 0 && cachedMode === "current_stage" && cachedValueTotals.length > 0) {
+      const cachedIsUsable = Number.isFinite(cached) && cached >= 0 && cachedMode === "current_stage"
+        && !!cfg.pipelineLastUpdatedAt && !cfg.pipelineWarning && (cached === 0 || cachedValueTotals.length > 0);
+      if (cachedIsUsable) {
         return res.json({
           success: true,
           sourceId: String(pipelineSource.id),

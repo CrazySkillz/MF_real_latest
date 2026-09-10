@@ -427,6 +427,8 @@ Important meaning:
 - Salesforce edit mode must default missing legacy `dateField` values back to `CloseDate` so external Close Date changes materialize onto the expected previous-day revenue date
 - Salesforce edit mode may enable `Update revenue` after a successful live preview only when the current Salesforce preview total differs from the saved source total, because external Salesforce value/date changes still need a safe manual re-materialization path
 - Salesforce confirmed revenue uses the saved attribution values plus the selected date field and treats opportunities as won when Salesforce returns `IsWon = true` or the stage name starts with `Closed Won`, so Review Settings, save/materialization, scheduler refresh, and previous-day revenue records stay aligned for orgs with custom Closed Won stage labels
+- active GA4 Salesforce sources with Pipeline Proxy enabled are automatically reprocessed every five minutes by default through the existing stable-source-ID, atomic save/materialization path; the interval is configurable from one to sixty minutes with `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, and overlapping financial refreshes are skipped
+- an open GA4 Overview checks the saved Salesforce Pipeline result every minute and refetches Total Revenue and source breakdowns when the provider refresh timestamp changes
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
@@ -436,6 +438,7 @@ Important meaning:
 - the `Review Settings` details card should not repeat a second heading such as `Review Salesforce revenue settings`
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
 - `Selected opportunity(ies)` should list each selected Salesforce value on its own line with the amount that will be imported for that selected opportunity/value when preview data provides it
+- the GA4 Revenue Sources modal should itemize confirmed Salesforce values from `campaignValueRevenueTotals` beneath the Salesforce provider subtotal; when attribution uses Opportunity Name these are labeled as confirmed opportunities, while other attribution fields are labeled as attributed values. Pipeline Proxy values remain excluded.
 - the Salesforce Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again

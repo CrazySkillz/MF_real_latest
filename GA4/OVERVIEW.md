@@ -200,7 +200,7 @@ High-level rule:
 - GA4-native financial revenue and CPA conversions use the first complete source in this fixed order: campaign-to-date provider totals, campaign-to-date persisted daily totals, then the configured-lookback breakdown only when both earlier sources are absent; values are never selected by maximum revenue
 - valid zero and negative campaign-to-date native values remain authoritative; a provider response without both revenue and conversions is treated as empty and falls through to the next complete candidate
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
-- Current Commit 6 makes Salesforce Pipeline Proxy context mandatory. GA4 passes `platformContext=ga4`; the server searches only that context and returns unavailable when no exact scoped Salesforce source matches instead of falling back across platforms
+- Salesforce Pipeline Proxy context is mandatory. GA4 passes `platformContext=ga4`; the server prefers an exact selected-value match and may use a nonmatching source only when it is the sole active Salesforce Pipeline source with explicit GA4 context on both the source and mapping. Ambiguous or cross-platform candidates fail closed.
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
 - Historical Commit 5 (`5da5f41c`) temporarily narrowed the GA4 new-source Spend chooser. Current Commit 21 restored the existing Google Sheets Revenue and Spend chooser paths and deployed them while preserving the established scoped/atomic workflows; future source instances require their own validation
@@ -222,6 +222,7 @@ Pipeline Proxy rule:
 - Pipeline Proxy appears in the Revenue & Financial area; before a HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source is configured, the card shows `Not configured`
 - the render condition is the active CRM revenue source configuration, not only the separate pipeline proxy endpoint response
 - when the endpoint returns a fresh same-scope value, the card uses it; if that endpoint is stale or unavailable, only the already-selected same-scope active source may supply saved Pipeline Proxy metadata, while a scope mismatch fails closed as unavailable
+- active GA4 Salesforce Pipeline sources are reprocessed through their stable source IDs every five minutes by default, and an open Overview checks the saved Pipeline result every minute; the same atomic refresh moves a newly won Opportunity out of Pipeline Proxy and into confirmed Total Revenue
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show a compact `Sources` action; provider-specific provenance belongs in a read-only Pipeline Proxy sources modal rather than inline card microcopy
 - the `Sources` count should include only providers with positive Pipeline Proxy contribution; zero-value configured CRM providers should not show as contributing sources
@@ -232,6 +233,7 @@ Pipeline Proxy rule:
   - provider proxy amount
   - selected/contributing campaign value or values, one per line with `Stage: <stage label> | <campaign value>` formatting
   - that provider's selected pipeline stage label
+- the Total Revenue sources modal keeps provider connections as top-level sources and itemizes confirmed Salesforce Opportunity-name totals from `campaignValueRevenueTotals`; it must not present `pipelineValueRevenueTotals` as confirmed revenue
 - if the CRM connection is currently disconnected but the saved source is still active, the card and review/edit flows may fall back to saved proxy metadata and saved proxy amount until live preview data is available again
 - the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`
 - it is not confirmed revenue

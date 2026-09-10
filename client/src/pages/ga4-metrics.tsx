@@ -2263,6 +2263,8 @@ export default function GA4Metrics() {
     enabled: !insightsValidationReadOnly && !!campaignId && configuredPipelineSourceTypes.has("salesforce"),
     staleTime: 0,
     retry: false,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -2272,6 +2274,13 @@ export default function GA4Metrics() {
       return json;
     },
   });
+
+  useEffect(() => {
+    if (!campaignId || !salesforcePipelineProxyData?.success || !salesforcePipelineProxyData?.lastUpdatedAt) return;
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+  }, [campaignId, queryClient, salesforcePipelineProxyData?.lastUpdatedAt, salesforcePipelineProxyData?.success]);
 
   // Note: In GA4 daily mode we do NOT auto-fallback to LinkedIn spend.
   // For accuracy, spend must come from explicit spend sources (CSV/Sheets/manual/connector) that materialize daily spend rows.
@@ -6720,9 +6729,19 @@ export default function GA4Metrics() {
                         )}
                         {revenueDisplaySources.map((s: any) => {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
-                          const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+                          const sourceType = String(s.sourceType || "").trim().toLowerCase();
+                          const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
+                          const confirmedRevenueItems = sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals)
+                            ? cfg.campaignValueRevenueTotals
+                              .map((item: any) => ({ name: String(item?.campaignValue || "").trim(), revenue: Number(item?.revenue) }))
+                              .filter((item: any) => item.name && Number.isFinite(item.revenue))
+                              .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                            : [];
+                          const confirmedRevenueItemsLabel = String(cfg?.campaignField || "").trim().toLowerCase() === "name"
+                            ? "Confirmed opportunities"
+                            : "Confirmed attributed values";
                           const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
                           const sourceTypeText = mappedCampaignText
                             ? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText
@@ -6731,12 +6750,25 @@ export default function GA4Metrics() {
                             ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                             : "";
                           return (
-                            <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
-                              <div className="min-w-0">
+                            <div key={s.sourceId} className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                              <div className="min-w-0 flex-1">
                                 <p className="truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
                                   {revenueSourceDisplayLabel(s)}{dateLabel}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
+                                {confirmedRevenueItems.length > 0 && (
+                                  <div className="mt-2 border-t border-border pt-2">
+                                    <p className="mb-1.5 text-xs font-medium text-muted-foreground/70">{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})</p>
+                                    <div className="scrollbar-hide max-h-40 space-y-1 overflow-y-auto">
+                                      {confirmedRevenueItems.map((item: any, index: number) => (
+                                        <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                          <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
+                                          <span className="shrink-0 tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium tabular-nums text-foreground">

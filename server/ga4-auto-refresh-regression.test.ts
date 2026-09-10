@@ -87,6 +87,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
       minute: 0,
       runOnStartup: true,
       googleSheetsSpendIntervalMinutes: 1,
+      salesforcePipelineIntervalMinutes: 5,
     });
     expect(getNextAutoRefreshRunAt(new Date("2026-06-20T22:30:00.000Z"), config).toISOString()).toBe("2026-06-21T01:00:00.000Z");
     expect(content).toContain("AUTO_REFRESH_TIME_ZONE || env.GA4_DAILY_REFRESH_TIME_ZONE || \"UTC\"");
@@ -143,8 +144,8 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(refreshFunction).not.toContain('sourceType || "") === "csv"');
     expect(scheduler).toContain("setInterval(runGoogleSheetsSpendRefresh, googleSheetsSpendIntervalMs)");
     expect(refreshFunction).toContain("__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress");
-    expect(scheduler).toContain("while ((global as any).__googleSheetsSpendRefreshInProgress)");
-    expect(scheduler).toContain("Waiting for Google Sheets spend refresh to finish");
+    expect(scheduler).toContain("while ((global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress)");
+    expect(scheduler).toContain("Waiting for an interval financial refresh to finish");
     expect(processRoute.indexOf("if (!resp.ok) {")).toBeLessThan(processRoute.indexOf("await storage.deleteSpendRecordsBySource"));
 
     for (const queryName of ["spendToDateResp", "spendSourcesResp", "spendBreakdownResp"]) {

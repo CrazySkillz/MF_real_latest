@@ -137,7 +137,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).toContain('aria-label={`Edit ${item.name}`}');
     expect(sourceDialog).toContain('aria-label={`Remove ${item.name}`}');
     expect(addRevenueWizard).toContain('initialFocusValue={isEditing');
-    expect(salesforceWizard).toContain('setStep(hasFocusedValue ? "crosswalk" : "review")');
+    expect(salesforceWizard).toContain('setStep(hasFocusedValue ? "value-source" : "review")');
     expect(salesforceWizard).toContain('Editing selection: <strong>{initialFocusValue}</strong>');
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });

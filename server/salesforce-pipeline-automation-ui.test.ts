@@ -129,10 +129,10 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('grid-cols-[minmax(0,1fr)_6rem_3.5rem]');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 ? "col-span-2" : ""');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && (');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (');
     expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
-    expect(sourceDialog).toContain('aria-label="Edit Salesforce revenue source"');
+    expect(sourceDialog).toContain('aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}');
     expect(sourceDialog).not.toContain('focusedRevenueValue: item.name');
     expect(sourceDialog).toContain('setDeletingSalesforceRevenueItem({');
     expect(sourceDialog).toContain('aria-label={`Remove ${item.name}`}');
@@ -140,6 +140,18 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(salesforceWizard).toContain('setStep("value-source")');
     expect(salesforceWizard).toContain('Editing selection: <strong>{initialFocusValue}</strong>');
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
+  });
+
+  it("aligns Shopify source actions with their provider and mapped campaign rows", () => {
+    const sourceDialog = sliceBetween(
+      ga4Page,
+      '<Dialog open={showRevenueSourcesDialog}',
+      '<Dialog open={showSpendSourcesDialog}',
+    );
+
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify"');
+    expect(sourceDialog).toContain('aria-label="Remove Shopify revenue source"');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
   });
 
   it("shows selected Salesforce campaign mappings in review before save", () => {

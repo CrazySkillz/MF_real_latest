@@ -327,6 +327,8 @@ export default function GA4Metrics() {
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [editingRevenueSource, setEditingRevenueSource] = useState<any>(null);
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
+  const [deletingSalesforceRevenueItem, setDeletingSalesforceRevenueItem] = useState<{ source: any; campaignValue: string; isLastSelectedValue: boolean } | null>(null);
+  const [deletingSalesforceRevenueItemPending, setDeletingSalesforceRevenueItemPending] = useState(false);
   const [editingSpendSource, setEditingSpendSource] = useState<any>(null);
   const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
   const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
@@ -5751,6 +5753,88 @@ export default function GA4Metrics() {
     );
   }, [revenueDisplaySources]);
 
+  const removeSalesforceRevenueItem = async () => {
+    const pending = deletingSalesforceRevenueItem;
+    if (!pending || !campaignId) return;
+    setDeletingSalesforceRevenueItemPending(true);
+    try {
+      const source = pending.source;
+      const sourceId = String(source?.sourceId || source?.id || "").trim();
+      const rawMappingConfig = source?.mappingConfig;
+      const expectedSourceMappingConfig = typeof rawMappingConfig === "string"
+        ? rawMappingConfig
+        : JSON.stringify(rawMappingConfig || {});
+      const cfg = typeof rawMappingConfig === "string" ? JSON.parse(rawMappingConfig) : rawMappingConfig;
+      const selectedValues = Array.isArray(cfg?.selectedValues)
+        ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean)
+        : [];
+      const campaignValue = pending.campaignValue.trim();
+      const remainingSelectedValues = selectedValues.filter((value: string) => value !== campaignValue);
+      if (!sourceId || !campaignValue || remainingSelectedValues.length === selectedValues.length) {
+        throw new Error("This Salesforce opportunity is no longer part of the saved source. Refresh and try again.");
+      }
+
+      const request = remainingSelectedValues.length === 0
+        ? fetch(`/api/campaigns/${campaignId}/revenue-sources/${sourceId}?platformContext=ga4`, { method: "DELETE", credentials: "include" })
+        : fetch(`/api/campaigns/${campaignId}/salesforce/save-mappings`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sourceId,
+              campaignField: String(cfg?.campaignField || "Name"),
+              selectedValues: remainingSelectedValues,
+              revenueField: String(cfg?.revenueField || "Amount"),
+              conversionValueField: cfg?.conversionValueField ? String(cfg.conversionValueField) : null,
+              valueSource: cfg?.valueSource === "conversion_value" ? "conversion_value" : "revenue",
+              revenueClassification: String(cfg?.revenueClassification || "offsite_not_in_ga4"),
+              days: Number.isFinite(Number(cfg?.days)) ? Number(cfg.days) : 3650,
+              dateField: String(cfg?.dateField || "CloseDate"),
+              campaignDisplayName: cfg?.campaignDisplayName ? String(cfg.campaignDisplayName) : null,
+              pipelineEnabled: cfg?.pipelineEnabled === true,
+              pipelineStageName: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageName || "") : null,
+              pipelineStageLabel: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageLabel || "") : null,
+              platformContext: "ga4",
+              expectedSourceMappingConfig,
+              ...(Array.isArray(cfg?.campaignMappings)
+                ? { campaignMappings: cfg.campaignMappings.filter((mapping: any) => String(mapping?.crmValue || "").trim() !== campaignValue) }
+                : {}),
+            }),
+          });
+      const resp = await request;
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success === false) {
+        if (resp.status === 409) {
+          void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+        }
+        throw new Error(json?.error || "Failed to remove Salesforce opportunity");
+      }
+
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId)], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+      void refreshNotificationQueries();
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false }),
+        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false }),
+        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false }),
+        queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false }),
+      ]);
+      toast({ title: "Salesforce opportunity removed", description: `${campaignValue} was removed and Total Revenue was recalculated.` });
+    } catch (error: any) {
+      toast({ title: "Remove failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setDeletingSalesforceRevenueItemPending(false);
+      setDeletingSalesforceRevenueItem(null);
+    }
+  };
+
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
   const ga4DailyLatestStoredDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
@@ -6750,54 +6834,90 @@ export default function GA4Metrics() {
                             ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                             : "";
                           return (
-                            <div key={s.sourceId} className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm">
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
-                                  {revenueSourceDisplayLabel(s)}{dateLabel}
-                                </p>
-                                <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
-                                {confirmedRevenueItems.length > 0 && (
-                                  <div className="mt-2 border-t border-border pt-2">
-                                    <p className="mb-1.5 text-xs font-medium text-muted-foreground/70">{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})</p>
-                                    <div className="scrollbar-hide max-h-40 space-y-1 overflow-y-auto">
-                                      {confirmedRevenueItems.map((item: any, index: number) => (
-                                        <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 text-xs">
-                                          <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
-                                          <span className="shrink-0 tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium tabular-nums text-foreground">
+                            <div key={s.sourceId} className="rounded-md border border-border p-3 text-sm">
+                              <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-start gap-x-2">
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
+                                    {revenueSourceDisplayLabel(s)}{dateLabel}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
+                                </div>
+                                <span className="text-right font-medium tabular-nums text-foreground">
                                   {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                 </span>
-                                {ga4ConnectionUsable && s.sourceType !== "manual" && (
-                                  <button
-                                    onClick={() => {
-                                      setShowRevenueSourcesDialog(false);
-                                      setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
-                                      setShowRevenueDialog(true);
-                                    }}
-                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
-                                    title="Edit revenue source"
-                                  >
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    setShowRevenueSourcesDialog(false);
-                                    setDeletingRevenueSourceId(s.sourceId);
-                                  }}
-                                  className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
-                                  title="Remove revenue source"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex items-center justify-end gap-1">
+                                  {confirmedRevenueItems.length === 0 && <>
+                                    {ga4ConnectionUsable && s.sourceType !== "manual" && (
+                                      <button
+                                        onClick={() => {
+                                          setShowRevenueSourcesDialog(false);
+                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
+                                          setShowRevenueDialog(true);
+                                        }}
+                                        className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                                        title="Edit revenue source"
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => {
+                                        setShowRevenueSourcesDialog(false);
+                                        setDeletingRevenueSourceId(s.sourceId);
+                                      }}
+                                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                                      title="Remove revenue source"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </>}
+                                </div>
                               </div>
+                              {confirmedRevenueItems.length > 0 && (
+                                <div className="mt-2 border-t border-border pt-2">
+                                  <p className="mb-1.5 text-xs font-medium text-muted-foreground/70">{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})</p>
+                                  <div className="scrollbar-hide max-h-40 space-y-1 overflow-y-auto">
+                                    {confirmedRevenueItems.map((item: any, index: number) => (
+                                      <div key={`${item.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">
+                                        <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
+                                        <span className="text-right tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
+                                        <div className="flex items-center justify-end gap-1">
+                                          {ga4ConnectionUsable && (
+                                            <button
+                                              onClick={() => {
+                                                setShowRevenueSourcesDialog(false);
+                                                setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus, focusedRevenueValue: item.name });
+                                                setShowRevenueDialog(true);
+                                              }}
+                                              className="rounded p-1 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                                              title={`Edit ${item.name}`}
+                                              aria-label={`Edit ${item.name}`}
+                                            >
+                                              <Edit className="h-3.5 w-3.5" />
+                                            </button>
+                                          )}
+                                          <button
+                                            onClick={() => {
+                                              const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
+                                              setShowRevenueSourcesDialog(false);
+                                              setDeletingSalesforceRevenueItem({
+                                                source: s,
+                                                campaignValue: item.name,
+                                                isLastSelectedValue: selectedValues.filter((value: string) => value !== item.name).length === 0,
+                                              });
+                                            }}
+                                            className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                            title={`Remove ${item.name}`}
+                                            aria-label={`Remove ${item.name}`}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -6939,6 +7059,38 @@ export default function GA4Metrics() {
                           }}
                         >
                           Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog
+                    open={!!deletingSalesforceRevenueItem}
+                    onOpenChange={(open) => {
+                      if (!open && !deletingSalesforceRevenueItemPending) {
+                        setDeletingSalesforceRevenueItem(null);
+                        setShowRevenueSourcesDialog(true);
+                      }
+                    }}
+                  >
+                    <AlertDialogContent className="bg-card border-border">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-foreground">Remove Salesforce revenue item?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground/70">
+                          Remove <strong>{deletingSalesforceRevenueItem?.campaignValue}</strong> from this revenue source? Other selected Salesforce values will remain unchanged and Total Revenue will be recalculated.
+                          {deletingSalesforceRevenueItem?.isLastSelectedValue && " This is the last selected value, so the Salesforce revenue source will also be removed."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingSalesforceRevenueItemPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 text-white hover:bg-red-700"
+                          disabled={deletingSalesforceRevenueItemPending}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void removeSalesforceRevenueItem().finally(() => setShowRevenueSourcesDialog(true));
+                          }}
+                        >
+                          {deletingSalesforceRevenueItemPending ? "Removing…" : "Remove"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

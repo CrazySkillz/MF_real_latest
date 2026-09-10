@@ -5,7 +5,10 @@ import { getAutoRefreshSchedulerConfig, runSalesforcePipelineAutoRefreshOnce } f
 
 const scheduler = readFileSync("server/auto-refresh-scheduler.ts", "utf8");
 const routes = readFileSync("server/routes-oauth.ts", "utf8");
+const storageSource = readFileSync("server/storage.ts", "utf8");
 const ga4Page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+const addRevenueWizard = readFileSync("client/src/components/AddRevenueWizardModal.tsx", "utf8");
+const salesforceWizard = readFileSync("client/src/components/SalesforceRevenueWizard.tsx", "utf8");
 
 const sliceBetween = (source: string, start: string, end: string) => {
   const startIndex = source.indexOf(start);
@@ -116,5 +119,52 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).toContain("formatMoney(item.revenue)");
     expect(sourceDialog).not.toContain("cfg?.pipelineValueRevenueTotals");
     expect(sourceDialog).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}');
+  });
+
+  it("places aligned edit and remove controls on each confirmed Salesforce value", () => {
+    const sourceDialog = sliceBetween(
+      ga4Page,
+      '<Dialog open={showRevenueSourcesDialog}',
+      '<Dialog open={showSpendSourcesDialog}',
+    );
+
+    expect(sourceDialog).toContain('grid-cols-[minmax(0,1fr)_6rem_3.5rem]');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && <>');
+    expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
+    expect(sourceDialog).toContain('focusedRevenueValue: item.name');
+    expect(sourceDialog).toContain('setDeletingSalesforceRevenueItem({');
+    expect(sourceDialog).toContain('aria-label={`Edit ${item.name}`}');
+    expect(sourceDialog).toContain('aria-label={`Remove ${item.name}`}');
+    expect(addRevenueWizard).toContain('initialFocusValue={isEditing');
+    expect(salesforceWizard).toContain('setStep(hasFocusedValue ? "crosswalk" : "review")');
+    expect(salesforceWizard).toContain('Editing selection: <strong>{initialFocusValue}</strong>');
+    expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
+  });
+
+  it("removes one value through the stable atomic source path and rejects scheduler races", () => {
+    const saveRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/salesforce/save-mappings"',
+      '// Salesforce pipeline proxy status',
+    );
+    const storageReplacement = sliceBetween(
+      storageSource,
+      'async replaceGa4SalesforceRevenueSourceWithRecords(',
+      'async replaceGa4CsvRevenueSourceWithRecords(',
+    );
+
+    expect(ga4Page).toContain('selectedValues: remainingSelectedValues');
+    expect(ga4Page).toContain('expectedSourceMappingConfig');
+    expect(ga4Page).toContain('cfg.campaignMappings.filter');
+    expect(ga4Page).toContain('remainingSelectedValues.length === 0');
+    expect(ga4Page).toContain('Salesforce opportunity removed');
+    expect(saveRoute).toContain('expectedSourceMappingConfig: z.string().min(1).optional()');
+    expect(saveRoute).toContain('revenueRecordsToInsert, expectedSourceMappingConfig');
+    expect(saveRoute).toContain("error?.code === 'SALESFORCE_REVENUE_SOURCE_CHANGED' ? 409 : 500");
+    expect(storageReplacement).toContain('eq(revenueSources.mappingConfig, expectedSourceMappingConfig)');
+    expect(storageReplacement).toContain("error.code = 'SALESFORCE_REVENUE_SOURCE_CHANGED'");
+    expect(scheduler).toContain('expectedSourceMappingConfig: String(source.mappingConfig)');
+    expect(scheduler).toContain('expectedSourceMappingConfig: String(salesforceSource.mappingConfig)');
+    expect(scheduler).toContain('result.status === 409 && message.includes("revenue source changed")');
   });
 });

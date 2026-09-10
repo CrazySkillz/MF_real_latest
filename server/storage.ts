@@ -210,7 +210,7 @@ export interface IStorage {
   ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deactivatedConnectionIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource>;
-  replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource>;
+  replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string): Promise<RevenueSource>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -1823,7 +1823,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>): Promise<RevenueSource> {
+  async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string): Promise<RevenueSource> {
     if (!records.length) throw new Error('Salesforce revenue requires at least one materialized record');
     return await db.transaction(async (tx: any) => {
       const sourceValues = { ...source, campaignId, sourceType: 'salesforce', platformContext: 'ga4', isActive: true } as any;
@@ -1835,8 +1835,15 @@ export class DatabaseStorage implements IStorage {
           eq(revenueSources.sourceType, 'salesforce'),
           eq(revenueSources.isActive, true),
           or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+          ...(expectedSourceMappingConfig ? [eq(revenueSources.mappingConfig, expectedSourceMappingConfig)] : []),
         )).returning();
-        if (!savedSource) throw new Error('Salesforce revenue source not found');
+        if (!savedSource) {
+          const error: any = new Error(expectedSourceMappingConfig
+            ? 'Salesforce revenue source changed. Refresh and try again.'
+            : 'Salesforce revenue source not found');
+          if (expectedSourceMappingConfig) error.code = 'SALESFORCE_REVENUE_SOURCE_CHANGED';
+          throw error;
+        }
       } else {
         [savedSource] = await tx.insert(revenueSources).values(sourceValues).returning();
       }

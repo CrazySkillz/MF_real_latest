@@ -439,6 +439,7 @@ Important meaning:
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
 - `Selected opportunity(ies)` should list each selected Salesforce value on its own line with the amount that will be imported for that selected opportunity/value when preview data provides it
 - the GA4 Revenue Sources modal should itemize confirmed Salesforce values from `campaignValueRevenueTotals` beneath the Salesforce provider subtotal; when attribution uses Opportunity Name these are labeled as confirmed opportunities, while other attribution fields are labeled as attributed values. Pipeline Proxy values remain excluded.
+- itemized Salesforce values should align name, amount, edit, and remove columns; provider-level controls remain only when no confirmed value rows exist. Removing one item must preserve the stable Salesforce source and every other selected value, then atomically rematerialize Total Revenue and Pipeline Proxy from Salesforce.
 - the Salesforce Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again

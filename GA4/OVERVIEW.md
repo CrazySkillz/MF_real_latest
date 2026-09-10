@@ -234,6 +234,8 @@ Pipeline Proxy rule:
   - selected/contributing campaign value or values, one per line with `Stage: <stage label> | <campaign value>` formatting
   - that provider's selected pipeline stage label
 - the Total Revenue sources modal keeps provider connections as top-level sources and itemizes confirmed Salesforce Opportunity-name totals from `campaignValueRevenueTotals`; it must not present `pipelineValueRevenueTotals` as confirmed revenue
+- when confirmed Salesforce values are itemized, edit/remove controls belong on each value row rather than beside the provider subtotal; row edit opens the existing Salesforce selection flow focused on that value, while row removal reprocesses the same stable source ID with only that exact value removed
+- a Salesforce value removal must use the current persisted source mapping as an optimistic-concurrency boundary so a simultaneous scheduler refresh cannot restore a stale selection; conflicts fail closed without replacing source metadata or materialized records
 - if the CRM connection is currently disconnected but the saved source is still active, the card and review/edit flows may fall back to saved proxy metadata and saved proxy amount until live preview data is available again
 - the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`
 - it is not confirmed revenue
@@ -270,7 +272,7 @@ Important meaning:
 - it is not a client-wide rollup across unrelated campaigns
 - the GA4 analytics page does not currently let users add or remove GA4 campaign values after setup; changing GA4 scope after setup would require a deliberate rescope workflow that refreshes Overview inputs and recomputes downstream KPI, Benchmark, Insight, alert, and report state
 - `Total Revenue` and `Total Spend` show compact totals in the cards; their `Sources` action opens the source-provenance modal where users can review, edit, or delete contributing sources
-- the source-provenance modal is presentation-only and must not change financial calculations, source persistence, or recomputation behavior
+- source-provenance modal layout is presentation-only; its explicit edit/delete actions must continue through the existing scoped, atomic source persistence and recomputation workflows
 - the revenue and spend source-provenance modals should scroll vertically when many entries are present
 
 ### GA4 Scope Selection Lifecycle

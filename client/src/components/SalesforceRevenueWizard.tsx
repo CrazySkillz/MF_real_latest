@@ -28,6 +28,7 @@ const MAX_SALESFORCE_VALUE_SEARCH_LENGTH = 80;
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
   sourceId?: string;
+  initialFocusValue?: string;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
     campaignField?: string;
@@ -69,6 +70,7 @@ export function SalesforceRevenueWizard(props: {
   const {
     campaignId,
     sourceId,
+    initialFocusValue,
     mode = "connect",
     initialMappingConfig = null,
     connectOnly = false,
@@ -137,6 +139,11 @@ export function SalesforceRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [valuesError, setValuesError] = useState<string | null>(null);
   const [valueSearch, setValueSearch] = useState("");
+  const visibleUniqueValues = useMemo(() => {
+    const focusedValue = String(initialFocusValue || "").trim();
+    if (mode !== "edit" || !focusedValue || valueSearch.trim() !== focusedValue) return uniqueValues;
+    return uniqueValues.filter((item) => String(item.value) === focusedValue);
+  }, [initialFocusValue, mode, uniqueValues, valueSearch]);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
   const hasEditChanges = useMemo(() => {
@@ -344,13 +351,15 @@ export function SalesforceRevenueWizard(props: {
     setPipelineEnabled(nextPipelineEnabled);
     setPipelineStageName(nextPipelineStageName);
     setPipelineStageLabel(nextPipelineStageLabel);
+    const focusedValue = String(initialFocusValue || "").trim();
+    const hasFocusedValue = !!focusedValue && nextSelectedValues.includes(focusedValue);
     setSelectedValues(nextSelectedValues);
-    setValueSearch("");
+    setValueSearch(hasFocusedValue ? focusedValue : "");
     setCampaignDisplayName(String((cfg as any).campaignDisplayName || ""));
     setCampaignMappings(Array.isArray((cfg as any).campaignMappings) ? (cfg as any).campaignMappings : []);
     // Synthesize uniqueValues from selectedValues so crosswalk checkboxes render
     // when user navigates back (API may be unavailable with expired tokens)
-    setUniqueValues(nextSelectedValues.map((v) => ({ value: v, count: 0 })));
+    setUniqueValues((hasFocusedValue ? [focusedValue] : nextSelectedValues).map((v) => ({ value: v, count: 0 })));
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
     setDateField((cfg as any).dateField ? String((cfg as any).dateField) : "CloseDate");
     setLastSaveResult(null);
@@ -364,9 +373,10 @@ export function SalesforceRevenueWizard(props: {
     setPipelinePreviewTotalToDate(null);
     setPreviewError(null);
     setPipelinePreviewError(null);
-    // Edit mode: jump to review so user sees current settings with preview
-    setStep("review");
-  }, [campaignId, mode, initialMappingConfig]);
+    crosswalkFetchedRef.current = false;
+    // Row-level edit starts at the exact selected value; provider-level edit keeps the review entry point.
+    setStep(hasFocusedValue ? "crosswalk" : "review");
+  }, [campaignId, initialFocusValue, mode, initialMappingConfig]);
 
 
   // Best-effort: fetch connection status so we can show the connected org name on the first step,
@@ -658,7 +668,7 @@ export function SalesforceRevenueWizard(props: {
     crosswalkFetchedRef.current = true;
     void (async () => {
       try {
-        await fetchUniqueValues(campaignField);
+        await fetchUniqueValues(campaignField, mode === "edit" ? String(initialFocusValue || "").trim() : "");
       } catch {
         // Clear any error set by fetchUniqueValues — synthesized values are the fallback
         if (selectedValues.length > 0) setValuesError(null);
@@ -1324,6 +1334,11 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "crosswalk" && (
             <div className="space-y-3">
+              {mode === "edit" && initialFocusValue && (
+                <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  Editing selection: <strong>{initialFocusValue}</strong>. Amount and stage changes must be made in Salesforce.
+                </div>
+              )}
               <div className="text-xs text-muted-foreground">
                 {pipelineEnabled ? (
                   <>
@@ -1396,16 +1411,16 @@ export function SalesforceRevenueWizard(props: {
                 </div>
               )}
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
-                {valuesLoading && uniqueValues.length === 0 ? (
+                {valuesLoading && visibleUniqueValues.length === 0 ? (
                   <div className="text-sm text-muted-foreground">Loading values…</div>
-                ) : uniqueValues.length === 0 ? (
+                ) : visibleUniqueValues.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No values found. Try increasing the lookback window, or confirm you're connected to the correct Salesforce org/user.
                   </div>
                 ) : (
                   /* Standard checkbox mode */
                   <div className="space-y-2">
-                    {uniqueValues.map((v) => {
+                    {visibleUniqueValues.map((v) => {
                       const value = String(v.value);
                       const checked = selectedValues.includes(value);
                       return (

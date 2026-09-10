@@ -190,7 +190,8 @@ async function postJson(path: string, body: AnyRecord): Promise<{ ok: boolean; s
 
 function isStaleRevenueSourceReprocess(result: { status: number; json?: any; text?: string }): boolean {
   const message = String(result.json?.error || result.text || "").toLowerCase();
-  return result.status === 404 && message.includes("revenue source not found");
+  return (result.status === 404 && message.includes("revenue source not found"))
+    || (result.status === 409 && message.includes("revenue source changed"));
 }
 
 function safeJsonParse<T = any>(raw: any): T | null {
@@ -266,6 +267,7 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
     pipelineStageLabel: mappingConfig.pipelineStageLabel,
     platformContext: mappingConfig.platformContext,
     ...(sourceId ? { sourceId } : {}),
+    ...(mappingConfig.expectedSourceMappingConfig ? { expectedSourceMappingConfig: mappingConfig.expectedSourceMappingConfig } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
@@ -805,7 +807,8 @@ export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
         );
         for (const source of salesforceSources) {
           if (isSourceOutsideCampaign(source, campaignId)) continue;
-          const mappingConfig = safeJsonParse(source?.mappingConfig);
+          const parsedMappingConfig = safeJsonParse(source?.mappingConfig);
+          const mappingConfig = parsedMappingConfig ? { ...parsedMappingConfig, expectedSourceMappingConfig: String(source.mappingConfig) } : null;
           const mappingContext = String(mappingConfig?.platformContext || mappingConfig?.platform || "").trim().toLowerCase();
           if (
             mappingContext !== "ga4"
@@ -920,7 +923,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
           for (const salesforceSource of salesforceRevenueSources) {
             salesforceRevenueCount++;
             const sfCfgRaw = safeJsonParse(salesforceSource?.mappingConfig);
-            const sfCfg = sfCfgRaw ? { ...sfCfgRaw, platformContext: sfCfgRaw.platformContext || salesforceSource.platformContext || ctx } : null;
+            const sfCfg = sfCfgRaw ? { ...sfCfgRaw, platformContext: sfCfgRaw.platformContext || salesforceSource.platformContext || ctx, expectedSourceMappingConfig: String(salesforceSource.mappingConfig) } : null;
             if (sfCfg?.selectedValues?.length) {
               attempted++;
               if (await reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))) { succeeded++; anyUpdated = true; }

@@ -17516,6 +17516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: z.boolean().optional(),
           pipelineStageName: z.string().trim().optional().nullable(),
           pipelineStageLabel: z.string().trim().optional().nullable(),
+          expectedSourceMappingConfig: z.string().min(1).optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),
             linkedinCampaignUrn: z.string(),
@@ -17540,6 +17541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageName = String(body.data.pipelineStageName || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const expectedSourceMappingConfig = body.data.expectedSourceMappingConfig;
       const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const dateFieldChoice = body.data.dateField || "CloseDate";
       if (!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenue) || (convValueField && !isSafeSalesforceFieldPath(convValueField))) {
@@ -18087,7 +18089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!sfConn || !salesforceConnectionMappingConfig) return res.status(404).json({ error: 'Salesforce connection not found.' });
         source = await storage.replaceGa4SalesforceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, String(sfConn.id), salesforceConnectionMappingConfig, {
           campaignId, sourceType: 'salesforce', platformContext: 'ga4', displayName: 'Salesforce (Opportunities)', currency: cur, mappingConfig: JSON.stringify(normalizedMapping), isActive: true,
-        } as any, revenueRecordsToInsert);
+        } as any, revenueRecordsToInsert, expectedSourceMappingConfig);
         materializedRecordCount = revenueRecordsToInsert.length;
       } else if (revenueRecordsToInsert.length > 0) {
         const inserted = await storage.createRevenueRecords(revenueRecordsToInsert);
@@ -18140,7 +18142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('[Salesforce Save Mappings] Error:', error);
-      res.status(500).json({ error: error.message || 'Failed to save Salesforce mappings' });
+      res.status(error?.code === 'SALESFORCE_REVENUE_SOURCE_CHANGED' ? 409 : 500).json({ error: error.message || 'Failed to save Salesforce mappings' });
     }
   });
 

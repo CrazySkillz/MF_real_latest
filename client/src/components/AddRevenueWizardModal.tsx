@@ -2579,6 +2579,7 @@ export function AddRevenueWizardModal(props: {
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
                   sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.id || "") : undefined}
+                  initialFocusValue={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.focusedRevenueValue || "") : undefined}
                   platformContext={platformContext}
                   autoStartOAuth={!isEditing}
                   mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? "edit" : "connect"}

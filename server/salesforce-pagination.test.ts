@@ -180,6 +180,8 @@ describe('Salesforce bounded query pagination', () => {
     expect(wizard).toContain('Search matches the beginning of a Salesforce value.');
     expect(wizard).toContain('const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));');
     expect(wizard).not.toContain('prev.filter((v) => allowed.has(v))');
+    expect(wizard).toContain('if (normalizedSearch.length < 2) return uniqueValues;');
+    expect(wizard).toContain('.startsWith(normalizedSearch)');
     expect(wizard).toContain('valuesLoading && visibleUniqueValues.length === 0');
     expect(wizard).toContain('fetchUniqueValues(campaignField, valueSearch)');
   });

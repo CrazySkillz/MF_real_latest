@@ -140,10 +140,10 @@ export function SalesforceRevenueWizard(props: {
   const [valuesError, setValuesError] = useState<string | null>(null);
   const [valueSearch, setValueSearch] = useState("");
   const visibleUniqueValues = useMemo(() => {
-    const focusedValue = String(initialFocusValue || "").trim();
-    if (mode !== "edit" || !focusedValue || valueSearch.trim() !== focusedValue) return uniqueValues;
-    return uniqueValues.filter((item) => String(item.value) === focusedValue);
-  }, [initialFocusValue, mode, uniqueValues, valueSearch]);
+    const normalizedSearch = valueSearch.trim().toLocaleLowerCase();
+    if (normalizedSearch.length < 2) return uniqueValues;
+    return uniqueValues.filter((item) => String(item.value).toLocaleLowerCase().startsWith(normalizedSearch));
+  }, [uniqueValues, valueSearch]);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
   const hasEditChanges = useMemo(() => {

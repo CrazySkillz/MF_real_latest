@@ -149,14 +149,14 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
       '{reviewOpportunityBreakdown.length > 0 && (',
     );
     const selectedOpportunitiesIndex = reviewBlock.indexOf("Selected opportunity(ies)");
-    const mappingIndex = reviewBlock.indexOf("{selectedCampaignMappings.length > 0 && (");
+    const mappingIndex = reviewBlock.indexOf("{reviewPlatformLabel} campaign mapping");
 
+    expect(salesforceWizard).toContain("const reviewShowsCampaignMappings = isGA4 || isGoogleAds || isMeta || isInstagram || isTikTok");
     expect(salesforceWizard).toContain('const reviewPlatformLabel = isGA4 ? "GA4"');
     expect(mappingIndex).toBeGreaterThan(selectedOpportunitiesIndex);
-    expect(reviewBlock).toContain("{reviewPlatformLabel} campaign mapping");
-    expect(reviewBlock).toContain("mapping.crmValue");
-    expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
-    expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
+    expect(reviewBlock).toContain('grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-6');
+    expect(reviewBlock).toContain("selectedCampaignMappings.find");
+    expect(reviewBlock).toContain('mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "Not mapped"');
   });
 
   it("removes one value through the stable atomic source path and rejects scheduler races", () => {

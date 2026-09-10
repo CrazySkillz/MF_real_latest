@@ -250,6 +250,7 @@ export function SalesforceRevenueWizard(props: {
       platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
   }, [campaignMappings, isGA4, isGoogleAds, isInstagram, isMeta, isTikTok, platformCampaignOptions, selectedValues]);
+  const reviewShowsCampaignMappings = isGA4 || isGoogleAds || isMeta || isInstagram || isTikTok;
   const reviewPlatformLabel = isGA4 ? "GA4" : isTikTok ? "TikTok" : isInstagram ? "Instagram" : isMeta ? "Meta" : "Google Ads";
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
@@ -1612,26 +1613,24 @@ export function SalesforceRevenueWizard(props: {
                     </div>
                   </div>
 
-                  <div>
-                    <div className="text-xs text-muted-foreground/70">Selected opportunity(ies)</div>
+                  <div className={reviewShowsCampaignMappings ? "md:col-span-2" : undefined}>
+                    <div className={reviewShowsCampaignMappings ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-6" : undefined}>
+                      <div className="text-xs text-muted-foreground/70">Selected opportunity(ies)</div>
+                      {reviewShowsCampaignMappings && <div className="text-xs text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>}
+                    </div>
                     <div className="space-y-0.5 font-medium text-foreground">
                       {selectedValues.length > 0
-                        ? selectedValues.slice(0, 6).map((value) => <div key={value}>{value}</div>)
+                        ? selectedValues.slice(0, 6).map((value) => {
+                            const mapping = selectedCampaignMappings.find((item) => String(item.crmValue || "").trim() === value);
+                            return reviewShowsCampaignMappings ? (
+                              <div key={value} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-6">
+                                <span className="min-w-0 break-words">{value}</span>
+                                <span className="min-w-0 break-words text-muted-foreground">{mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "Not mapped"}</span>
+                              </div>
+                            ) : <div key={value}>{value}</div>;
+                          })
                         : "â€”"}
                     </div>
-                    {selectedCampaignMappings.length > 0 && (
-                      <div className="mt-3">
-                        <div className="text-xs text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>
-                        <div className="space-y-1 font-medium text-foreground">
-                          {selectedCampaignMappings.slice(0, 6).map((mapping) => (
-                            <div key={`${mapping.crmValue}-${mapping.linkedinCampaignUrn}`} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                              <span className="truncate">{mapping.crmValue}</span>
-                              <span className="truncate text-muted-foreground">{mapping.linkedinCampaignName || mapping.linkedinCampaignUrn}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 

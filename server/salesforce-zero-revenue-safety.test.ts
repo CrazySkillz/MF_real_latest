@@ -79,6 +79,7 @@ describe("Salesforce GA4 zero-revenue safety", () => {
     expect(routes).toContain('const hasMaterializedRevenue = totalsBySource.has(sourceId);');
     expect(routes).toContain('materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable"');
     expect(ga4Page).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}');
-    expect(revenueWizard).toContain("const showSalesforceRevenueSource = false;");
+    expect(revenueWizard).toContain('String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true"');
+    expect(revenueWizard).toContain("const showSalesforceRevenueSource = ENABLE_SALESFORCE_REVENUE_SOURCE;");
   });
 });

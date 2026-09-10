@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
+const ENABLE_SALESFORCE_REVENUE_SOURCE = String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true";
 type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 
@@ -1686,7 +1687,7 @@ export function AddRevenueWizardModal(props: {
 
   const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
-  const showSalesforceRevenueSource = false; // Salesforce revenue is deferred for v1.
+  const showSalesforceRevenueSource = ENABLE_SALESFORCE_REVENUE_SOURCE;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -53,7 +53,7 @@ describe("GA4 UI regression guard", () => {
     expect(revenueModal).not.toContain("This is a one-time import and does not auto-sync");
   });
 
-  it("keeps Salesforce hidden from the v1 Add Revenue source picker", () => {
+  it("keeps Salesforce hidden unless its revenue-source flag is explicitly enabled", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
     const salesforceCardStart = revenueModal.indexOf("Salesforce (CRM)");
     const salesforceGateStart = revenueModal.lastIndexOf("{!hideCrmSources", salesforceCardStart);
@@ -61,7 +61,8 @@ describe("GA4 UI regression guard", () => {
 
     expect(revenueModal).toContain("Shopify (Ecommerce)");
     expect(revenueModal).toContain("HubSpot (CRM)");
-    expect(revenueModal).toContain("const showSalesforceRevenueSource = false;");
+    expect(revenueModal).toContain('String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true"');
+    expect(revenueModal).toContain("const showSalesforceRevenueSource = ENABLE_SALESFORCE_REVENUE_SOURCE;");
     expect(salesforceCardStart).toBeGreaterThan(-1);
     expect(salesforceGateStart).toBeGreaterThan(-1);
     expect(salesforceGate).toContain("!hideCrmSources && showSalesforceRevenueSource && (");

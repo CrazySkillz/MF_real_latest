@@ -17116,7 +17116,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Salesforce Opportunity stages (StageName picklist, for pipeline proxy selection)
+  const fetchOpenSalesforceOpportunityStages = async (accessToken: string, instanceUrl: string, version: string) => {
+    const soql = "SELECT MasterLabel FROM OpportunityStage WHERE IsActive = true AND IsClosed = false ORDER BY SortOrder ASC";
+    const records = await fetchCompleteSalesforceQuery({
+      initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
+      instanceUrl,
+      accessToken,
+      fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+    });
+    return records
+      .map((record: any) => String(record?.MasterLabel || "").trim())
+      .filter(Boolean);
+  };
+
+  // Salesforce Opportunity stages (active, open stages only for pipeline proxy selection)
   app.get("/api/salesforce/:campaignId/opportunities/stages", async (req, res) => {
     try {
       const campaignId = String(req.params.campaignId || "");
@@ -17125,24 +17138,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || "v59.0";
 
-      const resp = await fetch(`${instanceUrl}/services/data/${version}/sobjects/Opportunity/describe`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const json: any = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || "Failed to load Opportunity describe" });
-      }
-
-      const fields = Array.isArray(json?.fields) ? json.fields : [];
-      const stageField = fields.find((f: any) => String(f?.name || "").toLowerCase() === "stagename");
-      const picklistValues = Array.isArray(stageField?.picklistValues) ? stageField.picklistValues : [];
-      const stages = picklistValues
-        .filter((p: any) => p && (p.active === undefined || p.active === true))
-        .map((p: any) => ({
-          value: String(p.value || "").trim(),
-          label: String(p.label || p.value || "").trim(),
-        }))
-        .filter((p: any) => !!p.value);
+      const openStageNames = await fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version);
+      const stages = openStageNames.map((stageName) => ({ value: stageName, label: stageName }));
 
       res.json({ success: true, stages });
     } catch (error: any) {
@@ -17238,7 +17235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const soqlPipeline =
           `SELECT ${field}, COUNT(Id) c ` +
           `FROM Opportunity ` +
-          `WHERE StageName = '${escapedStage}' AND ${field} != null${searchClause} ` +
+          `WHERE StageName = '${escapedStage}' AND IsClosed = false AND ${field} != null${searchClause} ` +
           `GROUP BY ${field} ` +
           `ORDER BY COUNT(Id) DESC ` +
           `LIMIT ${Math.min(limit, 500)}`;
@@ -17256,7 +17253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const soqlPipelineScan =
             `SELECT Id, ${field} ` +
             `FROM Opportunity ` +
-            `WHERE StageName = '${escapedStage}' AND ${field} != null${searchClause}`;
+            `WHERE StageName = '${escapedStage}' AND IsClosed = false AND ${field} != null${searchClause}`;
           const recs = await fetchCompleteSalesforceQuery({
             initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipelineScan)}`,
             instanceUrl,
@@ -17414,7 +17411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const soql =
             `SELECT ${headers.join(', ')} ` +
             `FROM Opportunity ` +
-            `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
+            `WHERE StageName = '${escapedStage}' AND IsClosed = false AND ${attribField} IN (${quoted}) ` +
             `ORDER BY CloseDate DESC`;
           const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
           try {
@@ -17569,6 +17566,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+      if (pipelineEnabled) {
+        if (!pipelineStageName) return res.status(400).json({ error: "Select an active open Salesforce stage for Pipeline Proxy." });
+        const openStageNames = new Set(await fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version));
+        if (!openStageNames.has(pipelineStageName)) {
+          return res.status(400).json({ error: "Pipeline Proxy requires an active open Salesforce stage." });
+        }
+      }
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
 
@@ -17897,7 +17901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const soql =
                 `SELECT Id, ${attribField}, ${revenue}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
                 `FROM Opportunity ` +
-                `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted})`;
+                `WHERE StageName = '${escapedStage}' AND IsClosed = false AND ${attribField} IN (${quoted})`;
               const recs = await fetchCompleteSalesforceQuery({
                 initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
                 instanceUrl,
@@ -18299,7 +18303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const soql =
           `SELECT ${fields.join(", ")} ` +
           `FROM Opportunity ` +
-          `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted})`;
+          `WHERE StageName = '${escapedStage}' AND IsClosed = false AND ${attribField} IN (${quoted})`;
         const recs = await fetchCompleteSalesforceQuery({
           initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
           instanceUrl,

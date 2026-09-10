@@ -6856,26 +6856,29 @@ export default function GA4Metrics() {
                                       </button>
                                     )}
                                   </div>
-                                  <div className="flex min-w-0 items-center gap-1">
-                                    <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>
-                                    {sourceType === "shopify" && (
+                                  {sourceType !== "shopify" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
+                                </div>
+                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""}`}>
+                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                </span>
+                                {sourceType === "shopify" && (
+                                  <>
+                                    <p className="col-start-1 row-start-2 min-w-0 self-center truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>
+                                    <div className="col-start-3 row-start-2 flex items-center justify-end">
                                       <button
                                         onClick={() => {
                                           setShowRevenueSourcesDialog(false);
                                           setDeletingRevenueSourceId(s.sourceId);
                                         }}
-                                        className="shrink-0 rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                        className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                                         title="Remove revenue source"
                                         aria-label="Remove Shopify revenue source"
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </button>
-                                    )}
-                                  </div>
-                                </div>
-                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""}`}>
-                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
-                                </span>
+                                    </div>
+                                  </>
+                                )}
                                 {confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (
                                   <div className="flex items-center justify-end gap-1">
                                     {ga4ConnectionUsable && s.sourceType !== "manual" && (

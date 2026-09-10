@@ -150,6 +150,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify"');
+    expect(sourceDialog).toContain('className="col-start-1 row-start-2 min-w-0 self-center truncate text-xs text-muted-foreground/70"');
+    expect(sourceDialog).toContain('className="col-start-3 row-start-2 flex items-center justify-end"');
     expect(sourceDialog).toContain('aria-label="Remove Shopify revenue source"');
     expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
   });

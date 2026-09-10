@@ -19688,41 +19688,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return tokens.access_token as string;
   }
 
+  const salesforceTokenRefreshes = new Map<string, Promise<string>>();
   async function refreshSalesforceToken(connection: any) {
-    if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
-      throw new Error('Missing refresh token or OAuth credentials for Salesforce token refresh');
+    const connectionId = String(connection?.id || '');
+    const campaignId = String(connection?.campaignId || '');
+    if (!connectionId || !campaignId) throw new Error('Salesforce connection identity is missing');
+    const inFlight = salesforceTokenRefreshes.get(connectionId);
+    if (inFlight) return await inFlight;
+
+    const refreshPromise = (async () => {
+      const latest: any = await storage.getSalesforceConnection(campaignId);
+      if (!latest || String(latest.id || '') !== connectionId || latest.isActive === false) {
+        throw new Error('Salesforce connection changed during token refresh');
+      }
+      const latestExpiresAt = latest.expiresAt ? new Date(latest.expiresAt).getTime() : NaN;
+      if (latest.accessToken && (!Number.isFinite(latestExpiresAt) || latestExpiresAt >= Date.now() + 5 * 60 * 1000)) {
+        return String(latest.accessToken);
+      }
+      if (!latest.refreshToken || !latest.clientId || !latest.clientSecret) {
+        throw new Error('Missing refresh token or OAuth credentials for Salesforce token refresh');
+      }
+      const tokenBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+      const resp = await fetch(`${tokenBase}/services/oauth2/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: String(latest.refreshToken),
+          client_id: String(latest.clientId),
+          client_secret: String(latest.clientSecret),
+        }),
+      });
+      const json: any = await resp.json().catch(() => ({}));
+      console.log('[Salesforce OAuth] Refresh token result', {
+        connectionId,
+        ok: resp.ok,
+        status: resp.status,
+        hasAccessToken: !!json?.access_token,
+        hasRefreshToken: !!json?.refresh_token,
+        hasInstanceUrl: !!json?.instance_url,
+        scope: json?.scope || null,
+        responseKeys: Object.keys(json || {}).sort(),
+      });
+      if (!resp.ok || !json.access_token) {
+        throw new Error(json?.error_description || json?.error || 'Failed to refresh Salesforce access token');
+      }
+      const updateData: any = {
+        accessToken: json.access_token,
+        expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        instanceUrl: json.instance_url || latest.instanceUrl || null,
+      };
+      if (json.refresh_token) updateData.refreshToken = String(json.refresh_token);
+      const updated: any = await storage.updateSalesforceConnection(connectionId, updateData);
+      if (!updated?.accessToken || (json.refresh_token && updated.refreshToken !== String(json.refresh_token))) {
+        throw new Error('Failed to persist renewed Salesforce OAuth credentials');
+      }
+      return String(updated.accessToken);
+    })();
+    salesforceTokenRefreshes.set(connectionId, refreshPromise);
+    try {
+      return await refreshPromise;
+    } finally {
+      if (salesforceTokenRefreshes.get(connectionId) === refreshPromise) salesforceTokenRefreshes.delete(connectionId);
     }
-    const tokenBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-    const resp = await fetch(`${tokenBase}/services/oauth2/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: String(connection.refreshToken),
-        client_id: String(connection.clientId),
-        client_secret: String(connection.clientSecret),
-      }),
-    });
-    const json: any = await resp.json().catch(() => ({}));
-    console.log('[Salesforce OAuth] Refresh token result', {
-      connectionId: connection?.id || null,
-      ok: resp.ok,
-      status: resp.status,
-      hasAccessToken: !!json?.access_token,
-      hasInstanceUrl: !!json?.instance_url,
-      scope: json?.scope || null,
-      responseKeys: Object.keys(json || {}).sort(),
-    });
-    if (!resp.ok || !json.access_token) {
-      throw new Error(json?.error_description || json?.error || 'Failed to refresh Salesforce access token');
-    }
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
-    await storage.updateSalesforceConnection(String(connection.id), {
-      accessToken: json.access_token,
-      expiresAt,
-      instanceUrl: json.instance_url || connection.instanceUrl || null,
-    } as any);
-    return json.access_token as string;
   }
 
   async function getSalesforceAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; instanceUrl: string; connectionId: string }> {

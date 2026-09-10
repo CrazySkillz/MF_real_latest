@@ -142,6 +142,23 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });
 
+  it("shows selected Salesforce campaign mappings in review before save", () => {
+    const reviewBlock = sliceBetween(
+      salesforceWizard,
+      '{step === "review" && (',
+      '{reviewOpportunityBreakdown.length > 0 && (',
+    );
+    const selectedOpportunitiesIndex = reviewBlock.indexOf("Selected opportunity(ies)");
+    const mappingIndex = reviewBlock.indexOf("{selectedCampaignMappings.length > 0 && (");
+
+    expect(salesforceWizard).toContain('const reviewPlatformLabel = isGA4 ? "GA4"');
+    expect(mappingIndex).toBeGreaterThan(selectedOpportunitiesIndex);
+    expect(reviewBlock).toContain("{reviewPlatformLabel} campaign mapping");
+    expect(reviewBlock).toContain("mapping.crmValue");
+    expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
+    expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
+  });
+
   it("removes one value through the stable atomic source path and rejects scheduler races", () => {
     const saveRoute = sliceBetween(
       routes,

@@ -375,9 +375,8 @@ export function SalesforceRevenueWizard(props: {
     setPreviewError(null);
     setPipelinePreviewError(null);
     crosswalkFetchedRef.current = false;
-    // Row-level edit keeps the exact selected value in focus but starts at the beginning of the wizard.
-    // Provider-level edit keeps its existing review entry point.
-    setStep(hasFocusedValue ? "value-source" : "review");
+    // Salesforce source edits always start at the beginning of the wizard with saved settings prefilled.
+    setStep("value-source");
   }, [campaignId, initialFocusValue, mode, initialMappingConfig]);
 
 

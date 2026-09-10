@@ -234,7 +234,7 @@ Pipeline Proxy rule:
   - selected/contributing campaign value or values, one per line with `Stage: <stage label> | <campaign value>` formatting
   - that provider's selected pipeline stage label
 - the Total Revenue sources modal keeps provider connections as top-level sources and itemizes confirmed Salesforce Opportunity-name totals from `campaignValueRevenueTotals`; it must not present `pipelineValueRevenueTotals` as confirmed revenue
-- when confirmed Salesforce values are itemized, edit/remove controls belong on each value row rather than beside the provider subtotal; row edit opens the existing Salesforce selection flow focused on that value, while row removal reprocesses the same stable source ID with only that exact value removed
+- when confirmed Salesforce values are itemized, the provider-level edit control belongs beside `Salesforce (Opportunities)` and opens the full saved source at the first wizard step; each value row keeps only its exact remove control, which reprocesses the same stable source ID with only that value removed
 - a Salesforce value removal must use the current persisted source mapping as an optimistic-concurrency boundary so a simultaneous scheduler refresh cannot restore a stale selection; conflicts fail closed without replacing source metadata or materialized records
 - if the CRM connection is currently disconnected but the saved source is still active, the card and review/edit flows may fall back to saved proxy metadata and saved proxy amount until live preview data is available again
 - the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`

@@ -121,7 +121,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}');
   });
 
-  it("places aligned edit and remove controls on each confirmed Salesforce value", () => {
+  it("edits the Salesforce source from its provider heading and removes confirmed values individually", () => {
     const sourceDialog = sliceBetween(
       ga4Page,
       '<Dialog open={showRevenueSourcesDialog}',
@@ -132,12 +132,12 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 ? "col-span-2" : ""');
     expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && (');
     expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
-    expect(sourceDialog).toContain('focusedRevenueValue: item.name');
+    expect(sourceDialog).toContain('aria-label="Edit Salesforce revenue source"');
+    expect(sourceDialog).not.toContain('focusedRevenueValue: item.name');
     expect(sourceDialog).toContain('setDeletingSalesforceRevenueItem({');
-    expect(sourceDialog).toContain('aria-label={`Edit ${item.name}`}');
     expect(sourceDialog).toContain('aria-label={`Remove ${item.name}`}');
     expect(addRevenueWizard).toContain('initialFocusValue={isEditing');
-    expect(salesforceWizard).toContain('setStep(hasFocusedValue ? "value-source" : "review")');
+    expect(salesforceWizard).toContain('setStep("value-source")');
     expect(salesforceWizard).toContain('Editing selection: <strong>{initialFocusValue}</strong>');
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });

@@ -6837,9 +6837,25 @@ export default function GA4Metrics() {
                             <div key={s.sourceId} className="rounded-md border border-border p-3 text-sm">
                               <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-start gap-x-2">
                                 <div className="min-w-0">
-                                  <p className="truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
-                                    {revenueSourceDisplayLabel(s)}{dateLabel}
-                                  </p>
+                                  <div className="flex min-w-0 items-center gap-1">
+                                    <p className="min-w-0 truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
+                                      {revenueSourceDisplayLabel(s)}{dateLabel}
+                                    </p>
+                                    {confirmedRevenueItems.length > 0 && ga4ConnectionUsable && (
+                                      <button
+                                        onClick={() => {
+                                          setShowRevenueSourcesDialog(false);
+                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
+                                          setShowRevenueDialog(true);
+                                        }}
+                                        className="shrink-0 rounded p-1 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                                        title="Edit Salesforce revenue source"
+                                        aria-label="Edit Salesforce revenue source"
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
                                 </div>
                                 <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 ? "col-span-2" : ""}`}>
@@ -6882,20 +6898,6 @@ export default function GA4Metrics() {
                                         <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
                                         <span className="text-right tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
                                         <div className="flex items-center justify-end gap-1">
-                                          {ga4ConnectionUsable && (
-                                            <button
-                                              onClick={() => {
-                                                setShowRevenueSourcesDialog(false);
-                                                setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus, focusedRevenueValue: item.name });
-                                                setShowRevenueDialog(true);
-                                              }}
-                                              className="rounded p-1 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-                                              title={`Edit ${item.name}`}
-                                              aria-label={`Edit ${item.name}`}
-                                            >
-                                              <Edit className="h-3.5 w-3.5" />
-                                            </button>
-                                          )}
                                           <button
                                             onClick={() => {
                                               const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];

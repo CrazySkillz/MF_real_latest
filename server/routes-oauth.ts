@@ -18194,7 +18194,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
-      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;
+      const unambiguousContextCandidate = candidates.length === 1
+        && String((candidates[0].source as any)?.platformContext || "").trim().toLowerCase() === requestedPlatformContext
+        && String(candidates[0].cfg?.platformContext || candidates[0].cfg?.platform || "").trim().toLowerCase() === requestedPlatformContext
+        ? candidates[0]
+        : null;
+      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg))
+        || unambiguousContextCandidate;
       if (!selectedPipelineSource) {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested platform context." });
       }
@@ -18212,6 +18218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (Number.isFinite(cached) && cached > 0 && cachedMode === "current_stage" && cachedValueTotals.length > 0) {
         return res.json({
           success: true,
+          sourceId: String(pipelineSource.id),
           pipelineEnabled: true,
           pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
           currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
@@ -18253,6 +18260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         return res.json({
           success: true,
+          sourceId: String(pipelineSource.id),
           pipelineEnabled: true,
           pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
           currency: null,
@@ -18418,6 +18426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
+        sourceId: String(pipelineSource.id),
         pipelineEnabled: true,
         pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
         currency,

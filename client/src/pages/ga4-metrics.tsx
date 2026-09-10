@@ -2511,7 +2511,11 @@ export default function GA4Metrics() {
         const type = String(s?.sourceType || "").toLowerCase();
         return s?.isActive !== false && type === sourceType && hasPipelineConfig(s);
       });
-      const crmSource = selectPipelineSource(eligible);
+      const endpointSourceId = sourceType === "salesforce" ? String(endpointData?.sourceId || "").trim() : "";
+      const endpointSource = endpointSourceId
+        ? eligible.find((source: any) => String(source?.id || "") === endpointSourceId) || null
+        : null;
+      const crmSource = endpointSource || selectPipelineSource(eligible);
       if (!crmSource) return null;
       const crmCfg = parseMappingConfig(crmSource);
       const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];

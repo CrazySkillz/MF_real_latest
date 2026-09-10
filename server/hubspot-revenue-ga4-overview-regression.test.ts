@@ -317,10 +317,13 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineRoute).not.toContain("selectedPipelineSource = candidates[0]");
     expect(salesforcePipelineRoute).toContain("requestedPlatformContext");
     expect(salesforcePipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
-    expect(salesforcePipelineRoute).toContain("const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;");
+    expect(salesforcePipelineRoute).toContain("const unambiguousContextCandidate = candidates.length === 1");
+    expect(salesforcePipelineRoute).toContain('String((candidates[0].source as any)?.platformContext || "").trim().toLowerCase() === requestedPlatformContext');
+    expect(salesforcePipelineRoute).toContain('String(candidates[0].cfg?.platformContext || candidates[0].cfg?.platform || "").trim().toLowerCase() === requestedPlatformContext');
+    expect(salesforcePipelineRoute).toMatch(/candidates\.find\(\(\{ cfg \}\) => sourceMatchesGa4Scope\(cfg\)\)\s*\|\| unambiguousContextCandidate/);
+    expect(salesforcePipelineRoute.match(/sourceId: String\(pipelineSource\.id\)/g)).toHaveLength(3);
     expect(salesforcePipelineRoute).toContain('return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested platform context." });');
-    expect(salesforcePipelineRoute).not.toContain("|| candidates[0] || null");
-    expect(salesforcePipelineRoute).not.toContain("selectedPipelineSource = candidates[0]");
+    expect(salesforcePipelineRoute).not.toContain("candidates.length > 1 ? candidates[0]");
     expect(pipelineRoute).toContain("{ propertyName: campaignProp, operator: 'IN', values: pipelineSelectedValues }");
     expect(pipelineRoute).toContain("{ propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] }");
     expect(pipelineRoute).toContain("totalToDate: Number(cfg.pipelineTotalToDate || 0)");
@@ -328,7 +331,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineMemo).toContain('getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot")');
     expect(pipelineMemo).toContain("sourceMatchesGa4Scope");
     expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
-    expect(pipelineMemo).not.toContain("|| sorted[0] || null");
+    expect(pipelineMemo).toContain('const endpointSourceId = sourceType === "salesforce"');
+    expect(pipelineMemo).toContain('String(source?.id || "") === endpointSourceId');
+    expect(pipelineMemo).toContain("const crmSource = endpointSource || selectPipelineSource(eligible);");
     expect(pipelineMemo).not.toContain("return sorted[0]");
     expect(pipelineMemo).toContain("providerEntries: entries.map");
     expect(financialRevenueBlock).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");

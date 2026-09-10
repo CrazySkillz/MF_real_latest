@@ -31,10 +31,14 @@ describe("GA4 Overview retained-source reconciliation", () => {
     expect(route).toContain("zSalesforceRevenuePlatformContext.safeParse");
     expect(route).toContain("const requestedContexts = [requestedPlatformContext];");
     expect(route).toContain("mappingContext !== requestedPlatformContext");
-    expect(route).toContain("candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null");
+    expect(route).toContain("const unambiguousContextCandidate = candidates.length === 1");
+    expect(route).toContain('String((candidates[0].source as any)?.platformContext || "").trim().toLowerCase() === requestedPlatformContext');
+    expect(route).toContain('String(candidates[0].cfg?.platformContext || candidates[0].cfg?.platform || "").trim().toLowerCase() === requestedPlatformContext');
+    expect(route).toMatch(/candidates\.find\(\(\{ cfg \}\) => sourceMatchesGa4Scope\(cfg\)\)\s*\|\| unambiguousContextCandidate/);
+    expect(route.match(/sourceId: String\(pipelineSource\.id\)/g)).toHaveLength(3);
     expect(route).toContain("Pipeline proxy is not configured for the requested platform context.");
     expect(route).not.toContain('["ga4", "linkedin", "meta"] as const');
-    expect(route).not.toContain("|| candidates[0]");
+    expect(route).not.toContain("candidates.length > 1 ? candidates[0]");
   });
 
   it("inventories retained sources without mutating or guessing reconciliation", () => {

@@ -6842,11 +6842,11 @@ export default function GA4Metrics() {
                                   </p>
                                   <p className="text-xs text-muted-foreground/70">{sourceTypeText}</p>
                                 </div>
-                                <span className="text-right font-medium tabular-nums text-foreground">
+                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 ? "col-span-2" : ""}`}>
                                   {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                 </span>
-                                <div className="flex items-center justify-end gap-1">
-                                  {confirmedRevenueItems.length === 0 && <>
+                                {confirmedRevenueItems.length === 0 && (
+                                  <div className="flex items-center justify-end gap-1">
                                     {ga4ConnectionUsable && s.sourceType !== "manual" && (
                                       <button
                                         onClick={() => {
@@ -6870,8 +6870,8 @@ export default function GA4Metrics() {
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
-                                  </>}
-                                </div>
+                                  </div>
+                                )}
                               </div>
                               {confirmedRevenueItems.length > 0 && (
                                 <div className="mt-2 border-t border-border pt-2">

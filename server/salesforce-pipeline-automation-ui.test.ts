@@ -129,7 +129,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('grid-cols-[minmax(0,1fr)_6rem_3.5rem]');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && <>');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 ? "col-span-2" : ""');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && (');
     expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
     expect(sourceDialog).toContain('focusedRevenueValue: item.name');
     expect(sourceDialog).toContain('setDeletingSalesforceRevenueItem({');

@@ -154,7 +154,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(salesforceWizard).toContain("const reviewShowsCampaignMappings = isGA4 || isGoogleAds || isMeta || isInstagram || isTikTok");
     expect(salesforceWizard).toContain('const reviewPlatformLabel = isGA4 ? "GA4"');
     expect(mappingIndex).toBeGreaterThan(selectedOpportunitiesIndex);
-    expect(reviewBlock).toContain('grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-6');
+    expect(reviewBlock).toContain('grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)]');
+    expect(reviewBlock).toContain('aria-hidden="true" className="text-center text-muted-foreground/70">→</span>');
     expect(reviewBlock).toContain("selectedCampaignMappings.find");
     expect(reviewBlock).toContain('mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "Not mapped"');
   });

@@ -41,7 +41,7 @@ Current GA4 tab production-readiness status:
 - Exact-SHA revalidation note (2026-09-06): runtime `bf078b03` adds race-safe canonical GA4 KPI create uniqueness without changing KPI/Overview values or adjacent consumer semantics. The clean 127-test packet, TypeScript, build, zero-duplicate read-only inventory, exact deployment health, user production verification, and authenticated campaign-scoped `ga4_mock` refresh on property `542352127` passed. The mistaken `yesop` scheduler change at `42c52eb2` was reverted and is excluded from the certified runtime; the restored scheduler files match the previously certified implementation. No Playwright, duplicate cleanup, provider/source reconfiguration, or certification-boundary expansion was used.
 - Shopify Revenue status: **UNVERIFIED for the current candidate** after a same-UTC-day order was omitted from the default Total Revenue and Revenue Breakdown windows. The 2026-08-10 exact-source certification remains historical bounded evidence; deployed card/source parity for the corrected window is pending.
 - Upload CSV Revenue status (2026-08-10): **clean-certified for exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` inside the recorded Overview boundary**. Unlisted CSV variants and an unconfigured future Google Sheets Revenue source remain excluded.
-- HubSpot Revenue status (2026-08-10): **clean-certified for exact enabled sources `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` inside the recorded Overview boundary**. Future mappings and unrelated historical rows remain excluded. The uncommitted 2026-09-11 HubSpot Pipeline five-minute automation candidate preserves that contract locally but is not covered by the historical exact-runtime certificate; natural deployed timer firing and a provider-authoritative open-stage-to-Closed-Won transition remain required before certifying the new automation behavior.
+- HubSpot Revenue status: **UNVERIFIED for the current implementation** after committed Pipeline automation `f4a3e8d7` and later shared CRM/Overview changes through Salesforce reference commit `5987024a`. The 2026-08-10 clean certification for exact enabled sources `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` remains historical bounded evidence only. Natural deployed timer firing, a provider-authoritative open-stage-to-Closed-Won transition, and revenue-only five-minute parity remain outstanding. Use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the current Salesforce reference and exact HubSpot gap list.
 - Google Sheets Revenue is no longer on hold. Current Commit 21 deployed its existing GA4 chooser/API entry point without changing production data; an unconfigured future Revenue source is not certified by chooser availability.
 
 - Insights has no source chooser. Overview owns the GA4 financial-source chooser and Insights audits must not change it. Google Ads has no live-test evidence and is excluded from Insights certification; LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs for this release.
@@ -56,13 +56,14 @@ Use these files in this order:
 1. `GA4/README.md`
 2. `../PRODUCTION_READINESS.md` for production-readiness audits, analytics-sensitive feature refinement, and section/source certification work
 3. `GA4/REFRESH_AND_PROCESSING.md`
-4. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
-5. the specific tab doc you are changing
-6. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
-7. `GA4/OVERVIEW_PRODUCTION_READINESS.md` for the current Overview decision, supported release scope, completed section gates, and exact boundary
-8. `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md` for detailed inventories, traces, blockers, production-data findings, and validation packets
-9. `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md` for the chronological Current Commit 0–21 and UI-validation record
-10. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
+4. `GA4/CRM_REVENUE_SOURCE_PATTERN.md` when the work touches Salesforce or HubSpot revenue, Pipeline Proxy, CRM source editing, or CRM refresh parity
+5. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
+6. the specific tab doc you are changing
+7. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
+8. `GA4/OVERVIEW_PRODUCTION_READINESS.md` for the current Overview decision, supported release scope, completed section gates, and exact boundary
+9. `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md` for detailed inventories, traces, blockers, production-data findings, and validation packets
+10. `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md` for the chronological Current Commit 0–24 and UI-validation record
+11. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
 
 ## Canonical GA4 Journey
 
@@ -77,7 +78,7 @@ Important meaning:
 - the GA4 property and GA4 campaign values are selected during setup; the GA4 analytics page displays the saved scope and does not provide a post-setup campaign picker
 - the configured historical lookback establishes the fixed initial-import boundary; current GA4 Summary traffic values then accumulate through the latest completed reporting day instead of rolling forward with the original lookback length
 - the setup picker must discover real UTM campaign values from GA4 campaign dimensions where available, GA4 manual UTM campaign dimensions where available, and `pageLocation` `utm_campaign` fallback when fresh tagged traffic has not yet populated GA4 attribution dimensions
-- revenue and spend sources configured inside GA4, such as HubSpot, Shopify, CSV, or Google Sheets imports, are GA4/campaign financial child inputs; users do not connect them from the campaign `Connected Platforms` section, and they feed financial totals only through the GA4/campaign financial path. Salesforce revenue code/docs are retained as deferred non-v1 behavior and are hidden from the v1 revenue-source chooser.
+- revenue and spend sources configured inside GA4, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports, are GA4/campaign financial child inputs; users do not connect them from the campaign `Connected Platforms` section, and they feed financial totals only through the GA4/campaign financial path. Salesforce reads Opportunities and does not represent Salesforce Campaign objects.
 - Campaign DeepDive `Performance Summary` must consume GA4 and every other implemented main Connected Platform through the shared connected-source aggregate contract, not by special-casing GA4-only UI logic
 - Campaign DeepDive must not require duplicate setup for GA4 child revenue/spend systems; those child inputs should affect only the relevant financial totals and should not appear as separate main Connected Platforms
 - Campaign DeepDive `Platform Comparison` may show GA4 single-source aggregate financial totals in the Overview table when GA4 is the only main Connected Platform, but GA4 remains a web analytics source and should not be treated as a paid-media source for Cost Analysis or budget recommendations
@@ -90,6 +91,8 @@ Important meaning:
   Root-level mandatory production-readiness checklist. Use it before GA4 section-specific readiness docs when auditing, refining, or certifying any GA4 section or future source template.
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
+- `GA4/CRM_REVENUE_SOURCE_PATTERN.md`
+  Canonical implementation handoff for the current Salesforce revenue-source reference flow, shared CRM invariants, scheduler behavior, exact HubSpot parity gaps, and validation boundary. It is not a production-readiness certificate.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
   Concise canonical current-status index. Current section status: **UNVERIFIED**. Campaign Breakdown is validated for deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e`; remaining Overview value families and the natural scheduler gate retain their separate validation status.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
@@ -136,7 +139,7 @@ Important meaning:
 - `GA4/OVERVIEW.md` explains what the Overview tab contains and how its cards/tables should be understood
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md` states the current decision and active gates; its evidence and history companion ledgers preserve the detailed record
 - `GA4/FINANCIAL_SOURCES.md` explains the underlying revenue/spend source system that feeds Overview and other GA4 tabs
-- HubSpot-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; H10d is historical, and the three exact enabled source IDs are clean-certified inside the recorded Overview boundary.
+- HubSpot-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; H10d and the three-source clean certification are historical bounded evidence, while the current implementation is unverified after `f4a3e8d7` and later shared CRM changes. Use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the current Salesforce reference and HubSpot parity target.
 - Shopify-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`; current readiness is unverified pending deployed same-day card/source parity and the corrected OAuth expiring-token provider read/renewal gates, while non-GA4 sources and future stores remain excluded.
 
 Why this file is separate:
@@ -200,9 +203,9 @@ These are now part of the GA4 template contract:
   through the latest completed day; imported revenue is source-to-date
   provenance in Revenue Breakdown and cannot create or adjust ranked rows
 - HubSpot-specific report value propagation is guarded in Current Commit 4.12 by `GA4OverviewValidation.hubspotReportValuePack(...)` and static scheduled/server PDF formula checks; deployed evidence passed for the configured `GA4 Overview Report` packet and remains limited to that report/campaign/property
-- the `Add revenue source` chooser shows saved-source status for v1 revenue source families: Shopify and HubSpot show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, CSV shows `Uploaded` when an active CSV revenue source exists, and Salesforce revenue is hidden/deferred for v1
+- the `Add revenue source` chooser shows saved-source status for implemented revenue source families: Shopify and HubSpot show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, CSV shows `Uploaded` when an active CSV revenue source exists, and Salesforce is visible for initial setup but becomes non-actionable after an active same-context Salesforce source exists; subsequent opportunity changes use the provider pencil in `Revenue Sources`
 - CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
-- HubSpot and Salesforce `Review Settings` show the selected deal/opportunity labels together with the amount that will be imported for each selected record; HubSpot also shows the selected CRM value to saved platform-campaign mapping before save, hides the zero Pipeline Proxy summary in unchanged edit mode once the open-stage amount is known to be zero, and keeps confirmed `Total Revenue (to date)` as the sum of included confirmed records
+- HubSpot and Salesforce `Review Settings` show the selected deal/opportunity labels together with the amount that will be imported for each selected record and the selected CRM-value-to-GA4-campaign mapping before save; Salesforce uses aligned opportunity and GA4 mapping columns connected by directional arrows. HubSpot hides the zero Pipeline Proxy summary in unchanged edit mode once the open-stage amount is known to be zero, and both keep confirmed `Total Revenue (to date)` as the sum of included confirmed records
 - HubSpot and Shopify rows in the GA4 Overview `Revenue Sources` modal should show the saved mapped platform-campaign name under the source title when `campaignMappings` exist, falling back to the source type when no mapping is saved
 - Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
 - GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, disables `Create KPI` until `KPI Name` and `Target Value` are entered, and disables `Update KPI` in edit mode until at least one form value changes

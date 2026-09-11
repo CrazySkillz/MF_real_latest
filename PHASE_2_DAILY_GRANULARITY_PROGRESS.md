@@ -4,6 +4,8 @@
 **Last Updated**: February 12, 2026  
 **Commits**: 22fc34b0, 5efa13fa, eeb02802
 
+> Historical progress record. Do not use the scheduler summary in this file as the current runtime contract. Current cadence is defined in `GA4/REFRESH_AND_PROCESSING.md`; CRM source behavior and HubSpot parity gaps are defined in `GA4/CRM_REVENUE_SOURCE_PATTERN.md`.
+
 ---
 
 ## ✅ COMPLETED (Backend Infrastructure)
@@ -74,7 +76,7 @@
     }));
   ```
 
-**Auto-Refresh**: `auto-refresh-scheduler.ts` calls this endpoint daily at 3:00 AM
+**Historical Auto-Refresh Note**: this phase originally described a fixed `3:00 AM` call. Current scheduling is configuration-driven, and Google Sheets spend also has a separate default one-minute polling loop; use `GA4/REFRESH_AND_PROCESSING.md`.
 
 **User Action Required**: Users need to map a date column in Google Sheets wizard for daily granularity (currently optional)
 
@@ -200,9 +202,9 @@
 }
 ```
 
-**Auto-Refresh**: All three CRM endpoints are called by `auto-refresh-scheduler.ts` daily at 3:00 AM
+**Historical Auto-Refresh Note**: this phase originally described HubSpot, Salesforce, and Shopify calls at a fixed `3:00 AM`. The current full external-source run is configuration-driven; Salesforce has an additional five-minute all-mapping pass, while HubSpot's five-minute pass currently covers Pipeline-enabled mappings only.
 
-**Note**: HubSpot creates a single "to-date" record (cumulative), while Salesforce and Shopify create true daily records
+**Historical Note Superseded**: current GA4 HubSpot confirmed revenue materializes true daily rows using the selected normalized deal date field; the older single cumulative-row description must not be used for new work.
 
 ---
 
@@ -389,12 +391,16 @@ $env:PGPASSWORD="your_password"; psql -U username -d database_name -f "c:\Users\
 - `meta_api`: Future (Phase 4)
 - `legacy_cumulative`: Backfilled from campaigns table
 
-### Auto-Refresh Schedule
+### Auto-Refresh Schedule (Historical Baseline And Current Overrides)
 
 - **LinkedIn**: Every 4-6 hours (linkedin-scheduler.ts)
-- **Google Sheets**: Daily at 3:00 AM (auto-refresh-scheduler.ts)
+- **Google Sheets revenue**: full external-source daily run; **Google Sheets spend** also has its current source-family polling loop (default 1 minute)
 - **GA4**: On-demand (Overview tab load) + daily scheduler
-- **HubSpot/Salesforce/Shopify**: Daily at 3:00 AM (auto-refresh-scheduler.ts)
+- **Shopify**: full external-source daily run
+- **Salesforce revenue**: full external-source daily run plus the shared CRM interval (default 5 minutes) for every active exact GA4 source with selected values, including revenue-only mappings
+- **HubSpot revenue**: full external-source daily run plus the shared CRM interval only for Pipeline-enabled mappings with a saved stage; revenue-only five-minute parity is not yet implemented
+
+The daily hour is configuration-driven rather than fixed to `3:00 AM`; use `AUTO_REFRESH_DAILY_HOUR`, `AUTO_REFRESH_DAILY_MINUTE`, and `AUTO_REFRESH_TIME_ZONE` as documented in `GA4/REFRESH_AND_PROCESSING.md`.
 
 ### Migration Safety
 

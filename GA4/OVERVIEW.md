@@ -48,7 +48,7 @@ The platform-level GA4 `Overview` tab contains:
 - Revenue & Financial section
   - `Revenue`
     - `Total Revenue`
-    - `Pipeline Proxy` when configured
+    - `Pipeline Proxy` (shows `Not configured` when no eligible CRM source is configured)
   - `Spend`
     - `Total Spend`
   - `Performance`
@@ -192,10 +192,10 @@ High-level rule:
 - persisted daily and configured-lookback breakdown revenue have no historical currency provenance, so they remain native-only continuity fallbacks and must not be combined with imported revenue when the verified campaign-to-date provider value is unavailable
 - scheduled reports, downstream campaign totals, KPI current values, and alert decisions apply the same rule; this does not convert currency or rewrite historical records
 - the `Total Revenue` Revenue Sources modal should show HubSpot and Shopify mapped platform campaign names from saved `campaignMappings` when available, not only generic source type labels
-- the `Add revenue source` chooser is v1-scoped: Salesforce revenue is hidden for v1, while retained Salesforce docs/code paths are not current GA4 v1 certification scope
+- the `Add revenue source` chooser includes Salesforce. It starts first-time setup only when no active same-context Salesforce source exists; after one exists, the card is non-actionable and directs opportunity changes to the provider pencil in `Revenue Sources`
 - Campaign Breakdown row revenue must add imported HubSpot revenue only to rows matched by saved CRM-to-platform `campaignMappings`; the currently recorded HubSpot deployed evidence is limited to the Current Commit 4.11 `yesop_retargeting` mapped-row packet
 - GA4 report output must use the same HubSpot imported revenue and exact mapping rules as Overview; Current Commit 4.12 records local/read-only validation plus deployed evidence for the configured `GA4 Overview Report` packet only
-- GA4 KPI/Benchmark financial values must use the same HubSpot imported revenue and selected GA4 native financial source included in Overview `Total Revenue`, with Pipeline Proxy excluded. The three exact enabled HubSpot source IDs are clean-certified inside the recorded Overview boundary; `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is canonical and H10d is historical only.
+- GA4 KPI/Benchmark financial values must use the same HubSpot imported revenue and selected GA4 native financial source included in Overview `Total Revenue`, with Pipeline Proxy excluded. The three exact enabled HubSpot source IDs retain historical bounded evidence only; the current HubSpot implementation is unverified after Pipeline automation and later shared CRM changes. `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is the readiness record and `GA4/CRM_REVENUE_SOURCE_PATTERN.md` is the current implementation/parity handoff.
 - Shopify imported revenue follows the same GA4 source-backed financial model. Current readiness is unverified pending deployed same-UTC-day Total Revenue/source parity; use `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` as the controlling source. Dormant OAuth, non-GA4 sources, and future stores remain excluded.
 - GA4-native financial revenue and CPA conversions use the first complete source in this fixed order: campaign-to-date provider totals, campaign-to-date persisted daily totals, then the configured-lookback breakdown only when both earlier sources are absent; values are never selected by maximum revenue
 - valid zero and negative campaign-to-date native values remain authoritative; a provider response without both revenue and conversions is treated as empty and falls through to the next complete candidate
@@ -222,7 +222,7 @@ Pipeline Proxy rule:
 - Pipeline Proxy appears in the Revenue & Financial area; before a HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source is configured, the card shows `Not configured`
 - the render condition is the active CRM revenue source configuration, not only the separate pipeline proxy endpoint response
 - when the endpoint returns a fresh same-scope value, the card uses it; if that endpoint is stale or unavailable, only the already-selected same-scope active source may supply saved Pipeline Proxy metadata, while a scope mismatch fails closed as unavailable
-- active GA4 Salesforce and HubSpot Pipeline sources are reprocessed through their stable source IDs every five minutes by default, and an open Overview checks the saved Pipeline results every minute; the same atomic refresh moves a newly won Opportunity or deal out of Pipeline Proxy and into confirmed Total Revenue and source provenance
+- every active exact GA4 Salesforce mapping with selected values is reprocessed through its stable source ID every five minutes by default, whether Pipeline Proxy is enabled or disabled. HubSpot's current five-minute loop covers only Pipeline-enabled mappings with a saved stage; HubSpot revenue-only mappings still wait for the full daily run. An open Overview checks saved Pipeline results every minute, and the same atomic provider refresh moves a newly won Opportunity or deal out of Pipeline Proxy and into confirmed Total Revenue and source provenance
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show a compact `Sources` action; provider-specific provenance belongs in a read-only Pipeline Proxy sources modal rather than inline card microcopy
 - the `Sources` count should include only providers with positive Pipeline Proxy contribution; zero-value configured CRM providers should not show as contributing sources
@@ -240,7 +240,7 @@ Pipeline Proxy rule:
 - the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`
 - it is not confirmed revenue
 - it must not feed `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports unless a future product change explicitly redefines that metric
-- deleting or deactivating the associated HubSpot/Salesforce revenue source must remove the Pipeline Proxy card from Overview
+- deleting or deactivating an associated HubSpot/Salesforce revenue source must remove that source's Pipeline Proxy contribution and configuration; the Overview card remains present and shows `Not configured` when no other eligible CRM source exists
 
 Insights alignment rule:
 

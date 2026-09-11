@@ -861,6 +861,7 @@ Status: `Done`
   - 21. blocked-state UI and Journey 9 revenue-model cleanup
   - 23. GA4 KPI notification current-value and duplicate-row stabilization
   - 24. CRM Pipeline Proxy Overview visibility and provenance stabilization
+  - 26. HubSpot CRM revenue parity with the Salesforce reference flow
 - `P2`
   - 8. Ad Comparison is still campaign-comparison-based
   - 9. Ad Comparison revenue selector expectation gap
@@ -924,7 +925,7 @@ For every bug in this queue:
   - a saved active HubSpot or Salesforce revenue source using `Total Revenue + Pipeline (Proxy)` shows a separate Overview `Pipeline Proxy` card
   - the card shows provider, selected stage, amount, and selected/contributing campaign values where available
   - the card remains separate from confirmed `Total Revenue` and downstream financial/KPI/Benchmark/Ad Comparison/Insights/Reports calculations
-  - deleting or deactivating the associated CRM revenue source removes the Pipeline Proxy card
+  - deleting or deactivating an associated CRM revenue source removes that provider's proxy contribution/configuration; the persistent card shows `Not configured` when no eligible CRM source remains
 - Current behavior:
   - resolved
 - Why this mattered:
@@ -937,5 +938,36 @@ For every bug in this queue:
   - save Salesforce or HubSpot with `Total Revenue + Pipeline (Proxy)` and confirm the Overview card appears
   - confirm the card still appears when the active source has saved Pipeline Proxy config but the endpoint/cache path has not returned fresh data yet
   - confirm provider, stage, amount, and selected/contributing values display where available
-  - confirm revenue-only mode does not show the card
-  - delete the CRM revenue source and confirm the card disappears
+  - confirm revenue-only mode does not count that provider as configured and the persistent card shows `Not configured` when no other eligible CRM provider remains
+  - delete the CRM revenue source and confirm its contribution disappears and the persistent card returns to `Not configured` when appropriate
+
+## 26. HubSpot CRM revenue flow must reach the current Salesforce reference behavior
+
+- Severity: `P1`
+- Area: `GA4 Overview / HubSpot revenue / CRM scheduler`
+- Affected docs:
+  - `GA4/CRM_REVENUE_SOURCE_PATTERN.md`
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4/OVERVIEW.md`
+  - `GA4/REFRESH_AND_PROCESSING.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+  - `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`
+- Expected behavior:
+  - every active exact GA4 HubSpot mapping with selected values refreshes confirmed deal revenue on the shared five-minute CRM loop, even when Pipeline Proxy is disabled
+  - `pipelineEnabled` and the selected open stage control only proxy calculation, not confirmed-revenue refresh eligibility
+  - a selected deal moving from the chosen open stage to Closed Won atomically leaves Pipeline Proxy and enters confirmed Total Revenue plus itemized Revenue Sources provenance exactly once
+  - refresh preserves the stable HubSpot source ID, campaign/platform ownership, saved mappings, currency/date semantics, and optimistic-concurrency protection
+- Current behavior:
+  - partially implemented and **UNVERIFIED for the current implementation**
+  - `f4a3e8d7` added the Pipeline-enabled five-minute HubSpot refresh and local stage-transition regressions
+  - the current HubSpot five-minute scheduler still skips revenue-only mappings, which continue to wait for the full daily external-source run
+  - deployed natural-timer firing, a provider-authoritative open-stage-to-Closed-Won transition, and the final current daily-scheduler gate remain pending
+- Salesforce reference:
+  - code through `5987024a` reprocesses every active exact GA4 Salesforce source with selected values on the five-minute loop, whether Pipeline Proxy is enabled or disabled
+  - use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` as the implementation handoff; do not infer HubSpot parity from shared component names or historical certification
+- Required regression checks:
+  - verify a Pipeline-enabled HubSpot source transitions a known deal amount from proxy to confirmed revenue once, itemizes the deal/value, and keeps the source count stable
+  - verify a revenue-only HubSpot source refreshes a changed Closed Won amount on the five-minute loop without a wizard resave and does not configure Pipeline Proxy
+  - verify repeated refresh is idempotent and a concurrent edit conflict fails closed
+  - rerun focused HubSpot transaction/Overview tests, shared scheduler tests, TypeScript, and deployed manual validation
+  - validate the full daily external-source scheduler separately after the five-minute parity path is complete

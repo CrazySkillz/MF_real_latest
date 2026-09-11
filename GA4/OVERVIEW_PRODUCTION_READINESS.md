@@ -121,7 +121,7 @@ The previous documented initial-30-day-import scope was clean-certified because,
 
 ## Source Authority
 
-The three enabled HubSpot Revenue sources are **clean-certified inside this exact Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; broader future HubSpot configurations are not inferred.
+The three enabled HubSpot Revenue sources retain **historical clean-certified evidence inside runtime `12789c1e` only** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. The current HubSpot implementation is unverified after `f4a3e8d7` and later shared CRM/Overview changes; use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the current parity boundary.
 
 The enabled Shopify Revenue source is **unverified for the current candidate** under `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` after a same-UTC-day order exposed a card/source date-window mismatch. The previous exact-SHA evidence remains historical only. A zero-match preview remains authoritative only for the provider order set and mapping fingerprint shown at preview time.
 

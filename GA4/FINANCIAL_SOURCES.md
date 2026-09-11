@@ -29,7 +29,7 @@ Visible Overview layout:
 
 - `Revenue` subsection:
   - `Total Revenue`
-  - `Pipeline Proxy` when configured
+  - `Pipeline Proxy`, showing `Not configured` when no eligible CRM source is configured
 - `Spend` subsection:
   - `Total Spend`
 - `Performance` subsection:
@@ -189,7 +189,7 @@ Failure/zero rule:
 
 Pipeline Proxy rule:
 
-- Pipeline Proxy is a separate Revenue subsection card when HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` is configured
+- Pipeline Proxy is a persistent separate Revenue subsection card. An eligible HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source supplies its configured value; otherwise the card shows `Not configured`
 - it should show the card title, amount, and a compact `Sources` action
 - clicking `Sources` should open a read-only Pipeline Proxy sources modal with source provider, provider proxy amount, selected CRM stage label, and selected/contributing campaign values where available
 - the Pipeline Proxy `Sources` action should count and show only provider entries with a positive proxy amount; configured providers with `$0.00` proxy should not inflate the source count
@@ -225,14 +225,15 @@ Revenue source options:
 
 1. `Shopify`
 2. `HubSpot`
-3. `Google Sheets`
-4. `Upload CSV`
+3. `Salesforce`
+4. `Google Sheets`
+5. `Upload CSV`
 
 Google Sheets/Upload CSV revenue readiness is tracked separately in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`. Upload CSV Revenue is clean-certified for its validated documented scope. Google Sheets Revenue is re-enabled by Current Commit 21 but is not independently clean-certified until its remaining source-family gates are proven.
 
 Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets Revenue chooser/API hold. It restores the existing mapped workflow without changing saved production data. Campaign access, GA4 platform scoping, mapping validation, exact-source edits, atomic source/record replacement, and fail-closed provider behavior remain in force; deployed chooser visibility is proven at historical runtime `8ba694060411a2a05663a4915652767e4e3ba713`, while a newly configured future Google Sheets Revenue lifecycle remains outside the current certified boundary.
 
-Salesforce revenue is deferred for v1 and should not be shown in the `Add revenue source` chooser. Retained Salesforce workflow details below are non-v1/reference behavior until Salesforce is explicitly re-enabled and validated.
+Salesforce revenue is visible in the `Add revenue source` chooser. If an active Salesforce source already exists for the current campaign/platform context, the card is intentionally non-actionable and directs the user to edit the source from `Total Revenue -> Sources`; this prevents a second ambiguous Salesforce aggregate from being created.
 
 Visible source-picker helper text:
 
@@ -241,6 +242,7 @@ Visible source-picker helper text:
 Visible source-picker status badges:
 
 - Shopify and HubSpot should show `Connected` only when the relevant live connection and/or active source state proves the source is usable for the current campaign/platform context
+- Salesforce should show the live connection state for first-time setup; after an active same-context source exists, the card should say `Already added. Edit opportunities from Revenue Sources.` and must not start another add flow
 - Google Sheets should show `Connected` when an active Google Sheets revenue source exists for the current campaign and platform context
 - Upload CSV should show `Uploaded` when an active CSV revenue source exists for the current campaign and platform context
 - these badges describe saved/imported source state for the current campaign/platform context, not merely a provider-level OAuth token
@@ -248,20 +250,20 @@ Visible source-picker status badges:
 When the user clicks `+` on the `Total Revenue` card:
 
 1. the revenue-source modal opens
-2. the user sees the v1 revenue source options
+2. the user sees the implemented revenue source options
 3. selecting an option starts a source-specific workflow
 
 Important meaning:
 
-- these are four visible v1 user journeys
-- they are not six labels pointing to one generic "add revenue" action
+- these are five visible source-specific user journeys
+- they are not labels pointing to one generic "add revenue" action
 - future development should preserve the source-specific flow for each option
 - direct `Manual` revenue entry is no longer selectable for new source creation
 - existing stored manual revenue sources remain visible in totals only until exact reviewed deletion; they cannot be created or edited
 
 ### Revenue Workflow Meaning
 
-- `Shopify` and `HubSpot` are visible v1 connection + attribution/mapping workflows, not simple value entry; retained Salesforce workflow docs are deferred/non-v1
+- `Shopify`, `HubSpot`, and `Salesforce` are visible connection + attribution/mapping workflows, not simple value entry
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
 - Crosswalk/value-selection stages should not render a redundant `Selected Campaigns label` field or disabled text input; selected count, selected rows, and review-step summaries are the supported selection indicators
 - disconnecting HubSpot, Salesforce, or Shopify must only deactivate the connection that belongs to the current campaign; a supplied connection ID from another campaign must fail closed and must not affect that other campaign
@@ -384,7 +386,7 @@ Important meaning:
 - in the GA4 Overview `Revenue Sources` modal, HubSpot rows should show the mapped platform campaign name under `HubSpot (Deals)` when saved `campaignMappings` provide one; if no mapping is saved, fall back to the source type label `HubSpot`
 - HubSpot imported revenue should enter Campaign Breakdown only through exact saved `campaignMappings`; the recorded deployed 4.11 evidence proves one `yesop_retargeting` mapped-row delta and does not prove other rows, other campaigns, or alternate mappings
 - HubSpot-backed GA4 report values should use the same source-backed financial total and exact mapped Campaign Breakdown formula; Current Commit 4.12 records local guards and deployed evidence for the configured `GA4 Overview Report` packet only
-- HubSpot-backed GA4 KPI/Benchmark financial values use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded). The three exact enabled HubSpot source IDs are clean-certified inside the recorded Overview boundary; `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is canonical, and H10d is bounded history only.
+- HubSpot-backed GA4 KPI/Benchmark financial values use the same source-backed financial total as Overview (`selected GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded). The three exact enabled HubSpot source IDs retain historical bounded certification evidence only; the current implementation is unverified after `f4a3e8d7` and later shared CRM changes. `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is the readiness record, and `GA4/CRM_REVENUE_SOURCE_PATTERN.md` is the current implementation/parity handoff.
 - The authenticated `POST /api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now` validation route runs the same saved-mapping reprocess function for one exact active GA4 HubSpot source. It has no user-facing UI action and does not run the full daily cycle, other sources, other campaigns, emails, or reports; successful deployed response and refreshed-value evidence are still required, and it does not prove natural timer firing.
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
@@ -398,9 +400,9 @@ Important meaning:
 
 ## Revenue Source 3: Salesforce Journey
 
-V1 scope note: Salesforce revenue is deferred for v1 and hidden from the `Add revenue source` chooser. This section documents retained/non-v1 behavior only; it is not current v1 production-certification evidence.
+Current implementation note: Salesforce is enabled in the GA4 revenue-source chooser and is the reference CRM flow documented in `GA4/CRM_REVENUE_SOURCE_PATTERN.md`. This description is not a whole-source or whole-Overview production-readiness claim.
 
-Whole-Overview Current Commit 6 requires every Salesforce Pipeline Proxy request to pass an explicit supported platform context. GA4 passes `ga4`; the server searches only that context, rejects mapping-context mismatches, and fails closed when no exact scoped active Salesforce source exists. Its completed owner-scoped production inventory found no active retained Salesforce source among the owner's 10 active GA4 campaigns. No Salesforce UI check or source mutation was applicable.
+Every Salesforce request requires an explicit supported platform context. GA4 passes `ga4`; the server searches only that context, rejects mapping-context mismatches, and fails closed when no exact scoped active Salesforce source exists.
 
 The user journey is:
 
@@ -431,9 +433,11 @@ Important meaning:
 - Salesforce edit mode must default missing legacy `dateField` values back to `CloseDate` so external Close Date changes materialize onto the expected previous-day revenue date
 - Salesforce edit mode may enable `Update revenue` after a successful live preview only when the current Salesforce preview total differs from the saved source total, because external Salesforce value/date changes still need a safe manual re-materialization path
 - Salesforce confirmed revenue uses the saved attribution values plus the selected date field and treats opportunities as won when Salesforce returns `IsWon = true` or the stage name starts with `Closed Won`, so Review Settings, save/materialization, scheduler refresh, and previous-day revenue records stay aligned for orgs with custom Closed Won stage labels
-- active GA4 Salesforce sources with Pipeline Proxy enabled are automatically reprocessed every five minutes by default through the existing stable-source-ID, atomic save/materialization path; the interval is configurable from one to sixty minutes with `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, and overlapping financial refreshes are skipped
-- an open GA4 Overview checks the saved Salesforce Pipeline result every minute and refetches Total Revenue and source breakdowns when the provider refresh timestamp changes
+- every active exact GA4 Salesforce source with saved selected values is automatically reprocessed every five minutes by default through the existing stable-source-ID, atomic save/materialization path; `pipelineEnabled` controls proxy calculation, not confirmed-revenue refresh eligibility. The interval is configurable from one to sixty minutes with `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, and overlapping financial refreshes are skipped
+- an open GA4 Overview checks saved CRM Pipeline timestamps every minute and refetches Total Revenue and source breakdowns when a provider refresh timestamp changes; normal revenue queries also retain periodic and focus/reconnect refresh behavior, including revenue-only Salesforce updates
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
+- choosing `Total Revenue only (no Pipeline card)` disables only Pipeline Proxy for this source; confirmed Salesforce revenue must continue to refresh automatically through the five-minute source loop
+- the Pipeline stage list must contain only active open Opportunity stages; closed, inactive, missing, or changed-to-closed stages must fail save validation
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
@@ -442,6 +446,7 @@ Important meaning:
 - the `Review Settings` details card should not repeat a second heading such as `Review Salesforce revenue settings`
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
 - `Selected opportunity(ies)` should list each selected Salesforce value on its own line with the amount that will be imported for that selected opportunity/value when preview data provides it
+- Salesforce Crosswalk search requires at least two characters, matches from the beginning of the Salesforce value, and narrows the visible results as more characters are typed while preserving saved edit selections without presenting unrelated saved values as search matches
 - when a selected Salesforce value is mapped to a GA4/paid-platform campaign in Crosswalk, `Review Settings` must show two aligned columns connected by a directional arrow centered in a clear separator column positioned closer to the selected opportunity: `Selected opportunity(ies)` with Salesforce values and the platform campaign mapping with each corresponding campaign name, using the same `selectedCampaignMappings` state used by preview and save; selected values without a mapping must show `Not mapped`
 - the GA4 Revenue Sources modal should itemize confirmed Salesforce values from `campaignValueRevenueTotals` beneath the Salesforce provider subtotal; when attribution uses Opportunity Name these are labeled as confirmed opportunities, while other attribution fields are labeled as attributed values. Pipeline Proxy values remain excluded.
 - itemized Salesforce values should align name, amount, and remove columns; the edit control belongs beside the Salesforce provider label because it edits the full shared source configuration, while each value row keeps only its exact remove control. Removing one item must preserve the stable Salesforce source and every other selected value, then atomically rematerialize Total Revenue and Pipeline Proxy from Salesforce.
@@ -449,7 +454,7 @@ Important meaning:
 - the Salesforce Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again
-- if Salesforce is re-enabled after v1 and a saved Salesforce revenue source exists but live OAuth is down, the source-selection surface should show `Reconnect required` rather than `Not connected`
+- if a saved Salesforce revenue source exists but live OAuth is down, the source-selection surface should show `Reconnect required` rather than `Not connected`
 - if Salesforce is disconnected, the wizard should still show the persisted Salesforce org/account label instead of `—`
 
 - Salesforce status recovery should attempt refresh-token recovery before source-selection surfaces fall back to `Reconnect required`
@@ -469,10 +474,11 @@ Production validation:
 - opening `Total Revenue -> Sources -> Salesforce edit` should show the saved `Total Revenue (to date)` immediately and must not flash a misleading `$0.00`
 - without changing settings and without a changed live Salesforce total, `Update revenue` should remain disabled
 - after a meaningful wizard setting change, or after the live Salesforce preview total differs from the saved source total, `Update revenue` should become enabled
+- current exercised evidence covers Salesforce add/edit/delete, itemized confirmed opportunity provenance, open-stage-to-Closed-Won movement, and five-minute revenue-only amount refresh; the full daily external-source scheduler remains a separate pending validation and this does not certify every Salesforce configuration
 
 ## Revenue Source 4: Google Sheets Journey
 
-Current GA4 status: continuity/reference only. New GA4 setup is hidden and API-blocked by whole-Overview Current Commit 5 until this source family is certified. Existing exact-source edit/delete/refresh behavior is retained for later reconciliation.
+Current GA4 status: the existing mapped Google Sheets Revenue chooser/API path is enabled. A newly configured future source is not certified merely because setup is available; exact source-family validation remains separate.
 
 The user journey is:
 
@@ -893,7 +899,7 @@ Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend 
   - only changes when the user edits or deletes that legacy source
 
 - `HubSpot`, `Salesforce`, `Shopify`, and eligible `Google Sheets` revenue sources are refreshable connector-style sources
-- saved `HubSpot` and `Salesforce` revenue mappings are eligible for scheduled auto-reprocess through the internal auto-refresh path, while public save-mapping routes must remain protected by normal user/campaign access checks
+- saved `HubSpot` and `Salesforce` revenue mappings are eligible for full daily auto-reprocess through the internal path, while public save-mapping routes must remain protected by normal user/campaign access checks. The additional five-minute loop currently covers every active exact GA4 Salesforce mapping with selected values but only Pipeline-enabled HubSpot mappings with a saved stage; HubSpot revenue-only five-minute refresh is a documented parity gap
 - `Google Sheets` spend is a refreshable source after setup
 - `LinkedIn Ads` spend is connector-based and refreshable through the platform refresh pipeline
 - `Meta / Facebook` and `Google Ads` spend currently use connected-platform selection flows, but their current persisted spend handling is still more snapshot-like than a fully specialized connector pipeline

@@ -267,6 +267,7 @@ Important scoping rule:
 
 - platform analytics should be scoped to the data the user selected when connecting that platform
 - source workflows opened inside a platform, such as GA4 revenue or spend imports from Salesforce, HubSpot, Shopify, CSV, or Google Sheets, are child inputs of that platform/campaign financial model; users do not connect them as separate main Connected Platforms unless the product explicitly exposes them as standalone campaign platforms
+- for GA4 CRM child revenue, `GA4/CRM_REVENUE_SOURCE_PATTERN.md` defines the current Salesforce reference lifecycle, confirmed-revenue versus Pipeline Proxy split, refresh contract, and HubSpot parity boundary; Salesforce values are Opportunity-field values, not Salesforce Campaign objects
 - example:
   - if a user connects a GA4 property and selects specific GA4 campaigns, the GA4 analytics should be scoped to those selected GA4 campaigns
   - if a user connects LinkedIn and selects specific LinkedIn campaigns, the LinkedIn analytics should be scoped to those selected LinkedIn campaigns

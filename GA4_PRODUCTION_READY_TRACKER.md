@@ -365,8 +365,8 @@ Validate each source family separately.
 Revenue source families for future/broader configurations:
 
 - Shopify — the exact enabled source is clean-certified inside the recorded Overview boundary; future stores remain unverified
-- HubSpot — the three exact enabled source IDs are clean-certified inside the recorded Overview boundary; future mappings remain unverified
-- Salesforce
+- HubSpot — the former three-source clean certification is historical bounded evidence; the current implementation is unverified after `f4a3e8d7` and later shared CRM changes, with revenue-only five-minute parity still open
+- Salesforce — current reference CRM flow through `5987024a`; the exercised lifecycle/five-minute behavior is not a whole-source production certificate
 - Google Sheets — chooser is deployed; an unconfigured future Revenue source is outside the certification
 - CSV — the exact enabled source is clean-certified inside the recorded Overview boundary; unlisted variants remain unverified
 - existing legacy Manual revenue, if present

@@ -6,6 +6,8 @@ This ledger preserves the detailed audit scope, inventories, traces, blocker ana
 
 Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current certification decision and active gates. Use [`OVERVIEW_PRODUCTION_READINESS_HISTORY.md`](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md) for the chronological Commit 0-20 record.
 
+Current CRM boundary note (2026-09-11): Salesforce revenue is now visible and implemented through reference code commit `5987024a`; HubSpot Pipeline automation was committed in `f4a3e8d7`, followed by shared CRM/Overview changes. Those changes are outside the exact historical inventories and certificates preserved below. Current Salesforce behavior and HubSpot parity gaps are documented in [`CRM_REVENUE_SOURCE_PATTERN.md`](./CRM_REVENUE_SOURCE_PATTERN.md). They do not upgrade the complete Overview status from **UNVERIFIED**.
+
 The moved content below is preserved verbatim so the documentation split does not discard or rewrite historical evidence.
 
 ## Mandatory Anti-Overclaim Rule
@@ -139,10 +141,10 @@ This inventory was derived from current render code, query code, API routes, sto
 | Family | New GA4 setup exposure | Readiness consequence |
 | --- | --- | --- |
 | Shopify Revenue | visible | Current readiness is unverified after a same-UTC-day order exposed a Total Revenue/source-provenance window mismatch. The exact enabled source's earlier certification remains historical bounded evidence; future stores and dormant OAuth are excluded. |
-| HubSpot Revenue | visible | Exact enabled source IDs `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` are clean-certified inside the recorded Overview boundary; future mappings are excluded. |
+| HubSpot Revenue | visible | Exact enabled source IDs `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `65867434-cbed-4792-9496-8072f63a9c82`, and `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c` retain historical clean-certified evidence at the recorded runtime only. Current code after `f4a3e8d7` and later shared CRM changes is unverified. |
 | Google Sheets Revenue | visible and deployed | Current Commit 21 restored the chooser and scoped process API through the existing atomic source/record path. No Google Sheets Revenue source is configured in the release-candidate target; a future source requires its own provider/lifecycle evidence. |
 | CSV Revenue | visible | Exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` is clean-certified inside the recorded Overview boundary; unlisted CSV variants are excluded. |
-| Salesforce Revenue | hidden for new v1 setup | Existing active rows remain readable and can feed totals/proxy; production inventory contains one active null-context source. |
+| Salesforce Revenue | historical audit state: hidden for new v1 setup; current code: visible with one-active-source edit guard | The one active null-context source belongs to the historical inventory below. Current setup/edit/scheduler behavior through `5987024a` is outside that evidence and remains separately bounded in `CRM_REVENUE_SOURCE_PATTERN.md`. |
 | Manual Revenue | blocked for create/edit; exact delete retained | Not a supported GA4 source. The owner-scoped inventory found none; any future retained row requires exact reviewed deletion. |
 | Google Ads Spend | visible | Google Ads is excluded from this certification and is not represented as an included value source. |
 | Google Sheets Spend | visible and deployed | The configured retained source, post-publish reconnect, and one no-click mapped-value update are included in the exact Overview boundary. Generalized cadence/failure/future-source behavior remains excluded. |
@@ -281,7 +283,7 @@ Current Commit 5 temporarily removed Google Sheets Revenue and Spend from new GA
 
 ### B8. Hidden/legacy sources still affect current values — resolved by exact inventory and reviewed disposition
 
-Salesforce and Manual setup cards are hidden, but retained active records remain readable. The original audit target snapshot included one active legacy null-context Salesforce revenue source with 180 records totaling 6,000.00 and three active legacy Manual spend sources totaling 520.00; this is historical baseline evidence, not the later owner-scoped production inventory. Hidden creation UI does not make retained data safe or certified.
+At the original audited runtime, Salesforce and Manual setup cards were hidden, but retained active records remained readable. The original audit target snapshot included one active legacy null-context Salesforce revenue source with 180 records totaling 6,000.00 and three active legacy Manual spend sources totaling 520.00; this is historical baseline evidence, not the later owner-scoped production inventory or the current visible Salesforce setup flow. Hidden creation UI did not make retained data safe or certified.
 
 Current Commit 6 adds campaign- and owner-access-guarded read-only retained-source inventories. The completed owner-scoped production result lists every active retained/null-context source ID, stored and normalized context, sanitized mapping identity, record count, and amount and explicitly forbids automatic cleanup. The user confirmed source `570de6df-d49a-40c3-9a78-1a61a55394b1` was unwanted legacy Manual Spend and deleted only that exact source on `2026-07-30`. Total Spend became `$14,045.83`; the post-delete inventory confirmed the source absent, only the unchanged Google Ads source remained for `Summer splash`, and the owner-wide retained-source count fell from nine to eight.
 
@@ -642,7 +644,7 @@ Detailed source IDs, counts, amounts, and findings remain in the [evidence ledge
 
 ## Source-Family Authority Note
 
-HubSpot Revenue is **clean-certified and production-ready for the three exact enabled source IDs inside the historically certified GA4 Overview boundary** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`. Shopify and the current CSV source have the same exact-boundary treatment in their canonical source-family records. These bounded source-family decisions support the current whole-tab release candidate but do not broaden it to future sources or configurations.
+HubSpot Revenue retains **historical clean-certified evidence for the three exact enabled source IDs inside runtime `12789c1e` only** under `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; its current implementation is unverified. Shopify and the current CSV source keep their own exact-boundary status in their canonical source-family records. No historical source-family decision broadens the current whole-tab candidate or proves future sources/configurations.
 
 Historical-ledger note: packets preserved in the evidence/history ledgers remain bounded evidence only. They do not override the current whole-tab decision or the latest canonical source-family decision.
 

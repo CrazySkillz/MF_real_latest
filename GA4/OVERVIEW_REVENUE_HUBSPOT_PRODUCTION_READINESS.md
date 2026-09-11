@@ -2,33 +2,39 @@
 
 ## Mandatory status
 
-**Current status: CLEAN-CERTIFIED AND PRODUCTION-READY for the three enabled
-HubSpot source IDs inside certified GA4 Overview runtime boundary
-`12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`, campaign
-`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, and USD.
-Future HubSpot configurations, other campaigns, and future provider behavior
-are excluded. Evidence-only deployment `e175ac5c` does not change production
-runtime code.**
+**Current status: UNVERIFIED for the current HubSpot implementation.** Pipeline
+automation commit `f4a3e8d7` and later shared CRM/Overview changes through the
+Salesforce reference boundary `5987024a` changed relevant runtime paths after
+the last exact HubSpot certificate. The former clean certification remains
+historical bounded evidence for the three enabled HubSpot source IDs inside
+runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`, campaign
+`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, and USD only.
 
 This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
 those summaries conflict with this source-specific audit.
 
-Uncommitted Pipeline Proxy automation candidate (2026-09-11):
+Current Pipeline Proxy automation follow-up (2026-09-11):
 
-- the exact deployed certification above remains bounded historical evidence;
-  it does not certify this candidate's new five-minute HubSpot Pipeline timer
-- the candidate reuses the saved active GA4 HubSpot mapping and stable revenue
+- commit `f4a3e8d7` added the five-minute HubSpot Pipeline refresh path; the
+  exact deployed certification above does not certify that later code
+- the implementation reuses the saved active GA4 HubSpot mapping and stable revenue
   source ID on the existing atomic save/materialization path, with an
   optimistic mapping guard against scheduler/edit races
 - an open Overview polls the saved HubSpot Pipeline timestamp every minute and
   refetches Total Revenue, Revenue Sources, and Revenue Breakdown after change
-- focused local regression evidence covers the selected-open-stage to Closed
+- focused local regression evidence at that code boundary covers the selected-open-stage to Closed
   Won movement, confirmed deal provenance, zero-proxy caching, idempotent source
   replacement, ownership/context filters, and the unchanged Salesforce cadence
-- production certification of this added behavior remains pending a natural
+- the current five-minute HubSpot selector still requires `pipelineEnabled=true`
+  and a saved stage ID, so revenue-only HubSpot sources wait for the full daily
+  external-source run; matching Salesforce revenue-only refresh is not yet implemented
+- production certification of the current behavior remains pending a natural
   deployed five-minute timer observation and a provider-authoritative mapped
-  deal transition; no unrelated certified section is broadened by this note
+  deal transition, plus revalidation after the later shared changes; no unrelated
+  certified section is broadened by this note
+- `GA4/CRM_REVENUE_SOURCE_PATTERN.md` is the canonical implementation handoff
+  for the Salesforce reference behavior, current HubSpot gaps, and required tests
 
 Current controlling audit (2026-08-08):
 
@@ -1175,12 +1181,12 @@ H10d reconciles, without adding runtime code:
 - the explicit future, provider-only, GA4-native, and non-GA4 exclusions in
   this document
 
-No in-scope value, lifecycle, negative, destructive, mapping, scheduler-
-reprocess, provenance, financial, downstream, report, notification,
-multi-campaign, or damaged-data path remains broken or partial. GA4 Overview
-HubSpot Revenue is therefore clean-certified and production-ready for the
-validated documented scope. Future/excluded events require fresh scoped
-evidence and are not covered by this status.
+At certified runtime `12789c1e`, no in-scope value, lifecycle, negative,
+destructive, mapping, scheduler-reprocess, provenance, financial, downstream,
+report, notification, multi-campaign, or damaged-data path remained broken or
+partial. That runtime was therefore clean-certified for the validated scope.
+This is historical evidence and does not override the current **UNVERIFIED**
+status stated at the top after `f4a3e8d7` and later shared CRM changes.
 
 Final H10d local validation covered 21 focused/adjacent files and passed
 154/154 tests, including HubSpot transactions, disconnect, pagination, dates,
@@ -1683,4 +1689,4 @@ Not proven by local H9:
 
 ## Certification gate
 
-**Current decision: CLEAN-CERTIFIED AND PRODUCTION-READY for the exact three-source boundary stated above within certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`.** The currency/total/OAuth fixes are deployed, focused and adjacent tests passed, all three source IDs survived provider-authoritative manual and scheduler refresh, USD provenance is persisted, and current read-only totals reconcile. Historical H10 and `8ba69406` evidence remains revision-bounded history. Automatic cleanup remains forbidden.
+**Current decision: UNVERIFIED for the current HubSpot implementation.** The former decision remains historical bounded evidence for the exact three-source boundary inside runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`: at that revision, the currency/total/OAuth fixes were deployed, focused and adjacent tests passed, all three source IDs survived provider-authoritative manual and scheduler refresh, USD provenance was persisted, and read-only totals reconciled. It does not prove `f4a3e8d7`, later shared CRM/Overview changes, natural five-minute timer firing, revenue-only five-minute refresh, or a current provider-authoritative stage transition. Historical H10 and `8ba69406` evidence remains revision-bounded history. Automatic cleanup remains forbidden.

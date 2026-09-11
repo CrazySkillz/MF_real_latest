@@ -64,6 +64,7 @@ Before any GA4 code change:
 4. read the relevant GA4 tab doc(s)
 5. read `GA4/FINANCIAL_SOURCES.md` if the issue touches money, imported values, or derived financial metrics
 6. read `GA4/REFRESH_AND_PROCESSING.md` if the issue touches refresh, recomputation, alerts, cross-tab dependencies, or reports
+7. read `GA4/CRM_REVENUE_SOURCE_PATTERN.md` if the issue touches Salesforce or HubSpot revenue, Pipeline Proxy, CRM source editing/deletion, or scheduler parity
 
 The docs should define:
 

@@ -16,7 +16,7 @@ Use these source templates:
 - Benchmarks: GA4 implementation in `client/src/pages/ga4-metrics.tsx`.
 - Reports: GA4 implementation in `client/src/pages/ga4-metrics.tsx`.
 - Total Revenue card and revenue import process: Meta implementation in `client/src/pages/meta-analytics.tsx` plus `client/src/components/AddRevenueWizardModal.tsx`.
-- Pipeline Proxy source import choice and wizard behavior: Meta-pattern shared CRM implementation in `client/src/components/HubSpotRevenueWizard.tsx` and `client/src/components/SalesforceRevenueWizard.tsx`.
+- Pipeline Proxy source import choice and wizard behavior: current Salesforce CRM reference in `GA4/CRM_REVENUE_SOURCE_PATTERN.md` and `client/src/components/SalesforceRevenueWizard.tsx`. HubSpot is a partial implementation/parity target, not the authority for behavior it has not yet implemented.
 
 Why Meta is the Total Revenue/Pipeline Proxy template:
 
@@ -540,7 +540,8 @@ Post-import refresh rules:
 
 Source template:
 
-- Meta-pattern CRM flow in `HubSpotRevenueWizard.tsx` and `SalesforceRevenueWizard.tsx`.
+- Current Salesforce CRM flow in `SalesforceRevenueWizard.tsx`, with the complete lifecycle and HubSpot gap matrix in `GA4/CRM_REVENUE_SOURCE_PATTERN.md`.
+- `HubSpotRevenueWizard.tsx` is a shared implementation peer, but its current revenue-only five-minute refresh and some source-management UX remain below Salesforce parity. Do not copy those gaps into a new platform.
 
 ### Pipeline Proxy Meaning
 
@@ -560,7 +561,7 @@ It must remain separate from:
 
 ### Pipeline Proxy Wizard Behavior
 
-CRM revenue wizards must offer the same choice as the Meta-pattern shared CRM flow:
+CRM revenue wizards must offer the same choice as the current Salesforce reference flow:
 
 - `Total Revenue + Pipeline (Proxy)`
 - `Total Revenue only (no Pipeline card)`
@@ -575,6 +576,16 @@ If the user chooses `Total Revenue only (no Pipeline card)`:
 
 - No Pipeline Proxy card should count that source as configured.
 - Only confirmed revenue should feed Total Revenue.
+- Disabling Pipeline Proxy must not disable confirmed-revenue auto-refresh for a refreshable CRM source.
+
+### CRM Source Lifecycle Rules
+
+- Initial setup starts from the Add revenue source chooser.
+- If the product supports one active aggregate per CRM provider and campaign/platform context, an already-added provider card must direct the user to the Revenue Sources pencil instead of entering an ambiguous second add flow.
+- A provider-level pencil edits the full shared mapping and starts at the first Source step with the stable source ID and saved selections.
+- Provider-backed refresh and exact-item removal must atomically replace that source's materialized records; repeated refresh must not append duplicates.
+- Exact item removal is appropriate only when the backend supports removing one persisted selected CRM value while preserving the provider source and all other selections. Otherwise use a clearly provider-level delete action.
+- Scheduler eligibility for confirmed revenue must not be coupled to Pipeline Proxy enablement. Require an open stage only when proxy calculation is enabled.
 
 ### Pipeline Proxy Card Rules
 

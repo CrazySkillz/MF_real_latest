@@ -108,7 +108,7 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
 - Add revenue source chooser: Google Sheets shows `Connected` after an active Google Sheets revenue source exists, and Upload CSV shows `Uploaded` after an active CSV revenue source exists
-- Add revenue source chooser: Salesforce is hidden for v1; visible v1 choices remain Shopify, HubSpot, Google Sheets, and Upload CSV when CRM/ecommerce choices are allowed
+- Add revenue source chooser: Salesforce is visible for first-time setup; after an active same-context Salesforce source exists, its card is non-actionable and directs the user to the provider pencil in Revenue Sources. Shopify, HubSpot, Google Sheets, and Upload CSV retain their source-specific states
 - Revenue Sources modal: Shopify rows show the mapped campaign name under `Shopify` when saved `campaignMappings` exist, falling back to `Shopify` only when no mapping is saved
 - Source import security: CSV/Sheets preview and process routes only work for campaigns the signed-in user can access
 - Notifications: `View KPI` and `View Benchmark` open the correct GA4 tab and exact card, including when already on the same campaign page
@@ -801,37 +801,44 @@ Checkpoint after Journey 8:
 - [ ] Confirm `Save Mappings` shows a single `Total Revenue (to date)` value and that it displays the computed amount before save
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
 - [ ] Confirm the Overview `Pipeline Proxy` card is display-only and that source management stays under `Total Revenue`
-- [ ] If both HubSpot and Salesforce Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence
+- [ ] If both HubSpot and Salesforce Pipeline Proxy are active, confirm the card total aggregates both providers and the read-only Sources modal renders separate provider entries rather than one flattened source
 - [ ] Confirm the `Pipeline Proxy` card remains visible for the active HubSpot source even if the separate proxy endpoint/cache path has not returned fresh data yet
-- [ ] Delete or deactivate the HubSpot revenue source and confirm the `Pipeline Proxy` card disappears
+- [ ] Delete or deactivate the HubSpot revenue source and confirm its proxy contribution/configuration disappears; if no other eligible CRM source exists, the persistent `Pipeline Proxy` card shows `Not configured`
 - [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
-- [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details or Overview card appear
+- [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details appear and this HubSpot source is not counted as configured; if no other eligible CRM source exists, the persistent Overview card shows `Not configured`
 - [ ] Edit: all settings prefilled. Delete: recalculated + connection cleared
+- [ ] Current implementation check: with Pipeline enabled, change one selected open-stage deal to Closed Won and wait for the five-minute CRM loop; confirm its amount leaves Pipeline Proxy, enters Total Revenue once, appears in Revenue Sources provenance, and the HubSpot source count stays stable
+- [ ] Required parity check after the HubSpot follow-up: in revenue-only mode, change a selected Closed Won deal amount without resaving the wizard and confirm the five-minute CRM loop updates Total Revenue while Pipeline Proxy remains `Not configured`
 
 ### Step 7: Salesforce Revenue (if Salesforce connected)
-- [ ] Same pattern → date field selector (CloseDate default)
+- [ ] First setup: `+` → Salesforce → OAuth if needed → Source → campaign/attribution field → Pipeline when enabled → Crosswalk → revenue field → date field (`CloseDate` default) → Review Settings → Import revenue
+- [ ] After an active same-context Salesforce source exists, reopen Add revenue source and confirm the Salesforce card says `Already added. Edit opportunities from Revenue Sources.` and cannot start a second add flow
+- [ ] Open `Total Revenue -> Sources` and confirm the provider pencil beside `Salesforce (Opportunities)` starts edit mode at the Source step with the saved source ID/settings rather than jumping to Crosswalk
 - [ ] Micro copy: "Salesforce — $X,XXX"
 - [ ] On the Source step, confirm `Reconnect` appears on the first step only and `Connected to ...` is not repeated on later steps
 - [ ] Confirm the main double-counting warning appears on the first `Source` step before the user proceeds deeper into the wizard
 - [ ] Confirm `Total Revenue + Pipeline (Proxy)` appears above `Total Revenue only (no Pipeline card)` and is the default selected option in new connect mode
+- [ ] Confirm the Pipeline stage selector contains active open Opportunity stages only; Closed Won, Closed Lost, and inactive stages are not selectable, and the API rejects a stale/changed closed stage
 - [ ] Move from `Pipeline` to `Revenue`
 - [ ] Confirm the `Pipeline` step icon turns green/completed once you move past it
 - [ ] Confirm the Crosswalk step does not show a redundant `Refresh values` action
 - [ ] Confirm the Crosswalk step does not show a redundant `Selected Campaigns label` field or disabled text input
+- [ ] Enter at least two characters in Crosswalk search and confirm results match from the beginning of the Salesforce value; type more characters and confirm unrelated results disappear instead of remaining selected/search-visible
 - [ ] If `Total Revenue + Pipeline (Proxy)` is selected, choose campaign/opportunity values such as `yesop_brand_search` and `yesop_prospecting`, then choose an Opportunity stage such as `Proposal/Price Quote`
 - [ ] Confirm Proxy mode makes both confirmed/won values and eligible open-stage values selectable; a campaign value that exists only in the selected open Opportunity stage must not be hidden from Crosswalk
 - [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign/opportunity values
 - [ ] Confirm changing the selected Crosswalk values changes both the Total Revenue preview and Pipeline Proxy preview where matching CRM records exist
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
 - [ ] Confirm the final review step lists selected opportunity values with the amount being imported for each selected opportunity/value
+- [ ] Confirm Review Settings shows `Selected opportunity(ies)` and `GA4 campaign mapping` in aligned columns, with one directional arrow per row positioned closer to the Salesforce opportunity and `Not mapped` for an unmapped value
 - [ ] Disconnect Salesforce temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
 - [ ] Confirm the Overview `Pipeline Proxy` card is display-only and that source management stays under `Total Revenue`
-- [ ] If both Salesforce and HubSpot Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence
+- [ ] If both Salesforce and HubSpot Pipeline Proxy are active, confirm the card total aggregates both providers and the read-only Sources modal renders separate provider entries rather than one flattened source
 - [ ] Confirm the `Pipeline Proxy` card remains visible for the active Salesforce source even if the separate proxy endpoint/cache path has not returned fresh data yet
-- [ ] Delete or deactivate the Salesforce revenue source and confirm the `Pipeline Proxy` card disappears
+- [ ] Delete or deactivate the Salesforce revenue source and confirm its proxy contribution/configuration disappears; if no other eligible CRM source exists, the persistent `Pipeline Proxy` card shows `Not configured`
 - [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
-- [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details or Overview card appear
+- [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details appear and this source is not counted as configured; if no other eligible CRM source exists, the persistent Overview card shows `Not configured`
 - [ ] If the stored Salesforce access token is missing but a refresh token still exists, confirm the chooser/status path recovers the connection before falling back to `Reconnect required`
 - [ ] Open the Salesforce revenue source in edit mode
 - [ ] Confirm the Source/review path still shows the persisted Salesforce account/org label even if the Salesforce connection is currently disconnected
@@ -841,6 +848,11 @@ Checkpoint after Journey 8:
 - [ ] Save the edit
 - [ ] Confirm the existing Salesforce source row is updated in place
 - [ ] Confirm save does **not** create a second additive Salesforce revenue source entry under `Total Revenue`
+- [ ] Reopen Revenue Sources and confirm the Salesforce provider subtotal equals the itemized confirmed opportunity amounts; the provider pencil is beside the provider label and each opportunity row has only its exact trash action
+- [ ] Remove one itemized opportunity, confirm only that selection and amount are removed, the stable Salesforce source remains, and Total Revenue/Pipeline Proxy are atomically recomputed without duplicating another source
+- [ ] Pipeline transition: keep one selected Opportunity in the chosen open stage with a known amount, wait for the five-minute refresh, then change it to Closed Won in Salesforce; after the next successful refresh confirm Pipeline Proxy decreases by exactly that amount, Total Revenue increases by exactly that amount once, the opportunity is itemized in Revenue Sources, and the source count stays stable
+- [ ] Revenue-only automation: turn Pipeline Proxy off, save, change the amount of a selected Closed Won Opportunity, and wait for the five-minute refresh; confirm Total Revenue and its itemized opportunity amount update without a wizard resave while Pipeline Proxy remains `Not configured`
+- [ ] Treat the full daily external-source scheduler as a separate final validation after HubSpot parity work; the five-minute checks above do not prove the daily timer
 
 ### Step 8: Shopify Revenue (if Shopify connected)
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
@@ -1226,7 +1238,7 @@ Required reconciliation checks:
 - [ ] Verify ROAS/Revenue KPIs updated
 
 ### Salesforce (real connection)
-Deferred for v1. Do not use the Salesforce checklist as current release validation unless Salesforce is explicitly re-enabled.
+Salesforce is enabled. Use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the current reference flow and evidence boundary; completing this checklist does not by itself certify every Salesforce configuration.
 - [ ] Connect real Salesforce account via OAuth
 - [ ] Complete wizard: campaign field → revenue field → date field
 - [ ] Confirm the final Salesforce review step is titled `Review Settings`, says `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`, and the primary button says `Import revenue`
@@ -1238,8 +1250,10 @@ Deferred for v1. Do not use the Salesforce checklist as current release validati
 - [ ] If Pipeline Proxy is enabled, select a real open Opportunity stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved Salesforce source is active, and does not depend only on a fresh proxy endpoint response
 - [ ] Verify the Salesforce Pipeline Proxy amount is not included in confirmed Total Revenue or downstream performance metrics
-- [ ] Create a new Closed Won opportunity in Salesforce
-- [ ] Wait for scheduler → verify revenue updated
+- [ ] Create or select a known open-stage Opportunity, verify it contributes to Pipeline Proxy, then move it to Closed Won and wait for the five-minute CRM run
+- [ ] Verify the amount leaves Pipeline Proxy, enters Total Revenue exactly once, and appears as an itemized Salesforce Revenue Source without changing the provider source count
+- [ ] In revenue-only mode, change a selected Closed Won Opportunity amount and verify the five-minute run updates Total Revenue while the Pipeline Proxy card remains `Not configured`
+- [ ] Separately observe the full daily external-source scheduler after HubSpot parity is complete; do not infer this result from the five-minute loop
 
 ### Shopify (real connection)
 - [ ] Connect real Shopify store (domain + admin token)

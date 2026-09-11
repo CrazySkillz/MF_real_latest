@@ -6,6 +6,8 @@
 
 It standardizes the repeated before/after endpoint checks used for source lifecycle validation. It does not change analytics behavior, source persistence, calculations, scheduler behavior, ownership checks, reports, or UI rendering.
 
+Current-status warning (2026-09-11): clean-certification conclusions preserved later in this document describe their recorded historical runtime only. HubSpot Pipeline automation `f4a3e8d7` and subsequent shared CRM/Overview changes are outside those packets, so current HubSpot Revenue is unverified. Use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the current Salesforce reference, HubSpot parity gaps, and new validation order.
+
 ## Safety Boundary
 
 Helpers with no explicit create/edit/delete action (provider-backed GETs can still perform the application's existing automatic token or metric persistence):

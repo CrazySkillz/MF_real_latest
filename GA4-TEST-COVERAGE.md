@@ -1,5 +1,7 @@
 # GA4 Test Coverage — Complete Reference
 
+> Current CRM note (2026-09-11): use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` and `GA4-MANUAL-TEST-PLAN.md` for the current Salesforce/HubSpot revenue and Pipeline Proxy validation matrix. Aggregate test counts below are historical snapshots and are not current production-readiness evidence.
+
 ## Current GA4 Stabilization Regression Guards
 
 These are the current lightweight regression guards added during GA4 stabilization. They protect the highest-risk GA4 template behavior before expanding to more browser coverage.
@@ -8,6 +10,14 @@ These are the current lightweight regression guards added during GA4 stabilizati
 |------|------------------|
 | `server/ga4-ui-regression.test.ts` | GA4 campaign creation and UI state rules that should not regress |
 | `server/ga4-auto-refresh-regression.test.ts` | scheduler-triggered external revenue/spend refresh orchestration |
+| `server/ga4-daily-scheduler-regression.test.ts` | daily external-source scheduling, source selection, and overlap behavior |
+| `server/ga4-scheduler-observability-regression.test.ts` | scheduler status and failure/skip observability |
+| `server/salesforce-pipeline-automation-ui.test.ts` | Salesforce five-minute refresh, revenue-only eligibility, Overview refetch, and CRM UI guards |
+| `server/salesforce-pipeline-stage-safety.test.ts` | active/open Salesforce stage validation and Closed-stage rejection |
+| `server/salesforce-revenue-item-transaction.test.ts` | exact Salesforce item removal, stable source identity, and atomic rematerialization |
+| `server/hubspot-pipeline-automation-ui.test.ts` | HubSpot Pipeline-enabled refresh and stage-transition regression; it does not prove deployed natural timing or revenue-only parity |
+| `server/hubspot-revenue-transaction.test.ts` | HubSpot stable-source atomic revenue materialization |
+| `server/hubspot-revenue-ga4-overview-regression.test.ts` | HubSpot GA4 Overview source, mapping, and Pipeline display guards |
 | `server/ga4-financial-rules.test.ts` | all-source financial formulas and source aggregation rules |
 | `server/ga4-insights-regression.test.ts` | Insights Executive Financials and source-provenance rendering rules |
 | `server/ga4-kpi-regression.test.ts` | GA4 KPI create/edit display guards, including percentage precision that keeps card values consistent with progress math |

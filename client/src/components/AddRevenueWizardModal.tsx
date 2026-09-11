@@ -353,6 +353,7 @@ export function AddRevenueWizardModal(props: {
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmHasSource, setCrmHasSource] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [activeSalesforceSources, setActiveSalesforceSources] = useState<any[]>([]);
+  const [hubspotSourcesResolved, setHubspotSourcesResolved] = useState(false);
   const [salesforceSourcesResolved, setSalesforceSourcesResolved] = useState(false);
   const [salesforcePickerEditSource, setSalesforcePickerEditSource] = useState<any>(null);
   const salesforceEditSource = String(initialSource?.sourceType || "").toLowerCase() === "salesforce"
@@ -369,6 +370,7 @@ export function AddRevenueWizardModal(props: {
   };
   useEffect(() => {
     if (!open) return;
+    setHubspotSourcesResolved(false);
     setSalesforceSourcesResolved(false);
     let cancelled = false;
     (async () => {
@@ -387,6 +389,7 @@ export function AddRevenueWizardModal(props: {
       const revSources: any[] = sourcesResolved ? dsResp.revenueSources : [];
       const hasSource = (type: string) => revSources.some((s: any) => matchesRevenuePlatformContext(s, type));
       setActiveSalesforceSources(revSources.filter((s: any) => matchesRevenuePlatformContext(s, "salesforce")));
+      setHubspotSourcesResolved(sourcesResolved);
       setSalesforceSourcesResolved(sourcesResolved);
       setImportSourceStatus({
         google_sheets: hasSource("google_sheets"),
@@ -410,6 +413,10 @@ export function AddRevenueWizardModal(props: {
 
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
+    if (platform === "hubspot" && !hubspotSourcesResolved) {
+      toast({ title: "HubSpot sources unavailable", description: "Please try again after the revenue sources finish loading.", variant: "destructive" });
+      return;
+    }
     if (platform === "salesforce" && !salesforceSourcesResolved) {
       toast({ title: "Salesforce sources unavailable", description: "Please try again after the revenue sources finish loading.", variant: "destructive" });
       return;
@@ -1789,7 +1796,13 @@ export function AddRevenueWizardModal(props: {
                 )}
 
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "hubspot" || crmDisconnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("hubspot")}>
+                  <Card
+                    className={`${crmHasSource.hubspot ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${crmConnecting === "hubspot" || crmDisconnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`}
+                    onClick={() => {
+                      if (crmHasSource.hubspot) return;
+                      void handleCrmSourceClick("hubspot");
+                    }}
+                  >
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
@@ -1817,11 +1830,13 @@ export function AddRevenueWizardModal(props: {
                               </AlertDialogContent>
                             </AlertDialog>
                           </span>
+                        ) : crmHasSource.hubspot ? (
+                          <span className="ml-auto text-xs font-normal text-amber-600 dark:text-amber-400">Reconnect required</span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
-                      <CardDescription>{crmStatus.hubspot ? "Attribute deal revenue to this campaign." : "Connect HubSpot to import deal revenue."}</CardDescription>
+                      <CardDescription>{crmHasSource.hubspot ? "Already added. Edit deals from Revenue Sources." : "Connect HubSpot to import deal revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}

@@ -38,6 +38,9 @@ const ga4KpiLiveValueFile = () =>
 const hubspotWizardFile = () =>
   readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf-8");
 
+const addRevenueWizardFile = () =>
+  readFileSync(join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf-8");
+
 const sliceBetween = (source: string, startNeedle: string, endNeedle: string): string => {
   const start = source.indexOf(startNeedle);
   const end = source.indexOf(endNeedle, start);
@@ -359,6 +362,19 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(mappedCampaignLabelHelper).toContain("mapping?.linkedinCampaignName");
     expect(revenueSourcesDialog).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
     expect(revenueSourcesDialog).toContain('isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText');
+  });
+
+  it("disables the HubSpot add card after a campaign-scoped source is added", () => {
+    const wizard = addRevenueWizardFile();
+    const sourceClick = sliceBetween(wizard, "const handleCrmSourceClick", "// Already authenticated");
+    const hubspotCard = sliceBetween(wizard, "crmHasSource.hubspot ? \"cursor-default\"", "Salesforce (CRM)");
+
+    expect(wizard).toContain("setHubspotSourcesResolved(sourcesResolved);");
+    expect(sourceClick).toContain('platform === "hubspot" && !hubspotSourcesResolved');
+    expect(hubspotCard).toContain("if (crmHasSource.hubspot) return;");
+    expect(hubspotCard).toContain('crmHasSource.hubspot ? (');
+    expect(hubspotCard).toContain("Reconnect required");
+    expect(hubspotCard).toContain("Already added. Edit deals from Revenue Sources.");
   });
 
   it("wires bounded HubSpot Crosswalk prefix search without dropping selected values", () => {

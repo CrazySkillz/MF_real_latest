@@ -50,6 +50,23 @@ Current Revenue Sources item-removal refinement (2026-09-11):
 - deployed item-removal and browser-layout validation remains pending; the
   mandatory status remains **UNVERIFIED** and no historical certificate expands
 
+Current OAuth renewal concurrency follow-up (2026-09-11):
+
+- the confirmed gap was that HubSpot renewal used the initially read connection
+  and had no per-connection single-flight guard or persisted-token verification
+- renewal now follows the established Salesforce safety pattern: it serializes
+  concurrent callers, rechecks the active campaign connection, uses its latest
+  credentials, preserves token rotation, and verifies persistence
+- confirmed-deal and Pipeline Proxy fetch failures already fail before the
+  atomic replacement; scheduled GA4 refresh now also fails closed when the
+  Closed Won pipeline-metadata request fails, instead of publishing fallback data
+- pagination and scheduler/edit mapping conflicts retain their existing
+  fail-closed guards
+- focused HubSpot and Salesforce-neighbor safety tests passed 52/52; TypeScript
+  validation and the production build passed
+- deployed expired-token renewal remains pending; this does not expand the
+  mandatory **UNVERIFIED** status
+
 Current controlling audit (2026-08-08):
 
 - pre-fix revision inspected: `deb368b16d7bd970a3f19dbac634eed199227b22`

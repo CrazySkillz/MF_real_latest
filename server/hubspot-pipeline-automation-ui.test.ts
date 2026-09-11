@@ -166,6 +166,8 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     expect(saveRoute).toContain("(mappingConfig as any).pipelineValueRevenueTotals = Array.from(pipelineValueRevenueTotals.entries())");
     expect(saveRoute).toContain("existingHubspot ? String((existingHubspot as any).id) : null");
     expect(saveRoute).toContain("expectedSourceMappingConfig,");
+    expect(saveRoute).toContain("if (!pipelinesResp.ok && platformCtx === 'ga4' && expectedSourceMappingConfig)");
+    expect(saveRoute).toContain("if (platformCtx === 'ga4' && expectedSourceMappingConfig) throw error;");
     expect(saveRoute).toContain("error?.code === HUBSPOT_PAGINATION_ERROR_CODE || (platformCtx === 'ga4' && expectedSourceMappingConfig)");
     expect(replacement).toContain("eq(revenueSources.mappingConfig, expectedSourceMappingConfig)");
     expect(replacement.indexOf("tx.delete(revenueRecords)")).toBeLessThan(replacement.indexOf("tx.insert(revenueRecords)"));

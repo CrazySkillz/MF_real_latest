@@ -18989,6 +18989,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
+        if (!pipelinesResp.ok && platformCtx === 'ga4' && expectedSourceMappingConfig) {
+          throw new Error(pipelinesJson?.message || `HubSpot pipelines request failed (${pipelinesResp.status})`);
+        }
         if (pipelinesResp.ok) {
           const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
           const derived = deriveDefaultClosedWonStageIds(pipelines);
@@ -18996,8 +18999,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const isLegacyClosedWonOnly = hasCallerStageIds && effectiveStageIds.length === 1 && effectiveStageIds[0].toLowerCase() === "closedwon";
           if (derived.length > 0 && (!hasCallerStageIds || isLegacyClosedWonOnly)) effectiveStageIds = derived;
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        if (platformCtx === 'ga4' && expectedSourceMappingConfig) throw error;
       }
 
       const startMs = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
@@ -19707,35 +19710,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return tokens.access_token;
   }
 
+  const hubspotTokenRefreshes = new Map<string, Promise<string>>();
   async function refreshHubspotToken(connection: any) {
-    if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
-      throw new Error('Missing refresh token or OAuth credentials for HubSpot token refresh');
+    const connectionId = String(connection?.id || '');
+    const campaignId = String(connection?.campaignId || '');
+    if (!connectionId || !campaignId) throw new Error('HubSpot connection identity is missing');
+    const inFlight = hubspotTokenRefreshes.get(connectionId);
+    if (inFlight) return await inFlight;
+
+    const refreshPromise = (async () => {
+      const latest: any = await storage.getHubspotConnection(campaignId);
+      if (!latest || String(latest.id || '') !== connectionId || latest.isActive === false) {
+        throw new Error('HubSpot connection changed during token refresh');
+      }
+      const latestExpiresAt = latest.expiresAt ? new Date(latest.expiresAt).getTime() : NaN;
+      if (latest.accessToken && (!Number.isFinite(latestExpiresAt) || latestExpiresAt >= Date.now() + 5 * 60 * 1000)) {
+        return String(latest.accessToken);
+      }
+      if (!latest.refreshToken || !latest.clientId || !latest.clientSecret) {
+        throw new Error('Missing refresh token or OAuth credentials for HubSpot token refresh');
+      }
+
+      const refreshResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: String(latest.refreshToken),
+          client_id: String(latest.clientId),
+          client_secret: String(latest.clientSecret),
+        }),
+      });
+
+      const tokens: any = await refreshResponse.json().catch(() => ({}));
+      if (!refreshResponse.ok || !tokens.access_token) {
+        throw new Error(tokens?.message || 'Failed to refresh HubSpot access token');
+      }
+
+      const updateData: any = {
+        accessToken: tokens.access_token,
+        expiresAt: tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000) : undefined,
+      };
+      if (tokens.refresh_token) updateData.refreshToken = String(tokens.refresh_token);
+      const updated: any = await storage.updateHubspotConnection(connectionId, updateData);
+      if (!updated?.accessToken || (tokens.refresh_token && updated.refreshToken !== String(tokens.refresh_token))) {
+        throw new Error('Failed to persist renewed HubSpot OAuth credentials');
+      }
+      return String(updated.accessToken);
+    })();
+    hubspotTokenRefreshes.set(connectionId, refreshPromise);
+    try {
+      return await refreshPromise;
+    } finally {
+      if (hubspotTokenRefreshes.get(connectionId) === refreshPromise) hubspotTokenRefreshes.delete(connectionId);
     }
-
-    const refreshResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: String(connection.refreshToken),
-        client_id: String(connection.clientId),
-        client_secret: String(connection.clientSecret),
-      }),
-    });
-
-    const tokens: any = await refreshResponse.json().catch(() => ({}));
-    if (!refreshResponse.ok || !tokens.access_token) {
-      throw new Error(tokens?.message || 'Failed to refresh HubSpot access token');
-    }
-
-    const expiresAt = tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000) : undefined;
-    const updateData: any = {
-      accessToken: tokens.access_token,
-      expiresAt,
-    };
-    if (tokens.refresh_token) updateData.refreshToken = tokens.refresh_token;
-    await storage.updateHubspotConnection(String(connection.id), updateData);
-    return tokens.access_token as string;
   }
 
   const salesforceTokenRefreshes = new Map<string, Promise<string>>();

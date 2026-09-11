@@ -347,6 +347,7 @@ CRM auto-reprocess rule:
 - a mapped HubSpot deal that moves from the selected open stage to a current Closed Won stage should leave Pipeline Proxy and enter confirmed Total Revenue plus Revenue Sources provenance in the same atomic refresh; repeated refreshes must replace the source's records rather than duplicate the deal
 - HubSpot auto-reprocess should self-heal legacy `stageIds:["closedwon"]` mappings by resolving the account's current Closed Won stage IDs before querying deals
 - HubSpot auto-reprocess must refresh an expired or missing access token from the stored refresh token before querying HubSpot; it must not silently continue with an expired token
+- concurrent HubSpot token renewals are serialized per active connection, re-read current credentials before provider refresh, preserve rotated refresh tokens, and verify the renewed access token was persisted
 - Salesforce auto-reprocess should use active Salesforce revenue source mappings as the source of truth and pass the stable revenue `sourceId` and saved date field so refresh updates the existing source instead of creating duplicate revenue sources
 - the Salesforce pass must preserve `pipelineEnabled=false`, null stage fields, and no proxy contribution for revenue-only sources while still refreshing their confirmed Closed Won revenue
 - the scheduler may use an internal same-process authorization path for its own loopback requests

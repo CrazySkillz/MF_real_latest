@@ -50,7 +50,7 @@ describe("GA4 materialized revenue authority", () => {
 
   it("does not pass stale GA4 configuration revenue into HubSpot edit review", () => {
     expect(revenueModal).toContain('platformContext === "ga4"');
-    expect(revenueModal).toContain('initialSource?.materializedRevenueStatus === "available"');
+    expect(revenueModal).toContain('sourceToEdit?.materializedRevenueStatus === "available"');
     expect(revenueModal).toContain(': Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)');
   });
 });

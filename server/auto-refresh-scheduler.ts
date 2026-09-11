@@ -21,6 +21,7 @@ import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
+import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { randomUUID } from "crypto";
@@ -464,34 +465,45 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       accessToken = await refreshAccessToken().catch(() => null) || "";
       if (!accessToken) return false;
     }
-    const sheetName = conn.sheetName ? String(conn.sheetName).trim() : "";
-    const range = sheetName ? `'${sheetName.replace(/'/g, "''")}'!1:5001` : "1:5001";
-    let resp = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }
-    );
-    if (resp.status === 401) {
-      try {
-        const refreshedAccessToken = await refreshAccessToken();
+    const fetchAuthorized = async (url: string): Promise<Response> => {
+      let response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) });
+      if (response.status === 401) {
+        const refreshedAccessToken = await refreshAccessToken().catch(() => null);
         if (refreshedAccessToken) {
           accessToken = refreshedAccessToken;
-          resp = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-            { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }
-          );
+          response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) });
         }
-      } catch { /* fall through */ }
-    }
-    if (!resp.ok) {
-      console.warn(`[Auto Refresh] Google Sheets revenue fetch failed for campaign ${campaignId}: HTTP ${resp.status}`);
+      }
+      return response;
+    };
+    const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`;
+    const metadataResponse = await fetchAuthorized(metadataUrl);
+    if (!metadataResponse.ok) {
+      console.warn(`[Auto Refresh] Google Sheets revenue metadata fetch failed for campaign ${campaignId}: HTTP ${metadataResponse.status}`);
       return false;
     }
-
-    const data = await resp.json();
-    const allRows = data.values || [];
-    if (allRows.length > 5000) {
-      console.warn(`[Auto Refresh] Google Sheets revenue exceeds the supported 4,999 data rows for campaign ${campaignId}; retaining last-good data`);
+    const metadata = await metadataResponse.json().catch(() => null);
+    const grid = resolveGoogleSheetsRevenueGrid(metadata?.sheets, conn.sheetName);
+    if (!grid) return false;
+    let ranges: string[];
+    try {
+      ranges = buildGoogleSheetsRevenueRowRanges(grid.sheetName, grid.rowCount);
+    } catch (error: any) {
+      console.warn(`[Auto Refresh] Google Sheets revenue range rejected for campaign ${campaignId}: ${error?.message || error}`);
       return false;
+    }
+    const allRows: any[][] = [];
+    for (const range of ranges) {
+      const response = await fetchAuthorized(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`
+      );
+      if (!response.ok) {
+        console.warn(`[Auto Refresh] Google Sheets revenue chunk fetch failed for campaign ${campaignId}: HTTP ${response.status}`);
+        return false;
+      }
+      const data = await response.json().catch(() => null);
+      if (!data || (data.values != null && !Array.isArray(data.values))) return false;
+      if (Array.isArray(data.values)) allRows.push(...data.values);
     }
     if (allRows.length < 2) return false;
     const headers: string[] = allRows[0];

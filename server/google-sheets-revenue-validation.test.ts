@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
+import { buildGoogleSheetsRevenueRowRanges, GOOGLE_SHEETS_REVENUE_MAX_ROWS, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const scheduler = readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
@@ -68,20 +69,47 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(normalizeFinancialSourceDateKey("2026-08-01T23:30:00-05:00")).toBe("2026-08-01");
   });
 
-  it("uses a full-width sentinel row and fails closed before truncated revenue can be shown or saved", () => {
+  it("plans bounded full-width chunks from the exact tab metadata", () => {
+    const grid = resolveGoogleSheetsRevenueGrid([
+      { properties: { title: "Hidden", index: 0, hidden: true, gridProperties: { rowCount: 9000 } } },
+      { properties: { title: "Revenue's Data", index: 1, hidden: false, gridProperties: { rowCount: 6000 } } },
+    ], null);
+    expect(grid).toEqual({ sheetName: "Revenue's Data", rowCount: 6000 });
+    expect(resolveGoogleSheetsRevenueGrid([
+      { properties: { title: "Hidden", index: 0, hidden: true, gridProperties: { rowCount: 9000 } } },
+      { properties: { title: "Revenue", index: 1, hidden: false, gridProperties: { rowCount: 6000 } } },
+    ], "Hidden")).toEqual({ sheetName: "Hidden", rowCount: 9000 });
+    expect(resolveGoogleSheetsRevenueGrid([
+      { properties: { title: "Revenue", index: 0, hidden: false, gridProperties: { rowCount: 6000 } } },
+    ], "Missing")).toBeNull();
+    expect(buildGoogleSheetsRevenueRowRanges(grid!.sheetName, grid!.rowCount)).toEqual([
+      "'Revenue''s Data'!1:5000",
+      "'Revenue''s Data'!5001:6000",
+    ]);
+    const maximumRanges = buildGoogleSheetsRevenueRowRanges("Revenue", GOOGLE_SHEETS_REVENUE_MAX_ROWS);
+    expect(maximumRanges).toHaveLength(10);
+    expect(maximumRanges.at(-1)).toBe("'Revenue'!45001:50000");
+    expect(() => buildGoogleSheetsRevenueRowRanges("Revenue", GOOGLE_SHEETS_REVENUE_MAX_ROWS + 1)).toThrow("at most 50,000 rows");
+  });
+
+  it("fails metadata and chunk reads closed before revenue can be shown or saved", () => {
     const preview = sheetsRevenuePreviewRoute();
     const process = sheetsRevenueRoute();
     const schedulerStart = scheduler.indexOf("async function reprocessGoogleSheetsRevenue(");
     const schedulerEnd = scheduler.indexOf("export async function runGoogleSheetsSpendSourceRefreshForValidation", schedulerStart);
     const schedulerRevenue = scheduler.slice(schedulerStart, schedulerEnd);
+    const helperStart = routes.indexOf("const readGoogleSheetsRevenueChunks = async");
+    const helperEnd = routes.indexOf("// Request validation helpers", helperStart);
+    const helper = routes.slice(helperStart, helperEnd);
 
-    for (const source of [preview, process, schedulerRevenue]) {
-      expect(source).toContain("1:5001");
-      expect(source).not.toContain("A1:ZZ5001");
-    }
-    expect(preview).toContain("values.length > 5000");
-    expect(process.indexOf("values.length > 5000")).toBeLessThan(process.indexOf("storage.replaceRevenueSourceWithRecords"));
-    expect(schedulerRevenue.indexOf("allRows.length > 5000")).toBeLessThan(schedulerRevenue.indexOf("storage.replaceRevenueSourceWithRecords"));
+    expect(routes).toContain("const readGoogleSheetsRevenueChunks = async");
+    expect(helper).toContain("for (const range of ranges)");
+    expect(helper.indexOf("if (!response.ok)")).toBeLessThan(helper.indexOf("return { success: true, values }"));
+    expect(preview).toContain("readGoogleSheetsRevenueChunks(conn, accessToken, resp)");
+    expect(process.indexOf("readGoogleSheetsRevenueChunks(conn, accessToken, resp)")).toBeLessThan(process.indexOf("storage.replaceRevenueSourceWithRecords"));
+    expect(schedulerRevenue).toContain("buildGoogleSheetsRevenueRowRanges(grid.sheetName, grid.rowCount)");
+    expect(schedulerRevenue).toContain("for (const range of ranges)");
+    expect(schedulerRevenue.indexOf("chunk fetch failed")).toBeLessThan(schedulerRevenue.indexOf("storage.replaceRevenueSourceWithRecords"));
   });
 
   it("fails the GA4 foreground path before source mutation", () => {

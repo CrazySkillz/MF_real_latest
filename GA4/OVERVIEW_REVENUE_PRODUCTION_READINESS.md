@@ -30,7 +30,7 @@ It separates these two source families from whole-Overview and spend certificati
 
 ### 2026-09-11 current `main` validation addendum
 
-Baseline: local `main`, `HEAD == origin/main == bce06348`. **Google Sheets Revenue remains NOT PRODUCTION READY as a general source-family claim.** The current trace confirmed and locally fixed four forward-path defects without changing GA4 formulas or public response shapes:
+Baseline: this validation sequence began with local `main`, `HEAD == origin/main == bce06348`; local checkpoints `31833dfc` and `4e6ed441` preserve the completed safety fixes. **Google Sheets Revenue remains NOT PRODUCTION READY as a general source-family claim.** The current trace confirmed and locally fixed four forward-path defects without changing GA4 formulas or public response shapes:
 
 - scheduler date materialization used `Date#toISOString()` while foreground processing used `normalizeFinancialSourceDateKey`, so an offset timestamp could move to another calendar day;
 - scheduler refresh trusted saved source currency without rechecking current campaign currency;
@@ -39,13 +39,13 @@ Baseline: local `main`, `HEAD == origin/main == bce06348`. **Google Sheets Reven
 
 The localized fix makes GA4 scheduler dates use the foreground normalizer, fails currency mismatch before mutation, renews refresh-token-only connections, preserves token rotation, rechecks the exact prior mapping inside the source-and-record transaction, and refreshes campaign-value totals in that transaction. A forced optimistic-conflict test proves old records remain untouched when the source changed.
 
-The next bounded safety fixes request all columns through row 5,001, using that final row as a sentinel in foreground preview/process and scheduler reads. Contiguous data at that row now fails before display or mutation, wide columns inside the supported row window are no longer clipped at `ZZ`, and scheduler failure retains last-good data. This is a fail-closed guard, not pagination.
+The next bounded safety fixes now resolve the exact target tab from Google grid metadata and read all columns in deterministic 5,000-row chunks, with a hard limit of 50,000 allocated rows. Foreground preview/process and scheduler all fail before mutation if metadata, size validation, OAuth retry, or any chunk fails; scheduler failure retains last-good data. This closes the prior sparse-row and `ZZ` clipping paths inside the supported grid boundary.
 
 Locally proven in this addendum: exact campaign/source/context guards, deterministic row/date validation, campaign-currency recheck, atomic source/record replacement and delete, optimistic stale-write rejection, stable scheduler source ID, token-only renewal wiring, active-source totals/breakdown/source-list reads, and static propagation into Overview financials, Ad Comparison metadata, KPI/Benchmark jobs, alerts, notifications through alert recompute, outcome/executive consumers, and scheduled report inputs. The focused packet, TypeScript check, and production build passed; the exact commands/results are retained in the working-session handoff until commit is requested.
 
 Still blocked or only partially proven:
 
-- preview, process, and scheduler have no row pagination; their full-width row-5,001 sentinel catches contiguous overflow, but non-contiguous data beyond a blank sentinel row can still be silently excluded;
+- metadata-driven full-width chunking is locally guarded but lacks live provider/deployed large-sheet evidence; tabs with more than 50,000 allocated grid rows fail closed even when rows beyond the used data are blank;
 - the UI discovers campaign values only from the first 25 preview rows, so a new mapping cannot select an unobserved later value through the normal chooser;
 - sheet number/currency semantics are user-declared rather than provider-verified; locale-formatted numbers and ambiguous locale dates lack complete fixtures and live evidence;
 - there is no bounded Google Sheets Revenue-only poll, and open Overview revenue queries still refetch every ten minutes;
@@ -54,7 +54,7 @@ Still blocked or only partially proven:
 - the existing read-only inventory has generic retained-source/currency/orphan/duplicate findings but no Google-Sheets-specific connection, mapping, truncation, or `lastSyncedAt` reconciliation;
 - no current target-database scan, live OAuth/provider packet, large-sheet packet, repeated deployed refresh packet, browser convergence packet, or generated report/email artifact packet was run for this revision.
 
-The required next gates are a complete paginated/explicitly bounded fetch contract with full campaign-value discovery, a Google-Sheets-specific read-only inventory, bounded revenue polling/convergence, post-commit response semantics, and live deployed provider/OAuth/repeated-refresh/failure evidence. No cleanup is authorized by this addendum.
+The required next gates are full campaign-value discovery, a Google-Sheets-specific read-only inventory, bounded revenue polling/convergence, post-commit response semantics, and live deployed provider/OAuth/large-sheet/repeated-refresh/failure evidence for the locally bounded chunk contract. No cleanup is authorized by this addendum.
 
 ## Explicit Scope
 

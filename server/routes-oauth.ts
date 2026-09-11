@@ -34,6 +34,7 @@ import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValu
 import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
+import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
 import { db } from "./db";
 import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
@@ -2947,6 +2948,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return await fetch(url, options);
   };
 
+  const readGoogleSheetsRevenueChunks = async (connection: any, initialAccessToken: string, metadataResponse: Response): Promise<
+    | { success: true; values: any[][] }
+    | { success: false; status: number; error: string }
+  > => {
+    const metadata = await metadataResponse.json().catch(() => null);
+    if (!metadata || !Array.isArray(metadata.sheets)) {
+      return { success: false, status: 400, error: "Failed to read Google Sheets tab metadata" };
+    }
+    const grid = resolveGoogleSheetsRevenueGrid(metadata.sheets, connection.sheetName);
+    if (!grid) {
+      return { success: false, status: 400, error: "Google Sheets tab not found. Reconnect the sheet and try again." };
+    }
+    let ranges: string[];
+    try {
+      ranges = buildGoogleSheetsRevenueRowRanges(grid.sheetName, grid.rowCount);
+    } catch (error: any) {
+      return {
+        success: false,
+        status: error?.code === "GOOGLE_SHEETS_REVENUE_TOO_LARGE" ? 413 : 400,
+        error: error?.message || "Invalid Google Sheets revenue tab size",
+      };
+    }
+
+    let accessToken = initialAccessToken;
+    const values: any[][] = [];
+    for (const range of ranges) {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(connection.spreadsheetId)}/values/${encodeURIComponent(range)}`;
+      let response = await fetchWithTimeout(url, { headers: { "Authorization": `Bearer ${accessToken}` } });
+      if (!response.ok && response.status === 401 && connection.refreshToken) {
+        try {
+          accessToken = await refreshGoogleSheetsToken(connection);
+          response = await fetchWithTimeout(url, { headers: { "Authorization": `Bearer ${accessToken}` } });
+        } catch {
+          // fall through to the fail-closed response below
+        }
+      }
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        const error = response.status === 403
+          ? "Access denied. Reconnect Google Sheets or make sure the connected Google account still has access to this spreadsheet."
+          : response.status === 404
+            ? "Spreadsheet or tab not found. Reconnect Google Sheets and try again."
+            : response.status === 401
+              ? "Google Sheets needs to be reconnected. Please reconnect and try again."
+              : `Failed to fetch complete sheet: ${text}`;
+        return { success: false, status: response.status === 401 ? 401 : 400, error };
+      }
+      const chunk = await response.json().catch(() => null);
+      if (!chunk || (chunk.values != null && !Array.isArray(chunk.values))) {
+        return { success: false, status: 400, error: "Google Sheets returned an invalid values response" };
+      }
+      if (Array.isArray(chunk.values)) values.push(...chunk.values);
+    }
+    return { success: true, values };
+  };
+
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
@@ -4859,9 +4916,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}1:5001` : "1:5001";
+      const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`;
       let resp = await fetchWithTimeout(
-        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        metadataUrl,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
       // If token is invalid/expired, refresh once and retry.
@@ -4869,7 +4926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           accessToken = await refreshGoogleSheetsToken(conn);
           resp = await fetchWithTimeout(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            metadataUrl,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
           );
         } catch {
@@ -4883,14 +4940,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (fallback?.accessToken) {
           let fallbackAccessToken = fallback.accessToken;
           let fallbackResp = await fetchWithTimeout(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            metadataUrl,
             { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
           );
           if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken) {
             try {
               fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
               fallbackResp = await fetchWithTimeout(
-                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+                metadataUrl,
                 { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
               );
             } catch {
@@ -4927,11 +4984,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const json = await resp.json().catch(() => ({} as any));
-      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
-      if (values.length > 5000) {
-        return sendBadRequest(res, "Google Sheets revenue supports at most 4,999 data rows plus one header row. Reduce the sheet size and try again.");
+      const readResult = await readGoogleSheetsRevenueChunks(conn, accessToken, resp);
+      if (!readResult.success) {
+        return res.status(readResult.status).json({
+          success: false,
+          error: readResult.error,
+          requiresReauthorization: readResult.status === 401,
+        });
       }
+      const values = readResult.values;
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
 
@@ -5040,9 +5101,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}1:5001` : "1:5001";
+      const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`;
       let resp = await fetchWithTimeout(
-        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        metadataUrl,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
       // If token is invalid/expired, refresh once and retry.
@@ -5050,7 +5111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           accessToken = await refreshGoogleSheetsToken(conn);
           resp = await fetchWithTimeout(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            metadataUrl,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
           );
         } catch {
@@ -5064,14 +5125,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (fallback?.accessToken) {
           let fallbackAccessToken = fallback.accessToken;
           let fallbackResp = await fetchWithTimeout(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            metadataUrl,
             { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
           );
           if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken) {
             try {
               fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
               fallbackResp = await fetchWithTimeout(
-                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+                metadataUrl,
                 { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
               );
             } catch {
@@ -5108,11 +5169,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const json = await resp.json().catch(() => ({} as any));
-      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
-      if (values.length > 5000) {
-        return sendBadRequest(res, "Google Sheets revenue supports at most 4,999 data rows plus one header row. Reduce the sheet size and try again.");
+      const readResult = await readGoogleSheetsRevenueChunks(conn, accessToken, resp);
+      if (!readResult.success) {
+        return res.status(readResult.status).json({
+          success: false,
+          error: readResult.error,
+          requiresReauthorization: readResult.status === 401,
+        });
       }
+      const values = readResult.values;
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
 

@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
+import { GOOGLE_SHEETS_REVENUE_MAX_CAMPAIGN_VALUES, selectGoogleSheetsRevenuePreviewRows } from "./utils/google-sheets-revenue-preview";
 import { buildGoogleSheetsRevenueRowRanges, GOOGLE_SHEETS_REVENUE_MAX_ROWS, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
@@ -90,6 +91,34 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(maximumRanges).toHaveLength(10);
     expect(maximumRanges.at(-1)).toBe("'Revenue'!45001:50000");
     expect(() => buildGoogleSheetsRevenueRowRanges("Revenue", GOOGLE_SHEETS_REVENUE_MAX_ROWS + 1)).toThrow("at most 50,000 rows");
+  });
+
+  it("discovers bounded campaign values from the complete preview rows", () => {
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      Campaign: index === 99 ? "Later" : index % 2 === 0 ? "Frequent" : "Other",
+      Revenue: String(index + 1),
+    }));
+    const standardPreview = selectGoogleSheetsRevenuePreviewRows(rows);
+    expect(standardPreview.success).toBe(true);
+    if (standardPreview.success) expect(standardPreview.sampleRows).toHaveLength(25);
+    const selection = selectGoogleSheetsRevenuePreviewRows(rows, "Campaign");
+    expect(selection.success).toBe(true);
+    if (selection.success) {
+      expect(selection.sampleRows.map((row) => row.Campaign)).toEqual(["Frequent", "Other", "Later"]);
+    }
+
+    const maximum = Array.from({ length: GOOGLE_SHEETS_REVENUE_MAX_CAMPAIGN_VALUES }, (_, index) => ({ Campaign: `Campaign ${index}` }));
+    expect(selectGoogleSheetsRevenuePreviewRows(maximum, "Campaign")).toMatchObject({ success: true });
+    const tooMany = [...maximum, { Campaign: `Campaign ${GOOGLE_SHEETS_REVENUE_MAX_CAMPAIGN_VALUES}` }];
+    expect(selectGoogleSheetsRevenuePreviewRows(tooMany, "Campaign")).toMatchObject({ success: false });
+
+    const preview = sheetsRevenuePreviewRoute();
+    expect(preview).toContain("campaignColumn: z.string().trim().min(1).optional()");
+    expect(preview).toContain("selectGoogleSheetsRevenuePreviewRows(rows, campaignColumn)");
+    expect(preview).toContain("res.status(413).json({ success: false, error: previewSelection.error })");
+    expect(revenueModal).toContain("campaignColumn: requestedCampaignColumn");
+    expect(revenueModal).toContain("sheetsPreviewRequestRef.current");
+    expect(revenueModal).toContain("return sheetsCampaignValues.length === 0;");
   });
 
   it("fails metadata and chunk reads closed before revenue can be shown or saved", () => {

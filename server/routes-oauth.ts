@@ -35,6 +35,7 @@ import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
+import { selectGoogleSheetsRevenuePreviewRows } from "./utils/google-sheets-revenue-preview";
 import { db } from "./db";
 import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
@@ -4876,6 +4877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const body = z.object({
         connectionId: z.string().trim().min(1),
         platformContext: zSheetsRevenuePlatformContext.optional(),
+        campaignColumn: z.string().trim().min(1).optional(),
       }).passthrough().safeParse(req.body || {});
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
@@ -5005,6 +5007,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rows.push(obj);
       }
 
+      const campaignColumn = body.data.campaignColumn;
+      if (campaignColumn && !headers.includes(campaignColumn)) {
+        return sendBadRequest(res, "Campaign column was not found in the selected sheet");
+      }
+      const previewSelection = selectGoogleSheetsRevenuePreviewRows(rows, campaignColumn);
+      if (!previewSelection.success) {
+        return res.status(413).json({ success: false, error: previewSelection.error });
+      }
+
       res.json({
         success: true,
         connectionId,
@@ -5012,7 +5023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spreadsheetName: conn.spreadsheetName,
         sheetName: conn.sheetName,
         headers,
-        sampleRows: rows.slice(0, 25),
+        sampleRows: previewSelection.sampleRows,
         rowCount: rows.length,
       });
     } catch (e: any) {

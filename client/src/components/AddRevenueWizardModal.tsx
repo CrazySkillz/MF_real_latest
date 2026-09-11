@@ -324,6 +324,7 @@ export function AddRevenueWizardModal(props: {
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
   const [sheetsRemoving, setSheetsRemoving] = useState(false);
   const sheetsConnectionsCampaignRef = useRef<string>("");
+  const sheetsPreviewRequestRef = useRef(0);
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
   const [sheetsBackToChooser, setSheetsBackToChooser] = useState(false);
   const getSheetTabLabel = (connection: any) => {
@@ -630,6 +631,7 @@ export function AddRevenueWizardModal(props: {
   };
 
   const resetAll = () => {
+    sheetsPreviewRequestRef.current += 1;
     setStep(initialStep || "select");
     setManualAmount("");
     setManualConversionValue("");
@@ -1006,6 +1008,7 @@ export function AddRevenueWizardModal(props: {
         throw new Error(json?.error || "Failed to remove Google Sheets connection");
       }
       const filtered = await refreshSheetsConnections();
+      sheetsPreviewRequestRef.current += 1;
       setSheetsConnectionId("");
       setSheetsPreview(null);
       setSheetsRevenueCol("");
@@ -1241,9 +1244,8 @@ export function AddRevenueWizardModal(props: {
 
   const requiresSheetsCampaignValueSelection = useMemo(() => {
     if (step !== "sheets_map" || !sheetsCampaignCol) return false;
-    const availableValues = uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol);
-    return availableValues.length > 0 && sheetsCampaignValues.length === 0;
-  }, [step, sheetsCampaignCol, sheetsPreview, sheetsCampaignValues]);
+    return sheetsCampaignValues.length === 0;
+  }, [step, sheetsCampaignCol, sheetsCampaignValues]);
 
   const hasMeaningfulSheetsRevenueEditChanges = useMemo(() => {
     if (!isEditing) return true;
@@ -1296,6 +1298,8 @@ export function AddRevenueWizardModal(props: {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
     if (step === "sheets_map") {
+      sheetsPreviewRequestRef.current += 1;
+      setSheetsProcessing(false);
       setSheetsBackToChooser(true);
       return setStep("sheets_choose");
     }
@@ -1532,23 +1536,34 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const handleSheetsPreview = async (connectionIdOverride?: string, opts?: { preserveExisting?: boolean }): Promise<boolean> => {
+  const handleSheetsPreview = async (
+    connectionIdOverride?: string,
+    opts?: { preserveExisting?: boolean; campaignColumn?: string; preservePreviewOnError?: boolean },
+  ): Promise<boolean> => {
     const cid = String(connectionIdOverride || sheetsConnectionId || "").trim();
     if (!cid) return false;
+    const requestId = ++sheetsPreviewRequestRef.current;
+    const requestedCampaignColumn = String(opts?.campaignColumn || "").trim();
     setSheetsProcessing(true);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/preview`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: cid, platformContext }),
+        body: JSON.stringify({
+          connectionId: cid,
+          platformContext,
+          ...(requestedCampaignColumn ? { campaignColumn: requestedCampaignColumn } : {}),
+        }),
       });
       const json = await resp.json().catch(() => ({}));
+      if (requestId !== sheetsPreviewRequestRef.current) return false;
       if (!resp.ok || !json?.success) {
         if (json?.requiresReauthorization) {
           setShowSheetsConnect(true);
-          setSheetsBackToChooser(false);
+          setSheetsBackToChooser(!!opts?.preservePreviewOnError);
           setSheetsPreview(null);
+          if (opts?.preservePreviewOnError) setStep("sheets_choose");
           toast({
             title: "Reconnect Google Sheets",
             description: json?.message || json?.error || "Reconnect Google Sheets, then choose the sheet tab again.",
@@ -1561,12 +1576,13 @@ export function AddRevenueWizardModal(props: {
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
       const guessDate = headers.find((h) => /^date$/i.test(h.trim()) || /(^|[_\s-])date($|[_\s-])/i.test(h)) || "";
+      const guessCampaign = headers.find((h) => /campaign/i.test(h)) || "";
       const preserve = !!opts?.preserveExisting;
       if (!preserve) {
         setSheetsRevenueCol(guess);
         setSheetsConversionValueCol("");
         setSheetsDateCol(guessDate);
-        setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+        setSheetsCampaignCol(guessCampaign);
         setSheetsCampaignValues([]);
         setSheetsCampaignQuery("");
         setSheetsCampaignDisplayName("");
@@ -1575,15 +1591,24 @@ export function AddRevenueWizardModal(props: {
         if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
         setSheetsConversionValueCol("");
         if (!sheetsDateCol) setSheetsDateCol(guessDate);
-        if (!sheetsCampaignCol) setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+        if (!sheetsCampaignCol) setSheetsCampaignCol(guessCampaign);
+      }
+      const campaignColumnToDiscover = preserve ? (sheetsCampaignCol || guessCampaign) : guessCampaign;
+      if (!requestedCampaignColumn && campaignColumnToDiscover) {
+        void handleSheetsPreview(cid, {
+          preserveExisting: true,
+          campaignColumn: campaignColumnToDiscover,
+          preservePreviewOnError: true,
+        });
       }
       return true;
     } catch (e: any) {
+      if (requestId !== sheetsPreviewRequestRef.current) return false;
       toast({ title: "Preview failed", description: e?.message || "Please try again.", variant: "destructive" });
-      setSheetsPreview(null);
+      if (!opts?.preservePreviewOnError) setSheetsPreview(null);
       return false;
     } finally {
-      setSheetsProcessing(false);
+      if (requestId === sheetsPreviewRequestRef.current) setSheetsProcessing(false);
     }
   };
 
@@ -1597,6 +1622,8 @@ export function AddRevenueWizardModal(props: {
     setSheetsBackToChooser(false);
     const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
     if (preferredId) {
+      sheetsPreviewRequestRef.current += 1;
+      setSheetsProcessing(false);
       setSheetsConnectionId(preferredId);
       setSheetsPreview(null);
       setSheetsRevenueCol("");
@@ -2368,6 +2395,8 @@ export function AddRevenueWizardModal(props: {
                         <Select
                           value={sheetsConnectionId}
                           onValueChange={(v) => {
+                            sheetsPreviewRequestRef.current += 1;
+                            setSheetsProcessing(false);
                             setSheetsBackToChooser(false);
                             setSheetsConnectionId(v);
                             setSheetsPreview(null);
@@ -2440,11 +2469,22 @@ export function AddRevenueWizardModal(props: {
                             <Select
                               value={sheetsCampaignCol || SELECT_NONE}
                               onValueChange={(v) => {
-                                setSheetsCampaignCol(v === SELECT_NONE ? "" : v);
+                                const nextCampaignColumn = v === SELECT_NONE ? "" : v;
+                                setSheetsCampaignCol(nextCampaignColumn);
                                 setSheetsCampaignValues([]);
                                 setRevenueCampaignMappings([]);
                                 setSheetsCampaignQuery("");
                                 setSheetsCampaignDisplayName("");
+                                if (nextCampaignColumn) {
+                                  void handleSheetsPreview(sheetsConnectionId, {
+                                    preserveExisting: true,
+                                    campaignColumn: nextCampaignColumn,
+                                    preservePreviewOnError: true,
+                                  });
+                                } else {
+                                  sheetsPreviewRequestRef.current += 1;
+                                  setSheetsProcessing(false);
+                                }
                               }}
                             >
                               <SelectTrigger>
@@ -2468,7 +2508,7 @@ export function AddRevenueWizardModal(props: {
                               {!sheetsCampaignCol ? (
                                 <div className="text-xs text-muted-foreground/70">Select a campaign identifier to see campaign values.</div>
                               ) : uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol).length === 0 ? (
-                                <div className="text-xs text-muted-foreground/70">No campaign values found in sample rows.</div>
+                                <div className="text-xs text-muted-foreground/70">No campaign values found in the selected column.</div>
                               ) : (
                                 uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol)
                                   .filter((v) => v.toLowerCase().includes(sheetsCampaignQuery.toLowerCase()))

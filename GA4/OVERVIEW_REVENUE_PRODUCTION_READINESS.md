@@ -50,14 +50,14 @@ Still blocked or only partially proven:
 - metadata-driven full-width chunking is locally guarded but lacks live provider/deployed large-sheet evidence; tabs with more than 50,000 allocated grid rows fail closed even when rows beyond the used data are blank;
 - complete campaign-value discovery is locally guarded through 300 distinct values but lacks live provider/deployed evidence; higher-cardinality columns fail closed and require a lower-cardinality identifier or an unfiltered import;
 - sheet number/currency semantics are user-declared rather than provider-verified; locale-formatted numbers and ambiguous locale dates lack complete fixtures and live evidence;
-- there is no bounded Google Sheets Revenue-only poll, and open Overview revenue queries still refetch every ten minutes;
+- the existing bounded Google Sheets financial timer now invokes a separate active-GA4 Google Sheets Revenue-only pass after spend, and open Overview revenue queries switch from ten-minute to 15-second reads only while such a source is active; this is local wiring evidence, not deployed timer or browser-convergence proof;
 - concurrent additive creates have no server idempotency key, and OAuth token refreshes are not serialized across workers;
 - a fast derived-recompute failure can occur after a successful source transaction but before the foreground response, which can return failure for an already-committed add;
 - the Google-Sheets-specific inventory now covers locally persisted connection ownership/status, mapping roles and identity, currency, record linkage/grain, campaign-value totals, and `lastSyncedAt`; provider tab existence, allocated row count, read completeness, and OAuth usability remain explicitly unverified;
 - the read-only target scan at `2026-09-11T18:42:12.686Z` found 8 GA4 Google Sheets Revenue sources, all inactive, and 3 inactive-source retained-record groups containing 67 records. It found no orphan, cross-campaign, or wrong-source-type Google Sheets record group. Because no active source existed, active mapping, connection, currency, attribution-total, sync, date, amount, and duplicate-grain integrity were not exercised against target data. No cleanup was performed or authorized;
 - no live OAuth/provider packet, large-sheet packet, repeated deployed refresh packet, browser convergence packet, or generated report/email artifact packet was run for this revision.
 
-The required next gates are deployed campaign-value discovery, an explicit review decision for the known inactive retained rows, bounded revenue polling/convergence, post-commit response semantics, and live deployed provider/OAuth/large-sheet/repeated-refresh/failure evidence for the locally bounded chunk contract. No cleanup is authorized by this addendum.
+The required next gates are deployed campaign-value discovery, an explicit review decision for the known inactive retained rows, deployed bounded-poll/browser convergence, post-commit response semantics, and live deployed provider/OAuth/large-sheet/repeated-refresh/failure evidence for the locally bounded chunk contract. No cleanup is authorized by this addendum.
 
 ## Explicit Scope
 
@@ -83,8 +83,8 @@ The required next gates are deployed campaign-value discovery, an explicit revie
 
 The enabled CSV source is closed inside the exact Overview boundary. The remaining items below apply to a future Google Sheets Revenue source and must not be read as blockers for the current configured source set:
 
-- Google Sheets Revenue is included in `runDailyAutoRefreshOnce`, but the bounded `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES` timer calls only the spend source-family runner. Revenue therefore has daily external refresh participation but no bounded low-latency Revenue-only provider poll.
-- Open GA4 Overview queries for `/revenue-to-date`, `/revenue-sources`, and `/revenue-breakdown` each use a ten-minute refetch interval. Mutation success handlers refetch immediately, but an external sheet edit processed outside the browser does not meet the intended low-latency contract.
+- Google Sheets Revenue remains included in `runDailyAutoRefreshOnce`. The bounded Google Sheets financial timer now runs spend and then a separate revenue pass under the existing shared financial-refresh lock; the revenue pass selects only active campaign-owned `ga4` `google_sheets` sources with a usable saved connection/revenue mapping and does not enumerate CSV or another provider family.
+- Open GA4 Overview queries for `/revenue-to-date`, `/revenue-sources`, and `/revenue-breakdown` now refetch every 15 seconds only while the source response contains an active GA4 Google Sheets revenue source; campaigns without one retain the prior ten-minute interval. Mutation success handlers still refetch immediately. Deployed timer execution and already-open browser convergence remain unverified.
 - Before Current Commit 3, CSV edit updated source metadata and deleted old records before inserting replacements, while add created its source separately. Current Commit 3 moves validated GA4 CSV add/edit source and record replacement into one scoped database transaction; non-GA4 CSV behavior is unchanged.
 - Historical Google Sheets foreground add/edit performed source create/update, old-record deletion, and new-record insertion separately. Current code routes GA4 foreground add/edit through `replaceRevenueSourceWithRecords(...)`, and Whole-Overview Commit 17 routes scheduler replacement through the same exact-source transaction.
 - Current Google Sheets foreground and scheduler provider/validation failures occur before replacement; transaction failures roll back source metadata and records together. A future configured source still needs its bounded deployed provider/failure packet before independent source-family certification.
@@ -126,7 +126,7 @@ The enabled CSV source is closed inside the exact Overview boundary. The remaini
 6. Storage totals and breakdowns inner-join records to active campaign/context sources. The API exposes those values through `/revenue-to-date`, `/revenue-breakdown`, and `/revenue-sources`.
 7. GA4 Overview adds imported revenue to the independently selected GA4-native financial revenue and uses the result in Total Revenue, Profit, ROAS, and ROI. Mutation success invalidates/refetches revenue queries.
 8. The external scheduler enumerates active `google_sheets` revenue sources across supported contexts, reads saved mapping configuration, fetches and validates provider data before mutation, and calls `replaceRevenueSourceWithRecords(...)` for the same stable source. For GA4, it now uses the foreground calendar-date normalizer, rechecks campaign currency, refreshes campaign-value attribution metadata, and requires the source mapping to remain unchanged before source freshness and replacement records commit together. Provider, validation, currency, conflict, or transaction failure retains the last-good rows.
-9. The dedicated bounded source-family interval invokes Google Sheets Spend only. There is no equivalent bounded Google Sheets Revenue interval. An already-open Overview independently waits up to its ten-minute revenue query interval unless a foreground focus/reconnect or explicit mutation invalidation causes an earlier fetch.
+9. The existing bounded Google Sheets financial interval invokes spend and then the isolated active-GA4 Google Sheets Revenue pass without overlapping the daily or Pipeline refresh locks. While that revenue source is active, an already-open Overview reads revenue-to-date, source list, and breakdown every 15 seconds; otherwise those reads remain at ten minutes.
 
 Historical bounded Google Sheets evidence; no Google Sheets Revenue source is configured in the current certification:
 
@@ -227,7 +227,7 @@ Retain and rerun source-specific automation before certifying a future Google Sh
 Current relevant local/static guards include:
 
 - `server/revenue-additivity.test.ts`: Google Sheets Revenue add mode creates an additive source rather than replacing by connection. It does not prove transactionality, row validity, provider timing, or deployed behavior.
-- `server/ga4-auto-refresh-regression.test.ts`: the daily scheduler enumerates Google Sheets Revenue, excludes CSV snapshots from provider refresh, and exposes a scoped run-now validation trigger. It does not prove successful automatic timing, provider mutation, retention, or idempotency.
+- `server/ga4-auto-refresh-regression.test.ts`: the daily scheduler and bounded financial timer enumerate only the intended Google Sheets Revenue sources, exclude CSV and unrelated providers from the interval pass, retain the shared overlap lock, and condition the three open-Overview reads on an active GA4 Google Sheets source. It does not prove successful deployed timing, provider mutation, browser convergence, retention, or idempotency.
 - `server/source-safety-regression.test.ts`: CSV process rejects a non-CSV edit target, preview access ordering is guarded, and individual revenue delete checks ownership before record deletion. It does not prove atomic replacement/delete or mapping/date correctness.
 - `server/ga4-source-lifecycle-recompute-regression.test.ts`: source mutation response/recompute ordering has static coverage. It does not prove database rollback or complete downstream value parity.
 - `server/ga4-ui-regression.test.ts`: active Google Sheets/CSV status and stable Google Sheets chooser behavior have UI-source guards. It does not prove numeric lifecycle correctness.
@@ -274,7 +274,7 @@ Use isolated commits in this order:
 | 3 | CSV Revenue transactional add/edit replacement | Implemented, locally validated, and normal UI flow user-confirmed; deployed stable-source replacement remains Current Commit 10 evidence; forced database failure remains local rollback evidence because the normal UI has no safe failure-injection control |
 | 4 | Google Sheets Revenue deterministic mapping/date/row validation | Implemented and locally validated; deployed/provider negatives remain Current Commit 11 evidence |
 | 5 | Google Sheets Revenue transactional manual/scheduler replacement | Atomic replacement implemented; deployed provider-failure packet open |
-| 6 | Bounded Google Sheets Revenue-only polling and Overview revenue refetch | Open; current automatic refresh is daily and Overview refetch is ten minutes |
+| 6 | Bounded Google Sheets Revenue-only polling and Overview revenue refetch | Implemented and locally guarded; deployed timer execution and already-open browser convergence remain open |
 | 7 | Transactional revenue source delete | Implemented, locally validated, and normal deployed UI flow user-confirmed for the current shared individual-source route |
 | 8 | Google Sheets/CSV Revenue-specific downstream propagation automation | CSV portion implemented and validated; Google Sheets portion open |
 | 9 | Read-only damaged-data inventory | CSV scan complete; Google Sheets scan found only three inactive-source retained-record groups (67 records); no cleanup applied or authorized |
@@ -288,10 +288,10 @@ Use isolated commits in this order:
 - Both process routes enforce campaign access and validate a shared revenue mapping envelope.
 - Edit targets are checked against the campaign and expected source type/context.
 - Google Sheets add mode is additive; edit/refresh mode uses a stable source ID.
-- CSV has no independent provider scheduler path; Google Sheets Revenue participates in the daily external refresh path.
+- CSV has no independent provider scheduler path; Google Sheets Revenue participates in the daily external refresh path and a separate GA4-only pass on the existing bounded Google Sheets financial timer.
 - Storage totals and breakdowns join revenue records to active campaign/context revenue sources.
 - The individual delete route resolves a campaign-owned active source and checks the requested context before mutation.
-- The open Overview imported revenue-to-date, sources, and breakdown queries currently refetch every ten minutes.
+- The open Overview imported revenue-to-date, sources, and breakdown queries refetch every 15 seconds only while an active GA4 Google Sheets revenue source is present; otherwise they retain the ten-minute interval.
 - GA4 CSV Revenue and GA4 Google Sheets Revenue foreground add/edit source-and-record replacement use the scoped transaction helper; Whole-Overview Commit 17 also routes Google Sheets scheduler replacement through that helper.
 - GA4 CSV Revenue Date choices now exclude the selected Revenue/Campaign roles and sampled non-date columns; stale invalid Date selections are cleared.
 - The GA4 CSV Revenue server path rejects role collisions, empty/no-positive selections, and blank/invalid/numeric dated positive rows before source mutation.
@@ -310,7 +310,7 @@ Use isolated commits in this order:
 - Historical Google Sheets add/edit/run-now/delete reconciliation for the exact sources, campaign, property, amounts, and timestamps recorded above.
 - Stable source identity and preservation of the specifically named counterpart source within those packets.
 - Immediate query refresh after a successful foreground source mutation.
-- Daily scheduler wiring for active Google Sheets Revenue sources.
+- Daily and bounded shared-timer wiring for active GA4 Google Sheets Revenue sources; automatic deployed execution remains unproven.
 
 ## Unproven
 
@@ -322,7 +322,7 @@ Use isolated commits in this order:
 - Deployed PostgreSQL proof of GA4 CSV add/edit rollback and last-valid-value retention.
 - Google Sheets last-valid-value retention after provider, source-update, record-delete, or record-insert failure.
 - Repeated deployed refresh idempotency, concurrent additive-create idempotency, and cross-worker OAuth refresh serialization; stale source replacement is now locally guarded.
-- Bounded Google Sheets Revenue-only automatic polling and already-open Overview convergence within the intended low-latency window.
+- Deployed bounded Google Sheets Revenue-only automatic polling and already-open Overview convergence within the intended low-latency window.
 - Exact deployed automatic Google Sheets provider mutation propagation through source, records, endpoints, Overview, and every claimed downstream consumer; current local/static paths include refreshed campaign-value attribution metadata.
 - Console-runner endpoint-parity output, raw source IDs, and exact deployed Profit/ROAS/ROI/CPA values beyond the bounded UI confirmation; these are excluded from the current CSV claim and require fresh evidence if separately claimed.
 - Unlisted files, delimiters, encodings, duplicate headers, locale numbers, ambiguous dates, large-file boundaries, sheets, tabs, mappings, filters, campaigns, properties, and currencies.

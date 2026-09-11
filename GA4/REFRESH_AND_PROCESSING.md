@@ -230,10 +230,10 @@ Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
-- active Google Sheets spend sources also use a source-family-only polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; this timer does not refresh Google Sheets revenue, CSV, CRM, ecommerce, LinkedIn, Meta, or Google Ads
+- active Google Sheets spend sources and active GA4 Google Sheets revenue sources use sequential isolated passes on the Google Sheets financial polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; the revenue pass does not refresh CSV, CRM, ecommerce, non-GA4 revenue, LinkedIn, Meta, or Google Ads
 - one CRM polling timer is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`. Its Salesforce pass reprocesses every active exact GA4 Salesforce source with saved selected values, including revenue-only sources; its HubSpot pass currently reprocesses only Pipeline-enabled sources with a saved stage ID. Both reuse the saved mapping and stable revenue source ID
-- the Google Sheets spend timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
-- the CRM Pipeline timer, Google Sheets spend timer, and full daily external-value run share overlap guards, so they do not replace the same financial state concurrently
+- the Google Sheets financial timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
+- the CRM Pipeline timer, Google Sheets financial timer, and full daily external-value run share overlap guards, so they do not replace the same financial state concurrently
 - if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
 - `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override and defaults to `false`
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected complete day
@@ -324,6 +324,13 @@ Google Sheets spend auto-refresh rule:
 - refresh must update by stable spend `sourceId`; it must not create a duplicate source, update another source that shares the same connection, or append duplicate rows on repeated scheduler runs
 - if a `Date` column is mapped, daily spend records are materialized from the dated rows; adding a new matching dated row should increase `Total Spend` by that row's spend amount after refresh
 - if a campaign identifier/value filter is mapped, only rows matching the saved campaign value set should be included
+
+Google Sheets revenue auto-refresh rule:
+
+- the bounded revenue pass selects only active campaign-owned GA4 `google_sheets` revenue sources with a saved connection and Revenue column, and runs after the spend pass under the same overlap lock
+- Upload CSV and other revenue provider families remain excluded from this pass; non-GA4 Google Sheets revenue contexts retain their existing daily refresh behavior
+- while an active GA4 Google Sheets revenue source exists, the open Overview revenue-to-date, source-list, and breakdown queries refetch every 15 seconds; without one, they retain the ten-minute interval
+- deployed provider timing and already-open browser convergence still require direct validation and are not proven by local timer/query wiring
 
 Google Sheets source-modal UI rule:
 

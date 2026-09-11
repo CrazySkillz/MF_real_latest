@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
@@ -7,7 +7,9 @@ import {
   getAutoRefreshSchedulerConfig,
   getAutoRefreshSchedulerStatus,
   getNextAutoRefreshRunAt,
+  runGoogleSheetsRevenueAutoRefreshOnce,
 } from "./auto-refresh-scheduler";
+import { storage } from "./storage";
 
 const schedulerFile = () =>
   readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf-8");
@@ -22,6 +24,13 @@ const serverIndexFile = () =>
   readFileSync(join(process.cwd(), "server", "index.ts"), "utf-8");
 
 describe("GA4 external value auto-refresh regression guard", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete (global as any).__autoRefreshInProgress;
+    delete (global as any).__googleSheetsSpendRefreshInProgress;
+    delete (global as any).__salesforcePipelineRefreshInProgress;
+  });
+
   it("reports scheduler execution and fails closed when an attempted provider refresh fails", () => {
     const scheduler = schedulerFile();
     const serverIndex = serverIndexFile();
@@ -121,7 +130,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     const routes = routesFile();
     const metrics = ga4MetricsFile();
     const refreshStart = scheduler.indexOf("export async function runGoogleSheetsSpendAutoRefreshOnce");
-    const refreshEnd = scheduler.indexOf("export async function runHubSpotPipelineAutoRefreshOnce", refreshStart);
+    const refreshEnd = scheduler.indexOf("export async function runGoogleSheetsRevenueAutoRefreshOnce", refreshStart);
     const refreshFunction = scheduler.slice(refreshStart, refreshEnd);
     const processStart = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"');
     const processEnd = routes.indexOf("  // ---------------------------------------------------------------------------", processStart);
@@ -142,7 +151,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(refreshFunction).not.toContain("reprocessHubSpot");
     expect(refreshFunction).not.toContain("reprocessLinkedInSpend");
     expect(refreshFunction).not.toContain('sourceType || "") === "csv"');
-    expect(scheduler).toContain("setInterval(runGoogleSheetsSpendRefresh, googleSheetsSpendIntervalMs)");
+    expect(scheduler).toContain("setInterval(runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs)");
     expect(refreshFunction).toContain("__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress");
     expect(scheduler).toContain("while ((global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress)");
     expect(scheduler).toContain("Waiting for an interval financial refresh to finish");
@@ -155,6 +164,71 @@ describe("GA4 external value auto-refresh regression guard", () => {
       expect(metrics.slice(queryStart, queryEnd)).toContain("refetchInterval: 15 * 1000");
     }
   });
+
+  it("polls only active GA4 Google Sheets revenue sources and accelerates only their open Overview reads", () => {
+    const scheduler = schedulerFile();
+    const metrics = ga4MetricsFile();
+    const refreshStart = scheduler.indexOf("export async function runGoogleSheetsRevenueAutoRefreshOnce");
+    const refreshEnd = scheduler.indexOf("export async function runHubSpotPipelineAutoRefreshOnce", refreshStart);
+    const refreshFunction = scheduler.slice(refreshStart, refreshEnd);
+
+    expect(refreshStart).toBeGreaterThan(-1);
+    expect(refreshEnd).toBeGreaterThan(refreshStart);
+    expect(refreshFunction).toContain('storage.getRevenueSources(campaignId, "ga4")');
+    expect(refreshFunction).toContain('source.isActive !== false');
+    expect(refreshFunction).toContain('toLowerCase() === "google_sheets"');
+    expect(refreshFunction).toContain('toLowerCase() === "ga4"');
+    expect(refreshFunction).toContain('!isSourceOutsideCampaign(source, campaignId)');
+    expect(refreshFunction).toContain('parsedMappingConfig?.connectionId');
+    expect(refreshFunction).toContain('parsedMappingConfig?.revenueColumn');
+    expect(refreshFunction).toContain('reprocessGoogleSheetsRevenue(campaignId, source, { ...parsedMappingConfig, platformContext: "ga4" })');
+    expect(refreshFunction).not.toContain('"csv"');
+    expect(refreshFunction).not.toContain("reprocessHubSpot");
+    expect(refreshFunction).not.toContain("reprocessSalesforce");
+    expect(refreshFunction).not.toContain("reprocessShopify");
+    expect(scheduler.indexOf("await runGoogleSheetsSpendAutoRefreshOnce()")).toBeLessThan(scheduler.indexOf("await runGoogleSheetsRevenueAutoRefreshOnce()"));
+    expect(metrics).toContain("const getImportedRevenueRefetchInterval");
+    expect(metrics).toContain('toLowerCase() === "google_sheets"');
+    expect(metrics).toContain("? 15 * 1000 : 10 * 60 * 1000");
+
+    for (const queryName of ["importedRevenueToDateResp", "revenueSourcesResp", "revenueBreakdownResp"]) {
+      const queryStart = metrics.indexOf(`const { data: ${queryName},`);
+      const queryEnd = metrics.indexOf("  });", queryStart);
+      expect(queryStart).toBeGreaterThan(-1);
+      expect(metrics.slice(queryStart, queryEnd)).toContain("getImportedRevenueRefetchInterval");
+    }
+  });
+
+  it("executes the bounded revenue pass only for the exact eligible campaign source", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
+    vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
+      { id: "source-1", campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", isActive: true, currency: "USD", mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue", currency: "USD" }) },
+      { id: "inactive", campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", isActive: false, mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue" }) },
+      { id: "wrong-context", campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "google_sheets", isActive: true, mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue" }) },
+      { id: "cross-campaign", campaignId: "campaign-2", sourceType: "google_sheets", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue" }) },
+      { id: "csv", campaignId: "campaign-1", sourceType: "csv", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue" }) },
+    ] as any);
+    vi.spyOn(storage, "getGoogleSheetsConnections").mockResolvedValue([{
+      id: "conn-1", campaignId: "campaign-1", spreadsheetId: "spreadsheet-1", sheetName: "Revenue", accessToken: "access-token",
+    }] as any);
+    vi.spyOn(storage, "getCampaign").mockResolvedValue({ id: "campaign-1", currency: "USD", reportingTimeZone: "UTC" } as any);
+    const replace = vi.spyOn(storage, "replaceRevenueSourceWithRecords").mockResolvedValue({ id: "source-1" } as any);
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sheets: [{ properties: { title: "Revenue", gridProperties: { rowCount: 2 } } }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ values: [["Revenue"], ["25"]] }), { status: 200 }));
+
+    await runGoogleSheetsRevenueAutoRefreshOnce();
+
+    expect(storage.getRevenueSources).toHaveBeenCalledWith("campaign-1", "ga4");
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith(
+      "campaign-1", "source-1", "google_sheets", "ga4",
+      expect.objectContaining({ campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", currency: "USD" }),
+      [expect.objectContaining({ campaignId: "campaign-1", revenue: "25.00", currency: "USD" })],
+      expect.any(String),
+    );
+  });
+
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {
     const content = schedulerFile();
 

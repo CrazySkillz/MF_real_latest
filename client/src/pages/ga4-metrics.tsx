@@ -2197,13 +2197,22 @@ export default function GA4Metrics() {
     return Math.max(0, rate > 1 ? rate / 100 : rate);
   })();
 
+  const hasActiveGa4GoogleSheetsRevenueSource = (data: any) => Array.isArray(data?.sources) && data.sources.some((source: any) =>
+    source?.isActive !== false
+    && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
+    && String(source?.platformContext || "ga4").trim().toLowerCase() === "ga4"
+  );
+  const getImportedRevenueRefetchInterval = (data?: any) => hasActiveGa4GoogleSheetsRevenueSource(
+    data || queryClient.getQueryData([`/api/campaigns/${campaignId}/revenue-sources`]),
+  ) ? 15 * 1000 : 10 * 60 * 1000;
+
   const { data: importedRevenueToDateResp, isLoading: importedRevenueLoading, isError: importedRevenueError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: () => getImportedRevenueRefetchInterval(),
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-to-date`);
@@ -2221,7 +2230,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: (query) => getImportedRevenueRefetchInterval(query.state.data),
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`);
@@ -2317,7 +2326,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: () => getImportedRevenueRefetchInterval(),
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-breakdown`);

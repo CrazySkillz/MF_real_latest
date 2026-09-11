@@ -18548,7 +18548,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (scopedCampaignSet.size === 0) return true;
         const selectedValues = Array.isArray(sourceCfg?.selectedValues) ? sourceCfg.selectedValues : [];
         const revenueTotals = Array.isArray(sourceCfg?.pipelineValueRevenueTotals) ? sourceCfg.pipelineValueRevenueTotals : [];
-        return [...selectedValues, ...revenueTotals.map((item: any) => item?.campaignValue)].some((value: any) => scopedCampaignSet.has(normalizeValue(value)));
+        const mappedGa4Values = Array.isArray(sourceCfg?.campaignMappings)
+          ? sourceCfg.campaignMappings.flatMap((item: any) => [item?.linkedinCampaignUrn, item?.linkedinCampaignName])
+          : [];
+        return [...selectedValues, ...revenueTotals.map((item: any) => item?.campaignValue), ...mappedGa4Values]
+          .some((value: any) => scopedCampaignSet.has(normalizeValue(value)));
       };
       const candidates: Array<{ source: any; cfg: any }> = [];
       for (const context of requestedContexts) {

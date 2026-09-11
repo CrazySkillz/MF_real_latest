@@ -2503,7 +2503,10 @@ export default function GA4Metrics() {
       const selected = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v || "").trim()).filter(Boolean) : [];
       const totals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
       const totalValues = totals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean);
-      return Array.from(new Set([...selected, ...totalValues]));
+      const mappedGa4Values = String(source?.sourceType || "").trim().toLowerCase() === "hubspot" && Array.isArray(cfg.campaignMappings)
+        ? cfg.campaignMappings.flatMap((item: any) => [item?.linkedinCampaignUrn, item?.linkedinCampaignName])
+        : [];
+      return Array.from(new Set([...selected, ...totalValues, ...mappedGa4Values]));
     };
     const sourceMatchesGa4Scope = (source: any) => {
       if (scopedCampaignSet.size === 0) return true;

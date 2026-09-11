@@ -313,6 +313,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineRoute).toContain("const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;");
     expect(pipelineRoute).toContain('return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested GA4 campaign scope." });');
     expect(pipelineRoute).not.toContain("|| candidates[0] || null");
+    expect(pipelineRoute).toContain("const mappedGa4Values = Array.isArray(sourceCfg?.campaignMappings)");
+    expect(pipelineRoute).toContain("item?.linkedinCampaignUrn, item?.linkedinCampaignName");
     expect(pipelineRoute).toContain("const pipelineSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];");
     expect(pipelineRoute).not.toContain("selectedPipelineSource = candidates[0]");
     expect(salesforcePipelineRoute).toContain("requestedPlatformContext");
@@ -330,6 +332,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(pipelineMemo).toContain('getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot")');
     expect(pipelineMemo).toContain("sourceMatchesGa4Scope");
+    expect(pipelineMemo).toContain('String(source?.sourceType || "").trim().toLowerCase() === "hubspot" && Array.isArray(cfg.campaignMappings)');
+    expect(pipelineMemo).toContain("item?.linkedinCampaignUrn, item?.linkedinCampaignName");
     expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
     expect(pipelineMemo).toContain('const endpointSourceId = sourceType === "salesforce"');
     expect(pipelineMemo).toContain('String(source?.id || "") === endpointSourceId');
@@ -348,6 +352,44 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(mappedCampaignLabelHelper).toContain("mapping?.linkedinCampaignName");
     expect(revenueSourcesDialog).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
     expect(revenueSourcesDialog).toContain('isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText');
+  });
+
+  it("matches a HubSpot Pipeline source through its explicit GA4 campaign mapping", () => {
+    const pipelineRoute = sliceBetween(
+      routesFile(),
+      'app.get("/api/hubspot/:campaignId/pipeline-proxy"',
+      'app.delete("/api/hubspot/:campaignId/pipeline-proxy"'
+    );
+    const matcherSource = sliceBetween(
+      pipelineRoute,
+      "const sourceMatchesGa4Scope = (sourceCfg: any) => {",
+      "const candidates: Array<{ source: any; cfg: any }> = [];",
+    )
+      .replace("(sourceCfg: any)", "(sourceCfg)")
+      .replaceAll("(item: any)", "(item)")
+      .replaceAll("(value: any)", "(value)");
+    const sourceMatchesGa4Scope = new Function(
+      "requestedPlatformContext",
+      "scopedCampaignSet",
+      "normalizeValue",
+      `${matcherSource}; return sourceMatchesGa4Scope;`,
+    )(
+      "ga4",
+      new Set(["yesopretargeting"]),
+      (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, ""),
+    ) as (sourceCfg: any) => boolean;
+
+    const mappedSource = {
+      selectedValues: ["HubSpot Deal A"],
+      pipelineValueRevenueTotals: [{ campaignValue: "HubSpot Deal A", revenue: 123 }],
+      campaignMappings: [{
+        crmValue: "HubSpot Deal A",
+        linkedinCampaignUrn: "yesop_retargeting",
+        linkedinCampaignName: "yesop_retargeting",
+      }],
+    };
+    expect(sourceMatchesGa4Scope(mappedSource)).toBe(true);
+    expect(sourceMatchesGa4Scope({ ...mappedSource, campaignMappings: [] })).toBe(false);
   });
 
   it("exposes a read-only HubSpot GA4 Overview inventory runner", () => {

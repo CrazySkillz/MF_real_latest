@@ -106,7 +106,7 @@ describe("Google Ads revenue Salesforce flow", () => {
     expect(wizard).toContain("selectedCampaignMappings");
     expect(wizard).toContain("renderAdPlatformCampaignMappings");
     expect(modal).toContain("platformContext={platformContext}");
-    expect(modal).toContain('sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.id || "") : undefined}');
+    expect(modal).toContain('sourceId={isSalesforceEditing ? String(salesforceEditSource?.id || "") : undefined}');
     expect(scheduler).toContain("async function reprocessSalesforce");
     expect(scheduler).toContain("platformContext: mappingConfig.platformContext");
     expect(scheduler).toContain("...(sourceId ? { sourceId } : {})");

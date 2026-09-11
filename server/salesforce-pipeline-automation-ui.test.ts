@@ -136,10 +136,34 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).not.toContain('focusedRevenueValue: item.name');
     expect(sourceDialog).toContain('setDeletingSalesforceRevenueItem({');
     expect(sourceDialog).toContain('aria-label={`Remove ${item.name}`}');
-    expect(addRevenueWizard).toContain('initialFocusValue={isEditing');
+    expect(addRevenueWizard).toContain('initialFocusValue={isSalesforceEditing');
     expect(salesforceWizard).toContain('setStep("value-source")');
     expect(salesforceWizard).toContain('Editing selection: <strong>{initialFocusValue}</strong>');
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
+  });
+
+  it("reopens a connected Salesforce chooser card as an exact-source edit", () => {
+    const sourceClick = sliceBetween(
+      addRevenueWizard,
+      'const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {',
+      '// Shopify handles its own OAuth inside ShopifyRevenueWizard',
+    );
+    const salesforceEmbed = sliceBetween(
+      addRevenueWizard,
+      '{step === "salesforce" && (',
+      '{step === "shopify" && (',
+    );
+
+    expect(addRevenueWizard).toContain('const sourcesResolved = dsResp?.success === true && Array.isArray(dsResp?.revenueSources)');
+    expect(sourceClick).toContain('platform === "salesforce" && !salesforceSourcesResolved');
+    expect(addRevenueWizard).toContain('setActiveSalesforceSources(revSources.filter((s: any) => matchesRevenuePlatformContext(s, "salesforce")))');
+    expect(sourceClick).toContain('platform === "salesforce" && crmHasSource.salesforce');
+    expect(sourceClick).toContain('activeSalesforceSources.length !== 1');
+    expect(sourceClick).toContain('!String(source?.id || "").trim()');
+    expect(sourceClick).toContain('setSalesforcePickerEditSource(source)');
+    expect(salesforceEmbed).toContain('sourceId={isSalesforceEditing ? String(salesforceEditSource?.id || "") : undefined}');
+    expect(salesforceEmbed).toContain('autoStartOAuth={!isSalesforceEditing}');
+    expect(salesforceEmbed).toContain('mode={isSalesforceEditing ? "edit" : "connect"}');
   });
 
   it("aligns Shopify source actions with their provider and mapped campaign rows", () => {

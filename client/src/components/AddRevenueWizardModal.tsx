@@ -352,6 +352,13 @@ export function AddRevenueWizardModal(props: {
   const [crmOAuth, setCrmOAuth] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmHasSource, setCrmHasSource] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
+  const [activeSalesforceSources, setActiveSalesforceSources] = useState<any[]>([]);
+  const [salesforceSourcesResolved, setSalesforceSourcesResolved] = useState(false);
+  const [salesforcePickerEditSource, setSalesforcePickerEditSource] = useState<any>(null);
+  const salesforceEditSource = String(initialSource?.sourceType || "").toLowerCase() === "salesforce"
+    ? initialSource
+    : salesforcePickerEditSource;
+  const isSalesforceEditing = !!salesforceEditSource;
   const [importSourceStatus, setImportSourceStatus] = useState<{ google_sheets: boolean; csv: boolean }>({ google_sheets: false, csv: false });
   const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
   const matchesRevenuePlatformContext = (source: any, sourceType?: string) => {
@@ -362,6 +369,7 @@ export function AddRevenueWizardModal(props: {
   };
   useEffect(() => {
     if (!open) return;
+    setSalesforceSourcesResolved(false);
     let cancelled = false;
     (async () => {
       const dataSourcesReq = fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({}));
@@ -375,8 +383,11 @@ export function AddRevenueWizardModal(props: {
         ]);
       if (cancelled) return;
       // "Connected" badge only when an active revenue source exists for this platform
-      const revSources: any[] = Array.isArray(dsResp?.revenueSources) ? dsResp.revenueSources : [];
+      const sourcesResolved = dsResp?.success === true && Array.isArray(dsResp?.revenueSources);
+      const revSources: any[] = sourcesResolved ? dsResp.revenueSources : [];
       const hasSource = (type: string) => revSources.some((s: any) => matchesRevenuePlatformContext(s, type));
+      setActiveSalesforceSources(revSources.filter((s: any) => matchesRevenuePlatformContext(s, "salesforce")));
+      setSalesforceSourcesResolved(sourcesResolved);
       setImportSourceStatus({
         google_sheets: hasSource("google_sheets"),
         csv: hasSource("csv"),
@@ -399,8 +410,24 @@ export function AddRevenueWizardModal(props: {
 
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
+    if (platform === "salesforce" && !salesforceSourcesResolved) {
+      toast({ title: "Salesforce sources unavailable", description: "Please try again after the revenue sources finish loading.", variant: "destructive" });
+      return;
+    }
     // Already authenticated — go straight to wizard
     if (crmOAuth[platform]) {
+      if (platform === "salesforce" && crmHasSource.salesforce) {
+        const source = activeSalesforceSources[0];
+        if (activeSalesforceSources.length !== 1 || !String(source?.id || "").trim()) {
+          toast({
+            title: "Open Salesforce from Revenue Sources",
+            description: "Select the Salesforce edit icon so the exact revenue source can be updated safely.",
+            variant: "destructive",
+          });
+          return;
+        }
+        setSalesforcePickerEditSource(source);
+      }
       setStep(platform);
       return;
     }
@@ -639,6 +666,9 @@ export function AddRevenueWizardModal(props: {
     setSalesforceBackNonce(0);
     setHubspotInitialMappingConfig(null);
     setSalesforceInitialMappingConfig(null);
+    setActiveSalesforceSources([]);
+    setSalesforceSourcesResolved(false);
+    setSalesforcePickerEditSource(null);
     setCrmConnecting(null);
   };
 
@@ -748,23 +778,24 @@ export function AddRevenueWizardModal(props: {
   // Prefill edit mode from an existing revenue source.
   useEffect(() => {
     if (!open) return;
-    if (!initialSource) return;
+    const sourceToEdit = initialSource || salesforcePickerEditSource;
+    if (!sourceToEdit) return;
 
     let config: any = {};
     try {
-      config = initialSource?.mappingConfig ? JSON.parse(String(initialSource.mappingConfig)) : {};
+      config = sourceToEdit?.mappingConfig ? JSON.parse(String(sourceToEdit.mappingConfig)) : {};
     } catch {
       config = {};
     }
 
-    const type = String(initialSource?.sourceType || "").toLowerCase();
+    const type = String(sourceToEdit?.sourceType || "").toLowerCase();
     if (type === "manual") {
       const amt = config?.amount;
       const cv = config?.conversionValue;
       const vsRaw = String(config?.valueSource || "").trim().toLowerCase();
       const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("manual");
-      setManualPlatform(String(config?.platformContext || initialSource?.platformContext || platformContext || "ga4"));
+      setManualPlatform(String(config?.platformContext || sourceToEdit?.platformContext || platformContext || "ga4"));
       setManualSubCampaign(String(config?.subCampaignUrn || ""));
       setManualAmount(amt === 0 || amt ? formatCurrencyOnBlur(String(amt)) : "");
       setManualConversionValue(cv === 0 || cv ? formatCurrencyOnBlur(String(cv)) : "");
@@ -773,7 +804,7 @@ export function AddRevenueWizardModal(props: {
     }
 
     if (type === "google_sheets") {
-      const connId = String(config?.connectionId || initialSource?.connectionId || "");
+      const connId = String(config?.connectionId || sourceToEdit?.connectionId || "");
       setStep("sheets_map");
       if (connId) setSheetsConnectionId(connId);
       // We'll fetch preview in the mapping step; after preview loads we re-apply mappings below.
@@ -792,7 +823,7 @@ export function AddRevenueWizardModal(props: {
       const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("csv_map");
       setCsvPrefill({
-        displayName: String(config?.displayName || initialSource?.displayName || ""),
+        displayName: String(config?.displayName || sourceToEdit?.displayName || ""),
         revenueColumn: String(config?.revenueColumn || ""),
         campaignColumn: String(config?.campaignColumn || ""),
         campaignValues: Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : [],
@@ -813,7 +844,7 @@ export function AddRevenueWizardModal(props: {
       const savedRowCount = Number.isFinite(Number(config?.csvRowCount)) ? Number(config.csvRowCount) : 0;
       if (savedHeaders.length) {
         setCsvPreview({
-          fileName: String(config?.displayName || initialSource?.displayName || "CSV revenue"),
+          fileName: String(config?.displayName || sourceToEdit?.displayName || "CSV revenue"),
           headers: savedHeaders,
           sampleRows: savedSampleRows,
           rowCount: savedRowCount,
@@ -842,7 +873,7 @@ export function AddRevenueWizardModal(props: {
         pipelineStageName: config?.pipelineStageName ? String(config.pipelineStageName) : undefined,
         pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
         pipelineTotalToDate: Number.isFinite(Number(config?.pipelineTotalToDate)) ? Number(config.pipelineTotalToDate) : undefined,
-        lastTotalRevenue: initialSource?.revenue != null && Number.isFinite(Number(initialSource.revenue)) ? Number(initialSource.revenue)
+        lastTotalRevenue: sourceToEdit?.revenue != null && Number.isFinite(Number(sourceToEdit.revenue)) ? Number(sourceToEdit.revenue)
           : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
@@ -867,9 +898,9 @@ export function AddRevenueWizardModal(props: {
         pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
         pipelineTotalToDate: Number.isFinite(Number(config?.pipelineTotalToDate)) ? Number(config.pipelineTotalToDate) : undefined,
         lastTotalRevenue: platformContext === "ga4"
-          ? initialSource?.materializedRevenueStatus === "available" && Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined
+          ? sourceToEdit?.materializedRevenueStatus === "available" && Number.isFinite(Number(sourceToEdit?.revenue)) ? Number(sourceToEdit.revenue) : undefined
           : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
-            : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
+            : Number.isFinite(Number(sourceToEdit?.revenue)) ? Number(sourceToEdit.revenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
         campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,
@@ -881,7 +912,7 @@ export function AddRevenueWizardModal(props: {
 
     if (type === "shopify") {
       const next = {
-        sourceId: initialSource?.id ? String(initialSource.id) : undefined,
+        sourceId: sourceToEdit?.id ? String(sourceToEdit.id) : undefined,
         campaignField: config?.campaignField ? String(config.campaignField) : undefined,
         selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
         revenueMetric: config?.revenueMetric ? String(config.revenueMetric) : undefined,
@@ -895,7 +926,7 @@ export function AddRevenueWizardModal(props: {
 
     // Fallback: open selector
     setStep("select");
-  }, [open, initialSource]);
+  }, [open, initialSource, salesforcePickerEditSource]);
 
   // Load sheets connections only when needed.
   // When editing, also try a purpose-agnostic fetch so connections with a different purpose still appear.
@@ -2578,14 +2609,14 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
-                  sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.id || "") : undefined}
-                  initialFocusValue={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.focusedRevenueValue || "") : undefined}
+                  sourceId={isSalesforceEditing ? String(salesforceEditSource?.id || "") : undefined}
+                  initialFocusValue={isSalesforceEditing ? String(salesforceEditSource?.focusedRevenueValue || "") : undefined}
                   platformContext={platformContext}
-                  autoStartOAuth={!isEditing}
-                  mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? "edit" : "connect"}
+                  autoStartOAuth={!isSalesforceEditing}
+                  mode={isSalesforceEditing ? "edit" : "connect"}
                   externalBackNonce={salesforceBackNonce}
                   initialMappingConfig={
-                    isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce"
+                    isSalesforceEditing
                       ? (salesforceInitialMappingConfig || null)
                       : null
                   }

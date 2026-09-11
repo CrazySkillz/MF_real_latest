@@ -425,6 +425,7 @@ Important meaning:
 - Salesforce is a CRM opportunity-mapping workflow
 - this path is sensitive because it can include currency validation and attribution-field matching
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
+- when the source chooser shows one active same-context Salesforce source as `Connected`, clicking its card must reopen that exact source in edit mode with its stable `sourceId` and saved mapping; it must not start additive connect mode. If legacy data contains multiple matching active Salesforce sources, the chooser must fail closed and direct the user to the exact edit control in Revenue Sources.
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
 - Salesforce review-step `Total Revenue (to date)` must use the preview endpoint's full matched total, not the limited sample rows shown in the preview table
 - Salesforce edit mode must default missing legacy `dateField` values back to `CloseDate` so external Close Date changes materialize onto the expected previous-day revenue date

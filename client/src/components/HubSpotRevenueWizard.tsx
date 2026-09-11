@@ -1040,11 +1040,13 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "crosswalk" && (
               <div className="flex flex-col gap-3 min-h-0">
-                {pipelineEnabled && (
-                  <div className="text-xs text-muted-foreground">
-                    Values shown include confirmed revenue deals and deals currently in <strong>{pipelineStageLabel || "the selected Pipeline Proxy stage"}</strong>. Confirmed matches contribute to <strong>Total Revenue</strong>; selected-stage matches contribute to <strong>Pipeline Proxy</strong>.
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground">
+                  {pipelineEnabled ? (
+                    <>Values shown include <strong>Closed Won</strong> deals and deals currently in <strong>{pipelineStageLabel || "the selected Pipeline Proxy stage"}</strong>. Closed Won matches contribute to <strong>Total Revenue</strong>; selected-stage matches contribute to <strong>Pipeline Proxy</strong>.</>
+                  ) : (
+                    <>Values shown are <strong>Closed Won</strong> only — they contribute to <strong>Total Revenue</strong>.</>
+                  )}
+                </div>
                 <div className="flex items-center justify-between gap-2 shrink-0">
                   <div className="text-sm text-muted-foreground">
                     Selected: <strong>{selectedValues.length}</strong>

@@ -18837,7 +18837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Default filters (LinkedIn exec UX): include non-lost deals over recent activity window
       // so new/updated deals show up immediately in the Crosswalk list. When Pipeline Proxy
       // mode passes a stage, use confirmed/won stages plus that exact proxy stage.
-      let stageIds: string[] = [];
+      let stageIds: string[] = revenueOnly ? ['closedwon'] : [];
       try {
         const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
           headers: { Authorization: `Bearer ${accessToken}` },

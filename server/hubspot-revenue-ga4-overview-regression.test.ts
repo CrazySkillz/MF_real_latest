@@ -398,6 +398,23 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(wizard).toContain("fetchUniqueValues(campaignProperty, valueSearch)");
   });
 
+  it("keeps the HubSpot revenue-only edit path Closed Won-only like Salesforce", () => {
+    const routes = routesFile();
+    const wizard = hubspotWizardFile();
+    const uniqueValuesRoute = sliceBetween(
+      routes,
+      'app.get("/api/hubspot/:campaignId/deals/unique-values"',
+      "// HubSpot save mappings"
+    );
+
+    expect(wizard).toContain('${!pipelineEnabled ? "&revenueOnly=1" : ""}');
+    expect(wizard).toContain('setStep(pipelineEnabled ? "pipeline" : "crosswalk");');
+    expect(wizard).toContain('pipelineStageId: pipelineEnabled ? pipelineStageId : null');
+    expect(wizard).toContain("Values shown are <strong>Closed Won</strong> only");
+    expect(uniqueValuesRoute).toContain("let stageIds: string[] = revenueOnly ? ['closedwon'] : [];");
+    expect(uniqueValuesRoute).toContain("? deriveDefaultClosedWonStageIds(pipelines)");
+  });
+
   it("matches a HubSpot Pipeline source through its explicit GA4 campaign mapping", () => {
     const pipelineRoute = sliceBetween(
       routesFile(),

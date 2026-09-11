@@ -224,6 +224,7 @@ export interface IStorage {
     connectionMappingConfig: string,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
+    expectedSourceMappingConfig?: string,
   ): Promise<RevenueSource>;
   replaceGa4ShopifyRevenueSourceWithRecords(
     campaignId: string,
@@ -1917,6 +1918,7 @@ export class DatabaseStorage implements IStorage {
     connectionMappingConfig: string,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
+    expectedSourceMappingConfig?: string,
   ): Promise<RevenueSource> {
     if (!records.length) throw new Error('No HubSpot revenue records to save');
     return await db.transaction(async (tx: any) => {
@@ -1938,9 +1940,16 @@ export class DatabaseStorage implements IStorage {
             eq(revenueSources.sourceType, 'hubspot'),
             eq(revenueSources.isActive, true),
             or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+            ...(expectedSourceMappingConfig ? [eq(revenueSources.mappingConfig, expectedSourceMappingConfig)] : []),
           ))
           .returning();
-        if (!savedSource) throw new Error('HubSpot revenue source not found');
+        if (!savedSource) {
+          const error: any = new Error(expectedSourceMappingConfig
+            ? 'HubSpot revenue source changed. Refresh and try again.'
+            : 'HubSpot revenue source not found');
+          if (expectedSourceMappingConfig) error.code = 'HUBSPOT_REVENUE_SOURCE_CHANGED';
+          throw error;
+        }
       } else {
         [savedSource] = await tx
           .insert(revenueSources)

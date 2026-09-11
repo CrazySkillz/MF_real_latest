@@ -222,7 +222,7 @@ Pipeline Proxy rule:
 - Pipeline Proxy appears in the Revenue & Financial area; before a HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source is configured, the card shows `Not configured`
 - the render condition is the active CRM revenue source configuration, not only the separate pipeline proxy endpoint response
 - when the endpoint returns a fresh same-scope value, the card uses it; if that endpoint is stale or unavailable, only the already-selected same-scope active source may supply saved Pipeline Proxy metadata, while a scope mismatch fails closed as unavailable
-- active GA4 Salesforce Pipeline sources are reprocessed through their stable source IDs every five minutes by default, and an open Overview checks the saved Pipeline result every minute; the same atomic refresh moves a newly won Opportunity out of Pipeline Proxy and into confirmed Total Revenue
+- active GA4 Salesforce and HubSpot Pipeline sources are reprocessed through their stable source IDs every five minutes by default, and an open Overview checks the saved Pipeline results every minute; the same atomic refresh moves a newly won Opportunity or deal out of Pipeline Proxy and into confirmed Total Revenue and source provenance
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show a compact `Sources` action; provider-specific provenance belongs in a read-only Pipeline Proxy sources modal rather than inline card microcopy
 - the `Sources` count should include only providers with positive Pipeline Proxy contribution; zero-value configured CRM providers should not show as contributing sources

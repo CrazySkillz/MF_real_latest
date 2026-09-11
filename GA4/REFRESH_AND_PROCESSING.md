@@ -229,7 +229,9 @@ Runtime cadence:
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
 - active Google Sheets spend sources also use a source-family-only polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; this timer does not refresh Google Sheets revenue, CSV, CRM, ecommerce, LinkedIn, Meta, or Google Ads
+- active GA4 Salesforce and HubSpot sources with Pipeline Proxy enabled share a CRM Pipeline polling timer controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`; it reuses each source's saved mapping and stable revenue source ID
 - the Google Sheets spend timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
+- the CRM Pipeline timer, Google Sheets spend timer, and full daily external-value run share overlap guards, so they do not replace the same financial state concurrently
 - if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
 - `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override and defaults to `false`
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected complete day
@@ -337,7 +339,9 @@ Google Sheets revenue refresh rule:
 CRM auto-reprocess rule:
 
 - saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
+- active GA4 HubSpot and Salesforce mappings with Pipeline Proxy enabled should also be reprocessed every five minutes by default without requiring a user to manually reopen and save the wizard
 - HubSpot auto-reprocess should use active HubSpot revenue source mappings as the source of truth and pass the stable revenue `sourceId`
+- a mapped HubSpot deal that moves from the selected open stage to a current Closed Won stage should leave Pipeline Proxy and enter confirmed Total Revenue plus Revenue Sources provenance in the same atomic refresh; repeated refreshes must replace the source's records rather than duplicate the deal
 - HubSpot auto-reprocess should self-heal legacy `stageIds:["closedwon"]` mappings by resolving the account's current Closed Won stage IDs before querying deals
 - HubSpot auto-reprocess must refresh an expired or missing access token from the stored refresh token before querying HubSpot; it must not silently continue with an expired token
 - Salesforce auto-reprocess should use active Salesforce revenue source mappings as the source of truth and pass the stable revenue `sourceId` and saved date field so refresh updates the existing source instead of creating duplicate revenue sources
@@ -351,6 +355,7 @@ CRM auto-reprocess rule:
 - validating that the total source count stayed stable is useful duplicate-prevention evidence, but LinkedIn-specific in-place refresh is only live-validated when an active LinkedIn spend source exists before the refresh
 - refreshed Pipeline Proxy values remain separate early-signal values and must not be added into confirmed Total Revenue
 - Overview Pipeline Proxy visibility should be anchored to the active saved CRM revenue source config; refreshed endpoint data may update the amount/provenance, but a stale endpoint response must not hide an otherwise configured active Pipeline Proxy card
+- an open Overview should poll the saved HubSpot and Salesforce Pipeline results every minute and refetch Total Revenue, Revenue Sources, and Revenue Breakdown when either provider refresh timestamp changes
 - if both HubSpot and Salesforce have active Pipeline Proxy configuration, the Overview card should aggregate both providers' exact proxy totals while keeping provider-specific provenance in the read-only Pipeline Proxy sources modal
 
 Shopify auto-reprocess rule:

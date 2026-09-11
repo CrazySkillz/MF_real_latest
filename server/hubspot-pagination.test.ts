@@ -40,9 +40,9 @@ describe('HubSpot bounded pagination', () => {
     expect(routes).toContain(`afterPipeline = platformCtx === 'ga4'`);
     expect(routes).toContain(`after3 = platformCtx === 'ga4'`);
     expect(routes).toContain('const requireCompletePipelinePagination = String(');
-    expect(routes).toContain(`if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE) throw error;`);
+    expect(routes).toContain(`if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE || (platformCtx === 'ga4' && expectedSourceMappingConfig)) throw error;`);
     expect(routes).toContain('return res.status(413).json({ success: false, error: error.message, code: error.code });');
-    expect(routes).toContain('res.status(paginationIncomplete ? 413 : 500).json({');
+    expect(routes).toContain('res.status(paginationIncomplete ? 413 : sourceChanged ? 409 : 500).json({');
 
     const confirmedGuard = routes.indexOf('requestedConfirmedRevenueCursors)');
     const saveMutation = routes.indexOf('await storage.replaceGa4HubspotRevenueSourceWithRecords', confirmedGuard);

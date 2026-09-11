@@ -253,7 +253,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(hubspotLoop).toContain("const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))");
     expect(hubspotLoop).toContain('String(s.sourceType || "").toLowerCase() === "hubspot"');
-    expect(hubspotLoop).toContain("const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx } : null;");
+    expect(hubspotLoop).toContain("const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx, expectedSourceMappingConfig: String(hubspotSource.mappingConfig) } : null;");
     expect(hubspotLoop).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
   });
 

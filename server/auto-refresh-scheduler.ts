@@ -237,6 +237,7 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
     dateField: mappingConfig.dateField,
     platformContext: mappingConfig.platformContext,
     ...(sourceId ? { sourceId } : {}),
+    ...(mappingConfig.expectedSourceMappingConfig ? { expectedSourceMappingConfig: mappingConfig.expectedSourceMappingConfig } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
@@ -354,7 +355,7 @@ export async function runHubSpotRevenueSourceRefreshForValidation(campaignId: st
   if (savedPlatformContext !== "ga4") {
     return { success: false, reason: "source_not_found", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
   }
-  const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: "ga4" } : null;
+  const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: "ga4", expectedSourceMappingConfig: String(source.mappingConfig) } : null;
   if (!mappingConfig?.selectedValues?.length) {
     return { success: false, reason: "missing_hubspot_revenue_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: "ga4" };
   }
@@ -787,6 +788,47 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
   }
 }
 
+export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+    console.log("[HubSpot Pipeline Refresh] Skipping run (refresh already in progress)");
+    return;
+  }
+  (global as any).__salesforcePipelineRefreshInProgress = true;
+
+  try {
+    const campaigns = await storage.getCampaigns();
+    for (const campaign of campaigns) {
+      const campaignId = String(campaign.id);
+      try {
+        const sources = await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]);
+        const hubspotSources = (Array.isArray(sources) ? sources : []).filter((source: any) =>
+          source?.isActive !== false
+          && String(source?.sourceType || "").trim().toLowerCase() === "hubspot"
+          && String(source?.platformContext || "").trim().toLowerCase() === "ga4"
+        );
+        for (const source of hubspotSources) {
+          if (isSourceOutsideCampaign(source, campaignId)) continue;
+          const parsedMappingConfig = safeJsonParse(source?.mappingConfig);
+          const mappingConfig = parsedMappingConfig ? { ...parsedMappingConfig, expectedSourceMappingConfig: String(source.mappingConfig) } : null;
+          const mappingContext = String(mappingConfig?.platformContext || mappingConfig?.platform || "").trim().toLowerCase();
+          if (
+            mappingContext !== "ga4"
+            || mappingConfig?.pipelineEnabled !== true
+            || !mappingConfig?.pipelineStageId
+            || !Array.isArray(mappingConfig?.selectedValues)
+            || mappingConfig.selectedValues.length === 0
+          ) continue;
+          await reprocessHubSpot(campaignId, mappingConfig, String(source.id));
+        }
+      } catch (e: any) {
+        console.error(`[HubSpot Pipeline Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
+      }
+    }
+  } finally {
+    (global as any).__salesforcePipelineRefreshInProgress = false;
+  }
+}
+
 export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
   if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
     console.log("[Salesforce Pipeline Refresh] Skipping run (refresh already in progress)");
@@ -904,7 +946,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
           for (const hubspotSource of hubspotRevenueSources) {
             hubspotRevenueCount++;
             const hubCfgRaw = safeJsonParse(hubspotSource?.mappingConfig);
-            const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx } : null;
+            const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx, expectedSourceMappingConfig: String(hubspotSource.mappingConfig) } : null;
             if (hubCfg?.selectedValues?.length) {
               attempted++;
               if (await reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))) { succeeded++; anyUpdated = true; }
@@ -1217,7 +1259,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
  * - Enabled by default (AUTO_REFRESH_ENABLED=true unless explicitly set to "false")
  * - Runs daily at 3:00 AM in AUTO_REFRESH_TIME_ZONE or GA4_DAILY_REFRESH_TIME_ZONE, default UTC
  * - Polls active Google Sheets spend sources every minute by default
- * - Polls active GA4 Salesforce Pipeline sources every 5 minutes by default
+ * - Polls active GA4 Salesforce and HubSpot Pipeline sources every 5 minutes by default
  * - Optional: run once on startup if AUTO_REFRESH_RUN_ON_STARTUP=true
  */
 export function startDailyAutoRefreshScheduler(): void {
@@ -1237,7 +1279,7 @@ export function startDailyAutoRefreshScheduler(): void {
   console.log(`   Enabled: ${config.enabled}`);
   console.log(`   Scheduled time: ${config.hour.toString().padStart(2, "0")}:${config.minute.toString().padStart(2, "0")} (${config.reportingTimeZone})`);
   console.log(`   Google Sheets spend interval: ${config.googleSheetsSpendIntervalMinutes} minute(s)`);
-  console.log(`   Salesforce Pipeline interval: ${config.salesforcePipelineIntervalMinutes} minute(s)`);
+  console.log(`   Salesforce + HubSpot Pipeline interval: ${config.salesforcePipelineIntervalMinutes} minute(s)`);
 
   autoRefreshSchedulerStatus.startedAt = new Date();
   const googleSheetsSpendIntervalMs = config.googleSheetsSpendIntervalMinutes * 60 * 1000;
@@ -1249,9 +1291,10 @@ export function startDailyAutoRefreshScheduler(): void {
   (global as any).__autoRefreshSchedulerInterval = setInterval(runGoogleSheetsSpendRefresh, googleSheetsSpendIntervalMs);
   const salesforcePipelineIntervalMs = config.salesforcePipelineIntervalMinutes * 60 * 1000;
   const runSalesforcePipelineRefresh = () => {
-    void runSalesforcePipelineAutoRefreshOnce().catch((e: any) => {
-      console.error("[Salesforce Pipeline Refresh] Interval run failed:", e?.message || e);
-    });
+    void runSalesforcePipelineAutoRefreshOnce()
+      .catch((e: any) => console.error("[Salesforce Pipeline Refresh] Interval run failed:", e?.message || e))
+      .then(() => runHubSpotPipelineAutoRefreshOnce())
+      .catch((e: any) => console.error("[HubSpot Pipeline Refresh] Interval run failed:", e?.message || e));
   };
   (global as any).__salesforcePipelineRefreshSchedulerInterval = setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
 

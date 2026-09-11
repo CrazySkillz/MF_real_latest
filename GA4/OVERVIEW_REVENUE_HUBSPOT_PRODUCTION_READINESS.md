@@ -14,6 +14,22 @@ This is the canonical readiness document for the GA4 Overview HubSpot Revenue
 source. It supersedes HubSpot status summaries in broader GA4 documents when
 those summaries conflict with this source-specific audit.
 
+Uncommitted Pipeline Proxy automation candidate (2026-09-11):
+
+- the exact deployed certification above remains bounded historical evidence;
+  it does not certify this candidate's new five-minute HubSpot Pipeline timer
+- the candidate reuses the saved active GA4 HubSpot mapping and stable revenue
+  source ID on the existing atomic save/materialization path, with an
+  optimistic mapping guard against scheduler/edit races
+- an open Overview polls the saved HubSpot Pipeline timestamp every minute and
+  refetches Total Revenue, Revenue Sources, and Revenue Breakdown after change
+- focused local regression evidence covers the selected-open-stage to Closed
+  Won movement, confirmed deal provenance, zero-proxy caching, idempotent source
+  replacement, ownership/context filters, and the unchanged Salesforce cadence
+- production certification of this added behavior remains pending a natural
+  deployed five-minute timer observation and a provider-authoritative mapped
+  deal transition; no unrelated certified section is broadened by this note
+
 Current controlling audit (2026-08-08):
 
 - pre-fix revision inspected: `deb368b16d7bd970a3f19dbac634eed199227b22`

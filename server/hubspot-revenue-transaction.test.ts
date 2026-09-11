@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => {
     records: originalRecords.map((record) => ({ ...record })),
     createdSource: null as any,
     failureStage: 'records' as 'source' | 'delete' | 'records' | 'connection' | null,
+    sourceUpdateReturnsEmpty: false,
   };
   const tx = {
     update: vi.fn(() => ({
@@ -39,6 +40,7 @@ const mocks = vi.hoisted(() => {
             const isSourceUpdate = Object.prototype.hasOwnProperty.call(values, 'displayName');
             if (isSourceUpdate) {
               if (state.failureStage === 'source') throw new Error('forced source update failure');
+              if (state.sourceUpdateReturnsEmpty) return [];
               state.source = { ...state.source, ...values };
               return [{ ...state.source }];
             }
@@ -122,9 +124,10 @@ describe('GA4 HubSpot revenue transaction rollback', () => {
     mocks.state.records = mocks.originalRecords.map((record) => ({ ...record }));
     mocks.state.createdSource = null;
     mocks.state.failureStage = 'records';
+    mocks.state.sourceUpdateReturnsEmpty = false;
   });
 
-  const replace = (storage: DatabaseStorage, existingSourceId: string | null = 'source-1') =>
+  const replace = (storage: DatabaseStorage, existingSourceId: string | null = 'source-1', expectedSourceMappingConfig?: string) =>
     storage.replaceGa4HubspotRevenueSourceWithRecords(
       'campaign-1',
       existingSourceId,
@@ -132,6 +135,7 @@ describe('GA4 HubSpot revenue transaction rollback', () => {
       '{version:updated}',
       updatedSource,
       updatedRecords,
+      expectedSourceMappingConfig,
     );
 
   it('commits connection metadata, source metadata, and records together', async () => {
@@ -172,6 +176,19 @@ describe('GA4 HubSpot revenue transaction rollback', () => {
   it('does not touch records or connection metadata when the source update fails', async () => {
     mocks.state.failureStage = 'source';
     await expect(replace(new DatabaseStorage())).rejects.toThrow('forced source update failure');
+
+    expect(mocks.tx.delete).not.toHaveBeenCalled();
+    expect(mocks.state.connection).toEqual(mocks.originalConnection);
+    expect(mocks.state.source).toEqual(mocks.originalSource);
+    expect(mocks.state.records).toEqual(mocks.originalRecords);
+  });
+
+  it('preserves the complete last-good source when its saved mapping changed during refresh', async () => {
+    mocks.state.failureStage = null;
+    mocks.state.sourceUpdateReturnsEmpty = true;
+    await expect(replace(new DatabaseStorage(), 'source-1', '{version:original}')).rejects.toMatchObject({
+      code: 'HUBSPOT_REVENUE_SOURCE_CHANGED',
+    });
 
     expect(mocks.tx.delete).not.toHaveBeenCalled();
     expect(mocks.state.connection).toEqual(mocks.originalConnection);

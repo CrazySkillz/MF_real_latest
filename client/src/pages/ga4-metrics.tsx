@@ -2250,6 +2250,8 @@ export default function GA4Metrics() {
     enabled: !insightsValidationReadOnly && !!campaignId && configuredPipelineSourceTypes.has("hubspot"),
     staleTime: 0,
     retry: false,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -2278,11 +2280,11 @@ export default function GA4Metrics() {
   });
 
   useEffect(() => {
-    if (!campaignId || !salesforcePipelineProxyData?.success || !salesforcePipelineProxyData?.lastUpdatedAt) return;
+    if (!campaignId || (!salesforcePipelineProxyData?.lastUpdatedAt && !hubspotPipelineProxyData?.lastUpdatedAt)) return;
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
-  }, [campaignId, queryClient, salesforcePipelineProxyData?.lastUpdatedAt, salesforcePipelineProxyData?.success]);
+  }, [campaignId, hubspotPipelineProxyData?.lastUpdatedAt, queryClient, salesforcePipelineProxyData?.lastUpdatedAt]);
 
   // Note: In GA4 daily mode we do NOT auto-fallback to LinkedIn spend.
   // For accuracy, spend must come from explicit spend sources (CSV/Sheets/manual/connector) that materialize daily spend rows.
@@ -6817,15 +6819,19 @@ export default function GA4Metrics() {
                           const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
-                          const confirmedRevenueItems = sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals)
+                          const hasConfirmedRevenueItems = (sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals))
+                            || (sourceType === "hubspot" && Array.isArray(cfg?.campaignValueRevenueTotals));
+                          const confirmedRevenueItems = hasConfirmedRevenueItems
                             ? cfg.campaignValueRevenueTotals
                               .map((item: any) => ({ name: String(item?.campaignValue || "").trim(), revenue: Number(item?.revenue) }))
                               .filter((item: any) => item.name && Number.isFinite(item.revenue))
                               .sort((a: any, b: any) => a.name.localeCompare(b.name))
                             : [];
-                          const confirmedRevenueItemsLabel = String(cfg?.campaignField || "").trim().toLowerCase() === "name"
-                            ? "Confirmed opportunities"
-                            : "Confirmed attributed values";
+                          const confirmedRevenueItemsLabel = sourceType === "hubspot" && String(cfg?.campaignProperty || "").trim().toLowerCase() === "dealname"
+                            ? "Confirmed deals"
+                            : String(cfg?.campaignField || "").trim().toLowerCase() === "name"
+                              ? "Confirmed opportunities"
+                              : "Confirmed attributed values";
                           const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
                           const sourceTypeText = mappedCampaignText
                             ? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText
@@ -6853,6 +6859,19 @@ export default function GA4Metrics() {
                                         aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}
                                       >
                                         <Edit className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                    {confirmedRevenueItems.length > 0 && sourceType === "hubspot" && (
+                                      <button
+                                        onClick={() => {
+                                          setShowRevenueSourcesDialog(false);
+                                          setDeletingRevenueSourceId(s.sourceId);
+                                        }}
+                                        className="shrink-0 rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                        title="Remove HubSpot revenue source"
+                                        aria-label="Remove HubSpot revenue source"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
                                       </button>
                                     )}
                                   </div>
@@ -6921,7 +6940,7 @@ export default function GA4Metrics() {
                                         <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
                                         <span className="text-right tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
                                         <div className="flex items-center justify-end gap-1">
-                                          <button
+                                          {sourceType === "salesforce" && <button
                                             onClick={() => {
                                               const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
                                               setShowRevenueSourcesDialog(false);
@@ -6936,7 +6955,7 @@ export default function GA4Metrics() {
                                             aria-label={`Remove ${item.name}`}
                                           >
                                             <Trash2 className="h-3.5 w-3.5" />
-                                          </button>
+                                          </button>}
                                         </div>
                                       </div>
                                     ))}

@@ -18576,13 +18576,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
       }
 
+      const cached = Number(cfg.pipelineTotalToDate || 0);
+      const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
+      const cachedValueTotals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+      const cachedIsUsable = Number.isFinite(cached) && cached >= 0 && cachedMode === 'current_stage'
+        && !!cfg.pipelineLastUpdatedAt && !cfg.pipelineWarning && (cached === 0 || cachedValueTotals.length > 0);
+      if (cachedIsUsable) {
+        return res.json({
+          success: true,
+          pipelineEnabled: true,
+          pipelineStageId: String(cfg.pipelineStageId),
+          pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
+          currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
+          lastUpdatedAt: String(cfg.pipelineLastUpdatedAt),
+          totalToDate: cached,
+          pipelineValueRevenueTotals: cachedValueTotals,
+          mode: cachedMode,
+          warning: null,
+        });
+      }
+
       // Recompute on-demand so UI isn't stuck with stale/wrong values.
       // For LinkedIn, the proxy is defined as the sum of deals CURRENTLY in the selected stage
       // (stage subset), not "entered stage at some point" (which is confusing and often equals Total Revenue).
       let recomputeFailed = false;
       try {
-        const cached = Number(cfg.pipelineTotalToDate || 0);
-        const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
         if (!Number.isFinite(cached) || cached <= 0 || cachedMode !== 'current_stage' || !Array.isArray(cfg.pipelineValueRevenueTotals)) {
           const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
           const campaignProp = String(cfg.campaignProperty || "").trim();
@@ -18897,6 +18915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateField: z.enum(["closedate", "hs_lastmodifieddate", "createdate"]).optional(),
           platformContext: zHubSpotRevenuePlatformContext.optional(),
           sourceId: z.string().trim().optional(),
+          expectedSourceMappingConfig: z.string().min(1).optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),
             linkedinCampaignUrn: z.string(),
@@ -18934,6 +18953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? await getActiveTikTokCampaignIdSet(campaignId)
             : new Set<string>();
       const requestedSourceId = String((body.data as any).sourceId || "").trim();
+      const expectedSourceMappingConfig = body.data.expectedSourceMappingConfig;
       if (requestedSourceId) {
         const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
@@ -19297,7 +19317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }));
             }
           } catch (error: any) {
-            if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE) throw error;
+            if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE || (platformCtx === 'ga4' && expectedSourceMappingConfig)) throw error;
             // ignore (proxy is optional)
           }
         }
@@ -19427,6 +19447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ga4HubspotConnectionMappingConfig,
             sourceValues,
             records,
+            expectedSourceMappingConfig,
           );
         } else {
           source = existingHubspot
@@ -19531,6 +19552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e) {
         console.warn("[HubSpot Save Mappings] Failed to materialize revenue records:", e);
         if (platformCtx === "ga4") {
+          if ((e as any)?.code === 'HUBSPOT_REVENUE_SOURCE_CHANGED') throw e;
           return res.status(500).json({ error: "Failed to materialize HubSpot revenue records" });
         }
       }
@@ -19546,7 +19568,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);
       const paginationIncomplete = error?.code === HUBSPOT_PAGINATION_ERROR_CODE;
-      res.status(paginationIncomplete ? 413 : 500).json({
+      const sourceChanged = error?.code === 'HUBSPOT_REVENUE_SOURCE_CHANGED';
+      res.status(paginationIncomplete ? 413 : sourceChanged ? 409 : 500).json({
         error: error.message || 'Failed to save HubSpot mappings',
         ...(paginationIncomplete ? { code: error.code } : {}),
       });

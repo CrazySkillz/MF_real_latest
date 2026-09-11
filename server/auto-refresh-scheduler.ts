@@ -22,6 +22,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
 import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
+import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-revenue-amount";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { randomUUID } from "crypto";
@@ -526,6 +527,15 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     const platformContext = String(mappingConfig.platformContext || source?.platformContext || "ga4") as any;
     if (platformContext === "ga4") {
       if (campaignCol === revenueCol || (dateCol && (dateCol === revenueCol || dateCol === campaignCol))) return false;
+      const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(mappedRows, {
+        revenueColumn: revenueCol,
+        campaignColumn: campaignCol || null,
+        campaignValues,
+      });
+      if (invalidAmountRows.length > 0) {
+        console.warn(`[Auto Refresh] Google Sheets revenue has ${invalidAmountRows.length} selected row(s) with unsupported amount formatting for campaign ${campaignId}; preserving last-good data`);
+        return false;
+      }
       const validation = aggregateCsvRevenueRows(mappedRows.map((row) => ({
         ...row,
         [revenueCol]: parseNum(row[revenueCol]),

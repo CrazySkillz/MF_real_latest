@@ -36,6 +36,7 @@ import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
 import { selectGoogleSheetsRevenuePreviewRows } from "./utils/google-sheets-revenue-preview";
+import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-revenue-amount";
 import { db } from "./db";
 import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
@@ -5224,6 +5225,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (dateCol && (dateCol === revenueCol || dateCol === campaignCol)) {
           return sendBadRequest(res, "Date column must be different from the Revenue and Campaign columns.");
+        }
+        const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(rows, {
+          revenueColumn: revenueCol,
+          campaignColumn: campaignCol,
+          campaignValue,
+          campaignValues,
+        });
+        if (invalidAmountRows.length > 0) {
+          return sendBadRequest(res, "Selected revenue rows contain unsupported amount formatting. Use plain numbers or US-style separators (for example 1234.56 or 1,234.56).");
         }
         const validation = aggregateCsvRevenueRows(rows, {
           revenueColumn: revenueCol,

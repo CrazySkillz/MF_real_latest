@@ -229,6 +229,38 @@ describe("GA4 external value auto-refresh regression guard", () => {
     );
   });
 
+  it("preserves last-good Google Sheets revenue when a selected amount format is unsupported", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
+    vi.spyOn(storage, "getRevenueSources").mockResolvedValue([{
+      id: "source-1",
+      campaignId: "campaign-1",
+      sourceType: "google_sheets",
+      platformContext: "ga4",
+      isActive: true,
+      currency: "USD",
+      mappingConfig: JSON.stringify({
+        connectionId: "conn-1",
+        revenueColumn: "Revenue",
+        campaignColumn: "Campaign",
+        campaignValues: ["Alpha"],
+        currency: "USD",
+      }),
+    }] as any);
+    vi.spyOn(storage, "getGoogleSheetsConnections").mockResolvedValue([{
+      id: "conn-1", campaignId: "campaign-1", spreadsheetId: "spreadsheet-1", sheetName: "Revenue", accessToken: "access-token",
+    }] as any);
+    const replace = vi.spyOn(storage, "replaceRevenueSourceWithRecords").mockResolvedValue({ id: "source-1" } as any);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sheets: [{ properties: { title: "Revenue", gridProperties: { rowCount: 2 } } }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ values: [["Revenue", "Campaign"], ["1.234,56", "Alpha"]] }), { status: 200 }));
+
+    await runGoogleSheetsRevenueAutoRefreshOnce();
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(warning).toHaveBeenCalledWith(expect.stringContaining("preserving last-good data"));
+  });
+
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {
     const content = schedulerFile();
 

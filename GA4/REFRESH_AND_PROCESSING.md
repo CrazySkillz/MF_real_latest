@@ -344,6 +344,7 @@ Google Sheets revenue refresh rule:
 - refresh must replace that source's own materialized revenue records before inserting refreshed rows
 - refresh must not create a duplicate source, update another source that shares the same connection, or append duplicate rows on repeated scheduler runs
 - if a `Date` column is mapped, daily revenue records are materialized from the dated rows; if no date column is mapped, the source remains revenue-to-date snapshot style
+- selected GA4 Google Sheets revenue cells must be blank, finite numeric values, plain decimal values, dollar-prefixed values, or valid US-grouped values; ambiguous locale or partial numeric text fails before foreground/scheduler replacement, and scheduler rejection preserves last-good data
 
 CRM auto-reprocess rule:
 

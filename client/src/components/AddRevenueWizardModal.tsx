@@ -1827,7 +1827,13 @@ export function AddRevenueWizardModal(props: {
                 )}
 
                 {!hideCrmSources && showSalesforceRevenueSource && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "salesforce" || crmDisconnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("salesforce")}>
+                  <Card
+                    className={`${crmHasSource.salesforce ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${crmConnecting === "salesforce" || crmDisconnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`}
+                    onClick={() => {
+                      if (crmHasSource.salesforce) return;
+                      void handleCrmSourceClick("salesforce");
+                    }}
+                  >
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
@@ -1861,7 +1867,7 @@ export function AddRevenueWizardModal(props: {
                           <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
-                      <CardDescription>{crmStatus.salesforce ? "Attribute opportunity revenue to this campaign." : crmHasSource.salesforce ? "Reconnect Salesforce to refresh this revenue source." : "Connect Salesforce to import opportunity revenue."}</CardDescription>
+                      <CardDescription>{crmHasSource.salesforce ? "Already added. Edit opportunities from Revenue Sources." : "Connect Salesforce to import opportunity revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}

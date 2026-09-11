@@ -142,7 +142,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });
 
-  it("reopens a connected Salesforce chooser card as an exact-source edit", () => {
+  it("disables an already-added Salesforce chooser card and preserves exact-source pencil editing", () => {
     const sourceClick = sliceBetween(
       addRevenueWizard,
       'const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {',
@@ -161,6 +161,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceClick).toContain('activeSalesforceSources.length !== 1');
     expect(sourceClick).toContain('!String(source?.id || "").trim()');
     expect(sourceClick).toContain('setSalesforcePickerEditSource(source)');
+    expect(addRevenueWizard).toContain('if (crmHasSource.salesforce) return;');
+    expect(addRevenueWizard).toContain('Already added. Edit opportunities from Revenue Sources.');
     expect(salesforceEmbed).toContain('sourceId={isSalesforceEditing ? String(salesforceEditSource?.id || "") : undefined}');
     expect(salesforceEmbed).toContain('autoStartOAuth={!isSalesforceEditing}');
     expect(salesforceEmbed).toContain('mode={isSalesforceEditing ? "edit" : "connect"}');

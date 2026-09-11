@@ -1614,7 +1614,7 @@ export function SalesforceRevenueWizard(props: {
                   </div>
 
                   <div className={reviewShowsCampaignMappings ? "md:col-span-2" : undefined}>
-                    <div className={reviewShowsCampaignMappings ? "grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)] gap-x-3" : undefined}>
+                    <div className={reviewShowsCampaignMappings ? "grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,2fr)] gap-x-3" : undefined}>
                       <div className="text-xs text-muted-foreground/70">Selected opportunity(ies)</div>
                       {reviewShowsCampaignMappings && <span aria-hidden="true" />}
                       {reviewShowsCampaignMappings && <div className="text-xs text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>}
@@ -1624,7 +1624,7 @@ export function SalesforceRevenueWizard(props: {
                         ? selectedValues.slice(0, 6).map((value) => {
                             const mapping = selectedCampaignMappings.find((item) => String(item.crmValue || "").trim() === value);
                             return reviewShowsCampaignMappings ? (
-                              <div key={value} className="grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)] items-center gap-x-3">
+                              <div key={value} className="grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,2fr)] items-center gap-x-3">
                                 <span className="min-w-0 break-words">{value}</span>
                                 <span aria-hidden="true" className="text-center text-muted-foreground/70">→</span>
                                 <span className="min-w-0 break-words text-muted-foreground">{mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "Not mapped"}</span>

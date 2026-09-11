@@ -2482,6 +2482,13 @@ export default function GA4Metrics() {
       materializedRevenueStatus: d.materializedRevenueStatus,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
+  const totalRevenueDisplaySources = useMemo(() => revenueDisplaySources.filter((source: any) => {
+    if (String(source?.sourceType || "").trim().toLowerCase() !== "hubspot" || source?.revenue == null || Number(source.revenue) !== 0) return true;
+    const cfg = typeof source?.mappingConfig === "string"
+      ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return null; } })()
+      : source?.mappingConfig;
+    return cfg?.pipelineEnabled !== true;
+  }), [revenueDisplaySources]);
   const persistedFinancialSourceCleanupAvailable =
     revenueDisplaySources.length > 0 || spendDisplaySources.length > 0;
   const pipelineProxyData = useMemo(() => {
@@ -2753,7 +2760,7 @@ export default function GA4Metrics() {
   }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
-  const revenueSourcesCount = revenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);
+  const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
   const hasPipelineProxy = !!pipelineProxyData?.success;
   const pipelineProxyConfigured = configuredPipelineSourceTypes.size > 0;
@@ -6816,7 +6823,7 @@ export default function GA4Metrics() {
                             <p className="font-medium tabular-nums text-foreground">{formatMoney(ga4RevenueForFinancials)}</p>
                           </div>
                         )}
-                        {revenueDisplaySources.map((s: any) => {
+                        {totalRevenueDisplaySources.map((s: any) => {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                           const sourceType = String(s.sourceType || "").trim().toLowerCase();
                           const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
@@ -7047,7 +7054,36 @@ export default function GA4Metrics() {
                           <div key={`${entry?.providerLabel || "provider"}-${idx}`} className="rounded-md border border-border p-3 text-sm">
                             <div className="flex items-center justify-between gap-3">
                               <p className="font-medium text-foreground">{entry?.providerLabel || "Provider"}</p>
-                              <p className="font-medium tabular-nums text-foreground">{formatMoney(Number(entry?.totalToDate || 0))}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium tabular-nums text-foreground">{formatMoney(Number(entry?.totalToDate || 0))}</p>
+                                {String(entry?.sourceType || "").trim().toLowerCase() === "hubspot" && entry?.sourceId && ga4ConnectionUsable && (
+                                  <button
+                                    onClick={() => {
+                                      setShowPipelineProxySourcesDialog(false);
+                                      setEditingRevenueSource({ id: entry.sourceId, sourceType: entry.sourceType, displayName: entry.displayName, mappingConfig: entry.mappingConfig, revenue: 0 });
+                                      setShowRevenueDialog(true);
+                                    }}
+                                    className="rounded p-1 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                                    title="Edit HubSpot revenue source"
+                                    aria-label="Edit HubSpot revenue source"
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                {String(entry?.sourceType || "").trim().toLowerCase() === "hubspot" && entry?.sourceId && (
+                                  <button
+                                    onClick={() => {
+                                      setShowPipelineProxySourcesDialog(false);
+                                      setDeletingRevenueSourceId(String(entry.sourceId));
+                                    }}
+                                    className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                    title="Remove HubSpot revenue source"
+                                    aria-label="Remove HubSpot revenue source"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
                               {Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0

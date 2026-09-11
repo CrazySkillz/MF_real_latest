@@ -299,7 +299,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const revenueSourcesDialog = sliceBetween(
       client,
-      "{revenueDisplaySources.map((s: any) => {",
+      "{totalRevenueDisplaySources.map((s: any) => {",
       "<AlertDialog open={!!deletingRevenueSourceId}"
     );
     const mappedCampaignLabelHelper = sliceBetween(
@@ -346,6 +346,13 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueExportBlock).not.toContain("Pipeline Proxy");
     expect(revenueSourcesDialog).toContain("isPipelineOnlyRevenueSource");
     expect(revenueSourcesDialog).toContain("Pipeline Proxy only");
+    expect(client).toContain('const totalRevenueDisplaySources = useMemo(() => revenueDisplaySources.filter((source: any) => {');
+    expect(client).toContain('String(source?.sourceType || "").trim().toLowerCase() !== "hubspot" || source?.revenue == null || Number(source.revenue) !== 0');
+    expect(client).toContain("return cfg?.pipelineEnabled !== true;");
+    expect(client).toContain("const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");
+    expect(client).toContain("{totalRevenueDisplaySources.map((s: any) => {");
+    expect(client).toContain('aria-label="Edit HubSpot revenue source"');
+    expect(client).toContain('aria-label="Remove HubSpot revenue source"');
     expect(mappedCampaignLabelHelper).toContain('const sourceType = String(source?.sourceType || "").trim().toLowerCase()');
     expect(mappedCampaignLabelHelper).toContain('sourceType !== "hubspot" && sourceType !== "shopify"');
     expect(mappedCampaignLabelHelper).toContain("cfg?.campaignMappings");

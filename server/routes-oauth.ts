@@ -19840,13 +19840,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(tokens?.message || 'Failed to refresh HubSpot access token');
       }
 
+      const expiresInSeconds = Number(tokens.expires_in ?? tokens.expiresIn);
+      if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) {
+        throw new Error('HubSpot token refresh returned an invalid expiration');
+      }
+      const renewedExpiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+
       const updateData: any = {
         accessToken: tokens.access_token,
-        expiresAt: tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000) : undefined,
+        expiresAt: renewedExpiresAt,
       };
       if (tokens.refresh_token) updateData.refreshToken = String(tokens.refresh_token);
       const updated: any = await storage.updateHubspotConnection(connectionId, updateData);
-      if (!updated?.accessToken || (tokens.refresh_token && updated.refreshToken !== String(tokens.refresh_token))) {
+      if (!updated?.accessToken
+        || new Date(updated.expiresAt || 0).getTime() !== renewedExpiresAt.getTime()
+        || (tokens.refresh_token && updated.refreshToken !== String(tokens.refresh_token))) {
         throw new Error('Failed to persist renewed HubSpot OAuth credentials');
       }
       return String(updated.accessToken);

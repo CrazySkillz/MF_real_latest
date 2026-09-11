@@ -145,7 +145,7 @@ Current-value hierarchy:
 - GA4 traffic Benchmark current values accumulate from the saved initial-import boundary through the latest completed reporting day; the configured import depth does not become a rolling window after setup
 - financial Benchmark current values retain the campaign-to-date native/imported revenue and spend contract documented in `GA4/FINANCIAL_SOURCES.md`
 - saved timeframe or period fields are target metadata and do not replace the authoritative cumulative current-value window
-- HubSpot imported revenue must enter GA4 financial Benchmark values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); the three exact enabled HubSpot source IDs retain historical bounded evidence, while the current HubSpot implementation is unverified after later automation/shared changes. `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` is the readiness record and `GA4/CRM_REVENUE_SOURCE_PATTERN.md` is the current implementation handoff
+- HubSpot imported revenue must enter GA4 financial Benchmark values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); the current HubSpot implementation is unverified only until the final local OAuth expiry-persistence correction is deployed and its renewed expiry is observed. Current bounded evidence is recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`
 - if dependencies are missing, the benchmark should be blocked instead of showing a misleading value
 
 Campaign-level benchmark source previews:

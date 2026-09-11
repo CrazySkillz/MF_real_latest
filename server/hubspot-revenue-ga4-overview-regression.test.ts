@@ -387,8 +387,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueSourcesDialog).toContain('sourceType === "hubspot" && <button');
     expect(revenueSourcesDialog).toContain("setDeletingHubSpotRevenueItem({");
     expect(revenueSourcesDialog).not.toContain('aria-label="Remove HubSpot revenue source"');
-    expect(revenueSourcesDialog).toContain('sourceType !== "shopify" && sourceType !== "hubspot" && <p');
-    expect(revenueSourcesDialog).toContain('sourceType !== "hubspot" && <p');
+    expect(revenueSourcesDialog).toContain('sourceType !== "shopify" && sourceType !== "hubspot" && sourceType !== "salesforce" && <p');
+    expect(revenueSourcesDialog).not.toContain('sourceType !== "hubspot" && <p');
     expect(client).not.toContain('"Confirmed deals"');
     expect(client).toContain("const removeSalesforceRevenueItem = async () => {");
   });

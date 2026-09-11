@@ -20,7 +20,11 @@ describe('HubSpot OAuth refresh-token rotation', () => {
     expect(refresh).toContain("throw new Error('HubSpot connection changed during token refresh')");
     expect(refresh).toContain('refresh_token: String(latest.refreshToken)');
     expect(refresh).toContain('if (tokens.refresh_token) updateData.refreshToken = String(tokens.refresh_token);');
+    expect(refresh).toContain('const expiresInSeconds = Number(tokens.expires_in ?? tokens.expiresIn);');
+    expect(refresh).toContain("throw new Error('HubSpot token refresh returned an invalid expiration')");
+    expect(refresh).toContain('expiresAt: renewedExpiresAt');
     expect(refresh).toContain('const updated: any = await storage.updateHubspotConnection(connectionId, updateData);');
+    expect(refresh).toContain('new Date(updated.expiresAt || 0).getTime() !== renewedExpiresAt.getTime()');
     expect(refresh).toContain('updated.refreshToken !== String(tokens.refresh_token)');
     expect(refresh).toContain('hubspotTokenRefreshes.set(connectionId, refreshPromise);');
     expect(refresh).toContain('hubspotTokenRefreshes.delete(connectionId);');

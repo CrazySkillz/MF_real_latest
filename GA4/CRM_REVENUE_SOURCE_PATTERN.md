@@ -4,7 +4,7 @@
 
 This document is the implementation handoff for GA4 child revenue sources backed by a CRM. It describes the code behavior introduced through Salesforce code commit `5987024a` and the HubSpot automation work committed in `f4a3e8d7`.
 
-It is a behavior and parity reference, not a production-readiness certificate. Salesforce is the current reference implementation. HubSpot is only partially aligned and remains **UNVERIFIED for the current implementation** until the gaps and validation gates below are closed. Historical source-family certificates remain bounded to their recorded runtime, source IDs, campaign, and configuration.
+It is a behavior and parity reference, not a production-readiness certificate. Salesforce is the reference implementation. HubSpot follows the exercised Salesforce lifecycle and refresh pattern, but remains **UNVERIFIED for the current implementation** until the final OAuth expiry-persistence correction is deployed and observed. Historical source-family certificates remain bounded to their recorded runtime, source IDs, campaign, and configuration.
 
 Read this with:
 
@@ -117,28 +117,26 @@ A zero proxy after the transition is a valid configured `$0.00`, not `Unavailabl
 | Behavior | Salesforce reference | HubSpot current state |
 | --- | --- | --- |
 | Initial GA4 source setup | Visible chooser card | Visible chooser card |
-| Chooser after an active source exists | Disabled; directs user to Revenue Sources pencil | Still permits the connected entry flow; parity decision/implementation remains |
-| Edit entry | Provider-level pencil; starts at Source with stable source ID | Existing source edit is supported; re-trace before changing shared UI |
+| Chooser after an active source exists | Disabled; directs user to Revenue Sources pencil | Disabled; directs user to Revenue Sources pencil |
+| Edit entry | Provider-level pencil; starts at Source with stable source ID | Provider-level pencil; starts at Source with stable source ID |
 | Review mapping layout | Two aligned columns with directional arrows | Mapping is shown, but exact Salesforce layout parity is not established |
 | Confirmed source breakdown | Itemized from `campaignValueRevenueTotals` | Itemized from `campaignValueRevenueTotals` |
-| Remove one selected record/value | Exact Salesforce item removal | Exact HubSpot item removal is implemented locally through the same stable-source replacement contract; deployed validation remains pending |
-| Five-minute refresh with Pipeline enabled | Yes | Implemented locally in `f4a3e8d7`; deployed natural-timer/provider transition proof remains pending |
-| Five-minute refresh with Pipeline disabled | Yes | Implemented locally; deployed natural-timer proof remains pending |
-| Open-stage to Closed Won automation | User-validated for the exercised Salesforce source; local regression covered | Local regression covered; deployed provider-authoritative transition remains pending |
-| Full daily external-source run | Code path exists; final current-cycle validation was intentionally deferred | Code path exists; must be validated after HubSpot parity work |
-| Current production-readiness status | Scoped exercised behavior only; no whole-source or whole-Overview certification claim | Unverified for current implementation; historical exact-source evidence remains historical |
+| Remove one selected record/value | Exact Salesforce item removal | Exact HubSpot item removal; deployed validation passed for the exercised source |
+| Five-minute refresh with Pipeline enabled | Yes | Deployed natural-timer refresh and provider transition passed for three exact sources |
+| Five-minute refresh with Pipeline disabled | Yes | Deployed natural-timer refresh passed for two exact sources |
+| Open-stage to Closed Won automation | User-validated for the exercised Salesforce source; local regression covered | User-validated for the exercised HubSpot source; local regression covered |
+| Full daily external-source run | Code path exists; final current-cycle validation was intentionally deferred | Natural run fired and exact HubSpot sources refreshed; global success is unproven because unrelated jobs failed |
+| Current production-readiness status | Scoped exercised behavior only; no whole-source or whole-Overview certification claim | Unverified only until deployed OAuth expiry persistence is observed |
 
-## HubSpot Parity Work Order
+## Remaining HubSpot Certification Gate
 
-The next HubSpot session should continue on the current branch and preserve certified sections. It should:
+The remaining work must preserve the established lifecycle and analytics contracts. It should:
 
-1. trace the existing HubSpot wizard, save/materialization route, source modal, and `runHubSpotPipelineAutoRefreshOnce()` end to end before editing
-2. preserve HubSpot source IDs, campaign/platform ownership checks, currency/date semantics, atomic replacement, and optimistic mapping concurrency
-3. preserve the locally implemented HubSpot five-minute eligibility for active exact GA4 mappings with selected values; require the pipeline stage only when `pipelineEnabled=true`
-4. validate after deployment that revenue-only HubSpot sources refresh confirmed revenue without configuring Pipeline Proxy
-5. prove that a selected deal moving from the chosen open stage to Closed Won atomically decreases Pipeline Proxy and increases confirmed Total Revenue/provenance exactly once
-6. address chooser, review-layout, or exact-row-delete parity only when explicitly in scope; do not bundle those UX changes into the scheduler correction
-7. run focused HubSpot and shared scheduler tests, TypeScript checks, and current deployed manual validation without broadening any historical certificate
+1. deploy the localized OAuth expiry-persistence correction without changing saved mappings, source records, calculations, or public contracts
+2. let an expired HubSpot connection renew through the existing automatic refresh path
+3. verify read-only that the same active connection's persisted `expiresAt` advances to the renewed future expiry
+4. retain **UNVERIFIED** status if renewal fails, persistence does not advance, or the exact connection/source boundary cannot be proven
+5. update the canonical HubSpot readiness status only after that deployed proof passes
 
 Primary implementation files:
 
@@ -163,19 +161,19 @@ Primary focused regressions include:
 - `server/ga4-daily-scheduler-regression.test.ts`
 - `server/ga4-scheduler-observability-regression.test.ts`
 
-## Copy-Ready Prompt For The HubSpot Session
+## Copy-Ready Prompt For Final Deployed Validation
 
-> Continue on the current branch and preserve certified sections. Read `AGENTS.md`, `ARCHITECTURE_USER_JOURNEY.md`, `PRODUCTION_READINESS.md`, `GA4/README.md`, `GA4_DEVELOPMENT_WORKFLOW.md`, and `GA4/CRM_REVENUE_SOURCE_PATTERN.md` before editing. Reconcile HubSpot against the implemented Salesforce CRM revenue reference through `5987024a`, while retaining the HubSpot work in `f4a3e8d7`. Trace the HubSpot wizard, save/materialization route, stable source identity, source modal, five-minute scheduler, full daily scheduler, and Overview refetch path end to end. Make the smallest safe fix so every active exact GA4 HubSpot mapping with selected values refreshes confirmed revenue on the five-minute CRM loop even when Pipeline Proxy is disabled; require a pipeline stage only when Pipeline Proxy is enabled. Preserve campaign/platform ownership, currency/date semantics, atomic replacement, optimistic concurrency, and response contracts. Prove that a selected deal moving from the chosen open stage to Closed Won leaves Pipeline Proxy and enters Total Revenue plus itemized Revenue Sources provenance exactly once without a wizard resave or duplicate source. Do not bundle chooser, review-layout, or deal-row-delete UX parity unless explicitly requested. Run the focused HubSpot and shared scheduler regressions, `npm run check`, and give a separate deployed validation plan for the five-minute transition and the full daily scheduler. Do not call HubSpot or Overview production-ready unless the current required evidence is complete.
+> Continue on the current branch and preserve certified sections. Confirm Render serves the exact commit containing the HubSpot OAuth expiry-persistence correction. Without changing provider or application data, observe an automatic HubSpot refresh after stored token expiry and verify read-only that the same active connection's persisted `expiresAt` advances to a future renewed value. Confirm the exact HubSpot sources still refresh through stable source IDs and retain last-good data. Do not claim global scheduler health from unrelated jobs. Update `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` and its guarded entry points only if this final deployed proof passes.
 
 ## Validation Boundary At This Handoff
 
 Current Salesforce evidence includes focused local regressions and TypeScript validation, plus user-observed deployed add/edit/delete, itemized provenance, open-stage-to-Closed-Won movement, and five-minute revenue-only amount refresh. The exercised transition moved `$200` from Pipeline Proxy into confirmed revenue; a later revenue-only amount edit from `$50` to `$51` refreshed without a wizard resave.
 
+Current HubSpot evidence at deployed runtime `ce3eaeaf` includes user-observed add/edit/delete, exact item removal, itemized provenance, provider-authoritative open-stage-to-Closed-Won movement, open-Overview updates, and expired-token provider search without reconnecting. Five exact active GA4 HubSpot sources then refreshed automatically on the five-minute loop, including three Pipeline-enabled and two revenue-only sources. The final local OAuth expiry-persistence correction remains deployment-unverified; use the canonical HubSpot readiness document for exact IDs and exclusions.
+
 Not proven by that evidence:
 
-- the full daily external-source scheduler at the current CRM code boundary
+- global success of the full daily external-source scheduler; its current run contained unrelated job failures
 - every Salesforce org, stage configuration, attribution field, mapping, currency, or date-field variant
-- current HubSpot deployed five-minute natural timer behavior
-- a current provider-authoritative HubSpot open-stage-to-Closed-Won transition
-- HubSpot revenue-only five-minute refresh, which is not yet implemented
+- deployed persistence of the final HubSpot OAuth expiry correction
 - whole GA4 Overview or whole CRM source production readiness

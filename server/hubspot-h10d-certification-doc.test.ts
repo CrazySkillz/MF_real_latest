@@ -18,11 +18,11 @@ describe("HubSpot certification documentation", () => {
     const mandatoryStatus = canonical.slice(canonical.indexOf("## Mandatory status"), canonical.indexOf("## Authority and evidence rules"));
     const certificationGate = canonical.slice(canonical.lastIndexOf("## Certification gate"));
 
-    expect(mandatoryStatus).toContain("Current status: UNVERIFIED for the current HubSpot implementation");
-    expect(mandatoryStatus).toContain("checked only for");
-    expect(mandatoryStatus).toContain("not parity with campaign currency");
+    expect(mandatoryStatus).toContain("Current status: UNVERIFIED pending deployment of the final OAuth expiry-persistence correction");
+    expect(mandatoryStatus).toContain("deployed and its renewed `expiresAt` value observed before clean certification");
+    expect(mandatoryStatus).toContain("The former clean certification remains historical bounded evidence");
     expect(canonical).toContain("0df257a6fe47f65e1489ede6202a954588ad3c65");
-    expect(certificationGate).toContain("Current decision: UNVERIFIED for the current HubSpot implementation");
+    expect(certificationGate).toContain("Current decision: UNVERIFIED pending deployment of the final OAuth expiry-persistence correction");
     expect(canonical).toContain("### Current Commit H10d — final reconciliation");
     expect(canonical).toContain("GA4-native daily-table freshness");
     expect(canonical).toContain("Future and non-certified boundaries");
@@ -44,7 +44,7 @@ describe("HubSpot certification documentation", () => {
       ["README.md", "HubSpot Revenue status: **UNVERIFIED for the current implementation**"],
       ["OVERVIEW.md", "current HubSpot implementation is unverified"],
       ["OVERVIEW_PRODUCTION_READINESS.md", "current HubSpot implementation is unverified"],
-      ["FINANCIAL_SOURCES.md", "current implementation is unverified after `f4a3e8d7`"],
+      ["FINANCIAL_SOURCES.md", "current implementation is unverified only until the final local OAuth expiry-persistence correction"],
       ["KPIS.md", "current HubSpot implementation is unverified"],
       ["BENCHMARKS.md", "current HubSpot implementation is unverified"],
     ]);

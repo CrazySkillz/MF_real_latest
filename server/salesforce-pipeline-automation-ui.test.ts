@@ -129,7 +129,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('grid-cols-[minmax(0,1fr)_6rem_3.5rem]');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 ? "col-span-2" : ""');
     expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (');
     expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
     expect(sourceDialog).toContain('aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}');
@@ -149,11 +149,11 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
       '<Dialog open={showSpendSourcesDialog}',
     );
 
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify"');
+    expect(sourceDialog).toContain('sourceType !== "shopify" && (');
     expect(sourceDialog).toContain('className="col-start-1 row-start-2 min-w-0 self-center truncate text-xs text-muted-foreground/70"');
+    expect(sourceDialog).toContain('className="col-start-2 row-start-2 self-center text-right font-medium tabular-nums text-foreground"');
     expect(sourceDialog).toContain('className="col-start-3 row-start-2 flex items-center justify-end"');
     expect(sourceDialog).toContain('aria-label="Remove Shopify revenue source"');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
   });
 
   it("shows selected Salesforce campaign mappings in review before save", () => {

@@ -6858,12 +6858,17 @@ export default function GA4Metrics() {
                                   </div>
                                   {sourceType !== "shopify" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
                                 </div>
-                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""}`}>
-                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
-                                </span>
+                                {sourceType !== "shopify" && (
+                                  <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 ? "col-span-2" : ""}`}>
+                                    {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                  </span>
+                                )}
                                 {sourceType === "shopify" && (
                                   <>
                                     <p className="col-start-1 row-start-2 min-w-0 self-center truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>
+                                    <span className="col-start-2 row-start-2 self-center text-right font-medium tabular-nums text-foreground">
+                                      {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                    </span>
                                     <div className="col-start-3 row-start-2 flex items-center justify-end">
                                       <button
                                         onClick={() => {

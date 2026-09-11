@@ -854,8 +854,6 @@ export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
           const mappingContext = String(mappingConfig?.platformContext || mappingConfig?.platform || "").trim().toLowerCase();
           if (
             mappingContext !== "ga4"
-            || mappingConfig?.pipelineEnabled !== true
-            || !mappingConfig?.pipelineStageName
             || !Array.isArray(mappingConfig?.selectedValues)
             || mappingConfig.selectedValues.length === 0
           ) continue;

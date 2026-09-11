@@ -26,15 +26,15 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     delete (global as any).__salesforcePipelineRefreshInProgress;
   });
 
-  it("executes only the eligible source and preserves its stable ID", async () => {
+  it("refreshes pipeline-enabled and revenue-only sources while preserving stable IDs", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
       { id: "sf-valid", campaignId: "campaign-1", sourceType: "salesforce", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ platformContext: "ga4", pipelineEnabled: true, pipelineStageName: "Prospecting", selectedValues: ["Delta"] }) },
       { id: "sf-legacy", campaignId: "campaign-1", sourceType: "salesforce", platformContext: null, isActive: true, mappingConfig: JSON.stringify({ pipelineEnabled: true, pipelineStageName: "Prospecting", selectedValues: ["Legacy"] }) },
-      { id: "sf-disabled", campaignId: "campaign-1", sourceType: "salesforce", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ platformContext: "ga4", pipelineEnabled: false, pipelineStageName: "Prospecting", selectedValues: ["Disabled"] }) },
+      { id: "sf-revenue-only", campaignId: "campaign-1", sourceType: "salesforce", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ platformContext: "ga4", pipelineEnabled: false, pipelineStageName: null, selectedValues: ["Revenue only"] }) },
       { id: "sf-malformed", campaignId: "campaign-1", sourceType: "salesforce", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ platformContext: "ga4", pipelineEnabled: true, pipelineStageName: "Prospecting", selectedValues: "Delta" }) },
     ] as any);
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({
       success: true,
       totalRevenue: 350,
       materializedRecordCount: 3,
@@ -44,19 +44,29 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     await runSalesforcePipelineAutoRefreshOnce();
 
     expect(storage.getRevenueSources).toHaveBeenCalledWith("campaign-1", "ga4");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchMock.mock.calls[0];
-    expect(String(url)).toContain("/api/campaigns/campaign-1/salesforce/save-mappings");
-    expect(JSON.parse(String(options?.body))).toMatchObject({
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const requests = fetchMock.mock.calls.map(([url, options]) => ({
+      url: String(url),
+      body: JSON.parse(String(options?.body)),
+    }));
+    expect(requests[0].url).toContain("/api/campaigns/campaign-1/salesforce/save-mappings");
+    expect(requests[0].body).toMatchObject({
       sourceId: "sf-valid",
       platformContext: "ga4",
       pipelineEnabled: true,
       pipelineStageName: "Prospecting",
       selectedValues: ["Delta"],
     });
+    expect(requests[1].body).toMatchObject({
+      sourceId: "sf-revenue-only",
+      platformContext: "ga4",
+      pipelineEnabled: false,
+      pipelineStageName: null,
+      selectedValues: ["Revenue only"],
+    });
   });
 
-  it("polls only explicit active GA4 Salesforce Pipeline sources through the stable source save path", () => {
+  it("polls active GA4 Salesforce revenue sources through the stable source save path", () => {
     const refresh = sliceBetween(
       scheduler,
       "export async function runSalesforcePipelineAutoRefreshOnce",
@@ -71,7 +81,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(refresh).toContain('String(source?.sourceType || "").trim().toLowerCase() === "salesforce"');
     expect(refresh).toContain('String(source?.platformContext || "").trim().toLowerCase() === "ga4"');
     expect(refresh).toContain('mappingContext !== "ga4"');
-    expect(refresh).toContain("mappingConfig?.pipelineEnabled !== true");
+    expect(refresh).not.toContain("mappingConfig?.pipelineEnabled !== true");
+    expect(refresh).not.toContain("!mappingConfig?.pipelineStageName");
     expect(refresh).toContain("!Array.isArray(mappingConfig?.selectedValues)");
     expect(refresh).toContain("isSourceOutsideCampaign(source, campaignId)");
     expect(refresh).toContain("reprocessSalesforce(campaignId, mappingConfig, String(source.id))");

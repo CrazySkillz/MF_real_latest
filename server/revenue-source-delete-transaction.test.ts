@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => {
   const state = {
     sources: originalSources.map((source) => ({ ...source })),
     records: originalRecords.map((record) => ({ ...record })),
-    failureStage: null as "source" | "records" | null,
+    failureStage: null as "source" | "records" | "conflict" | null,
   };
   const tx = {
     update: vi.fn(() => ({
@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
         where: vi.fn(() => ({
           returning: vi.fn(async () => {
             if (state.failureStage === "source") throw new Error("forced source deactivation failure");
+            if (state.failureStage === "conflict") return [];
             state.sources[0] = { ...state.sources[0], ...values };
             return [{ id: "source-1" }];
           }),
@@ -93,6 +94,24 @@ describe("revenue source delete transaction", () => {
 
     await expect(storage.deleteRevenueSourceWithRecords("campaign-1", "source-1", "ga4"))
       .rejects.toThrow("forced source deactivation failure");
+    expect(mocks.tx.delete).not.toHaveBeenCalled();
+    expect(mocks.state.sources).toEqual(mocks.originalSources);
+    expect(mocks.state.records).toEqual(mocks.originalRecords);
+  });
+
+  it("retains last-good records when an optimistic source replacement conflicts", async () => {
+    const storage = new DatabaseStorage();
+    mocks.state.failureStage = "conflict";
+
+    await expect(storage.replaceRevenueSourceWithRecords(
+      "campaign-1",
+      "source-1",
+      "google_sheets",
+      "ga4",
+      { campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", mappingConfig: "new" } as any,
+      [{ campaignId: "campaign-1", date: "2026-08-01", revenue: "200.00" } as any],
+      "expected-old",
+    )).rejects.toMatchObject({ code: "REVENUE_SOURCE_CHANGED" });
     expect(mocks.tx.delete).not.toHaveBeenCalled();
     expect(mocks.state.sources).toEqual(mocks.originalSources);
     expect(mocks.state.records).toEqual(mocks.originalRecords);

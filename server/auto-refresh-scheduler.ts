@@ -20,7 +20,7 @@ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
-import { aggregateCsvRevenueRows } from "./utils/csv";
+import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { randomUUID } from "crypto";
@@ -433,31 +433,48 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       const allConns = await storage.getGoogleSheetsConnections(campaignId);
       conn = (allConns as any[]).find((c: any) => String(c.id) === connectionId);
     }
-    if (!conn || !conn.accessToken) {
+    if (!conn) {
       console.warn(`[Auto Refresh] Google Sheets revenue: connection ${connectionId} not found for campaign ${campaignId}`);
       return false;
     }
 
     // Read sheet data with token refresh
-    let accessToken = conn.accessToken;
+    let accessToken = String(conn.accessToken || "");
+    const refreshAccessToken = async (): Promise<string | null> => {
+      if (!conn.refreshToken || !conn.clientId || !conn.clientSecret) return null;
+      const tr = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: conn.refreshToken, client_id: conn.clientId, client_secret: conn.clientSecret }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!tr.ok) return null;
+      const tokens = await tr.json();
+      const nextAccessToken = String(tokens.access_token || "");
+      if (!nextAccessToken) return null;
+      await storage.updateGoogleSheetsConnection(conn.id, {
+        accessToken: nextAccessToken,
+        expiresAt: new Date(Date.now() + (tokens.expires_in || 3600) * 1000),
+        ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
+      } as any);
+      if (tokens.refresh_token) conn.refreshToken = tokens.refresh_token;
+      return nextAccessToken;
+    };
+    if (!accessToken) {
+      accessToken = await refreshAccessToken().catch(() => null) || "";
+      if (!accessToken) return false;
+    }
     const sheetName = conn.sheetName ? String(conn.sheetName).trim() : "";
-    const range = sheetName ? `'${sheetName.replace(/'/g, "''")}'!A1:ZZ5000` : "A1:ZZ5000";
+    const range = sheetName ? `'${sheetName.replace(/'/g, "''")}'!A1:ZZ5001` : "A1:ZZ5001";
     let resp = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
       { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }
     );
-    if (resp.status === 401 && conn.refreshToken && conn.clientId && conn.clientSecret) {
+    if (resp.status === 401) {
       try {
-        const tr = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: conn.refreshToken, client_id: conn.clientId, client_secret: conn.clientSecret }),
-          signal: AbortSignal.timeout(15000),
-        });
-        if (tr.ok) {
-          const tokens = await tr.json();
-          accessToken = tokens.access_token;
-          await storage.updateGoogleSheetsConnection(conn.id, { accessToken, expiresAt: new Date(Date.now() + (tokens.expires_in || 3600) * 1000) } as any);
+        const refreshedAccessToken = await refreshAccessToken();
+        if (refreshedAccessToken) {
+          accessToken = refreshedAccessToken;
           resp = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
             { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }
@@ -472,6 +489,10 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
 
     const data = await resp.json();
     const allRows = data.values || [];
+    if (allRows.length > 5000) {
+      console.warn(`[Auto Refresh] Google Sheets revenue exceeds the supported 4,999 data rows for campaign ${campaignId}; retaining last-good data`);
+      return false;
+    }
     if (allRows.length < 2) return false;
     const headers: string[] = allRows[0];
     const dataRows: string[][] = allRows.slice(1);
@@ -490,7 +511,8 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     const parseNum = (v: any) => { const n = parseFloat(String(v || "0").replace(/[^0-9.\-]/g, "")); return Number.isFinite(n) ? n : 0; };
 
     const dateCol = mappingConfig.dateColumn ? String(mappingConfig.dateColumn) : null;
-    if (String(mappingConfig.platformContext || source?.platformContext || "") === "ga4") {
+    const platformContext = String(mappingConfig.platformContext || source?.platformContext || "ga4") as any;
+    if (platformContext === "ga4") {
       if (campaignCol === revenueCol || (dateCol && (dateCol === revenueCol || dateCol === campaignCol))) return false;
       const validation = aggregateCsvRevenueRows(mappedRows.map((row) => ({
         ...row,
@@ -506,6 +528,7 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     let totalRevenue = 0;
     let kept = 0;
     const dailyRevenueMap = new Map<string, number>(); // date -> revenue
+    const campaignValueRevenueTotals = new Map<string, number>();
     for (const rowObj of mappedRows) {
       if (campaignCol && campaignValueSet) {
         const v = String(rowObj[campaignCol] ?? "").trim();
@@ -515,14 +538,19 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       if (rev > 0) {
         totalRevenue += rev;
         kept++;
+        const campaignKey = campaignCol ? String(rowObj[campaignCol] ?? "").trim() : "";
+        if (platformContext === "ga4" && campaignKey) {
+          campaignValueRevenueTotals.set(campaignKey, (campaignValueRevenueTotals.get(campaignKey) || 0) + rev);
+        }
 
         // Track daily revenue if date column provided
         if (dateCol) {
           const dateStr = String(rowObj[dateCol] ?? "").trim();
           if (dateStr) {
-            const date = new Date(dateStr);
-            if (!isNaN(date.getTime())) {
-              const normalizedDate = date.toISOString().split('T')[0];
+            const normalizedDate = platformContext === "ga4"
+              ? normalizeFinancialSourceDateKey(dateStr)
+              : (!isNaN(new Date(dateStr).getTime()) ? new Date(dateStr).toISOString().split('T')[0] : null);
+            if (normalizedDate) {
               dailyRevenueMap.set(normalizedDate, (dailyRevenueMap.get(normalizedDate) || 0) + rev);
             }
           }
@@ -533,11 +561,13 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     const total = Number(totalRevenue.toFixed(2));
     const sourceId = String(source.id);
     const campaign = await storage.getCampaign(campaignId);
-    const platformContext = String(mappingConfig.platformContext || source?.platformContext || "ga4") as any;
     const endDate = platformContext === "ga4"
       ? getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone)
       : new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const currency = String(mappingConfig.currency || source?.currency || (campaign as any)?.currency || "USD");
+    const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+    const requestedCurrency = String(mappingConfig.currency || source?.currency || campaignCurrency).trim().toUpperCase();
+    if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) return false;
+    const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
     const records = total > 0
       ? dateCol && dailyRevenueMap.size > 0
         ? Array.from(dailyRevenueMap.entries()).filter(([, rev]) => rev > 0).map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency }))
@@ -549,9 +579,17 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       platformContext,
       displayName: source?.displayName || "Google Sheets revenue",
       currency,
-      mappingConfig: JSON.stringify({ ...mappingConfig, lastSyncedAt: new Date().toISOString() }),
+      mappingConfig: JSON.stringify({
+        ...mappingConfig,
+        ...(platformContext === "ga4" ? {
+          campaignValueRevenueTotals: campaignCol
+            ? Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({ campaignValue, revenue: Number(revenue.toFixed(2)) }))
+            : null,
+        } : {}),
+        lastSyncedAt: new Date().toISOString(),
+      }),
       isActive: true,
-    } as any, records as any);
+    } as any, records as any, String(source.mappingConfig || ""));
 
     console.log(`[Auto Refresh] ✅ Google Sheets revenue synced for campaign ${campaignId}: $${total} from ${kept} rows`);
     return true;

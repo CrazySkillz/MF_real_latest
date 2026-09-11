@@ -4859,7 +4859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5001` : "A1:ZZ5001";
       let resp = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
@@ -4929,6 +4929,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const json = await resp.json().catch(() => ({} as any));
       const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      if (values.length > 5000) {
+        return sendBadRequest(res, "Google Sheets revenue supports at most 4,999 data rows plus one header row. Reduce the sheet size and try again.");
+      }
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
 
@@ -4986,6 +4989,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required when valueSource=revenue");
         }
       }
+      const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
+      const existingSources = existingSourceId
+        ? await storage.getRevenueSources(campaignId, platformContext).catch(() => [] as any[])
+        : [];
+      // Add mode must create a new additive source. Edit/refresh mode passes sourceId and updates only that source.
+      const existingSheetsSource = existingSourceId
+        ? (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
+            if (!s || (s as any).isActive === false) return false;
+            if (String((s as any).sourceType || "") !== "google_sheets") return false;
+            return String((s as any).id || "") === existingSourceId;
+          })
+        : null;
+      if (existingSourceId && !existingSheetsSource) {
+        return res.status(404).json({ success: false, error: "Revenue source not found" });
+      }
 
       const purpose = revenuePurposeForPlatformContext(platformContext);
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
@@ -5022,7 +5040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5001` : "A1:ZZ5001";
       let resp = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
@@ -5092,6 +5110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const json = await resp.json().catch(() => ({} as any));
       const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      if (values.length > 5000) {
+        return sendBadRequest(res, "Google Sheets revenue supports at most 4,999 data rows plus one header row. Reduce the sheet size and try again.");
+      }
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
 
@@ -5218,7 +5239,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
-      const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
 
       const normalizedMapping = { ...mapping, currency, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
       delete (normalizedMapping as any).sourceId;
@@ -5237,19 +5257,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastSyncedAt: new Date().toISOString(),
       });
 
-      // Add mode must create a new additive source. Edit/refresh mode passes sourceId and updates only that source.
-      const existingSources = await storage.getRevenueSources(campaignId, platformContext).catch(() => [] as any[]);
-      const existingSheetsSource = existingSourceId
-        ? (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
-            if (!s || (s as any).isActive === false) return false;
-            if (String((s as any).sourceType || "") !== "google_sheets") return false;
-            return String((s as any).id || "") === existingSourceId;
-          })
-        : null;
-      if (existingSourceId && !existingSheetsSource) {
-        return res.status(404).json({ success: false, error: "Revenue source not found" });
-      }
-
       if (platformContext === 'ga4') {
         const totalRevenue = Number(totalRevenueToDate.toFixed(2));
         const visibleTotalRevenue = dateCol
@@ -5265,7 +5272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : 'Google Sheets revenue'), currency, mappingConfig: nextMappingConfig, isActive: true,
-        } as any, records);
+        } as any, records, existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined);
         await recomputeCampaignDerivedValues(campaignId, { platformContext });
         return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue: visibleTotalRevenue, importedRowsTotalRevenue: totalRevenue });
       }
@@ -5405,7 +5412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue,
       });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
+      res.status(e?.code === "REVENUE_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
     }
   });
 

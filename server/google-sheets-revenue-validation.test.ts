@@ -1,15 +1,28 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
-import { aggregateCsvRevenueRows } from "./utils/csv";
+import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const scheduler = readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
+const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
 const revenueModal = readFileSync(join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
+const ga4Page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf8");
+const kpiJobs = readFileSync(join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"), "utf8");
+const alertValues = readFileSync(join(process.cwd(), "server", "utils", "ga4-alert-current-value.ts"), "utf8");
+const scheduledReport = readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf8");
 
 const sheetsRevenueRoute = () => {
   const start = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/process"');
   const end = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/preview"', start);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return routes.slice(start, end);
+};
+
+const sheetsRevenuePreviewRoute = () => {
+  const start = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/preview"');
+  const end = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/process"', start);
   expect(start).toBeGreaterThanOrEqual(0);
   expect(end).toBeGreaterThan(start);
   return routes.slice(start, end);
@@ -51,6 +64,26 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     });
   });
 
+  it("preserves the explicit source calendar date for offset timestamps", () => {
+    expect(normalizeFinancialSourceDateKey("2026-08-01T23:30:00-05:00")).toBe("2026-08-01");
+  });
+
+  it("uses a sentinel row and fails closed before truncated revenue can be shown or saved", () => {
+    const preview = sheetsRevenuePreviewRoute();
+    const process = sheetsRevenueRoute();
+    const schedulerStart = scheduler.indexOf("async function reprocessGoogleSheetsRevenue(");
+    const schedulerEnd = scheduler.indexOf("export async function runGoogleSheetsSpendSourceRefreshForValidation", schedulerStart);
+    const schedulerRevenue = scheduler.slice(schedulerStart, schedulerEnd);
+
+    for (const source of [preview, process, schedulerRevenue]) {
+      expect(source).toContain("A1:ZZ5001");
+      expect(source).not.toContain("A1:ZZ5000");
+    }
+    expect(preview).toContain("values.length > 5000");
+    expect(process.indexOf("values.length > 5000")).toBeLessThan(process.indexOf("storage.replaceRevenueSourceWithRecords"));
+    expect(schedulerRevenue.indexOf("allRows.length > 5000")).toBeLessThan(schedulerRevenue.indexOf("storage.replaceRevenueSourceWithRecords"));
+  });
+
   it("fails the GA4 foreground path before source mutation", () => {
     const route = sheetsRevenueRoute();
     const validation = route.indexOf("const validation = aggregateCsvRevenueRows(rows");
@@ -71,6 +104,48 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(fn).toContain("const validation = aggregateCsvRevenueRows(mappedRows.map");
     expect(fn.indexOf("validation.keptRows === 0")).toBeLessThan(fn.indexOf("storage.replaceRevenueSourceWithRecords"));
     expect(fn.indexOf("validation.undatedRevenue > 0")).toBeLessThan(fn.indexOf("storage.replaceRevenueSourceWithRecords"));
+    expect(fn).toContain("normalizeFinancialSourceDateKey(dateStr)");
+    expect(fn).toContain('if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) return false;');
+    expect(fn).toContain("const campaignValueRevenueTotals = new Map<string, number>();");
+    expect(fn).toContain("campaignValueRevenueTotals: campaignCol");
+  });
+
+  it("refreshes token-only connections and rejects stale source replacement", () => {
+    const route = sheetsRevenueRoute();
+    const start = scheduler.indexOf("async function reprocessGoogleSheetsRevenue(");
+    const end = scheduler.indexOf("export async function runGoogleSheetsSpendSourceRefreshForValidation", start);
+    const fn = scheduler.slice(start, end);
+    expect(fn).toContain("if (!accessToken)");
+    expect(fn).toContain("await refreshAccessToken()");
+    expect(fn).toContain("tokens.refresh_token ? { refreshToken: tokens.refresh_token }");
+    expect(fn).toContain('records as any, String(source.mappingConfig || "")');
+    expect(route.indexOf("const existingSheetsSource")).toBeLessThan(route.indexOf("https://sheets.googleapis.com"));
+    expect(route).toContain('e?.code === "REVENUE_SOURCE_CHANGED" ? 409 : 500');
+    expect(storage).toContain("eq(revenueSources.mappingConfig, expectedSourceMappingConfig)");
+    expect(storage).toContain("error.code = 'REVENUE_SOURCE_CHANGED'");
+  });
+
+  it("feeds the exact materialized source through current GA4 consumers", () => {
+    const route = sheetsRevenueRoute();
+    const replacement = route.indexOf("await storage.replaceRevenueSourceWithRecords(");
+    const recompute = route.indexOf("await recomputeCampaignDerivedValues(campaignId, { platformContext });", replacement);
+    expect(route).toContain("sourceType: 'google_sheets'");
+    expect(replacement).toBeGreaterThanOrEqual(0);
+    expect(recompute).toBeGreaterThan(replacement);
+
+    expect(kpiJobs).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
+    expect(alertValues).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
+    expect(scheduledReport).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
+    expect(ga4Page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
+    expect(ga4Page).toContain("const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
+
+    const invalidationStart = revenueModal.indexOf("const invalidateAfterRevenueChange");
+    const invalidationEnd = revenueModal.indexOf("const resetAll = () =>", invalidationStart);
+    const invalidation = revenueModal.slice(invalidationStart, invalidationEnd);
+    expect(invalidation).toContain("/revenue-to-date");
+    expect(invalidation).toContain("/revenue-sources");
+    expect(invalidation).toContain("/revenue-breakdown");
+    expect(invalidation).toContain("/outcome-totals");
   });
 
   it("limits only GA4 Google Sheets Date choices and clears stale selections", () => {

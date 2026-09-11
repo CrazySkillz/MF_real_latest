@@ -28,6 +28,34 @@ It separates these two source families from whole-Overview and spend certificati
 - Current Commit 7 has user-confirmed deployed UI validation for the normal exact-source deletion flow. Rollback remains deterministically transaction-tested because the normal UI intentionally has no unsafe database-failure injection control; this is not represented as an observed production failure.
 - Current Commit 1 was documentation only. Current Commits 2 through 4, 7, and the CSV-only portions of 8 and 9 are bounded source fixes/evidence and do not certify either source.
 
+### 2026-09-11 current `main` validation addendum
+
+Baseline: local `main`, `HEAD == origin/main == bce06348`. **Google Sheets Revenue remains NOT PRODUCTION READY as a general source-family claim.** The current trace confirmed and locally fixed four forward-path defects without changing GA4 formulas or public response shapes:
+
+- scheduler date materialization used `Date#toISOString()` while foreground processing used `normalizeFinancialSourceDateKey`, so an offset timestamp could move to another calendar day;
+- scheduler refresh trusted saved source currency without rechecking current campaign currency;
+- refresh-token-only connections were rejected before the scheduler attempted OAuth renewal, and rotated refresh tokens were not retained by that path;
+- foreground/scheduler replacements had no optimistic mapping predicate, so a slower stale fetch could overwrite a concurrent edit; scheduled refresh also retained stale `campaignValueRevenueTotals`, leaving Ad Comparison/report campaign attribution behind the refreshed aggregate.
+
+The localized fix makes GA4 scheduler dates use the foreground normalizer, fails currency mismatch before mutation, renews refresh-token-only connections, preserves token rotation, rechecks the exact prior mapping inside the source-and-record transaction, and refreshes campaign-value totals in that transaction. A forced optimistic-conflict test proves old records remain untouched when the source changed.
+
+The next bounded safety fix requests row 5,001 as a sentinel in foreground preview/process and scheduler reads. Contiguous data at that row now fails before display or mutation, and scheduler failure retains last-good data. This is a fail-closed guard, not pagination.
+
+Locally proven in this addendum: exact campaign/source/context guards, deterministic row/date validation, campaign-currency recheck, atomic source/record replacement and delete, optimistic stale-write rejection, stable scheduler source ID, token-only renewal wiring, active-source totals/breakdown/source-list reads, and static propagation into Overview financials, Ad Comparison metadata, KPI/Benchmark jobs, alerts, notifications through alert recompute, outcome/executive consumers, and scheduled report inputs. The focused packet, TypeScript check, and production build passed; the exact commands/results are retained in the working-session handoff until commit is requested.
+
+Still blocked or only partially proven:
+
+- preview, process, and scheduler remain bounded to column `ZZ` and have no pagination; the row-5,001 sentinel catches contiguous overflow, but non-contiguous data beyond a blank sentinel row and columns beyond `ZZ` can still be silently excluded;
+- the UI discovers campaign values only from the first 25 preview rows, so a new mapping cannot select an unobserved later value through the normal chooser;
+- sheet number/currency semantics are user-declared rather than provider-verified; locale-formatted numbers and ambiguous locale dates lack complete fixtures and live evidence;
+- there is no bounded Google Sheets Revenue-only poll, and open Overview revenue queries still refetch every ten minutes;
+- concurrent additive creates have no server idempotency key, and OAuth token refreshes are not serialized across workers;
+- a fast derived-recompute failure can occur after a successful source transaction but before the foreground response, which can return failure for an already-committed add;
+- the existing read-only inventory has generic retained-source/currency/orphan/duplicate findings but no Google-Sheets-specific connection, mapping, truncation, or `lastSyncedAt` reconciliation;
+- no current target-database scan, live OAuth/provider packet, large-sheet packet, repeated deployed refresh packet, browser convergence packet, or generated report/email artifact packet was run for this revision.
+
+The required next gates are a complete paginated/explicitly bounded fetch contract with full campaign-value discovery, a Google-Sheets-specific read-only inventory, bounded revenue polling/convergence, post-commit response semantics, and live deployed provider/OAuth/repeated-refresh/failure evidence. No cleanup is authorized by this addendum.
+
 ## Explicit Scope
 
 ### Included
@@ -94,7 +122,7 @@ The enabled CSV source is closed inside the exact Overview boundary. The remaini
 5. After validation, the GA4 path calls `replaceRevenueSourceWithRecords(...)`, which creates or updates only the exact campaign/context/type source and replaces its records in one transaction. It inserts dated records when a Date column is mapped, otherwise one latest-completed-day snapshot when the total is positive.
 6. Storage totals and breakdowns inner-join records to active campaign/context sources. The API exposes those values through `/revenue-to-date`, `/revenue-breakdown`, and `/revenue-sources`.
 7. GA4 Overview adds imported revenue to the independently selected GA4-native financial revenue and uses the result in Total Revenue, Profit, ROAS, and ROI. Mutation success invalidates/refetches revenue queries.
-8. The external scheduler enumerates active `google_sheets` revenue sources across supported contexts, reads saved mapping configuration, fetches and validates provider data before mutation, and calls `replaceRevenueSourceWithRecords(...)` for the same stable source. Source freshness and replacement records commit together; provider or transaction failure retains the last-good rows.
+8. The external scheduler enumerates active `google_sheets` revenue sources across supported contexts, reads saved mapping configuration, fetches and validates provider data before mutation, and calls `replaceRevenueSourceWithRecords(...)` for the same stable source. For GA4, it now uses the foreground calendar-date normalizer, rechecks campaign currency, refreshes campaign-value attribution metadata, and requires the source mapping to remain unchanged before source freshness and replacement records commit together. Provider, validation, currency, conflict, or transaction failure retains the last-good rows.
 9. The dedicated bounded source-family interval invokes Google Sheets Spend only. There is no equivalent bounded Google Sheets Revenue interval. An already-open Overview independently waits up to its ten-minute revenue query interval unless a foreground focus/reconnect or explicit mutation invalidation causes an earlier fetch.
 
 Historical bounded Google Sheets evidence; no Google Sheets Revenue source is configured in the current certification:
@@ -285,13 +313,13 @@ Use isolated commits in this order:
 - Clean certification for Google Sheets Revenue.
 - Deployed CSV Revenue negative-case behavior and unusual/unlisted file, header, date, and mapping shapes beyond the local fixtures.
 - Deployed/provider proof of Google Sheets Revenue fail-before-mutation behavior and unusual/unlisted sheet, tab, header, mapping, filter, and date shapes beyond the local fixtures.
-- Atomic Google Sheets add/edit/scheduler replacement behavior.
+- Deployed PostgreSQL proof of Google Sheets add/edit/scheduler rollback and optimistic-conflict behavior; the scoped transaction and forced conflict are locally guarded.
 - Deployed PostgreSQL rollback evidence for the current UI shared individual revenue-source delete; the uncalled legacy bulk-delete route remains non-transactional and excluded.
 - Deployed PostgreSQL proof of GA4 CSV add/edit rollback and last-valid-value retention.
 - Google Sheets last-valid-value retention after provider, source-update, record-delete, or record-insert failure.
-- Repeated-refresh idempotency and concurrent operation safety.
+- Repeated deployed refresh idempotency, concurrent additive-create idempotency, and cross-worker OAuth refresh serialization; stale source replacement is now locally guarded.
 - Bounded Google Sheets Revenue-only automatic polling and already-open Overview convergence within the intended low-latency window.
-- Exact automatic Google Sheets provider mutation propagation through source, records, endpoints, Overview, and every claimed downstream consumer.
+- Exact deployed automatic Google Sheets provider mutation propagation through source, records, endpoints, Overview, and every claimed downstream consumer; current local/static paths include refreshed campaign-value attribution metadata.
 - Console-runner endpoint-parity output, raw source IDs, and exact deployed Profit/ROAS/ROI/CPA values beyond the bounded UI confirmation; these are excluded from the current CSV claim and require fresh evidence if separately claimed.
 - Unlisted files, delimiters, encodings, duplicate headers, locale numbers, ambiguous dates, large-file boundaries, sheets, tabs, mappings, filters, campaigns, properties, and currencies.
 - Future target-database changes after the recorded Current Commit 9 read-only scan.

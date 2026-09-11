@@ -4859,7 +4859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5001` : "A1:ZZ5001";
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}1:5001` : "1:5001";
       let resp = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
@@ -5040,7 +5040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5001` : "A1:ZZ5001";
+      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}1:5001` : "1:5001";
       let resp = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }

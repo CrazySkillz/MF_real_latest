@@ -465,7 +465,7 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       if (!accessToken) return false;
     }
     const sheetName = conn.sheetName ? String(conn.sheetName).trim() : "";
-    const range = sheetName ? `'${sheetName.replace(/'/g, "''")}'!A1:ZZ5001` : "A1:ZZ5001";
+    const range = sheetName ? `'${sheetName.replace(/'/g, "''")}'!1:5001` : "1:5001";
     let resp = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
       { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }

@@ -68,7 +68,7 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(normalizeFinancialSourceDateKey("2026-08-01T23:30:00-05:00")).toBe("2026-08-01");
   });
 
-  it("uses a sentinel row and fails closed before truncated revenue can be shown or saved", () => {
+  it("uses a full-width sentinel row and fails closed before truncated revenue can be shown or saved", () => {
     const preview = sheetsRevenuePreviewRoute();
     const process = sheetsRevenueRoute();
     const schedulerStart = scheduler.indexOf("async function reprocessGoogleSheetsRevenue(");
@@ -76,8 +76,8 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     const schedulerRevenue = scheduler.slice(schedulerStart, schedulerEnd);
 
     for (const source of [preview, process, schedulerRevenue]) {
-      expect(source).toContain("A1:ZZ5001");
-      expect(source).not.toContain("A1:ZZ5000");
+      expect(source).toContain("1:5001");
+      expect(source).not.toContain("A1:ZZ5001");
     }
     expect(preview).toContain("values.length > 5000");
     expect(process.indexOf("values.length > 5000")).toBeLessThan(process.indexOf("storage.replaceRevenueSourceWithRecords"));

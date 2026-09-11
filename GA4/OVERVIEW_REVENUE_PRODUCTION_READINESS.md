@@ -39,13 +39,13 @@ Baseline: local `main`, `HEAD == origin/main == bce06348`. **Google Sheets Reven
 
 The localized fix makes GA4 scheduler dates use the foreground normalizer, fails currency mismatch before mutation, renews refresh-token-only connections, preserves token rotation, rechecks the exact prior mapping inside the source-and-record transaction, and refreshes campaign-value totals in that transaction. A forced optimistic-conflict test proves old records remain untouched when the source changed.
 
-The next bounded safety fix requests row 5,001 as a sentinel in foreground preview/process and scheduler reads. Contiguous data at that row now fails before display or mutation, and scheduler failure retains last-good data. This is a fail-closed guard, not pagination.
+The next bounded safety fixes request all columns through row 5,001, using that final row as a sentinel in foreground preview/process and scheduler reads. Contiguous data at that row now fails before display or mutation, wide columns inside the supported row window are no longer clipped at `ZZ`, and scheduler failure retains last-good data. This is a fail-closed guard, not pagination.
 
 Locally proven in this addendum: exact campaign/source/context guards, deterministic row/date validation, campaign-currency recheck, atomic source/record replacement and delete, optimistic stale-write rejection, stable scheduler source ID, token-only renewal wiring, active-source totals/breakdown/source-list reads, and static propagation into Overview financials, Ad Comparison metadata, KPI/Benchmark jobs, alerts, notifications through alert recompute, outcome/executive consumers, and scheduled report inputs. The focused packet, TypeScript check, and production build passed; the exact commands/results are retained in the working-session handoff until commit is requested.
 
 Still blocked or only partially proven:
 
-- preview, process, and scheduler remain bounded to column `ZZ` and have no pagination; the row-5,001 sentinel catches contiguous overflow, but non-contiguous data beyond a blank sentinel row and columns beyond `ZZ` can still be silently excluded;
+- preview, process, and scheduler have no row pagination; their full-width row-5,001 sentinel catches contiguous overflow, but non-contiguous data beyond a blank sentinel row can still be silently excluded;
 - the UI discovers campaign values only from the first 25 preview rows, so a new mapping cannot select an unobserved later value through the normal chooser;
 - sheet number/currency semantics are user-declared rather than provider-verified; locale-formatted numbers and ambiguous locale dates lack complete fixtures and live evidence;
 - there is no bounded Google Sheets Revenue-only poll, and open Overview revenue queries still refetch every ten minutes;

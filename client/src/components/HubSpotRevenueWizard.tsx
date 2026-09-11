@@ -1357,7 +1357,7 @@ export function HubSpotRevenueWizard(props: {
                           <span>{reviewDealBreakdown.length} of {reviewDealBreakdownTotal}</span>
                         )}
                       </div>
-                      <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card">
+                      <div className="scrollbar-hide mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card">
                         {reviewDealBreakdown.map((deal, index) => {
                           const name = String(deal.name || deal.campaignValue || `Deal ${index + 1}`);
                           const campaignValue = String(deal.campaignValue || "");

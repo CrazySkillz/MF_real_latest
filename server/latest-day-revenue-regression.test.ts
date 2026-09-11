@@ -184,6 +184,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("reviewPipelineProxyDisplayAmount != null");
     expect(clientFile).toContain("const [reviewDealBreakdown, setReviewDealBreakdown] = useState<ReviewDealBreakdownRow[]>([]);");
     expect(clientFile).toContain("Deal amount breakdown");
+    expect(clientFile).toContain('className="scrollbar-hide mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card"');
   });
 
   it("HubSpot preview returns bounded deal amount breakdown for review only", () => {

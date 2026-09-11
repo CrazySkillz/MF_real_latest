@@ -36,6 +36,20 @@ Current Pipeline Proxy automation follow-up (2026-09-11):
 - `GA4/CRM_REVENUE_SOURCE_PATTERN.md` is the canonical implementation handoff
   for the Salesforce reference behavior, current HubSpot gaps, and required tests
 
+Current Revenue Sources item-removal refinement (2026-09-11):
+
+- the confirmed UI root cause was a HubSpot provider-level remove control while
+  exact item-row removal was rendered only for Salesforce
+- HubSpot item rows now use the existing campaign-scoped save/materialization
+  route with the stable source ID and optimistic mapping guard; the final item
+  uses the existing exact-source delete route
+- the HubSpot provider subtitle no longer repeats saved GA4 campaign mapping
+  names, and the redundant confirmed-deal count heading is omitted
+- focused HubSpot, Salesforce-neighbor, source-delete, mapping, and recompute
+  regression tests passed 65/65; TypeScript validation and production build passed
+- deployed item-removal and browser-layout validation remains pending; the
+  mandatory status remains **UNVERIFIED** and no historical certificate expands
+
 Current controlling audit (2026-08-08):
 
 - pre-fix revision inspected: `deb368b16d7bd970a3f19dbac634eed199227b22`

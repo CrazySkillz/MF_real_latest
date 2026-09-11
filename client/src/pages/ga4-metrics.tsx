@@ -327,6 +327,8 @@ export default function GA4Metrics() {
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [editingRevenueSource, setEditingRevenueSource] = useState<any>(null);
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
+  const [deletingHubSpotRevenueItem, setDeletingHubSpotRevenueItem] = useState<{ source: any; campaignValue: string; isLastSelectedValue: boolean } | null>(null);
+  const [deletingHubSpotRevenueItemPending, setDeletingHubSpotRevenueItemPending] = useState(false);
   const [deletingSalesforceRevenueItem, setDeletingSalesforceRevenueItem] = useState<{ source: any; campaignValue: string; isLastSelectedValue: boolean } | null>(null);
   const [deletingSalesforceRevenueItemPending, setDeletingSalesforceRevenueItemPending] = useState(false);
   const [editingSpendSource, setEditingSpendSource] = useState<any>(null);
@@ -2414,7 +2416,7 @@ export default function GA4Metrics() {
 
   const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {
     const sourceType = String(source?.sourceType || "").trim().toLowerCase();
-    if (sourceType !== "hubspot" && sourceType !== "shopify") return "";
+    if (sourceType !== "shopify") return "";
     const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
     const labels = mappings
       .map((mapping: any) => String(mapping?.linkedinCampaignName || mapping?.platformCampaignName || mapping?.campaignName || mapping?.linkedinCampaignUrn || "").trim())
@@ -5765,6 +5767,88 @@ export default function GA4Metrics() {
     );
   }, [revenueDisplaySources]);
 
+  const removeHubSpotRevenueItem = async () => {
+    const pending = deletingHubSpotRevenueItem;
+    if (!pending || !campaignId) return;
+    setDeletingHubSpotRevenueItemPending(true);
+    try {
+      const source = pending.source;
+      const sourceId = String(source?.sourceId || source?.id || "").trim();
+      const rawMappingConfig = source?.mappingConfig;
+      const expectedSourceMappingConfig = typeof rawMappingConfig === "string"
+        ? rawMappingConfig
+        : JSON.stringify(rawMappingConfig || {});
+      const cfg = typeof rawMappingConfig === "string" ? JSON.parse(rawMappingConfig) : rawMappingConfig;
+      const selectedValues = Array.isArray(cfg?.selectedValues)
+        ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean)
+        : [];
+      const campaignValue = pending.campaignValue.trim();
+      const remainingSelectedValues = selectedValues.filter((value: string) => value !== campaignValue);
+      if (!sourceId || !campaignValue || remainingSelectedValues.length === selectedValues.length) {
+        throw new Error("This HubSpot deal is no longer part of the saved source. Refresh and try again.");
+      }
+
+      const request = remainingSelectedValues.length === 0
+        ? fetch(`/api/campaigns/${campaignId}/revenue-sources/${sourceId}?platformContext=ga4`, { method: "DELETE", credentials: "include" })
+        : fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sourceId,
+              campaignProperty: String(cfg?.campaignProperty || "dealname"),
+              selectedValues: remainingSelectedValues,
+              revenueProperty: String(cfg?.revenueProperty || "amount"),
+              conversionValueProperty: null,
+              valueSource: "revenue",
+              revenueClassification: String(cfg?.revenueClassification || "offsite_not_in_ga4"),
+              days: Number.isFinite(Number(cfg?.days)) ? Number(cfg.days) : 3650,
+              dateField: String(cfg?.dateField || "closedate"),
+              campaignDisplayName: cfg?.campaignDisplayName ? String(cfg.campaignDisplayName) : null,
+              pipelineEnabled: cfg?.pipelineEnabled === true,
+              pipelineStageId: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageId || "") : null,
+              pipelineStageLabel: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageLabel || "") : null,
+              platformContext: "ga4",
+              expectedSourceMappingConfig,
+              ...(Array.isArray(cfg?.campaignMappings)
+                ? { campaignMappings: cfg.campaignMappings.filter((mapping: any) => String(mapping?.crmValue || "").trim() !== campaignValue) }
+                : {}),
+            }),
+          });
+      const resp = await request;
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success === false) {
+        if (resp.status === 409) {
+          void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+        }
+        throw new Error(json?.error || "Failed to remove HubSpot deal");
+      }
+
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId], exact: false });
+      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId)], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId], exact: false });
+      void refreshNotificationQueries();
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false }),
+        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false }),
+        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false }),
+        queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false }),
+      ]);
+      toast({ title: "HubSpot deal removed", description: `${campaignValue} was removed and Total Revenue was recalculated.` });
+    } catch (error: any) {
+      toast({ title: "Remove failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setDeletingHubSpotRevenueItemPending(false);
+      setDeletingHubSpotRevenueItem(null);
+    }
+  };
+
   const removeSalesforceRevenueItem = async () => {
     const pending = deletingSalesforceRevenueItem;
     if (!pending || !campaignId) return;
@@ -6837,9 +6921,7 @@ export default function GA4Metrics() {
                               .filter((item: any) => item.name && Number.isFinite(item.revenue))
                               .sort((a: any, b: any) => a.name.localeCompare(b.name))
                             : [];
-                          const confirmedRevenueItemsLabel = sourceType === "hubspot" && String(cfg?.campaignProperty || "").trim().toLowerCase() === "dealname"
-                            ? "Confirmed deals"
-                            : String(cfg?.campaignField || "").trim().toLowerCase() === "name"
+                          const confirmedRevenueItemsLabel = String(cfg?.campaignField || "").trim().toLowerCase() === "name"
                               ? "Confirmed opportunities"
                               : "Confirmed attributed values";
                           const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
@@ -6869,19 +6951,6 @@ export default function GA4Metrics() {
                                         aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}
                                       >
                                         <Edit className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
-                                    {confirmedRevenueItems.length > 0 && sourceType === "hubspot" && (
-                                      <button
-                                        onClick={() => {
-                                          setShowRevenueSourcesDialog(false);
-                                          setDeletingRevenueSourceId(s.sourceId);
-                                        }}
-                                        className="shrink-0 rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                                        title="Remove HubSpot revenue source"
-                                        aria-label="Remove HubSpot revenue source"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
                                       </button>
                                     )}
                                   </div>
@@ -6943,13 +7012,29 @@ export default function GA4Metrics() {
                               </div>
                               {confirmedRevenueItems.length > 0 && (
                                 <div className="mt-2 border-t border-border pt-2">
-                                  <p className="mb-1.5 text-xs font-medium text-muted-foreground/70">{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})</p>
+                                  {sourceType !== "hubspot" && <p className="mb-1.5 text-xs font-medium text-muted-foreground/70">{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})</p>}
                                   <div className="scrollbar-hide max-h-40 space-y-1 overflow-y-auto">
                                     {confirmedRevenueItems.map((item: any, index: number) => (
                                       <div key={`${item.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">
                                         <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
                                         <span className="text-right tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
                                         <div className="flex items-center justify-end gap-1">
+                                          {sourceType === "hubspot" && <button
+                                            onClick={() => {
+                                              const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
+                                              setShowRevenueSourcesDialog(false);
+                                              setDeletingHubSpotRevenueItem({
+                                                source: s,
+                                                campaignValue: item.name,
+                                                isLastSelectedValue: selectedValues.filter((value: string) => value !== item.name).length === 0,
+                                              });
+                                            }}
+                                            className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                            title={`Remove ${item.name}`}
+                                            aria-label={`Remove ${item.name}`}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>}
                                           {sourceType === "salesforce" && <button
                                             onClick={() => {
                                               const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
@@ -7142,6 +7227,38 @@ export default function GA4Metrics() {
                           }}
                         >
                           Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog
+                    open={!!deletingHubSpotRevenueItem}
+                    onOpenChange={(open) => {
+                      if (!open && !deletingHubSpotRevenueItemPending) {
+                        setDeletingHubSpotRevenueItem(null);
+                        setShowRevenueSourcesDialog(true);
+                      }
+                    }}
+                  >
+                    <AlertDialogContent className="bg-card border-border">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-foreground">Remove HubSpot revenue item?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground/70">
+                          Remove <strong>{deletingHubSpotRevenueItem?.campaignValue}</strong> from this revenue source? Other selected HubSpot values will remain unchanged and Total Revenue will be recalculated.
+                          {deletingHubSpotRevenueItem?.isLastSelectedValue && " This is the last selected value, so the HubSpot revenue source will also be removed."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingHubSpotRevenueItemPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 text-white hover:bg-red-700"
+                          disabled={deletingHubSpotRevenueItemPending}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void removeHubSpotRevenueItem().finally(() => setShowRevenueSourcesDialog(true));
+                          }}
+                        >
+                          {deletingHubSpotRevenueItemPending ? "Removing…" : "Remove"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

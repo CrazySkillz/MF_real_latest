@@ -172,10 +172,12 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     expect(pipelineQuery).toContain("/revenue-sources");
     expect(pipelineQuery).toContain("/revenue-breakdown");
     expect(sourceDialog).toContain('sourceType === "hubspot" && Array.isArray(cfg?.campaignValueRevenueTotals)');
-    expect(sourceDialog).toContain('? "Confirmed deals"');
+    expect(sourceDialog).not.toContain('"Confirmed deals"');
     expect(sourceDialog).toContain("formatMoney(item.revenue)");
+    expect(sourceDialog).toContain('sourceType === "hubspot" && <button');
+    expect(sourceDialog).toContain("setDeletingHubSpotRevenueItem({");
     expect(sourceDialog).toContain('sourceType === "salesforce" && <button');
-    expect(sourceDialog).toContain('aria-label="Remove HubSpot revenue source"');
+    expect(sourceDialog).not.toContain('aria-label="Remove HubSpot revenue source"');
     expect(sourceDialog).not.toContain("cfg?.pipelineValueRevenueTotals");
   });
 

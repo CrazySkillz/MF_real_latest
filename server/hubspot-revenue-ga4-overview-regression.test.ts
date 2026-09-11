@@ -355,13 +355,41 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(client).toContain("const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");
     expect(client).toContain("{totalRevenueDisplaySources.map((s: any) => {");
     expect(client).toContain('aria-label="Edit HubSpot revenue source"');
-    expect(client).toContain('aria-label="Remove HubSpot revenue source"');
     expect(mappedCampaignLabelHelper).toContain('const sourceType = String(source?.sourceType || "").trim().toLowerCase()');
-    expect(mappedCampaignLabelHelper).toContain('sourceType !== "hubspot" && sourceType !== "shopify"');
+    expect(mappedCampaignLabelHelper).toContain('sourceType !== "shopify"');
     expect(mappedCampaignLabelHelper).toContain("cfg?.campaignMappings");
     expect(mappedCampaignLabelHelper).toContain("mapping?.linkedinCampaignName");
     expect(revenueSourcesDialog).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
     expect(revenueSourcesDialog).toContain('isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText');
+  });
+
+  it("removes individual HubSpot revenue items without changing the Salesforce path", () => {
+    const client = ga4MetricsFile();
+    const removeHubSpotItem = sliceBetween(
+      client,
+      "const removeHubSpotRevenueItem = async () => {",
+      "  const removeSalesforceRevenueItem = async () => {",
+    );
+    const revenueSourcesDialog = sliceBetween(
+      client,
+      "{totalRevenueDisplaySources.map((s: any) => {",
+      "<Dialog open={showSpendSourcesDialog}",
+    );
+
+    expect(removeHubSpotItem).toContain("remainingSelectedValues.length === 0");
+    expect(removeHubSpotItem).toContain("/revenue-sources/${sourceId}?platformContext=ga4");
+    expect(removeHubSpotItem).toContain("/hubspot/save-mappings");
+    expect(removeHubSpotItem).toContain("sourceId,");
+    expect(removeHubSpotItem).toContain("selectedValues: remainingSelectedValues");
+    expect(removeHubSpotItem).toContain("expectedSourceMappingConfig,");
+    expect(removeHubSpotItem).toContain("cfg.campaignMappings.filter");
+    expect(removeHubSpotItem).toContain('["/api/hubspot", campaignId, "pipeline-proxy"]');
+    expect(revenueSourcesDialog).toContain('sourceType === "hubspot" && <button');
+    expect(revenueSourcesDialog).toContain("setDeletingHubSpotRevenueItem({");
+    expect(revenueSourcesDialog).not.toContain('aria-label="Remove HubSpot revenue source"');
+    expect(revenueSourcesDialog).toContain('sourceType !== "hubspot" && <p');
+    expect(client).not.toContain('"Confirmed deals"');
+    expect(client).toContain("const removeSalesforceRevenueItem = async () => {");
   });
 
   it("disables the HubSpot add card after a campaign-scoped source is added", () => {

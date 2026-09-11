@@ -74,6 +74,8 @@ The Revenue Sources modal keeps the provider as the top-level source and itemize
 - removing one value keeps the same source ID and all other selections, then atomically rematerializes confirmed revenue and Pipeline Proxy
 - name, amount, and action columns remain aligned with Shopify and other itemized CRM entries
 
+HubSpot uses the same exact-item removal pattern: the provider pencil edits the shared source configuration, each item row removes only that saved HubSpot value, and removing the final value deletes that exact source. The compact provider subtitle is `HubSpot`; saved GA4 campaign mapping names are not repeated in the source list, and itemized rows do not add a redundant confirmed-deal count heading.
+
 Deleting or deactivating the last eligible CRM source removes that provider's contribution and configuration. The Overview Pipeline Proxy card itself remains visible and shows `Not configured` when no other eligible CRM source exists.
 
 ## Save And Refresh Contract
@@ -119,7 +121,7 @@ A zero proxy after the transition is a valid configured `$0.00`, not `Unavailabl
 | Edit entry | Provider-level pencil; starts at Source with stable source ID | Existing source edit is supported; re-trace before changing shared UI |
 | Review mapping layout | Two aligned columns with directional arrows | Mapping is shown, but exact Salesforce layout parity is not established |
 | Confirmed source breakdown | Itemized from `campaignValueRevenueTotals` | Itemized from `campaignValueRevenueTotals` |
-| Remove one selected record/value | Exact Salesforce item removal | Provider-level delete remains; exact deal-row removal parity is not established |
+| Remove one selected record/value | Exact Salesforce item removal | Exact HubSpot item removal is implemented locally through the same stable-source replacement contract; deployed validation remains pending |
 | Five-minute refresh with Pipeline enabled | Yes | Implemented locally in `f4a3e8d7`; deployed natural-timer/provider transition proof remains pending |
 | Five-minute refresh with Pipeline disabled | Yes | No; currently waits for the daily external-source run |
 | Open-stage to Closed Won automation | User-validated for the exercised Salesforce source; local regression covered | Local regression covered; deployed provider-authoritative transition remains pending |

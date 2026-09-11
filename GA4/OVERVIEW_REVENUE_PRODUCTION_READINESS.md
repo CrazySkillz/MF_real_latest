@@ -30,7 +30,7 @@ It separates these two source families from whole-Overview and spend certificati
 
 ### 2026-09-11 current `main` validation addendum
 
-Baseline: this validation sequence began with local `main`, `HEAD == origin/main == bce06348`; local checkpoints `31833dfc`, `4e6ed441`, and `088447fe` preserve the completed safety fixes. **Google Sheets Revenue remains NOT PRODUCTION READY as a general source-family claim.** The current trace confirmed and locally fixed four forward-path defects without changing GA4 formulas or public response shapes:
+Baseline: this validation sequence began with local `main`, `HEAD == origin/main == bce06348`; local checkpoints `31833dfc`, `4e6ed441`, `088447fe`, and `77980ebb` preserve the completed safety fixes. **Google Sheets Revenue remains NOT PRODUCTION READY as a general source-family claim.** The current trace confirmed and locally fixed four forward-path defects without changing GA4 formulas or public response shapes:
 
 - scheduler date materialization used `Date#toISOString()` while foreground processing used `normalizeFinancialSourceDateKey`, so an offset timestamp could move to another calendar day;
 - scheduler refresh trusted saved source currency without rechecking current campaign currency;
@@ -53,10 +53,11 @@ Still blocked or only partially proven:
 - there is no bounded Google Sheets Revenue-only poll, and open Overview revenue queries still refetch every ten minutes;
 - concurrent additive creates have no server idempotency key, and OAuth token refreshes are not serialized across workers;
 - a fast derived-recompute failure can occur after a successful source transaction but before the foreground response, which can return failure for an already-committed add;
-- the existing read-only inventory has generic retained-source/currency/orphan/duplicate findings but no Google-Sheets-specific connection, mapping, truncation, or `lastSyncedAt` reconciliation;
-- no current target-database scan, live OAuth/provider packet, large-sheet packet, repeated deployed refresh packet, browser convergence packet, or generated report/email artifact packet was run for this revision.
+- the Google-Sheets-specific inventory now covers locally persisted connection ownership/status, mapping roles and identity, currency, record linkage/grain, campaign-value totals, and `lastSyncedAt`; provider tab existence, allocated row count, read completeness, and OAuth usability remain explicitly unverified;
+- the read-only target scan at `2026-09-11T18:42:12.686Z` found 8 GA4 Google Sheets Revenue sources, all inactive, and 3 inactive-source retained-record groups containing 67 records. It found no orphan, cross-campaign, or wrong-source-type Google Sheets record group. Because no active source existed, active mapping, connection, currency, attribution-total, sync, date, amount, and duplicate-grain integrity were not exercised against target data. No cleanup was performed or authorized;
+- no live OAuth/provider packet, large-sheet packet, repeated deployed refresh packet, browser convergence packet, or generated report/email artifact packet was run for this revision.
 
-The required next gates are deployed campaign-value discovery, a Google-Sheets-specific read-only inventory, bounded revenue polling/convergence, post-commit response semantics, and live deployed provider/OAuth/large-sheet/repeated-refresh/failure evidence for the locally bounded chunk contract. No cleanup is authorized by this addendum.
+The required next gates are deployed campaign-value discovery, an explicit review decision for the known inactive retained rows, bounded revenue polling/convergence, post-commit response semantics, and live deployed provider/OAuth/large-sheet/repeated-refresh/failure evidence for the locally bounded chunk contract. No cleanup is authorized by this addendum.
 
 ## Explicit Scope
 
@@ -234,6 +235,7 @@ Current relevant local/static guards include:
 - `server/csv-revenue-validation.test.ts`: Current Commit 2 dynamically covers exact campaign filtering, dated-total reconciliation, blank/invalid/numeric date accounting, and empty/no-positive rows, and statically guards GA4-only UI filtering plus server validation ordering before mutation. It does not prove transactionality, deployed behavior, every CSV shape, or downstream value propagation.
 - `server/csv-revenue-transaction.test.ts`: Current Commit 3 forces source-update, old-record-delete, edit replacement-insert, and add replacement-insert failures; it verifies exact prior-state retention and no orphan add source. This is mocked local transaction-boundary evidence, not deployed PostgreSQL evidence.
 - `server/google-sheets-revenue-validation.test.ts`: Current Commit 4 dynamically covers exact filtered dated and snapshot fixtures plus blank/invalid/numeric dates, and statically guards GA4-only Date filtering and fail-before-mutation ordering in foreground and scheduler paths. It does not prove provider behavior, transactionality, deployed behavior, every sheet shape, or downstream value propagation.
+- `server/google-sheets-revenue-damaged-data-inventory.test.ts`: the current addendum dynamically covers exact local persistence plus mapping, connection ownership/status, durable credential presence, currency, campaign-value total, sync, record-link, record-grain, date, and amount findings. The executable inspector uses an explicit read-only transaction and proposes no cleanup. Provider state and OAuth usability remain outside its scope.
 - `server/revenue-source-delete-transaction.test.ts`: Current Commit 7 forces source-deactivation and record-deletion failures, verifies rollback, and proves the successful mock transaction preserves an unrelated source plus a cross-campaign row. Static route/storage guards repeat campaign, active-source, platform-context, source-ID, and record-campaign scoping. This is local mocked transaction evidence, not deployed PostgreSQL evidence.
 - `server/csv-revenue-downstream-propagation.test.ts`: Current Commit 8 dynamically proves an exact filtered CSV delta enters Total Revenue, Profit, ROAS, and ROI once while CPA remains unchanged, and statically links the GA4 CSV transaction to active campaign/context source totals, breakdown, source-list amounts, Overview formulas, and post-mutation query refresh. It is local CSV-only automation; it does not add Google Sheets evidence or deployed numeric proof.
 - `server/csv-revenue-damaged-data-inventory.test.ts`: Current Commit 9 dynamically proves clean reconciliation, active zero-record, inactive-source-record, proven CSV missing/cross-campaign/wrong-type source-link, incomplete retained mapping, stored-total mismatch, dated-row loss, duplicate row-grain, and non-GA4/non-CSV exclusion behavior. It also statically guards the campaign-access and read-only/no-cleanup endpoint boundary. It does not inspect a target database or authorize cleanup.
@@ -275,7 +277,7 @@ Use isolated commits in this order:
 | 6 | Bounded Google Sheets Revenue-only polling and Overview revenue refetch | Open; current automatic refresh is daily and Overview refetch is ten minutes |
 | 7 | Transactional revenue source delete | Implemented, locally validated, and normal deployed UI flow user-confirmed for the current shared individual-source route |
 | 8 | Google Sheets/CSV Revenue-specific downstream propagation automation | CSV portion implemented and validated; Google Sheets portion open |
-| 9 | Read-only damaged-data inventory | CSV scan complete; Google Sheets-specific inventory open; no cleanup applied |
+| 9 | Read-only damaged-data inventory | CSV scan complete; Google Sheets scan found only three inactive-source retained-record groups (67 records); no cleanup applied or authorized |
 | 10 | Deployed CSV lifecycle/reconciliation evidence | Normal add/repeated-edit/delete lifecycle and invalid-file no-mutation user-confirmed; console-runner, source-ID, endpoint-parity, and exact deployed derived-card packets were not supplied and are excluded from the claim |
 | 11 | Deployed Google Sheets automatic mutation/failure/OAuth durability evidence | Resumed; open |
 | 12 | Final certification rerun and documentation update | CSV-only rerun completed and final invalid-file confirmation received; Upload CSV Revenue clean-certified for the validated documented scope; Google Sheets certification remains open |
@@ -347,7 +349,7 @@ Prior non-transactional behavior may have persisted damaged or ambiguous state. 
 - dated retained CSV rows whose selected positive revenue has a blank/invalid date;
 - active CSV mapping configs missing complete stored rows, headers, row count, or unique Revenue/Campaign/Date role metadata needed for a safe edit.
 
-Google Sheets inventory, connection metadata, scheduler metadata, and `lastSyncedAt` checks remain open and are not Current Commit 9 CSV evidence.
+Google Sheets connection ownership/status, mapping identity, currency, linked record shape, campaign-value total, and `lastSyncedAt` checks now have a separate read-only local inspector and target scan. The scan found no active Google Sheets Revenue source and therefore does not prove a current active lifecycle. Provider contents, remote row completeness, and live OAuth behavior remain open and are not Current Commit 9 CSV evidence.
 
 Current Commit 9 inventory is read-only, campaign-access guarded, excludes non-GA4 CSV and every non-CSV family from its CSV result, and returns `automaticCleanupAllowed: false`. Missing legacy retained rows are reported as incomplete rather than guessed. Do not deactivate, delete, merge, rewrite, backfill, or invent dates/allocations during inventory. Any cleanup requires a separate targeted plan listing exact campaign IDs, source IDs, record IDs/counts, the proven damage rule, expected before/after totals, rollback, and unrelated-source checks.
 

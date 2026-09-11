@@ -74,7 +74,7 @@ The Revenue Sources modal keeps the provider as the top-level source and itemize
 - removing one value keeps the same source ID and all other selections, then atomically rematerializes confirmed revenue and Pipeline Proxy
 - name, amount, and action columns remain aligned with Shopify and other itemized CRM entries
 
-HubSpot uses the same exact-item removal pattern: the provider pencil edits the shared source configuration, each item row removes only that saved HubSpot value, and removing the final value deletes that exact source. The compact provider subtitle is `HubSpot`; saved GA4 campaign mapping names are not repeated in the source list, and itemized rows do not add a redundant confirmed-deal count heading.
+HubSpot uses the same exact-item removal pattern: the provider pencil edits the shared source configuration, each item row removes only that saved HubSpot value, and removing the final value deletes that exact source. The source list does not repeat a provider subtitle or saved GA4 campaign mapping names beneath `HubSpot (Deals)`, and itemized rows do not add a redundant confirmed-deal count heading.
 
 Deleting or deactivating the last eligible CRM source removes that provider's contribution and configuration. The Overview Pipeline Proxy card itself remains visible and shows `Not configured` when no other eligible CRM source exists.
 
@@ -95,7 +95,7 @@ Salesforce's five-minute path processes every active exact GA4 Salesforce source
 - Pipeline enabled: refresh confirmed Total Revenue and Pipeline Proxy
 - Pipeline disabled: refresh confirmed Total Revenue only and retain Pipeline Proxy as unconfigured for that source
 
-HubSpot's current five-minute path processes only sources with `pipelineEnabled=true`, a saved pipeline stage ID, and selected values. HubSpot revenue-only sources currently wait for the full daily external-source run. This is the main scheduler parity gap for the HubSpot follow-up.
+HubSpot's five-minute path now follows the same eligibility pattern: every active exact GA4 HubSpot source with saved selected values is processed, while a saved pipeline stage ID is required only when `pipelineEnabled=true`. Revenue-only sources refresh confirmed Total Revenue without configuring Pipeline Proxy.
 
 The five-minute interval is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5`, bounded to `1..60`. The full external-source scheduler remains a separate daily run controlled by `AUTO_REFRESH_DAILY_HOUR`, `AUTO_REFRESH_DAILY_MINUTE`, and `AUTO_REFRESH_TIME_ZONE`. These paths share overlap guards.
 
@@ -123,7 +123,7 @@ A zero proxy after the transition is a valid configured `$0.00`, not `Unavailabl
 | Confirmed source breakdown | Itemized from `campaignValueRevenueTotals` | Itemized from `campaignValueRevenueTotals` |
 | Remove one selected record/value | Exact Salesforce item removal | Exact HubSpot item removal is implemented locally through the same stable-source replacement contract; deployed validation remains pending |
 | Five-minute refresh with Pipeline enabled | Yes | Implemented locally in `f4a3e8d7`; deployed natural-timer/provider transition proof remains pending |
-| Five-minute refresh with Pipeline disabled | Yes | No; currently waits for the daily external-source run |
+| Five-minute refresh with Pipeline disabled | Yes | Implemented locally; deployed natural-timer proof remains pending |
 | Open-stage to Closed Won automation | User-validated for the exercised Salesforce source; local regression covered | Local regression covered; deployed provider-authoritative transition remains pending |
 | Full daily external-source run | Code path exists; final current-cycle validation was intentionally deferred | Code path exists; must be validated after HubSpot parity work |
 | Current production-readiness status | Scoped exercised behavior only; no whole-source or whole-Overview certification claim | Unverified for current implementation; historical exact-source evidence remains historical |
@@ -134,8 +134,8 @@ The next HubSpot session should continue on the current branch and preserve cert
 
 1. trace the existing HubSpot wizard, save/materialization route, source modal, and `runHubSpotPipelineAutoRefreshOnce()` end to end before editing
 2. preserve HubSpot source IDs, campaign/platform ownership checks, currency/date semantics, atomic replacement, and optimistic mapping concurrency
-3. make HubSpot five-minute eligibility depend on an active exact GA4 mapping with selected values, as Salesforce does; require the pipeline stage only when `pipelineEnabled=true`
-4. prove that revenue-only HubSpot sources refresh confirmed revenue without configuring Pipeline Proxy
+3. preserve the locally implemented HubSpot five-minute eligibility for active exact GA4 mappings with selected values; require the pipeline stage only when `pipelineEnabled=true`
+4. validate after deployment that revenue-only HubSpot sources refresh confirmed revenue without configuring Pipeline Proxy
 5. prove that a selected deal moving from the chosen open stage to Closed Won atomically decreases Pipeline Proxy and increases confirmed Total Revenue/provenance exactly once
 6. address chooser, review-layout, or exact-row-delete parity only when explicitly in scope; do not bundle those UX changes into the scheduler correction
 7. run focused HubSpot and shared scheduler tests, TypeScript checks, and current deployed manual validation without broadening any historical certificate

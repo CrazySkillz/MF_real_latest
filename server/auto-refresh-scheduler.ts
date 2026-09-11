@@ -813,8 +813,7 @@ export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
           const mappingContext = String(mappingConfig?.platformContext || mappingConfig?.platform || "").trim().toLowerCase();
           if (
             mappingContext !== "ga4"
-            || mappingConfig?.pipelineEnabled !== true
-            || !mappingConfig?.pipelineStageId
+            || (mappingConfig?.pipelineEnabled === true && !mappingConfig?.pipelineStageId)
             || !Array.isArray(mappingConfig?.selectedValues)
             || mappingConfig.selectedValues.length === 0
           ) continue;

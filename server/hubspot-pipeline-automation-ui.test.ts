@@ -49,7 +49,7 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     ] }])).toEqual(["custom-won"]);
   });
 
-  it("polls only the eligible GA4 Pipeline source with its saved mapping and stable source ID", async () => {
+  it("polls eligible GA4 HubSpot sources and requires a stage only when Pipeline Proxy is enabled", async () => {
     const savedMapping = JSON.stringify({
       platformContext: "ga4",
       campaignProperty: "dealname",
@@ -60,12 +60,19 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
       pipelineStageId: "appointmentscheduled",
       pipelineStageLabel: "Appointment Scheduled",
     });
+    const savedRevenueOnlyMapping = JSON.stringify({
+      ...JSON.parse(savedMapping),
+      pipelineEnabled: false,
+      pipelineStageId: null,
+      pipelineStageLabel: null,
+    });
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
       { id: "hubspot-valid", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedMapping },
       { id: "hubspot-other-campaign", campaignId: "campaign-2", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedMapping },
       { id: "hubspot-disabled", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: false, mappingConfig: savedMapping },
-      { id: "hubspot-no-pipeline", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ ...JSON.parse(savedMapping), pipelineEnabled: false }) },
+      { id: "hubspot-no-pipeline", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedRevenueOnlyMapping },
+      { id: "hubspot-pipeline-missing-stage", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ ...JSON.parse(savedMapping), pipelineStageId: null }) },
       { id: "hubspot-foreign", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "linkedin", isActive: true, mappingConfig: savedMapping },
     ] as any);
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
@@ -76,10 +83,10 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     await runHubSpotPipelineAutoRefreshOnce();
 
     expect(storage.getRevenueSources).toHaveBeenCalledWith("campaign-1", "ga4");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchMock.mock.calls[0];
-    expect(String(url)).toContain("/api/campaigns/campaign-1/hubspot/save-mappings");
-    expect(JSON.parse(String(options?.body))).toMatchObject({
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [pipelineUrl, pipelineOptions] = fetchMock.mock.calls[0];
+    expect(String(pipelineUrl)).toContain("/api/campaigns/campaign-1/hubspot/save-mappings");
+    expect(JSON.parse(String(pipelineOptions?.body))).toMatchObject({
       sourceId: "hubspot-valid",
       expectedSourceMappingConfig: savedMapping,
       platformContext: "ga4",
@@ -88,6 +95,18 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
       dateField: "closedate",
       pipelineEnabled: true,
       pipelineStageId: "appointmentscheduled",
+    });
+    const [revenueOnlyUrl, revenueOnlyOptions] = fetchMock.mock.calls[1];
+    expect(String(revenueOnlyUrl)).toContain("/api/campaigns/campaign-1/hubspot/save-mappings");
+    expect(JSON.parse(String(revenueOnlyOptions?.body))).toMatchObject({
+      sourceId: "hubspot-no-pipeline",
+      expectedSourceMappingConfig: savedRevenueOnlyMapping,
+      platformContext: "ga4",
+      campaignProperty: "dealname",
+      selectedValues: ["Mapped HubSpot Deal"],
+      dateField: "closedate",
+      pipelineEnabled: false,
+      pipelineStageId: null,
     });
   });
 
@@ -102,8 +121,8 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     expect(refresh).toContain('storage.getRevenueSources(campaignId, "ga4")');
     expect(refresh).toContain('String(source?.sourceType || "").trim().toLowerCase() === "hubspot"');
     expect(refresh).toContain('String(source?.platformContext || "").trim().toLowerCase() === "ga4"');
-    expect(refresh).toContain('mappingConfig?.pipelineEnabled !== true');
-    expect(refresh).toContain('!mappingConfig?.pipelineStageId');
+    expect(refresh).not.toContain('mappingConfig?.pipelineEnabled !== true');
+    expect(refresh).toContain('(mappingConfig?.pipelineEnabled === true && !mappingConfig?.pipelineStageId)');
     expect(refresh).toContain('reprocessHubSpot(campaignId, mappingConfig, String(source.id))');
     expect(refresh).toContain('expectedSourceMappingConfig: String(source.mappingConfig)');
     expect(refresh).toContain('isSourceOutsideCampaign(source, campaignId)');

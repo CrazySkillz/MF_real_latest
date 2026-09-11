@@ -342,7 +342,7 @@ CRM auto-reprocess rule:
 
 - saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
 - every active exact GA4 Salesforce mapping with saved selected values is reprocessed every five minutes by default without a wizard resave; Pipeline enablement controls only whether the proxy is recalculated
-- active GA4 HubSpot mappings are currently reprocessed every five minutes only when Pipeline Proxy is enabled and a stage ID is saved. Revenue-only HubSpot mappings wait for the full daily run; matching Salesforce's five-minute revenue-only behavior is a required HubSpot parity follow-up, not current behavior
+- every active exact GA4 HubSpot mapping with saved selected values is reprocessed every five minutes by default; a saved stage ID is required only when Pipeline Proxy is enabled, so revenue-only mappings refresh confirmed revenue without a Pipeline card
 - HubSpot auto-reprocess should use active HubSpot revenue source mappings as the source of truth and pass the stable revenue `sourceId`
 - a mapped HubSpot deal that moves from the selected open stage to a current Closed Won stage should leave Pipeline Proxy and enter confirmed Total Revenue plus Revenue Sources provenance in the same atomic refresh; repeated refreshes must replace the source's records rather than duplicate the deal
 - HubSpot auto-reprocess should self-heal legacy `stageIds:["closedwon"]` mappings by resolving the account's current Closed Won stage IDs before querying deals

@@ -26,9 +26,9 @@ Current Pipeline Proxy automation follow-up (2026-09-11):
 - focused local regression evidence at that code boundary covers the selected-open-stage to Closed
   Won movement, confirmed deal provenance, zero-proxy caching, idempotent source
   replacement, ownership/context filters, and the unchanged Salesforce cadence
-- the current five-minute HubSpot selector still requires `pipelineEnabled=true`
-  and a saved stage ID, so revenue-only HubSpot sources wait for the full daily
-  external-source run; matching Salesforce revenue-only refresh is not yet implemented
+- the five-minute HubSpot selector now includes active exact GA4 revenue-only sources
+  with saved selected values; a saved stage ID remains required when Pipeline Proxy
+  is enabled, matching Salesforce eligibility without changing HubSpot API behavior
 - production certification of the current behavior remains pending a natural
   deployed five-minute timer observation and a provider-authoritative mapped
   deal transition, plus revalidation after the later shared changes; no unrelated
@@ -43,8 +43,8 @@ Current Revenue Sources item-removal refinement (2026-09-11):
 - HubSpot item rows now use the existing campaign-scoped save/materialization
   route with the stable source ID and optimistic mapping guard; the final item
   uses the existing exact-source delete route
-- the HubSpot provider subtitle no longer repeats saved GA4 campaign mapping
-  names, and the redundant confirmed-deal count heading is omitted
+- the HubSpot source row no longer repeats a provider subtitle or saved GA4
+  campaign mapping names, and the redundant confirmed-deal count heading is omitted
 - focused HubSpot, Salesforce-neighbor, source-delete, mapping, and recompute
   regression tests passed 65/65; TypeScript validation and production build passed
 - deployed item-removal and browser-layout validation remains pending; the

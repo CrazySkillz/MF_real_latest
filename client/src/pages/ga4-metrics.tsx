@@ -6954,7 +6954,7 @@ export default function GA4Metrics() {
                                       </button>
                                     )}
                                   </div>
-                                  {sourceType !== "shopify" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
+                                  {sourceType !== "shopify" && sourceType !== "hubspot" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
                                 </div>
                                 {sourceType !== "shopify" && (
                                   <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 ? "col-span-2" : ""}`}>

@@ -2917,6 +2917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const MAX_CSV_ROWS_PREVIEW = 5_000; // header + sample rows (keeps preview fast)
   const MAX_CSV_ROWS_PROCESS = 50_000; // hard cap for processing (prevents runaway memory/CPU)
   const MAX_HUBSPOT_RESULTS = 5_000;
+  const MAX_HUBSPOT_VALUE_SEARCH_LENGTH = 80;
   const MAX_SELECTED_VALUES = 200; // caps IN filters (prevents runaway queries)
   const MAX_CRM_REVIEW_BREAKDOWN_ROWS = 200;
 
@@ -18822,9 +18823,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
       const pipelineStageId = String(req.query.pipelineStageId || '').trim();
       const revenueOnly = String(req.query.revenueOnly || '').trim() === '1';
+      const search = String(req.query.search || '').trim();
 
       if (!property) {
         return res.status(400).json({ error: 'Missing property' });
+      }
+      if (search && (search.length < 2 || search.length > MAX_HUBSPOT_VALUE_SEARCH_LENGTH || /[\u0000-\u001f\u007f]/.test(search))) {
+        return res.status(400).json({ error: `Search must be 2-${MAX_HUBSPOT_VALUE_SEARCH_LENGTH} printable characters` });
       }
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
@@ -18876,6 +18881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const vRaw = d?.properties ? d.properties[property] : null;
           const v = vRaw === undefined || vRaw === null ? '' : String(vRaw).trim();
           if (!v) continue;
+          if (search && !v.toLocaleLowerCase().startsWith(search.toLocaleLowerCase())) continue;
           counts.set(v, (counts.get(v) || 0) + 1);
           if (counts.size >= limit) break;
         }

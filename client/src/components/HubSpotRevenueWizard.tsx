@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +23,7 @@ type UniqueValue = {
 
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 type ReviewDealBreakdownRow = { id?: string; name?: string; campaignValue?: string; amount: number; date?: string | null };
+const MAX_HUBSPOT_VALUE_SEARCH_LENGTH = 80;
 
 export function HubSpotRevenueWizard(props: {
   campaignId: string;
@@ -108,6 +110,13 @@ export function HubSpotRevenueWizard(props: {
   const [platformCampaigns, setPlatformCampaigns] = useState<Array<{ id: string; name: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
+  const [valuesError, setValuesError] = useState<string | null>(null);
+  const [valueSearch, setValueSearch] = useState("");
+  const visibleUniqueValues = useMemo(() => {
+    const normalizedSearch = valueSearch.trim().toLocaleLowerCase();
+    if (normalizedSearch.length < 2) return uniqueValues;
+    return uniqueValues.filter((item) => String(item.value).toLocaleLowerCase().startsWith(normalizedSearch));
+  }, [uniqueValues, valueSearch]);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
   const [reviewPreviewRevenue, setReviewPreviewRevenue] = useState<number | null>(null);
   const [reviewPipelineProxyAmount, setReviewPipelineProxyAmount] = useState<number | null>(null);
@@ -338,22 +347,35 @@ export function HubSpotRevenueWizard(props: {
     return props as HubSpotProperty[];
   };
 
-  const fetchUniqueValues = async (propertyName: string) => {
+  const fetchUniqueValues = async (propertyName: string, searchTerm = "") => {
+    const normalizedSearch = searchTerm.trim();
     setValuesLoading(true);
+    setValuesError(null);
     try {
       const resp = await fetch(
         `/api/hubspot/${campaignId}/deals/unique-values?property=${encodeURIComponent(propertyName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300${!pipelineEnabled ? "&revenueOnly=1" : ""}${pipelineEnabled && pipelineStageId ? `&pipelineStageId=${encodeURIComponent(pipelineStageId)}` : ""}`,
+        )}&limit=300${normalizedSearch ? `&search=${encodeURIComponent(normalizedSearch)}` : ""}${!pipelineEnabled ? "&revenueOnly=1" : ""}${pipelineEnabled && pipelineStageId ? `&pipelineStageId=${encodeURIComponent(pipelineStageId)}` : ""}`,
         { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load values");
       const vals = Array.isArray(json?.values) ? json.values : [];
-      setUniqueValues(vals);
-      // Keep only selections that still exist
       const allowed = new Set(vals.map((v: any) => String(v.value)));
-      setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
+      // Searches and bounded result windows must never silently remove a user's selections.
+      const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));
+      setUniqueValues([
+        ...vals,
+        ...missing.map((v) => ({ value: String(v), count: 0 })),
+      ]);
+      return vals;
+    } catch (err: any) {
+      const msg = err?.message || "Failed to load values";
+      setValuesError(msg);
+      if (uniqueValues.length === 0 && selectedValues.length === 0) {
+        toast({ title: "Failed to Load Values", description: msg, variant: "destructive" });
+      }
+      return [];
     } finally {
       setValuesLoading(false);
     }
@@ -401,6 +423,7 @@ export function HubSpotRevenueWizard(props: {
           // Clear cached fields/values so the user sees fresh HubSpot data immediately (exec expectation).
           setProperties([]);
           setUniqueValues([]);
+          setValueSearch("");
           setPipelines([]);
           toast({
             title: "HubSpot Connected",
@@ -977,8 +1000,12 @@ export function HubSpotRevenueWizard(props: {
                       value={campaignProperty}
                       onValueChange={(v) => {
                         setCampaignProperty(v);
+                        setSelectedValues([]);
+                        setUniqueValues([]);
+                        setValueSearch("");
                         setCampaignMappings([]);
                         setCampaignDisplayName("");
+                        crosswalkFetchedRef.current = false;
                       }}
                       disabled={!isConnected || statusLoading}
                     >
@@ -1024,15 +1051,67 @@ export function HubSpotRevenueWizard(props: {
                   </div>
                 </div>
 
+                <form
+                  className="space-y-1"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const normalizedSearch = valueSearch.trim();
+                    if (valuesLoading || normalizedSearch.length < 2) return;
+                    void fetchUniqueValues(campaignProperty, normalizedSearch);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={valueSearch}
+                      onChange={(event) => setValueSearch(event.target.value)}
+                      maxLength={MAX_HUBSPOT_VALUE_SEARCH_LENGTH}
+                      disabled={valuesLoading}
+                      placeholder="Search values by beginning…"
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={valuesLoading || valueSearch.trim().length < 2}
+                    >
+                      Search
+                    </Button>
+                    {valueSearch && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={valuesLoading}
+                        onClick={() => {
+                          setValueSearch("");
+                          void fetchUniqueValues(campaignProperty);
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Enter at least 2 characters. Search matches the beginning of a HubSpot value.
+                  </div>
+                </form>
+
+                {valuesError && (
+                  <div className="text-sm text-red-600">
+                    {valuesError}{" "}
+                    <button type="button" className="underline" onClick={() => void fetchUniqueValues(campaignProperty, valueSearch)}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+
                 <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
-                  {valuesLoading ? (
+                  {valuesLoading && visibleUniqueValues.length === 0 ? (
                     <div className="text-sm text-muted-foreground">Loading values…</div>
-                  ) : uniqueValues.length === 0 ? (
+                  ) : visibleUniqueValues.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No values found.</div>
                   ) : (
                     /* Standard checkbox mode */
                     <div className="space-y-2">
-                      {uniqueValues.map((v) => {
+                      {visibleUniqueValues.map((v) => {
                         const value = String(v.value);
                         const checked = selectedValues.includes(value);
                         return (
@@ -1090,6 +1169,7 @@ export function HubSpotRevenueWizard(props: {
                         setPipelineStageLabel(hit?.label || "");
                         crosswalkFetchedRef.current = false;
                         setUniqueValues([]);
+                        setValueSearch("");
                       }}
                       disabled={pipelinesLoading}
                     >

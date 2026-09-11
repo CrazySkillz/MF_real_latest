@@ -361,6 +361,27 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueSourcesDialog).toContain('isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText');
   });
 
+  it("wires bounded HubSpot Crosswalk prefix search without dropping selected values", () => {
+    const routes = routesFile();
+    const wizard = hubspotWizardFile();
+    const uniqueValuesRoute = sliceBetween(
+      routes,
+      'app.get("/api/hubspot/:campaignId/deals/unique-values"',
+      "// HubSpot save mappings"
+    );
+
+    expect(uniqueValuesRoute).toContain("search.length < 2 || search.length > MAX_HUBSPOT_VALUE_SEARCH_LENGTH");
+    expect(uniqueValuesRoute).toContain("!v.toLocaleLowerCase().startsWith(search.toLocaleLowerCase())");
+    expect(uniqueValuesRoute).toContain("...(stageIds.length > 0 ? [{ propertyName: 'dealstage', operator: 'IN', values: stageIds }] : [])");
+    expect(wizard).toContain("const MAX_HUBSPOT_VALUE_SEARCH_LENGTH = 80;");
+    expect(wizard).toContain('`&search=${encodeURIComponent(normalizedSearch)}`');
+    expect(wizard).toContain("Search matches the beginning of a HubSpot value.");
+    expect(wizard).toContain("const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));");
+    expect(wizard).not.toContain("setSelectedValues((prev) => prev.filter((v) => allowed.has(v)))");
+    expect(wizard).toContain("valuesLoading && visibleUniqueValues.length === 0");
+    expect(wizard).toContain("fetchUniqueValues(campaignProperty, valueSearch)");
+  });
+
   it("matches a HubSpot Pipeline source through its explicit GA4 campaign mapping", () => {
     const pipelineRoute = sliceBetween(
       routesFile(),

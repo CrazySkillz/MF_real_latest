@@ -6953,32 +6953,9 @@ export default function GA4Metrics() {
                                   </div>
                                   {sourceType !== "shopify" && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
                                 </div>
-                                {sourceType !== "shopify" && (
-                                  <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 ? "col-span-2" : ""}`}>
-                                    {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
-                                  </span>
-                                )}
-                                {sourceType === "shopify" && (
-                                  <>
-                                    <p className="col-start-1 row-start-2 min-w-0 self-center truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>
-                                    <span className="col-start-2 row-start-2 self-center text-right font-medium tabular-nums text-foreground">
-                                      {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
-                                    </span>
-                                    <div className="col-start-3 row-start-2 flex items-center justify-end">
-                                      <button
-                                        onClick={() => {
-                                          setShowRevenueSourcesDialog(false);
-                                          setDeletingRevenueSourceId(s.sourceId);
-                                        }}
-                                        className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                                        title="Remove revenue source"
-                                        aria-label="Remove Shopify revenue source"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
+                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""}`}>
+                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                </span>
                                 {confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (
                                   <div className="flex items-center justify-end gap-1">
                                     {ga4ConnectionUsable && s.sourceType !== "manual" && (
@@ -7007,6 +6984,29 @@ export default function GA4Metrics() {
                                   </div>
                                 )}
                               </div>
+                              {sourceType === "shopify" && (
+                                <div className="mt-2 border-t border-border pt-2">
+                                  <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">
+                                    <span className="min-w-0 truncate text-muted-foreground" title={sourceTypeText}>{sourceTypeText}</span>
+                                    <span className="text-right tabular-nums text-foreground">
+                                      {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                    </span>
+                                    <div className="flex items-center justify-end">
+                                      <button
+                                        onClick={() => {
+                                          setShowRevenueSourcesDialog(false);
+                                          setDeletingRevenueSourceId(s.sourceId);
+                                        }}
+                                        className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                        title="Remove revenue source"
+                                        aria-label="Remove Shopify revenue source"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                               {confirmedRevenueItems.length > 0 && (
                                 <div className="mt-2 border-t border-border pt-2">
                                   <div className="scrollbar-hide max-h-40 space-y-1 overflow-y-auto">

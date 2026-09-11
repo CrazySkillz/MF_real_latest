@@ -140,7 +140,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('grid-cols-[minmax(0,1fr)_6rem_3.5rem]');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 ? "col-span-2" : ""');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
     expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (');
     expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
     expect(sourceDialog).toContain('aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}');
@@ -185,12 +185,18 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
       '<Dialog open={showRevenueSourcesDialog}',
       '<Dialog open={showSpendSourcesDialog}',
     );
+    const shopifyBreakdown = sliceBetween(
+      sourceDialog,
+      '{sourceType === "shopify" && (',
+      '{confirmedRevenueItems.length > 0 && (',
+    );
 
-    expect(sourceDialog).toContain('sourceType !== "shopify" && (');
-    expect(sourceDialog).toContain('className="col-start-1 row-start-2 min-w-0 self-center truncate text-xs text-muted-foreground/70"');
-    expect(sourceDialog).toContain('className="col-start-2 row-start-2 self-center text-right font-medium tabular-nums text-foreground"');
-    expect(sourceDialog).toContain('className="col-start-3 row-start-2 flex items-center justify-end"');
-    expect(sourceDialog).toContain('aria-label="Remove Shopify revenue source"');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
+    expect(shopifyBreakdown).toContain('className="mt-2 border-t border-border pt-2"');
+    expect(shopifyBreakdown).toContain('className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs"');
+    expect(shopifyBreakdown).toContain('className="text-right tabular-nums text-foreground"');
+    expect(shopifyBreakdown).not.toContain('font-medium tabular-nums');
+    expect(shopifyBreakdown).toContain('aria-label="Remove Shopify revenue source"');
   });
 
   it("shows selected Salesforce campaign mappings in review before save", () => {

@@ -356,7 +356,7 @@ describe("Shopify revenue regression guard", () => {
       "// Merged spend sources for micro copy display",
     );
 
-    expect(helper).toContain('if (sourceType !== "hubspot" && sourceType !== "shopify") return "";');
+    expect(helper).toContain('if (sourceType !== "shopify") return "";');
     expect(helper).toContain("mapping?.linkedinCampaignName || mapping?.platformCampaignName || mapping?.campaignName || mapping?.linkedinCampaignUrn");
     expect(ga4Metrics).toContain("const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);");
     expect(ga4Metrics).toContain("? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText");

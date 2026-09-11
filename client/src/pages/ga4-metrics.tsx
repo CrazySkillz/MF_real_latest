@@ -6921,9 +6921,6 @@ export default function GA4Metrics() {
                               .filter((item: any) => item.name && Number.isFinite(item.revenue))
                               .sort((a: any, b: any) => a.name.localeCompare(b.name))
                             : [];
-                          const confirmedRevenueItemsLabel = String(cfg?.campaignField || "").trim().toLowerCase() === "name"
-                              ? "Confirmed opportunities"
-                              : "Confirmed attributed values";
                           const mappedCampaignText = revenueSourceMappedCampaignLabel(s, cfg);
                           const sourceTypeText = mappedCampaignText
                             ? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText
@@ -6954,7 +6951,7 @@ export default function GA4Metrics() {
                                       </button>
                                     )}
                                   </div>
-                                  {sourceType !== "shopify" && sourceType !== "hubspot" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
+                                  {sourceType !== "shopify" && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
                                 </div>
                                 {sourceType !== "shopify" && (
                                   <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 ? "col-span-2" : ""}`}>
@@ -7012,7 +7009,6 @@ export default function GA4Metrics() {
                               </div>
                               {confirmedRevenueItems.length > 0 && (
                                 <div className="mt-2 border-t border-border pt-2">
-                                  {sourceType !== "hubspot" && <p className="mb-1.5 text-xs font-medium text-muted-foreground/70">{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})</p>}
                                   <div className="scrollbar-hide max-h-40 space-y-1 overflow-y-auto">
                                     {confirmedRevenueItems.map((item: any, index: number) => (
                                       <div key={`${item.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">

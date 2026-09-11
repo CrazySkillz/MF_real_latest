@@ -124,9 +124,9 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals)');
-    expect(sourceDialog).toContain('? "Confirmed opportunities"');
-    expect(sourceDialog).toContain(': "Confirmed attributed values"');
-    expect(sourceDialog).toContain("{confirmedRevenueItemsLabel} ({confirmedRevenueItems.length})");
+    expect(sourceDialog).not.toContain('"Confirmed opportunities"');
+    expect(sourceDialog).not.toContain('"Confirmed attributed values"');
+    expect(sourceDialog).toContain('sourceType !== "hubspot" && sourceType !== "salesforce"');
     expect(sourceDialog).toContain("formatMoney(item.revenue)");
     expect(sourceDialog).not.toContain("cfg?.pipelineValueRevenueTotals");
     expect(sourceDialog).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}');

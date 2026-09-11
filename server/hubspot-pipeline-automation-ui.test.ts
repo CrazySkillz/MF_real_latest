@@ -24,6 +24,31 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     delete (global as any).__salesforcePipelineRefreshInProgress;
   });
 
+  it("recognizes HubSpot's documented 1.0 probability for custom Closed Won stages", () => {
+    const stageDetector = sliceBetween(
+      routes,
+      "function deriveDefaultClosedWonStageIds",
+      "function deriveDefaultNonLostStageIds",
+    );
+
+    expect(stageDetector).toContain("const probability = Number((md as any)?.probability)");
+    expect(stageDetector).toContain("(isClosed && probability === 1) || looksLikeWon");
+    expect(stageDetector).not.toContain("probability === '1'");
+
+    const executableDetector = stageDetector
+      .replace("function deriveDefaultClosedWonStageIds(pipelines: any[]): string[]", "function deriveDefaultClosedWonStageIds(pipelines)")
+      .replace("const stageIds: string[] = [];", "const stageIds = [];")
+      .replaceAll("(md as any)", "md");
+    const detectClosedWonStages = new Function(
+      `${executableDetector}; return deriveDefaultClosedWonStageIds;`,
+    )() as (pipelines: any[]) => string[];
+
+    expect(detectClosedWonStages([{ stages: [
+      { id: "custom-won", label: "Contract signed", metadata: { isClosed: "true", probability: "1.0" } },
+      { id: "open-stage", label: "Negotiation", metadata: { isClosed: "false", probability: "0.8" } },
+    ] }])).toEqual(["custom-won"]);
+  });
+
   it("polls only the eligible GA4 Pipeline source with its saved mapping and stable source ID", async () => {
     const savedMapping = JSON.stringify({
       platformContext: "ga4",

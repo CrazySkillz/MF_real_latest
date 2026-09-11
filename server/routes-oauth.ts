@@ -18759,10 +18759,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!id) continue;
         const md = s?.metadata || {};
         const isClosed = String((md as any)?.isClosed ?? '').toLowerCase() === 'true';
-        const probability = String((md as any)?.probability ?? '');
+        const probability = Number((md as any)?.probability);
         const label = String(s?.label || '').toLowerCase();
         const looksLikeWon = label.includes('closed won') || id.toLowerCase() === 'closedwon';
-        if ((isClosed && probability === '1') || looksLikeWon) {
+        if ((isClosed && probability === 1) || looksLikeWon) {
           stageIds.push(id);
         }
       }

@@ -24,7 +24,8 @@ async function refreshGoogleSheetsToken(connection: any): Promise<string> {
       refresh_token: connection.refreshToken,
       client_id: connection.clientId,
       client_secret: connection.clientSecret
-    })
+    }),
+    signal: AbortSignal.timeout(15000)
   });
 
   if (!refreshResponse.ok) {

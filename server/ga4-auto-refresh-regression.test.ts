@@ -23,6 +23,9 @@ const ga4MetricsFile = () =>
 const serverIndexFile = () =>
   readFileSync(join(process.cwd(), "server", "index.ts"), "utf-8");
 
+const googleSheetsTokenSchedulerFile = () =>
+  readFileSync(join(process.cwd(), "server", "google-sheets-token-scheduler.ts"), "utf-8");
+
 describe("GA4 external value auto-refresh regression guard", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -471,5 +474,9 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("__autoRefreshInProgress");
     expect(content).toContain('console.log("[Auto Refresh] Skipping run (daily refresh already in progress)")');
     expect(content).toContain("=== AUTO-REFRESH COMPLETE");
+  });
+
+  it("bounds proactive Google Sheets OAuth token refresh requests", () => {
+    expect(googleSheetsTokenSchedulerFile()).toContain("signal: AbortSignal.timeout(15000)");
   });
 });

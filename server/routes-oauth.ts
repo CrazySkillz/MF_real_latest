@@ -3760,6 +3760,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Atomic GA4 Google Sheets revenue sources + unused connections disconnect
+  app.delete('/api/campaigns/:id/ga4/google-sheets/disconnect', async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || '');
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      const result = await storage.disconnectGa4GoogleSheetsRevenue(campaignId);
+      try {
+        await recomputeCampaignDerivedValues(campaignId, { platformContext: 'ga4' });
+      } catch (error) {
+        console.error('[Google Sheets] Post-disconnect GA4 recompute failed:', error);
+      }
+      res.json({ success: true, removedSourceIds: result.sourceIds, removedConnectionIds: result.connectionIds });
+    } catch (error: any) {
+      if (error?.code === 'GOOGLE_SHEETS_CONNECTION_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: error.message });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to disconnect Google Sheets' });
+    }
+  });
+
   // Individual revenue source delete
   app.delete("/api/campaigns/:id/revenue-sources/:sourceId", async (req, res) => {
     try {

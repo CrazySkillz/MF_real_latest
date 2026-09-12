@@ -356,6 +356,27 @@ describe("source safety regression guards", () => {
     expect(route.indexOf("targetConnection = (before || []).find")).toBeLessThan(route.indexOf("await storage.deleteGoogleSheetsConnection(String(targetConnection.id));"));
   });
 
+  it("GA4 Google Sheets disconnect is campaign-guarded, transactional, and preserves shared connections", () => {
+    const routesSource = readRoutesSource();
+    const storageSource = readStorageSource();
+    const routeStart = routesSource.indexOf("app.delete('/api/campaigns/:id/ga4/google-sheets/disconnect'");
+    const routeEnd = routesSource.indexOf("// Individual revenue source delete", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+    const methodStart = storageSource.indexOf("async disconnectGa4GoogleSheetsRevenue(campaignId: string)");
+    const methodEnd = storageSource.indexOf("async disconnectGa4ShopifyRevenue", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route).toContain("storage.disconnectGa4GoogleSheetsRevenue(campaignId)");
+    expect(method).toContain("return await db.transaction");
+    expect(method).toContain("sharedRevenueConnectionIds");
+    expect(method).toContain("sharedSpendConnectionIds");
+    expect(method).toContain("disabledSources.length !== sourceIds.length");
+    expect(method).toContain("disabledConnections.length !== connectionIds.length");
+    expect(method).toContain("columnMappings: null, cachedData: null, lastDataRefreshAt: null");
+  });
+
   it("Google Sheets lifecycle clears stale cached rows and mappings on reconnect, replacement, and delete", () => {
     const routesSource = readRoutesSource();
     const storageSource = readStorageSource();

@@ -1616,6 +1616,26 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
+  const handleGoogleSheetsDisconnect = async () => {
+    setSheetsRemoving(true);
+    try {
+      const response = await apiRequest('DELETE', `/api/campaigns/${campaignId}/ga4/google-sheets/disconnect`);
+      const body = await response.json().catch(() => ({}));
+      const removedConnectionIds = new Set(Array.isArray(body?.removedConnectionIds) ? body.removedConnectionIds.map(String) : []);
+      setImportSourceStatus((current) => ({ ...current, google_sheets: false }));
+      setSheetsConnections((current) => current.filter((connection: any) => !removedConnectionIds.has(String(connection?.id || ''))));
+      setSheetsConnectionId('');
+      setSheetsPreview(null);
+      invalidateAfterRevenueChange();
+      onSuccess?.();
+      toast({ title: 'Google Sheets disconnected', description: 'Revenue sources and unused sheet connections removed.' });
+    } catch (error: any) {
+      toast({ title: 'Disconnect failed', description: error?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSheetsRemoving(false);
+    }
+  };
+
   const handleSheetsConnectionSuccess = async (info?: {
     connectionId?: string;
     connectionIds?: string[];
@@ -1907,16 +1927,51 @@ export function AddRevenueWizardModal(props: {
                   </Card>
                 )}
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => {
-                  if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");
-                  setStep("sheets_choose");
-                }}>
+                <Card
+                  className={`${importSourceStatus.google_sheets ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${sheetsRemoving ? "opacity-60 pointer-events-none" : ""}`}
+                  onClick={() => {
+                    if (importSourceStatus.google_sheets) return;
+                    if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");
+                    setStep("sheets_choose");
+                  }}
+                >
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4" />
                       Google Sheets
                       {importSourceStatus.google_sheets && (
-                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected · Add another</span>
+                        <span className="ml-auto flex items-center gap-1 text-xs font-normal text-green-600 dark:text-green-400">
+                          <span>Connected</span>
+                          <span aria-hidden="true">|</span>
+                          <button type="button" className="hover:underline" onClick={(event) => {
+                            event.stopPropagation();
+                            if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");
+                            setStep("sheets_choose");
+                          }}>
+                            Add another sheet
+                          </button>
+                          {platformContext === 'ga4' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button type="button" className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Google Sheets" onClick={(event) => event.stopPropagation()}>
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect Google Sheets</AlertDialogTitle>
+                                  <AlertDialogDescription>This removes all Google Sheets revenue sources for this campaign. Sheet connections used by another source will be preserved.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={sheetsRemoving} onClick={() => void handleGoogleSheetsDisconnect()}>
+                                    {sheetsRemoving ? "Disconnecting…" : "Disconnect"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </span>
                       )}
                     </CardTitle>
                     <CardDescription>Import revenue from a connected Google Sheets tab</CardDescription>

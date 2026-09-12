@@ -87,7 +87,12 @@ describe("GA4 UI regression guard", () => {
     expect(revenueModal).toContain('google_sheets: hasSource("google_sheets"),');
     expect(revenueModal).toContain('csv: hasSource("csv"),');
     expect(revenueModal).toContain("importSourceStatus.google_sheets");
-    expect(revenueModal).toContain(">Connected · Add another</span>");
+    expect(revenueModal).toContain("<span>Connected</span>");
+    expect(revenueModal).toContain('<span aria-hidden="true">|</span>');
+    expect(revenueModal).toContain("Add another sheet");
+    expect(revenueModal).toContain('if (importSourceStatus.google_sheets) return;');
+    expect(revenueModal).toContain('title="Disconnect Google Sheets"');
+    expect(revenueModal).toContain("/ga4/google-sheets/disconnect");
     expect(revenueModal).toContain("importSourceStatus.csv");
     expect(revenueModal).toContain(">Uploaded</span>");
     expect(revenueModal).not.toContain("if (!open || hideCrmSources) return;");

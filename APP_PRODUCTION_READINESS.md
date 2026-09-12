@@ -25,6 +25,70 @@ This file is not a substitute for the evidence in each linked certificate.
 `AGENTS.md`, `ARCHITECTURE_USER_JOURNEY.md`, and `PRODUCTION_READINESS.md` remain
 the governing standards.
 
+## Current Fresh Certification Program
+
+The application will now be certified through one new current-release program.
+Earlier certificates remain preserved as supporting or historical evidence, but
+they do not automatically pass a section into this new program. No earlier
+certificate or evidence block will be deleted or rewritten.
+
+The supported ownership model to prove in every section is: one authenticated
+user may own multiple clients, and each client may contain multiple campaigns.
+Every section must isolate owners, clients, campaigns, connected accounts, and
+saved source configuration.
+
+### Phase 1 - GA4 platform section
+
+| Order | Section | Program state |
+| ---: | --- | --- |
+| 1 | Overview | `NEXT` |
+| 2 | KPIs | `QUEUED` |
+| 3 | Benchmarks | `QUEUED` |
+| 4 | Ad Comparison | `QUEUED` |
+| 5 | Insights | `QUEUED` |
+| 6 | Reports | `QUEUED` |
+
+Each GA4 section must independently pass the complete no-overclaim standard at
+an exact current runtime: visible/downstream value inventory, provider/query and
+post-fetch transforms, scope and ownership, date/timezone rules, formulas,
+fallback and negative cases, add/edit/delete/refresh lifecycle where applicable,
+scheduler and concurrency behavior, last-good-data behavior, damaged-data
+inventory where applicable, downstream propagation, focused regressions,
+TypeScript, production build, and required deployed/provider validation.
+
+After each pass:
+
+1. add a new authoritative current-status block to that section's certificate;
+2. preserve all older certificate material as history;
+3. record the exact certified runtime, configuration, evidence, and exclusions;
+4. update only that section's row in this ledger;
+5. commit the section certificate separately before starting the next section.
+
+After all six sections pass, create one GA4 roll-up certificate from those six
+current certificates. There is no separate up-front status-reconciliation task;
+the fresh section certificates supersede stale summaries as the program advances.
+
+### Phase 2 - campaign-level dependencies
+
+Freshly certify campaign-level KPIs and Benchmarks after the GA4 section passes.
+This must prove the current connected-platform inputs, CRUD, refresh/recompute,
+alerts, notifications, owner/client/campaign isolation, and downstream consumers.
+
+### Phase 3 - Campaign DeepDive
+
+Certify in dependency order:
+
+1. Performance Summary
+2. Budget & Financial Analysis
+3. Platform Comparison if it remains visible; otherwise hide it and mark it
+   `EXCLUDED` before app certification
+4. Trend Analysis
+5. Executive Summary
+6. Custom Reports
+
+Each DeepDive certificate must consume the newly certified GA4 and campaign-level
+inputs without independently changing or reinterpreting those upstream values.
+
 ## Authority Order
 
 When documents disagree, use this order:
@@ -127,7 +191,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Global scheduler health | `UNVERIFIED` | Several exact target jobs are certified; current evidence repeatedly excludes obsolete/test failures | Define active production job inventory and pass one global healthy-cycle gate without treating excluded jobs as success. |
 | App-wide destructive/visibility behavior | `RECONCILE` | `TARGETED_DESTRUCTIVE_VISIBILITY_AUDIT.md` contains broad targeted evidence | Convert completed evidence into an explicit exact-runtime certificate and preserve unresolved rows. |
 
-## Known Status Conflicts To Resolve Once
+## Known Status Conflicts Superseded By The Fresh Program
 
 1. `GA4_PRODUCTION_READY_TRACKER.md` says the complete GA4 section is
    production-ready, while current GA4 Overview, KPI, Ad Comparison, and Reports
@@ -146,7 +210,9 @@ Threshold documents are supporting evidence, not whole-tab authorities:
    readiness. Its final result must be reconciled only after its current external
    gates close.
 
-Resolving these conflicts must not rerun or rewrite unaffected certificates.
+These conflicts remain visible for audit history. They are not a separate work
+phase. Each fresh section certificate will supersede the stale summary for that
+section, and the final GA4 roll-up will replace the conflicting broad conclusion.
 
 ## Durable No-Repeat Rule
 
@@ -175,26 +241,22 @@ consumers. Do not revoke unrelated sections.
 
 ## Efficient Completion Order
 
-1. **Reconcile documentation only:** close the six conflicts above and give
-   completed-but-ambiguous trackers one explicit status.
-2. **Certify shared foundations once:** authentication, owner/client/campaign
-   scoping, campaign/client lifecycle, destructive paths, and active-job scheduler
-   inventory.
-3. **Close current GA4 gates:** Overview, KPIs, Ad Comparison, and Reports.
-   Benchmarks and Insights remain carried forward unless impact analysis reopens them.
-4. **Close financial-source gates:** Shopify, Google Sheets Revenue/Spend, and a
-   dedicated Salesforce certificate. HubSpot and the exact CSV certificate remain
-   carried forward.
-5. **Close enabled connected platforms:** live Google Ads and Meta gates, Google
-   Sheets, Instagram, and any other platform actually enabled for the release.
-   Complete or hide TikTok; do not certify an unimplemented route.
-6. **Close campaign/global consumers:** campaign-level KPI/Benchmark status,
-   Campaign Overview, Notifications, Dashboard, global Reports, Audiences, and
-   Freestyle Chat if it remains visible.
-7. **Issue the app certificate:** on one exact deployed release SHA, run the
-   integrated user journey, app-wide ownership/isolation matrix, production data
-   inventories, active scheduler cycle, focused certificate guards, TypeScript,
-   production build, and supported provider smoke tests.
+1. **Freshly certify GA4:** Overview, KPIs, Benchmarks, Ad Comparison, Insights,
+   and Reports, one section and one certificate at a time.
+2. **Create the GA4 roll-up:** only after all six new section certificates pass.
+3. **Freshly certify campaign-level KPIs and Benchmarks:** use the certified GA4
+   values and prove lifecycle, alerts, ownership, and downstream propagation.
+4. **Freshly certify Campaign DeepDive:** Performance Summary, Budget & Financial
+   Analysis, visible Platform Comparison, Trend Analysis, Executive Summary, and
+   Custom Reports.
+5. **Certify remaining enabled app surfaces and sources:** work only on ledger
+   rows that are not already accepted into the new program; hide and mark
+   unsupported features `EXCLUDED` rather than certifying unfinished behavior.
+6. **Issue the app certificate:** on one exact deployed release SHA, run the
+   integrated owner -> client -> campaign -> source -> analysis -> action journey,
+   app-wide ownership/isolation matrix, production data inventories, active
+   scheduler cycle, focused certificate guards, TypeScript, production build,
+   and supported provider smoke tests.
 
 ## App Certification Exit Gate
 
@@ -272,4 +334,3 @@ the proposed change. After validation:
 3. preserve prior evidence as history;
 4. update the focused ledger guard;
 5. record the exact commit and deployed evidence boundary.
-

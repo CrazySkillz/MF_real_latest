@@ -4973,7 +4973,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (!resp.ok) {
         const txt = await resp.text();
-        const message = resp.status === 403
+        const message = resp.status === 429
+          ? "Google Sheets is temporarily busy. Wait a minute, then retry the preview."
+          : resp.status === 403
           ? "Access denied. Reconnect Google Sheets or make sure the connected Google account still has access to this spreadsheet."
           : resp.status === 404
             ? "Spreadsheet not found. It may have been deleted or moved. Choose a different sheet/tab."

@@ -142,6 +142,8 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(schedulerRevenue).toContain("buildGoogleSheetsRevenueRowRanges(grid.sheetName, grid.rowCount)");
     expect(schedulerRevenue).toContain("for (const range of ranges)");
     expect(schedulerRevenue.indexOf("chunk fetch failed")).toBeLessThan(schedulerRevenue.indexOf("storage.replaceRevenueSourceWithRecords"));
+    expect(preview).toContain('resp.status === 429');
+    expect(preview).toContain("Google Sheets is temporarily busy. Wait a minute, then retry the preview.");
   });
 
   it("fails the GA4 foreground path before source mutation", () => {

@@ -92,6 +92,10 @@ describe("GA4 UI regression guard", () => {
     expect(chooseSection).not.toContain("sheetsConnectionsLoading");
     expect(revenueModal).not.toContain("Checking connected Google Sheets");
     expect(googleSheetsAuth).not.toContain("Checking connection...");
+    expect(revenueModal).not.toContain('if (!ok) setStep("sheets_choose");');
+    expect(revenueModal).toContain("preserveExisting: true, preservePreviewOnError: true");
+    expect(revenueModal).toContain("Preview is temporarily unavailable. Your saved mapping has not changed.");
+    expect(revenueModal).toContain("Retry preview");
   });
 
   it("shows GA4 reconnect required on the campaign card when provider auth fails", () => {

@@ -1653,7 +1653,7 @@ export function AddRevenueWizardModal(props: {
   };
 
   // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
-  // If the connection no longer exists, fall back to the connection chooser step.
+  // If the saved connection is missing, fall back to the connection chooser step.
   useEffect(() => {
     if (!open) return;
     if (!isEditing) return;
@@ -1662,10 +1662,7 @@ export function AddRevenueWizardModal(props: {
     if (step === "sheets_map") {
       if (!sheetsConnectionId) { setStep("sheets_choose"); return; }
       if (sheetsPreview) return;
-      void (async () => {
-        const ok = await handleSheetsPreview(sheetsConnectionId, { preserveExisting: true });
-        if (!ok) setStep("sheets_choose");
-      })();
+      void handleSheetsPreview(sheetsConnectionId, { preserveExisting: true, preservePreviewOnError: true });
       return;
     }
     // After falling back to sheets_choose, auto-advance once connections load and stored ID matches
@@ -2446,7 +2443,7 @@ export function AddRevenueWizardModal(props: {
 
             {step === "sheets_map" && (
               <div className="space-y-4">
-                {!sheetsPreview && (sheetsProcessing || isEditing) ? (
+                {!sheetsPreview && sheetsProcessing ? (
                   <div className="flex items-center justify-center py-16">
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -2458,8 +2455,13 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardContent className="space-y-4">
                     {!sheetsPreview ? (
-                        <div className="rounded-md border p-3 text-sm text-muted-foreground/70">
-                          No preview loaded yet. Go back and select a Google Sheet tab.
+                        <div className="rounded-md border p-3 text-sm text-muted-foreground/70 space-y-3">
+                          <p>{isEditing ? "Preview is temporarily unavailable. Your saved mapping has not changed." : "No preview loaded yet. Go back and select a Google Sheet tab."}</p>
+                          {isEditing && (
+                            <Button type="button" variant="outline" size="sm" onClick={() => void handleSheetsPreview(sheetsConnectionId, { preserveExisting: true, preservePreviewOnError: true })}>
+                              Retry preview
+                            </Button>
+                          )}
                         </div>
                     ) : (
                       <>

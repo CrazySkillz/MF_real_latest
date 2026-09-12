@@ -814,9 +814,13 @@ export function AddRevenueWizardModal(props: {
 
     if (type === "google_sheets") {
       const connId = String(config?.connectionId || sourceToEdit?.connectionId || "");
-      setStep("sheets_map");
+      sheetsPreviewRequestRef.current += 1;
+      setStep("sheets_choose");
       if (connId) setSheetsConnectionId(connId);
-      // We'll fetch preview in the mapping step; after preview loads we re-apply mappings below.
+      setShowSheetsConnect(false);
+      setSheetsPreview(null);
+      setSheetsBackToChooser(false);
+      setSheetsProcessing(false);
       setSheetsRevenueCol(String(config?.revenueColumn || ""));
       setSheetsConversionValueCol("");
       setSheetsCampaignCol(String(config?.campaignColumn || ""));
@@ -964,7 +968,7 @@ export function AddRevenueWizardModal(props: {
         const usesCreateModeSheetPicker = platformContext === "google_sheets" || platformContext === "custom_integration";
         const shouldAutoSelectExistingSheet = isEditing || (!usesCreateModeSheetPicker && platformContext !== "tiktok");
         if (!sheetsBackToChooser && !currentIdValid && conns.length > 0 && shouldAutoSelectExistingSheet) {
-          setSheetsConnectionId(String(conns[0]?.id || ""));
+          setSheetsConnectionId((currentId) => conns.some((c: any) => String(c.id) === currentId) ? currentId : String(conns[0]?.id || ""));
         }
       } catch {
         if (!mounted) return;
@@ -1652,8 +1656,7 @@ export function AddRevenueWizardModal(props: {
     toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
   };
 
-  // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
-  // If the saved connection is missing, fall back to the connection chooser step.
+  // If opened in edit mode for Sheets, guard direct mapping-step entry; normal edits preview after Next.
   useEffect(() => {
     if (!open) return;
     if (!isEditing) return;
@@ -1664,13 +1667,6 @@ export function AddRevenueWizardModal(props: {
       if (sheetsPreview) return;
       void handleSheetsPreview(sheetsConnectionId, { preserveExisting: true, preservePreviewOnError: true });
       return;
-    }
-    // After falling back to sheets_choose, auto-advance once connections load and stored ID matches
-    if (step === "sheets_choose" && !sheetsBackToChooser && sheetsConnectionId && sheetsConnections.length > 0) {
-      const match = sheetsConnections.find((c: any) => String(c.id) === sheetsConnectionId);
-      if (match) {
-        setStep("sheets_map");
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource, sheetsConnections, sheetsBackToChooser]);
@@ -2427,7 +2423,10 @@ export function AddRevenueWizardModal(props: {
                       {!showSheetsConnect && sheetsConnections.length > 0 && (
                         <Button
                           onClick={async () => {
-                            const ok = await handleSheetsPreview(sheetsConnectionId);
+                            const ok = await handleSheetsPreview(
+                              sheetsConnectionId,
+                              isEditing ? { preserveExisting: true, preservePreviewOnError: true } : undefined,
+                            );
                             if (ok) setStep("sheets_map");
                           }}
                           disabled={!sheetsConnectionId || sheetsProcessing}

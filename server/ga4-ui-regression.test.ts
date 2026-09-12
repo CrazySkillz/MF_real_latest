@@ -96,12 +96,22 @@ describe("GA4 UI regression guard", () => {
   it("keeps Google Sheets revenue chooser stable without visible connection-check text", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
     const googleSheetsAuth = readClient("components/SimpleGoogleSheetsAuth.tsx");
+    const editStart = revenueModal.indexOf('if (type === "google_sheets")');
+    const editEnd = revenueModal.indexOf('if (type === "csv")', editStart);
     const chooseStart = revenueModal.indexOf('{step === "sheets_choose" && (');
     const mapStart = revenueModal.indexOf('{step === "sheets_map" && (', chooseStart);
+    expect(editStart).toBeGreaterThan(-1);
+    expect(editEnd).toBeGreaterThan(editStart);
     expect(chooseStart).toBeGreaterThan(-1);
     expect(mapStart).toBeGreaterThan(chooseStart);
 
+    const editSection = revenueModal.slice(editStart, editEnd);
     const chooseSection = revenueModal.slice(chooseStart, mapStart);
+    expect(editSection).toContain('setStep("sheets_choose")');
+    expect(editSection).not.toContain('setStep("sheets_map")');
+    expect(editSection).toContain("setSheetsPreview(null)");
+    expect(revenueModal).toContain("setSheetsConnectionId((currentId) => conns.some((c: any) => String(c.id) === currentId) ? currentId");
+    expect(chooseSection).toContain("isEditing ? { preserveExisting: true, preservePreviewOnError: true } : undefined");
     expect(chooseSection).not.toContain("sheetsConnectionsLoading");
     expect(revenueModal).not.toContain("Checking connected Google Sheets");
     expect(googleSheetsAuth).not.toContain("Checking connection...");

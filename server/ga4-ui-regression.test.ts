@@ -36,6 +36,17 @@ describe("GA4 UI regression guard", () => {
     expect(styles).toContain('margin-right: 0 !important;');
   });
 
+  it("shows Google Sheets revenue with the established source breakdown layout", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain('const isGoogleSheets = sourceType === "google_sheets";');
+    expect(ga4Metrics).toContain('const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets;');
+    expect(ga4Metrics).toContain('const sourceDisplayText = isGoogleSheets ? "Google Sheets" : revenueSourceDisplayLabel(s);');
+    expect(ga4Metrics).toContain('const sourceDetailText = isGoogleSheets && String(cfg?.sheetName || "").trim() ? String(cfg.sheetName) : sourceTypeText;');
+    expect(ga4Metrics).toContain('{hasSingleSourceBreakdown && (');
+    expect(ga4Metrics).toContain('aria-label={`Remove ${isGoogleSheets ? "Google Sheets" : "Shopify"} revenue source`}');
+  });
+
   it("prevents Add and Edit Revenue modal transitions from shifting the page", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
     const styles = readClient("index.css");

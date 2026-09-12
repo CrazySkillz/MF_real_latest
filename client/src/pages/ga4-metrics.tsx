@@ -6919,6 +6919,9 @@ export default function GA4Metrics() {
                         {totalRevenueDisplaySources.map((s: any) => {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                           const sourceType = String(s.sourceType || "").trim().toLowerCase();
+                          const isGoogleSheets = sourceType === "google_sheets";
+                          const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets;
+                          const sourceDisplayText = isGoogleSheets ? "Google Sheets" : revenueSourceDisplayLabel(s);
                           const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
@@ -6934,6 +6937,7 @@ export default function GA4Metrics() {
                           const sourceTypeText = mappedCampaignText
                             ? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText
                             : isPipelineOnlyRevenueSource ? `${revenueSourceTypeLabel(s.sourceType)} - Pipeline Proxy only` : revenueSourceTypeLabel(s.sourceType);
+                          const sourceDetailText = isGoogleSheets && String(cfg?.sheetName || "").trim() ? String(cfg.sheetName) : sourceTypeText;
                           const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
                             ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                             : "";
@@ -6942,10 +6946,10 @@ export default function GA4Metrics() {
                               <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-start gap-x-2">
                                 <div className="min-w-0">
                                   <div className="flex min-w-0 items-center gap-1">
-                                    <p className="min-w-0 truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
-                                      {revenueSourceDisplayLabel(s)}{dateLabel}
+                                    <p className="min-w-0 truncate font-medium text-foreground" title={sourceDisplayText + dateLabel}>
+                                      {sourceDisplayText}{dateLabel}
                                     </p>
-                                    {(confirmedRevenueItems.length > 0 || sourceType === "shopify") && ga4ConnectionUsable && (
+                                    {(confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown) && ga4ConnectionUsable && (
                                       <button
                                         onClick={() => {
                                           setShowRevenueSourcesDialog(false);
@@ -6960,12 +6964,12 @@ export default function GA4Metrics() {
                                       </button>
                                     )}
                                   </div>
-                                  {sourceType !== "shopify" && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
+                                  {!hasSingleSourceBreakdown && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
                                 </div>
-                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""}`}>
+                                <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown ? "col-span-2" : ""}`}>
                                   {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                 </span>
-                                {confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (
+                                {confirmedRevenueItems.length === 0 && !hasSingleSourceBreakdown && (
                                   <div className="flex items-center justify-end gap-1">
                                     {ga4ConnectionUsable && s.sourceType !== "manual" && (
                                       <button
@@ -6993,10 +6997,10 @@ export default function GA4Metrics() {
                                   </div>
                                 )}
                               </div>
-                              {sourceType === "shopify" && (
+                              {hasSingleSourceBreakdown && (
                                 <div className="mt-2 border-t border-border pt-2">
                                   <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">
-                                    <span className="min-w-0 truncate text-muted-foreground" title={sourceTypeText}>{sourceTypeText}</span>
+                                    <span className="min-w-0 truncate text-muted-foreground" title={sourceDetailText}>{sourceDetailText}</span>
                                     <span className="text-right tabular-nums text-foreground">
                                       {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
                                     </span>
@@ -7008,7 +7012,7 @@ export default function GA4Metrics() {
                                         }}
                                         className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                                         title="Remove revenue source"
-                                        aria-label="Remove Shopify revenue source"
+                                        aria-label={`Remove ${isGoogleSheets ? "Google Sheets" : "Shopify"} revenue source`}
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </button>

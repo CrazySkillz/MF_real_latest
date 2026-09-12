@@ -5359,7 +5359,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : 'Google Sheets revenue'), currency, mappingConfig: nextMappingConfig, isActive: true,
         } as any, records, existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined);
-        await recomputeCampaignDerivedValues(campaignId, { platformContext });
+        try {
+          await recomputeCampaignDerivedValues(campaignId, { platformContext });
+        } catch (error: any) {
+          console.error("[Google Sheets Revenue] Post-commit derived recompute failed; source data remains committed:", error?.message || error);
+        }
         return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue: visibleTotalRevenue, importedRowsTotalRevenue: totalRevenue });
       }
 

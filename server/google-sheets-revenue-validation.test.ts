@@ -189,9 +189,15 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     const route = sheetsRevenueRoute();
     const replacement = route.indexOf("await storage.replaceRevenueSourceWithRecords(");
     const recompute = route.indexOf("await recomputeCampaignDerivedValues(campaignId, { platformContext });", replacement);
+    const recomputeCatch = route.indexOf("} catch (error: any) {", recompute);
+    const committedSourceLog = route.indexOf("[Google Sheets Revenue] Post-commit derived recompute failed; source data remains committed:", recomputeCatch);
+    const response = route.indexOf("return res.json({ success: true, mode: 'revenue_to_date'", committedSourceLog);
     expect(route).toContain("sourceType: 'google_sheets'");
     expect(replacement).toBeGreaterThanOrEqual(0);
     expect(recompute).toBeGreaterThan(replacement);
+    expect(recomputeCatch).toBeGreaterThan(recompute);
+    expect(committedSourceLog).toBeGreaterThan(recomputeCatch);
+    expect(response).toBeGreaterThan(committedSourceLog);
 
     expect(kpiJobs).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")');
     expect(alertValues).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');

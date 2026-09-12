@@ -5032,7 +5032,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const inFlightGoogleSheetsRevenueAdds = new Set<string>();
   app.post("/api/campaigns/:id/revenue/sheets/process", importRateLimiter, googleSheetsRateLimiter, async (req, res) => {
+    let addRequestKey: string | null = null;
     try {
       const campaignId = req.params.id;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
@@ -5063,6 +5065,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
+      if (platformContext === "ga4" && !existingSourceId) {
+        addRequestKey = createHash("sha256").update(JSON.stringify(normalizeOverviewInventoryConfigValue({ campaignId, connectionId, platformContext, mapping }))).digest("hex");
+        if (inFlightGoogleSheetsRevenueAdds.has(addRequestKey)) {
+          return res.status(409).json({ success: false, error: "This Google Sheets revenue import is already processing." });
+        }
+        inFlightGoogleSheetsRevenueAdds.add(addRequestKey);
+      }
       const existingSources = existingSourceId
         ? await storage.getRevenueSources(campaignId, platformContext).catch(() => [] as any[])
         : [];
@@ -5503,6 +5512,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (e: any) {
       res.status(e?.code === "REVENUE_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
+    } finally {
+      if (addRequestKey) inFlightGoogleSheetsRevenueAdds.delete(addRequestKey);
     }
   });
 

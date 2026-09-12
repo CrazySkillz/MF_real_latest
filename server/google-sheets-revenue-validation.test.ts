@@ -214,6 +214,15 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(invalidation).toContain("/outcome-totals");
   });
 
+  it("rejects an identical concurrent GA4 add without changing additive edit semantics", () => {
+    const route = sheetsRevenueRoute();
+    expect(routes).toContain("const inFlightGoogleSheetsRevenueAdds = new Set<string>();");
+    expect(route).toContain('if (platformContext === "ga4" && !existingSourceId)');
+    expect(route).toContain("inFlightGoogleSheetsRevenueAdds.has(addRequestKey)");
+    expect(route).toContain('res.status(409).json({ success: false, error: "This Google Sheets revenue import is already processing." })');
+    expect(route).toContain("if (addRequestKey) inFlightGoogleSheetsRevenueAdds.delete(addRequestKey)");
+  });
+
   it("limits only GA4 Google Sheets Date choices and clears stale selections", () => {
     expect(revenueModal).toContain('if (platformContext !== "ga4") return sheetsHeaders;');
     expect(revenueModal).toContain("if (header === sheetsRevenueCol || header === sheetsCampaignCol) return false;");

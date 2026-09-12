@@ -342,7 +342,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               <div className="flex items-center justify-between">
                 <Label>{isRevenueConnector ? "Select Sheet/Tab (Revenue/Conversion Value)" : "Select Sheet/Tab(s)"}</Label>
               </div>
-              <div className="space-y-2 max-h-64 min-h-24 overflow-y-auto border border-border rounded-md p-3">
+              <div className={`space-y-2 max-h-64 min-h-24 overflow-y-auto border border-border rounded-md p-3 ${isRevenueConnector ? "scrollbar-hide" : ""}`}>
                 {isLoadingSheets ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <RefreshCw className="w-4 h-4 animate-spin" />

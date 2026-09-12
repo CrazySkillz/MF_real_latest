@@ -115,6 +115,8 @@ describe("GA4 UI regression guard", () => {
     expect(chooseSection).not.toContain("sheetsConnectionsLoading");
     expect(revenueModal).not.toContain("Checking connected Google Sheets");
     expect(googleSheetsAuth).not.toContain("Checking connection...");
+    expect(googleSheetsAuth).toContain('max-h-64 min-h-24 overflow-y-auto');
+    expect(googleSheetsAuth).toContain('isRevenueConnector ? "scrollbar-hide" : ""');
     expect(revenueModal).not.toContain('if (!ok) setStep("sheets_choose");');
     expect(revenueModal).toContain("preserveExisting: true, preservePreviewOnError: true");
     expect(revenueModal).toContain("Preview is temporarily unavailable. Your saved mapping has not changed.");

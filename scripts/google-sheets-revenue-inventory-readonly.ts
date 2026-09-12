@@ -64,7 +64,7 @@ async function main(): Promise<void> {
         currency,
         source_type AS "sourceType",
         sub_campaign_urn AS "subCampaignUrn",
-        created_at AS "createdAt"
+        created_at AT TIME ZONE 'UTC' AS "createdAt"
       FROM revenue_records
       WHERE LOWER(COALESCE(source_type, '')) = 'google_sheets'
          OR revenue_source_id IN (

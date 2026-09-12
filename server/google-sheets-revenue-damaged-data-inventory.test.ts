@@ -124,6 +124,7 @@ describe("Google Sheets Revenue damaged-data inventory", () => {
     expect(script).toContain('client.query("ROLLBACK")');
     expect(script).toContain("automaticCleanupAllowed: false");
     expect(script).toContain("cleanupProposalGenerated: false");
+    expect(script.match(/created_at AT TIME ZONE 'UTC' AS "createdAt"/g)).toHaveLength(1);
     expect(script).not.toMatch(/client\.query\([`'"]\s*(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP)\b/i);
   });
 });

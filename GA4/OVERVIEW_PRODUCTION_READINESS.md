@@ -121,7 +121,7 @@ The previous documented initial-30-day-import scope was clean-certified because,
 
 ## Source Authority
 
-The current HubSpot implementation is unverified only until the final local OAuth expiry-persistence correction is deployed and its renewed expiry is observed. Runtime `ce3eaeaf` passed the bounded provider transition, five-minute Pipeline and revenue-only refresh, item/source lifecycle, open-Overview update, and current production integrity checks recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; no global scheduler-health claim is made.
+HubSpot Revenue is clean-certified only for the five exact active GA4 sources and exercised configurations at runtime `490c8ae6`. The bounded provider transition, Pipeline-enabled and revenue-only five-minute refresh, item/source lifecycle, open-Overview update, OAuth renewal persistence, and current integrity checks passed as recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; no global scheduler-health or whole-Overview claim is made.
 
 The enabled Shopify Revenue source is **unverified for the current candidate** under `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` after a same-UTC-day order exposed a card/source date-window mismatch. The previous exact-SHA evidence remains historical only. A zero-match preview remains authoritative only for the provider order set and mapping fingerprint shown at preview time.
 

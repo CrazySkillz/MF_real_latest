@@ -137,7 +137,7 @@ Current-value hierarchy:
 - revenue-dependent KPIs should use recomputed campaign revenue values
 - spend-dependent KPIs should use recomputed campaign spend values
 - efficiency KPIs like `ROAS`, `ROI`, and `CPA` should be derived from the current recomputed financial state
-- HubSpot imported revenue must enter GA4 financial KPI values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); the current HubSpot implementation is unverified only until the final local OAuth expiry-persistence correction is deployed and its renewed expiry is observed. Current bounded evidence is recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`
+- HubSpot imported revenue must enter GA4 financial KPI values only through the same Overview financial total (`GA4 native financial revenue + imported revenue`, Pipeline Proxy excluded); that contribution path is clean-certified only for the five exact active GA4 sources and exercised configurations at runtime `490c8ae6`. Whole-KPI readiness remains separately controlled, and exact evidence is recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`
 - if dependencies are missing, the KPI should be blocked instead of showing a misleading value
 
 Campaign-level KPI source previews:

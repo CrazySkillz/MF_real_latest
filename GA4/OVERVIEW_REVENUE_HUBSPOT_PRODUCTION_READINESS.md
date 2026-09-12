@@ -2,10 +2,12 @@
 
 ## Mandatory status
 
-**Current status: UNVERIFIED pending deployment of the final OAuth expiry-persistence correction.**
-All other current HubSpot release gates recorded below passed against deployed
-runtime `ce3eaeafc98e9f8813c3fb476a9bcf68eb870a3d`; the local correction must be
-deployed and its renewed `expiresAt` value observed before clean certification.
+**Current status: CLEAN-CERTIFIED for the five exact active GA4 HubSpot revenue
+sources and exercised configurations recorded below at deployed runtime
+`490c8ae685821389d1f433a5943f856478f52e5c`.** This is not whole-provider or
+global scheduler certification. Legacy/test campaigns, inactive sources,
+non-GA4 contexts, and unexercised portal, field, stage, currency, or date variants
+remain excluded.
 The former clean certification remains historical bounded evidence for the
 three enabled HubSpot source IDs inside runtime
 `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`, campaign
@@ -69,19 +71,23 @@ Current OAuth renewal concurrency follow-up (2026-09-11):
 - deployed provider search and automatic refresh both succeeded after the stored
   access-token expiry without reconnecting, proving renewal usability
 
-Current OAuth expiry-persistence correction (2026-09-12):
+Current OAuth expiry-persistence closure (2026-09-12):
 
-- read-only production evidence found that successful renewal did not advance
-  the stored `expiresAt` value, which could cause unnecessary renewal attempts
-  on each five-minute source refresh
-- the smallest local correction accepts HubSpot's documented snake-case or
+- the preliminary apparent stale-expiry result was a validation error: the local
+  process interpreted PostgreSQL's timezone-less timestamp in Amsterdam time,
+  while the database and deployed Render process use UTC
+- the deployed hardening accepts HubSpot's documented snake-case or
   camel-case expiry field, rejects invalid expiry metadata before persistence,
   and verifies the exact renewed expiry alongside access/refresh tokens
 - the focused OAuth/transaction/scheduler/pagination/UI and Salesforce-neighbor
   packet passed 52/52; the complete HubSpot packet passed 97/97; TypeScript and
   the production build passed
-- this final correction is not yet deployed, so the mandatory status remains
-  **UNVERIFIED** until one renewed production expiry is observed
+- Render served exact runtime `490c8ae685821389d1f433a5943f856478f52e5c`;
+  a corrected read-only DB-UTC check observed both current active connections
+  renew automatically to future expiries `2026-09-12T00:04:57.112Z` and
+  `2026-09-12T00:06:10.177Z`, with changed encrypted-token fingerprints
+- all five exact stable source IDs refreshed after deployment; three were
+  Pipeline-enabled and two were revenue-only, and validation changed no data
 
 Current controlling audit (2026-08-08):
 
@@ -158,7 +164,7 @@ Historical H10d baseline (history only):
 Future-reference rule: the mandatory status above and the current certification
 gate at the end of this file are the current answer. Intermediate H1-H10 and
 Current Commit 4.x statements are retained as historical audit chronology and
-do not restore current readiness.
+do not independently alter the current bounded decision.
 
 Implementation alignment at H10d:
 
@@ -1232,8 +1238,8 @@ At certified runtime `12789c1e`, no in-scope value, lifecycle, negative,
 destructive, mapping, scheduler-reprocess, provenance, financial, downstream,
 report, notification, multi-campaign, or damaged-data path remained broken or
 partial. That runtime was therefore clean-certified for the validated scope.
-This is historical evidence and does not override the current **UNVERIFIED**
-status stated at the top after `f4a3e8d7` and later shared CRM changes.
+This is historical evidence and does not broaden or override the current exact
+source/configuration boundary stated at the top.
 
 Final H10d local validation covered 21 focused/adjacent files and passed
 154/154 tests, including HubSpot transactions, disconnect, pagination, dates,
@@ -1736,4 +1742,4 @@ Not proven by local H9:
 
 ## Certification gate
 
-**Current decision: UNVERIFIED pending deployment of the final OAuth expiry-persistence correction.** Runtime `ce3eaeafc98e9f8813c3fb476a9bcf68eb870a3d` passed the current provider-authoritative stage transition, revenue-only and Pipeline-enabled five-minute refresh, open-Overview update, itemized/source deletion, edit, expired-token provider use, stable-source/idempotency, and bounded production scheduler checks. The natural `22:30 UTC` process run started on time; its global status failed for unrelated obsolete/test/provider jobs, so no global scheduler-health claim is made. Five exact active GA4 HubSpot sources refreshed automatically after that run: `38049121-4b3f-475a-a82c-0c766f8bf18d`, `65867434-cbed-4792-9496-8072f63a9c82`, `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c`, and `45dab21e-b4e3-4c03-9885-968a47404bfd`; three were Pipeline-enabled and two were revenue-only. A read-only production inspection found 19 GA4/null-context HubSpot sources, 11 active sources, 288 records, and zero total, campaign-value, date, grain, ownership, source-type, currency, or partial-replacement findings. The remaining blocker is exact deployed proof that the local renewal correction advances persisted `expiresAt`; until then, clean certification is forbidden. Historical H10 and `8ba69406` evidence remains revision-bounded history. Automatic cleanup remains forbidden.
+**Current decision: CLEAN-CERTIFIED for the five exact active GA4 HubSpot revenue sources and exercised configurations at runtime `490c8ae685821389d1f433a5943f856478f52e5c`.** The current provider-authoritative stage transition, revenue-only and Pipeline-enabled five-minute refresh, open-Overview update, itemized/source deletion, edit, expired-token provider use, stable-source/idempotency, and bounded production scheduler checks passed. Five exact source IDs refreshed automatically after deployment: `38049121-4b3f-475a-a82c-0c766f8bf18d`, `65867434-cbed-4792-9496-8072f63a9c82`, `d4ad51ef-85fe-4b67-bbd5-854900be3dee`, `5b2ac08d-16dd-44f5-aca6-18d68c9d5a7c`, and `45dab21e-b4e3-4c03-9885-968a47404bfd`; three were Pipeline-enabled and two were revenue-only. Both current active connections renewed automatically to future persisted DB-UTC expiries, and their encrypted-token fingerprints changed. A read-only production inspection found 19 GA4/null-context HubSpot sources, 11 active sources, 288 records, and zero total, campaign-value, date, grain, ownership, source-type, currency, or partial-replacement findings. The natural `22:30 UTC` process run started on time but its global status failed for unrelated obsolete/test/provider jobs, so no global scheduler-health claim is made. Legacy/test campaigns, inactive sources, non-GA4 contexts, unexercised configurations, whole GA4 Overview readiness, and automatic cleanup remain excluded. Historical H10 and `8ba69406` evidence remains revision-bounded history.

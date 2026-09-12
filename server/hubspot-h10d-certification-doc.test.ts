@@ -14,15 +14,16 @@ const readinessEntryPoints = [
 ].map((file) => ({ file, content: readFileSync(join(process.cwd(), "GA4", file), "utf8") }));
 
 describe("HubSpot certification documentation", () => {
-  it("records the current unverified boundary while retaining H10d as history", () => {
+  it("records the current exact-source clean boundary while retaining H10d as history", () => {
     const mandatoryStatus = canonical.slice(canonical.indexOf("## Mandatory status"), canonical.indexOf("## Authority and evidence rules"));
     const certificationGate = canonical.slice(canonical.lastIndexOf("## Certification gate"));
 
-    expect(mandatoryStatus).toContain("Current status: UNVERIFIED pending deployment of the final OAuth expiry-persistence correction");
-    expect(mandatoryStatus).toContain("deployed and its renewed `expiresAt` value observed before clean certification");
+    expect(mandatoryStatus).toContain("Current status: CLEAN-CERTIFIED for the five exact active GA4 HubSpot revenue");
+    expect(mandatoryStatus).toContain("490c8ae685821389d1f433a5943f856478f52e5c");
     expect(mandatoryStatus).toContain("The former clean certification remains historical bounded evidence");
     expect(canonical).toContain("0df257a6fe47f65e1489ede6202a954588ad3c65");
-    expect(certificationGate).toContain("Current decision: UNVERIFIED pending deployment of the final OAuth expiry-persistence correction");
+    expect(certificationGate).toContain("Current decision: CLEAN-CERTIFIED for the five exact active GA4 HubSpot revenue sources");
+    expect(certificationGate).toContain("no global scheduler-health claim is made");
     expect(canonical).toContain("### Current Commit H10d — final reconciliation");
     expect(canonical).toContain("GA4-native daily-table freshness");
     expect(canonical).toContain("Future and non-certified boundaries");
@@ -39,14 +40,14 @@ describe("HubSpot certification documentation", () => {
     expect(runnerDoc).toContain("future simultaneous provider mutations require fresh scoped evidence");
   });
 
-  it("keeps GA4 entry points aligned to the current unverified boundary", () => {
+  it("keeps GA4 entry points aligned to the current exact-source clean boundary", () => {
     const expectedStatusByFile = new Map([
-      ["README.md", "HubSpot Revenue status: **UNVERIFIED for the current implementation**"],
-      ["OVERVIEW.md", "current HubSpot implementation is unverified"],
-      ["OVERVIEW_PRODUCTION_READINESS.md", "current HubSpot implementation is unverified"],
-      ["FINANCIAL_SOURCES.md", "current implementation is unverified only until the final local OAuth expiry-persistence correction"],
-      ["KPIS.md", "current HubSpot implementation is unverified"],
-      ["BENCHMARKS.md", "current HubSpot implementation is unverified"],
+      ["README.md", "HubSpot Revenue status: **CLEAN-CERTIFIED for five exact active GA4 HubSpot sources and their exercised configurations**"],
+      ["OVERVIEW.md", "HubSpot contribution path is clean-certified only for the five exact active GA4 sources"],
+      ["OVERVIEW_PRODUCTION_READINESS.md", "HubSpot Revenue is clean-certified only for the five exact active GA4 sources"],
+      ["FINANCIAL_SOURCES.md", "HubSpot contribution path is clean-certified only for the five exact active GA4 sources"],
+      ["KPIS.md", "contribution path is clean-certified only for the five exact active GA4 sources"],
+      ["BENCHMARKS.md", "contribution path is clean-certified only for the five exact active GA4 sources"],
     ]);
     for (const { file, content } of readinessEntryPoints) {
       expect(content, file).toContain("GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md");

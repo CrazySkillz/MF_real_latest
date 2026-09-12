@@ -6,7 +6,7 @@
 
 It standardizes the repeated before/after endpoint checks used for source lifecycle validation. It does not change analytics behavior, source persistence, calculations, scheduler behavior, ownership checks, reports, or UI rendering.
 
-Current-status warning (2026-09-12): clean-certification conclusions preserved later in this document describe their recorded historical runtime only. Current bounded HubSpot lifecycle, transition, five-minute refresh, Overview, and integrity validation passed at runtime `ce3eaeaf`; HubSpot Revenue remains unverified only until the final OAuth expiry-persistence correction is deployed and observed. Use `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` for the controlling evidence and exclusions.
+Current-status note (2026-09-12): clean-certification conclusions preserved later in this document describe their recorded historical runtime only. HubSpot Revenue is currently clean-certified only for the five exact active GA4 sources and exercised configurations at runtime `490c8ae6`; use `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` for controlling evidence and exclusions.
 
 ## Safety Boundary
 

@@ -31,6 +31,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('<DialogTitle className="text-foreground">Revenue Sources</DialogTitle>');
     expect(ga4Metrics).toContain('<DialogTitle className="text-foreground">Spend Sources</DialogTitle>');
     expect(ga4Metrics).toContain('<DialogContent data-revenue-sources-dialog className="bg-card border-border max-w-lg">');
+    expect(ga4Metrics).toContain('<AlertDialogContent data-revenue-sources-dialog className="bg-card border-border">');
     expect(ga4Metrics).toContain('<div className="scrollbar-hide max-h-[65vh] space-y-2 overflow-y-auto pr-1">');
     expect(styles).toContain('body[data-scroll-locked]:has([data-revenue-sources-dialog])');
     expect(styles).toContain('margin-right: 0 !important;');

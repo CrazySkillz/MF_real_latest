@@ -7305,7 +7305,7 @@ export default function GA4Metrics() {
                     </AlertDialogContent>
                   </AlertDialog>
                   <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(null); }}>
-                    <AlertDialogContent className="bg-card border-border">
+                    <AlertDialogContent data-revenue-sources-dialog className="bg-card border-border">
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground/70">
